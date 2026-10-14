@@ -1,0 +1,38 @@
+{
+  "name": "@srirealtime/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "start": "tsx --env-file-if-exists=.env src/main.ts",
+    "seed": "tsx --env-file-if-exists=.env src/seed.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@srirealtime/auth": "workspace:*",
+    "@srirealtime/branding": "workspace:*",
+    "@srirealtime/consent": "workspace:*",
+    "@srirealtime/core": "workspace:*",
+    "@srirealtime/db": "workspace:*",
+    "@srirealtime/i18n": "workspace:*",
+    "@srirealtime/jobs": "workspace:*",
+    "@srirealtime/notify": "workspace:*",
+    "@srirealtime/plans": "workspace:*",
+    "@srirealtime/settings": "workspace:*",
+    "@srirealtime/tenancy": "workspace:*",
+    "@srirealtime/uploads": "workspace:*",
+    "fastify": "^5.3.0",
+    "pino": "^9.7.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0",
+    "pino-pretty": "^13.0.0",
+    "tsx": "^4.20.0"
+  }
+}
