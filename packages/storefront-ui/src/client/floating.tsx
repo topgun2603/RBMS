@@ -69,11 +69,11 @@ export function FloatingActions({ whatsapp }: { whatsapp?: string | null }) {
               transition={{ type: "spring", stiffness: 300, damping: 18, delay: 1 }}
               whileHover={reduced ? undefined : { scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              className="pointer-events-auto relative flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-[#25D366]/40 focus-ring"
+              className="pointer-events-auto relative flex size-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-[#25D366]/40 focus-ring sm:size-14"
               data-testid="whatsapp"
             >
               {!reduced && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-[#25D366]/40 [animation-duration:2.5s] [animation-iteration-count:3]" />}
-              <WhatsAppGlyph className="relative size-7" />
+              <WhatsAppGlyph className="relative size-6 sm:size-7" />
             </motion.a>
           </TooltipTrigger>
           <TooltipContent side="left" sideOffset={8} className="rounded-xl px-3 py-2 text-sm">

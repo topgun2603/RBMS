@@ -67,6 +67,7 @@ export async function HomePage() {
   const ratings = await getRatings(ids);
   const t = info.t;
   const social = Object.values(config.shop.social ?? {}).filter((s): s is string => typeof s === "string");
+  const hasUsp = home.sections.some((s) => s.type === "usp");
   return (
     <>
       <JsonLd
@@ -80,8 +81,8 @@ export async function HomePage() {
         {home.sections.map((s, i) => (
           <React.Fragment key={s.id ?? i}>
             <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} />
-            {/* Trust row right under the hero. */}
-            {i === 0 && s.type === "hero" && (
+            {/* Trust row right under the hero, unless the shop has its own "Why shop with us" (usp) section. */}
+            {i === 0 && s.type === "hero" && !hasUsp && (
               <Container className="-mt-[calc(var(--sf-section)*0.55)]">
                 <Reveal>
                   <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} compact />
