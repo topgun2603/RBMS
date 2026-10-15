@@ -310,6 +310,8 @@ export function splitProportionally(total: number, amounts: readonly number[]): 
 
 export const SHIPPING_SAC = "996812";
 export const SHIPPING_DESCRIPTION = "Shipping charges";
+/** Cash-on-delivery fee: its own taxed line (same SAC and rate rule as shipping), never waived by a free-shipping coupon. */
+export const COD_FEE_DESCRIPTION = "COD charges";
 
 /** GST rate of the principal supply (largest taxable line; ties → higher rate), used for shipping. */
 export function principalRate(lines: readonly { gstRate: GstRate; amount: number }[]): GstRate {
@@ -326,6 +328,8 @@ export interface TotalsOptions {
   /** Shipping charged, GST-inclusive. */
   shipping: number;
   freeShipping?: boolean;
+  /** Cash-on-delivery fee, GST-inclusive. Charged as its own line; a free-shipping coupon does not waive it. */
+  codFee?: number;
   sellerState: string;
   placeOfSupply: string;
 }
@@ -347,17 +351,18 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
   });
   const shippingCharged = opts.freeShipping ? 0 : Math.max(opts.shipping, 0);
   const shippingWaived = opts.freeShipping ? Math.max(opts.shipping, 0) : 0;
-  if (shippingCharged > 0) {
-    const rate = principalRate(inputs.map((l) => ({ gstRate: l.gstRate, amount: lineAmount(l.qty, l.rate) - (l.discount ?? 0) })));
-    inputs.push({
-      description: SHIPPING_DESCRIPTION,
-      hsn: SHIPPING_SAC,
-      qty: 1,
-      unit: "job",
-      rate: exclusiveOf(shippingCharged, rate, true),
-      gstRate: rate,
-    });
-  }
+  const codFee = Math.max(opts.codFee ?? 0, 0);
+  const serviceRate = principalRate(inputs.map((l) => ({ gstRate: l.gstRate, amount: lineAmount(l.qty, l.rate) - (l.discount ?? 0) })));
+  const serviceLine = (description: string, charged: number): LineInput => ({
+    description,
+    hsn: SHIPPING_SAC,
+    qty: 1,
+    unit: "job",
+    rate: exclusiveOf(charged, serviceRate, true),
+    gstRate: serviceRate,
+  });
+  if (shippingCharged > 0) inputs.push(serviceLine(SHIPPING_DESCRIPTION, shippingCharged));
+  if (codFee > 0) inputs.push(serviceLine(COD_FEE_DESCRIPTION, codFee));
   const computed = computeInvoice(inputs, { sellerState: opts.sellerState, placeOfSupply: opts.placeOfSupply });
   const lines: OrderLine[] = base.map((l, i) => {
     const c = computed.lines[i]!;
@@ -384,6 +389,7 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
     };
   });
   const shippingLine = shippingCharged > 0 ? computed.lines[base.length]! : null;
+  const codFeeLine = codFee > 0 ? computed.lines[base.length + (shippingLine ? 1 : 0)]! : null;
   return {
     lines,
     totals: {
@@ -392,6 +398,8 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
       shipping: shippingCharged,
       shippingWaived,
       shippingLine,
+      codFee,
+      codFeeLine,
       taxable: computed.taxable,
       cgst: computed.cgst,
       sgst: computed.sgst,

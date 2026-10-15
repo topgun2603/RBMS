@@ -73,6 +73,10 @@ export interface OrderTotals {
   shippingWaived: number;
   /** Shipping as a taxed line (composite supply at the principal item's GST rate), null when no shipping is charged. */
   shippingLine: LineTotals | null;
+  /** Cash-on-delivery fee charged (GST-inclusive; never waived). Absent on orders placed before it existed. */
+  codFee?: number;
+  /** The COD fee as a taxed line ("COD charges"), null when none. */
+  codFeeLine?: LineTotals | null;
   taxable: number;
   cgst: number;
   sgst: number;

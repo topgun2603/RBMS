@@ -4,6 +4,7 @@
 @source "../";
 @source "../../../../packages/web/src";
 @source "../../../../packages/billing-ui/src";
+@source "../../../../packages/commerce-ui/src";
 
 /* Number inputs without spinners (qty / rate fields are typed, not clicked). */
 input[type="number"]::-webkit-outer-spin-button,

@@ -1,15 +1,22 @@
+import { createAnalytics, ANALYTICS_JOBS } from "@srirealtime/analytics";
 import { createAuth } from "@srirealtime/auth";
 import { createBranding } from "@srirealtime/branding";
 import { createAudit } from "@srirealtime/audit";
-import { createCatalogue } from "@srirealtime/catalogue";
+import { createCatalogue, isPublicRef } from "@srirealtime/catalogue";
+import { createCms } from "@srirealtime/cms";
 import { createConsent } from "@srirealtime/consent";
 import { createCoupons } from "@srirealtime/coupons";
+import { createDelivery, DELIVERY_TRACK_JOB } from "@srirealtime/delivery";
 import { createDocuments, type DocSeller } from "@srirealtime/documents";
+import { createExpenses } from "@srirealtime/expenses";
 import { createImportExport } from "@srirealtime/importexport";
 import { todayIST } from "@srirealtime/gst";
 import { createOrders, type Order } from "@srirealtime/orders";
+import { createOnboarding } from "@srirealtime/onboarding";
+import { createReviews } from "@srirealtime/reviews";
 import { createStaff } from "@srirealtime/staff";
-import type { SrModule } from "@srirealtime/core";
+import { createStorefront } from "@srirealtime/storefront";
+import { isSuperAdmin, type SrModule } from "@srirealtime/core";
 import { createDb } from "@srirealtime/db";
 import { createFeatures } from "@srirealtime/features";
 import { createI18n } from "@srirealtime/i18n";
@@ -20,12 +27,23 @@ import { createNotify, type NotifyConfig } from "@srirealtime/notify";
 import { createPayments } from "@srirealtime/payments";
 import { createPlans } from "@srirealtime/plans";
 import { createSettings } from "@srirealtime/settings";
-import { createTenancy } from "@srirealtime/tenancy";
+import { createTenancy, TENANCY_JOBS } from "@srirealtime/tenancy";
 import { createUploads, LocalStorage, S3Storage, type StorageAdapter } from "@srirealtime/uploads";
+import type { FastifyRequest } from "fastify";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
+import {
+  catalogueAvailability,
+  cmsCatalogPort,
+  dnsDomainVerifier,
+  fulfillmentPort,
+  storeAvailabilityPort,
+  storeBaseUrl,
+  storeCatalogPort,
+  storeOrdersPort,
+} from "./kit-store";
 import { CATALOGUE_PERMISSION_DEFS, INVENTORY_PERMISSION_DEFS, INVOICE_PERMISSIONS, routePermissions } from "./permissions";
 
 /**
@@ -36,6 +54,12 @@ export function createKit(env: Env, log: Logger) {
   const { db, close: closeDb } = createDb(env.DATABASE_URL);
 
   const jobs = createJobs({ redisUrl: env.REDIS_URL, log });
+  /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @srirealtime/api job <name>`). */
+  const jobHandlers = new Map<string, () => Promise<void>>();
+  const defineJob = (name: string, handler: () => Promise<void>) => {
+    jobHandlers.set(name, handler);
+    jobs.service.define(name, handler);
+  };
 
   const settings = createSettings({ db });
   const i18n = createI18n({ db });
@@ -54,6 +78,8 @@ export function createKit(env: Env, log: Logger) {
     },
     onAppChange: (tenantId) => features.service.invalidate(tenantId),
     resolveMemberTarget: (target) => resolveTarget!(target),
+    domainVerifier: dnsDomainVerifier(env.CNAME_TARGET),
+    cnameTarget: env.CNAME_TARGET,
   });
 
   // Feature switches: registry = every mounted module's features (read lazily, `modules` is built below).
@@ -109,7 +135,7 @@ export function createKit(env: Env, log: Logger) {
     (await tenancy.service.tenantsForUser(userId)).map((t) => ({ tenant: t.tenant.slug, roles: t.roles })),
   );
 
-  jobs.service.define("uploads.cleanup", async () => {
+  defineJob("uploads.cleanup", async () => {
     await uploads.service.cleanupPending(new Date(Date.now() - 24 * 3_600_000));
   });
 
@@ -130,7 +156,15 @@ export function createKit(env: Env, log: Logger) {
   });
 
   // The one product list for billing, the store and POS. Billing items and inventory items are its variants.
-  const catalogue = createCatalogue({ db, featureGate: features.gate, log });
+  // Search ports are late-bound: inventory and reviews are created further down.
+  let reviewsRef: ReturnType<typeof createReviews> | undefined;
+  const catalogue = createCatalogue({
+    db,
+    featureGate: features.gate,
+    availability: catalogueAvailability(() => inventoryRef!.service, (tenantId, key) => features.service.isEnabled(tenantId, key)),
+    ratings: { ratings: (tenantId, productIds) => reviewsRef!.ratingsPort.ratings(tenantId, productIds) },
+    log,
+  });
 
   const audit = createAudit({ db, log });
   const staff = createStaff({
@@ -204,12 +238,14 @@ export function createKit(env: Env, log: Logger) {
   const coupons = createCoupons({ db });
   const orderSettings = settings.service.handle("orders");
 
+  // The storefront keeps shopper stats (total spent) from order payments; it is created further down.
+  let storefrontRef: ReturnType<typeof createStorefront> | undefined;
   const orders = createOrders({
     db,
     catalog: {
-      // Store orders may only contain active products sold in the store.
+      // Store orders may only contain active products sold in the store. categoryId feeds category coupons.
       getVariants: async (tenantId, ids, opts) => {
-        const found = await catalogue.service.getVariants(tenantId, ids);
+        const found = await catalogue.service.storeVariants(tenantId, ids);
         return opts?.channel
           ? found.filter((v) => v.status === "active" && v.channels.includes(opts.channel as (typeof v.channels)[number]))
           : found;
@@ -248,6 +284,12 @@ export function createKit(env: Env, log: Logger) {
       },
     },
     featureGate: features.gate,
+    events: {
+      // Online payments, COD collected on delivery and manual payments of store orders add to the shopper's total spent.
+      paymentRecorded: async (e) => {
+        if (e.channel === "store" && e.accountId) await storefrontRef!.service.recordPaid(e.tenantId, e.accountId, e.amount);
+      },
+    },
     log,
   });
 
@@ -270,6 +312,8 @@ export function createKit(env: Env, log: Logger) {
     }));
     const s = order.totals.shippingLine;
     if (s) lines.push({ description: "Shipping charges", hsn: s.hsn ?? "996812", qty: 1, unit: "job", rate: s.rate, discount: undefined, gstRate: s.gstRate });
+    const cod = order.totals.codFeeLine;
+    if (cod) lines.push({ description: "COD charges", hsn: cod.hsn ?? "996812", qty: 1, unit: "job", rate: cod.rate, discount: undefined, gstRate: cod.gstRate });
     const invoice = await invoices.service.create(tenant, {
       customer: {
         name: order.customer.name,
@@ -351,20 +395,230 @@ export function createKit(env: Env, log: Logger) {
   const importExport = createImportExport({ db, queue: jobs.service, features: features.gate, log });
   registerImportExport(importExport.registry, { catalogue: catalogue.service, invoices: invoices.service, inventory: inventory.service });
 
+  // ================================================================ online store (docs/commerce-batch2.md)
+  const isEnabled = (tenantId: string, key: string) => features.service.isEnabled(tenantId, key);
+  const storeSettings = settings.service.handle("store");
+  const reviewSettings = settings.service.handle("reviews");
+  const shopName = async (tenantId: string) =>
+    (await branding.service.get(tenantId)).appName ?? (await tenancy.service.getById(tenantId))?.name ?? null;
+
+  /** Shipping zones, rates and quotes, pincode lookup and shipments; shipment progress moves the order along. */
+  const delivery = createDelivery({
+    db,
+    config: { encryptionKey: env.APP_SECRET, allowMock: env.NODE_ENV !== "production", webhookBaseUrl: env.API_PUBLIC_URL },
+    orders: fulfillmentPort(orders.service),
+    featureGate: features.gate,
+    log,
+  });
+
+  const storefront = createStorefront({
+    db,
+    catalog: storeCatalogPort(catalogue.service),
+    orders: storeOrdersPort(orders.service),
+    settings: { get: (tenantId) => storeSettings.get({ tenantId }) },
+    branding: {
+      get: async (tenantId) => {
+        const b = await branding.service.get(tenantId);
+        return { name: await shopName(tenantId), logoUrl: b.logoUrl, css: b.css };
+      },
+    },
+    availability: storeAvailabilityPort(inventory.service, isEnabled, async (tenantId) => (await orderSettings.get({ tenantId })).allowBackorder === true),
+    coupons: coupons.service,
+    // A shop without zones gets delivery's implicit "All India" free rate, so checkout works out of the box.
+    delivery: { quote: (tenantId, input) => delivery.service.quote(tenantId, input) },
+    featureGate: features.gate,
+    profiles: { get: (userId) => auth.service.getUser(userId) },
+    log,
+  });
+  storefrontRef = storefront;
+
+  const reviews = createReviews({
+    db,
+    products: { exists: async (tenantId, productId) => (await catalogue.service.productRefs(tenantId, [productId])).some(isPublicRef) },
+    orders: {
+      // Verified buyer: a delivered store order of this shopper (store customer id = the order's accountId) with the product.
+      hasDelivered: async (tenantId, userId, productId) => {
+        const customer = await storefront.service.ensureCustomer(tenantId, userId);
+        return orders.service.deliveredOrderWithProduct(tenantId, customer.id, productId);
+      },
+    },
+    shoppers: {
+      displayName: async (tenantId, userId) => {
+        const customer = await storefront.service.ensureCustomer(tenantId, userId);
+        return customer.name || (await auth.service.getUser(userId))?.name || null;
+      },
+    },
+    settings: { get: (tenantId) => reviewSettings.get({ tenantId }) },
+    featureGate: features.gate,
+    log,
+  });
+  reviewsRef = reviews;
+
+  const cms = createCms({
+    db,
+    catalog: cmsCatalogPort(catalogue.service),
+    shop: {
+      info: async (tenantId) => {
+        const b = await branding.service.get(tenantId);
+        return { name: (await shopName(tenantId)) ?? "Our store", tagline: null, logoUrl: b.logoUrl };
+      },
+    },
+    storeUrl: {
+      baseUrl: async (tenantId) => {
+        const tenant = await tenancy.service.getById(tenantId);
+        const custom = (await tenancy.service.listDomains(tenantId)).find((d) => d.verified)?.domain ?? null;
+        return storeBaseUrl((appId) => billingUrlFor(env.STORE_PUBLIC_URL, appId), { slug: tenant?.slug ?? "", appId: tenant?.appId ?? null }, custom);
+      },
+    },
+    sitemapSource: {
+      products: (tenantId, limit) => catalogue.service.sitemapEntries(tenantId, "products", limit),
+      categories: (tenantId, limit) => catalogue.service.sitemapEntries(tenantId, "categories", limit),
+      collections: (tenantId, limit) => catalogue.service.sitemapEntries(tenantId, "collections", limit),
+    },
+    featureGate: features.gate,
+    log,
+  });
+
+  const analytics = createAnalytics({
+    db,
+    config: { ipSaltSecret: env.APP_SECRET },
+    catalog: {
+      names: async (tenantId, ids) => Object.fromEntries((await catalogue.service.productRefs(tenantId, ids)).map((p) => [p.id, p.name])),
+    },
+    log,
+  });
+
+  const expenses = createExpenses({
+    db,
+    sales: {
+      gstTotals: async (tenantId, from, to) => {
+        const t = (await invoices.service.gstSummary(tenantId, { from, to })).totals;
+        return { taxable: t.taxable, cgst: t.cgst, sgst: t.sgst, igst: t.igst };
+      },
+    },
+    purchases: {
+      // Input credit on purchases only counts for shops that record purchases.
+      itcTotals: async (tenantId, from, to) => {
+        if (!(await isEnabled(tenantId, "inventory.purchases"))) return { taxable: 0, cgst: 0, sgst: 0, igst: 0 };
+        const itc = (await inventory.service.purchaseReport(tenantId, { from, to })).itc;
+        return { taxable: itc.taxable, cgst: itc.cgst, sgst: itc.sgst, igst: itc.igst };
+      },
+    },
+    log,
+  });
+
+  // Setup checklist: each step's check reads the module that owns it.
+  const onboarding = createOnboarding({ db, featureGate: features.gate, log });
+  const filled = (v: unknown) => typeof v === "string" && v.trim() !== "";
+  onboarding.registerStep({
+    key: "business-profile",
+    module: "settings",
+    label: "Add your business details",
+    description: "Legal name and state for GST bills and orders.",
+    href: "settings/business",
+    order: 10,
+    check: async (tenantId) => {
+      const p = await billingProfile.get({ tenantId });
+      return filled(p.legalName) && filled(p.stateCode);
+    },
+  });
+  onboarding.registerStep({
+    key: "branding",
+    module: "branding",
+    label: "Add your logo and colour",
+    description: "Your logo and brand colour on bills and the store.",
+    href: "settings/branding",
+    order: 20,
+    check: async (tenantId) => {
+      const b = await branding.service.get(tenantId);
+      return Boolean(b.logoUrl) || Boolean(b.tokens.colors?.primary);
+    },
+  });
+  onboarding.registerStep({
+    key: "first-product",
+    module: "catalogue",
+    feature: "catalogue",
+    label: "Add your first product",
+    description: "Products are shared by bills, stock and the online store.",
+    href: "catalogue/products/new",
+    order: 30,
+    check: async (tenantId) => (await catalogue.service.listProducts(tenantId, { limit: 1 })).total > 0,
+  });
+  onboarding.registerStep({
+    key: "first-sale",
+    module: "invoices",
+    label: "Make your first bill or order",
+    description: "Create a GST bill or take an order.",
+    href: "invoices/new",
+    order: 40,
+    check: async (tenantId) =>
+      (await invoices.service.list(tenantId, { limit: 1 })).total > 0 || (await orders.service.list(tenantId, { limit: 1 })).total > 0,
+  });
+  onboarding.registerStep({
+    key: "payments",
+    module: "payments",
+    feature: "payments",
+    label: "Connect online payments",
+    description: "Connect your Razorpay account to accept UPI and cards.",
+    href: "settings/payments",
+    order: 50,
+    check: async (tenantId) => {
+      const a = await payments.service.getAccount(tenantId);
+      return a.configured && a.enabled;
+    },
+  });
+  onboarding.registerStep({
+    key: "delivery-zone",
+    module: "delivery",
+    feature: "delivery",
+    label: "Set your delivery zones",
+    description: "Where you deliver and what shipping costs.",
+    href: "settings/delivery",
+    order: 60,
+    check: async (tenantId) => (await delivery.service.listZones(tenantId)).items.some((z) => z.active),
+  });
+  onboarding.registerStep({
+    key: "store-published",
+    module: "cms",
+    feature: "cms",
+    label: "Publish your store home page",
+    description: "Design the home page and make it live.",
+    href: "store/home",
+    order: 70,
+    check: async (tenantId) => Boolean((await cms.service.getHome(tenantId)).publishedAt),
+  });
+
+  defineJob("store.carts.purge", async () => {
+    log.info(await storefront.service.purgeExpiredCarts(), "expired carts purged");
+  });
+  defineJob(DELIVERY_TRACK_JOB, async () => {
+    log.info(await delivery.service.trackOpenShipments(), "shipments tracked");
+  });
+  defineJob(ANALYTICS_JOBS.rollup, async () => {
+    log.info(await analytics.service.rollup(), "analytics rolled up");
+  });
+  defineJob(ANALYTICS_JOBS.purge, async () => {
+    log.info(await analytics.service.purge(), "analytics events purged");
+  });
+  defineJob(TENANCY_JOBS.verifyDomains, async () => {
+    const r = await tenancy.service.verifyPending();
+    if (r.checked) log.info(r, "custom domains checked");
+  });
+
   // Permissions of modules whose packages don't declare them on their module (staff lists them for custom roles).
   invoices.module.permissions = INVOICE_PERMISSIONS;
   catalogue.module.permissions = CATALOGUE_PERMISSION_DEFS;
   inventory.module.permissions = INVENTORY_PERMISSION_DEFS;
 
-  jobs.service.define("audit.purge", async () => {
+  defineJob("audit.purge", async () => {
     await audit.service.purge();
   });
 
-  jobs.service.define("invoices.reminders", async () => {
+  defineJob("invoices.reminders", async () => {
     const result = await invoices.service.runReminders(new Date());
     log.info(result, "invoice reminders run");
   });
-  jobs.service.define("payments.retry", async () => {
+  defineJob("payments.retry", async () => {
     await payments.service.retryPending();
   });
 
@@ -390,6 +644,13 @@ export function createKit(env: Env, log: Logger) {
     coupons.module,
     documents.module,
     ...importExport.modules,
+    storefront.module,
+    delivery.module,
+    reviews.module,
+    cms.module,
+    onboarding.module,
+    analytics.module,
+    expenses.module,
   ];
 
   return {
@@ -415,13 +676,26 @@ export function createKit(env: Env, log: Logger) {
     coupons,
     documents,
     importExport,
+    storefront,
+    delivery,
+    reviews,
+    cms,
+    onboarding,
+    analytics,
+    expenses,
     modules,
+    /** Runs a job defined in the kit once, in this process (scripts, e2e). */
+    async runJob(name: string) {
+      const handler = jobHandlers.get(name);
+      if (!handler) throw new Error(`Unknown job "${name}" (known: ${[...jobHandlers.keys()].join(", ")})`);
+      await handler();
+    },
     /** Host-side `config.permission` for the billing, inventory, catalogue, orders and coupons routes. */
     routeRules: routePermissions(),
     /** Order matters: tenancy resolves the tenant, then auth loads the user's roles in it. */
     contextHooks: [tenancy.contextHook, auth.contextHook],
     /** Global preHandlers, after the context hooks: each route's `config.feature`, then `config.permission`. */
-    preHandlers: [features.preHandler, staff.preHandler],
+    preHandlers: [featureCheck(features.preHandler), staff.preHandler],
     /** Records every successful mutating request in the audit log. */
     onResponse: [audit.onResponse],
     async start() {
@@ -431,6 +705,11 @@ export function createKit(env: Env, log: Logger) {
       await jobs.service.schedule("invoices.reminders", "0 10 * * *");
       await jobs.service.schedule("payments.retry", "*/15 * * * *");
       await jobs.service.schedule("audit.purge", "15 4 * * *");
+      await jobs.service.schedule("store.carts.purge", "45 3 * * *");
+      await jobs.service.schedule(DELIVERY_TRACK_JOB, "0 */2 * * *");
+      await jobs.service.schedule(ANALYTICS_JOBS.rollup, "5 * * * *");
+      await jobs.service.schedule(ANALYTICS_JOBS.purge, "20 4 * * *");
+      await jobs.service.schedule(TENANCY_JOBS.verifyDomains, "*/30 * * * *");
     },
     async stop() {
       for (const m of [...modules].reverse()) await m.stop?.();
@@ -440,6 +719,24 @@ export function createKit(env: Env, log: Logger) {
 }
 
 export type Kit = ReturnType<typeof createKit>;
+
+/** Routes whose feature check super-admins skip (the platform team verifies domains even below the plan). */
+const SUPERADMIN_FEATURE_BYPASS = new Set([
+  "POST /v1/tenancy/domains/:id/verify",
+  // The platform team may also set a domain up (and remove it) for a shop.
+  "GET /v1/tenancy/domains",
+  "POST /v1/tenancy/domains",
+  "GET /v1/tenancy/domains/:id/instructions",
+  "DELETE /v1/tenancy/domains/:id",
+]);
+
+/** The features preHandler, except for super-admins on `SUPERADMIN_FEATURE_BYPASS` routes. */
+function featureCheck(check: (req: FastifyRequest) => Promise<void>) {
+  return async (req: FastifyRequest) => {
+    if (isSuperAdmin(req.ctx) && SUPERADMIN_FEATURE_BYPASS.has(`${req.method} ${req.routeOptions.url}`)) return;
+    await check(req);
+  };
+}
 
 /**
  * BILLING_PUBLIC_URL is either one template ("http://{slug}.localhost:3001") or per-app templates

@@ -144,3 +144,19 @@ export interface PublicProductSummary {
 }
 
 export type PublicCategory = Omit<Category, "productCount" | "createdAt" | "updatedAt" | "active">;
+
+/** `storeVariants()`: a variant lookup plus what the online store needs from its product. */
+export interface StoreVariantLookup extends VariantLookup {
+  productSlug: string;
+  categoryId: string | null;
+}
+
+/** `productRefs()`: a product summary of any status (filter with `isPublicRef` before showing it in the store). */
+export interface ProductRef extends PublicProductSummary {
+  status: ProductStatus;
+  channels: Channel[];
+  updatedAt: Date;
+}
+
+/** Shown in the online store: active and sold on the "store" channel. */
+export const isPublicRef = (p: Pick<ProductRef, "status" | "channels">): boolean => p.status === "active" && p.channels.includes("store");

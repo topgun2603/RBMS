@@ -320,6 +320,25 @@ describe("computeOrderTotals", () => {
     expect(totals).toMatchObject({ shipping: 0, shippingWaived: 5000, shippingLine: null, total: 49900 });
   });
 
+  it("COD fee is its own taxed line after shipping", () => {
+    const { lines: l, totals } = computeOrderTotals(lines([item()]), { shipping: 4000, codFee: 3000, sellerState: "33", placeOfSupply: "33" });
+    expect(l).toHaveLength(1);
+    expect(totals.shippingLine).toMatchObject({ description: "Shipping charges", rate: exclusiveOf(4000, 5, true) });
+    expect(totals.codFeeLine).toMatchObject({ description: "COD charges", hsn: "996812", gstRate: 5, rate: exclusiveOf(3000, 5, true) });
+    expect(totals).toMatchObject({ shipping: 4000, codFee: 3000, total: 49900 + 4000 + 3000 });
+  });
+
+  it("a free-shipping coupon waives shipping but not the COD fee", () => {
+    const { totals } = computeOrderTotals(lines([item()]), { shipping: 4000, freeShipping: true, codFee: 3000, sellerState: "33", placeOfSupply: "33" });
+    expect(totals).toMatchObject({ shipping: 0, shippingWaived: 4000, shippingLine: null, codFee: 3000, total: 49900 + 3000 });
+    expect(totals.codFeeLine).toMatchObject({ description: "COD charges", rate: exclusiveOf(3000, 5, true) });
+  });
+
+  it("no COD fee → no COD line", () => {
+    const { totals } = computeOrderTotals(lines([item()]), { shipping: 0, sellerState: "33", placeOfSupply: "33" });
+    expect(totals).toMatchObject({ codFee: 0, codFeeLine: null });
+  });
+
   it("principal rate: largest taxable value, ties to the higher rate", () => {
     expect(principalRate([{ gstRate: 5, amount: 100 }, { gstRate: 18, amount: 50 }])).toBe(5);
     expect(principalRate([{ gstRate: 5, amount: 100 }, { gstRate: 12, amount: 100 }])).toBe(12);

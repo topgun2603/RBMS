@@ -1,0 +1,132 @@
+import { gstinCheckChar } from "@srirealtime/gst";
+import { describe, expect, it } from "vitest";
+import { expensesCsv } from "./csv";
+import { gstFromInclusive, itcOf, profitReport, resolveGst, summarize, ZERO_GST } from "./logic";
+import { expenseInput, reportRange, type ExpenseView } from "./service";
+
+const FIRST14 = "33ABCDE1234F1Z";
+const GSTIN = FIRST14 + gstinCheckChar(FIRST14);
+const BAD_GSTIN = FIRST14 + (GSTIN.endsWith("0") ? "1" : "0");
+
+describe("GST math", () => {
+  it("extracts GST from a GST-inclusive amount", () => {
+    expect(gstFromInclusive(11800, 18)).toBe(1800); // ₹118 at 18% → ₹18
+    expect(gstFromInclusive(10500, 5)).toBe(500);
+    expect(gstFromInclusive(100000, 12)).toBe(10714); // 10714.28 → 10714
+    expect(gstFromInclusive(999, 28)).toBe(219); // 218.53 → 219
+    expect(gstFromInclusive(10000, 0)).toBe(0);
+    expect(gstFromInclusive(10025, 0.25)).toBe(25);
+  });
+
+  it("uses a given GST amount instead of computing it", () => {
+    expect(resolveGst(11800, 18)).toBe(1800);
+    expect(resolveGst(11800, 18, 1700)).toBe(1700);
+    expect(resolveGst(11800, 18, 0)).toBe(0);
+    expect(resolveGst(11800, 18, null)).toBe(1800);
+  });
+
+  it("validates input: GST rates, GSTIN normalised, defaults", () => {
+    const parsed = expenseInput.parse({ amount: 11800, gstRate: 18, vendorGstin: ` ${GSTIN.toLowerCase()} `, vendorName: "" });
+    expect(parsed).toMatchObject({ gstRate: 18, vendorGstin: GSTIN, vendorName: null, paymentMethod: "cash" });
+    expect(expenseInput.safeParse({ amount: 100, gstRate: 7 }).success).toBe(false);
+    expect(expenseInput.safeParse({ amount: 0 }).success).toBe(false);
+    expect(expenseInput.safeParse({ amount: 10.5 }).success).toBe(false);
+    expect(expenseInput.safeParse({ amount: 100, date: "2026-02-30" }).success).toBe(false);
+    expect(expenseInput.safeParse({ amount: 100, tenantId: "x" }).success).toBe(false);
+  });
+});
+
+describe("ITC rule", () => {
+  it("counts GST only with a valid vendor GSTIN on a recorded expense", () => {
+    expect(itcOf({ gstAmount: 1800, vendorGstin: GSTIN })).toBe(1800);
+    expect(itcOf({ gstAmount: 1800, vendorGstin: GSTIN.toLowerCase() })).toBe(1800);
+    expect(itcOf({ gstAmount: 1800, vendorGstin: BAD_GSTIN })).toBe(0);
+    expect(itcOf({ gstAmount: 1800, vendorGstin: "33ABCDE" })).toBe(0);
+    expect(itcOf({ gstAmount: 1800, vendorGstin: null })).toBe(0);
+    expect(itcOf({ gstAmount: 1800, vendorGstin: GSTIN, status: "cancelled" })).toBe(0);
+  });
+});
+
+describe("summary grouping", () => {
+  const cats = [
+    { id: "rent", name: "Rent" },
+    { id: "power", name: "Electricity" },
+  ];
+  const rows = [
+    { date: "2026-09-05", categoryId: "rent", amount: 2_000_000, gstAmount: 305_085, vendorGstin: GSTIN, status: "recorded" },
+    { date: "2026-10-05", categoryId: "rent", amount: 2_000_000, gstAmount: 305_085, vendorGstin: null, status: "recorded" },
+    { date: "2026-10-10", categoryId: "power", amount: 350_000, gstAmount: 0, vendorGstin: null, status: "recorded" },
+    { date: "2026-10-11", categoryId: "power", amount: 999_999, gstAmount: 0, vendorGstin: null, status: "cancelled" },
+    { date: "2026-10-12", categoryId: "gone", amount: 10_000, gstAmount: 0, vendorGstin: null, status: "recorded" },
+  ];
+
+  it("groups by category (largest first) and month (oldest first), skipping cancelled", () => {
+    const s = summarize(rows, cats);
+    expect(s).toMatchObject({ total: 4_360_000, gst: 610_170, itc: 305_085, count: 4 });
+    expect(s.byCategory).toEqual([
+      { categoryId: "rent", name: "Rent", total: 4_000_000, gst: 610_170, itc: 305_085, count: 2 },
+      { categoryId: "power", name: "Electricity", total: 350_000, gst: 0, itc: 0, count: 1 },
+      { categoryId: "gone", name: "Other", total: 10_000, gst: 0, itc: 0, count: 1 },
+    ]);
+    expect(s.byMonth).toEqual([
+      { month: "2026-09", total: 2_000_000, gst: 305_085, itc: 305_085, count: 1 },
+      { month: "2026-10", total: 2_360_000, gst: 305_085, itc: 0, count: 3 },
+    ]);
+  });
+
+  it("is zero for no rows", () => {
+    expect(summarize([], cats)).toEqual({ total: 0, gst: 0, itc: 0, count: 0, byCategory: [], byMonth: [] });
+  });
+});
+
+describe("profit report", () => {
+  it("computes gross, net and GST payable", () => {
+    const r = profitReport(
+      "2026-10-01",
+      "2026-10-31",
+      { taxable: 10_00_000_00, cgst: 9_00_000_0, sgst: 9_00_000_0, igst: 2_00_000_0 },
+      { taxable: 6_00_000_00, cgst: 5_00_000_0, sgst: 5_00_000_0, igst: 0 },
+      { total: 50_000_00, itc: 5_000_00 },
+    );
+    expect(r.sales).toEqual({ taxable: 100_000_000, tax: 20_000_000 });
+    expect(r.purchases).toEqual({ taxable: 60_000_000, itc: 10_000_000 });
+    expect(r.grossProfit).toBe(40_000_000);
+    expect(r.netProfit).toBe(40_000_000 - (5_000_000 - 500_000));
+    expect(r.gst).toEqual({ output: 20_000_000, itc: 10_500_000, payable: 9_500_000 });
+  });
+
+  it("goes negative when ITC exceeds output tax, and handles zero ports", () => {
+    const r = profitReport("2026-10-01", "2026-10-31", ZERO_GST, { taxable: 1000, cgst: 90, sgst: 90, igst: 0 }, { total: 0, itc: 0 });
+    expect(r).toMatchObject({ grossProfit: -1000, netProfit: -1000, gst: { output: 0, itc: 180, payable: -180 } });
+  });
+});
+
+describe("report range and CSV", () => {
+  it("defaults to this month and validates", () => {
+    expect(reportRange({}, "2026-10-15")).toEqual({ from: "2026-10-01", to: "2026-10-15" });
+    expect(() => reportRange({ from: "2026-10-10", to: "2026-10-01" }, "2026-10-15")).toThrow();
+    expect(() => reportRange({ from: "2024-01-01", to: "2026-01-01" }, "2026-10-15")).toThrow();
+    expect(() => reportRange({ from: "bad" }, "2026-10-15")).toThrow();
+  });
+
+  it("writes rupees and guards formulas", () => {
+    const csv = expensesCsv([
+      {
+        date: "2026-10-05",
+        categoryName: "Rent",
+        vendorName: "=HYPERLINK()",
+        vendorGstin: GSTIN,
+        amount: 11800,
+        gstRate: 18,
+        gstAmount: 1800,
+        itc: 1800,
+        paymentMethod: "upi",
+        reference: null,
+        note: "Oct, shop",
+        status: "recorded",
+      } as unknown as ExpenseView,
+    ]);
+    const line = csv.split("\r\n")[1];
+    expect(line).toBe(`2026-10-05,Rent,'=HYPERLINK(),${GSTIN},118.00,18,18.00,18.00,upi,,"Oct, shop",recorded`);
+  });
+});

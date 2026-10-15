@@ -1,5 +1,6 @@
 import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
 import { createDb } from "@srirealtime/db";
+import { eq } from "drizzle-orm";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
@@ -15,6 +16,7 @@ import {
   manualOrderSchema,
   OrdersService,
   statusInputSchema,
+  summaryColumns,
   type OrderSummary,
 } from "./service";
 import { orders } from "./schema";
@@ -54,6 +56,9 @@ describe("validation", () => {
     });
     expect(c.lines[0]).toEqual({ variantId: V1, qty: 1 });
     expect(c.shipping).toBe(0);
+    expect(c.codFee).toBe(0);
+    expect(checkoutSchema.parse({ customer: { name: "M", phone: "9876543210" }, shippingAddress: address, lines: [{ variantId: V1, qty: 1 }], paymentMethod: "cod", shipping: 4000, codFee: 3000 })).toMatchObject({ shipping: 4000, codFee: 3000 });
+    expect(() => checkoutSchema.parse({ customer: { name: "M", phone: "9876543210" }, shippingAddress: address, lines: [{ variantId: V1, qty: 1 }], paymentMethod: "cod", codFee: -1 })).toThrow(ZodError);
     expect(() => checkoutSchema.parse({ customer: { name: "Meena" }, shippingAddress: address, lines: [{ variantId: V1, qty: 1 }], paymentMethod: "cod" })).toThrow(ZodError);
     expect(() => checkoutSchema.parse({ customer: { name: "M", phone: "9876543210" }, lines: [{ variantId: V1, qty: 1 }], paymentMethod: "cod" })).toThrow(ZodError);
     expect(() =>
@@ -82,6 +87,12 @@ describe("validation", () => {
 });
 
 describe("SQL", () => {
+  it("summary binds the IST day/month starts as strings, never raw Dates", () => {
+    const q = db.select(summaryColumns(new Date("2026-10-14T18:30:00.000Z"), new Date("2026-09-30T18:30:00.000Z"))).from(orders).where(eq(orders.tenantId, T)).toSQL();
+    expect(q.params).toEqual(expect.arrayContaining(["2026-10-14T18:30:00.000Z", "2026-09-30T18:30:00.000Z", T]));
+    expect(q.params.some((p) => p instanceof Date)).toBe(false);
+    expect(q.sql).toContain("::timestamptz");
+  });
   it("allocates order numbers atomically per FY", () => {
     const { sql, params } = allocateOrderSeqStatement(db, { tenantId: "t1", fy: "26-27", prefix: "ORD" }).toSQL();
     expect(sql).toContain('insert into "order_series"');
@@ -167,6 +178,29 @@ describe("placing orders: blocking side effects", () => {
 
   it("refuses coupons when the coupons module isn't wired", async () => {
     await expect(build().create(T, { ...manual, couponCode: "X10" })).rejects.toMatchObject({ code: "coupon_invalid" });
+  });
+
+  it("verified-buyer lookup needs an account and a product uuid (no query otherwise)", async () => {
+    const svc = build();
+    await expect(svc.deliveredOrderWithProduct(T, "", V1)).resolves.toBeNull();
+    await expect(svc.deliveredOrderWithProduct(T, V2, "not-a-uuid")).resolves.toBeNull();
+  });
+
+  it("tells the events port about payments, never throws, skips zero amounts", async () => {
+    const paymentRecorded = vi.fn(async () => Promise.reject(new Error("listener down")));
+    const svc = new OrdersService({
+      db,
+      catalog: { getVariants: async () => [] },
+      seller: { get: async () => ({ stateCode: "33" }) },
+      settings: { get: async () => ({}) },
+      events: { paymentRecorded },
+    });
+    const row = { tenantId: T, id: V1, channel: "store", customer: { name: "M", phone: null, email: null, accountId: V2 } };
+    const notify = (svc as unknown as { paymentRecorded: (r: typeof row, a: number, s: string) => Promise<void> }).paymentRecorded.bind(svc);
+    await expect(notify(row, 5000, "cod")).resolves.toBeUndefined();
+    expect(paymentRecorded).toHaveBeenCalledWith({ tenantId: T, orderId: V1, channel: "store", accountId: V2, amount: 5000, source: "cod" });
+    await notify(row, 0, "manual");
+    expect(paymentRecorded).toHaveBeenCalledTimes(1);
   });
 
   it("checkout needs the orders feature", async () => {

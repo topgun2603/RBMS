@@ -10,8 +10,9 @@ larger UI module) that any app mounts. Nothing app-specific.
 | Batch | Scope | Status |
 |---|---|---|
 | 0 | Foundation P1, gst, invoices (credit book, WhatsApp, reports), inventory, payments, features, web + billing-ui | done |
-| 1 | catalogue (products/variants/categories; billing items move here), inventory locations + reservations, orders, coupons, staff (roles + permissions), audit, documents (PDF), importexport | in progress |
-| 2 | storefront (customer accounts, cart, checkout), delivery, search, reviews, favourites, cms, seo, onboarding, analytics, expenses, custom-domain; UI: catalogue/orders/coupons/staff/audit/import UIs, store admin, storefront app | |
+| 1 | catalogue (products/variants/categories; billing items move here), inventory locations + reservations, orders, coupons, staff (roles + permissions), audit, documents (PDF), importexport | done (e2e `apps/api/test/e2e/batch1.mjs`) |
+| 2a | server: storefront (shoppers, cart, checkout, tracking, wishlist), delivery, search + collections, reviews, cms + seo, onboarding, analytics, expenses, custom-domain (docs/commerce-batch2.md) | in progress |
+| 2b | UI: storefront app (SSR), store-admin screens (catalogue, orders, coupons, delivery, CMS, reviews), Team & roles, audit log, import/export, onboarding, expenses, analytics | |
 | 3 | marketplace + payouts, chat, support, whatsapp inbox + campaigns, kyc, loyalty, gst-einvoice, multi-branch, api + webhooks, advanced reports (back end) | |
 | 4 | Wave B UIs: POS counter, vendor dashboard, chat, inbox, support desk, KYC flows, loyalty, e-invoice, branches, API keys, report builder | |
 | 5 | sign-up + onboarding, plan subscriptions (Razorpay Subscriptions / UPI Autopay), landing + pricing | |

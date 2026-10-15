@@ -1,5 +1,6 @@
 import { defineModule } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
+import { TENANCY_FEATURES } from "./domains";
 import { tenancyRoutes } from "./routes";
 import { tenantDomains, tenantMemberships, tenants } from "./schema";
 import { TenancyService, type TenancyDeps } from "./service";
@@ -7,6 +8,7 @@ import { TenancyService, type TenancyDeps } from "./service";
 export * from "./schema";
 export * from "./slug";
 export * from "./roles";
+export * from "./domains";
 export { TenancyService, publicTenant, toTenantRef } from "./service";
 export type { CreateTenantInput, ResolveInput, TenancyDeps, TenantWithRoles } from "./service";
 export { tenancyRoutes } from "./routes";
@@ -22,6 +24,7 @@ export function createTenancy(deps: TenancyDeps) {
     id: "tenancy",
     tables: { tenants, tenantDomains, tenantMemberships },
     routes: tenancyRoutes(service, { resolveMemberTarget: deps.resolveMemberTarget }),
+    features: TENANCY_FEATURES,
   });
 
   /** Fills `req.ctx.tenant` from the `x-tenant` header, subdomain or verified custom domain. */
@@ -37,3 +40,6 @@ export function createTenancy(deps: TenancyDeps) {
 
   return { service, module, contextHook };
 }
+
+/** Job names the host schedules. */
+export const TENANCY_JOBS = { verifyDomains: "tenancy.domains.verify" } as const;

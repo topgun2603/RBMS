@@ -1,8 +1,9 @@
 import { requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { CollectionInput, CollectionListQuery, CollectionPatch, CollectionProductsQuery } from "./collections";
 import { csvDisposition, toCsv, type CsvColumn } from "./csv";
-import { CATALOGUE_FEATURE_KEYS } from "./features";
+import { CATALOGUE_FEATURE_KEYS, CATALOGUE_PERMISSIONS } from "./features";
 import { itemName, paiseToRupees, todayIST } from "./logic";
 import {
   codeQuerySchema,
@@ -28,6 +29,8 @@ const tid = (req: { ctx: RequestContext }) => requireTenant(req.ctx).id;
 
 const BASE = { config: { feature: CATALOGUE_FEATURE_KEYS.base } };
 const VARIANTS = { config: { feature: CATALOGUE_FEATURE_KEYS.variants } };
+/** Collection writes also declare `catalogue.manage` (enforced by the host's staff preHandler). */
+const MANAGE = { config: { feature: CATALOGUE_FEATURE_KEYS.base, permission: CATALOGUE_PERMISSIONS[0].key } };
 
 /** `GET /products?format=csv`: one row per variant. */
 export const PRODUCT_CSV_COLUMNS: CsvColumn<ProductExportRow>[] = [
@@ -53,7 +56,8 @@ export const PRODUCT_CSV_COLUMNS: CsvColumn<ProductExportRow>[] = [
 
 /**
  * Routes under /v1/catalog. `/public/*` needs only a tenant (from the host or `x-tenant`) and serves active products
- * sold in the store; everything else needs an owner, admin or staff member. Every route declares its feature:
+ * sold in the store (listing, search + suggestions, collections); everything else needs an owner, admin or staff member
+ * (collection writes also declare `catalogue.manage`). Every route declares its feature:
  * "catalogue", and "catalogue.variants" for variant writes (enforced by the host).
  */
 export function catalogueRoutes(service: CatalogueService) {
@@ -64,6 +68,13 @@ export function catalogueRoutes(service: CatalogueService) {
     app.get("/public/products/:slug", BASE, async (req) => {
       const { slug } = slugParam.parse(req.params);
       return service.publicProduct(tid(req), slug);
+    });
+    app.get("/public/search", BASE, async (req) => service.search(tid(req), query(req)));
+    app.get("/public/search/suggest", BASE, async (req) => service.suggest(tid(req), query(req).q));
+    app.get("/public/collections", BASE, async (req) => service.publicCollections(tid(req)));
+    app.get("/public/collections/:slug", BASE, async (req) => {
+      const { slug } = slugParam.parse(req.params);
+      return service.publicCollection(tid(req), slug, query(req) as CollectionProductsQuery);
     });
 
     // ---- staff
@@ -130,6 +141,23 @@ export function catalogueRoutes(service: CatalogueService) {
       staff.delete("/variants/:id", VARIANTS, async (req) => {
         const { id } = idParam.parse(req.params);
         await service.deleteVariant(tid(req), id);
+        return { ok: true };
+      });
+
+      // collections
+      staff.get("/collections", BASE, async (req) => service.listCollections(tid(req), query(req) as CollectionListQuery));
+      staff.post("/collections", MANAGE, async (req) => service.createCollection(tid(req), body(req) as CollectionInput));
+      staff.get("/collections/:id", BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.getCollection(tid(req), id);
+      });
+      staff.patch("/collections/:id", MANAGE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.updateCollection(tid(req), id, body(req) as CollectionPatch);
+      });
+      staff.delete("/collections/:id", MANAGE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        await service.deleteCollection(tid(req), id);
         return { ok: true };
       });
 

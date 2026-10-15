@@ -81,6 +81,9 @@ importers:
       '@fastify/cors':
         specifier: ^11.0.0
         version: 11.3.1
+      '@srirealtime/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@srirealtime/audit':
         specifier: workspace:*
         version: link:../../packages/audit
@@ -93,6 +96,9 @@ importers:
       '@srirealtime/catalogue':
         specifier: workspace:*
         version: link:../../packages/catalogue
+      '@srirealtime/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
       '@srirealtime/consent':
         specifier: workspace:*
         version: link:../../packages/consent
@@ -105,9 +111,15 @@ importers:
       '@srirealtime/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@srirealtime/delivery':
+        specifier: workspace:*
+        version: link:../../packages/delivery
       '@srirealtime/documents':
         specifier: workspace:*
         version: link:../../packages/documents
+      '@srirealtime/expenses':
+        specifier: workspace:*
+        version: link:../../packages/expenses
       '@srirealtime/features':
         specifier: workspace:*
         version: link:../../packages/features
@@ -132,6 +144,9 @@ importers:
       '@srirealtime/notify':
         specifier: workspace:*
         version: link:../../packages/notify
+      '@srirealtime/onboarding':
+        specifier: workspace:*
+        version: link:../../packages/onboarding
       '@srirealtime/orders':
         specifier: workspace:*
         version: link:../../packages/orders
@@ -141,12 +156,18 @@ importers:
       '@srirealtime/plans':
         specifier: workspace:*
         version: link:../../packages/plans
+      '@srirealtime/reviews':
+        specifier: workspace:*
+        version: link:../../packages/reviews
       '@srirealtime/settings':
         specifier: workspace:*
         version: link:../../packages/settings
       '@srirealtime/staff':
         specifier: workspace:*
         version: link:../../packages/staff
+      '@srirealtime/storefront':
+        specifier: workspace:*
+        version: link:../../packages/storefront
       '@srirealtime/tenancy':
         specifier: workspace:*
         version: link:../../packages/tenancy
@@ -224,6 +245,9 @@ importers:
       '@srirealtime/billing-ui':
         specifier: workspace:*
         version: link:../../packages/billing-ui
+      '@srirealtime/commerce-ui':
+        specifier: workspace:*
+        version: link:../../packages/commerce-ui
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -264,6 +288,25 @@ importers:
       tailwindcss:
         specifier: ^4.1.0
         version: 4.3.3
+
+  packages/analytics:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
 
   packages/audit:
     dependencies:
@@ -385,6 +428,9 @@ importers:
       '@srirealtime/db':
         specifier: workspace:*
         version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(postgres@3.4.9)
@@ -395,6 +441,71 @@ importers:
       fastify:
         specifier: ^5.3.0
         version: 5.12.7
+
+  packages/cms:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/commerce-ui:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.1.0
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.90.0(@types/react@19.3.0)(react@19.3.0)
+      recharts:
+        specifier: ^2.15.4
+        version: 2.15.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
 
   packages/consent:
     dependencies:
@@ -453,6 +564,25 @@ importers:
         specifier: ^3.4.5
         version: 3.4.9
 
+  packages/delivery:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
   packages/documents:
     dependencies:
       '@fontsource/noto-sans':
@@ -486,6 +616,28 @@ importers:
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.6
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/expenses:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
       fastify:
         specifier: ^5.3.0
         version: 5.12.7
@@ -633,6 +785,25 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/onboarding:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
   packages/orders:
     dependencies:
       '@srirealtime/core':
@@ -693,6 +864,25 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/reviews:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
   packages/settings:
     dependencies:
       '@srirealtime/core':
@@ -720,6 +910,28 @@ importers:
       '@srirealtime/db':
         specifier: workspace:*
         version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/storefront:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(postgres@3.4.9)

@@ -10,25 +10,14 @@ import type {
   Variant,
 } from "./types";
 
-/** GST slabs (same as @srirealtime/gst; this package has no runtime dependency on it). */
-export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
-
 /** Most variants one product may have. */
 export const MAX_VARIANTS = 100;
 
 const round = (n: number) => Math.sign(n) * Math.round(Math.abs(n));
 
-/**
- * GST-exclusive rate of a price: `taxInclusive ? round(price × 100 / (100 + gstRate)) : price`.
- * Identical to `exclusiveOf` in @srirealtime/gst (duplicated so the catalogue stays dependency-free).
- */
-export function exclusiveOf(price: number, gstRate: number, taxInclusive: boolean): number {
-  if (!taxInclusive || !gstRate) return price;
-  const bp = Math.round(gstRate * 100);
-  return round((price * 10_000) / (10_000 + bp));
-}
+// GST slabs and `exclusiveOf(price, gstRate, taxInclusive)` come from @srirealtime/gst.
 
-/** The inverse, for a billing rate written onto a tax-inclusive product: `round(rate × (100 + gstRate) / 100)`. */
+/** The inverse of gst's `exclusiveOf`, for a billing rate written onto a tax-inclusive product: `round(rate × (100 + gstRate) / 100)`. */
 export function inclusiveOf(rate: number, gstRate: number, taxInclusive: boolean): number {
   if (!taxInclusive || !gstRate) return rate;
   const bp = Math.round(gstRate * 100);

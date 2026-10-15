@@ -140,6 +140,23 @@ export interface OrderSettingsPort {
   get(tenantId: string): Promise<Partial<OrderSettings> | OrderSettings>;
 }
 
+/** Money recorded on an order (online payment, COD collected on delivery, manual payment). */
+export interface OrderPaymentEvent {
+  tenantId: string;
+  orderId: string;
+  channel: string;
+  /** Storefront customer account (store_customers.id), when the order came from the store. */
+  accountId: string | null;
+  /** Paise. */
+  amount: number;
+  source: "online" | "cod" | "manual";
+}
+
+/** Optional listener (kit: the storefront's customer stats). Called after the payment is stored; failures are logged. */
+export interface OrderEventsPort {
+  paymentRecorded?(e: OrderPaymentEvent): Promise<void> | void;
+}
+
 export interface LoggerPort {
   info(o: unknown, m?: string): void;
   warn(o: unknown, m?: string): void;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRightIcon, PackageSearchIcon, ShoppingBagIcon, StoreIcon } from "lucide-react";
+import { ArrowRightIcon, ShoppingBagIcon, StoreIcon } from "lucide-react";
 import { Button, Card, CardContent, EmptyState } from "@srirealtime/ui";
 import { Page, PageHeading, useI18n, useQuickActions, useSession, useShop, useWebApp, type IconType } from "@srirealtime/web";
 
@@ -68,10 +68,6 @@ function Placeholder({ icon, title, subtitle, module }: { icon: IconType; title:
       />
     </Page>
   );
-}
-
-export function ProductsPage() {
-  return <Placeholder icon={PackageSearchIcon} title="store.products.title" subtitle="store.products.subtitle" module="store.placeholder.catalogue" />;
 }
 
 export function OrdersPage() {

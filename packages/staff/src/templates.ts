@@ -44,6 +44,9 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "customers.*",
       "reports.*",
       "expenses.*",
+      // Online store: content, review moderation; delivery zones/shipments use orders.* (settings stay with owners).
+      "cms.*",
+      "reviews.*",
       "documents.*",
       "importexport.*",
       "audit.view",

@@ -11,6 +11,7 @@ import {
 } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { CUSTOM_DOMAIN_FEATURE, shouldForceVerify } from "./domains";
 import { TENANT_STATUSES } from "./schema";
 import { publicTenant, type TenancyService } from "./service";
 
@@ -46,6 +47,11 @@ const statusBody = z.object({ status: z.enum(TENANT_STATUSES) });
 const appBody = z.object({ appId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,32}$/, "Invalid app id").nullable() });
 const planBody = z.object({ planId: z.string().min(1).max(64).nullable() });
 const domainBody = z.object({ domain: z.string().trim().min(4).max(253) });
+/** Super-admins may pass `force: true` to mark a domain verified without the DNS check. */
+const verifyBody = z.object({ force: z.boolean().optional() });
+
+/** Domain routes belong to the `custom-domain` feature. */
+const DOMAINS = { config: { feature: CUSTOM_DOMAIN_FEATURE } };
 
 const isOwner = (ctx: RequestContext) => isSuperAdmin(ctx) || (ctx.user?.tenantRoles.includes("owner") ?? false);
 
@@ -137,29 +143,37 @@ export function tenancyRoutes(
     });
 
     // ---- domains
-    app.get("/domains", async (req) => {
+    app.get("/domains", DOMAINS, async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       return { items: await service.listDomains(tenant.id) };
     });
 
-    app.post("/domains", async (req) => {
+    app.post("/domains", DOMAINS, async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       const body = domainBody.parse(req.body);
       return service.addDomain(tenant.id, body.domain);
     });
 
-    app.post("/domains/:id/verify", async (req) => {
+    app.get("/domains/:id/instructions", DOMAINS, async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       const { id } = uuidParam("id").parse(req.params) as { id: string };
-      const force = isSuperAdmin(req.ctx);
+      return service.domainInstructions(tenant.id, id);
+    });
+
+    app.post("/domains/:id/verify", DOMAINS, async (req) => {
+      requireRole(req.ctx, "owner", "admin");
+      const tenant = requireTenant(req.ctx);
+      const { id } = uuidParam("id").parse(req.params) as { id: string };
+      const requested = verifyBody.parse(req.body ?? {}).force;
+      const force = shouldForceVerify({ superAdmin: isSuperAdmin(req.ctx), requested, canSelfVerify: service.canSelfVerifyDomains });
       if (!force && !service.canSelfVerifyDomains) throw forbidden("Domain verification is done by the platform team");
       return service.verifyDomain(tenant.id, id, { force });
     });
 
-    app.delete("/domains/:id", async (req) => {
+    app.delete("/domains/:id", DOMAINS, async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       const { id } = uuidParam("id").parse(req.params) as { id: string };

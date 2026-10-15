@@ -38,6 +38,10 @@ describe("built-in templates", () => {
     expect(hasPermission(ctx, "invoices.cancel")).toBe(true);
     expect(hasPermission(ctx, "orders.cancel")).toBe(true);
     expect(hasPermission(ctx, "catalogue.manage")).toBe(true);
+    expect(hasPermission(ctx, "cms.manage")).toBe(true);
+    expect(hasPermission(ctx, "reviews.manage")).toBe(true);
+    expect(hasPermission(ctx, "expenses.manage")).toBe(true);
+    expect(hasPermission(ctx, "orders.manage")).toBe(true); // delivery shipments
     expect(hasPermission(ctx, "settings.manage")).toBe(false);
     expect(hasPermission(ctx, "staff.manage")).toBe(false);
   });

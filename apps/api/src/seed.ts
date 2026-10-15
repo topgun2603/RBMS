@@ -19,7 +19,8 @@ const APP_PROFILES: { appId: string; name: string; features: string[] }[] = [
   {
     appId: "BL",
     name: "Billing",
-    features: ["invoices.*", "inventory.*", "payments.*", "catalogue", "staff", "audit", "importexport", "documents"],
+    // No online store for billing shops; the setup checklist and expenses (profit report) are useful to every shop.
+    features: ["invoices.*", "inventory.*", "payments.*", "catalogue", "staff", "audit", "importexport", "documents", "onboarding", "expenses"],
   },
   {
     appId: "EC",
@@ -39,16 +40,29 @@ const APP_PROFILES: { appId: string; name: string; features: string[] }[] = [
       "audit",
       "importexport",
       "documents",
+      // Batch 2: the shop's own online store.
+      "storefront.*",
+      "delivery.*",
+      "cms.*",
+      "seo",
+      "reviews",
+      "analytics",
+      "onboarding",
+      "expenses",
+      "custom-domain",
     ],
   },
 ];
 
-/** Batch-1 features per plan, added to the plans package's defaults (free → starter → pro/enterprise). */
+/** Batch-1 and batch-2 features per plan, added to the plans package's defaults (free → starter → pro/enterprise). */
+const STORE_FREE = ["onboarding", "storefront", "delivery", "cms", "seo"];
+const STORE_STARTER = [...STORE_FREE, "reviews", "analytics", "expenses", "storefront.wishlist", "cms.blog"];
+const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo", "reviews.*", "analytics.*", "expenses.*", "custom-domain"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
-  free: ["catalogue", "orders", "documents"],
-  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit"],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*"],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*"],
+  free: ["catalogue", "orders", "documents", ...STORE_FREE],
+  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit", ...STORE_STARTER],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO],
 };
 const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   ...plan,
@@ -224,6 +238,158 @@ async function seedAnbuCommerce(kit: Kit, tenantId: string) {
   }
 }
 
+
+/**
+ * anbu's online store (docs/commerce-batch2.md): store settings (open, COD up to ₹5,000), delivery zones (Tamil Nadu
+ * ₹40, free above ₹999, COD fee ₹30; Rest of India by weight), a "New arrivals" collection, a published home page, an
+ * About page and header/footer menus. Each part is only created when missing, so owners' edits survive re-runs.
+ */
+async function seedAnbuStore(kit: Kit, tenantId: string) {
+  const store = kit.settings.service.handle("store");
+  const current = await store.get({ tenantId });
+  if (!current.contactPhone) {
+    await store.setTenant(tenantId, {
+      open: true,
+      codEnabled: true,
+      codMaxAmount: 500_000,
+      minOrderValue: 0,
+      contactPhone: "+919876500003",
+      contactEmail: "hello@anbufashions.in",
+      social: { instagram: "https://instagram.com/anbufashions", whatsapp: "+919876500003" },
+      policies: {
+        shipping: "Orders ship in 1–2 working days. Tamil Nadu: 1–3 days, rest of India: 3–7 days.",
+        returns: "Unused items can be returned within 7 days of delivery.",
+        privacy: "We only use your details to deliver your order.",
+        terms: "Prices include GST.",
+      },
+    });
+    log.info("anbu: store settings saved");
+  }
+
+  const zones = await kit.delivery.service.listZones(tenantId);
+  if (zones.total === 0) {
+    const tn = await kit.delivery.service.createZone(tenantId, { name: "Tamil Nadu", states: ["33"], sort: 0 });
+    await kit.delivery.service.createRate(tenantId, {
+      zoneId: tn.id,
+      name: "Standard (Tamil Nadu)",
+      type: "free_above",
+      amount: 4_000,
+      freeAbove: 99_900,
+      etaMinDays: 1,
+      etaMaxDays: 3,
+      codAllowed: true,
+      codFee: 3_000,
+    });
+    const rest = await kit.delivery.service.createZone(tenantId, { name: "Rest of India", sort: 10 });
+    await kit.delivery.service.createRate(tenantId, {
+      zoneId: rest.id,
+      name: "Standard (India)",
+      type: "weight",
+      amount: 8_000,
+      weightSlabs: [
+        { upToGrams: 500, amount: 8_000 },
+        { upToGrams: 1_000, amount: 11_000 },
+        { upToGrams: 2_000, amount: 15_000 },
+        { upToGrams: 5_000, amount: 25_000 },
+      ],
+      etaMinDays: 3,
+      etaMaxDays: 7,
+      codAllowed: true,
+      codFee: 5_000,
+    });
+    log.info("anbu: delivery zones created");
+  }
+
+  const collections = await kit.catalogue.service.listCollections(tenantId, { q: "New arrivals" });
+  if (!collections.items.some((c) => c.slug === "new-arrivals")) {
+    await kit.catalogue.service.createCollection(tenantId, {
+      name: "New arrivals",
+      slug: "new-arrivals",
+      description: "The latest additions to our store.",
+      type: "rule",
+      rule: { sort: "new" },
+    });
+    log.info("anbu: collection new-arrivals created");
+  }
+
+  const home = await kit.cms.service.getHome(tenantId);
+  if (!home.publishedAt) {
+    await kit.cms.service.saveHomeDraft(tenantId, {
+      sections: [
+        {
+          type: "hero",
+          slides: [
+            {
+              imageUrl: "https://picsum.photos/seed/anbu-hero/1600/600",
+              heading: "Festive kurtis and silk sarees",
+              subheading: "Handpicked in Tiruchirappalli, delivered across India",
+              cta: { label: "Shop now", href: "/collections/new-arrivals" },
+            },
+          ],
+        },
+        { type: "categories", title: "Shop by category" },
+        { type: "collection", title: "New arrivals", collectionSlug: "new-arrivals", layout: "carousel", limit: 8 },
+        {
+          type: "usp",
+          items: [
+            { icon: "free-shipping", title: "Free shipping", text: "In Tamil Nadu on orders above ₹999" },
+            { icon: "cod", title: "Cash on delivery", text: "Pay when your order arrives" },
+            { icon: "returns", title: "Easy returns", text: "7-day returns on unused items" },
+          ],
+        },
+        {
+          type: "testimonials",
+          title: "Happy customers",
+          items: [
+            { quote: "Beautiful kurti, perfect fit and quick delivery.", name: "Priya, Madurai" },
+            { quote: "The Kanchipuram saree is stunning. Worth every rupee.", name: "Lakshmi, Chennai" },
+          ],
+        },
+      ],
+    });
+    await kit.cms.service.publishHome(tenantId);
+    log.info("anbu: home page published");
+  }
+
+  const pages = await kit.cms.service.listPages(tenantId, {});
+  if (!pages.items.some((p) => p.slug === "about")) {
+    const about = await kit.cms.service.createPage(tenantId, {
+      title: "About us",
+      slug: "about",
+      blocks: [
+        { type: "heading", level: 2, text: "Anbu Fashions" },
+        { type: "paragraph", markdown: "A family-run boutique from **Tiruchirappalli**, bringing you handpicked kurtis and silk sarees since 2012." },
+        { type: "faq", items: [{ q: "Do you ship outside Tamil Nadu?", a: "Yes, we deliver across India in 3–7 days." }] },
+      ],
+    });
+    await kit.cms.service.setPageStatus(tenantId, about.id, "published");
+    log.info("anbu: about page published");
+  }
+
+  if ((await kit.cms.service.getMenu(tenantId, "header")).items.length === 0) {
+    await kit.cms.service.saveMenu(tenantId, "header", [
+      { label: "Home", type: "url", href: "/" },
+      { label: "New arrivals", type: "url", href: "/collections/new-arrivals" },
+      { label: "Kurtis", type: "url", href: "/search?q=kurti" },
+      { label: "About", type: "url", href: "/pages/about" },
+    ]);
+  }
+  if ((await kit.cms.service.getMenu(tenantId, "footer")).items.length === 0) {
+    await kit.cms.service.saveMenu(tenantId, "footer", [
+      {
+        label: "Help",
+        type: "url",
+        children: [
+          { label: "Track your order", type: "url", href: "/track" },
+          { label: "Contact us", type: "url", href: "tel:+919876500003" },
+        ],
+      },
+      { label: "About us", type: "url", href: "/pages/about" },
+    ]);
+    log.info("anbu: menus saved");
+  }
+}
+
 async function seedDemoShops(kit: Kit, ownerUserId: string) {
   for (const shop of DEMO_SHOPS) {
     let tenant = await kit.tenancy.service.getBySlug(shop.slug);
@@ -239,7 +405,10 @@ async function seedDemoShops(kit: Kit, ownerUserId: string) {
     if (tenant.appId !== shop.appId) tenant = await kit.tenancy.service.setApp(tenant.id, shop.appId);
     if (tenant.planId !== shop.planId) tenant = await kit.tenancy.service.setPlan(tenant.id, shop.planId);
     log.info({ slug: shop.slug, plan: tenant.planId, app: tenant.appId }, "demo shop plan set");
-    if (shop.slug === "anbu") await seedAnbuCommerce(kit, tenant.id);
+    if (shop.slug === "anbu") {
+      await seedAnbuCommerce(kit, tenant.id);
+      await seedAnbuStore(kit, tenant.id);
+    }
   }
 }
 

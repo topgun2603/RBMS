@@ -2,18 +2,35 @@ import { badRequest, conflict, featureDisabled, newId, notFound, type FeatureGat
 import type { Db, DbOrTx } from "@srirealtime/db";
 import { and, asc, count, desc, eq, ilike, inArray, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
+import {
+  collectionInputSchema,
+  collectionListQuerySchema,
+  collectionPatchSchema,
+  collectionProductsQuerySchema,
+  orderManual,
+  ruleWhereSql,
+  toCollection,
+  toPublicCollection,
+  type Collection,
+  type CollectionInput,
+  type CollectionListQuery,
+  type CollectionPatch,
+  type CollectionProductsQuery,
+  type PublicCollection,
+  type PublicCollectionPage,
+} from "./collections";
 import { CATALOGUE_FEATURE_KEYS } from "./features";
+import { exclusiveOf, GST_RATES } from "@srirealtime/gst";
 import {
   buildTree,
   descendantIds,
-  exclusiveOf,
-  GST_RATES,
   inclusiveOf,
   itemName,
   MAX_VARIANTS,
   mergeOptions,
   pickDefault,
   planVariants,
+  priceRange,
   SLUG_RE,
   slugify,
   toPublicProduct,
@@ -24,6 +41,7 @@ import {
 } from "./logic";
 import {
   catalogCategories,
+  catalogCollections,
   catalogProducts,
   catalogVariants,
   CHANNELS,
@@ -32,9 +50,34 @@ import {
   type CategoryRow,
   type Channel,
   type ProductOption,
+  type CollectionRow,
   type ProductRow,
   type VariantRow,
 } from "./schema";
+import {
+  attributeSql,
+  buildSearchText,
+  categoryPath,
+  groupFacetRows,
+  MAX_CANDIDATES,
+  nameTierSql,
+  parseQuery,
+  parseSearchQuery,
+  priceFacet,
+  relevanceOrderSql,
+  rollupCategoryCounts,
+  searchMatchSql,
+  sortByRating,
+  sortOrderSql,
+  variantExistsSql,
+  type AvailabilityPort,
+  type FacetDimension,
+  type ParsedQuery,
+  type RatingsPort,
+  type RawSearchQuery,
+  type SearchFacets,
+  type SearchSort,
+} from "./search";
 import type {
   CatalogItem,
   Category,
@@ -44,7 +87,9 @@ import type {
   ProductSummary,
   PublicCategory,
   PublicProduct,
+  ProductRef,
   PublicProductSummary,
+  StoreVariantLookup,
   Variant,
   VariantLookup,
 } from "./types";
@@ -65,6 +110,10 @@ export interface CatalogueDeps {
    */
   featureGate?: FeatureGatePort;
   log?: LoggerPort;
+  /** Stock for the search `inStock` filter (inventory). Without it the filter is ignored. */
+  availability?: AvailabilityPort;
+  /** Product ratings for `sort=rating` (reviews). Without it rating sort falls back to relevance. */
+  ratings?: RatingsPort;
   /** Clock override for tests. */
   now?: () => Date;
 }
@@ -521,12 +570,19 @@ export class CatalogueService {
     if (b.seo !== undefined) set.seo = b.seo;
     if (Object.keys(set).length === 0) return this.getCategory(tenantId, id);
     try {
-      const [row] = await this.db
-        .update(catalogCategories)
-        .set(set)
-        .where(and(eq(catalogCategories.tenantId, tenantId), eq(catalogCategories.id, id)))
-        .returning();
-      if (!row) throw notFound("Category");
+      const row = await this.db.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(catalogCategories)
+          .set(set)
+          .where(and(eq(catalogCategories.tenantId, tenantId), eq(catalogCategories.id, id)))
+          .returning();
+        if (!updated) throw notFound("Category");
+        // Products of this category and its subcategories carry the category names in search_text.
+        if ((set.name !== undefined && set.name !== current.name) || (set.parentId !== undefined && set.parentId !== current.parentId)) {
+          await this.refreshCategorySearch(tx, tenantId, id);
+        }
+        return updated;
+      });
       return toCategory(row);
     } catch (err) {
       mapUniqueError(err);
@@ -567,8 +623,10 @@ export class CatalogueService {
 
   // ================================================================ products
 
+  /** Staff `GET /products`: the search matching (see searchMatchSql) plus SKU, barcode and HSN substrings. */
   private productFilters(tenantId: string, query: z.output<typeof productListQuerySchema>): SQL | undefined {
     const pat = query.q ? likePattern(query.q) : null;
+    const match = searchMatchSql(parseQuery(query.q));
     return and(
       eq(catalogProducts.tenantId, tenantId),
       isNull(catalogProducts.deletedAt),
@@ -578,6 +636,7 @@ export class CatalogueService {
       query.tag ? sql`${catalogProducts.tags} @> array[${query.tag}]::text[]` : undefined,
       pat
         ? or(
+            match ?? undefined,
             ilike(catalogProducts.name, pat),
             ilike(catalogProducts.brand, pat),
             ilike(catalogProducts.hsn, pat),
@@ -608,13 +667,15 @@ export class CatalogueService {
   async listProducts(tenantId: string, query: ProductListQuery = {}): Promise<ListResult<ProductSummary>> {
     const parsed = productListQuerySchema.parse(query);
     const where = this.productFilters(tenantId, parsed);
+    const text = parseQuery(parsed.q);
+    const order = text.text ? relevanceOrderSql(text) : [asc(catalogProducts.name), asc(catalogProducts.id)];
     const [rows, [counted]] = await Promise.all([
       this.db
         .select({ p: catalogProducts, categoryName: catalogCategories.name })
         .from(catalogProducts)
         .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
         .where(where)
-        .orderBy(asc(catalogProducts.name), asc(catalogProducts.id))
+        .orderBy(...order)
         .limit(parsed.limit)
         .offset(parsed.offset),
       this.db.select({ total: count() }).from(catalogProducts).where(where),
@@ -775,6 +836,7 @@ export class CatalogueService {
             })
             .returning();
           await tx.insert(catalogVariants).values(variants.map((v) => ({ ...v, tenantId, productId: row!.id })));
+          await this.refreshSearchText(tx, tenantId, [row!.id]);
           return this.assemble(tenantId, row!, tx);
         });
       } catch (err) {
@@ -814,13 +876,16 @@ export class CatalogueService {
     if (b.seo !== undefined) set.seo = b.seo;
     if (Object.keys(set).length === 0) return this.assemble(tenantId, current);
     try {
-      const [row] = await this.db
-        .update(catalogProducts)
-        .set(set)
-        .where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, id), isNull(catalogProducts.deletedAt)))
-        .returning();
-      if (!row) throw notFound("Product");
-      return this.assemble(tenantId, row);
+      return await this.db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(catalogProducts)
+          .set(set)
+          .where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, id), isNull(catalogProducts.deletedAt)))
+          .returning();
+        if (!row) throw notFound("Product");
+        await this.refreshSearchText(tx, tenantId, [id]);
+        return this.assemble(tenantId, row, tx);
+      });
     } catch (err) {
       mapUniqueError(err);
     }
@@ -900,6 +965,7 @@ export class CatalogueService {
             isDefault: siblings.length === 0,
           })
           .returning();
+        await this.refreshSearchText(tx, tenantId, [productId]);
         if (b.isDefault && siblings.length > 0) {
           await this.setDefault(tx, tenantId, productId, row!.id);
           return toVariant({ ...row!, isDefault: true });
@@ -950,6 +1016,7 @@ export class CatalogueService {
             .returning();
           row = updated!;
         }
+        if (b.optionValues !== undefined) await this.refreshSearchText(tx, tenantId, [p.id]);
         if (b.isDefault && !v.isDefault) {
           await this.setDefault(tx, tenantId, p.id, id);
           row = { ...row, isDefault: true };
@@ -981,6 +1048,7 @@ export class CatalogueService {
       const next = pickDefault(siblings.filter((s) => s.id !== v.id).map((s) => ({ ...s, isDefault: false })));
       if (next) await this.setDefault(tx, tenantId, v.productId, next);
     }
+    await this.refreshSearchText(tx, tenantId, [v.productId]);
   }
 
   /** Creates the cartesian product of the (merged) option values; existing variants are kept (see `planVariants`). */
@@ -1026,6 +1094,7 @@ export class CatalogueService {
             })),
           );
         }
+        await this.refreshSearchText(tx, tenantId, [productId]);
         return this.assemble(tenantId, { ...product, options: plan.options }, tx);
       });
     } catch (err) {
@@ -1165,7 +1234,14 @@ export class CatalogueService {
     const where = and(
       this.publicWhere(tenantId),
       categoryIds ? inArray(catalogProducts.categoryId, categoryIds) : undefined,
-      pat ? or(ilike(catalogProducts.name, pat), ilike(catalogProducts.brand, pat), sql`${catalogProducts.tags} @> array[${parsed.q!.toLowerCase()}]::text[]`) : undefined,
+      pat
+        ? or(
+            searchMatchSql(parseQuery(parsed.q)) ?? undefined,
+            ilike(catalogProducts.name, pat),
+            ilike(catalogProducts.brand, pat),
+            sql`${catalogProducts.tags} @> array[${parsed.q!.toLowerCase()}]::text[]`,
+          )
+        : undefined,
     );
     const minPrice = sql`(select min(cv.price) from ${catalogVariants} cv where cv.product_id = ${catalogProducts.id} and cv.deleted_at is null)`;
     const order =
@@ -1205,6 +1281,584 @@ export class CatalogueService {
     const product = await this.assemble(tenantId, row.p);
     const category = row.categoryName && row.categorySlug ? { name: row.categoryName, slug: row.categorySlug } : null;
     return toPublicProduct(product, category);
+  }
+
+  // ================================================================ search text (maintained on every write)
+
+  /**
+   * Recomputes `search_text` for these products (any status) from their name, brand, tags, attributes, category path
+   * and live variants' option values. Leaves `updated_at` alone. Returns how many rows changed.
+   */
+  private async refreshSearchText(db: DbOrTx, tenantId: string, productIds: string[]): Promise<number> {
+    const ids = [...new Set(productIds)];
+    if (ids.length === 0) return 0;
+    const categories = await db
+      .select({ id: catalogCategories.id, parentId: catalogCategories.parentId, name: catalogCategories.name })
+      .from(catalogCategories)
+      .where(eq(catalogCategories.tenantId, tenantId));
+    let updated = 0;
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      const [rows, variants] = await Promise.all([
+        db
+          .select({
+            id: catalogProducts.id,
+            name: catalogProducts.name,
+            brand: catalogProducts.brand,
+            tags: catalogProducts.tags,
+            attributes: catalogProducts.attributes,
+            categoryId: catalogProducts.categoryId,
+            searchText: catalogProducts.searchText,
+          })
+          .from(catalogProducts)
+          .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, chunk))),
+        db
+          .select({ productId: catalogVariants.productId, optionValues: catalogVariants.optionValues })
+          .from(catalogVariants)
+          .where(and(eq(catalogVariants.tenantId, tenantId), inArray(catalogVariants.productId, chunk), isNull(catalogVariants.deletedAt)))
+          .orderBy(asc(catalogVariants.position), asc(catalogVariants.id)),
+      ]);
+      const values = new Map<string, string[]>();
+      for (const v of variants) {
+        const list = values.get(v.productId) ?? [];
+        list.push(...Object.values(v.optionValues ?? {}));
+        values.set(v.productId, list);
+      }
+      for (const r of rows) {
+        const text = buildSearchText({
+          name: r.name,
+          brand: r.brand,
+          tags: r.tags,
+          attributes: r.attributes,
+          categoryNames: categoryPath(categories, r.categoryId),
+          optionValues: values.get(r.id) ?? [],
+        });
+        if (text === r.searchText) continue;
+        await db
+          .update(catalogProducts)
+          .set({ searchText: text, updatedAt: sql`${catalogProducts.updatedAt}` })
+          .where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, r.id)));
+        updated++;
+      }
+    }
+    return updated;
+  }
+
+  /** After a category rename or move: products in it and its subcategories. */
+  private async refreshCategorySearch(db: DbOrTx, tenantId: string, categoryId: string): Promise<number> {
+    const all = await db
+      .select({ id: catalogCategories.id, parentId: catalogCategories.parentId })
+      .from(catalogCategories)
+      .where(eq(catalogCategories.tenantId, tenantId));
+    const rows = await db
+      .select({ id: catalogProducts.id })
+      .from(catalogProducts)
+      .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.categoryId, descendantIds(all, categoryId))));
+    return this.refreshSearchText(db, tenantId, rows.map((r) => r.id));
+  }
+
+  /**
+   * Backfill: recomputes `search_text` for every product of one tenant, or of all tenants when omitted (run once after
+   * the search migration; safe to re-run). Deleted products are included so restores need nothing.
+   */
+  async rebuildSearchText(tenantId?: string): Promise<{ tenants: number; products: number; updated: number }> {
+    const tenants = tenantId
+      ? [tenantId]
+      : (await this.db.selectDistinct({ tenantId: catalogProducts.tenantId }).from(catalogProducts)).map((r) => r.tenantId);
+    let products = 0;
+    let updated = 0;
+    for (const t of tenants) {
+      for (let after: string | null = null; ; ) {
+        const page: { id: string }[] = await this.db
+          .select({ id: catalogProducts.id })
+          .from(catalogProducts)
+          .where(and(eq(catalogProducts.tenantId, t), after ? sql`${catalogProducts.id} > ${after}` : undefined))
+          .orderBy(asc(catalogProducts.id))
+          .limit(500);
+        if (page.length === 0) break;
+        products += page.length;
+        updated += await this.refreshSearchText(this.db, t, page.map((r) => r.id));
+        after = page[page.length - 1]!.id;
+        if (page.length < 500) break;
+      }
+    }
+    this.log.info({ tenantId: tenantId ?? null, tenants: tenants.length, products, updated }, "catalogue: search text rebuilt");
+    return { tenants: tenants.length, products, updated };
+  }
+
+  // ================================================================ search (public)
+
+  private async activeCategories(tenantId: string) {
+    return this.db
+      .select({ id: catalogCategories.id, parentId: catalogCategories.parentId, name: catalogCategories.name, slug: catalogCategories.slug })
+      .from(catalogCategories)
+      .where(and(eq(catalogCategories.tenantId, tenantId), eq(catalogCategories.active, true)))
+      .orderBy(asc(catalogCategories.sort), asc(catalogCategories.name));
+  }
+
+  /** Public summaries of these products, in the order given (unknown ids dropped). */
+  private async publicSummaries(tenantId: string, ids: string[]): Promise<PublicProductSummary[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select({ p: catalogProducts, categoryName: catalogCategories.name })
+      .from(catalogProducts)
+      .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
+      .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, ids)));
+    const variants = await this.variantsOf(tenantId, ids);
+    const byId = new Map(rows.map((r) => [r.p.id, toPublicSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null)]));
+    return ids.map((id) => byId.get(id)).filter((x): x is PublicProductSummary => Boolean(x));
+  }
+
+  /**
+   * One page of product ids matching `where` in `sort` order, plus the total. `rating` sorts the best
+   * `MAX_CANDIDATES` matches (relevance order first) by the ratings port; without the port it is relevance.
+   */
+  private async pageProducts(
+    tenantId: string,
+    where: SQL,
+    sort: SearchSort,
+    q: ParsedQuery,
+    limit: number,
+    offset: number,
+  ): Promise<{ ids: string[]; total: number }> {
+    const countQuery = this.db.select({ total: count() }).from(catalogProducts).where(where);
+    const ratings = this.deps.ratings;
+    if (sort === "rating" && ratings) {
+      const [candidates, [counted]] = await Promise.all([
+        this.db
+          .select({ id: catalogProducts.id })
+          .from(catalogProducts)
+          .where(where)
+          .orderBy(...sortOrderSql("relevance", q))
+          .limit(MAX_CANDIDATES),
+        countQuery,
+      ]);
+      const ids = candidates.map((c) => c.id);
+      let list = ids;
+      try {
+        list = sortByRating(ids, ids.length ? await ratings.ratings(tenantId, ids) : []);
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "catalogue: ratings unavailable, sorting by relevance");
+      }
+      return { ids: list.slice(offset, offset + limit), total: counted?.total ?? 0 };
+    }
+    const [rows, [counted]] = await Promise.all([
+      this.db
+        .select({ id: catalogProducts.id })
+        .from(catalogProducts)
+        .where(where)
+        .orderBy(...sortOrderSql(sort === "rating" ? "relevance" : sort, q))
+        .limit(limit)
+        .offset(offset),
+      countQuery,
+    ]);
+    return { ids: rows.map((r) => r.id), total: counted?.total ?? 0 };
+  }
+
+  /**
+   * `GET /public/search`: active store products matching the query and filters, ranked (exact name > name prefix >
+   * trigram similarity > tsvector), with facets over the filtered set (categories ignore the category filter for
+   * drill-down; the price range ignores the price filter). `inStock` needs the availability port (ignored without it).
+   */
+  async search(tenantId: string, raw: RawSearchQuery = {}): Promise<ListResult<PublicProductSummary> & { facets: SearchFacets }> {
+    const s = parseSearchQuery(raw);
+    const categories = await this.activeCategories(tenantId);
+    const categoryIds = s.categoryId
+      ? categories.some((c) => c.id === s.categoryId)
+        ? descendantIds(categories, s.categoryId)
+        : []
+      : null;
+    const match = searchMatchSql(s.parsed);
+    const attrs = attributeSql(s.attributes);
+
+    const whereFor = (omit: FacetDimension[] = [], inStockIds: string[] | null = null): SQL =>
+      and(
+        this.publicWhere(tenantId),
+        match ?? undefined,
+        categoryIds && !omit.includes("category") ? inArray(catalogProducts.categoryId, categoryIds) : undefined,
+        ...attrs,
+        variantExistsSql({
+          priceMin: omit.includes("price") ? undefined : s.priceMin,
+          priceMax: omit.includes("price") ? undefined : s.priceMax,
+          options: s.options,
+          variantIds: inStockIds,
+        }) ?? undefined,
+      )!;
+
+    let inStockIds: string[] | null = null;
+    if (s.inStock && this.deps.availability) {
+      const candidates = await this.db
+        .select({ id: catalogVariants.id })
+        .from(catalogVariants)
+        .where(
+          and(
+            eq(catalogVariants.tenantId, tenantId),
+            isNull(catalogVariants.deletedAt),
+            inArray(catalogVariants.productId, this.db.select({ id: catalogProducts.id }).from(catalogProducts).where(whereFor())),
+          ),
+        )
+        .limit(MAX_CANDIDATES * 5);
+      try {
+        inStockIds = candidates.length ? await this.deps.availability.inStock(tenantId, candidates.map((c) => c.id)) : [];
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "catalogue: availability unavailable, ignoring inStock");
+      }
+    }
+
+    const where = whereFor([], inStockIds);
+    const [page, facets] = await Promise.all([
+      this.pageProducts(tenantId, where, s.sort, s.parsed, s.limit, s.offset),
+      this.searchFacets(tenantId, categories, (omit) => whereFor(omit, inStockIds)),
+    ]);
+    return { items: await this.publicSummaries(tenantId, page.ids), total: page.total, facets };
+  }
+
+  private async searchFacets(
+    tenantId: string,
+    categories: { id: string; parentId: string | null; name: string }[],
+    whereFor: (omit: FacetDimension[]) => SQL,
+  ): Promise<SearchFacets> {
+    const full = whereFor([]);
+    const [direct, [price], attributeRows, optionRows] = await Promise.all([
+      this.db
+        .select({ categoryId: catalogProducts.categoryId, count: count() })
+        .from(catalogProducts)
+        .where(whereFor(["category"]))
+        .groupBy(catalogProducts.categoryId),
+      this.db
+        .select({ min: sql<number | null>`min(${catalogVariants.price})`, max: sql<number | null>`max(${catalogVariants.price})` })
+        .from(catalogVariants)
+        .where(
+          and(
+            eq(catalogVariants.tenantId, tenantId),
+            isNull(catalogVariants.deletedAt),
+            inArray(catalogVariants.productId, this.db.select({ id: catalogProducts.id }).from(catalogProducts).where(whereFor(["price"]))),
+          ),
+        ),
+      this.db.execute<{ key: string; value: string; count: number }>(
+        sql`select kv.key, kv.value, count(*)::int as count from ${catalogProducts}
+          cross join lateral jsonb_each_text(${catalogProducts.attributes}) kv
+          where ${full} group by kv.key, kv.value`,
+      ),
+      this.db.execute<{ key: string; value: string; count: number }>(
+        sql`select kv.key, kv.value, count(distinct ${catalogProducts.id})::int as count from ${catalogProducts}
+          join ${catalogVariants} on ${catalogVariants.productId} = ${catalogProducts.id} and ${catalogVariants.tenantId} = ${tenantId}
+            and ${catalogVariants.deletedAt} is null
+          cross join lateral jsonb_each_text(${catalogVariants.optionValues}) kv
+          where ${full} group by kv.key, kv.value`,
+      ),
+    ]);
+    return {
+      categories: rollupCategoryCounts(categories, direct),
+      price: priceFacet(price),
+      attributes: groupFacetRows([...attributeRows]),
+      options: groupFacetRows([...optionRows]),
+    };
+  }
+
+  /** `GET /public/search/suggest`: up to 6 products and 4 categories whose names start with (or resemble) the query. */
+  async suggest(
+    tenantId: string,
+    rawQuery: string | null | undefined,
+  ): Promise<{ products: { name: string; slug: string; image: string | null; priceMin: number }[]; categories: { name: string; slug: string }[] }> {
+    const q = parseQuery(rawQuery);
+    if (!q.text) return { products: [], categories: [] };
+    const prefix = `${q.text.replace(/[\\%_]/g, "\\$&")}%`;
+    const name = sql`lower(${catalogProducts.name})`;
+    const catName = sql`lower(${catalogCategories.name})`;
+    const [products, categories] = await Promise.all([
+      this.db
+        // (No correlated subquery in the select list: drizzle drops table qualifiers there for single-table selects.)
+        .select({ id: catalogProducts.id, name: catalogProducts.name, slug: catalogProducts.slug, images: catalogProducts.images })
+        .from(catalogProducts)
+        .where(
+          and(
+            this.publicWhere(tenantId),
+            or(
+              sql`${name} like ${prefix}`,
+              sql`${catalogProducts.searchText} like ${prefix}`,
+              sql`${catalogProducts.searchText} like ${`% ${prefix}`}`,
+              sql`${q.text} <% ${catalogProducts.searchText}`,
+            ),
+          ),
+        )
+        .orderBy(sql`${nameTierSql(q)} desc`, sql`word_similarity(${q.text}, ${catalogProducts.searchText}) desc`, asc(catalogProducts.name))
+        .limit(6),
+      this.db
+        .select({ name: catalogCategories.name, slug: catalogCategories.slug })
+        .from(catalogCategories)
+        .where(
+          and(
+            eq(catalogCategories.tenantId, tenantId),
+            eq(catalogCategories.active, true),
+            or(sql`${catName} like ${prefix}`, sql`${catName} like ${`% ${prefix}`}`, sql`${q.text} <% ${catName}`),
+          ),
+        )
+        .orderBy(sql`(${catName} like ${prefix}) desc`, sql`word_similarity(${q.text}, ${catName}) desc`, asc(catalogCategories.name))
+        .limit(4),
+    ]);
+    const variants = await this.variantsOf(tenantId, products.map((p) => p.id));
+    return {
+      products: products.map((p) => ({
+        name: p.name,
+        slug: p.slug,
+        image: p.images?.[0]?.url ?? null,
+        priceMin: priceRange(variants.get(p.id) ?? []).priceMin,
+      })),
+      categories,
+    };
+  }
+
+  // ================================================================ collections
+
+  private async collectionRow(tenantId: string, id: string): Promise<CollectionRow> {
+    const [row] = await this.db
+      .select()
+      .from(catalogCollections)
+      .where(and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.id, id)))
+      .limit(1);
+    if (!row) throw notFound("Collection");
+    return row;
+  }
+
+  private async collectionSlug(tenantId: string, name: string, wanted: string | null | undefined, exceptId?: string): Promise<string> {
+    const base = wanted ?? slugify(name, "col");
+    const rows = await this.db
+      .select({ slug: catalogCollections.slug })
+      .from(catalogCollections)
+      .where(
+        and(
+          eq(catalogCollections.tenantId, tenantId),
+          or(eq(catalogCollections.slug, base), ilike(catalogCollections.slug, `${base.replace(/[\\%_]/g, "\\$&")}-%`)),
+          exceptId ? ne(catalogCollections.id, exceptId) : undefined,
+        ),
+      );
+    const taken = new Set(rows.map((r) => r.slug));
+    if (wanted && taken.has(wanted)) throw conflict("This slug is already used");
+    return uniqueSlug(base, taken);
+  }
+
+  /** Manual product ids must be this tenant's (non-deleted) products; a rule's category must exist. */
+  private async assertCollectionRefs(tenantId: string, productIds: string[] | undefined, categoryId: string | null | undefined) {
+    if (productIds && productIds.length > 0) {
+      const found = await this.db
+        .select({ id: catalogProducts.id })
+        .from(catalogProducts)
+        .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, productIds), isNull(catalogProducts.deletedAt)));
+      const ok = new Set(found.map((f) => f.id));
+      const missing = productIds.filter((id) => !ok.has(id));
+      if (missing.length > 0) throw badRequest("Some products don't exist", { productIds: missing });
+    }
+    if (categoryId) await this.categoryRow(tenantId, categoryId);
+  }
+
+  async listCollections(tenantId: string, query: CollectionListQuery = {}): Promise<ListResult<Collection>> {
+    const b = collectionListQuerySchema.parse(query);
+    const where = and(
+      eq(catalogCollections.tenantId, tenantId),
+      b.type ? eq(catalogCollections.type, b.type) : undefined,
+      b.active !== undefined ? eq(catalogCollections.active, b.active) : undefined,
+      b.q ? ilike(catalogCollections.name, likePattern(b.q)) : undefined,
+    );
+    const [rows, [counted]] = await Promise.all([
+      this.db
+        .select()
+        .from(catalogCollections)
+        .where(where)
+        .orderBy(asc(catalogCollections.name), asc(catalogCollections.id))
+        .limit(b.limit)
+        .offset(b.offset),
+      this.db.select({ total: count() }).from(catalogCollections).where(where),
+    ]);
+    return { items: rows.map(toCollection), total: counted?.total ?? 0 };
+  }
+
+  async getCollection(tenantId: string, id: string): Promise<Collection> {
+    return toCollection(await this.collectionRow(tenantId, id));
+  }
+
+  async createCollection(tenantId: string, input: CollectionInput): Promise<Collection> {
+    const b = collectionInputSchema.parse(input);
+    await this.assertCollectionRefs(tenantId, b.productIds, b.rule?.categoryId);
+    const slugValue = await this.collectionSlug(tenantId, b.name, b.slug);
+    try {
+      const [row] = await this.db
+        .insert(catalogCollections)
+        .values({
+          tenantId,
+          name: b.name,
+          slug: slugValue,
+          description: b.description ?? null,
+          imageUrl: b.imageUrl ?? null,
+          type: b.type,
+          productIds: b.productIds,
+          rule: b.rule ?? null,
+          active: b.active,
+          seo: b.seo ?? null,
+        })
+        .returning();
+      return toCollection(row!);
+    } catch (err) {
+      mapUniqueError(err);
+    }
+  }
+
+  async updateCollection(tenantId: string, id: string, input: CollectionPatch): Promise<Collection> {
+    const b = collectionPatchSchema.parse(input);
+    const current = await this.collectionRow(tenantId, id);
+    const type = b.type ?? current.type;
+    const rule = b.rule !== undefined ? b.rule : current.rule;
+    if (type === "rule" && !rule) throw badRequest("A rule collection needs a rule");
+    await this.assertCollectionRefs(tenantId, b.productIds, b.rule?.categoryId);
+    const set: Partial<CollectionRow> = {};
+    if (b.name !== undefined) set.name = b.name;
+    if (b.slug !== undefined && b.slug !== null && b.slug !== current.slug) set.slug = await this.collectionSlug(tenantId, current.name, b.slug, id);
+    if (b.description !== undefined) set.description = b.description;
+    if (b.imageUrl !== undefined) set.imageUrl = b.imageUrl;
+    if (b.type !== undefined) set.type = b.type;
+    if (b.productIds !== undefined) set.productIds = b.productIds;
+    if (b.rule !== undefined) set.rule = b.rule;
+    if (b.active !== undefined) set.active = b.active;
+    if (b.seo !== undefined) set.seo = b.seo;
+    if (Object.keys(set).length === 0) return toCollection(current);
+    try {
+      const [row] = await this.db
+        .update(catalogCollections)
+        .set(set)
+        .where(and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.id, id)))
+        .returning();
+      if (!row) throw notFound("Collection");
+      return toCollection(row);
+    } catch (err) {
+      mapUniqueError(err);
+    }
+  }
+
+  async deleteCollection(tenantId: string, id: string): Promise<void> {
+    const rows = await this.db
+      .delete(catalogCollections)
+      .where(and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.id, id)))
+      .returning({ id: catalogCollections.id });
+    if (rows.length === 0) throw notFound("Collection");
+  }
+
+  /** `GET /public/collections`: active collections by name. */
+  async publicCollections(tenantId: string): Promise<{ items: PublicCollection[] }> {
+    const rows = await this.db
+      .select()
+      .from(catalogCollections)
+      .where(and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.active, true)))
+      .orderBy(asc(catalogCollections.name), asc(catalogCollections.id));
+    return { items: rows.map((r) => toPublicCollection(toCollection(r))) };
+  }
+
+  /**
+   * `GET /public/collections/:slug`: the collection and one page of its active store products — manual ones in the
+   * chosen order, rule ones (category incl. subcategories, tag, cheapest price ≤ priceMax, on sale = some variant's MRP
+   * above its price) in the rule's sort.
+   */
+  async publicCollection(tenantId: string, slugValue: string, query: CollectionProductsQuery = {}): Promise<PublicCollectionPage> {
+    const { limit, offset } = collectionProductsQuerySchema.parse(query);
+    const [row] = await this.db
+      .select()
+      .from(catalogCollections)
+      .where(
+        and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.slug, slugValue.toLowerCase()), eq(catalogCollections.active, true)),
+      )
+      .limit(1);
+    if (!row) throw notFound("Collection");
+    const c = toCollection(row);
+    const collection = toPublicCollection(c);
+
+    if (c.type === "manual") {
+      const visible =
+        c.productIds.length === 0
+          ? []
+          : await this.db
+              .select({ id: catalogProducts.id })
+              .from(catalogProducts)
+              .where(and(this.publicWhere(tenantId), inArray(catalogProducts.id, c.productIds)));
+      const ordered = orderManual(c.productIds, new Set(visible.map((v) => v.id)));
+      return { collection, items: await this.publicSummaries(tenantId, ordered.slice(offset, offset + limit)), total: ordered.length };
+    }
+
+    const rule = c.rule ?? { sort: "new" as const };
+    let categoryIds: string[] | null = null;
+    if (rule.categoryId) {
+      const categories = await this.activeCategories(tenantId);
+      categoryIds = categories.some((x) => x.id === rule.categoryId) ? descendantIds(categories, rule.categoryId) : [];
+    }
+    const where = and(this.publicWhere(tenantId), ...ruleWhereSql(rule, categoryIds))!;
+    const page = await this.pageProducts(tenantId, where, rule.sort ?? "new", parseQuery(""), limit, offset);
+    return { collection, items: await this.publicSummaries(tenantId, page.ids), total: page.total };
+  }
+
+  // ================================================================ batch reads for other modules (store, cms, reviews, analytics)
+
+  /**
+   * Variants for the online store's cart and the orders port: the staff lookup plus product slug and category. Any
+   * product status or channel (the store flags what it can't sell); deleted or unknown ids are left out.
+   */
+  async storeVariants(tenantId: string, ids: string[]): Promise<StoreVariantLookup[]> {
+    const unique = [...new Set(ids)].filter((id) => uuid.safeParse(id).success);
+    if (unique.length === 0) return [];
+    const rows = await this.variantJoin().where(this.live(tenantId, inArray(catalogVariants.id, unique)));
+    const byId = new Map(rows.map((r) => [r.v.id, { ...toLookup(r.v, r.p), productSlug: r.p.slug, categoryId: r.p.categoryId }]));
+    return unique.map((id) => byId.get(id)).filter((x): x is StoreVariantLookup => Boolean(x));
+  }
+
+  /**
+   * Product summaries by id (non-deleted, any status) with status, channels and `updatedAt`, in the order asked.
+   * Callers that show them publicly keep only `status === "active"` with channel "store" (`isPublicRef`).
+   */
+  async productRefs(tenantId: string, ids: string[]): Promise<ProductRef[]> {
+    const unique = [...new Set(ids)].filter((id) => uuid.safeParse(id).success);
+    if (unique.length === 0) return [];
+    const rows = await this.db
+      .select({ p: catalogProducts, categoryName: catalogCategories.name })
+      .from(catalogProducts)
+      .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
+      .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, unique), isNull(catalogProducts.deletedAt)));
+    const variants = await this.variantsOf(tenantId, rows.map((r) => r.p.id));
+    const byId = new Map(
+      rows.map((r) => [
+        r.p.id,
+        {
+          ...toPublicSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null),
+          status: r.p.status,
+          channels: r.p.channels ?? [],
+          updatedAt: r.p.updatedAt,
+        },
+      ]),
+    );
+    return unique.map((id) => byId.get(id)).filter((x): x is ProductRef => Boolean(x));
+  }
+
+  /** Sitemap entries (slug + lastmod) of public products, active categories or active collections, newest first. */
+  async sitemapEntries(tenantId: string, kind: "products" | "categories" | "collections", limit: number): Promise<{ slug: string; updatedAt: Date }[]> {
+    const n = Math.min(Math.max(Math.trunc(limit) || 0, 1), 50_000);
+    if (kind === "products") {
+      return this.db
+        .select({ slug: catalogProducts.slug, updatedAt: catalogProducts.updatedAt })
+        .from(catalogProducts)
+        .where(this.publicWhere(tenantId))
+        .orderBy(desc(catalogProducts.updatedAt), asc(catalogProducts.id))
+        .limit(n);
+    }
+    if (kind === "categories") {
+      return this.db
+        .select({ slug: catalogCategories.slug, updatedAt: catalogCategories.updatedAt })
+        .from(catalogCategories)
+        .where(and(eq(catalogCategories.tenantId, tenantId), eq(catalogCategories.active, true)))
+        .orderBy(asc(catalogCategories.sort), asc(catalogCategories.name))
+        .limit(n);
+    }
+    return this.db
+      .select({ slug: catalogCollections.slug, updatedAt: catalogCollections.updatedAt })
+      .from(catalogCollections)
+      .where(and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.active, true)))
+      .orderBy(asc(catalogCollections.name), asc(catalogCollections.id))
+      .limit(n);
   }
 
   // ================================================================ item ports (invoices, inventory, orders)
@@ -1275,6 +1929,7 @@ export class CatalogueService {
     await this.db.transaction(async (tx) => {
       if (Object.keys(productSet).length > 0) {
         await tx.update(catalogProducts).set(productSet).where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, p.id)));
+        if (productSet.name !== undefined) await this.refreshSearchText(tx, tenantId, [p.id]);
       }
       if (b.rate !== undefined) {
         const price = inclusiveOf(b.rate, b.gstRate ?? p.gstRate, p.taxInclusive);
@@ -1367,6 +2022,7 @@ export class CatalogueService {
             updatedAt: row.createdAt,
           })),
         );
+        await this.refreshSearchText(tx, tenantId, chunk.map((c) => c.productId));
         created += chunk.length;
       }
     });

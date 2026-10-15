@@ -1,3 +1,4 @@
+import { REVIEW_SETTINGS_DEFAULTS, REVIEW_SETTINGS_SCHEMA } from "@srirealtime/reviews";
 import type { SettingsService } from "@srirealtime/settings";
 import { z } from "zod";
 
@@ -85,6 +86,46 @@ export function defineAppSettings(settings: SettingsService) {
     }),
     { prefix: "ORD", invoiceOn: "delivered", allowBackorder: false, autoConfirm: false, notifyOwner: true },
   );
+
+  // Online store (read by the storefront through its StoreSettingsPort; docs/commerce-batch2.md §1).
+  const url = z.string().trim().max(300).url().or(z.literal(""));
+  settings.define(
+    "store",
+    z.object({
+      open: z.boolean(),
+      closedMessage: z.string().max(300),
+      codEnabled: z.boolean(),
+      /** Paise; 0 = no limit. */
+      codMaxAmount: z.number().int().min(0).max(100_000_000),
+      /** Paise, on goods after discount; 0 = none. */
+      minOrderValue: z.number().int().min(0).max(100_000_000),
+      contactPhone: z.string().max(20),
+      contactEmail: z.string().email().or(z.literal("")),
+      social: z.object({ instagram: url.optional(), facebook: url.optional(), youtube: url.optional(), whatsapp: z.string().max(20).optional() }),
+      /** Markdown, shown on the store's policy pages. */
+      policies: z.object({
+        shipping: z.string().max(20_000).optional(),
+        returns: z.string().max(20_000).optional(),
+        privacy: z.string().max(20_000).optional(),
+        terms: z.string().max(20_000).optional(),
+      }),
+    }),
+    {
+      open: true,
+      closedMessage: "",
+      codEnabled: true,
+      codMaxAmount: 500_000,
+      minOrderValue: 0,
+      contactPhone: "",
+      contactEmail: "",
+      social: { instagram: "", facebook: "", youtube: "", whatsapp: "" },
+      policies: { shipping: "", returns: "", privacy: "", terms: "" },
+    },
+    { publicKeys: ["open", "closedMessage", "codEnabled", "codMaxAmount", "minOrderValue", "contactPhone", "contactEmail", "social", "policies"] },
+  );
+
+  // Product review moderation (read by the reviews module).
+  settings.define("reviews", REVIEW_SETTINGS_SCHEMA, REVIEW_SETTINGS_DEFAULTS);
 
   settings.define(
     "notifications",

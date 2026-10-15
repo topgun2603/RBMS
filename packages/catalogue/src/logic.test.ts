@@ -1,9 +1,9 @@
+import { exclusiveOf } from "@srirealtime/gst";
 import { describe, expect, it } from "vitest";
 import {
   buildTree,
   cartesian,
   descendantIds,
-  exclusiveOf,
   inclusiveOf,
   itemName,
   mergeOptions,

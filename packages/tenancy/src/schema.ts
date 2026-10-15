@@ -1,5 +1,5 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
-import { boolean, index, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export const TENANT_STATUSES = ["active", "suspended"] as const;
 export type TenantStatus = (typeof TENANT_STATUSES)[number];
@@ -24,9 +24,14 @@ export const tenantDomains = pgTable(
     tenantId: tenantId(),
     domain: text("domain").notNull().unique(),
     verified: boolean("verified").notNull().default(false),
+    /** Value of the `_srikit-verify.<domain>` TXT record. Set on add; older rows get one lazily. */
+    verificationToken: text("verification_token"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /** Last DNS check (manual or the `tenancy.domains.verify` job). */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
     ...timestamps(),
   },
-  (t) => [index("tenant_domains_tenant_idx").on(t.tenantId)],
+  (t) => [index("tenant_domains_tenant_idx").on(t.tenantId), index("tenant_domains_verified_idx").on(t.verified)],
 );
 
 /** User ↔ tenant link with per-tenant roles. No FK to users: auth is a separate module. */

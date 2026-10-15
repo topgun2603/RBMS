@@ -1,6 +1,6 @@
 import { badRequest, conflict, forbidden, notFound, type TenantRef } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, arrayContains, asc, count, eq, ilike, or } from "drizzle-orm";
+import { and, arrayContains, asc, count, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import {
   tenantDomains,
   tenantMemberships,
@@ -10,6 +10,14 @@ import {
   type TenantMembership,
   type TenantStatus,
 } from "./schema";
+import {
+  DEFAULT_CNAME_TARGET,
+  domainInstructions,
+  newVerificationToken,
+  type DomainCheck,
+  type DomainInstructions,
+  type DomainVerifier,
+} from "./domains";
 import { normalizeMemberRoles } from "./roles";
 import { isPlatformHost, isValidDomain, normalizeHost, slugFromHost, validateSlug } from "./slug";
 
@@ -22,10 +30,14 @@ export interface TenancyDeps {
   /** Called after a tenant's app changes (wire to features.service.invalidate). */
   onAppChange?: (tenantId: string, appId: string | null) => void | Promise<void>;
   /**
-   * Optional DNS check for custom domains (e.g. a TXT record lookup). When set, owners/admins can
-   * verify their own domains; when absent, only a super-admin can mark a domain verified.
+   * Optional DNS check for custom domains (apps/api: node:dns/promises). `txt` = the `_srikit-verify.<domain>` TXT
+   * record holds `token` (this verifies the domain); `cname` = the domain points at `cnameTarget` (guidance only).
+   * When set, owners/admins can verify their own domains and `verifyPending()` works; when absent, only a
+   * super-admin can mark a domain verified.
    */
-  domainVerifier?: (domain: string, tenantId: string) => Promise<boolean>;
+  domainVerifier?: DomainVerifier;
+  /** CNAME target shown in the DNS instructions (env CNAME_TARGET), default "stores.srikit.in". */
+  cnameTarget?: string;
   /**
    * Turns a phone number or email into a user id, creating the user if needed (wire to auth).
    * Enables inviting members by `target` instead of `userId`.
@@ -252,7 +264,10 @@ export class TenancyService {
     if (!isValidDomain(d)) throw badRequest("Enter a valid domain, e.g. shop.example.com");
     if (isPlatformHost(d, this.deps.rootDomain)) throw badRequest("Use your subdomain instead of adding a platform domain");
     try {
-      const [row] = await this.db.insert(tenantDomains).values({ tenantId, domain: d }).returning();
+      const [row] = await this.db
+        .insert(tenantDomains)
+        .values({ tenantId, domain: d, verificationToken: newVerificationToken() })
+        .returning();
       return row!;
     } catch (err) {
       if (isUniqueViolation(err)) throw conflict("That domain is already in use");
@@ -269,30 +284,100 @@ export class TenancyService {
     this.invalidate(tenantId);
   }
 
-  /**
-   * Marks a domain verified. If a `domainVerifier` is configured it must confirm the DNS setup first;
-   * pass `force` (super-admin) to skip the check.
-   */
-  async verifyDomain(tenantId: string, domainId: string, opts: { force?: boolean } = {}): Promise<TenantDomain> {
+  async getDomain(tenantId: string, domainId: string): Promise<TenantDomain> {
     const [row] = await this.db
       .select()
       .from(tenantDomains)
       .where(and(eq(tenantDomains.tenantId, tenantId), eq(tenantDomains.id, domainId)))
       .limit(1);
     if (!row) throw notFound("Domain");
-    if (!opts.force) {
-      if (!this.deps.domainVerifier) throw forbidden("Domain verification is done by the platform team");
-      if (!(await this.deps.domainVerifier(row.domain, tenantId))) {
-        throw badRequest("We couldn't verify the DNS records for this domain yet");
-      }
-    }
+    return row;
+  }
+
+  /** Gives rows added before tokens existed a verification token. */
+  private async withToken(row: TenantDomain): Promise<TenantDomain & { verificationToken: string }> {
+    if (row.verificationToken) return row as TenantDomain & { verificationToken: string };
+    const token = newVerificationToken();
     const [updated] = await this.db
       .update(tenantDomains)
-      .set({ verified: true })
-      .where(and(eq(tenantDomains.tenantId, tenantId), eq(tenantDomains.id, domainId)))
+      .set({ verificationToken: token })
+      .where(and(eq(tenantDomains.id, row.id), isNull(tenantDomains.verificationToken)))
       .returning();
-    this.invalidate();
-    return updated!;
+    if (updated?.verificationToken) return updated as TenantDomain & { verificationToken: string };
+    // Someone else set it concurrently: read it back.
+    const [again] = await this.db.select().from(tenantDomains).where(eq(tenantDomains.id, row.id)).limit(1);
+    return { ...(again ?? row), verificationToken: again?.verificationToken ?? token };
+  }
+
+  /** The DNS records to add for a domain (TXT for verification, CNAME for routing). */
+  async domainInstructions(tenantId: string, domainId: string): Promise<DomainInstructions> {
+    const row = await this.withToken(await this.getDomain(tenantId, domainId));
+    return domainInstructions(row, this.deps.cnameTarget ?? DEFAULT_CNAME_TARGET);
+  }
+
+  /** Runs the DNS check; lookup failures count as "not found". */
+  private async check(row: TenantDomain & { verificationToken: string }): Promise<DomainCheck> {
+    try {
+      const r = await this.deps.domainVerifier!(row.domain, { token: row.verificationToken });
+      return { txt: r.txt === true, cname: r.cname === true };
+    } catch {
+      return { txt: false, cname: false };
+    }
+  }
+
+  private async markChecked(row: TenantDomain, verified: boolean): Promise<TenantDomain> {
+    const now = new Date();
+    const [updated] = await this.db
+      .update(tenantDomains)
+      .set(verified ? { verified: true, verifiedAt: row.verifiedAt ?? now, checkedAt: now } : { checkedAt: now })
+      .where(and(eq(tenantDomains.tenantId, row.tenantId), eq(tenantDomains.id, row.id)))
+      .returning();
+    if (verified) this.invalidate();
+    return updated ?? row;
+  }
+
+  /**
+   * Marks a domain verified. Without `force`, the `domainVerifier` must find the TXT record
+   * (`_srikit-verify.<domain>` = token) first; a miss throws 400 with `{ txt, cname }` details.
+   * Pass `force` (super-admin) to skip the check.
+   */
+  async verifyDomain(tenantId: string, domainId: string, opts: { force?: boolean } = {}): Promise<TenantDomain> {
+    const found = await this.getDomain(tenantId, domainId);
+    if (opts.force) return this.markChecked(found, true);
+    if (!this.deps.domainVerifier) throw forbidden("Domain verification is done by the platform team");
+    const row = await this.withToken(found);
+    const result = await this.check(row);
+    await this.markChecked(row, result.txt);
+    if (!result.txt) {
+      throw badRequest("We couldn't find the TXT record for this domain yet. DNS changes can take a few hours.", result);
+    }
+    return this.getDomain(tenantId, domainId);
+  }
+
+  /**
+   * Job `tenancy.domains.verify` (every 30 min): checks every unverified domain and verifies those whose TXT record
+   * is in place. No-op without a `domainVerifier`.
+   */
+  async verifyPending(opts: { limit?: number } = {}): Promise<{ checked: number; verified: number }> {
+    if (!this.deps.domainVerifier) return { checked: 0, verified: 0 };
+    const pending = await this.db
+      .select()
+      .from(tenantDomains)
+      .where(eq(tenantDomains.verified, false))
+      .orderBy(sql`${tenantDomains.checkedAt} asc nulls first`, asc(tenantDomains.createdAt))
+      .limit(Math.min(Math.max(opts.limit ?? 200, 1), 1000));
+    let verified = 0;
+    for (const found of pending) {
+      try {
+        const row = await this.withToken(found);
+        const result = await this.check(row);
+        await this.markChecked(row, result.txt);
+        if (result.txt) verified++;
+      } catch {
+        // One bad row must not stop the job; it is retried on the next run.
+      }
+    }
+    return { checked: pending.length, verified };
   }
 
   // ---------------------------------------------------------------- memberships

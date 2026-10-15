@@ -20,7 +20,7 @@ import {
   variantInputSchema,
   type CatalogueService,
 } from "./service";
-import type { CatalogItem } from "./types";
+import { isPublicRef, type CatalogItem } from "./types";
 
 // Never connects.
 const { db, close } = createDb("postgres://u:p@127.0.0.1:1/none", { max: 1 });
@@ -115,6 +115,7 @@ describe("routes", () => {
   const staffUser = { id: "u1", sessionId: "s1", platformRoles: [], tenantRoles: ["staff"] };
   const id = "22222222-2222-4222-8222-222222222222";
 
+  const permissionsSeen: (string | string[] | null)[] = [];
   async function build(reqCtx: RequestContext, gate?: (feature: string | string[]) => void) {
     const service = {
       publicCategories: vi.fn(async () => ({ items: [] })),
@@ -156,6 +157,15 @@ describe("routes", () => {
       getVariants: vi.fn(async () => []),
       lookupCode: vi.fn(async () => ({ id: "v" })),
       searchVariants: vi.fn(async () => ({ items: [], total: 0 })),
+      search: vi.fn(async () => ({ items: [], total: 0, facets: {} })),
+      suggest: vi.fn(async () => ({ products: [], categories: [] })),
+      publicCollections: vi.fn(async () => ({ items: [] })),
+      publicCollection: vi.fn(async () => ({ collection: {}, items: [], total: 0 })),
+      listCollections: vi.fn(async () => ({ items: [], total: 0 })),
+      createCollection: vi.fn(async () => ({ id: "col" })),
+      getCollection: vi.fn(async () => ({ id: "col" })),
+      updateCollection: vi.fn(async () => ({ id: "col" })),
+      deleteCollection: vi.fn(async () => undefined),
     } as unknown as CatalogueService;
     const app = Fastify();
     app.decorateRequest("ctx", null as never);
@@ -166,6 +176,7 @@ describe("routes", () => {
     app.addHook("preHandler", async (req) => {
       const feature = req.routeOptions.config.feature;
       if (gate && feature && req.ctx.tenant) gate(feature);
+      permissionsSeen.push(req.routeOptions.config.permission ?? null);
     });
     app.setErrorHandler((err: { status?: number; statusCode?: number }, _req, reply) => {
       reply.status(err.status ?? (err instanceof ZodError ? 400 : (err.statusCode ?? 500))).send({ error: true });
@@ -202,6 +213,15 @@ describe("routes", () => {
       ["GET", `/v1/catalog/variants?ids=${id}`, "catalogue"],
       ["GET", "/v1/catalog/variants/lookup?code=890123", "catalogue"],
       ["GET", "/v1/catalog/variants/search?q=shirt", "catalogue"],
+      ["GET", "/v1/catalog/public/search?q=saree", "catalogue"],
+      ["GET", "/v1/catalog/public/search/suggest?q=sa", "catalogue"],
+      ["GET", "/v1/catalog/public/collections", "catalogue"],
+      ["GET", "/v1/catalog/public/collections/diwali", "catalogue"],
+      ["GET", "/v1/catalog/collections", "catalogue"],
+      ["POST", "/v1/catalog/collections", "catalogue"],
+      ["GET", `/v1/catalog/collections/${id}`, "catalogue"],
+      ["PATCH", `/v1/catalog/collections/${id}`, "catalogue"],
+      ["DELETE", `/v1/catalog/collections/${id}`, "catalogue"],
     ];
     for (const [method, url, feature] of cases) {
       seen.length = 0;
@@ -221,6 +241,41 @@ describe("routes", () => {
     // No tenant → 403; staff routes need a member.
     expect((await (await build(ctx({}))).app.inject({ url: "/v1/catalog/public/products" })).statusCode).toBe(403);
     expect((await app.inject({ url: "/v1/catalog/products" })).statusCode).toBe(401);
+  });
+
+  it("serves search, suggestions and collections publicly; collection writes declare catalogue.manage", async () => {
+    const { app, service } = await build(ctx({ tenant }));
+    const res = await app.inject({ url: "/v1/catalog/public/search?q=Kanchipuram%20%E0%AE%AA%E0%AE%9F%E0%AF%8D%E0%AE%9F%E0%AF%81&attr.Fabric=Silk&opt.Size=M&opt.Size=L&inStock=1&sort=rating" });
+    expect(res.statusCode).toBe(200);
+    expect(service.search).toHaveBeenCalledWith(tenant.id, {
+      q: "Kanchipuram பட்டு",
+      "attr.Fabric": "Silk",
+      "opt.Size": ["M", "L"],
+      inStock: "1",
+      sort: "rating",
+    });
+    await app.inject({ url: "/v1/catalog/public/search/suggest?q=sil" });
+    expect(service.suggest).toHaveBeenCalledWith(tenant.id, "sil");
+    await app.inject({ url: "/v1/catalog/public/collections/diwali-picks?limit=12" });
+    expect(service.publicCollection).toHaveBeenCalledWith(tenant.id, "diwali-picks", { limit: "12" });
+    expect((await app.inject({ url: "/v1/catalog/collections" })).statusCode).toBe(401);
+
+    const staff = await build(ctx({ tenant, user: staffUser }));
+    const writes: [string, string][] = [
+      ["POST", "/v1/catalog/collections"],
+      ["PATCH", `/v1/catalog/collections/${id}`],
+      ["DELETE", `/v1/catalog/collections/${id}`],
+    ];
+    for (const [method, url] of writes) {
+      permissionsSeen.length = 0;
+      await staff.app.inject({ method: method as "POST", url, payload: method === "DELETE" ? undefined : { name: "x" } });
+      expect([method, permissionsSeen]).toEqual([method, ["catalogue.manage"]]);
+    }
+    permissionsSeen.length = 0;
+    await staff.app.inject({ url: "/v1/catalog/collections" });
+    expect(permissionsSeen).toEqual([null]);
+    expect(staff.service.createCollection).toHaveBeenCalledWith(tenant.id, { name: "x" });
+    expect((await staff.app.inject({ method: "DELETE", url: `/v1/catalog/collections/${id}` })).json()).toEqual({ ok: true });
   });
 
   it("requires a staff member of the tenant", async () => {
@@ -335,7 +390,7 @@ describe("createCatalogue", () => {
   it("returns the service, the module (mounted at /v1/catalog) and the port adapters", () => {
     const { service, module, itemSource, itemCatalog } = createCatalogue({ db });
     expect(module.id).toBe("catalog");
-    expect(Object.keys(module.tables ?? {}).sort()).toEqual(["catalogCategories", "catalogProducts", "catalogVariants"]);
+    expect(Object.keys(module.tables ?? {}).sort()).toEqual(["catalogCategories", "catalogCollections", "catalogProducts", "catalogVariants"]);
     expect(module.features).toEqual([
       expect.objectContaining({ key: "catalogue", module: "catalogue", label: "Product catalogue" }),
       expect.objectContaining({
@@ -349,5 +404,19 @@ describe("createCatalogue", () => {
     expect(service).toBeDefined();
     expect(typeof itemSource.list).toBe("function");
     expect(typeof itemCatalog.getItems).toBe("function");
+  });
+});
+
+describe("batch reads for other modules", () => {
+  it("storeVariants / productRefs skip the database for empty or malformed ids", async () => {
+    const { service } = createCatalogue({ db });
+    await expect(service.storeVariants("t", [])).resolves.toEqual([]);
+    await expect(service.storeVariants("t", ["nope", ""])).resolves.toEqual([]);
+    await expect(service.productRefs("t", ["not-a-uuid"])).resolves.toEqual([]);
+  });
+  it("isPublicRef: active and on the store channel only", () => {
+    expect(isPublicRef({ status: "active", channels: ["store", "billing"] })).toBe(true);
+    expect(isPublicRef({ status: "active", channels: ["billing"] })).toBe(false);
+    expect(isPublicRef({ status: "draft", channels: ["store"] })).toBe(false);
   });
 });

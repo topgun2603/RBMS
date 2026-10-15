@@ -15,9 +15,17 @@ export const envSchema = z.object({
   REDIS_URL: z.string().default("redis://localhost:6379"),
   ROOT_DOMAIN: z.string().default("localhost"),
   /** Comma-separated. Entries may use a "*." wildcard for tenant subdomains, e.g. http://*.localhost:3001 */
-  CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002"),
+  CORS_ORIGINS: z
+    .string()
+    .default(
+      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003",
+    ),
   /** Billing app URL for invoice share links; {slug} is replaced with the shop's subdomain. */
   BILLING_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/billing"),
+  /** Online store URL (sitemap, robots.txt); {slug} = shop subdomain. One template, or APP=template pairs. Verified custom domains win. */
+  STORE_PUBLIC_URL: z.string().default("http://{slug}.localhost:3003"),
+  /** Where shops point their custom domain (CNAME), shown in the DNS instructions. */
+  CNAME_TARGET: z.string().default("stores.srikit.in"),
   SESSION_TTL_DAYS: z.coerce.number().default(30),
   OTP_TTL_MINUTES: z.coerce.number().default(10),
   GOOGLE_CLIENT_ID: optionalString(),

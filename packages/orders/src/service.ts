@@ -45,6 +45,8 @@ import {
   type LoggerPort,
   type NotifierPort,
   type NotifierSendInput,
+  type OrderEventsPort,
+  type OrderPaymentEvent,
   type OrderSettings,
   type OrderSettingsPort,
   type SellerPort,
@@ -97,6 +99,8 @@ export interface OrdersDeps {
   /** Checks `orders` (checkout), `orders.returns` and `coupons` outside the route pipeline. Without it all are on. */
   featureGate?: FeatureGatePort;
   links?: OrderLinks;
+  /** Told about money recorded on orders (best effort). */
+  events?: OrderEventsPort;
   /** State code used when the shop has none set. Default "33" (Tamil Nadu). */
   defaultStateCode?: string;
   log?: LoggerPort;
@@ -295,6 +299,11 @@ export const checkoutSchema = z.object({
   paymentMethod: z.enum(["online", "cod"]),
   /** Paise, GST-inclusive (computed by the storefront server, not the browser). */
   shipping: money.default(0),
+  /**
+   * Cash-on-delivery fee, paise GST-inclusive (from the delivery rate). Charged as its own "COD charges" line and not
+   * waived by a free-shipping coupon. Ignored unless `paymentMethod` is "cod".
+   */
+  codFee: money.default(0),
   customerNote: opt(z.string().trim().max(1000)),
   locationId: opt(z.string().uuid()),
 });
@@ -382,6 +391,25 @@ export function allocateOrderSeqStatement(db: DbOrTx, args: { tenantId: string; 
     .returning({ seq: orderSeries.nextSeq });
 }
 
+/**
+ * Dashboard aggregates. The IST day/month starts are bound as ISO strings cast to timestamptz: postgres-js refuses a
+ * raw Date as a parameter inside a sql`` fragment (no column to map it).
+ */
+export function summaryColumns(dayStart: Date, monthStartAt: Date) {
+  const live = sql`${orders.status} not in ('cancelled')`;
+  const day = sql`${dayStart.toISOString()}::timestamptz`;
+  const month = sql`${monthStartAt.toISOString()}::timestamptz`;
+  return {
+    todayCount: sql<number>`count(*) filter (where ${orders.placedAt} >= ${day} and ${live})::int`,
+    todayTotal: sql<string>`coalesce(sum(${orders.total}) filter (where ${orders.placedAt} >= ${day} and ${live}), 0)`,
+    monthCount: sql<number>`count(*) filter (where ${orders.placedAt} >= ${month} and ${live})::int`,
+    monthTotal: sql<string>`coalesce(sum(${orders.total}) filter (where ${orders.placedAt} >= ${month} and ${live}), 0)`,
+    placed: sql<number>`count(*) filter (where ${orders.status} = 'placed')::int`,
+    confirmed: sql<number>`count(*) filter (where ${orders.status} = 'confirmed')::int`,
+    packed: sql<number>`count(*) filter (where ${orders.status} = 'packed')::int`,
+  };
+}
+
 const emptyCounts = (): Record<OrderStatus, number> =>
   Object.fromEntries(ORDER_STATUSES.map((s) => [s, 0])) as Record<OrderStatus, number>;
 
@@ -461,6 +489,8 @@ interface PlaceDraft {
   couponCode: string | null;
   paymentMethod: OrderPaymentMethod;
   shipping: number;
+  /** COD fee (GST-inclusive), checkout only. */
+  codFee?: number;
   notes: string | null;
   customerNote: string | null;
   locationId: string | null;
@@ -489,6 +519,7 @@ export class OrdersService {
   private readonly shopContacts?: ShopContactPort;
   private readonly featureGate?: FeatureGatePort;
   private readonly links: OrderLinks;
+  private readonly orderEvents?: OrderEventsPort;
   private readonly defaultState: string;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
@@ -505,6 +536,7 @@ export class OrdersService {
     this.shopContacts = deps.shopContacts;
     this.featureGate = deps.featureGate;
     this.links = deps.links ?? {};
+    this.orderEvents = deps.events;
     this.defaultState = deps.defaultStateCode ?? DEFAULT_STATE_CODE;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
@@ -680,17 +712,8 @@ export class OrdersService {
     const today = todayIST(this.now());
     const { start: dayStart } = istRange(today, null);
     const { start: mStart } = istRange(monthStart(today), null);
-    const live = sql`${orders.status} not in ('cancelled')`;
     const [r] = await this.db
-      .select({
-        todayCount: sql<number>`count(*) filter (where ${orders.placedAt} >= ${dayStart} and ${live})::int`,
-        todayTotal: sql<string>`coalesce(sum(${orders.total}) filter (where ${orders.placedAt} >= ${dayStart} and ${live}), 0)`,
-        monthCount: sql<number>`count(*) filter (where ${orders.placedAt} >= ${mStart} and ${live})::int`,
-        monthTotal: sql<string>`coalesce(sum(${orders.total}) filter (where ${orders.placedAt} >= ${mStart} and ${live}), 0)`,
-        placed: sql<number>`count(*) filter (where ${orders.status} = 'placed')::int`,
-        confirmed: sql<number>`count(*) filter (where ${orders.status} = 'confirmed')::int`,
-        packed: sql<number>`count(*) filter (where ${orders.status} = 'packed')::int`,
-      })
+      .select(summaryColumns(dayStart!, mStart!))
       .from(orders)
       .where(eq(orders.tenantId, tenantId));
     const n = (v: unknown) => Number(v ?? 0);
@@ -727,6 +750,28 @@ export class OrdersService {
     const row = await this.row(this.db, tenantId, id);
     if (row.customer?.accountId !== accountId) throw notFound("Order");
     return this.toCustomerOrder(await this.full(row));
+  }
+
+  /**
+   * The newest delivered order of this storefront account that contains `productId` (reviews' verified-buyer check),
+   * or null. `accountId` is the store-customer id stored in `customer.accountId`.
+   */
+  async deliveredOrderWithProduct(tenantId: string, accountId: string, productId: string): Promise<{ orderId: string } | null> {
+    if (!accountId || !UUID_RE.test(productId)) return null;
+    const [row] = await this.db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.tenantId, tenantId),
+          eq(orders.status, "delivered"),
+          sql`${orders.customer}->>'accountId' = ${accountId}`,
+          sql`${orders.lines} @> ${JSON.stringify([{ productId }])}::jsonb`,
+        ),
+      )
+      .orderBy(desc(orders.deliveredAt))
+      .limit(1);
+    return row ? { orderId: row.id } : null;
   }
 
   /** Guest order page by access token. With `tenantId`, orders of other shops are not found. */
@@ -799,6 +844,7 @@ export class OrdersService {
       couponCode: b.couponCode ?? null,
       paymentMethod: b.paymentMethod,
       shipping: b.shipping,
+      codFee: b.paymentMethod === "cod" ? b.codFee : 0,
       notes: null,
       customerNote: b.customerNote ?? null,
       locationId: b.locationId ?? null,
@@ -858,6 +904,7 @@ export class OrdersService {
       lineDiscounts,
       shipping: draft.shipping,
       freeShipping,
+      codFee: draft.codFee ?? 0,
       sellerState,
       placeOfSupply,
     });
@@ -1107,10 +1154,12 @@ export class OrdersService {
         return;
       }
       case "payment.collectCod": {
+        let collected = 0;
         const updated = await this.db.transaction(async (tx) => {
           const locked = await this.row(tx, tenantId, id, true);
           const due = balanceOf(locked);
           if (due <= 0) return locked;
+          collected = due;
           const paid = locked.paid + due;
           const [u] = await tx
             .update(orders)
@@ -1126,6 +1175,7 @@ export class OrdersService {
           return u!;
         });
         Object.assign(row, { paid: updated.paid, paymentStatus: updated.paymentStatus });
+        await this.paymentRecorded(row, collected, "cod");
         return;
       }
       case "invoice.create": {
@@ -1251,6 +1301,23 @@ export class OrdersService {
     }
   }
 
+  /** Tells the events port about a stored payment. Never throws. */
+  private async paymentRecorded(row: Pick<OrderRow, "tenantId" | "id" | "channel" | "customer">, amount: number, source: OrderPaymentEvent["source"]) {
+    if (!this.orderEvents?.paymentRecorded || amount <= 0) return;
+    try {
+      await this.orderEvents.paymentRecorded({
+        tenantId: row.tenantId,
+        orderId: row.id,
+        channel: row.channel,
+        accountId: row.customer?.accountId ?? null,
+        amount,
+        source,
+      });
+    } catch (err) {
+      this.log.error({ err, tenantId: row.tenantId, orderId: row.id, source }, "orders: payment listener failed");
+    }
+  }
+
   // ================================================================ notes, payments, refunds, fulfillment, invoice retry
 
   async addNote(tenantId: string, id: string, input: NoteInput, actorUserId: string | null = null): Promise<Order> {
@@ -1299,6 +1366,7 @@ export class OrdersService {
       });
       return u!;
     });
+    await this.paymentRecorded(row, b.amount, "manual");
     return this.full(row);
   }
 
@@ -1416,6 +1484,7 @@ export class OrdersService {
     });
     if (recorded) {
       this.log.info({ tenantId: b.tenantId, orderId: row.id, amount: b.amount }, "order paid online");
+      await this.paymentRecorded(row, b.amount, "online");
       const settings = await this.settings(b.tenantId).catch(() => null);
       if (settings && shouldAutoConfirm(settings, row)) {
         try {
