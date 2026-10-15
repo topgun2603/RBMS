@@ -1,15 +1,17 @@
 // Batch 1 end-to-end against the running API (http://localhost:4000) and the real database.
-//   node test/e2e/batch1.mjs api.log      (pnpm --filter @srirealtime/api test:e2e)
-// The API must run in development (console notify driver: OTP codes are read from its log file, given as argv[2]).
-// Shops: anbu (EC, pro) for commerce, staff and documents; kumar (BL, starter) for plan checks. Safe to re-run.
-import { readFileSync } from "node:fs";
+//   node test/e2e/batch1.mjs      (pnpm --filter @srirealtime/api test:e2e; test:e2e:all seeds and runs every script)
+// Runs only in the dedicated e2e shops from `pnpm --filter @srirealtime/api seed:e2e`: e2e-store (EC, pro) for
+// commerce, staff and documents; e2e-lite (BL, starter) for plan checks. Test identities sign in with the dev test OTP
+// (API env TEST_OTP_CODE / TEST_OTP_TARGETS): owner e2e-owner@example.com, staff +91 9999 00xxxx. Safe to re-run.
 
 const API = process.env.API_URL ?? "http://localhost:4000";
-const LOG = process.argv[2] ?? "api.log";
-const OWNER = process.env.E2E_OWNER ?? "gowtham_kumar@srirealtime.com";
-const CASHIER_PHONE = "+919800000101";
-const STAFF_PHONE = "+919800000102";
-const SHOP = "anbu";
+const OWNER = process.env.E2E_OWNER ?? "e2e-owner@example.com";
+const OTP = process.env.E2E_OTP ?? "123456";
+const CASHIER_PHONE = "+919999000101";
+const STAFF_PHONE = "+919999000102";
+const SHOP = "e2e-store";
+/** BL shop on the starter plan (plan checks). */
+const LITE = "e2e-lite";
 const RUN = Date.now().toString(36).slice(-6).toUpperCase();
 const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 
@@ -54,41 +56,19 @@ async function step(name, fn) {
 const sleep = (ms) => new Promise((s) => setTimeout(s, ms));
 const rs = (p) => `₹${(p / 100).toFixed(2)}`;
 
-/** The newest OTP the console driver logged for `target` (email or E.164 phone). */
-function otpFor(target) {
-  const lines = readFileSync(LOG, "utf8").split(/\r?\n/);
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (!lines[i].includes(`to: "${target}"`)) continue;
-    for (let j = i; j < Math.min(i + 4, lines.length); j++) {
-      const m = /"(\d{6}) is your .* verification code/.exec(lines[j]);
-      if (m) return m[1];
-    }
-  }
-  return null;
-}
+/** Test identities get no message and no resend limits: request (as the apps do), then verify with the fixed code. */
 async function signIn(as, target) {
-  const before = otpFor(target);
-  let r = await call("POST", "/v1/auth/otp/request", { target }, { as: null, tenant: null });
-  const wait = r.status === 429 && Number(String(r.json?.error?.message).match(/(\d+) second/)?.[1]);
-  if (wait) {
-    await sleep((wait + 1) * 1000);
-    r = await call("POST", "/v1/auth/otp/request", { target }, { as: null, tenant: null });
-  }
-  ok(r, `otp request ${target}`);
-  let code = null;
-  for (let i = 0; i < 20 && (!code || code === before); i++) {
-    await sleep(250);
-    code = otpFor(target);
-  }
-  expect(code, `no OTP for ${target} in ${LOG}`);
-  tokens[as] = ok(await call("POST", "/v1/auth/otp/verify", { target, code }, { as: null, tenant: null }), `otp verify ${target}`).token;
+  ok(await call("POST", "/v1/auth/otp/request", { target }, { as: null, tenant: null }), `otp request ${target}`);
+  const r = await call("POST", "/v1/auth/otp/verify", { target, code: OTP }, { as: null, tenant: null });
+  expect(r.status < 300, `otp verify ${target}: ${r.status} ${JSON.stringify(r.json).slice(0, 300)} (is TEST_OTP_CODE set for the API?)`);
+  tokens[as] = r.json.token;
 }
 const stockAt = async (itemId, locationId) =>
   ok(await call("GET", `/v1/inventory/stock/${itemId}${locationId ? `?locationId=${locationId}` : ""}`), "stock");
 const address = { name: "E2E Buyer", line1: "8, Nethaji Road", city: "Tiruchirappalli", stateCode: "33", pincode: "620001" };
 
 // ------------------------------------------------------------------ sign in
-await step("owner signs in (OTP from the log)", async () => {
+await step("owner signs in (test OTP)", async () => {
   await signIn("owner", OWNER);
   return "ok";
 });
@@ -182,11 +162,11 @@ const welcome = { id: null };
 let orderA, orderB, orderC;
 await step("orders: manual order with WELCOME10 → stock reserved, coupon redeemed", async () => {
   const c = ok(await call("GET", "/v1/coupons?q=WELCOME10"), "coupons").items.find((x) => x.code === "WELCOME10");
-  expect(c, "WELCOME10 missing (run pnpm seed)");
+  expect(c, "WELCOME10 missing (run pnpm --filter @srirealtime/api seed:e2e)");
   welcome.id = c.id;
   orderA = ok(
     await call("POST", "/v1/orders", {
-      customer: { name: `E2E Buyer A ${RUN}`, phone: "+919800000201" },
+      customer: { name: `E2E Buyer A ${RUN}`, phone: "+919999000201" },
       shippingAddress: address,
       lines: [{ variantId: variantM.id, qty: 2 }],
       couponCode: "welcome10",
@@ -215,12 +195,16 @@ await step("orders: confirm → pack → ship → deliver; invoice once, stock r
   expect(bills.total === 1 && bills.items[0].id === orderA.invoiceId, `invoices for the order: ${bills.total}`);
   const inv = ok(await call("GET", `/v1/invoices/${orderA.invoiceId}`), "invoice");
   expect(inv.status === "paid" && inv.total === orderA.total, `invoice ${inv.status} ${inv.total} vs ${orderA.total}`);
+  // Tax-inclusive line: the order line and the invoice line total exactly what was charged (no ₹0.01 drift).
+  const charged = 2 * PRICE - orderA.totals.discount;
+  expect(orderA.lines[0].total === charged, `order line total ${orderA.lines[0].total} vs charged ${charged}`);
+  expect(inv.lines[0].total === charged, `invoice line total ${inv.lines[0].total} vs charged ${charged}`);
   const s = await stockAt(variantM.id);
   expect(s.qty === 8 && s.reserved === 0 && s.available === 8, `M after delivery: qty ${s.qty} reserved ${s.reserved}`);
   return `${inv.number} ${rs(inv.total)} ${inv.status}; M qty 8 reserved 0`;
 });
 await step("orders: cancel → reservation and coupon released", async () => {
-  orderB = ok(await call("POST", "/v1/orders", { customer: { name: `E2E Buyer B ${RUN}`, phone: "+919800000202" }, shippingAddress: address, lines: [{ variantId: variantM.id, qty: 1 }], couponCode: "WELCOME10", paymentMethod: "cod" }), "order B");
+  orderB = ok(await call("POST", "/v1/orders", { customer: { name: `E2E Buyer B ${RUN}`, phone: "+919999000202" }, shippingAddress: address, lines: [{ variantId: variantM.id, qty: 1 }], couponCode: "WELCOME10", paymentMethod: "cod" }), "order B");
   let s = await stockAt(variantM.id);
   expect(s.reserved === 1 && s.available === 7, `M reserved ${s.reserved}`);
   orderB = ok(await call("POST", `/v1/orders/${orderB.id}/status`, { status: "cancelled", note: "E2E cancel" }), "cancel");
@@ -232,7 +216,7 @@ await step("orders: cancel → reservation and coupon released", async () => {
   return `${orderB.number} cancelled; M available 8; redemption released`;
 });
 await step("orders: online order paid via mock checkout (purpose order)", async () => {
-  orderC = ok(await call("POST", "/v1/orders", { customer: { name: `E2E Buyer C ${RUN}`, phone: "+919800000203" }, shippingAddress: address, lines: [{ variantId: variantL.id, qty: 1, price: PRICE }], paymentMethod: "online", allowBackorder: true }), "order C");
+  orderC = ok(await call("POST", "/v1/orders", { customer: { name: `E2E Buyer C ${RUN}`, phone: "+919999000203" }, shippingAddress: address, lines: [{ variantId: variantL.id, qty: 1, price: PRICE }], paymentMethod: "online", allowBackorder: true }), "order C");
   expect(orderC.paymentStatus !== "paid", orderC.paymentStatus);
   const co = ok(await call("POST", "/v1/payments/checkout", { kind: "order", ref: orderC.accessToken }, { as: null, tenant: null }), "checkout");
   expect(co.amount === orderC.total, `checkout ${co.amount} vs ${orderC.total}`);
@@ -310,7 +294,7 @@ await step("staff: plain staff (default role) keeps daily billing work", async (
   await signIn("staff", STAFF_PHONE);
   const b = ok(await call("POST", "/v1/invoices", { customer: { name: `E2E Staff sale ${RUN}` }, date: today, issue: true, lines: [{ description: "E2E item", qty: 2, rate: 20_000, discount: 1_000, gstRate: 5 }] }, { as: "staff" }), "staff bill");
   ok(await call("POST", `/v1/invoices/${b.id}/payments`, { amount: b.total, method: "upi", date: today }, { as: "staff" }), "staff payment");
-  ok(await call("POST", "/v1/invoices/customers", { name: `E2E Staff customer ${RUN}`, phone: "+919800000204" }, { as: "staff" }), "staff customer");
+  ok(await call("POST", "/v1/invoices/customers", { name: `E2E Staff customer ${RUN}`, phone: "+919999000204" }, { as: "staff" }), "staff customer");
   ok(await call("GET", "/v1/invoices/summary", undefined, { as: "staff" }), "staff summary");
   ok(await call("GET", "/v1/orders", undefined, { as: "staff" }), "staff orders view");
   fails(await call("POST", `/v1/invoices/${b.id}/cancel`, {}, { as: "staff" }), 403, "permission_denied", "staff cancel");
@@ -400,18 +384,18 @@ await step("export: customers.csv and products.xlsx", async () => {
 });
 
 // ------------------------------------------------------------------ features
-await step("features: anbu (EC) has no credit book", async () => {
+await step("features: e2e-store (EC) has no credit book", async () => {
   const f = ok(await call("GET", "/v1/features"), "features");
   expect(!f.enabled.includes("invoices.credit-book") && f.enabled.includes("orders") && f.enabled.includes("catalogue.variants"), `enabled ${f.enabled}`);
   const r = fails(await call("GET", "/v1/invoices/credit-book"), 403, "feature_disabled", "credit book");
   return `credit book → 403 ${r.error.details?.reason}`;
 });
-await step("features: kumar (starter) has no purchases", async () => {
-  const f = ok(await call("GET", "/v1/features", undefined, { tenant: "kumar" }), "features");
+await step("features: e2e-lite (starter) has no purchases", async () => {
+  const f = ok(await call("GET", "/v1/features", undefined, { tenant: LITE }), "features");
   expect(!f.enabled.includes("inventory.purchases") && f.enabled.includes("inventory"), `enabled ${f.enabled}`);
-  const r = fails(await call("GET", "/v1/inventory/purchases", undefined, { tenant: "kumar" }), 402, "plan_limit", "purchases");
-  const v = await call("POST", "/v1/catalog/products", { name: "x", options: [{ name: "Size", values: ["S"] }], variants: [{ price: 100, optionValues: { Size: "S" } }] }, { tenant: "kumar" });
-  expect(v.status === 403 || v.status === 402, `kumar variants → ${v.status}`);
+  const r = fails(await call("GET", "/v1/inventory/purchases", undefined, { tenant: LITE }), 402, "plan_limit", "purchases");
+  const v = await call("POST", "/v1/catalog/products", { name: "x", options: [{ name: "Size", values: ["S"] }], variants: [{ price: 100, optionValues: { Size: "S" } }] }, { tenant: LITE });
+  expect(v.status === 403 || v.status === 402, `${LITE} variants → ${v.status}`);
   return `purchases → 402 ${r.error.details?.reason}; variants → ${v.status}`;
 });
 

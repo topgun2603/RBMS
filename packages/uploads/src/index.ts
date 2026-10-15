@@ -49,3 +49,4 @@ export {
   withExtension,
 } from "./keys";
 export { uploadsRoutes } from "./routes";
+export { rasterizeSvg } from "./images";

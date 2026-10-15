@@ -16,3 +16,12 @@ export async function processImage(buf: Buffer, thumbWidth: number): Promise<{ w
     thumb,
   };
 }
+
+/**
+ * Renders a server-generated SVG (e.g. seed placeholders) to a raster image, so no SVG is ever stored or served:
+ * user uploads keep refusing SVG, and generated art goes through the same raster pipeline. Never pass user input here.
+ */
+export async function rasterizeSvg(svg: string, opts: { width: number; format?: "webp" | "png"; quality?: number }): Promise<Buffer> {
+  const img = sharp(Buffer.from(svg, "utf8"), { density: 144 }).resize({ width: opts.width });
+  return opts.format === "png" ? img.png().toBuffer() : img.webp({ quality: opts.quality ?? 88 }).toBuffer();
+}

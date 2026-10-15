@@ -7,6 +7,7 @@ import {
   CalendarClockIcon,
   HandCoinsIcon,
   LandmarkIcon,
+  PiggyBankIcon,
   ShoppingCartIcon,
   TrendingUpIcon,
   WalletCardsIcon,
@@ -17,9 +18,11 @@ import { DateRangePicker, initialRange, type DateRangeValue } from "../component
 import { DuesTab } from "../components/reports/dues-tab";
 import { GstTab } from "../components/reports/gst-tab";
 import { PaymentsTab } from "../components/reports/payments-tab";
+import { ProfitTab } from "../components/reports/profit-tab";
 import { PurchasesTab } from "../components/reports/purchases-tab";
 import { SalesTab } from "../components/reports/sales-tab";
 import { StockTab } from "../components/reports/stock-tab";
+import { EXPENSES_PERMISSION, useHasPermission } from "../lib/access";
 
 /** Each tab belongs to a feature; the page itself needs invoices.reports (see billingModule). */
 const TABS = [
@@ -29,6 +32,8 @@ const TABS = [
   { key: "dues", icon: WalletCardsIcon, feature: "invoices.reports" },
   { key: "stock", icon: WarehouseIcon, feature: "inventory" },
   { key: "purchases", icon: ShoppingCartIcon, feature: "inventory.purchases" },
+  // Needs expenses.manage too (the profit API is part of the expenses module).
+  { key: "profit", icon: PiggyBankIcon, feature: "expenses" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -46,7 +51,8 @@ function Reports() {
   const navigate = useModuleNavigate();
   const params = useQueryParams();
   const features = useFeatures();
-  const tabs = TABS.filter((x) => features.isEnabled(x.feature));
+  const canExpenses = useHasPermission(EXPENSES_PERMISSION);
+  const tabs = TABS.filter((x) => features.isEnabled(x.feature) && (x.key !== "profit" || canExpenses));
   const param = params.get("tab");
   const tab: TabKey = isTab(param) && tabs.some((x) => x.key === param) ? param : (tabs[0]?.key ?? "sales");
   const [range, setRange] = React.useState<DateRangeValue>(() => initialRange("thisMonth"));
@@ -116,6 +122,7 @@ function Reports() {
         <TabsContent value="dues">{tab === "dues" && <DuesTab asOf={to} />}</TabsContent>
         <TabsContent value="stock">{tab === "stock" && <StockTab />}</TabsContent>
         <TabsContent value="purchases">{tab === "purchases" && <PurchasesTab from={from} to={to} />}</TabsContent>
+        <TabsContent value="profit">{tab === "profit" && <ProfitTab from={from} to={to} />}</TabsContent>
       </Tabs>
     </Page>
   );

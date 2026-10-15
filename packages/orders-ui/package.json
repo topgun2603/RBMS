@@ -1,0 +1,36 @@
+{
+  "name": "@srirealtime/orders-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Store-admin UI module for orders, coupons and delivery. Mount with ordersModule().",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.1.0",
+    "@srirealtime/gst": "workspace:*",
+    "@srirealtime/i18n": "workspace:*",
+    "@srirealtime/ui": "workspace:*",
+    "@srirealtime/web": "workspace:*",
+    "@tanstack/react-query": "^5.83.0",
+    "lucide-react": "^0.525.0",
+    "react-hook-form": "^7.60.0",
+    "recharts": "^2.15.4",
+    "zod": "^3.25.0"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

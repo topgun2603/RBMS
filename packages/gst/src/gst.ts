@@ -18,6 +18,14 @@ export interface LineInput {
   gstRate: GstRate;
   /** The saved item this line came from (inventory keys stock by it). Carried into LineTotals. */
   itemId?: string;
+  /**
+   * Paise: the GST-inclusive amount actually charged for the whole line (after any discount), for tax-inclusive
+   * (MRP-style) prices. When set, the GST is taken out of it instead of added on top of the rounded exclusive rate,
+   * so the line total equals it to the paisa: `taxable = round(total × 100 / (100 + gstRate))`, GST = the rest, and
+   * `amount = taxable + discount` (which can differ from `qty × rate` by a paisa). Without it, `round(price / 1.05)`
+   * followed by `+ 5%` drifts (₹999 → ₹999.01).
+   */
+  inclusiveTotal?: number;
 }
 
 export interface LineTotals extends LineInput {
@@ -87,12 +95,33 @@ export function exclusiveOf(price: number, gstRate: number, taxInclusive: boolea
   return round((price * 10_000) / (10_000 + bp));
 }
 
+/** Taxable value inside a GST-inclusive amount: `round(total × 100 / (100 + gstRate))`. */
+export function taxableOfInclusive(total: number, gstRate: number): number {
+  const bp = Math.round(gstRate * 100);
+  return bp ? round((total * 10_000) / (10_000 + bp)) : total;
+}
+
 export function computeLine(line: LineInput, interState: boolean): LineTotals {
-  const amount = lineAmount(line.qty, line.rate);
   const discount = line.discount ?? 0;
-  const taxable = amount - discount;
   // Basis points avoid float error for 0.25%.
   const bp = Math.round(line.gstRate * 100);
+  if (line.inclusiveTotal !== undefined && line.inclusiveTotal !== null) {
+    // Backward: the charged amount is fixed; GST is what is inside it. CGST gets the odd paisa.
+    const total = line.inclusiveTotal;
+    const taxable = taxableOfInclusive(total, line.gstRate);
+    const tax = total - taxable;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+    if (interState) igst = tax;
+    else {
+      cgst = round(tax / 2);
+      sgst = tax - cgst;
+    }
+    return { ...line, discount, amount: taxable + discount, taxable, cgst, sgst, igst, total };
+  }
+  const amount = lineAmount(line.qty, line.rate);
+  const taxable = amount - discount;
   let cgst = 0;
   let sgst = 0;
   let igst = 0;

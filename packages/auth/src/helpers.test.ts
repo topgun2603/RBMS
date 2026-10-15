@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   detectTarget,
   maskTarget,
+  matchesTestTarget,
   normalizeEmail,
   normalizePhone,
   otpHash,
@@ -129,5 +130,34 @@ describe("otpRetryAfter", () => {
   });
   it("ignores codes older than an hour", () => {
     expect(otpRetryAfter({ ...base, recent: [ago(4000), ago(3700), ago(3650), ago(3610), ago(3601)] })).toBe(0);
+  });
+});
+
+describe("matchesTestTarget", () => {
+  const patterns = ["+9199990*", "e2e-*@example.com", "qa@shop.in"];
+  it.each([
+    ["+919999000101", true],
+    ["+919999012345", true],
+    ["+919999100000", false],
+    ["+919876543210", false],
+    ["e2e-owner@example.com", true],
+    ["E2E-Owner@Example.com", true],
+    ["e2e-owner@example.com.evil.in", false],
+    ["owner@example.com", false],
+    ["qa@shop.in", true],
+    ["qa@shop.in.x", false],
+  ])("%s → %s", (target, want) => {
+    expect(matchesTestTarget(target, patterns)).toBe(want);
+  });
+
+  it("never matches with no patterns, blanks or a bare *", () => {
+    expect(matchesTestTarget("+919999000101", [])).toBe(false);
+    expect(matchesTestTarget("+919999000101", ["", "  "])).toBe(false);
+    expect(matchesTestTarget("anyone@gmail.com", ["*"])).toBe(false);
+  });
+
+  it("treats regex characters in patterns literally", () => {
+    expect(matchesTestTarget("e2e-1@exampleXcom", ["e2e-*@example.com"])).toBe(false);
+    expect(matchesTestTarget("+919999000101", ["+9199990.*"])).toBe(false);
   });
 });

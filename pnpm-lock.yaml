@@ -208,6 +208,9 @@ importers:
       '@srirealtime/web':
         specifier: workspace:*
         version: link:../../packages/web
+      '@srirealtime/workspace-ui':
+        specifier: workspace:*
+        version: link:../../packages/workspace-ui
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.104.2(react@19.3.0)
@@ -251,12 +254,67 @@ importers:
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@srirealtime/orders-ui':
+        specifier: workspace:*
+        version: link:../../packages/orders-ui
+      '@srirealtime/site-ui':
+        specifier: workspace:*
+        version: link:../../packages/site-ui
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@srirealtime/web':
         specifier: workspace:*
         version: link:../../packages/web
+      '@srirealtime/workspace-ui':
+        specifier: workspace:*
+        version: link:../../packages/workspace-ui
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.3
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+
+  apps/store:
+    dependencies:
+      '@srirealtime/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@srirealtime/storefront-ui':
+        specifier: workspace:*
+        version: link:../../packages/storefront-ui
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.104.2(react@19.3.0)
@@ -826,6 +884,52 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/orders-ui:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.1.0
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.90.0(@types/react@19.3.0)(react@19.3.0)
+      recharts:
+        specifier: ^2.15.4
+        version: 2.15.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/payments:
     dependencies:
       '@srirealtime/core':
@@ -902,6 +1006,52 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/site-ui:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.1.0
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.90.0(@types/react@19.3.0)(react@19.3.0)
+      recharts:
+        specifier: ^2.15.4
+        version: 2.15.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/staff:
     dependencies:
       '@srirealtime/core':
@@ -942,6 +1092,61 @@ importers:
       fastify:
         specifier: ^5.3.0
         version: 5.12.7
+
+  packages/storefront-ui:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.1.0
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/cms':
+        specifier: workspace:*
+        version: link:../cms
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.90.0(@types/react@19.3.0)(react@19.3.0)
+      recharts:
+        specifier: ^2.15.4
+        version: 2.15.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/qrcode':
+        specifier: ^1.5.5
+        version: 1.5.6
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
 
   packages/tenancy:
     dependencies:
@@ -1063,6 +1268,52 @@ importers:
       next:
         specifier: ^15.5.0
         version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
+  packages/workspace-ui:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.1.0
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.90.0(@types/react@19.3.0)(react@19.3.0)
+      recharts:
+        specifier: ^2.15.4
+        version: 2.15.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
       react:
         specifier: ^19.1.0
         version: 19.3.0

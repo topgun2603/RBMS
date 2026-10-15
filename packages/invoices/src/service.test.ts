@@ -36,6 +36,11 @@ describe("validation", () => {
     expect(() => lineInputSchema.parse({ description: "x", qty: 1, rate: 100, gstRate: 7 })).toThrow(ZodError);
     expect(() => lineInputSchema.parse({ description: "x", qty: 1, rate: 10.5, gstRate: 5 })).toThrow(ZodError);
   });
+  it("accepts a tax-inclusive line total that matches the rate (orders), rejects one that doesn't", () => {
+    expect(lineInputSchema.parse({ description: "Saree", qty: 1, rate: 95143, gstRate: 5, inclusiveTotal: 99900 }).inclusiveTotal).toBe(99900);
+    expect(lineInputSchema.parse({ description: "Saree", qty: 3, rate: 95143, discount: 4752, gstRate: 5, inclusiveTotal: 3 * 99900 - 4990 })).toBeTruthy();
+    expect(() => lineInputSchema.parse({ description: "Saree", qty: 1, rate: 95143, gstRate: 5, inclusiveTotal: 199900 })).toThrow(ZodError);
+  });
   it("validates customers (GSTIN checksum, state code)", () => {
     const c = customerInputSchema.parse({ name: "Ravi", gstin: "33aaacr5055k1ze", stateCode: 33, email: "" });
     expect(c).toMatchObject({ gstin: "33AAACR5055K1ZE", stateCode: "33", email: null });

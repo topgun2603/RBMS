@@ -73,7 +73,8 @@ The contract above holds; these are the details the first implementation settled
 **Types** (`packages/web/src/app/types.ts`):
 
 ```ts
-interface Gated { feature?: string | readonly string[] /* all required */; roles?: readonly string[] /* any of */ }
+interface Gated { feature?: string | readonly string[] /* all required */; roles?: readonly string[] /* any of */;
+  permission?: string | readonly string[] /* any of; see "Permission gating" */; permissionExplicit?: boolean }
 interface NavSection extends Gated { id; title /* msg key */; items: NavItem[] }
 interface NavItem extends Gated { href /* relative, "" = module root */; label; icon?; mobile?: "tab" | "more";
   tabLabel? /* shorter label for the phone bar */; exact? /* default: true for the module root */ }
@@ -97,7 +98,7 @@ interface WebModule { id; basePath?; features?; messages; nav; routes; publicRou
   there (`ModuleDashboard`, its widgets only).
 - **Matching:** modules with the longest `basePath` first, routes in declaration order (put `invoices/new` before
   `invoices/:id`). Params via `useRouteParams()`.
-- **Gating:** role check first (`RoleGatePage`), then features: plan → "Not available on your plan", shop → "Turned off"
+- **Gating:** role check first (`RoleGatePage`), then permission (`PermissionGatePage`, see below), then features: plan → "Not available on your plan", shop → "Turned off"
   (+ "Open Features" for owners), app or the module's own restriction → not found; `dependency` resolves to the feature
   that is really off. Public routes whose feature is off are plain "not found" (visitors never see owner hints).
 - **Feature state** comes from `GET /v1/features` (sent without the bearer token, so expired sessions can't bounce
@@ -118,8 +119,47 @@ interface WebModule { id; basePath?; features?; messages; nav; routes; publicRou
   `packages/web/src` and every mounted UI module.
 - **`billingModule` extra option:** `nav?: "sections" | "single"`. Default "sections" (Sell / Stock / Insights) at "/",
   "single" (one "Billing" section next to the host's own sections) anywhere else.
-- Pure helpers for tests and other shells: `buildNavModel`, `matchRoute`, `featureChecker`, `grantAllows`
-  (`packages/web/src/app/model.ts`, `packages/web/src/lib/features.tsx`).
+- Pure helpers for tests and other shells: `buildNavModel`, `matchRoute`, `checkGate`, `visibleFor`, `featureChecker`,
+  `grantAllows`, `permissionMatches`, `permissionAllows` (`packages/web/src/app/model.ts`, `packages/web/src/lib/features.tsx`,
+  `packages/web/src/lib/permissions.ts`).
+- **Settings tabs** (`<SettingsNav />`): from `sm` up a horizontally scrolling tab bar (no scrollbar) that fades only the
+  side(s) with more tabs and scrolls the active tab into view; on phones a native `<select>` of the same pages.
+
+### Permission gating
+
+Every `Gated` thing (nav sections and items, routes, widgets, quick actions, settings pages) can declare
+`permission: "staff.manage"` or `permission: ["reports.view", "settings.manage"]`.
+
+- **Source:** `permissions` from `GET /auth/me` (the staff module resolves the member's roles; `[]` without a tenant).
+  `useSession()` exposes `permissions` and `can(req)`; `usePermission(req)` is the hook form.
+- **Who passes:** owners, admins and platform super-admins always (same as the API's `requirePermission`). Others need
+  a grant that matches. If `/auth/me` sent no `permissions` array at all (an API without the staff module), the check
+  fails open; the API's 403 is still the last word.
+- **Matching** is `@srirealtime/core`'s `permissionMatches`, mirrored in `packages/web/src/lib/permissions.ts` (the kit
+  doesn't depend on core): `*` is everything; `orders.*` covers `orders`, `orders.ship`, `orders.returns.approve`; a
+  middle `*` is one segment (`*.view` covers `reports.view`, not `reports.sales.view`).
+- **Arrays are any-of** (holding one key is enough). Need all? Nest the item or check in the page.
+- **`permissionExplicit: true`** counts only the key itself, `<module>.*` or `*` (not `*.view`), for API checks that do
+  the same: the audit log refuses the staff default's `*.view`.
+- **Order:** role → permission → feature. Hidden from nav/dashboard/actions/settings tabs when it fails; a route or
+  settings page opened directly renders **"No access"** (`PermissionGatePage`, `web.gate.permissionTitle/Body`, English +
+  Tamil) with a "Go home" button. A feature that is off still wins for people who hold the permission.
+- **No flash:** the signed-in area waits for `/auth/me` and `/v1/features` before rendering any screen, so "No access"
+  never shows while loading. Bare `/settings` (no `""` page) opens the first settings page the user may see.
+- Writes inside a readable page stay in-page (`can()` / the module's own `usePermissions`), e.g. order actions.
+
+| Module | Where | Permission |
+|---|---|---|
+| workspace-ui | Settings → Team & roles | `staff.manage` |
+| workspace-ui | Settings → Activity log | `audit.view` (explicit) |
+| workspace-ui | Settings → Import & export | `importexport.run` |
+| billing-ui | Expenses nav + route | `expenses.manage` |
+| orders-ui | `coupons/new` route (list and editor stay readable; save/delete in-page) | `coupons.manage` |
+| orders-ui | Settings → Delivery | `settings.manage` |
+| site-ui | Home page, Pages, Blog, Menus (nav + every editor route) | `cms.manage` |
+| site-ui | Reviews (nav, route, dashboard widget) | `reviews.manage` |
+| site-ui | Store analytics (nav, route, visitors widget) | `reports.view` |
+| commerce-ui, orders-ui orders | — (writes checked in-page) | — |
 
 ### Billing features in the UI
 

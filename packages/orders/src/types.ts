@@ -53,7 +53,7 @@ export interface OrderLine {
   taxInclusive: boolean;
   /** Paise, before GST (the coupon share of this line, converted to the exclusive basis). */
   discount: number;
-  /** qty × rate. */
+  /** qty × rate (tax-inclusive lines: taxable + discount, the GST taken out of the charged total; within a paisa of qty × rate). */
   amount: number;
   taxable: number;
   cgst: number;

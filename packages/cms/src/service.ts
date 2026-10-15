@@ -194,10 +194,10 @@ export class CmsService {
     return this.getHome(tenantId);
   }
 
-  /** Staff preview: the draft resolved like the storefront would show it. */
+  /** Staff preview: the draft resolved like the storefront would show it, hidden sections included (flagged). */
   async previewHome(tenantId: string): Promise<{ sections: ResolvedHomeSection[] }> {
     const { draft } = await this.getHome(tenantId);
-    const sections = await resolveSections(tenantId, draft?.sections ?? [], { catalog: this.deps.catalog, log: this.log });
+    const sections = await resolveSections(tenantId, draft?.sections ?? [], { catalog: this.deps.catalog, log: this.log }, { includeHidden: true });
     return { sections };
   }
 

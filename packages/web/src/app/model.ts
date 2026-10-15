@@ -2,6 +2,8 @@
  * Pure routing / navigation model of a WebApp (no React): path helpers, route matching and the shell's nav built from
  * every module, given a visibility predicate (features + roles). Unit-tested in model.test.ts.
  */
+import type { FeatureCheck } from "../lib/features";
+import { permissionAllows, roleAllows, type PermissionHolder } from "../lib/permissions";
 import type { Gated, IconType, MountedModule, RouteDef, WebApp } from "./types";
 
 /** "/" + "invoices/1" → "/invoices/1"; "/billing" + "" → "/billing"; "/billing" + "?x=1" → "/billing?x=1". */
@@ -66,8 +68,38 @@ export function matchRoute(app: Pick<WebApp, "modules">, path: string, pick: (m:
   return null;
 }
 
-/** `(gated, module) => boolean`: feature + role check (see useVisible). */
+/** `(gated, module) => boolean`: feature + role + permission check (see useVisible). */
 export type VisibleFn = (g: Gated, module?: Pick<MountedModule, "features">) => boolean;
+
+/** What the signed-in user brings to a gate check. */
+export interface GateContext {
+  /** Effective shop roles (a super-admin counts as owner). */
+  roles: readonly string[];
+  /** Permission holder (see permissionAllows). */
+  access: PermissionHolder;
+  /** Feature check (server + a module's own restriction), e.g. `featureChecker(data).check`. */
+  checkFeature: (req: Gated["feature"], allow?: readonly string[]) => FeatureCheck;
+}
+
+/** Outcome of a gate: open, or which page to show instead (role → permission → feature, first failure wins). */
+export type GateResult =
+  | { ok: true }
+  | { ok: false; kind: "role" }
+  | { ok: false; kind: "permission" }
+  | { ok: false; kind: "feature"; check: Extract<FeatureCheck, { ok: false }> };
+
+export function checkGate(g: Gated, module: Pick<MountedModule, "features"> | undefined, ctx: GateContext): GateResult {
+  if (!roleAllows(ctx.roles, g.roles)) return { ok: false, kind: "role" };
+  if (!permissionAllows(ctx.access, g.permission, { explicit: g.permissionExplicit })) return { ok: false, kind: "permission" };
+  const check = ctx.checkFeature(g.feature, module?.features);
+  return check.ok ? { ok: true } : { ok: false, kind: "feature", check };
+}
+
+/** VisibleFn over a GateContext: visible when the gate is open. */
+export const visibleFor =
+  (ctx: GateContext): VisibleFn =>
+  (g, module) =>
+    checkGate(g, module, ctx).ok;
 
 export interface NavModelItem {
   href: string;

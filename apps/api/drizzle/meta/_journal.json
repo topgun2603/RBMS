@@ -43,6 +43,13 @@
       "when": 1792035760370,
       "tag": "0005_ambiguous_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792060883716,
+      "tag": "0006_big_loners",
+      "breakpoints": true
     }
   ]
 }

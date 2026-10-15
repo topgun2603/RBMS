@@ -8,6 +8,7 @@ import {
   parseUtm,
   RateLimiter,
   referrerHost,
+  rollupDates,
   toEventRows,
 } from "./ingest";
 import { assembleOverview, conversionRate, withProductNames, type DatedMetricRow } from "./overview";
@@ -233,6 +234,57 @@ describe("rollup aggregation", () => {
     expect(aggregateDay([])).toEqual([]);
     expect(sourceOf({ utmSource: "wa", referrerHost: "google.com" })).toBe("wa");
     expect(sourceOf({ utmSource: null, referrerHost: null })).toBe("direct");
+  });
+
+  it("attributes a session to its page view's source when a product view shares (or precedes) its timestamp", () => {
+    // One storefront beacon: landing on a product page from Instagram — page view and product view in the same ms.
+    const landing = [
+      ev({ type: "product_view", sessionId: "s1", anonymousId: "A", productId: P1 }, 0),
+      ev({ type: "page_view", sessionId: "s1", anonymousId: "A", referrerHost: "instagram.com" }, 0),
+      ev({ type: "add_to_cart", sessionId: "s1", anonymousId: "A", productId: P1, value: 100 }, 0),
+    ];
+    for (const order of [landing, [...landing].reverse()]) {
+      const rows = aggregateDay(order);
+      expect(metric(rows, METRICS.sourceSessions, "instagram.com")).toBe(1);
+      expect(metric(rows, METRICS.sourceSessions, "direct")).toBeUndefined();
+      expect(metric(rows, METRICS.funnelSessions, "visit")).toBe(1);
+      expect(metric(rows, METRICS.funnelSessions, "product_view")).toBe(1);
+      expect(metric(rows, METRICS.funnelSessions, "add_to_cart")).toBe(1);
+      expect(metric(rows, METRICS.deviceSessions, "mobile")).toBe(1);
+    }
+    // A product view that arrived a moment earlier (separate beacon) doesn't make the session "direct" either.
+    const early = aggregateDay([
+      ev({ type: "product_view", sessionId: "s2", anonymousId: "B", productId: P1, device: "tablet" }, 0),
+      ev({ type: "page_view", sessionId: "s2", anonymousId: "B", utmSource: "whatsapp", device: "tablet" }, 1),
+      ev({ type: "page_view", sessionId: "s2", anonymousId: "B", referrerHost: "google.com", device: "tablet" }, 2),
+    ]);
+    expect(early.filter((r) => r.metric === METRICS.sourceSessions)).toEqual([{ metric: METRICS.sourceSessions, dimension: "whatsapp", value: 1 }]);
+    expect(metric(early, METRICS.deviceSessions, "tablet")).toBe(1);
+  });
+
+  it("writes a source, device and every funnel step row for each day with sessions", () => {
+    const rows = aggregateDay([ev({ type: "purchase", sessionId: "s1", anonymousId: "A", value: 500 })]);
+    expect(rows.filter((r) => r.metric === METRICS.funnelSessions).map((r) => [r.dimension, r.value])).toEqual([
+      ["visit", 1],
+      ["product_view", 0],
+      ["add_to_cart", 0],
+      ["begin_checkout", 0],
+      ["purchase", 1],
+    ]);
+    expect(metric(rows, METRICS.sourceSessions, "direct")).toBe(1);
+    expect(metric(rows, METRICS.deviceSessions, "mobile")).toBe(1);  });
+});
+
+describe("rollup window", () => {
+  it("recomputes yesterday and today by default, more days for a backfill, capped by the retention", () => {
+    expect(rollupDates("2026-10-15", 2)).toEqual(["2026-10-14", "2026-10-15"]);
+    expect(rollupDates("2026-10-01", 3)).toEqual(["2026-09-29", "2026-09-30", "2026-10-01"]);
+    expect(rollupDates("2026-10-15", 0)).toEqual(["2026-10-15"]);
+    expect(rollupDates("2026-10-15", Number.NaN)).toEqual(["2026-10-14", "2026-10-15"]);
+    const all = rollupDates("2026-10-15", 1000, 90);
+    expect(all).toHaveLength(91);
+    expect(all[0]).toBe("2026-07-17");
+    expect(all.at(-1)).toBe("2026-10-15");
   });
 });
 

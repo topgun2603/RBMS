@@ -89,6 +89,8 @@ const en: Messages = {
   "web.gate.openFeatures": "Open Features",
   "web.gate.roleTitle": "No access",
   "web.gate.roleBody": "Only the shop owner can open this page.",
+  "web.gate.permissionTitle": "No access",
+  "web.gate.permissionBody": "Your role doesn't include this page. Ask the shop owner for access.",
 
   "web.dashboard.greeting": "Hello!",
   "web.dashboard.greetingName": "Hello, {name}!",
@@ -238,6 +240,8 @@ const ta: Messages = {
   "web.gate.openFeatures": "வசதிகளைத் திற",
   "web.gate.roleTitle": "அணுகல் இல்லை",
   "web.gate.roleBody": "கடை உரிமையாளர் மட்டுமே இந்தப் பக்கத்தைத் திறக்க முடியும்.",
+  "web.gate.permissionTitle": "அணுகல் இல்லை",
+  "web.gate.permissionBody": "உங்கள் பணிப்பொறுப்பில் இந்தப் பக்கம் இல்லை. அணுகலுக்குக் கடை உரிமையாளரிடம் கேளுங்கள்.",
 
   "web.dashboard.greeting": "வணக்கம்!",
   "web.dashboard.greetingName": "வணக்கம், {name}!",

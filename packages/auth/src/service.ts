@@ -13,7 +13,7 @@ import {
 import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { detectTarget, maskTarget, normalizeEmail, otpHash, otpRetryAfter, type Target } from "./helpers";
+import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, otpHash, otpRetryAfter, type Target } from "./helpers";
 import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 import { authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
 
@@ -32,6 +32,12 @@ export interface AuthConfig {
   googleClientIds?: string[];
   /** Session cookie name. Default "sr_session". */
   cookieName?: string;
+  /**
+   * Development/test only: a fixed code for test identities. Matching targets (exact values or `*` patterns such as
+   * "+9199990*" or "e2e-*@example.com") skip the resend/hourly limits, get no message sent and accept `code`.
+   * The host must never pass this in production (apps/api only wires it when NODE_ENV !== "production").
+   */
+  testOtp?: { code: string; targets: string[] };
 }
 
 export interface AuthDeps {
@@ -128,7 +134,8 @@ const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export class AuthService {
   private readonly db: Db;
-  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds">> & { googleClientIds: string[] };
+  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp">> & { googleClientIds: string[] };
+  private readonly testOtp: { code: string; targets: string[] } | null;
   private readonly verifyGoogle: GoogleTokenVerifier;
 
   constructor(private readonly deps: AuthDeps) {
@@ -144,6 +151,9 @@ export class AuthService {
       googleClientIds: c.googleClientIds ?? [],
       cookieName: c.cookieName ?? "sr_session",
     };
+    const t = c.testOtp;
+    const targets = (t?.targets ?? []).map((s) => s.trim()).filter(Boolean);
+    this.testOtp = t && /^\d{4,10}$/.test(t.code) && targets.length ? { code: t.code, targets } : null;
     this.verifyGoogle = deps.verifyGoogleToken ?? createGoogleVerifier();
   }
 
@@ -168,6 +178,17 @@ export class AuthService {
     const channel: OtpChannel = input.channel ?? (target.kind === "phone" ? "sms" : "email");
     if (target.kind === "phone" && channel === "email") throw badRequest("Use sms or whatsapp for a phone number");
     if (target.kind === "email" && channel !== "email") throw badRequest("Use email for an email address");
+
+    if (this.isTestTarget(target.value)) {
+      // Test identity (dev only): nothing is sent or stored and no limits apply; verify accepts the fixed code.
+      this.deps.log?.info({ target: maskTarget(target.value), channel }, "auth: test OTP target, no code sent");
+      return {
+        target: maskTarget(target.value),
+        channel,
+        expiresInSeconds: this.cfg.otpTtlMinutes * 60,
+        resendInSeconds: 0,
+      };
+    }
 
     const now = new Date();
     const recent = await this.db
@@ -233,6 +254,11 @@ export class AuthService {
     name?: string | null;
   }): Promise<SignInResult> {
     const target = this.parseTarget(input.target);
+    if (this.isTestTarget(target.value)) {
+      const code = String(input.code ?? "").replace(/\s/g, "");
+      if (!safeEqual(code, this.testOtp!.code)) throw badRequest("Incorrect code");
+      return this.signInTarget(target.value, input);
+    }
     const now = new Date();
     const [otp] = await this.db
       .select()
@@ -271,7 +297,19 @@ export class AuthService {
       .returning({ id: authOtps.id });
     if (consumed.length === 0) throw badRequest("The code has already been used");
 
-    const { user, isNewUser } = await this.findOrCreateByTarget(target.value, { name: input.name ?? null });
+    return this.signInTarget(target.value, input);
+  }
+
+  /** True when test OTPs are configured and `target` (normalised) is one of the test identities. */
+  isTestTarget(target: string): boolean {
+    return !!this.testOtp && matchesTestTarget(target, this.testOtp.targets);
+  }
+
+  private async signInTarget(
+    target: string,
+    input: { name?: string | null; ip?: string | null; userAgent?: string | null },
+  ): Promise<SignInResult> {
+    const { user, isNewUser } = await this.findOrCreateByTarget(target, { name: input.name ?? null });
     this.assertCanSignIn(user);
     if (!isNewUser && !user.name && input.name?.trim()) {
       await this.db.update(users).set({ name: input.name.trim() }).where(eq(users.id, user.id));

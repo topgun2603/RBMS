@@ -18,18 +18,22 @@ export interface ResolvedHeroSlide extends Omit<HeroSlide, "imageUrl"> {
   /** Null only in the default home (no image chosen yet): render a branded background. */
   imageUrl: string | null;
 }
-export interface ResolvedHeroSection {
+/** Only in the staff preview (`includeHidden`): the section is hidden on the storefront. */
+interface HiddenFlag {
+  hidden?: boolean;
+}
+export interface ResolvedHeroSection extends HiddenFlag {
   type: "hero";
   id?: string;
   slides: ResolvedHeroSlide[];
 }
-export interface ResolvedCategoriesSection {
+export interface ResolvedCategoriesSection extends HiddenFlag {
   type: "categories";
   id?: string;
   title: string;
   categories: CatalogCategoryRef[];
 }
-export interface ResolvedCollectionSection {
+export interface ResolvedCollectionSection extends HiddenFlag {
   type: "collection";
   id?: string;
   title: string;
@@ -37,7 +41,7 @@ export interface ResolvedCollectionSection {
   collection: { name: string; slug: string };
   products: PublicProductSummary[];
 }
-export interface ResolvedProductsSection {
+export interface ResolvedProductsSection extends HiddenFlag {
   type: "products";
   id?: string;
   title: string;
@@ -88,13 +92,14 @@ export const ALL_CATEGORIES_LIMIT = 24;
 /** One section with its catalogue data; null when that data is gone (the section is dropped). */
 export async function resolveSection(tenantId: string, section: HomeSection, deps: ResolveDeps): Promise<ResolvedHomeSection | null> {
   const { catalog } = deps;
+  const hid = section.hidden ? { hidden: true } : {};
   switch (section.type) {
     case "categories": {
       const rows = section.categoryIds?.length
         ? inOrder(section.categoryIds, await catalog.categories(tenantId, section.categoryIds))
         : (await catalog.categories(tenantId)).slice(0, ALL_CATEGORIES_LIMIT);
       if (!rows.length) return null;
-      return { type: "categories", ...(section.id ? { id: section.id } : {}), title: section.title, categories: rows };
+      return { type: "categories", ...(section.id ? { id: section.id } : {}), ...hid, title: section.title, categories: rows };
     }
     case "collection": {
       const c = await catalog.collection(tenantId, section.collectionSlug, section.limit);
@@ -102,6 +107,7 @@ export async function resolveSection(tenantId: string, section: HomeSection, dep
       return {
         type: "collection",
         ...(section.id ? { id: section.id } : {}),
+        ...hid,
         title: section.title || c.name,
         layout: section.layout,
         collection: { name: c.name, slug: c.slug },
@@ -111,24 +117,33 @@ export async function resolveSection(tenantId: string, section: HomeSection, dep
     case "products": {
       const rows = inOrder(section.productIds, await catalog.productsByIds(tenantId, section.productIds));
       if (!rows.length) return null;
-      return { type: "products", ...(section.id ? { id: section.id } : {}), title: section.title, products: rows };
+      return { type: "products", ...(section.id ? { id: section.id } : {}), ...hid, title: section.title, products: rows };
     }
-    default:
-      return section;
+    default: {
+      const { hidden: _h, ...rest } = section;
+      return (section.hidden ? { ...rest, hidden: true } : rest) as Static;
+    }
   }
 }
 
 /**
  * Resolves stored sections for the storefront: re-validates each (stored JSON may predate a schema change), loads
  * catalogue data in parallel and drops sections whose data is gone or whose lookup failed — silently for the shopper,
- * with a warning in the log for lookup errors.
+ * with a warning in the log for lookup errors. Hidden sections are skipped, except in the staff preview
+ * (`includeHidden`), where they come back flagged `hidden: true` so the editor can show them dimmed.
  */
-export async function resolveSections(tenantId: string, sections: readonly unknown[], deps: ResolveDeps): Promise<ResolvedHomeSection[]> {
+export async function resolveSections(
+  tenantId: string,
+  sections: readonly unknown[],
+  deps: ResolveDeps,
+  opts: { includeHidden?: boolean } = {},
+): Promise<ResolvedHomeSection[]> {
   const log = deps.log ?? noopLogger;
   const out = await Promise.all(
     sections.map(async (raw) => {
       const parsed = homeSectionSchema.safeParse(raw);
       if (!parsed.success) return null;
+      if (parsed.data.hidden && !opts.includeHidden) return null;
       try {
         return await resolveSection(tenantId, parsed.data, deps);
       } catch (err) {

@@ -7,13 +7,16 @@ import {
   ArrowLeftIcon,
   BanIcon,
   CheckCircle2Icon,
+  FileDownIcon,
   GlobeIcon,
+  Loader2Icon,
   IndianRupeeIcon,
   MessagesSquareIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
   PrinterIcon,
+  ReceiptIcon,
   SendIcon,
   Share2Icon,
   Trash2Icon,
@@ -53,6 +56,7 @@ import { StatusBadge } from "../components/status-badge";
 import { money } from "../lib/format";
 import { useDeleteInvoice, useInvoice, useInvoiceAction } from "../lib/queries";
 import { invoiceWarnings } from "../lib/queries-v2";
+import { PDF_PATHS, usePdf } from "../lib/pdf";
 import type { Invoice } from "../lib/types";
 
 export default function InvoiceDetailPage() {
@@ -141,6 +145,11 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   const del = useDeleteInvoice();
   const flags = useArrivalFlags();
   const whatsapp = useFeature("invoices.whatsapp");
+  const documents = useFeature("documents");
+  const pdf = usePdf();
+  const pdfName = `${(inv.number ?? t("billing.status.draft")).replace(/[/\\]/g, "-")}.pdf`;
+  const downloadPdf = () => void pdf.run("a4", PDF_PATHS.invoice(inv.id), { mode: "download", fallbackName: pdfName });
+  const printReceipt = () => void pdf.run("thermal", PDF_PATHS.invoiceThermal(inv.id), { mode: "open", fallbackName: pdfName });
   const [dialog, setDialog] = React.useState<DialogKind>(null);
   const [unpay, setUnpay] = React.useState<string | null>(null);
   const [celebrate, setCelebrate] = React.useState(flags.issued);
@@ -268,6 +277,20 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
             <PrinterIcon /> <span className="hidden sm:inline">{t("billing.detail.print")}</span>
             <span className="sr-only sm:hidden">{t("billing.detail.print")}</span>
           </Button>
+          {documents && (
+            <>
+              <Button variant="outline" size="lg" className="h-11" onClick={downloadPdf} disabled={!!pdf.busy} aria-busy={pdf.busy === "a4"}>
+                {pdf.busy === "a4" ? <Loader2Icon className="animate-spin" /> : <FileDownIcon />}
+                <span className="hidden sm:inline">{t("billing.pdf.download")}</span>
+                <span className="sr-only sm:hidden">{t("billing.pdf.download")}</span>
+              </Button>
+              <Button variant="outline" size="lg" className="h-11" onClick={printReceipt} disabled={!!pdf.busy} aria-busy={pdf.busy === "thermal"}>
+                {pdf.busy === "thermal" ? <Loader2Icon className="animate-spin" /> : <ReceiptIcon />}
+                <span className="hidden sm:inline">{t("billing.pdf.receipt")}</span>
+                <span className="sr-only sm:hidden">{t("billing.pdf.receipt")}</span>
+              </Button>
+            </>
+          )}
           {(draft || !cancelled) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

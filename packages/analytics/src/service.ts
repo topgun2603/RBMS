@@ -9,6 +9,7 @@ import {
   istDate,
   istDayStart,
   RateLimiter,
+  rollupDates,
   toEventRows,
 } from "./ingest";
 import { assembleOverview, withProductNames, type DatedMetricRow, type Overview } from "./overview";
@@ -127,7 +128,8 @@ export class AnalyticsService {
         device: analyticsEvents.device,
       })
       .from(analyticsEvents)
-      .where(and(eq(analyticsEvents.tenantId, tenantId), gte(analyticsEvents.at, start), lt(analyticsEvents.at, end)));
+      .where(and(eq(analyticsEvents.tenantId, tenantId), gte(analyticsEvents.at, start), lt(analyticsEvents.at, end)))
+      .orderBy(asc(analyticsEvents.at));
   }
 
   /** Recomputes one tenant's rollup for one IST date (replaces that day's rows). */
@@ -150,12 +152,13 @@ export class AnalyticsService {
 
   /**
    * Job `analytics.rollup` (hourly): flushes the buffer, then recomputes today and yesterday (IST) for every tenant with
-   * events on that day. Idempotent.
+   * events on that day. Idempotent. `days` widens the window for a backfill (e.g. 90 = every day raw events are kept;
+   * at most the retention), recomputing each day from the raw events.
    */
-  async rollup(opts: { now?: Date; tenantId?: string } = {}): Promise<{ dates: string[]; tenants: number; rows: number }> {
+  async rollup(opts: { now?: Date; tenantId?: string; days?: number } = {}): Promise<{ dates: string[]; tenants: number; rows: number }> {
     await this.flush();
     const today = istDate(opts.now ?? this.now());
-    const dates = [addDaysISO(today, -1), today];
+    const dates = rollupDates(today, opts.days ?? 2, this.deps.config.retentionDays ?? 90);
     const tenants = new Set<string>();
     let rowCount = 0;
     for (const date of dates) {

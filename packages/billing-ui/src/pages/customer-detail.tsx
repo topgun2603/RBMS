@@ -6,6 +6,7 @@ import {
   BellRingIcon,
   DownloadIcon,
   EllipsisVerticalIcon,
+  FileDownIcon,
   FileTextIcon,
   Loader2Icon,
   MailIcon,
@@ -51,6 +52,7 @@ import { ShareStatementDialog } from "../components/credit-book/share-statement-
 import { money, stateLabel, whatsappNumber } from "../lib/format";
 import { useCustomer, useDeleteCustomer, useInvoiceList } from "../lib/queries";
 import { downloadCsv, REPORT_PATHS, useLedger } from "../lib/queries-v2";
+import { PDF_PATHS, usePdf } from "../lib/pdf";
 import type { Customer } from "../lib/types";
 
 export default function CustomerDetailPage() {
@@ -318,6 +320,8 @@ function LedgerCard({ customer: c }: { customer: Customer }) {
   const [range, setRange] = React.useState<DateRangeValue>(() => initialRange("thisFY"));
   const ledger = useLedger(c.id, range.from, range.to);
   const [downloading, setDownloading] = React.useState(false);
+  const documents = useFeature("documents");
+  const pdf = usePdf();
   const data = normalizeLedger(ledger.data);
   const aria = t("billing.creditBook.ledger.aria", { name: c.name });
 
@@ -343,11 +347,33 @@ function LedgerCard({ customer: c }: { customer: Customer }) {
             </span>
             {t("billing.creditBook.ledger.title")}
           </CardTitle>
-          <Button variant="outline" size="lg" className="h-10" onClick={() => void download()} disabled={downloading} data-print-hide>
-            {downloading ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
-            <span className="hidden sm:inline">{downloading ? t("billing.common.downloading") : t("billing.common.download")}</span>
-            <span className="sm:hidden">CSV</span>
-          </Button>
+          <div className="flex items-center gap-2" data-print-hide>
+            {documents && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-10"
+                disabled={!!pdf.busy}
+                aria-busy={!!pdf.busy}
+                onClick={() =>
+                  void pdf.run("statement", PDF_PATHS.statement(c.id), {
+                    mode: "download",
+                    query: { from: range.from, to: range.to },
+                    fallbackName: `${t("billing.pdf.statementName")}-${range.to}.pdf`,
+                  })
+                }
+              >
+                {pdf.busy ? <Loader2Icon className="animate-spin" /> : <FileDownIcon />}
+                <span className="hidden sm:inline">{t("billing.pdf.statement")}</span>
+                <span className="sm:hidden">PDF</span>
+              </Button>
+            )}
+            <Button variant="outline" size="lg" className="h-10" onClick={() => void download()} disabled={downloading}>
+              {downloading ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+              <span className="hidden sm:inline">{downloading ? t("billing.common.downloading") : t("billing.common.download")}</span>
+              <span className="sm:hidden">CSV</span>
+            </Button>
+          </div>
         </div>
         <DateRangePicker value={range} onChange={setRange} />
       </CardHeader>

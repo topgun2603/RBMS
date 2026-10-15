@@ -128,6 +128,9 @@ API (staff, feature `coupons`): CRUD, `GET /:id/redemptions`; public `POST /publ
   role keys (`role:cashier`). Existing `requireRole(..., "staff")` keeps working because every member with access has a base level.
 - `staff` package: `tenant_roles` (tenant, key (`cashier`), name, description, permissions text[], builtin bool). Built-in
   role templates seeded lazily per tenant: Manager (all except settings/staff), Cashier (bills create, payments receive, customers create, catalogue read), Accountant (reports, credit book, purchases, expenses), Delivery (orders read + status shipped/delivered).
+  Built-in rows keep a `template_hash` (hash of the template permissions they were seeded/synced with): on lazy seeding,
+  built-ins whose permissions still match it (or, for rows from before the column, a previous template in
+  `PREVIOUS_BUILTIN_PERMISSIONS`) move to the current template; owner-edited built-ins are left alone.
 - Resolution: owner/admin/super-admin → `["*"]`; staff → union of their custom roles' permissions; staff with no custom role → the tenant's
   "staff default" set (all `*.view` + create bills) so today's staff keep working.
 - Host preHandler (after features): route `config.permission` → `requirePermission`. Annotating existing billing routes happens in the

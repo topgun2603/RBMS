@@ -105,6 +105,28 @@ Seed (apps/api `pnpm seed`):
   `inventory`, `payments`; pro/enterprise = `invoices.*`, `inventory.*`, `payments.*`.
 - Demo shops: `raja` → pro, `kumar` → starter.
 
+End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent; development databases only):
+- `e2e-bill` (BL, pro), `e2e-store` (EC, pro: the demo store catalogue, WELCOME10, delivery zones, published home, about
+  page, menus, store settings) and `e2e-lite` (BL, starter, for plan checks). The e2e scripts in `apps/api/test/e2e` only
+  write to these shops; `test:e2e:all` seeds them and runs `batch1.mjs`, `batch2.mjs` and `billing.mjs` in sequence, then
+  the storefront browser test when the dev servers are up.
+- Storefront browser test: `pnpm --filter @srirealtime/store test:e2e` (`apps/store/test/e2e.cjs`). Needs the api (:4000,
+  test OTP on) and store (:3003) dev servers and Chrome (`CHROME_PATH`, default the Windows install path; puppeteer-core
+  comes with `@srirealtime/documents`). It buys on `e2e-store.localhost:3003` as a fresh `+91 99990 xxxxx` shopper named
+  "E2E Shopper …" (online + COD), checks the order lines add up to the charged prices, and screenshots each step into
+  `SHOTS_DIR` (default `<tmp>/srikit-store-e2e`). Exits 2 (skipped) when a server is down; `test:e2e:all` reports that
+  as SKIP. Its analytics anonymous id ends in `-e2e`.
+- Owner `e2e-owner@example.com`. The e2e seed also makes this account a **super-admin** (needed for the custom-domain
+  "force verify" step on `e2e-lite`), so never run seed:e2e against a shared or production database.
+- Test identities sign in with a fixed dev OTP: API env `TEST_OTP_CODE` (e.g. 123456) and `TEST_OTP_TARGETS`
+  (`+9199990*,e2e-*@example.com`). Matching targets get no message, skip the resend/hourly limits and accept the code;
+  the API ignores both variables when `NODE_ENV=production` and logs a line at startup either way. Shoppers, cashiers and
+  bill customers in the scripts use +91 9999 00xxxx.
+- `pnpm --filter @srirealtime/api cleanup:e2e-data` (`-- --dry-run` to only count) removes what earlier e2e runs left in
+  the demo shops (raja, kumar, anbu), found by the scripts' markers ("E2E " names, test phones, the billing smoke's fixed
+  customers/supplier, "Test Shopper" storefront accounts of the old browser test with their orders, carts, addresses,
+  reviews and review votes); issued bills and orders are cancelled, not deleted. See `apps/api/src/e2e-cleanup.ts`.
+
 ## Front end
 
 `@srirealtime/web` gives every app `useFeatures()` / `useFeature(key)` / `<Feature when="invoices.credit-book">` backed by

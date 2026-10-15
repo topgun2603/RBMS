@@ -6,7 +6,11 @@ import { createStaff, permissionPreHandler } from "./index";
 import { assertCanManage, validatePermissions } from "./service";
 import {
   BUILTIN_ROLES,
+  BUILTIN_TEMPLATE_HASHES,
+  builtinRoleSyncs,
   DEFAULT_ROLE_KEY,
+  permissionsHash,
+  PREVIOUS_BUILTIN_PERMISSIONS,
   groupPermissions,
   membershipRoles,
   resolvePermissions,
@@ -208,6 +212,7 @@ describe("StaffService.permissionsFor", () => {
   it("owner/admin/member need no query; staff are cached per tenant+roles", async () => {
     const { db, where } = stubDb([{ key: "cashier", permissions: ["invoices.create", "payments.receive"] }]);
     const { resolver, service } = createStaff(deps(db));
+    const seed = vi.spyOn(service, "ensureSeeded").mockResolvedValue();
     expect(await resolver.permissionsFor(tenant.id, ["owner"])).toEqual(["*"]);
     expect(await resolver.permissionsFor(tenant.id, ["member"])).toEqual([]);
     expect(where).not.toHaveBeenCalled();
@@ -221,6 +226,8 @@ describe("StaffService.permissionsFor", () => {
     service.invalidate(tenant.id);
     await resolver.permissionsFor(tenant.id, ["staff", "role:cashier"]);
     expect(where).toHaveBeenCalledTimes(2);
+    // Built-ins are synced before the tenant's roles are read.
+    expect(seed).toHaveBeenCalledWith(tenant.id);
   });
 
   it("declares feature `staff` and permission `staff.manage`", () => {
@@ -265,7 +272,7 @@ describe("staff routes (stubbed ports)", () => {
     const staff = createStaff({ db, registry: () => STAFF_PERMISSIONS, memberships, users, quota, audit });
     // Role lookups go to the database; stub them with the templates.
     vi.spyOn(staff.service, "listRoles").mockImplementation(async () =>
-      BUILTIN_ROLES.map((r) => ({ ...r, id: r.key, tenantId: tenant.id, builtin: true, createdAt: new Date(), updatedAt: new Date() })),
+      BUILTIN_ROLES.map((r) => ({ ...r, id: r.key, tenantId: tenant.id, builtin: true, templateHash: null, createdAt: new Date(), updatedAt: new Date() })),
     );
     const app = Fastify();
     app.decorateRequest("ctx", null as never);
@@ -328,5 +335,79 @@ describe("staff routes (stubbed ports)", () => {
     const { app } = build(user(["owner"]));
     const r = await app.inject({ method: "GET", url: "/v1/staff/permissions" });
     expect(r.json().items).toEqual([{ module: "staff", permissions: STAFF_PERMISSIONS }]);
+  });
+});
+
+describe("built-in role template sync", () => {
+  const manager = BUILTIN_ROLES.find((r) => r.key === "manager")!;
+  const oldManager = PREVIOUS_BUILTIN_PERMISSIONS.manager![0]!;
+  const row = (key: string, permissions: readonly string[], templateHash: string | null, builtin = true) => ({ key, permissions, templateHash, builtin });
+
+  it("the previous manager template lacked the store permissions the current one has", () => {
+    expect(oldManager).not.toContain("cms.*");
+    expect(manager.permissions).toEqual(expect.arrayContaining(["cms.*", "reviews.*"]));
+    expect(permissionsHash(oldManager)).not.toBe(BUILTIN_TEMPLATE_HASHES.get("manager"));
+  });
+
+  it("permissionsHash ignores order and duplicates", () => {
+    expect(permissionsHash(["b.view", "a.view", "a.view"])).toBe(permissionsHash(["a.view", "b.view"]));
+    expect(permissionsHash(["a.view"])).not.toBe(permissionsHash(["a.view", "b.view"]));
+  });
+
+  it("legacy row (no hash) still on an old template → updated to the current one", () => {
+    const [s] = builtinRoleSyncs([row("manager", [...oldManager].reverse(), null)]);
+    expect(s).toEqual({ key: "manager", permissions: [...manager.permissions].sort(), templateHash: BUILTIN_TEMPLATE_HASHES.get("manager") });
+  });
+
+  it("legacy row (no hash) edited by the owner → left alone", () => {
+    expect(builtinRoleSyncs([row("manager", [...oldManager, "settings.manage"], null)])).toEqual([]);
+    expect(builtinRoleSyncs([row("cashier", ["invoices.create"], null)])).toEqual([]);
+  });
+
+  it("legacy row already equal to the current template → only the hash is recorded", () => {
+    expect(builtinRoleSyncs([row("cashier", ["catalogue.view", "customers.create", "invoices.create", "payments.receive"], null)])).toEqual([
+      { key: "cashier", templateHash: BUILTIN_TEMPLATE_HASHES.get("cashier") },
+    ]);
+  });
+
+  it("hashed row: unedited since an older template → updated; edited since → left alone", () => {
+    const oldHash = permissionsHash(oldManager);
+    expect(builtinRoleSyncs([row("manager", oldManager, oldHash)])).toHaveLength(1);
+    expect(builtinRoleSyncs([row("manager", [...oldManager, "cms.*"], oldHash)])).toEqual([]);
+  });
+
+  it("up-to-date rows, custom roles and unknown keys → nothing", () => {
+    const current = BUILTIN_ROLES.map((r) => row(r.key, r.permissions, BUILTIN_TEMPLATE_HASHES.get(r.key)!));
+    // Owner-edited with the current hash recorded: hash no longer matches → left alone.
+    const edited = row("delivery", ["orders.view"], BUILTIN_TEMPLATE_HASHES.get("delivery")!);
+    expect(builtinRoleSyncs([...current, edited, row("manager", oldManager, null, false), row("packer", ["orders.view"], null)])).toEqual([]);
+  });
+
+  it("ensureSeeded inserts missing built-ins with their hash and updates only unedited stale rows", async () => {
+    const inserted: unknown[] = [];
+    const updates: unknown[] = [];
+    const stored = [
+      row("manager", oldManager, null),
+      row("cashier", ["invoices.create"], null), // edited by the owner
+      row("default", BUILTIN_ROLES[0]!.permissions, null),
+    ];
+    const db = {
+      insert: vi.fn(() => ({ values: (v: unknown[]) => ({ onConflictDoNothing: async () => void inserted.push(...v) }) })),
+      select: vi.fn(() => ({ from: () => ({ where: async () => stored }) })),
+      update: vi.fn(() => ({ set: (v: unknown) => ({ where: async () => void updates.push(v) }) })),
+    } as unknown as Db;
+    const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const { service } = createStaff({ db, registry: () => [], memberships: {} as never, users: {} as never, log });
+    await service.ensureSeeded(tenant.id);
+    expect(inserted).toHaveLength(BUILTIN_ROLES.length);
+    expect(inserted[0]).toMatchObject({ key: "default", builtin: true, templateHash: BUILTIN_TEMPLATE_HASHES.get("default") });
+    expect(updates).toEqual([
+      { permissions: [...manager.permissions].sort(), templateHash: BUILTIN_TEMPLATE_HASHES.get("manager") },
+      { templateHash: BUILTIN_TEMPLATE_HASHES.get("default") },
+    ]);
+    expect(log.info).toHaveBeenCalledWith({ tenantId: tenant.id, roles: ["manager"] }, expect.stringContaining("built-in roles updated"));
+    // Once per process per tenant.
+    await service.ensureSeeded(tenant.id);
+    expect(db.insert).toHaveBeenCalledTimes(1);
   });
 });

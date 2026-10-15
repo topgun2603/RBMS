@@ -17,6 +17,12 @@ export const tenantRoles = pgTable(
     /** Permission patterns: "invoices.create", "orders.*", "*.view". */
     permissions: text("permissions").array().notNull().default([]),
     builtin: boolean("builtin").notNull().default(false),
+    /**
+     * Built-ins only: hash of the template permissions this row was last seeded/synced with (`templateHash`). While the
+     * row's permissions still hash to it the owner hasn't edited them, so a newer template replaces them. Null = custom
+     * role, or a built-in seeded before hashes were kept (then known older templates decide).
+     */
+    templateHash: text("template_hash"),
     ...timestamps(),
   },
   (t) => [unique("tenant_roles_tenant_key_uq").on(t.tenantId, t.key), index("tenant_roles_tenant_idx").on(t.tenantId)],

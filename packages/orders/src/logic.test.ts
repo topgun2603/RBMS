@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { computeInvoice } from "@srirealtime/gst";
 import {
   allowedTransitions,
   balanceOf,
@@ -291,9 +292,73 @@ describe("computeOrderTotals", () => {
     // ₹499 saree with ₹49.90 off (10%): the customer pays ₹449.10 → rounds to ₹449.
     const { lines: l, totals } = computeOrderTotals(lines([item()]), { lineDiscounts: [4990], shipping: 0, sellerState: "33", placeOfSupply: "33" });
     expect(l[0]!.discount).toBe(exclusiveOf(4990, 5, true)); // 4752
-    expect(l[0]!.taxable).toBe(47524 - 4752);
+    // GST is taken out of the ₹449.10 charged: taxable round(44910 / 1.05) = 42771, the line totals ₹449.10 exactly.
+    expect(l[0]).toMatchObject({ taxable: 42771, amount: 42771 + 4752, cgst: 1070, sgst: 1069, total: 44910 });
     expect(totals.discount).toBe(4990);
     expect(totals.total).toBe(44900);
+  });
+
+  describe("tax-inclusive line totals equal the charged price (regression: ₹999 showed as ₹999.01)", () => {
+    const invoiceOf = (l: ReturnType<typeof computeOrderTotals>, inter = false) =>
+      computeInvoice(
+        [
+          ...l.lines.map((x) => ({ description: x.name, qty: x.qty, rate: x.rate, discount: x.discount || undefined, gstRate: x.gstRate, inclusiveTotal: x.taxInclusive && x.gstRate ? x.total : undefined })),
+          ...[l.totals.shippingLine, l.totals.codFeeLine].filter((x) => x != null),
+        ],
+        { sellerState: "33", placeOfSupply: inter ? "29" : "33" },
+      );
+
+    it.each([
+      [99900, 5],
+      [89910, 5],
+      [49900, 12],
+      [129900, 18],
+      [1, 5],
+      [99999, 28],
+      [2550, 0.25],
+    ])("₹%s at %s%% stays exact", (price, gstRate) => {
+      const r = computeOrderTotals(lines([item({ price, gstRate })]), { shipping: 0, sellerState: "33", placeOfSupply: "33" });
+      const line = r.lines[0]!;
+      expect(line.total).toBe(price);
+      expect(line.taxable + line.cgst + line.sgst).toBe(price);
+      expect(line.amount - line.discount).toBe(line.taxable);
+      expect(Math.abs(line.cgst - line.sgst)).toBeLessThanOrEqual(1);
+    });
+
+    it("₹999 at 5%: ₹951.43 + ₹23.79 + ₹23.78 = ₹999.00", () => {
+      const { lines: l } = computeOrderTotals(lines([item({ price: 99900, gstRate: 5 })]), { shipping: 0, sellerState: "33", placeOfSupply: "33" });
+      expect(l[0]).toMatchObject({ rate: 95143, amount: 95143, taxable: 95143, cgst: 2379, sgst: 2378, total: 99900 });
+    });
+
+    it("prices from ₹1 to ₹2,000 (qty 1–3, intra and inter-state) total exactly, and the invoice balances", () => {
+      const bad: string[] = [];
+      for (let price = 100; price <= 200_000; price += 173) {
+        for (const qty of [1, 2, 3]) {
+          for (const inter of [false, true]) {
+            const r = computeOrderTotals(lines([item({ price, gstRate: 5 })], qty), { shipping: 4900, codFee: 2900, sellerState: "33", placeOfSupply: inter ? "29" : "33" });
+            const inv = invoiceOf(r, inter);
+            const okLine = r.lines[0]!.total === price * qty && r.totals.shippingLine!.total === 4900 && r.totals.codFeeLine!.total === 2900;
+            const okInv =
+              inv.total === r.totals.total &&
+              inv.lines.every((x, i) => x.total === [r.lines[0]!.total, 4900, 2900][i]) &&
+              inv.taxable + inv.cgst + inv.sgst + inv.igst === price * qty + 4900 + 2900;
+            if (!okLine || !okInv) bad.push(`${price}×${qty}${inter ? " inter" : ""}`);
+          }
+        }
+      }
+      expect(bad).toEqual([]);
+    });
+
+    it("₹899.10 with a coupon share and mixed rates: every line is exact and the invoice balances", () => {
+      const base = lines([item({ id: "v1", price: 89910, gstRate: 5 }), item({ id: "v2", price: 129900, gstRate: 18 }), item({ id: "v3", price: 50000, gstRate: 12, taxInclusive: false })], 2);
+      const r = computeOrderTotals(base, { lineDiscounts: [10000, 7700, 3000], shipping: 0, sellerState: "33", placeOfSupply: "33" });
+      expect(r.lines[0]!.total).toBe(89910 * 2 - 10000);
+      expect(r.lines[1]!.total).toBe(129900 * 2 - 7700);
+      expect(r.lines[2]).toMatchObject({ taxable: 97000, cgst: 5820, sgst: 5820, total: 108640 }); // exclusive: unchanged
+      const inv = invoiceOf(r);
+      expect(inv.lines.map((x) => x.total)).toEqual(r.lines.map((x) => x.total));
+      expect(inv.total).toBe(r.totals.total);
+    });
   });
 
   it("coupon on exclusive lines reduces the taxable value directly", () => {

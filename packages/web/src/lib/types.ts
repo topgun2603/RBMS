@@ -17,6 +17,8 @@ export interface User {
 export interface MeResponse {
   user: User;
   tenantRoles: string[];
+  /** Permission patterns in this shop (`*` for owners/admins; a staff role's keys otherwise). Absent on older APIs. */
+  permissions?: string[];
 }
 
 export interface OtpRequestResponse {

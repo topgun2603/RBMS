@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInvoice, computeLine, exclusiveOf, isGstRate, isInterState, lineAmount, type LineInput } from "./gst";
+import { computeInvoice, computeLine, exclusiveOf, isGstRate, isInterState, lineAmount, taxableOfInclusive, type LineInput } from "./gst";
 
 const TN = "33";
 const KA = "29";
@@ -55,6 +55,43 @@ describe("computeLine", () => {
     expect(computeLine({ ...line, itemId }, false).itemId).toBe(itemId);
     expect(computeInvoice([{ ...line, itemId }], { sellerState: "33", placeOfSupply: "29" }).lines[0]!.itemId).toBe(itemId);
     expect("itemId" in computeLine(line, false)).toBe(false);
+  });
+
+  describe("inclusiveTotal (tax-inclusive prices)", () => {
+    const mrp: LineInput = { description: "Saree", qty: 1, rate: exclusiveOf(99900, 5, true), gstRate: 5 };
+
+    it("forward from the rounded exclusive rate drifts a paisa (why inclusiveTotal exists)", () => {
+      expect(computeLine(mrp, false).total).toBe(99901);
+      expect(computeLine({ ...mrp, rate: exclusiveOf(89910, 5, true) }, false).total).toBe(89911);
+    });
+
+    it("takes GST out of the charged amount so the total is exact", () => {
+      expect(computeLine({ ...mrp, inclusiveTotal: 99900 }, false)).toMatchObject({ amount: 95143, taxable: 95143, cgst: 2379, sgst: 2378, igst: 0, total: 99900 });
+      expect(computeLine({ ...mrp, inclusiveTotal: 99900 }, true)).toMatchObject({ taxable: 95143, cgst: 0, sgst: 0, igst: 4757, total: 99900 });
+    });
+
+    it("keeps taxable = amount − discount with a discount", () => {
+      const l = computeLine({ ...mrp, qty: 3, rate: 95143, discount: 4752, inclusiveTotal: 3 * 99900 - 4990 }, false);
+      expect(l.total).toBe(3 * 99900 - 4990);
+      expect(l.amount - (l.discount ?? 0)).toBe(l.taxable);
+      expect(l.taxable + l.cgst + l.sgst).toBe(l.total);
+    });
+
+    it("0% and 0.25% rates", () => {
+      expect(computeLine({ description: "x", qty: 1, rate: 500, gstRate: 0, inclusiveTotal: 500 }, false)).toMatchObject({ taxable: 500, cgst: 0, sgst: 0, total: 500 });
+      expect(computeLine({ description: "x", qty: 1, rate: 99751, gstRate: 0.25, inclusiveTotal: 100000 }, false)).toMatchObject({ taxable: 99751, total: 100000 });
+      expect(taxableOfInclusive(100000, 0.25)).toBe(99751);
+    });
+
+    it("an invoice of inclusive lines totals the sum charged", () => {
+      const prices = [99900, 89910, 49900, 1999];
+      const inv = computeInvoice(
+        prices.map((p) => ({ description: "x", qty: 1, rate: exclusiveOf(p, 5, true), gstRate: 5 as const, inclusiveTotal: p })),
+        { sellerState: "33", placeOfSupply: "33", roundToRupee: false },
+      );
+      expect(inv.total).toBe(prices.reduce((a, b) => a + b, 0));
+      expect(inv.taxBreakup[0]!.taxable + inv.taxBreakup[0]!.cgst + inv.taxBreakup[0]!.sgst).toBe(inv.total);
+    });
   });
 });
 

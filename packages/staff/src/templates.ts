@@ -1,4 +1,4 @@
-import { CUSTOM_ROLE_PREFIX, FULL_ACCESS_ROLES, type PermissionDef } from "@srirealtime/core";
+import { CUSTOM_ROLE_PREFIX, FULL_ACCESS_ROLES, sha256, type PermissionDef } from "@srirealtime/core";
 
 export interface RoleTemplate {
   key: string;
@@ -79,6 +79,77 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
 ];
 
 export const BUILTIN_ROLE_KEYS: readonly string[] = BUILTIN_ROLES.map((r) => r.key);
+
+/**
+ * Earlier versions of built-in templates, for rows seeded before `template_hash` existed: a row whose permissions
+ * equal one of these was never edited by the owner and is brought up to the current template. Add the old list here
+ * whenever a template in BUILTIN_ROLES changes (rows seeded since then carry their hash and need no entry).
+ */
+export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (readonly string[])[]>> = {
+  // Batch 1 (60011aa, 9ed3d7b): before the online store added cms.* and reviews.*.
+  manager: [
+    [
+      "*.view",
+      "catalogue.*",
+      "orders.*",
+      "coupons.*",
+      "inventory.*",
+      "invoices.*",
+      "payments.*",
+      "customers.*",
+      "reports.*",
+      "expenses.*",
+      "documents.*",
+      "importexport.*",
+      "audit.view",
+    ],
+  ],
+};
+
+/** Order-independent hash of a permission list (sorted, de-duplicated), 16 hex chars. */
+export function permissionsHash(perms: readonly string[]): string {
+  return sha256([...new Set(perms.map((p) => p.trim()).filter(Boolean))].sort().join(",")).slice(0, 16);
+}
+
+/** Template hash of each built-in role key. */
+export const BUILTIN_TEMPLATE_HASHES: ReadonlyMap<string, string> = new Map(BUILTIN_ROLES.map((r) => [r.key, permissionsHash(r.permissions)]));
+
+export interface BuiltinRoleRow {
+  key: string;
+  permissions: readonly string[];
+  builtin: boolean;
+  templateHash: string | null;
+}
+
+export interface BuiltinRoleSync {
+  key: string;
+  /** New permissions, or undefined when only the hash is recorded (permissions already match the template). */
+  permissions?: string[];
+  templateHash: string;
+}
+
+/**
+ * Which stored built-in rows to bring up to the current templates:
+ * - unedited (permissions still hash to `templateHash`, or, without a hash, equal the current or a previous template)
+ *   and stale → new permissions + hash;
+ * - unedited and current but no hash yet → hash only;
+ * - edited by the owner, custom roles, unknown keys → left alone.
+ */
+export function builtinRoleSyncs(rows: readonly BuiltinRoleRow[]): BuiltinRoleSync[] {
+  const out: BuiltinRoleSync[] = [];
+  for (const row of rows) {
+    const current = BUILTIN_TEMPLATE_HASHES.get(row.key);
+    if (!row.builtin || !current || row.templateHash === current) continue;
+    const have = permissionsHash(row.permissions);
+    const unedited = row.templateHash
+      ? have === row.templateHash
+      : have === current || (PREVIOUS_BUILTIN_PERMISSIONS[row.key] ?? []).some((old) => permissionsHash(old) === have);
+    if (!unedited) continue;
+    const template = BUILTIN_ROLES.find((r) => r.key === row.key)!;
+    out.push(have === current ? { key: row.key, templateHash: current } : { key: row.key, permissions: [...template.permissions].sort(), templateHash: current });
+  }
+  return out;
+}
 
 /** Permissions of the staff module. */
 export const STAFF_PERMISSIONS: PermissionDef[] = [

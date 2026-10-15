@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { processImage } from "./images";
+import { processImage, rasterizeSvg } from "./images";
 
 describe("processImage", () => {
   it("reads dimensions and writes a webp thumbnail at the requested width", async () => {
@@ -21,5 +21,15 @@ describe("processImage", () => {
 
   it("rejects non-images", async () => {
     await expect(processImage(Buffer.from("not an image"), 400)).rejects.toThrow();
+  });
+});
+
+describe("rasterizeSvg", () => {
+  it("renders an SVG to webp (or png) at the given width", async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500"><rect width="400" height="500" fill="#7c3aed"/></svg>`;
+    const webp = await sharp(await rasterizeSvg(svg, { width: 800 })).metadata();
+    expect(webp).toMatchObject({ format: "webp", width: 800, height: 1000 });
+    const png = await sharp(await rasterizeSvg(svg, { width: 200, format: "png" })).metadata();
+    expect(png).toMatchObject({ format: "png", width: 200 });
   });
 });

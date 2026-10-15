@@ -162,6 +162,59 @@ export class UploadsService {
     return this.toDto(updated!);
   }
 
+  /**
+   * Server-side store for files the server made itself (seed placeholders, generated documents): writes the bytes and
+   * records a ready file in one step, no pre-signed upload. The same type allow-list and size cap apply as for user
+   * uploads (so SVG is still refused); images get dimensions and a thumbnail. Not exposed over HTTP.
+   */
+  async storeGenerated(input: {
+    tenantId: string | null;
+    filename: string;
+    contentType: string;
+    body: Buffer;
+    visibility?: FileVisibility;
+    purpose?: string | null;
+    userId?: string | null;
+  }): Promise<FileDto> {
+    const contentType = normalizeType(input.contentType);
+    if (!isAllowedType(contentType, this.allowed)) throw badRequest(`File type ${contentType} is not allowed`);
+    if (input.body.length === 0 || input.body.length > this.maxBytes) throw badRequest("Generated file is empty or too large");
+    const originalName = input.filename.trim().slice(0, 255) || "file";
+    const id = newId();
+    const key = buildKey({ tenantId: input.tenantId, purpose: input.purpose, filename: withExtension(originalName, contentType), id });
+    await this.storage.put(key, input.body, contentType);
+    const patch: Partial<Pick<FileRow, "width" | "height" | "thumbKey">> = {};
+    if (THUMBNAIL_TYPES.has(contentType) && input.body.length <= THUMBNAIL_MAX_BYTES) {
+      try {
+        const { width, height, thumb } = await processImage(input.body, this.thumbWidth);
+        patch.width = width;
+        patch.height = height;
+        const thumbKey = thumbKeyFor(key);
+        await this.storage.put(thumbKey, thumb, "image/webp");
+        patch.thumbKey = thumbKey;
+      } catch (err) {
+        this.log.warn({ err, contentType }, "uploads: could not process generated image; storing without thumbnail");
+      }
+    }
+    const [row] = await this.db
+      .insert(files)
+      .values({
+        id,
+        tenantId: input.tenantId,
+        ownerUserId: input.userId ?? null,
+        key,
+        originalName,
+        contentType,
+        size: input.body.length,
+        status: "ready",
+        visibility: input.visibility ?? "private",
+        purpose: input.purpose ?? null,
+        ...patch,
+      })
+      .returning();
+    return this.toDto(row!);
+  }
+
   async get(fileId: string, tenantId: string | null): Promise<FileDto> {
     const row = await this.findRow(fileId, tenantId);
     return this.toDto(row);

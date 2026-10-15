@@ -1,19 +1,24 @@
 // Batch 2a end-to-end (online store server side) against the running API (http://localhost:4000) and the real database.
-//   node test/e2e/batch2.mjs api.log      (pnpm --filter @srirealtime/api test:e2e:2)
-// The API must run in development (console notify driver: OTP codes are read from its log file, given as argv[2];
-// mock payments and the mock carrier). Shop: anbu (EC, pro; `pnpm seed` creates its store content). Each run signs up a
-// new shopper, so it is safe to re-run.
+//   node test/e2e/batch2.mjs      (pnpm --filter @srirealtime/api test:e2e:2; test:e2e:all seeds and runs every script)
+// The API must run in development (test OTP via TEST_OTP_CODE / TEST_OTP_TARGETS, mock payments and the mock carrier).
+// Shops: e2e-store (EC, pro; `pnpm --filter @srirealtime/api seed:e2e` creates its store content), e2e-bill (BL) and
+// e2e-lite (BL, starter). Owner e2e-owner@example.com (a super-admin in the e2e seed, for the custom-domain force step).
+// Each run signs up a new shopper (+91 9999 00xxxx), so it is safe to re-run.
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
-const LOG = process.argv[2] ?? "api.log";
-const OWNER = process.env.E2E_OWNER ?? "gowtham_kumar@srirealtime.com";
-const SHOP = "anbu";
+const OWNER = process.env.E2E_OWNER ?? "e2e-owner@example.com";
+const OTP = process.env.E2E_OTP ?? "123456";
+const SHOP = "e2e-store";
+const SHOP_NAME = "E2E Store";
+/** BL shop without the online store. */
+const BILL = "e2e-bill";
+/** BL shop on the starter plan (no custom domain). */
+const LITE = "e2e-lite";
 const RUN = Date.now().toString(36).slice(-6).toUpperCase();
-/** A new shopper every run: +91 98765 xxxxx. */
-const SHOPPER_PHONE = `+9198765${String(Date.now() % 100_000).padStart(5, "0")}`;
-const STORE_ORIGIN = "http://anbu.localhost:3003";
+/** A new shopper every run: +91 9999 00 5000–9999 (test OTP numbers; lower ones are the fixed batch-1 identities). */
+const SHOPPER_PHONE = `+91999900${5000 + (Date.now() % 5000)}`;
+const STORE_ORIGIN = "http://e2e-store.localhost:3003";
 const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 
 const results = [];
@@ -60,34 +65,12 @@ const rs = (p) => `₹${(p / 100).toFixed(2)}`;
 /** Order totals round to the rupee (GST invoice rule). */
 const rupee = (p) => Math.round(p / 100) * 100;
 
-/** The newest OTP the console driver logged for `target` (email or E.164 phone). */
-function otpFor(target) {
-  const lines = readFileSync(LOG, "utf8").split(/\r?\n/);
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (!lines[i].includes(`to: "${target}"`)) continue;
-    for (let j = i; j < Math.min(i + 4, lines.length); j++) {
-      const m = /"(\d{6}) is your .* verification code/.exec(lines[j]);
-      if (m) return m[1];
-    }
-  }
-  return null;
-}
+/** Test identities get no message and no resend limits: request (as the apps do), then verify with the fixed code. */
 async function signIn(as, target, tenant = null) {
-  const before = otpFor(target);
-  let r = await call("POST", "/v1/auth/otp/request", { target }, { as: null, tenant });
-  const wait = r.status === 429 && Number(String(r.json?.error?.message).match(/(\d+) second/)?.[1]);
-  if (wait) {
-    await sleep((wait + 1) * 1000);
-    r = await call("POST", "/v1/auth/otp/request", { target }, { as: null, tenant });
-  }
-  ok(r, `otp request ${target}`);
-  let code = null;
-  for (let i = 0; i < 20 && (!code || code === before); i++) {
-    await sleep(250);
-    code = otpFor(target);
-  }
-  expect(code, `no OTP for ${target} in ${LOG}`);
-  tokens[as] = ok(await call("POST", "/v1/auth/otp/verify", { target, code }, { as: null, tenant }), `otp verify ${target}`).token;
+  ok(await call("POST", "/v1/auth/otp/request", { target }, { as: null, tenant }), `otp request ${target}`);
+  const r = await call("POST", "/v1/auth/otp/verify", { target, code: OTP }, { as: null, tenant });
+  expect(r.status < 300, `otp verify ${target}: ${r.status} ${JSON.stringify(r.json).slice(0, 300)} (is TEST_OTP_CODE set for the API?)`);
+  tokens[as] = r.json.token;
 }
 const stockOf = async (itemId) => ok(await call("GET", `/v1/inventory/stock/${itemId}`), "stock");
 const shopper = { as: "shopper" };
@@ -98,7 +81,7 @@ let tenantId, ak, cp, akS, akM, cpM;
 await step("owner signs in; demo products found; stock topped up", async () => {
   await signIn("owner", OWNER);
   tenantId = ok(await call("GET", "/v1/tenancy/current"), "tenant").id;
-  ak = ok(await call("GET", "/v1/catalog/public/products/anarkali-kurti", undefined, anon), "Anarkali Kurti (run pnpm seed)");
+  ak = ok(await call("GET", "/v1/catalog/public/products/anarkali-kurti", undefined, anon), "Anarkali Kurti (run pnpm --filter @srirealtime/api seed:e2e)");
   cp = ok(await call("GET", "/v1/catalog/public/products/cotton-palazzo", undefined, anon), "Cotton Palazzo");
   [akS, akM] = ["S", "M"].map((t) => ak.variants.find((v) => v.title === t));
   cpM = cp.variants.find((v) => v.title === "M");
@@ -115,7 +98,7 @@ await step("owner signs in; demo products found; stock topped up", async () => {
 // ------------------------------------------------------------------ public store
 await step("public config", async () => {
   const c = ok(await call("GET", "/v1/store/config", undefined, anon), "config");
-  eq(c.shop.name, "Anbu Fashions", "shop name");
+  eq(c.shop.name, SHOP_NAME, "shop name");
   expect(c.open === true && c.codEnabled === true && c.codMaxAmount === 500_000 && c.guestCheckout === false, JSON.stringify(c).slice(0, 300));
   expect(c.policies.returns.length > 0 && c.shop.css.includes("--primary"), "policies / css");
   return `${c.shop.name}: open, COD up to ${rs(c.codMaxAmount)}, contact ${c.shop.contactPhone}`;
@@ -223,7 +206,7 @@ await step("addresses: add, default, list", async () => {
     "address",
   );
   expect(address.isDefault, "first address is default");
-  const second = ok(await call("POST", "/v1/store/me/addresses", { name: "Office", phone: "9876500999", line1: "1, MG Road", city: "Bengaluru", stateCode: "29", pincode: "560001" }, shopper), "address 2");
+  const second = ok(await call("POST", "/v1/store/me/addresses", { name: "Office", phone: "9999000999", line1: "1, MG Road", city: "Bengaluru", stateCode: "29", pincode: "560001" }, shopper), "address 2");
   ok(await call("POST", `/v1/store/me/addresses/${second.id}/default`, undefined, shopper), "default");
   ok(await call("POST", `/v1/store/me/addresses/${address.id}/default`, undefined, shopper), "default back");
   const list = ok(await call("GET", "/v1/store/me/addresses", undefined, shopper), "addresses");
@@ -259,8 +242,8 @@ await step("order in /me/orders and the staff list; track by token (no street ad
   const tr = ok(await call("GET", `/v1/store/track/${orderA.accessToken}`, undefined, anon), "track");
   expect(tr.number === orderA.number && tr.status === "placed" && tr.shipTo.city === "Tiruchirappalli" && tr.totals.codFee === 3_000, JSON.stringify(tr).slice(0, 300));
   expect(!JSON.stringify(tr).includes("Nethaji"), "tracking exposes the street address");
-  // Another shop never shows it: raja (billing app) has no store at all, so the feature check answers first.
-  const other = await call("GET", `/v1/store/track/${orderA.accessToken}`, undefined, { as: null, tenant: "raja" });
+  // Another shop never shows it: e2e-bill (billing app) has no store at all, so the feature check answers first.
+  const other = await call("GET", `/v1/store/track/${orderA.accessToken}`, undefined, { as: null, tenant: BILL });
   expect(other.status === 403 || other.status === 404, `track in another shop: ${other.status}`);
   const summary = ok(await call("GET", "/v1/orders/summary"), "staff orders summary");
   expect(summary.today.count >= 1, `summary ${JSON.stringify(summary)}`);
@@ -435,6 +418,48 @@ await step("analytics: text/plain beacon from the store origin + rollup → over
   return `+1 session, +1 page view, +1 product view, +1 add-to-cart, +1 purchase (${rs(d("revenue"))}); rollup rows ${rolled}; visitors today ${after.visitors}`;
 });
 
+await step("analytics: funnel, sources and devices from beacons (desktop Google landing, iPad direct, iPhone utm)", async () => {
+  const before = ok(await call("GET", `/v1/analytics/overview?from=${today}&to=${today}`), "overview");
+  const at = new Date().toISOString();
+  const beacon = (sid, ua, events) =>
+    call("POST", "/v1/analytics/public/events", JSON.stringify({ anonymousId: `a-${RUN}-${sid}-e2e`, sessionId: `s-${RUN}-${sid}-${Date.now()}`, events }), {
+      as: null,
+      headers: { "content-type": "text/plain;charset=UTF-8", origin: STORE_ORIGIN, "user-agent": ua },
+    });
+  const sent = [
+    // Landing on a product page from Google: the product view is queued before the page view, same millisecond.
+    await beacon("fg", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36", [
+      { type: "product_view", path: "/p/anarkali-kurti", productId: ak.id, at },
+      { type: "page_view", path: "/p/anarkali-kurti", referrer: "https://www.google.com/", at },
+      { type: "add_to_cart", productId: ak.id, value: 99_900 },
+      { type: "begin_checkout", value: 99_900 },
+    ]),
+    await beacon("fd", "Mozilla/5.0 (iPad; CPU OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1", [
+      { type: "page_view", path: "/" },
+    ]),
+    await beacon("fi", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1", [
+      { type: "page_view", path: "/?utm_source=e2e-insta", utm: { source: "e2e-insta" } },
+      { type: "product_view", path: "/p/anarkali-kurti", productId: ak.id },
+    ]),
+  ];
+  eq(sent.map((r) => r.json?.accepted).join(","), "4,1,2", "accepted");
+  await sleep(2_500); // ingest buffers ~2 s; today's overview is computed from raw events
+  const after = ok(await call("GET", `/v1/analytics/overview?from=${today}&to=${today}`), "overview");
+  const by = (o, list, k, v) => Object.fromEntries(o[list].map((x) => [x[k], x[v]]));
+  const delta = (list, k, v) => {
+    const a = by(after, list, k, v);
+    const b = by(before, list, k, v);
+    return Object.fromEntries(Object.keys(a).map((key) => [key, a[key] - (b[key] ?? 0)]).filter(([, n]) => n));
+  };
+  const funnel = delta("funnel", "step", "count");
+  const sources = delta("sources", "source", "sessions");
+  const devices = delta("devices", "device", "sessions");
+  eq(JSON.stringify(funnel), JSON.stringify({ visit: 3, product_view: 2, add_to_cart: 1, begin_checkout: 1 }), "funnel deltas");
+  eq(JSON.stringify(Object.entries(sources).sort()), JSON.stringify([["direct", 1], ["e2e-insta", 1], ["google.com", 1]]), "source deltas");
+  eq(JSON.stringify(Object.entries(devices).sort()), JSON.stringify([["desktop", 1], ["mobile", 1], ["tablet", 1]]), "device deltas");
+  return `funnel +${Object.values(funnel).join("/+")}; sources ${JSON.stringify(sources)}; devices ${JSON.stringify(devices)}`;
+});
+
 // ------------------------------------------------------------------ permissions, onboarding, expenses
 await step("staff permission registry lists the store modules' permissions", async () => {
   const g = ok(await call("GET", "/v1/staff/permissions"), "permissions");
@@ -443,7 +468,7 @@ await step("staff permission registry lists the store modules' permissions", asy
   return `${keys.length} permissions incl. cms.manage, reviews.manage, expenses.manage`;
 });
 
-await step("onboarding status for anbu", async () => {
+await step("onboarding status for e2e-store", async () => {
   const o = ok(await call("GET", "/v1/onboarding"), "onboarding");
   const by = Object.fromEntries(o.steps.map((s) => [s.key, s]));
   for (const k of ["business-profile", "branding", "first-product", "first-sale", "delivery-zone", "store-published"]) expect(by[k]?.done === true, `${k} not done: ${JSON.stringify(by[k])}`);
@@ -471,12 +496,12 @@ await step("expenses: one with GST + profit report", async () => {
 await step("sitemap.xml has product URLs on the store base URL; robots.txt", async () => {
   const s = await call("GET", "/v1/cms/public/seo/sitemap.xml", undefined, { as: null, raw: true });
   expect(s.status === 200 && /xml/.test(s.headers.get("content-type") ?? ""), `sitemap ${s.status} ${s.headers.get("content-type")}`);
-  for (const u of ["http://anbu.localhost:3003/", "http://anbu.localhost:3003/p/anarkali-kurti", "http://anbu.localhost:3003/collections/new-arrivals", "http://anbu.localhost:3003/about"]) {
+  for (const u of ["http://e2e-store.localhost:3003/", "http://e2e-store.localhost:3003/p/anarkali-kurti", "http://e2e-store.localhost:3003/collections/new-arrivals", "http://e2e-store.localhost:3003/about"]) {
     expect(s.text.includes(`<loc>${u}</loc>`), `sitemap lacks ${u}`);
   }
   expect(s.text.includes("<lastmod>"), "no lastmod");
   const r = await call("GET", "/v1/cms/public/seo/robots.txt", undefined, { as: null, raw: true });
-  expect(r.status === 200 && r.text.includes("Sitemap: http://anbu.localhost:3003/sitemap.xml") && r.text.includes("Disallow: /checkout"), r.text);
+  expect(r.status === 200 && r.text.includes("Sitemap: http://e2e-store.localhost:3003/sitemap.xml") && r.text.includes("Disallow: /checkout"), r.text);
   return `${(s.text.match(/<loc>/g) ?? []).length} URLs; robots → ${r.text.split("\n").find((l) => l.startsWith("Sitemap"))}`;
 });
 
@@ -492,16 +517,16 @@ await step("custom domain: add → instructions → verify (DNS miss) → super-
   expect(miss.error.details?.txt === false, `details ${JSON.stringify(miss.error)}`);
   const forced = ok(await call("POST", `/v1/tenancy/domains/${d.id}/verify`, { force: true }), "force verify");
   expect(forced.verified === true, JSON.stringify(forced));
-  // kumar (starter) has no custom-domain: owners get 402, the platform team can still set one up.
-  const kf = ok(await call("GET", "/v1/features", undefined, { tenant: "kumar" }), "kumar features");
-  expect(!kf.enabled.includes("custom-domain"), "kumar has custom-domain");
-  const kd = ok(await call("POST", "/v1/tenancy/domains", { domain: `k-${domain}` }, { tenant: "kumar" }), "super-admin adds kumar domain");
-  const kv = ok(await call("POST", `/v1/tenancy/domains/${kd.id}/verify`, { force: true }, { tenant: "kumar" }), "super-admin force on kumar");
-  expect(kv.verified === true, "kumar domain not verified");
+  // e2e-lite (starter) has no custom-domain: owners get 402, the platform team can still set one up.
+  const kf = ok(await call("GET", "/v1/features", undefined, { tenant: LITE }), "e2e-lite features");
+  expect(!kf.enabled.includes("custom-domain"), "e2e-lite has custom-domain");
+  const kd = ok(await call("POST", "/v1/tenancy/domains", { domain: `k-${domain}` }, { tenant: LITE }), "super-admin adds e2e-lite domain");
+  const kv = ok(await call("POST", `/v1/tenancy/domains/${kd.id}/verify`, { force: true }, { tenant: LITE }), "super-admin force on e2e-lite");
+  expect(kv.verified === true, "e2e-lite domain not verified");
   // Clean up so the store keeps its subdomain URL and re-runs start fresh.
   ok(await call("DELETE", `/v1/tenancy/domains/${d.id}`), "delete");
-  ok(await call("DELETE", `/v1/tenancy/domains/${kd.id}`, undefined, { tenant: "kumar" }), "delete kumar");
-  return `${domain}: TXT ${txt.host}, CNAME → ${cname.value}; DNS miss → 400 (txt ${miss.error.details.txt}, cname ${miss.error.details.cname}); force → verified; kumar (no plan feature) force → verified`;
+  ok(await call("DELETE", `/v1/tenancy/domains/${kd.id}`, undefined, { tenant: LITE }), "delete e2e-lite domain");
+  return `${domain}: TXT ${txt.host}, CNAME → ${cname.value}; DNS miss → 400 (txt ${miss.error.details.txt}, cname ${miss.error.details.cname}); force → verified; e2e-lite (no plan feature) force → verified`;
 });
 
 // ------------------------------------------------------------------ host hooks

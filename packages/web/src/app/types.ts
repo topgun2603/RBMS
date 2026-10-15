@@ -1,6 +1,7 @@
 import type * as React from "react";
 import type { Messages } from "@srirealtime/i18n/client";
 import type { FeatureReq } from "../lib/features";
+import type { PermissionReq } from "../lib/permissions";
 import type { TenantStrategy } from "../lib/tenant";
 
 /** Icon component (lucide-react icons fit). */
@@ -12,6 +13,13 @@ export interface Gated {
   feature?: FeatureReq;
   /** Shop roles that may see it (owner/admin/staff). Empty = every member. */
   roles?: readonly string[];
+  /**
+   * Permission key(s) from GET /auth/me; an array is any-of. Owners, admins and super-admins hold every permission.
+   * Same wildcard rules as the API (`orders.*`, `*.view`, `*`). Routes the user lacks render the "No access" page.
+   */
+  permission?: PermissionReq;
+  /** Only explicit grants count (the key, `<module>.*` or `*`), not broad patterns like `*.view`. For API checks that do the same (audit). */
+  permissionExplicit?: boolean;
 }
 
 export interface NavItem extends Gated {

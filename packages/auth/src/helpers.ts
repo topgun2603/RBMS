@@ -125,6 +125,26 @@ export function maskTarget(target: string): string {
 /** Hash stored for a one-time code; binding the target stops a code being replayed for another account. */
 export const otpHash = (code: string, target: string) => sha256(code + target);
 
+/**
+ * True when a normalised target (E.164 phone or lowercased email) matches one of the test-OTP patterns: an exact value
+ * or a pattern with `*` wildcards ("+9199990*", "e2e-*@example.com"). Phone patterns are compared as typed (use E.164),
+ * email patterns case-insensitively. Empty patterns never match.
+ */
+export function matchesTestTarget(target: string, patterns: readonly string[]): boolean {
+  const value = target.trim().toLowerCase();
+  for (const raw of patterns) {
+    const p = raw.trim().toLowerCase();
+    if (!p || p === "*") continue; // a bare "*" would open every account
+    if (!p.includes("*")) {
+      if (p === value) return true;
+      continue;
+    }
+    const re = new RegExp(`^${p.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+    if (re.test(value)) return true;
+  }
+  return false;
+}
+
 export interface OtpRateLimitInput {
   /** created_at of codes issued for this target in the last hour (any order). */
   recent: Date[];

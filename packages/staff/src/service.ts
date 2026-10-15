@@ -13,6 +13,8 @@ import type { LoggerPort, MembershipPort, MembershipRecord, QuotaPort, UserDirec
 import { tenantRoles, type TenantRole } from "./schema";
 import {
   BUILTIN_ROLES,
+  BUILTIN_TEMPLATE_HASHES,
+  builtinRoleSyncs,
   groupPermissions,
   levelOf,
   membershipRoles,
@@ -159,6 +161,12 @@ export class StaffService {
     const now = Date.now();
     const hit = this.roleCache.get(tenantId);
     if (hit && hit.expires > now) return hit.map;
+    // Stale built-ins (older templates the owner never edited) are brought up to date before they resolve.
+    try {
+      await this.ensureSeeded(tenantId);
+    } catch (err) {
+      this.deps.log?.error({ err, tenantId }, "staff: seeding built-in roles failed");
+    }
     const rows = await this.db
       .select({ key: tenantRoles.key, permissions: tenantRoles.permissions })
       .from(tenantRoles)
@@ -183,13 +191,32 @@ export class StaffService {
 
   // ---------------------------------------------------------------- roles
 
-  /** Inserts missing built-in roles for a tenant (once per process per tenant; idempotent). */
+  /**
+   * Once per process per tenant (idempotent): inserts missing built-in roles and brings built-ins the owner hasn't
+   * edited up to the current templates (`builtinRoleSyncs`); owner-edited built-ins are left alone.
+   */
   async ensureSeeded(tenantId: string): Promise<void> {
     if (this.seeded.has(tenantId)) return;
     await this.db
       .insert(tenantRoles)
-      .values(BUILTIN_ROLES.map((r) => ({ tenantId, ...r, builtin: true })))
+      .values(BUILTIN_ROLES.map((r) => ({ tenantId, ...r, builtin: true, templateHash: BUILTIN_TEMPLATE_HASHES.get(r.key)! })))
       .onConflictDoNothing({ target: [tenantRoles.tenantId, tenantRoles.key] });
+    const rows = await this.db
+      .select({ key: tenantRoles.key, permissions: tenantRoles.permissions, builtin: tenantRoles.builtin, templateHash: tenantRoles.templateHash })
+      .from(tenantRoles)
+      .where(and(eq(tenantRoles.tenantId, tenantId), eq(tenantRoles.builtin, true)));
+    const syncs = builtinRoleSyncs(rows);
+    for (const s of syncs) {
+      await this.db
+        .update(tenantRoles)
+        .set(s.permissions ? { permissions: s.permissions, templateHash: s.templateHash } : { templateHash: s.templateHash })
+        .where(and(eq(tenantRoles.tenantId, tenantId), eq(tenantRoles.key, s.key), eq(tenantRoles.builtin, true)));
+    }
+    const updated = syncs.filter((s) => s.permissions).map((s) => s.key);
+    if (updated.length) {
+      this.invalidate(tenantId);
+      this.deps.log?.info({ tenantId, roles: updated }, "staff: built-in roles updated to the current templates");
+    }
     this.seeded.add(tenantId);
   }
 

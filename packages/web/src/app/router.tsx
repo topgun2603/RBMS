@@ -9,21 +9,21 @@ import { Page } from "../components/page";
 import { WebProviders } from "../components/providers";
 import { QueryError } from "../components/query-state";
 import { Splash } from "../components/splash";
-import { displayName, hasShopAccess, roleAllows, useMe, useSignOut } from "../lib/auth";
+import { displayName, hasShopAccess, useMe, useSignOut } from "../lib/auth";
 import { useShop } from "../lib/branding";
-import { useFeatures, type FeatureCheck } from "../lib/features";
+import { useFeatures } from "../lib/features";
 import { useI18n } from "../lib/i18n";
 import { useHydrated, useToken } from "../lib/session";
 import { BUILT_IN_SETTINGS } from "./builtins";
 import { Dashboard } from "./dashboard";
-import { FeatureGatePage, NotFound, RoleGatePage } from "./gate";
+import { FeatureGatePage, NotFound, PermissionGatePage, RoleGatePage } from "./gate";
 import { LoginScreen } from "./login";
-import { matchRoute, relativeTo, type RouteMatch } from "./model";
+import { checkGate, matchRoute, relativeTo, type RouteMatch } from "./model";
 import { ModuleScope, RouteParamsProvider, WebAppContext } from "./navigation";
-import { allSettingsPages, SessionProvider, useSession, type MountedSettingsPage } from "./session";
+import { allSettingsPages, SessionProvider, useGateContext, type MountedSettingsPage } from "./session";
 import { AppFrame } from "./shell";
 import { ShopGate } from "./shop-gate";
-import type { MountedModule, RouteDef, WebApp } from "./types";
+import type { Gated, MountedModule, WebApp } from "./types";
 
 /**
  * Renders a WebApp for the current URL. Mount it from one optional catch-all page:
@@ -113,28 +113,32 @@ type Resolved =
   | { kind: "route"; match: RouteMatch }
   | { kind: "notFound" };
 
-function resolve(app: WebApp, path: string): Resolved {
+function resolve(app: WebApp, path: string, visible: (p: MountedSettingsPage) => boolean): Resolved {
   if (path === "/" && app.home === "dashboard") return { kind: "dashboard" };
   const rel = relativeTo(app.settingsPath, path);
   if (rel !== null) {
     const pages = allSettingsPages(app, BUILT_IN_SETTINGS);
     const page = pages.find((p) => p.path === rel);
     if (page) return { kind: "settings", page };
-    if (rel === "" && pages[0]) return { kind: "settings", page: pages[0] };
+    // Bare /settings with no "" page: the first page this user may open (else the first, which shows its gate).
+    const first = pages.find(visible) ?? pages[0];
+    if (rel === "" && first) return { kind: "settings", page: first };
   }
   const match = matchRoute(app, path, (m) => m.routes);
   return match ? { kind: "route", match } : { kind: "notFound" };
 }
 
 function Screen({ app, path }: { app: WebApp; path: string }) {
-  const features = useFeatures();
-  const { roles } = useSession();
-  const r = resolve(app, path);
+  const ctx = useGateContext();
+  const r = resolve(app, path, (p) => checkGate(p, p.module ?? undefined, ctx).ok);
 
-  const gate = (g: { feature?: RouteDef["feature"]; roles?: readonly string[] }, module?: MountedModule): React.ReactNode | null => {
-    if (!roleAllows(roles, g.roles)) return <RoleGatePage />;
-    const check: FeatureCheck = features.check(g.feature, module?.features);
-    return check.ok ? null : <FeatureGatePage check={check} />;
+  // Rendered only once /auth/me and /v1/features answered (SignedIn waits), so "No access" never flashes.
+  const gate = (g: Gated, module?: MountedModule): React.ReactNode | null => {
+    const res = checkGate(g, module, ctx);
+    if (res.ok) return null;
+    if (res.kind === "role") return <RoleGatePage />;
+    if (res.kind === "permission") return <PermissionGatePage />;
+    return <FeatureGatePage check={res.check} />;
   };
 
   let body: React.ReactNode;

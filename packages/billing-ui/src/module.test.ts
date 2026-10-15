@@ -1,5 +1,12 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { isValidGstin } from "@srirealtime/gst";
 import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { permissionMatches } from "./lib/access";
+import { gstFromInclusive, itcFor } from "./lib/expenses";
+import { billingMessages } from "./lib/messages";
+import { PDF_PATHS } from "./lib/pdf";
 import { billingModule } from "./module";
 
 /** GET /v1/features answers of the demo shops (enabled / reason), as seeded in apps/api. */
@@ -116,5 +123,91 @@ describe("billingModule", () => {
   it("the host can restrict features further", () => {
     const m = mount("/", ["invoices"]);
     expect(navHrefs("raja", m)).toEqual(["/", "/invoices", "/customers", "/items", "/settings"]);
+  });
+});
+
+describe("expenses, profit and PDFs", () => {
+  it("shows Expenses under Insights only when the expenses feature is on", () => {
+    const m = mount("/");
+    const on = featureChecker({
+      ...featuresOf("raja"),
+      enabled: [...featuresOf("raja").enabled, "expenses"],
+      features: [
+        ...featuresOf("raja").features,
+        { key: "expenses", module: "expenses", label: "", description: "", dependsOn: [], shopToggle: true, enabled: true, reason: null, available: true, shopEnabled: null },
+      ],
+    });
+    const insights = m.nav.find((s) => s.id === "insights")!;
+    expect(insights.items.filter((i) => on.check(i.feature, m.features).ok).map((i) => i.href)).toEqual(["reports", "expenses"]);
+    expect(m.routes.find((r) => r.path === "expenses")?.feature).toBe("expenses");
+    expect(navHrefs("raja", m)).not.toContain("/expenses");
+  });
+
+  it("works out GST inside an inclusive amount and ITC only with a valid GSTIN", () => {
+    expect(gstFromInclusive(11800, 18)).toBe(1800);
+    expect(gstFromInclusive(10000, 0)).toBe(0);
+    expect(itcFor(1800, "33ABCDE1234F1Z5")).toBe(isValidGstin("33ABCDE1234F1Z5") ? 1800 : 0);
+    expect(itcFor(1800, "")).toBe(0);
+    expect(itcFor(1800, "33ABCDE1234F1Z4X")).toBe(0);
+  });
+
+  it("matches permission patterns like the server", () => {
+    expect(permissionMatches("expenses.*", "expenses.manage")).toBe(true);
+    expect(permissionMatches("*.view", "expenses.manage")).toBe(false);
+    expect(permissionMatches("*", "expenses.manage")).toBe(true);
+  });
+
+  it("builds the documents PDF paths", () => {
+    expect(PDF_PATHS.invoice("abc")).toBe("/documents/invoice/abc.pdf");
+    expect(PDF_PATHS.invoiceThermal("abc")).toBe("/documents/invoice-thermal/abc.pdf");
+    expect(PDF_PATHS.statement("c1")).toBe("/documents/statement/c1.pdf");
+    expect(PDF_PATHS.purchase("p1")).toBe("/documents/purchase/p1.pdf");
+  });
+});
+
+describe("messages", () => {
+  const { en, ta } = billingMessages;
+
+  it("has the same keys in English and Tamil", () => {
+    expect(Object.keys(ta).sort()).toEqual(Object.keys(en).sort());
+  });
+
+  it("defines every literal billing.* key used by the expenses, profit and PDF screens", () => {
+    const files = [
+      "pages/expenses.tsx",
+      "components/expenses/expense-dialog.tsx",
+      "components/expenses/categories-dialog.tsx",
+      "components/reports/profit-tab.tsx",
+      "lib/pdf.ts",
+      "pages/invoice-detail.tsx",
+      "pages/customer-detail.tsx",
+      "pages/purchase-detail.tsx",
+      "pages/reports.tsx",
+      "module.tsx",
+    ];
+    const used = new Set<string>();
+    for (const f of files) for (const m of readFileSync(join(__dirname, f), "utf8").matchAll(/["'`](billing\.[a-zA-Z0-9_.-]+)["'`]/g)) used.add(m[1]!);
+    const dynamic = [
+      ...["rent", "salaries", "electricity", "transport", "packaging", "marketing", "repairs", "other"].map((c) => `billing.expenses.categories.${c}`),
+      ...["cash", "upi", "card", "bank", "cheque", "other"].map((m) => `billing.payment.methods.${m}`),
+      "billing.reports.tabs.profit",
+    ];
+    expect([...used, ...dynamic].filter((k) => !(k in en) && !k.endsWith("."))).toEqual([]);
+  });
+
+  it("uses Tamil script for the new Tamil strings", () => {
+    const keys = Object.keys(en).filter((k) => /^billing\.(expenses|pdf|reports\.profit)\./.test(k) || k === "billing.nav.expenses");
+    const latin = keys.filter((k) => !/[஀-௿]/.test(ta[k]!) && !/^[A-Z0-9 ()%/.{}+·#-]+$/i.test(ta[k]!));
+    expect(latin).toEqual([]);
+  });
+});
+
+describe("permission gating (Gated.permission)", () => {
+  it("gates expenses nav and route by expenses.manage", () => {
+    const m = billingModule();
+    const item = m.nav.flatMap((s) => s.items).find((i) => i.href === "expenses");
+    const route = m.routes.find((r) => r.path === "expenses");
+    expect(item?.permission).toBe("expenses.manage");
+    expect(route?.permission).toBe("expenses.manage");
   });
 });

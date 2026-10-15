@@ -38,9 +38,7 @@ export const hasShopAccess = (me?: MeResponse | null, roles: readonly string[] =
 /** Owners/admins manage the shop (business profile, feature switches); staff only read. */
 export const canManageShop = (me?: MeResponse | null) => hasShopAccess(me, MANAGER_ROLES);
 
-/** `roles` undefined or empty = everyone; else the user needs at least one of them. */
-export const roleAllows = (userRoles: readonly string[], roles?: readonly string[]) =>
-  !roles || roles.length === 0 || userRoles.some((r) => roles.includes(r));
+export { roleAllows } from "./permissions";
 
 export function useSignOut(loginPath = "/login") {
   const qc = useQueryClient();

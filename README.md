@@ -19,30 +19,48 @@ Billing and the rest), built once and switched on per tenant and per plan. Modul
 
 ```
 apps/
-  api/         Fastify host: wires modules together, mounts routes under /v1/<module>
-  admin/       Next.js super-admin + tenant-admin panel (catalogue module "admin")
-  billing/     Billing app (:3001): thin shell mounting @srirealtime/billing-ui at "/"
-  shop/        Ecommerce store-admin demo (:3002): a store module + billing-ui at "/billing"
+  api/            Fastify host (:4000): wires modules together, mounts routes under /v1/<module>
+  admin/          Next.js super-admin + tenant-admin panel (:3000, catalogue module "admin")
+  billing/        Billing app (:3001): billing-ui at "/" + workspace-ui
+  shop/           Ecommerce store admin (:3002): store dashboard, orders-ui, commerce-ui, site-ui, billing-ui at
+                  "/billing", workspace-ui
+  store/          Customer storefront (:3003, SSR): each shop on its subdomain (anbu.localhost:3003) or custom domain;
+                  theme from storefront-ui. Browser test: test/e2e.cjs
 packages/
-  core/        Shared contracts: errors, request context, env loading, module definition
-  db/          Drizzle client and column helpers
-  auth/        Phone/email OTP, Google sign-in, sessions, roles
-  tenancy/     Tenants, subdomains, custom domains, memberships
-  branding/    Per-tenant logo, colours, fonts -> shadcn CSS variables
-  plans/       SaaS plans, module gating, usage limits
-  settings/    Layered settings: defaults < app < tenant < user
-  notify/      SMS, email, WhatsApp, push behind one API, with templates
-  uploads/     Signed uploads, thumbnails, S3/R2/local adapters
-  jobs/        Queues, cron, retries (BullMQ, in-memory driver for dev)
-  i18n/        Tamil and English messages, per-app and per-tenant overrides
-  consent/     Consent records, data export, account deletion (DPDP Act, Play Store)
-  ui/          Shared shadcn design system, layouts and motion primitives
-  web/         Shared client kit + UI module system (API client, OTP login, i18n, features, app shell)
-  billing-ui/  The billing UI module: bills, customers, credit book, stock, purchases, reports
+  core/           Shared contracts: errors, request context, env loading, module definition, permissions
+  db/             Drizzle client and column helpers
+  auth/           Phone/email OTP, Google sign-in, sessions, roles
+  tenancy/        Tenants, subdomains, custom domains, memberships
+  branding/       Per-tenant logo, colours, fonts -> shadcn CSS variables
+  plans/          SaaS plans, module gating, usage limits
+  features/       Feature keys: app profile ∩ plan ∩ shop switch (docs/features.md)
+  settings/       Layered settings: defaults < app < tenant < user
+  notify/         SMS, email, WhatsApp, push behind one API, with templates
+  uploads/        Signed uploads, thumbnails, S3/R2/local adapters
+  jobs/           Queues, cron, retries (BullMQ, in-memory driver for dev)
+  i18n/           Tamil and English messages, per-app and per-tenant overrides
+  consent/        Consent records, data export, account deletion (DPDP Act, Play Store)
+  gst/            Browser-safe GST maths (tax-inclusive lines exact to the paisa), GSTIN, states, numbering, UPI
+  invoices/ inventory/ payments/ expenses/          Billing back end: bills, credit book, stock, purchases, payments
+  catalogue/ orders/ coupons/ delivery/ storefront/ Commerce back end: products, orders, coupons, shipping, shoppers
+  cms/ reviews/ analytics/ onboarding/              Online store: home/pages/menus/blog + SEO, reviews, store analytics
+  staff/ audit/ documents/ importexport/            Team & roles (permissions), activity log, PDFs, CSV import/export
+  ui/             Shared shadcn design system, layouts and motion primitives
+  web/            Shared client kit + UI module system (API client, OTP login, i18n, features, permission gating,
+                  app shell)
+  billing-ui/     UI module: bills, customers, credit book, stock, purchases, expenses, reports
+  orders-ui/      UI module: orders, coupons, delivery
+  commerce-ui/    UI module: products, variants, categories, collections
+  site-ui/        UI module: online store website (home editor, pages, menus, blog), store settings, reviews,
+                  analytics, custom domain
+  workspace-ui/   UI module every app mounts: team & roles, audit log, import/export, onboarding
+  storefront-ui/  The shopper-facing store theme (server + client components) used by apps/store
 docs/
-  CONVENTIONS.md   How a module package is structured — read before adding one
-  web-modules.md   The front-end contract: UI modules any Next.js app can mount
-  features.md      Feature keys, app profiles, plans and shop switches
+  CONVENTIONS.md     How a module package is structured — read before adding one
+  web-modules.md     The front-end contract: UI modules any Next.js app can mount (features, permissions)
+  features.md        Feature keys, app profiles, plans and shop switches; e2e shops and test data cleanup
+  commerce-batch1.md / commerce-batch2.md   Commerce back-end design (batches 1 and 2)
+  roadmap.md         Batches and their status
 ```
 
 ## Getting started
@@ -52,11 +70,17 @@ pnpm install
 pnpm infra:up                      # Postgres + Redis in Docker
 cp .env.example apps/api/.env
 pnpm db:generate && pnpm db:migrate
-pnpm dev                           # API on :4000, admin on :3000
+pnpm dev                           # API :4000, admin :3000, billing :3001, shop :3002, store :3003
+pnpm seed                          # demo shops: raja, kumar (billing), anbu (store)
 ```
 
 Without provider keys, SMS/email/WhatsApp/push messages are printed to the API console, so OTP sign-in
-works locally out of the box.
+works locally out of the box. Shops are addressed by subdomain in dev: `raja.localhost:3001`, `anbu.localhost:3002`
+(store admin), `anbu.localhost:3003` (storefront).
+
+Tests: `pnpm -r typecheck`, `pnpm -r test`; end to end (needs the dev servers): `pnpm --filter @srirealtime/api
+test:e2e:all` (seeds the e2e shops e2e-bill / e2e-store / e2e-lite, runs the API scripts and the storefront browser test).
+See docs/features.md "End-to-end shops".
 
 ## Adding a module
 

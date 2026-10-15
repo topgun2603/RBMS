@@ -28,6 +28,12 @@ export const envSchema = z.object({
   CNAME_TARGET: z.string().default("stores.srikit.in"),
   SESSION_TTL_DAYS: z.coerce.number().default(30),
   OTP_TTL_MINUTES: z.coerce.number().default(10),
+  /**
+   * Development/test only: a fixed OTP (4–10 digits) for the test identities in TEST_OTP_TARGETS (comma-separated exact
+   * phones/emails or `*` patterns, e.g. "+9199990*,e2e-*@example.com"). Ignored when NODE_ENV=production. Unset = off.
+   */
+  TEST_OTP_CODE: optionalString(),
+  TEST_OTP_TARGETS: optionalString(),
   GOOGLE_CLIENT_ID: optionalString(),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default(".uploads"),
@@ -51,6 +57,9 @@ export const envSchema = z.object({
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production" && (e.APP_SECRET.length < 32 || e.APP_SECRET.startsWith("dev-only"))) {
       ctx.addIssue({ code: "custom", path: ["APP_SECRET"], message: "Set a random 32+ character secret in production" });
+    }
+    if (e.TEST_OTP_CODE && !/^\d{4,10}$/.test(e.TEST_OTP_CODE)) {
+      ctx.addIssue({ code: "custom", path: ["TEST_OTP_CODE"], message: "Use 4–10 digits" });
     }
     if (e.STORAGE_DRIVER === "s3" && !e.S3_BUCKET) {
       ctx.addIssue({ code: "custom", path: ["S3_BUCKET"], message: "Required when STORAGE_DRIVER=s3" });

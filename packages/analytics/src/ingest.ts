@@ -130,6 +130,15 @@ export const istDayStart = (date: string): Date => new Date(`${date}T00:00:00.00
 export const addDaysISO = (date: string, n: number): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
+/**
+ * The IST dates a rollup recomputes, oldest first, ending today: `days` of them (whole number, at least 1, at most the
+ * raw-event retention + 1 — older days have no raw events left to rebuild from).
+ */
+export function rollupDates(today: string, days: number, retentionDays = 90): string[] {
+  const n = Math.min(Math.max(Math.trunc(Number.isFinite(days) ? days : 2), 1), retentionDays + 1);
+  return Array.from({ length: n }, (_, i) => addDaysISO(today, i - n + 1));
+}
+
 /** Client timestamps are trusted only within the last 24 h and up to 5 min ahead; otherwise "now". */
 export function eventTime(at: string | null | undefined, now: Date): Date {
   if (!at) return now;

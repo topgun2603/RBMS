@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildNavModel, joinPath, matchPattern, matchRoute, normalizeBase, relativeTo } from "./model";
+import { featureChecker, normalizeFeatures } from "../lib/features";
+import { buildNavModel, checkGate, joinPath, matchPattern, matchRoute, normalizeBase, relativeTo, visibleFor, type GateContext } from "./model";
 import type { MountedModule } from "./types";
 
 const C = () => null;
@@ -99,5 +100,118 @@ describe("buildNavModel", () => {
     expect(nav.sections[0]!.items.map((i) => i.href)).toEqual(["/billing", "/billing/invoices"]);
     expect(nav.sections[0]!.items[0]!.exact).toBe(true);
     expect(nav.primary?.href).toBe("/billing/invoices/new");
+  });
+});
+
+describe("permission gating (checkGate / visibleFor)", () => {
+  const features = featureChecker(
+    normalizeFeatures({
+      appId: "EC",
+      planId: "pro",
+      features: [
+        { key: "orders", module: "orders", label: "Orders", description: "", dependsOn: [], shopToggle: false, enabled: true, reason: null, available: true, shopEnabled: null },
+        { key: "cms", module: "cms", label: "CMS", description: "", dependsOn: [], shopToggle: true, enabled: false, reason: "shop", available: true, shopEnabled: false },
+      ],
+    }),
+  );
+  const mod: MountedModule = {
+    id: "store",
+    basePath: "/",
+    messages: { en: {}, ta: {} },
+    nav: [
+      {
+        id: "sell",
+        title: "sell",
+        items: [
+          { href: "orders", label: "orders", feature: "orders" },
+          { href: "coupons", label: "coupons", feature: "orders", permission: "coupons.manage" },
+          { href: "pages", label: "pages", feature: "cms", permission: "cms.manage" },
+          { href: "analytics", label: "analytics", permission: ["reports.view", "analytics.view"] },
+        ],
+      },
+      { id: "team", title: "team", permission: "staff.manage", items: [{ href: "team", label: "team" }] },
+    ],
+    routes: [
+      { path: "orders", component: C, feature: "orders" },
+      { path: "coupons", component: C, feature: "orders", permission: "coupons.manage" },
+      { path: "pages", component: C, feature: "cms", permission: "cms.manage" },
+      { path: "owners", component: C, roles: ["owner"], permission: "staff.manage" },
+    ],
+    widgets: [
+      { id: "sales", size: "md", component: C, permission: "reports.view" },
+      { id: "orders", size: "sm", component: C, feature: "orders" },
+    ],
+    actions: [
+      { id: "new-coupon", label: "new", href: "coupons/new", permission: "coupons.manage", primary: true },
+      { id: "new-order", label: "new order", href: "orders/new", feature: "orders", primary: true },
+    ],
+    settings: [
+      { path: "", label: "profile", component: C },
+      { path: "delivery", label: "delivery", component: C, permission: "settings.manage" },
+      { path: "pages", label: "pages", component: C, feature: "cms", permission: "cms.manage" },
+    ],
+  };
+  const ctx = (permissions: string[] | null, fullAccess = false, roles: string[] = ["staff"]): GateContext => ({
+    roles,
+    access: { fullAccess, permissions },
+    checkFeature: features.check,
+  });
+  const route = (path: string) => matchRoute({ modules: [mod] }, path, (m) => m.routes)!;
+  const gate = (path: string, c: GateContext) => {
+    const m = route(path);
+    return checkGate(m.route, m.module, c);
+  };
+
+  it("filters nav items, sections and the primary action by permission on top of features", () => {
+    const visible = visibleFor(ctx(["orders.*", "analytics.view"]));
+    const nav = buildNavModel({ modules: [mod] }, visible, []);
+    expect(nav.sections.map((s) => s.id)).toEqual(["store:sell"]);
+    expect(nav.sections[0]!.items.map((i) => i.href)).toEqual(["/orders", "/analytics"]);
+    expect(nav.primary?.href).toBe("/orders/new");
+
+    const withCoupons = buildNavModel({ modules: [mod] }, visibleFor(ctx(["coupons.*", "staff.manage"])), []);
+    expect(withCoupons.sections.map((s) => s.id)).toEqual(["store:sell", "store:team"]);
+    expect(withCoupons.sections[0]!.items.map((i) => i.href)).toEqual(["/orders", "/coupons"]);
+    expect(withCoupons.primary?.href).toBe("/coupons/new");
+  });
+
+  it("never shows a feature that is off, even with `*`", () => {
+    const nav = buildNavModel({ modules: [mod] }, visibleFor(ctx(["*"])), []);
+    expect(nav.sections[0]!.items.map((i) => i.href)).toEqual(["/orders", "/coupons", "/analytics"]);
+  });
+
+  it("owners / admins / super-admins see every permission-gated item", () => {
+    const nav = buildNavModel({ modules: [mod] }, visibleFor(ctx([], true, ["owner"])), []);
+    expect(nav.sections.map((s) => s.id)).toEqual(["store:sell", "store:team"]);
+    expect(nav.sections[0]!.items).toHaveLength(3);
+  });
+
+  it("filters widgets, actions and settings pages", () => {
+    const v = visibleFor(ctx(["orders.view"]));
+    expect(mod.widgets!.filter((w) => v(w, mod)).map((w) => w.id)).toEqual(["orders"]);
+    expect(mod.actions!.filter((a) => v(a, mod)).map((a) => a.id)).toEqual(["new-order"]);
+    expect(mod.settings!.filter((p) => v(p, mod)).map((p) => p.path)).toEqual([""]);
+    const mgr = visibleFor(ctx(["settings.manage", "reports.view"]));
+    expect(mod.widgets!.filter((w) => mgr(w, mod)).map((w) => w.id)).toEqual(["sales", "orders"]);
+    expect(mod.settings!.filter((p) => mgr(p, mod)).map((p) => p.path)).toEqual(["", "delivery"]);
+  });
+
+  it("resolves a route the user lacks to the no-access gate", () => {
+    expect(gate("/orders", ctx([]))).toEqual({ ok: true });
+    expect(gate("/coupons", ctx(["orders.view"]))).toEqual({ ok: false, kind: "permission" });
+    expect(gate("/coupons", ctx(["coupons.manage"]))).toEqual({ ok: true });
+    expect(gate("/coupons", ctx(null))).toEqual({ ok: true }); // no permission list from the API: fail open
+  });
+
+  it("checks role first, then permission, then features", () => {
+    expect(gate("/owners", ctx(["staff.manage"]))).toEqual({ ok: false, kind: "role" });
+    expect(gate("/owners", ctx([], true, ["owner"]))).toEqual({ ok: true });
+    expect(gate("/pages", ctx([]))).toEqual({ ok: false, kind: "permission" });
+    expect(gate("/pages", ctx(["cms.manage"]))).toMatchObject({ ok: false, kind: "feature", check: { reason: "shop", cause: "cms" } });
+  });
+
+  it("applies the module's own feature restriction too", () => {
+    const restricted = { features: ["invoices.*"] };
+    expect(checkGate({ feature: "orders" }, restricted, ctx(["*"]))).toMatchObject({ ok: false, kind: "feature", check: { reason: "app" } });
   });
 });

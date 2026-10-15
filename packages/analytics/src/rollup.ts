@@ -60,16 +60,32 @@ const inc = (m: Map<string, number>, k: string, by = 1) => m.set(k, (m.get(k) ??
 const topN = (m: Map<string, number>, n: number) =>
   [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, n);
 
+/** Same-instant tie-break: the storefront batches events with millisecond times, so a page view and the product view
+ * it triggers often share `at`; the page view (the only event carrying referrer / UTM) must count as first. */
+const TYPE_ORDER: Record<EventType, number> = {
+  page_view: 0,
+  search: 1,
+  product_view: 2,
+  add_to_cart: 3,
+  remove_from_cart: 4,
+  begin_checkout: 5,
+  purchase: 6,
+};
+
+/** Whether the event says where the visit came from (only page views carry referrer / UTM). */
+const hasSource = (e: Pick<RollupEvent, "utmSource" | "referrerHost">) => !!(e.utmSource || e.referrerHost);
+
 /**
- * Aggregates one day of one tenant's events. Sessions take source and device from their first event; visitors are
- * distinct anonymous ids; revenue is the sum of purchase values (paise).
+ * Aggregates one day of one tenant's events. Sessions take their device from their first event and their source from
+ * the first event that has one (utm / referrer), else "direct"; visitors are distinct anonymous ids; revenue is the sum
+ * of purchase values (paise). The result doesn't depend on the order of `events`.
  */
 export function aggregateDay(events: readonly RollupEvent[]): MetricRow[] {
   if (events.length === 0) return [];
-  const sorted = [...events].sort((a, b) => a.at.getTime() - b.at.getTime());
+  const sorted = [...events].sort((a, b) => a.at.getTime() - b.at.getTime() || TYPE_ORDER[a.type] - TYPE_ORDER[b.type]);
 
   const visitors = new Set<string>();
-  const sessions = new Map<string, { source: string; device: Device; steps: Set<FunnelStep> }>();
+  const sessions = new Map<string, { source: string; sourced: boolean; device: Device; steps: Set<FunnelStep> }>();
   const counts = { page_view: 0, product_view: 0, add_to_cart: 0, remove_from_cart: 0, begin_checkout: 0, purchase: 0, search: 0 };
   let revenue = 0;
   const pViews = new Map<string, number>();
@@ -81,8 +97,11 @@ export function aggregateDay(events: readonly RollupEvent[]): MetricRow[] {
     visitors.add(e.anonymousId);
     let s = sessions.get(e.sessionId);
     if (!s) {
-      s = { source: sourceOf(e), device: e.device, steps: new Set(["visit"]) };
+      s = { source: sourceOf(e), sourced: hasSource(e), device: e.device, steps: new Set(["visit"]) };
       sessions.set(e.sessionId, s);
+    } else if (!s.sourced && hasSource(e)) {
+      s.source = sourceOf(e);
+      s.sourced = true;
     }
     counts[e.type]++;
     if (e.type === "product_view" || e.type === "add_to_cart" || e.type === "begin_checkout" || e.type === "purchase") {

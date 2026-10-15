@@ -89,3 +89,23 @@ export function RoleGatePage() {
   );
 }
 
+/** A screen that needs a permission the member's role doesn't include (Gated.permission). */
+export function PermissionGatePage() {
+  const { t } = useI18n();
+  return (
+    <Page className="flex max-w-3xl justify-center pt-16">
+      <EmptyState
+        className="w-full max-w-md"
+        icon={LockIcon}
+        title={t("web.gate.permissionTitle")}
+        description={t("web.gate.permissionBody")}
+        action={
+          <Button asChild size="lg" variant="outline">
+            <Link href="/">{t("web.notFound.home")}</Link>
+          </Button>
+        }
+      />
+    </Page>
+  );
+}
+

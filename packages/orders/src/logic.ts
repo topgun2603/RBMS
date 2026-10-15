@@ -337,6 +337,8 @@ export interface TotalsOptions {
 /**
  * GST totals via `computeInvoice`: each line at its exclusive rate, the coupon share converted to the exclusive basis
  * for tax-inclusive lines, and shipping as a GST-inclusive composite-supply line at the principal item's rate.
+ * Tax-inclusive lines (and shipping/COD) carry `inclusiveTotal` = what is charged, so their GST is worked out
+ * backwards and the line total equals the charged price exactly (₹999 stays ₹999.00, not ₹999.01).
  */
 export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOptions): { lines: OrderLine[]; totals: OrderTotals } {
   const discountsCharged = base.map((_, i) => Math.max(opts.lineDiscounts?.[i] ?? 0, 0));
@@ -345,6 +347,8 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
     const share = Math.min(discountsCharged[i]!, l.gross);
     const discount = Math.min(exclusiveOf(share, l.gstRate, l.taxInclusive), amount);
     const input: LineInput = { description: l.name, qty: l.qty, rate: l.rate, gstRate: l.gstRate, itemId: l.variantId, discount };
+    // Tax-inclusive price: the line total is what the customer is charged; GST is taken out of it, not re-added.
+    if (l.taxInclusive && l.gstRate) input.inclusiveTotal = l.gross - share;
     if (l.hsn) input.hsn = l.hsn;
     if (l.unit) input.unit = l.unit;
     return input;
@@ -360,6 +364,7 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
     unit: "job",
     rate: exclusiveOf(charged, serviceRate, true),
     gstRate: serviceRate,
+    ...(serviceRate ? { inclusiveTotal: charged } : {}),
   });
   if (shippingCharged > 0) inputs.push(serviceLine(SHIPPING_DESCRIPTION, shippingCharged));
   if (codFee > 0) inputs.push(serviceLine(COD_FEE_DESCRIPTION, codFee));

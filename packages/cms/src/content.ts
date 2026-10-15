@@ -136,8 +136,12 @@ export const HOME_SECTION_TYPES = [
 ] as const;
 export type HomeSectionType = (typeof HOME_SECTION_TYPES)[number];
 
+/** Hidden sections stay in the draft (and the published doc) but are skipped on the storefront. */
+const sectionHidden = z.boolean().optional();
+
 export const heroSlideSchema = z.object({
-  imageUrl: urlSchema,
+  /** Null/omitted: the storefront renders a branded gradient instead of a photo. */
+  imageUrl: urlSchema.nullable().default(null),
   mobileImageUrl: urlSchema.optional(),
   heading: text(CMS_LIMITS.heading).optional(),
   subheading: text(240).optional(),
@@ -148,12 +152,14 @@ export type HeroSlide = z.output<typeof heroSlideSchema>;
 export const heroSectionSchema = z.object({
   type: z.literal("hero"),
   id: clientId,
+  hidden: sectionHidden,
   slides: z.array(heroSlideSchema).min(1).max(CMS_LIMITS.heroSlides),
 });
 
 export const categoriesSectionSchema = z.object({
   type: z.literal("categories"),
   id: clientId,
+  hidden: sectionHidden,
   title: text(CMS_LIMITS.heading).default(""),
   /** Which categories, in order; omitted = all (as the catalogue lists them). */
   categoryIds: z.array(uuid).max(CMS_LIMITS.ids).optional(),
@@ -162,6 +168,7 @@ export const categoriesSectionSchema = z.object({
 export const collectionSectionSchema = z.object({
   type: z.literal("collection"),
   id: clientId,
+  hidden: sectionHidden,
   title: text(CMS_LIMITS.heading).default(""),
   collectionSlug: refSlug,
   layout: z.enum(["carousel", "grid"]).default("carousel"),
@@ -171,6 +178,7 @@ export const collectionSectionSchema = z.object({
 export const productsSectionSchema = z.object({
   type: z.literal("products"),
   id: clientId,
+  hidden: sectionHidden,
   title: text(CMS_LIMITS.heading).default(""),
   productIds: z.array(uuid).min(1).max(CMS_LIMITS.ids),
 });
@@ -178,6 +186,7 @@ export const productsSectionSchema = z.object({
 export const bannerSectionSchema = z.object({
   type: z.literal("banner"),
   id: clientId,
+  hidden: sectionHidden,
   imageUrl: urlSchema,
   mobileImageUrl: urlSchema.optional(),
   href: hrefSchema.optional(),
@@ -187,6 +196,7 @@ export const bannerSectionSchema = z.object({
 export const textSectionSchema = z.object({
   type: z.literal("text"),
   id: clientId,
+  hidden: sectionHidden,
   heading: text(CMS_LIMITS.heading).optional(),
   markdown: requiredMarkdown(CMS_LIMITS.markdownSection),
 });
@@ -194,6 +204,7 @@ export const textSectionSchema = z.object({
 export const imageTextSectionSchema = z.object({
   type: z.literal("image-text"),
   id: clientId,
+  hidden: sectionHidden,
   imageUrl: urlSchema,
   heading: requiredText(CMS_LIMITS.heading),
   markdown: markdown(CMS_LIMITS.markdownSection).default(""),
@@ -204,6 +215,7 @@ export const imageTextSectionSchema = z.object({
 export const testimonialsSectionSchema = z.object({
   type: z.literal("testimonials"),
   id: clientId,
+  hidden: sectionHidden,
   title: text(CMS_LIMITS.heading).optional(),
   items: z
     .array(z.object({ quote: requiredText(600), name: requiredText(80) }))
@@ -217,6 +229,7 @@ export const USP_ICONS = ["truck", "cash", "return", "shield", "star", "gift", "
 export const uspSectionSchema = z.object({
   type: z.literal("usp"),
   id: clientId,
+  hidden: sectionHidden,
   items: z
     .array(
       z.object({
@@ -232,6 +245,7 @@ export const uspSectionSchema = z.object({
 export const newsletterSectionSchema = z.object({
   type: z.literal("newsletter"),
   id: clientId,
+  hidden: sectionHidden,
   heading: requiredText(CMS_LIMITS.heading),
   text: text(400).default(""),
 });

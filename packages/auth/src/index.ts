@@ -25,6 +25,7 @@ export type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, O
 export {
   detectTarget,
   maskTarget,
+  matchesTestTarget,
   normalizeEmail,
   normalizePhone,
   otpHash,

@@ -32,6 +32,7 @@ import { createUploads, LocalStorage, S3Storage, type StorageAdapter } from "@sr
 import type { FastifyRequest } from "fastify";
 import type { Logger } from "pino";
 import type { Env } from "./env";
+import { testOtpConfig } from "./test-otp";
 import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
 import {
@@ -106,12 +107,16 @@ export function createKit(env: Env, log: Logger) {
     },
   });
 
+  // Fixed OTP for test identities (e2e scripts); never in production (testOtpConfig drops it there).
+  const { testOtp, note: testOtpNote } = testOtpConfig(env);
+  if (testOtpNote) log.warn({ targets: testOtp?.targets ?? [] }, `auth: ${testOtpNote}`);
   const auth = createAuth({
     db,
     config: {
       sessionTtlDays: env.SESSION_TTL_DAYS,
       otpTtlMinutes: env.OTP_TTL_MINUTES,
       googleClientIds: env.GOOGLE_CLIENT_ID ? [env.GOOGLE_CLIENT_ID] : [],
+      testOtp,
     },
     otp: notify.service,
     memberships: tenancy.service,
@@ -295,7 +300,8 @@ export function createKit(env: Env, log: Logger) {
 
   /**
    * The GST invoice for an order. Lines carry no `itemId`: the order already moves stock (reserve → commit), so the
-   * invoice must not deduct it a second time. Shipping becomes its own taxed line (SAC 996812).
+   * invoice must not deduct it a second time. Shipping becomes its own taxed line (SAC 996812). Tax-inclusive lines
+   * carry `inclusiveTotal`, so the invoice lines and total equal the order's to the paisa.
    */
   async function invoiceFromOrder(tenantId: string, order: Order) {
     const tenant = await tenancy.service.getRef(tenantId);
@@ -309,11 +315,23 @@ export function createKit(env: Env, log: Logger) {
       rate: l.rate,
       discount: l.discount || undefined,
       gstRate: l.gstRate,
+      // Tax-inclusive lines: the invoice line totals the charged amount exactly, like the order line.
+      inclusiveTotal: l.taxInclusive && l.gstRate ? l.total : undefined,
     }));
+    const service = (description: string, s: NonNullable<Order["totals"]["shippingLine"]>) => ({
+      description,
+      hsn: s.hsn ?? "996812",
+      qty: 1,
+      unit: "job",
+      rate: s.rate,
+      discount: undefined,
+      gstRate: s.gstRate,
+      inclusiveTotal: s.inclusiveTotal ?? undefined,
+    });
     const s = order.totals.shippingLine;
-    if (s) lines.push({ description: "Shipping charges", hsn: s.hsn ?? "996812", qty: 1, unit: "job", rate: s.rate, discount: undefined, gstRate: s.gstRate });
+    if (s) lines.push(service("Shipping charges", s));
     const cod = order.totals.codFeeLine;
-    if (cod) lines.push({ description: "COD charges", hsn: cod.hsn ?? "996812", qty: 1, unit: "job", rate: cod.rate, discount: undefined, gstRate: cod.gstRate });
+    if (cod) lines.push(service("COD charges", cod));
     const invoice = await invoices.service.create(tenant, {
       customer: {
         name: order.customer.name,

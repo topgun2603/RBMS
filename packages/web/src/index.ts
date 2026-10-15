@@ -42,6 +42,7 @@ export {
   MANAGER_ROLES,
 } from "./lib/auth";
 export * from "./lib/types";
+export { permissionMatches, permissionsAllow, permissionAllows, explicitlyGranted, type PermissionReq, type PermissionHolder } from "./lib/permissions";
 export { normalizeTarget, humanizeKey } from "./lib/format";
 export { useDebounced } from "./lib/use-debounced";
 
@@ -122,10 +123,10 @@ export {
   normalizeBase,
   type NavigateOptions,
 } from "./app/navigation";
-export { useSession, useOptionalSession, useVisible, type SessionValue } from "./app/session";
-export { buildNavModel, matchRoute, type NavModel, type RouteMatch } from "./app/model";
+export { useSession, useOptionalSession, useVisible, usePermission, useGateContext, type SessionValue } from "./app/session";
+export { buildNavModel, matchRoute, checkGate, visibleFor, type NavModel, type RouteMatch, type GateContext, type GateResult } from "./app/model";
 export { Dashboard, ModuleDashboard, WidgetGrid } from "./app/dashboard";
 export { AppFrame, useShellNav, useQuickActions } from "./app/shell";
 export { LoginScreen } from "./app/login";
 export { ShopGate } from "./app/shop-gate";
-export { NotFound, FeatureGatePage, RoleGatePage, featureName, featureModuleName } from "./app/gate";
+export { NotFound, FeatureGatePage, RoleGatePage, PermissionGatePage, featureName, featureModuleName } from "./app/gate";

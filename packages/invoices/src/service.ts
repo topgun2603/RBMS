@@ -13,6 +13,7 @@ import {
   isValidGstin,
   isValidStateCode,
   lineAmount,
+  taxableOfInclusive,
   normalizeGstin,
   normalizeStateCode,
   stateFromGstin,
@@ -469,10 +470,19 @@ export const lineInputSchema = z
     gstRate,
     /** Saved item the line came from (drives stock). */
     itemId: opt(z.string().uuid()),
+    /** GST-inclusive amount charged for the line (orders with tax-inclusive prices): GST is taken out of it. */
+    inclusiveTotal: money.optional(),
   })
   .superRefine((l, ctx) => {
     if ((l.discount ?? 0) > lineAmount(l.qty, l.rate)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount"], message: "Discount can't exceed the line amount" });
+    }
+    if (l.inclusiveTotal !== undefined) {
+      // Must be the same line, only rounded differently: its taxable value within a paisa per unit of qty × rate − discount.
+      const forward = lineAmount(l.qty, l.rate) - (l.discount ?? 0);
+      if (Math.abs(taxableOfInclusive(l.inclusiveTotal, l.gstRate) - forward) > Math.ceil(l.qty) + 1) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["inclusiveTotal"], message: "Inclusive total doesn't match the rate and quantity" });
+      }
     }
   })
   .transform((l): LineInput => {
@@ -481,6 +491,7 @@ export const lineInputSchema = z
     if (l.unit) out.unit = l.unit;
     if (l.discount) out.discount = l.discount;
     if (l.itemId) out.itemId = l.itemId;
+    if (l.inclusiveTotal !== undefined) out.inclusiveTotal = l.inclusiveTotal;
     return out;
   });
 
@@ -607,6 +618,7 @@ const toLineInput = (l: LineTotals): LineInput => {
   if (l.unit) out.unit = l.unit;
   if (l.discount) out.discount = l.discount;
   if (l.itemId) out.itemId = l.itemId;
+  if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
   return out;
 };
 

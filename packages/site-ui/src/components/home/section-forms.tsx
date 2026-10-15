@@ -1,0 +1,401 @@
+"use client";
+
+import * as React from "react";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
+import { Button, ChipGroup, cn, Input, Label, Textarea } from "@srirealtime/ui";
+import { useI18n } from "@srirealtime/web";
+import { emptySlide, SECTION_LIST_LIMITS, USP_ICON_KEYS, uspIconKey, type FieldErrors, type FormOf, type SectionForm, type SlideForm } from "../../lib/sections";
+import { FieldError, Optional, TextField } from "../bits";
+import { ImageField } from "../image-field";
+import { MarkdownField } from "../markdown-field";
+import { CategoryPicker, ProductPicker, SlugSelect } from "../pickers";
+import { USP_ICON_MAP } from "./section-meta";
+
+interface Props<T extends SectionForm["type"]> {
+  form: FormOf<T>;
+  onChange: (f: FormOf<T>) => void;
+  errors: FieldErrors;
+  disabled?: boolean;
+  idp: string;
+}
+
+/** The form for one home section, matching its cms schema field for field. */
+export function SectionFields(props: { form: SectionForm; onChange: (f: SectionForm) => void; errors: FieldErrors; disabled?: boolean; idp: string }) {
+  const p = props as never;
+  switch (props.form.type) {
+    case "hero":
+      return <HeroFields {...(p as Props<"hero">)} />;
+    case "categories":
+      return <CategoriesFields {...(p as Props<"categories">)} />;
+    case "collection":
+      return <CollectionFields {...(p as Props<"collection">)} />;
+    case "products":
+      return <ProductsFields {...(p as Props<"products">)} />;
+    case "banner":
+      return <BannerFields {...(p as Props<"banner">)} />;
+    case "text":
+      return <TextFields {...(p as Props<"text">)} />;
+    case "image-text":
+      return <ImageTextFields {...(p as Props<"image-text">)} />;
+    case "testimonials":
+      return <TestimonialsFields {...(p as Props<"testimonials">)} />;
+    case "usp":
+      return <UspFields {...(p as Props<"usp">)} />;
+    case "newsletter":
+      return <NewsletterFields {...(p as Props<"newsletter">)} />;
+  }
+}
+
+/** Up / down / remove buttons for an item in a repeatable list. */
+function ItemTools({ i, n, onMove, onRemove, disabled, min = 1 }: { i: number; n: number; onMove: (d: number) => void; onRemove: () => void; disabled?: boolean; min?: number }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || i === 0} onClick={() => onMove(-1)} aria-label={t("site.common.moveUpN", { n: i + 1 })}>
+        <ArrowUpIcon />
+      </Button>
+      <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || i === n - 1} onClick={() => onMove(1)} aria-label={t("site.common.moveDownN", { n: i + 1 })}>
+        <ArrowDownIcon />
+      </Button>
+      <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || n <= min} onClick={onRemove} aria-label={t("site.common.removeN", { n: i + 1 })}>
+        <XIcon />
+      </Button>
+    </div>
+  );
+}
+
+function moveIn<T>(list: T[], i: number, d: number): T[] {
+  const j = i + d;
+  if (j < 0 || j >= list.length) return list;
+  const next = [...list];
+  [next[i], next[j]] = [next[j]!, next[i]!];
+  return next;
+}
+
+function CtaFields({ idp, label, href, onLabel, onHref, errors, prefix = "", disabled }: { idp: string; label: string; href: string; onLabel: (v: string) => void; onHref: (v: string) => void; errors: FieldErrors; prefix?: string; disabled?: boolean }) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <TextField id={`${idp}-cta-label`} label={t("site.home.ctaLabel")} optional value={label} placeholder={t("site.home.ctaLabelPlaceholder")} maxLength={60} disabled={disabled} error={errors[`${prefix}ctaLabel`]} onChange={onLabel} />
+      <TextField id={`${idp}-cta-href`} label={t("site.home.ctaHref")} optional value={href} placeholder="/products" hint={t("site.common.linkHint")} disabled={disabled} error={errors[`${prefix}ctaHref`]} onChange={onHref} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- hero
+
+function HeroFields({ form, onChange, errors, disabled, idp }: Props<"hero">) {
+  const { t } = useI18n();
+  const setSlide = (i: number, p: Partial<SlideForm>) => onChange({ ...form, slides: form.slides.map((s, j) => (j === i ? { ...s, ...p } : s)) });
+  return (
+    <div className="grid gap-4">
+      {form.slides.map((s, i) => (
+        <fieldset key={i} className="grid gap-3 rounded-xl border bg-muted/20 p-3">
+          <legend className="sr-only">{t("site.home.slideN", { n: i + 1 })}</legend>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">{t("site.home.slideN", { n: i + 1 })}</span>
+            <ItemTools i={i} n={form.slides.length} disabled={disabled} onMove={(d) => onChange({ ...form, slides: moveIn(form.slides, i, d) })} onRemove={() => onChange({ ...form, slides: form.slides.filter((_, j) => j !== i) })} />
+          </div>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <div className="grid content-start gap-1.5">
+              <Label>
+                {t("site.home.image")}
+                <Optional />
+              </Label>
+              <ImageField value={s.imageUrl} onChange={(imageUrl) => setSlide(i, { imageUrl })} aspect="aspect-[16/7]" disabled={disabled} invalid={!!errors[`slides.${i}.imageUrl`]} />
+              <p className="text-xs text-muted-foreground">{t("site.home.heroImageHint")}</p>
+              <FieldError code={errors[`slides.${i}.imageUrl`]} />
+            </div>
+            <div className="grid content-start gap-1.5">
+              <Label>
+                {t("site.home.mobileImage")}
+                <Optional />
+              </Label>
+              <ImageField value={s.mobileImageUrl} onChange={(mobileImageUrl) => setSlide(i, { mobileImageUrl })} aspect="aspect-[4/5]" className="max-w-40" disabled={disabled} />
+              <p className="text-xs text-muted-foreground">{t("site.home.mobileImageHint")}</p>
+              <FieldError code={errors[`slides.${i}.mobileImageUrl`]} />
+            </div>
+          </div>
+          <TextField id={`${idp}-s${i}-h`} label={t("site.home.heading")} optional value={s.heading} maxLength={120} disabled={disabled} error={errors[`slides.${i}.heading`]} onChange={(heading) => setSlide(i, { heading })} />
+          <TextField id={`${idp}-s${i}-sub`} label={t("site.home.subheading")} optional value={s.subheading} maxLength={240} disabled={disabled} error={errors[`slides.${i}.subheading`]} onChange={(subheading) => setSlide(i, { subheading })} />
+          <CtaFields idp={`${idp}-s${i}`} label={s.ctaLabel} href={s.ctaHref} onLabel={(ctaLabel) => setSlide(i, { ctaLabel })} onHref={(ctaHref) => setSlide(i, { ctaHref })} errors={errors} prefix={`slides.${i}.`} disabled={disabled} />
+        </fieldset>
+      ))}
+      <FieldError code={errors.slides} />
+      <Button type="button" variant="outline" className="justify-self-start" disabled={disabled || form.slides.length >= SECTION_LIST_LIMITS.slides} onClick={() => onChange({ ...form, slides: [...form.slides, emptySlide()] })}>
+        <PlusIcon /> {t("site.home.addSlide")}
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- catalogue sections
+
+function CategoriesFields({ form, onChange, errors, disabled, idp }: Props<"categories">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <TextField id={`${idp}-title`} label={t("site.home.sectionTitle")} optional value={form.title} maxLength={120} disabled={disabled} error={errors.title} onChange={(title) => onChange({ ...form, title })} />
+      <ChipGroup<"all" | "pick">
+        value={form.mode}
+        onChange={(mode) => onChange({ ...form, mode })}
+        aria-label={t("site.home.categoriesMode")}
+        options={[
+          { value: "all", label: t("site.home.categoriesAll") },
+          { value: "pick", label: t("site.home.categoriesPick") },
+        ]}
+      />
+      {form.mode === "all" ? (
+        <p className="text-sm text-muted-foreground">{t("site.home.categoriesAllHint")}</p>
+      ) : (
+        <CategoryPicker ids={form.categoryIds} onChange={(categoryIds) => onChange({ ...form, categoryIds })} max={SECTION_LIST_LIMITS.ids} disabled={disabled} idPrefix={idp} />
+      )}
+      <FieldError code={errors.categoryIds} />
+    </div>
+  );
+}
+
+function CollectionFields({ form, onChange, errors, disabled, idp }: Props<"collection">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-1.5">
+        <Label htmlFor={`${idp}-col`}>{t("site.home.collection")}</Label>
+        <SlugSelect id={`${idp}-col`} type="collection" value={form.collectionSlug} invalid={!!errors.collectionSlug} disabled={disabled} onChange={(collectionSlug) => onChange({ ...form, collectionSlug })} />
+        <FieldError code={errors.collectionSlug} />
+      </div>
+      <TextField id={`${idp}-title`} label={t("site.home.sectionTitle")} optional hint={t("site.home.collectionTitleHint")} value={form.title} maxLength={120} disabled={disabled} error={errors.title} onChange={(title) => onChange({ ...form, title })} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-1.5">
+          <Label>{t("site.home.layout")}</Label>
+          <ChipGroup<"carousel" | "grid">
+            value={form.layout}
+            onChange={(layout) => onChange({ ...form, layout })}
+            aria-label={t("site.home.layout")}
+            options={[
+              { value: "carousel", label: t("site.home.layoutCarousel") },
+              { value: "grid", label: t("site.home.layoutGrid") },
+            ]}
+          />
+        </div>
+        <TextField
+          id={`${idp}-limit`}
+          label={t("site.home.limit")}
+          inputMode="numeric"
+          value={form.limit}
+          hint={t("site.home.limitHint", { max: SECTION_LIST_LIMITS.collectionLimit })}
+          disabled={disabled}
+          error={errors.limit}
+          inputClassName="w-28"
+          onChange={(v) => onChange({ ...form, limit: v.replace(/\D/g, "").slice(0, 2) })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ProductsFields({ form, onChange, errors, disabled, idp }: Props<"products">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <TextField id={`${idp}-title`} label={t("site.home.sectionTitle")} optional value={form.title} maxLength={120} disabled={disabled} error={errors.title} onChange={(title) => onChange({ ...form, title })} />
+      <ProductPicker ids={form.productIds} onChange={(productIds) => onChange({ ...form, productIds })} max={SECTION_LIST_LIMITS.ids} disabled={disabled} idPrefix={idp} />
+      <FieldError code={errors.productIds} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- static sections
+
+function BannerFields({ form, onChange, errors, disabled, idp }: Props<"banner">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="grid content-start gap-1.5">
+          <Label>{t("site.home.image")}</Label>
+          <ImageField value={form.imageUrl} onChange={(imageUrl) => onChange({ ...form, imageUrl })} aspect="aspect-[16/5]" disabled={disabled} invalid={!!errors.imageUrl} />
+          <FieldError code={errors.imageUrl} />
+        </div>
+        <div className="grid content-start gap-1.5">
+          <Label>
+            {t("site.home.mobileImage")}
+            <Optional />
+          </Label>
+          <ImageField value={form.mobileImageUrl} onChange={(mobileImageUrl) => onChange({ ...form, mobileImageUrl })} aspect="aspect-[4/3]" className="max-w-48" disabled={disabled} />
+          <FieldError code={errors.mobileImageUrl} />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TextField id={`${idp}-href`} label={t("site.home.bannerLink")} optional placeholder="/collections/sale" hint={t("site.common.linkHint")} value={form.href} disabled={disabled} error={errors.href} onChange={(href) => onChange({ ...form, href })} />
+        <TextField id={`${idp}-alt`} label={t("site.media.alt")} hint={t("site.media.altHint")} value={form.alt} maxLength={200} disabled={disabled} error={errors.alt} onChange={(alt) => onChange({ ...form, alt })} />
+      </div>
+    </div>
+  );
+}
+
+function TextFields({ form, onChange, errors, disabled, idp }: Props<"text">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <TextField id={`${idp}-h`} label={t("site.home.heading")} optional value={form.heading} maxLength={120} disabled={disabled} error={errors.heading} onChange={(heading) => onChange({ ...form, heading })} />
+      <MarkdownField id={`${idp}-md`} label={t("site.home.text")} value={form.markdown} rows={6} maxLength={10_000} disabled={disabled} error={errors.markdown} onChange={(markdown) => onChange({ ...form, markdown })} />
+    </div>
+  );
+}
+
+function ImageTextFields({ form, onChange, errors, disabled, idp }: Props<"image-text">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-1.5">
+        <Label>{t("site.home.image")}</Label>
+        <ImageField value={form.imageUrl} onChange={(imageUrl) => onChange({ ...form, imageUrl })} aspect="aspect-[4/3]" disabled={disabled} invalid={!!errors.imageUrl} />
+        <FieldError code={errors.imageUrl} />
+      </div>
+      <div className="grid gap-1.5">
+        <Label>{t("site.home.imageSide")}</Label>
+        <ChipGroup<"left" | "right">
+          value={form.imageSide}
+          onChange={(imageSide) => onChange({ ...form, imageSide })}
+          aria-label={t("site.home.imageSide")}
+          options={[
+            { value: "left", label: t("site.home.imageLeft") },
+            { value: "right", label: t("site.home.imageRight") },
+          ]}
+        />
+      </div>
+      <TextField id={`${idp}-h`} label={t("site.home.heading")} value={form.heading} maxLength={120} disabled={disabled} error={errors.heading} onChange={(heading) => onChange({ ...form, heading })} />
+      <MarkdownField id={`${idp}-md`} label={t("site.home.text")} optional value={form.markdown} rows={5} maxLength={10_000} disabled={disabled} error={errors.markdown} onChange={(markdown) => onChange({ ...form, markdown })} />
+      <CtaFields idp={idp} label={form.ctaLabel} href={form.ctaHref} onLabel={(ctaLabel) => onChange({ ...form, ctaLabel })} onHref={(ctaHref) => onChange({ ...form, ctaHref })} errors={errors} disabled={disabled} />
+    </div>
+  );
+}
+
+function TestimonialsFields({ form, onChange, errors, disabled, idp }: Props<"testimonials">) {
+  const { t } = useI18n();
+  const set = (i: number, p: Partial<{ quote: string; name: string }>) => onChange({ ...form, items: form.items.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+  return (
+    <div className="grid gap-4">
+      <TextField id={`${idp}-title`} label={t("site.home.sectionTitle")} optional value={form.title} maxLength={120} disabled={disabled} error={errors.title} onChange={(title) => onChange({ ...form, title })} />
+      {form.items.map((it, i) => (
+        <div key={i} className="grid gap-2 rounded-xl border bg-muted/20 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">{t("site.home.testimonialN", { n: i + 1 })}</span>
+            <ItemTools i={i} n={form.items.length} disabled={disabled} onMove={(d) => onChange({ ...form, items: moveIn(form.items, i, d) })} onRemove={() => onChange({ ...form, items: form.items.filter((_, j) => j !== i) })} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${idp}-q${i}`}>{t("site.home.quote")}</Label>
+            <Textarea id={`${idp}-q${i}`} rows={3} value={it.quote} maxLength={600} disabled={disabled} aria-invalid={!!errors[`items.${i}.quote`]} onChange={(e) => set(i, { quote: e.target.value })} />
+            <FieldError code={errors[`items.${i}.quote`]} />
+          </div>
+          <TextField id={`${idp}-n${i}`} label={t("site.home.customerName")} placeholder={t("site.home.customerNamePlaceholder")} value={it.name} maxLength={80} disabled={disabled} error={errors[`items.${i}.name`]} onChange={(name) => set(i, { name })} />
+        </div>
+      ))}
+      <FieldError code={errors.items} />
+      <Button type="button" variant="outline" className="justify-self-start" disabled={disabled || form.items.length >= SECTION_LIST_LIMITS.testimonials} onClick={() => onChange({ ...form, items: [...form.items, { quote: "", name: "" }] })}>
+        <PlusIcon /> {t("site.home.addTestimonial")}
+      </Button>
+    </div>
+  );
+}
+
+function UspFields({ form, onChange, errors, disabled, idp }: Props<"usp">) {
+  const { t } = useI18n();
+  const set = (i: number, p: Partial<{ icon: string; title: string; text: string }>) => onChange({ ...form, items: form.items.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+  return (
+    <div className="grid gap-4">
+      {form.items.map((it, i) => {
+        const current = uspIconKey(it.icon);
+        return (
+          <div key={i} className="grid gap-3 rounded-xl border bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">{t("site.home.uspN", { n: i + 1 })}</span>
+              <ItemTools i={i} n={form.items.length} disabled={disabled} onMove={(d) => onChange({ ...form, items: moveIn(form.items, i, d) })} onRemove={() => onChange({ ...form, items: form.items.filter((_, j) => j !== i) })} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label id={`${idp}-icon${i}`}>{t("site.home.icon")}</Label>
+              <div role="radiogroup" aria-labelledby={`${idp}-icon${i}`} className="flex flex-wrap gap-1.5">
+                {USP_ICON_KEYS.map((key) => {
+                  const Icon = USP_ICON_MAP[key]!;
+                  const on = current === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={t(`site.home.uspIcon.${key}`)}
+                      title={t(`site.home.uspIcon.${key}`)}
+                      disabled={disabled}
+                      onClick={() => set(i, { icon: key })}
+                      className={cn(
+                        "inline-flex size-10 items-center justify-center rounded-xl border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                        on ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="size-4.5" />
+                    </button>
+                  );
+                })}
+              </div>
+              <FieldError code={errors[`items.${i}.icon`]} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField id={`${idp}-t${i}`} label={t("site.home.uspTitle")} value={it.title} maxLength={60} disabled={disabled} error={errors[`items.${i}.title`]} onChange={(title) => set(i, { title })} />
+              <TextField id={`${idp}-x${i}`} label={t("site.home.uspText")} optional value={it.text} maxLength={200} disabled={disabled} error={errors[`items.${i}.text`]} onChange={(text) => set(i, { text })} />
+            </div>
+          </div>
+        );
+      })}
+      <FieldError code={errors.items} />
+      <Button type="button" variant="outline" className="justify-self-start" disabled={disabled || form.items.length >= SECTION_LIST_LIMITS.usps} onClick={() => onChange({ ...form, items: [...form.items, { icon: "check", title: "", text: "" }] })}>
+        <PlusIcon /> {t("site.home.addUsp")}
+      </Button>
+    </div>
+  );
+}
+
+function NewsletterFields({ form, onChange, errors, disabled, idp }: Props<"newsletter">) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-4">
+      <TextField id={`${idp}-h`} label={t("site.home.heading")} value={form.heading} maxLength={120} disabled={disabled} error={errors.heading} onChange={(heading) => onChange({ ...form, heading })} />
+      <div className="grid gap-1.5">
+        <Label htmlFor={`${idp}-x`}>
+          {t("site.home.text")}
+          <Optional />
+        </Label>
+        <Input id={`${idp}-x`} className="h-11" value={form.text} maxLength={400} disabled={disabled} onChange={(e) => onChange({ ...form, text: e.target.value })} />
+        <FieldError code={errors.text} />
+      </div>
+      <p className="text-xs text-muted-foreground">{t("site.home.newsletterHint")}</p>
+    </div>
+  );
+}
+
+/** One-line summary for a collapsed section row. */
+export function sectionSummary(f: SectionForm, t: (k: string, v?: Record<string, string | number>) => string): string {
+  switch (f.type) {
+    case "hero":
+      return f.slides[0]?.heading || t("site.home.slides", { count: f.slides.length });
+    case "categories":
+      return f.title || (f.mode === "all" ? t("site.home.categoriesAll") : t("site.home.categoriesCount", { count: f.categoryIds.length }));
+    case "collection":
+      return f.title || f.collectionSlug || t("site.home.noCollection");
+    case "products":
+      return f.title || t("site.home.productsCount", { count: f.productIds.length });
+    case "banner":
+      return f.alt || f.href || "";
+    case "text":
+      return f.heading || f.markdown.slice(0, 60);
+    case "image-text":
+      return f.heading;
+    case "testimonials":
+      return f.title || t("site.home.testimonialsCount", { count: f.items.length });
+    case "usp":
+      return f.items.map((i) => i.title).filter(Boolean).join(" · ");
+    case "newsletter":
+      return f.heading;
+  }
+}

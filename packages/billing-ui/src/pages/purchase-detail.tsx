@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
-import { BanIcon, CheckCircle2Icon, ClockIcon, Link2Icon, ReceiptTextIcon, StoreIcon, TruckIcon } from "lucide-react";
+import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n, useRouteParams } from "@srirealtime/web";
+import { BanIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, Link2Icon, Loader2Icon, ReceiptTextIcon, StoreIcon, TruckIcon } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -26,6 +26,7 @@ import {
 import { PurchaseStatusPill } from "../components/inventory/stock-meta";
 import { formatQty, money, stateLabel } from "../lib/format";
 import { usePurchase, usePurchaseAction } from "../lib/queries-v2";
+import { PDF_PATHS, usePdf } from "../lib/pdf";
 
 export default function PurchaseDetailPage() {
   const { id } = useRouteParams<{ id: string }>();
@@ -33,6 +34,8 @@ export default function PurchaseDetailPage() {
   const q = usePurchase(id);
   const action = usePurchaseAction();
   const [cancelling, setCancelling] = React.useState(false);
+  const documents = useFeature("documents");
+  const pdf = usePdf();
   const back = { href: "purchases", label: t("billing.nav.purchases") };
 
   if (q.isError) {
@@ -84,7 +87,19 @@ export default function PurchaseDetailPage() {
         }
         description={`${p.supplier?.name ?? "—"} · ${formatDate(p.date)}`}
         actions={
-          !cancelled && (
+          <>
+            {documents && (
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={!!pdf.busy}
+                aria-busy={!!pdf.busy}
+                onClick={() => void pdf.run("purchase", PDF_PATHS.purchase(p.id), { mode: "download", fallbackName: `${p.billNumber || "purchase"}.pdf` })}
+              >
+                {pdf.busy ? <Loader2Icon className="animate-spin" /> : <FileDownIcon />} {t("billing.pdf.purchase")}
+              </Button>
+            )}
+            {!cancelled && (
             <>
               <Button variant={p.paid ? "outline" : "default"} size="lg" disabled={busy} onClick={() => void togglePaid()}>
                 {p.paid ? <ClockIcon /> : <CheckCircle2Icon />}
@@ -94,7 +109,8 @@ export default function PurchaseDetailPage() {
                 <BanIcon /> {t("billing.purchases.cancel")}
               </Button>
             </>
-          )
+            )}
+          </>
         }
       />
 

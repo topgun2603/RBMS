@@ -13,11 +13,13 @@ import {
   LayoutDashboardIcon,
   PackageIcon,
   PlusIcon,
+  ReceiptIndianRupeeIcon,
   TruckIcon,
   UsersIcon,
   WarehouseIcon,
 } from "lucide-react";
 import { ModuleDashboard, type NavSection, type RouteDef, type WebModule, type WidgetDef } from "@srirealtime/web";
+import { EXPENSES_PERMISSION } from "./lib/access";
 import { billingMessages } from "./lib/messages";
 
 /** Feature keys the billing UI uses (declared by @srirealtime/invoices, inventory and payments; docs/features.md). */
@@ -31,6 +33,10 @@ export const BILLING_FEATURES = {
   inventory: "inventory",
   purchases: "inventory.purchases",
   payments: "payments",
+  /** Expenses and the profit report (@srirealtime/expenses). */
+  expenses: "expenses",
+  /** PDF downloads (@srirealtime/documents). */
+  documents: "documents",
 } as const;
 
 const F = BILLING_FEATURES;
@@ -80,7 +86,10 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { href: "purchases", label: "billing.nav.purchases", icon: BoxesIcon, feature: F.purchases },
     { href: "suppliers", label: "billing.nav.suppliers", icon: TruckIcon, feature: F.purchases },
   ];
-  const insights = [{ href: "reports", label: "billing.nav.reports", icon: BarChart3Icon, feature: F.reports }];
+  const insights = [
+    { href: "reports", label: "billing.nav.reports", icon: BarChart3Icon, feature: F.reports },
+    { href: "expenses", label: "billing.nav.expenses", icon: ReceiptIndianRupeeIcon, feature: F.expenses, permission: EXPENSES_PERMISSION },
+  ];
 
   const nav: NavSection[] =
     layout === "sections"
@@ -109,6 +118,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "purchases/:id", component: page(() => import("./pages/purchase-detail")), feature: F.purchases },
     { path: "suppliers", component: page(() => import("./pages/suppliers")), feature: F.purchases },
     { path: "reports", component: page(() => import("./pages/reports")), feature: F.reports },
+    { path: "expenses", component: page(() => import("./pages/expenses")), feature: F.expenses, permission: EXPENSES_PERMISSION },
   ];
 
   const widgetDefs: WidgetDef[] = [
