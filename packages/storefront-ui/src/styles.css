@@ -1,0 +1,292 @@
+/*
+ * Storefront theme extras (import after @srirealtime/ui/styles.css). Tailwind scans this package via @source in the app.
+ */
+
+/* ------------------------------------------------------------------ storefront tokens
+ * Lives in @layer base so tenant branding CSS (unlayered) can still override any of them.
+ * Display face: Fraunces (loaded by the app as --font-display-face) for hero + section titles; Tamil falls through to
+ * Noto Sans Tamil; shops can override --sf-font-display. Body stays Plus Jakarta Sans (--font-sans).
+ */
+@layer base {
+  :root {
+    --sf-font-display: var(--font-display-face, var(--font-heading)), var(--font-noto-tamil, "Noto Sans Tamil"), var(--font-heading), serif;
+
+    /* Type scale (fluid, 1.25 ratio on phones → ~1.333 on desktop). */
+    --sf-text-display: clamp(2.35rem, 1.6rem + 3.6vw, 4.5rem);
+    --sf-text-h1: clamp(1.85rem, 1.45rem + 1.7vw, 2.75rem);
+    --sf-text-h2: clamp(1.5rem, 1.25rem + 1vw, 2.15rem);
+    --sf-text-h3: clamp(1.15rem, 1.05rem + 0.4vw, 1.35rem);
+
+    /* Section rhythm + spacing. */
+    --sf-section: clamp(3rem, 2.2rem + 3.2vw, 5.5rem);
+    --sf-gutter: clamp(1rem, 0.6rem + 1.6vw, 2rem);
+
+    /* Radii for retail surfaces (cards follow the tenant --radius). */
+    --sf-radius-card: calc(var(--radius) + 0.5rem);
+    --sf-radius-pill: 9999px;
+
+    /* Brand-derived tints + gradients. */
+    --sf-tint-1: color-mix(in oklch, var(--primary) 5%, var(--background));
+    --sf-tint-2: color-mix(in oklch, var(--primary) 10%, var(--background));
+    --sf-tint-3: color-mix(in oklch, var(--primary) 18%, var(--background));
+    --sf-ink: color-mix(in oklch, var(--primary) 70%, var(--foreground));
+    --sf-gradient: linear-gradient(120deg, color-mix(in oklch, var(--primary) 82%, black) 0%, var(--primary) 50%, color-mix(in oklch, var(--primary) 70%, #f5b971) 100%);
+    --sf-sale: oklch(0.6 0.2 25);
+    --sf-gold: oklch(0.8 0.15 80);
+    --sf-placeholder: #fbf8f4;
+    --sf-placeholder-2: #f6f0ea;
+
+    /* Elevation for product surfaces. */
+    --sf-shadow-card: 0 1px 2px oklch(0.25 0.02 60 / 0.06), 0 12px 32px -14px oklch(0.25 0.03 60 / 0.22);
+    --sf-shadow-lift: 0 2px 6px oklch(0.25 0.02 60 / 0.06), 0 22px 44px -18px color-mix(in oklch, var(--primary) 35%, oklch(0.2 0.03 60 / 0.4));
+    --sf-focus: 0 0 0 2px var(--background), 0 0 0 4px color-mix(in oklch, var(--primary) 70%, transparent);
+  }
+  .dark {
+    --sf-placeholder: oklch(0.24 0.01 60);
+    --sf-placeholder-2: oklch(0.21 0.01 60);
+    --sf-ink: color-mix(in oklch, var(--primary) 55%, white);
+    --sf-shadow-card: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 12px 32px -14px oklch(0 0 0 / 0.7);
+    --sf-shadow-lift: 0 1px 0 oklch(1 0 0 / 0.05) inset, 0 22px 44px -18px oklch(0 0 0 / 0.85);
+  }
+}
+
+@theme inline {
+  --font-display: var(--sf-font-display);
+  --color-sale: var(--sf-sale);
+  --color-gold: var(--sf-gold);
+  --color-tint-1: var(--sf-tint-1);
+  --color-tint-2: var(--sf-tint-2);
+  --color-tint-3: var(--sf-tint-3);
+  --color-brand-ink: var(--sf-ink);
+  --shadow-card: var(--sf-shadow-card);
+  --shadow-lift: var(--sf-shadow-lift);
+}
+
+@utility text-display {
+  font-family: var(--sf-font-display);
+  font-size: var(--sf-text-display);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+}
+@utility text-h1 {
+  font-size: var(--sf-text-h1);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+@utility text-h2 {
+  font-size: var(--sf-text-h2);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+@utility text-h3 {
+  font-size: var(--sf-text-h3);
+  line-height: 1.3;
+}
+@utility section-y {
+  padding-block: var(--sf-section);
+}
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    box-shadow: var(--sf-focus);
+  }
+}
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+/* Fine kolam lattice as a subtle surface texture (tinted by the brand colour). */
+@utility kolam {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23000' stroke-opacity='.05' stroke-width='1'%3E%3Cpath d='M24 8 40 24 24 40 8 24Z'/%3E%3Cpath d='M24 16 32 24 24 32 16 24Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 48px 48px;
+}
+
+/* Skeleton shimmer (transform-only sweep). */
+@utility sf-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--muted);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--background) 60%, transparent), transparent);
+    animation: sf-shimmer 1.4s ease-in-out infinite;
+  }
+}
+@keyframes sf-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes sf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes sf-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes sf-shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+.sf-float {
+  animation: sf-float 4s ease-in-out infinite;
+}
+.sf-shake {
+  animation: sf-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes sf-kenburns {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/*
+ * Hero without a photo: the shop's brand colour as a deep gradient with soft glows and a fine kolam-style lattice
+ * (inline SVG, white at low opacity, so it follows whatever --primary the shop picked).
+ */
+.sf-brand-hero {
+  background-color: var(--primary);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='.13' stroke-width='1'%3E%3Cpath d='M24 8 40 24 24 40 8 24Z'/%3E%3Cpath d='M24 16 32 24 24 32 16 24Z'/%3E%3C/g%3E%3Cg fill='%23fff' fill-opacity='.2'%3E%3Ccircle cx='24' cy='24' r='1.4'/%3E%3Ccircle cx='0' cy='0' r='1.4'/%3E%3Ccircle cx='48' cy='0' r='1.4'/%3E%3Ccircle cx='0' cy='48' r='1.4'/%3E%3Ccircle cx='48' cy='48' r='1.4'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(60% 80% at 85% 20%, color-mix(in oklch, var(--primary) 55%, white) 0%, transparent 70%),
+    radial-gradient(50% 70% at 10% 100%, color-mix(in oklch, var(--primary) 60%, black) 0%, transparent 70%),
+    linear-gradient(120deg, color-mix(in oklch, var(--primary) 72%, black) 0%, var(--primary) 55%, color-mix(in oklch, var(--primary) 80%, white) 100%);
+  background-size: 48px 48px, auto, auto, auto;
+}
+/* Big soft rings on the right, like a festive rangoli watermark. */
+.sf-brand-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -8% -30% auto;
+  width: min(70vh, 640px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: repeating-radial-gradient(circle, transparent 0 22px, rgb(255 255 255 / 0.07) 22px 24px);
+  mask-image: radial-gradient(circle, black 30%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Markdown prose (rendered by lib/markdown.tsx). */
+.sf-prose {
+  display: grid;
+  gap: 0.85em;
+  line-height: 1.7;
+}
+.sf-prose :where(h2, h3, h4) {
+  margin-top: 0.6em;
+  color: var(--foreground);
+  line-height: 1.3;
+}
+.sf-prose :where(ul, ol) {
+  display: grid;
+  gap: 0.35em;
+}
+.sf-prose strong {
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+/* Shopper-facing pages: slightly larger base type, warm canvas. */
+body {
+  background: var(--background);
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Toasts: rounded, elevated, brand-tinted icons. */
+[data-sonner-toaster] [data-sonner-toast] {
+  border-radius: calc(var(--radius) + 0.5rem) !important;
+  box-shadow: var(--elevation-2) !important;
+  font-family: var(--font-sans);
+}
+[data-sonner-toaster] [data-sonner-toast] [data-button] {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-radius: 9999px !important;
+  font-weight: 600;
+}
+
+/* Product price typography. */
+.sf-price {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "lnum";
+  letter-spacing: -0.01em;
+}
+
+/* Beats the tenant's unlayered `:root { color-scheme: light }` when the shopper picked dark. */
+html.dark {
+  color-scheme: dark;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 25%, transparent);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+  .sf-float,
+  .sf-shake,
+  .sf-shimmer::after {
+    animation: none !important;
+  }
+}

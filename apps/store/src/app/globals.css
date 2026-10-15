@@ -1,0 +1,6 @@
+@import "@srirealtime/ui/styles.css";
+@import "../../../../packages/storefront-ui/src/styles.css";
+
+/* Scan the app and the storefront theme for Tailwind classes (workspace packages are TS source). */
+@source "../";
+@source "../../../../packages/storefront-ui/src";

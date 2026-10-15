@@ -3,6 +3,11 @@ export { cn } from "./lib/utils";
 export { Slot } from "radix-ui";
 
 // shadcn components
+export * from "./components/accordion";
+export * from "./components/breadcrumb";
+export * from "./components/pagination";
+export * from "./components/radio-group";
+export * from "./components/toggle-group";
 export * from "./components/alert";
 export * from "./components/alert-dialog";
 export * from "./components/avatar";
