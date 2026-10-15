@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, Loader2Icon, LogOutIcon, MapPinIcon, PackageIcon, PlusIcon, Trash2Icon, UserRoundIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, GiftIcon, HeartIcon, Loader2Icon, LogOutIcon, MapPinIcon, PackageIcon, PlusIcon, Trash2Icon, UserRoundIcon } from "lucide-react";
 import { Button } from "@srirealtime/ui/components/button";
 import { toast } from "@srirealtime/ui/components/sonner";
 import { cn } from "@srirealtime/ui/lib/utils";
@@ -20,16 +20,22 @@ import { call, errorMessage } from "./api";
 import { AddressForm, AddressText } from "./address-form";
 import { OtpSignIn } from "./sign-in";
 import { useStore } from "./store-context";
+import { ChatAboutOrder } from "./help-center";
+import { LoyaltyPanel } from "./loyalty";
+import { featureOn, STORE_FEATURES } from "../lib/features";
 
-const TABS = ["orders", "addresses", "wishlist", "profile"] as const;
-type Tab = (typeof TABS)[number];
-const ICONS: Record<Tab, React.ComponentType<{ className?: string }>> = { orders: PackageIcon, addresses: MapPinIcon, wishlist: HeartIcon, profile: UserRoundIcon };
+const ALL_TABS = ["orders", "points", "addresses", "wishlist", "profile"] as const;
+type Tab = (typeof ALL_TABS)[number];
+const ICONS: Record<Tab, React.ComponentType<{ className?: string }>> = { orders: PackageIcon, points: GiftIcon, addresses: MapPinIcon, wishlist: HeartIcon, profile: UserRoundIcon };
+/** Tab label keys (`points` belongs to the loyalty module). */
+const TAB_LABEL: Record<Tab, string> = { orders: "account.orders", points: "loyalty.tab", addresses: "account.addresses", wishlist: "account.wishlist", profile: "account.profile" };
 
 /** `params` come from the server page (no useSearchParams, so no Suspense boundary that could hydrate after sign-in state loads). */
 export function AccountView({ params }: { params: { tab?: string; order?: string; next?: string } }) {
-  const { t, auth } = useStore();
+  const { t, auth, shell } = useStore();
   const router = useRouter();
   const next = params.next ?? null;
+  const TABS = ALL_TABS.filter((k) => k !== "points" || featureOn(shell.features, STORE_FEATURES.loyalty));
   const tab = (TABS as readonly string[]).includes(params.tab ?? "") ? (params.tab as Tab) : "orders";
   const orderId = params.order ?? null;
   const me = useQuery({ queryKey: ["me"], queryFn: () => call<Me>("/store/me"), enabled: !!auth.token });
@@ -47,7 +53,7 @@ export function AccountView({ params }: { params: { tab?: string; order?: string
 
   return (
     <Tabs value={tab} onValueChange={(v) => go(v as Tab)} orientation="vertical" className="grid gap-8 lg:grid-cols-[240px_1fr] lg:gap-12">
-      <aside className="grid content-start gap-4">
+      <aside className="grid min-w-0 content-start gap-4">
         <div className="flex items-center gap-3">
           <span aria-hidden className="flex size-12 items-center justify-center rounded-full bg-[image:var(--sf-gradient)] font-display text-xl font-semibold text-primary-foreground shadow-md shadow-primary/25">
             {(name || "?").trim().charAt(0).toUpperCase()}
@@ -77,7 +83,7 @@ export function AccountView({ params }: { params: { tab?: string; order?: string
                   </>
                 )}
                 <Icon className="relative size-4" />
-                <span className="relative">{t(`account.${k}`)}</span>
+                <span className="relative">{t(TAB_LABEL[k])}</span>
               </TabsTrigger>
             );
           })}
@@ -92,6 +98,7 @@ export function AccountView({ params }: { params: { tab?: string; order?: string
           <TabsContent key={k} value={k} className="mt-0">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
               {k === "orders" && (orderId ? <OrderDetail id={orderId} /> : <Orders />)}
+              {k === "points" && <LoyaltyPanel />}
               {k === "addresses" && <Addresses />}
               {k === "wishlist" && <Wishlist />}
               {k === "profile" && (me.data ? <Profile me={me.data} /> : <div className="sf-shimmer h-60 rounded-3xl" />)}
@@ -148,7 +155,7 @@ function Orders() {
 }
 
 function OrderDetail({ id }: { id: string }) {
-  const { t, locale } = useStore();
+  const { t, locale, shell } = useStore();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["order", id], queryFn: () => call<Order>(`/store/me/orders/${id}`) });
   const [cancelling, setCancelling] = React.useState(false);
@@ -210,6 +217,12 @@ function OrderDetail({ id }: { id: string }) {
             <dd className="tabular-nums">−{money(o.totals.discount)}</dd>
           </div>
         )}
+        {o.totals.loyalty && o.totals.loyalty.discount > 0 && (
+          <div className="flex justify-between text-success-ink" data-testid="order-points">
+            <dt>{t("loyalty.discountRow", { points: o.totals.loyalty.points })}</dt>
+            <dd className="tabular-nums">−{money(o.totals.loyalty.discount)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted-foreground">{t("cart.shipping")}</dt>
           <dd className="tabular-nums">{o.totals.shipping ? money(o.totals.shipping) : t("delivery.free")}</dd>
@@ -230,6 +243,12 @@ function OrderDetail({ id }: { id: string }) {
         <Button asChild variant="outline" className="rounded-full">
           <Link href={`/track/${o.accessToken}`}>{t("order.track")}</Link>
         </Button>
+        <ChatAboutOrder order={{ id: o.id, number: o.number, status: o.status, total: o.totals.total, image: o.lines[0]?.image ?? null, itemCount: o.lines.reduce((n, l) => n + l.qty, 0) }} />
+        {featureOn(shell.features, STORE_FEATURES.support) && (
+          <Button asChild variant="ghost" className="rounded-full">
+            <Link href={`/help/new?order=${o.id}`}>{t("help.raise")}</Link>
+          </Button>
+        )}
         {canCancel && !cancelling && (
           <Button variant="ghost" className="rounded-full text-danger-ink hover:text-danger-ink" onClick={() => setCancelling(true)}>
             {t("order.cancel")}

@@ -491,3 +491,42 @@ describe("vendors", () => {
     expect(normalizePhone("044 2345 6789")).toBe("044 2345 6789");
   });
 });
+
+describe("publicSellers", () => {
+  const P1 = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const P2 = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const P3 = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  const card = { id: VA, name: "Murugan Silks", slug: "murugan-silks", logoUrl: null };
+
+  it("maps products to active sellers only and returns public fields", async () => {
+    // VB is not returned by the (active-only) query, so its product is left out; P3 is the shop's own.
+    const productVendors = vi.fn(async () => ({ [P1]: VA, [P2]: VB, [P3]: null }));
+    const products = { count: vi.fn(), list: vi.fn(), productVendors };
+    const { service, ops, argOf } = make([[card]], { products });
+    const r = await service.publicSellers(TENANT, { productIds: [P1, P2.toUpperCase(), P3, "not-a-uuid"] });
+    expect(productVendors).toHaveBeenCalledWith(TENANT, [P1, P2, P3]);
+    expect(r).toEqual({ items: [card], products: { [P1]: VA } });
+    expect(Object.keys(r.items[0]!)).toEqual(["id", "name", "slug", "logoUrl"]);
+    expect(ops).toHaveLength(1);
+    expect(argOf(ops[0]!, "select")).toEqual(expect.objectContaining({ id: expect.anything(), slug: expect.anything() }));
+  });
+
+  it("answers seller ids without touching the catalogue; nothing valid → no query", async () => {
+    const { service, ops } = make([[card]]);
+    expect(await service.publicSellers(TENANT, { ids: [VA, VA] })).toEqual({ items: [card], products: {} });
+    expect(ops).toHaveLength(1);
+    const empty = make([]);
+    expect(await empty.service.publicSellers(TENANT, { ids: ["x"], productIds: [P1] })).toEqual({ items: [], products: {} });
+    expect(empty.ops).toHaveLength(0);
+  });
+
+  it("caps each list and survives a failing catalogue lookup", async () => {
+    const many = Array.from({ length: 80 }, (_, i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, "0")}`);
+    const productVendors = vi.fn(async () => {
+      throw new Error("down");
+    });
+    const { service } = make([[]], { products: { count: vi.fn(), list: vi.fn(), productVendors } });
+    expect(await service.publicSellers(TENANT, { ids: many, productIds: many })).toEqual({ items: [], products: {} });
+    expect((productVendors.mock.calls[0] as unknown as [string, string[]])[1]).toHaveLength(50);
+  });
+});

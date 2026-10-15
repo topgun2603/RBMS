@@ -31,6 +31,7 @@ import { SearchBox } from "./search-box";
 import { useStore } from "./store-context";
 import { useWishlist } from "./wishlist";
 import { track } from "./analytics";
+import { helpCentreOn } from "../lib/features";
 
 export interface NavCategory {
   id: string;
@@ -632,6 +633,7 @@ function MobileNav({ open, onOpenChange, menu, categories, featured }: { open: b
               { href: "/account", label: t("nav.account") },
               { href: "/account?tab=wishlist", label: t("nav.wishlist") },
               { href: "/track", label: t("nav.track") },
+              ...(helpCentreOn(shell.features) ? [{ href: "/help", label: t("help.title") }] : []),
             ]
               // Skip links the shop's own menu already has (same target or same name).
               .filter((l) => !menu.some((m) => m.href === l.href || m.label.trim().toLowerCase() === l.label.trim().toLowerCase()))

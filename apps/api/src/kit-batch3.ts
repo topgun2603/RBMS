@@ -127,6 +127,7 @@ export function createBatch3(d: Batch3Deps) {
     products: {
       count: (tenantId, vendorId, opts) => d.catalogue.vendorProductCount(tenantId, vendorId, opts),
       list: (tenantId, vendorId, opts) => d.catalogue.vendorProducts(tenantId, vendorId, opts),
+      productVendors: (tenantId, productIds) => d.catalogue.productVendors(tenantId, productIds),
     },
     transfers: razorpayRouteTransferPort((tenantId) => d.payments.credentials(tenantId)),
     kyc: { status: async (tenantId, subjectType, subjectId) => (await kycRef!.service.status(tenantId, subjectType, subjectId)).status },

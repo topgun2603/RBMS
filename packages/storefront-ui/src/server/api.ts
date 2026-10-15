@@ -123,6 +123,17 @@ export async function requireStore(): Promise<StoreConfig> {
 
 export const getBranding = cache(async () => apiGetSafe<Branding | null>("/branding", null, { revalidate: 60 }));
 
+/** Feature keys on for this shop (empty when the call fails: optional storefront sections then stay hidden). */
+export const getFeatures = cache(async (): Promise<string[]> => {
+  const r = await apiGetSafe<{ enabled?: string[] } | null>("/features", null, { revalidate: 30 });
+  return Array.isArray(r?.enabled) ? r.enabled : [];
+});
+
+/** True when the shop has the feature on (see getFeatures). */
+export async function hasFeature(key: string): Promise<boolean> {
+  return (await getFeatures()).includes(key);
+}
+
 export const getMenus = cache(async () => apiGetSafe<Menus>("/cms/public/menus", { header: [], footer: [] }, { revalidate: 60 }));
 
 /** The cart behind the cookie, fresh (null when there's none or it expired). */
@@ -144,7 +155,7 @@ export function storeCss(css: string | null | undefined): string {
 /** What every client component gets (shop basics + the initial cart badge). */
 export async function getShell(config: StoreConfig, branding: Branding | null): Promise<StoreShell> {
   const info = await getRequestInfo();
-  const cart = await getCart();
+  const [cart, features] = await Promise.all([getCart(), getFeatures()]);
   return {
     name: config.shop.name,
     logoUrl: config.shop.logoUrl ?? branding?.logoUrl ?? null,
@@ -157,5 +168,6 @@ export async function getShell(config: StoreConfig, branding: Branding | null): 
     contactEmail: config.shop.contactEmail,
     cartToken: cart ? cart.token : info.cartToken,
     cartCount: cart?.itemCount ?? 0,
+    features,
   };
 }

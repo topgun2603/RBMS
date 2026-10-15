@@ -12,6 +12,7 @@ import type { CartLine } from "../types";
 import { StoreImage } from "../components/bits";
 import { errorMessage } from "./api";
 import { QtyStepper } from "./qty-stepper";
+import { SoldBy, useCartSellers } from "./sellers";
 import { useStore } from "./store-context";
 
 /**
@@ -25,6 +26,7 @@ export const CartLineRow = React.forwardRef<HTMLLIElement, { line: CartLine; com
   const { t, cart } = useStore();
   const reduced = useReducedMotionSafe();
   const [busy, setBusy] = React.useState(false);
+  const seller = useCartSellers().get(line.productId);
   const change = async (qty: number) => {
     setBusy(true);
     try {
@@ -56,6 +58,7 @@ export const CartLineRow = React.forwardRef<HTMLLIElement, { line: CartLine; com
               {line.name}
             </Link>
             {line.variantTitle && <p className="text-xs text-muted-foreground">{line.variantTitle}</p>}
+            {seller && <SoldBy seller={seller} onNavigate={onNavigate} className="mt-0.5" />}
           </div>
           <button type="button" onClick={() => change(0)} disabled={busy} className="-me-1 -mt-1 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={`${t("cart.remove")} ${line.name}`}>
             <XIcon className="size-4" />

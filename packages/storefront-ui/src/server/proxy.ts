@@ -8,15 +8,29 @@ import { API_ORIGIN, upstreamTenantHeaders } from "../lib/tenant";
  * Mount in the app as `app/api/v1/[...path]/route.ts`:
  *   export { proxyHandler as GET, proxyHandler as POST, proxyHandler as PUT, proxyHandler as PATCH, proxyHandler as DELETE } from "@srirealtime/storefront-ui";
  */
-const PASS_REQUEST = ["accept", "accept-language", "authorization", "content-type", "user-agent", "referer", "origin"];
+const PASS_REQUEST = ["accept", "accept-language", "authorization", "content-type", "user-agent", "referer", "origin", "x-guest-token", "last-event-id"];
 const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-disposition", "location"];
-/** Only these API areas are reachable from the store (no staff/admin surfaces through the shop's domain). */
-const ALLOWED = /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout)|branding)(\/|$|\?)/;
+/**
+ * Only these API areas are reachable from the store (no staff/admin surfaces through the shop's domain). Batch 4 adds
+ * shopper chat (every /chat route is scoped to the signed-in viewer by the chat service), the public help desk + FAQ,
+ * the shopper's own loyalty (`/loyalty/me`, `/loyalty/quote`), public seller pages and cards, guest OTP verification,
+ * and the read-only feature list (`GET /features` itself — never the toggles or registry).
+ */
+const ALLOWED =
+  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|features(?=$))(\/|$|\?)/;
+
+/** Pure: may the browser reach this API path (`/v1/...`, without the query) through the store proxy? */
+export function isProxyAllowed(path: string, method = "GET"): boolean {
+  if (!ALLOWED.test(path)) return false;
+  // The feature list and the seller pages/cards are read-only.
+  if ((path === "/v1/features" || path.startsWith("/v1/marketplace/")) && method.toUpperCase() !== "GET") return false;
+  return true;
+}
 
 export async function proxyHandler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api/, "");
-  if (!ALLOWED.test(path)) return Response.json({ error: { code: "not_found", message: "Not found" } }, { status: 404 });
+  if (!isProxyAllowed(path, req.method)) return Response.json({ error: { code: "not_found", message: "Not found" } }, { status: 404 });
 
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host;
   const headers = new Headers(upstreamTenantHeaders(host));
@@ -32,7 +46,7 @@ export async function proxyHandler(req: Request): Promise<Response> {
   const body = method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();
   let res: Response;
   try {
-    res = await fetch(`${API_ORIGIN}${path}${url.search}`, { method, headers, body, cache: "no-store", redirect: "manual" });
+    res = await fetch(`${API_ORIGIN}${path}${url.search}`, { method, headers, body, cache: "no-store", redirect: "manual", signal: req.signal });
   } catch {
     return Response.json({ error: { code: "network_error", message: "Store API unreachable" } }, { status: 502 });
   }
@@ -40,6 +54,12 @@ export async function proxyHandler(req: Request): Promise<Response> {
   for (const k of PASS_RESPONSE) {
     const v = res.headers.get(k);
     if (v) out.set(k, v);
+  }
+  // Server-Sent Events (chat): stream the body through unbuffered; aborting the browser request aborts the upstream.
+  if ((res.headers.get("content-type") ?? "").includes("text/event-stream") && res.body) {
+    out.set("cache-control", "no-cache, no-transform");
+    out.set("x-accel-buffering", "no");
+    return new Response(res.body, { status: res.status, headers: out });
   }
   out.set("cache-control", res.headers.get("cache-control") ?? "no-store");
   return new Response(res.status === 204 ? null : await res.arrayBuffer(), { status: res.status, headers: out });

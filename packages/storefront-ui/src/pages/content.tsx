@@ -16,7 +16,7 @@ import { CartView } from "../client/cart-view";
 import { CheckoutView } from "../client/checkout-view";
 
 /** Slugs that are routes of their own (never CMS pages). */
-const RESERVED = new Set(["p", "c", "collections", "blog", "search", "products", "cart", "checkout", "account", "order", "track", "policies", "pages", "api"]);
+const RESERVED = new Set(["p", "c", "collections", "blog", "search", "products", "cart", "checkout", "account", "order", "track", "policies", "pages", "api", "help", "sellers"]);
 
 const getPage = (slug: string) => (RESERVED.has(slug) || !/^[a-z0-9][a-z0-9-]{0,120}$/i.test(slug) ? Promise.resolve(null) : apiGetOrNull<CmsPage>(`/cms/public/pages/${encodeURIComponent(slug)}`, { revalidate: 60 }));
 const getPost = (slug: string) => apiGetOrNull<Post>(`/cms/public/posts/${encodeURIComponent(slug)}`, { revalidate: 60 });

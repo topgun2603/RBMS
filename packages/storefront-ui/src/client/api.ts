@@ -48,6 +48,8 @@ export interface CallOptions {
   /** Send the shopper token (default true when there is one). */
   auth?: boolean;
   signal?: AbortSignal;
+  /** Extra request headers (e.g. `x-guest-token` for guest help-desk calls). */
+  headers?: Record<string, string>;
 }
 
 /** Called when the API answers 401 for a signed-in call (token expired / revoked). */
@@ -59,7 +61,7 @@ export function setUnauthorizedHandler(fn: (() => void) | null) {
 export async function call<T>(path: string, opts: CallOptions = {}): Promise<T> {
   const url = new URL(`/api/v1${path.startsWith("/") ? path : `/${path}`}`, window.location.origin);
   for (const [k, v] of Object.entries(opts.query ?? {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
-  const headers = new Headers({ accept: "application/json" });
+  const headers = new Headers({ accept: "application/json", ...(opts.headers ?? {}) });
   const token = opts.auth === false ? null : getToken();
   if (token) headers.set("authorization", `Bearer ${token}`);
   const lang = document.documentElement.lang;

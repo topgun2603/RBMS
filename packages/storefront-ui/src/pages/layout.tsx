@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { Metadata } from "next";
 import { apiGetSafe, getBranding, getConfig, getMenus, getRequestInfo, getShell, storeCss } from "../server/api";
+import { helpCentreOn } from "../lib/features";
 import { imageUrl } from "../lib/format";
 import type { Collection, HomeSection, List, StoreConfig } from "../types";
 import type { Translator } from "../lib/messages";
@@ -80,7 +81,7 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
         <main id="main" className="min-h-[60dvh]">
           {children}
         </main>
-        <StoreFooter config={config} menu={menus.footer} t={t} />
+        <StoreFooter config={config} menu={menus.footer} t={t} help={helpCentreOn(shell.features)} />
         <FloatingActions whatsapp={config.shop.social?.whatsapp ?? null} />
       </StoreProvider>
     </>

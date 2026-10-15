@@ -117,6 +117,8 @@ export interface Product {
   options: { name: string; values: string[] }[];
   images: { url: string; alt?: string }[];
   seo: Seo | null;
+  /** Marketplace seller owning the product (null = the shop's own). */
+  vendorId?: string | null;
   priceMin: number;
   priceMax: number;
   variants: Variant[];
@@ -408,6 +410,8 @@ export interface OrderTotals {
   codFee?: number;
   roundOff?: number;
   total: number;
+  /** Loyalty points redeemed on the order (pre-tax discount); absent when none. */
+  loyalty?: { points: number; discount: number };
 }
 
 export interface Order {
@@ -437,7 +441,7 @@ export interface Tracking {
   placedAt: string;
   timeline: { type: string; status: string | null; message: string | null; at: string }[];
   lines: { name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
-  totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number };
+  totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number; loyalty?: { points: number; discount: number } };
   fulfillment: { carrier: string | null; trackingNumber: string | null; trackingUrl: string | null };
   shipTo: { city: string; pincode: string } | null;
   cancelReason: string | null;
@@ -460,4 +464,224 @@ export interface StoreShell {
   cartToken: string | null;
   /** Item count rendered on the server (so the badge doesn't flash). */
   cartCount: number;
+  /** Feature keys on for this shop (GET /v1/features `enabled`); empty when the call failed. */
+  features: string[];
+}
+
+// ------------------------------------------------------------------ batch 4: chat, help centre, sellers, loyalty
+
+export interface ChatAttachment {
+  url: string;
+  type: "image" | "file";
+  name?: string;
+  mime?: string;
+  size?: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  attachments: ChatAttachment[];
+  replyTo: string | null;
+  editedAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+  /** `<ms>_<id>` order key; the SSE event id. */
+  cursor: string;
+  /** Client-only: sending / failed optimistic message. */
+  pending?: "sending" | "failed";
+}
+
+export interface ChatParticipant {
+  userId: string;
+  kind: "staff" | "shopper" | "vendor";
+  name: string | null;
+  lastReadAt: string | null;
+  joinedAt: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  type: "direct" | "support" | "order" | "group";
+  subjectType: string | null;
+  subjectId: string | null;
+  title: string | null;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  createdBy: string;
+  createdAt: string;
+  joined: boolean;
+  muted: boolean;
+  lastReadAt: string | null;
+  unread: number;
+  participants: ChatParticipant[];
+}
+
+export interface ChatConversationList extends List<ChatConversation> {
+  unreadTotal: number;
+}
+
+export interface ChatMessagePage {
+  items: ChatMessage[];
+  nextCursor: string | null;
+}
+
+/** What a page hands the chat widget when it opens it ("Chat about this order"). */
+export interface ChatOrderContext {
+  /** Order uuid (account order detail) → an order conversation; without it a support chat mentioning the number. */
+  id?: string;
+  number: string;
+  status?: string;
+  total?: number;
+  image?: string | null;
+  itemCount?: number;
+}
+
+export interface FaqCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sort: number;
+}
+
+export interface FaqArticleSummary {
+  id: string;
+  categoryId: string | null;
+  slug: string;
+  title: string;
+  excerpt: string;
+}
+
+export interface FaqGroup {
+  category: FaqCategory | null;
+  articles: FaqArticleSummary[];
+}
+
+export interface FaqArticle {
+  id: string;
+  categoryId: string | null;
+  slug: string;
+  title: string;
+  body: string;
+  helpfulYes: number;
+  helpfulNo: number;
+  sort: number;
+  seo: { title?: string; description?: string; noindex?: boolean } | null;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export type TicketStatus = "open" | "pending" | "resolved" | "closed";
+
+export interface PublicTicket {
+  id: string;
+  number: string;
+  subject: string;
+  status: TicketStatus;
+  channel: string;
+  related: { type: "order" | "invoice"; id: string } | null;
+  mergedInto: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  lastMessageAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicTicketMessage {
+  id: string;
+  from: "requester" | "staff";
+  body: string;
+  attachments: string[];
+  createdAt: string;
+}
+
+export interface PublicThread {
+  ticket: PublicTicket;
+  items: PublicTicketMessage[];
+}
+
+export interface SellerCard {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+}
+
+export interface SellerLookup {
+  items: SellerCard[];
+  products: Record<string, string>;
+}
+
+export interface SellerProduct {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  image: string | null;
+  priceMin: number;
+  priceMax: number;
+}
+
+export interface SellerPage extends SellerCard {
+  description: string | null;
+  productCount: number | null;
+  products: List<SellerProduct>;
+}
+
+export interface LoyaltyTier {
+  name: string;
+  minSpend: number;
+  multiplier: number;
+}
+
+export interface LoyaltyMember {
+  id: string;
+  memberKey: string;
+  name: string | null;
+  pointsBalance: number;
+  pointsValue: number;
+  lifetimeSpend: number;
+  tier: string;
+  joinedAt: string;
+  lastActivityAt: string | null;
+}
+
+export interface LoyaltyEntry {
+  id: string;
+  type: "earn" | "redeem" | "expire" | "adjust" | "reverse";
+  points: number;
+  amountPaise: number;
+  remaining: number;
+  refType: "invoice" | "order" | "manual" | "lot";
+  refId: string;
+  expiresAt: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface LoyaltyMe {
+  enrolled: boolean;
+  member: LoyaltyMember | null;
+  pointValuePaise: number;
+  nextTier: { tier: LoyaltyTier; spendNeeded: number } | null;
+  expiringSoon: { expiresAt: string; points: number }[];
+  history: LoyaltyEntry[];
+}
+
+export type RedeemReason = "no_points" | "below_min" | "order_too_small" | "disabled";
+
+export interface LoyaltyQuote {
+  balance: number;
+  maxPoints: number;
+  maxDiscount: number;
+  minRedeemPoints: number;
+  pointValuePaise: number;
+  canRedeem: boolean;
+  reason: RedeemReason | null;
+  member: LoyaltyMember | null;
+  earnPreview: number;
 }

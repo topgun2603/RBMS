@@ -12,6 +12,7 @@ import type { Tracking } from "../types";
 import { Container, StatusChip, StoreImage } from "../components/bits";
 import { PayNowButton, SuccessBurst, TrackLookup } from "../client/order-bits";
 import { PurchaseTracker } from "../client/trackers";
+import { ChatAboutOrder } from "../client/help-center";
 
 const getTracking = (token: string) => (/^[A-Za-z0-9_-]{8,64}$/.test(token) ? apiGetOrNull<Tracking>(`/store/track/${encodeURIComponent(token)}`, { revalidate: 0 }) : Promise.resolve(null));
 
@@ -64,6 +65,7 @@ export async function OrderConfirmationPage({ accessToken }: { accessToken: stri
         <Link href="/products" className="inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
           {t("order.continue")}
         </Link>
+        <ChatAboutOrder order={{ number: o.number, status: o.status, total: o.totals.total, image: o.lines[0]?.image ?? null, itemCount: o.lines.reduce((n, l) => n + l.qty, 0) }} className="h-11 px-6" />
       </div>
     </Container>
   );
@@ -99,6 +101,9 @@ export async function TrackPage({ accessToken }: { accessToken: string }) {
       )}
       <Timeline o={o} t={t} locale={locale} />
       <OrderDetails o={o} t={t} locale={locale} />
+      <div className="mt-6 flex justify-center">
+        <ChatAboutOrder order={{ number: o.number, status: o.status, total: o.totals.total, image: o.lines[0]?.image ?? null, itemCount: o.lines.reduce((n, l) => n + l.qty, 0) }} />
+      </div>
     </Container>
   );
 }
@@ -210,6 +215,7 @@ export function OrderDetails({ o, t, locale }: { o: Pick<Tracking, "lines" | "to
       <dl className="grid gap-1.5 border-t px-5 py-4 text-sm">
         <Row label={t("cart.subtotal")} value={money(o.totals.subtotal)} />
         {o.totals.discount > 0 && <Row label={t("cart.discount")} value={`−${money(o.totals.discount)}`} className="text-success-ink" />}
+        {o.totals.loyalty && o.totals.loyalty.discount > 0 && <Row label={t("loyalty.discountRow", { points: o.totals.loyalty.points })} value={`−${money(o.totals.loyalty.discount)}`} className="text-success-ink" />}
         <Row label={t("cart.shipping")} value={o.totals.shipping === 0 ? t("delivery.free") : money(o.totals.shipping)} />
         {o.totals.codFee > 0 && <Row label={t("order.codFee")} value={money(o.totals.codFee)} />}
         <div className="mt-1 flex items-baseline justify-between border-t pt-3">

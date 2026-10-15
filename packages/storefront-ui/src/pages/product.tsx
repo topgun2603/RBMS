@@ -4,13 +4,15 @@ import { notFound } from "next/navigation";
 import { FileTextIcon, ListChecksIcon, TruckIcon } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@srirealtime/ui/components/accordion";
 import { breadcrumbJsonLd, productJsonLd, STORE_PATHS } from "@srirealtime/cms/seo";
-import { apiGetOrNull, apiGetSafe, getRequestInfo, requireStore } from "../server/api";
+import { apiGetOrNull, apiGetSafe, getFeatures, getRequestInfo, requireStore } from "../server/api";
+import { featureOn, STORE_FEATURES } from "../lib/features";
+import { SoldBy } from "../client/sellers";
 import { getRatings } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { percentOff } from "../lib/format";
 import { Markdown } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
-import type { Availability, CmsPage, List, Product, ReviewList, SearchResult } from "../types";
+import type { Availability, CmsPage, List, Product, ReviewList, SearchResult, SellerCard, SellerLookup } from "../types";
 import { Breadcrumbs, Container, JsonLd, SectionTitle, Stars } from "../components/bits";
 import { ProductCard } from "../components/product-card";
 import { RailSkeleton } from "../components/skeletons";
@@ -23,6 +25,13 @@ import { RecentlyViewedStrip, RecordRecentlyViewed } from "../client/recently-vi
 import { ReviewsSection } from "../client/reviews";
 import { ProductViewTracker } from "../client/trackers";
 import { Blocks } from "./content";
+
+/** The marketplace seller of a vendor product (null for the shop's own products, or when marketplace is off). */
+async function getSeller(vendorId: string | null | undefined): Promise<SellerCard | null> {
+  if (!vendorId || !featureOn(await getFeatures(), STORE_FEATURES.marketplace)) return null;
+  const r = await apiGetSafe<SellerLookup | null>("/marketplace/public/sellers", null, { revalidate: 120, query: { ids: vendorId } });
+  return r?.items.find((s) => s.id === vendorId) ?? null;
+}
 
 const getProduct = (slug: string) => apiGetOrNull<Product>(`/catalog/public/products/${encodeURIComponent(slug)}`, { revalidate: 60 });
 
@@ -40,10 +49,11 @@ export async function ProductPage({ slug }: { slug: string }) {
   const ids = product.variants.map((v) => v.id);
   const emptyReviews: ReviewList = { items: [], total: 0, summary: { average: 0, count: 0, distribution: {} } };
   const hasSizes = product.options.some((o) => /size|அளவு/i.test(o.name) && o.values.length > 0);
-  const [avail, reviews, guidePage] = await Promise.all([
+  const [avail, reviews, guidePage, seller] = await Promise.all([
     apiGetSafe<List<Availability>>("/inventory/public/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } }),
     apiGetSafe<ReviewList>(`/reviews/public/products/${product.id}/reviews`, emptyReviews, { revalidate: 60, query: { limit: 5 } }),
     hasSizes ? apiGetSafe<CmsPage | null>("/cms/public/pages/size-guide", null, { revalidate: 300 }) : Promise.resolve(null),
+    getSeller(product.vendorId),
   ]);
   const availability: AvailabilityMap = Object.fromEntries(avail.items.map((a) => [a.itemId, { inStock: a.inStock, lowStock: a.lowStock }]));
   const anyInStock = avail.items.length === 0 || avail.items.some((a) => a.inStock);
@@ -77,7 +87,7 @@ export async function ProductPage({ slug }: { slug: string }) {
             variantCount: product.variants.length,
             availability: anyInStock,
             rating: reviews.summary.count ? { average: reviews.summary.average, count: reviews.summary.count } : null,
-            sellerName: config.shop.name,
+            sellerName: seller?.name ?? config.shop.name,
           }),
           breadcrumbJsonLd(crumbs.map((c, i) => ({ name: c.name, url: i === crumbs.length - 1 ? STORE_PATHS.product(product.slug) : c.href })), baseUrl),
         ]}
@@ -116,6 +126,7 @@ export async function ProductPage({ slug }: { slug: string }) {
                   <span className="text-muted-foreground">· {t("reviews.count", { count: reviews.summary.count })}</span>
                 </a>
               )}
+              {seller && <SoldBy seller={seller} className="mt-3 text-sm [&_svg]:size-4" />}
             </div>
             <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} />
             <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} compact />
@@ -194,7 +205,7 @@ function ProductInfo({ product, attrs, t, shipping, returns }: { product: Produc
   return (
     <Accordion type="multiple" defaultValue={[sections[0]!.id]} className="rounded-2xl border bg-card px-4 shadow-xs">
       {sections.map((x) => (
-        <AccordionItem key={x.id} value={x.id}>
+        <AccordionItem key={x.id} value={x.id} className="[&_[data-slot=accordion-content][data-state=closed]]:hidden">
           <AccordionTrigger className="items-center py-4 text-base font-semibold hover:no-underline">
             <span className="flex items-center gap-3">
               <span className="icon-chip size-8 text-primary">

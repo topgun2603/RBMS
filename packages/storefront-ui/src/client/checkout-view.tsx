@@ -12,6 +12,9 @@ import { cn } from "@srirealtime/ui/lib/utils";
 import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
 import { STORE_PATHS } from "@srirealtime/cms/seo";
 import { etaRange, money } from "../lib/format";
+import { featureOn, STORE_FEATURES } from "../lib/features";
+import { redeemBase, totalAfterPoints } from "../lib/loyalty";
+import { UsePoints } from "./loyalty";
 import type { Address, CheckoutResult, DeliveryOption, List } from "../types";
 import { Empty, StoreImage } from "../components/bits";
 import { EmptyBagArt } from "../components/illustrations";
@@ -22,6 +25,7 @@ import { track } from "./analytics";
 import { AddressForm, AddressText } from "./address-form";
 import { CartWarnings, CouponForm, Totals } from "./cart-view";
 import { useOrderPayment } from "./payment";
+import { SoldBy, useCartSellers } from "./sellers";
 import { OtpSignIn } from "./sign-in";
 import { useStore } from "./store-context";
 
@@ -169,6 +173,7 @@ export function CheckoutView() {
   const qc = useQueryClient();
   const c = cart.cart;
   const payment = useOrderPayment();
+  const sellers = useCartSellers();
 
   const addresses = useQuery({ queryKey: ["addresses"], queryFn: () => call<List<Address>>("/store/me/addresses"), enabled: !!auth.token });
   const [addressId, setAddressId] = React.useState<string | null>(null);
@@ -180,6 +185,14 @@ export function CheckoutView() {
   const [issues, setIssues] = React.useState<string[]>([]);
   const [placed, setPlaced] = React.useState(false);
   const [editAddress, setEditAddress] = React.useState(false);
+  // Loyalty points to redeem with the order (0 = none) and their discount; quoted by <UsePoints>.
+  const [points, setPoints] = React.useState(0);
+  const [pointsOff, setPointsOff] = React.useState(0);
+  const onPoints = React.useCallback((p: number, d: number) => {
+    setPoints(p);
+    setPointsOff(p > 0 ? d : 0);
+  }, []);
+  const loyaltyOn = featureOn(shell.features, STORE_FEATURES.loyalty) && !!auth.token;
   const begun = React.useRef(false);
 
   const list = addresses.data?.items ?? [];
@@ -225,6 +238,7 @@ export function CheckoutView() {
   const codPossible = shell.codEnabled && !!option?.codAllowed;
   const codFee = method === "cod" && option ? option.codFee : 0;
   const estimated = goodsTotal + (shipping ?? 0) + codFee;
+  const payable = totalAfterPoints(estimated, points > 0 ? pointsOff : 0);
   const codOverMax = shell.codMaxAmount > 0 && goodsTotal + (shipping ?? 0) + (option?.codFee ?? 0) > shell.codMaxAmount;
   const codAvailable = codPossible && !codOverMax;
   React.useEffect(() => {
@@ -271,7 +285,7 @@ export function CheckoutView() {
     setIssues([]);
     try {
       const r = await call<CheckoutResult>("/store/checkout", {
-        body: { cartToken: cart.token, addressId: address.id, deliveryOptionId: option.id, paymentMethod: method, ...(note.trim() ? { customerNote: note.trim() } : {}) },
+        body: { cartToken: cart.token, addressId: address.id, deliveryOptionId: option.id, paymentMethod: method, ...(note.trim() ? { customerNote: note.trim() } : {}), ...(loyaltyOn && points > 0 ? { loyaltyPoints: points } : {}) },
       });
       setPlaced(true);
       cart.reset();
@@ -285,6 +299,11 @@ export function CheckoutView() {
       if (err instanceof ApiError && (err.details as { issues?: { message: string }[] })?.issues?.length) {
         setIssues((err.details as { issues: { message: string }[] }).issues.map((i) => i.message));
       } else toast.error(errorMessage(err, t));
+      // The server refused the points (balance changed, order too small …): drop them and re-quote.
+      if (err instanceof ApiError && err.code.startsWith("loyalty")) {
+        onPoints(0, 0);
+        void qc.invalidateQueries({ queryKey: ["loyalty"] });
+      }
       void cart.refresh();
       setPlacing(false);
     }
@@ -438,6 +457,7 @@ export function CheckoutView() {
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-1 text-sm font-medium">{l.name}</span>
                   {l.variantTitle && <span className="block text-xs text-muted-foreground">{l.variantTitle}</span>}
+                  {sellers.get(l.productId) && <SoldBy seller={sellers.get(l.productId)!} />}
                   {!l.available && <span className="block text-xs text-danger-ink">{t("product.outOfStock")}</span>}
                 </span>
                 <span className="text-sm font-semibold tabular-nums">{money(l.lineTotal)}</span>
@@ -445,7 +465,8 @@ export function CheckoutView() {
             ))}
           </ul>
           <CouponForm cart={c} />
-          <Totals cart={c} shipping={shipping} codFee={codFee} />
+          {loyaltyOn && <UsePoints amount={redeemBase(c)} points={points} onChange={onPoints} disabled={placing} />}
+          <Totals cart={c} shipping={shipping} codFee={codFee} loyalty={loyaltyOn && points > 0 ? { points, discount: pointsOff } : undefined} />
           {issues.length > 0 && (
             <ul className="grid gap-1 rounded-xl bg-destructive/10 p-3 text-sm text-danger-ink" role="alert">
               {issues.map((m, i) => (
@@ -462,7 +483,7 @@ export function CheckoutView() {
                   {placing ? (
                     t("checkout.placing")
                   ) : method === "online" ? (
-                    <PayLabel template={t("checkout.pay", { amount: "\u0000" })} amount={estimated} />
+                    <PayLabel template={t("checkout.pay", { amount: "\u0000" })} amount={payable} />
                   ) : (
                     t("checkout.place")
                   )}

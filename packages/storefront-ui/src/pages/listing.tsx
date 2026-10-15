@@ -308,7 +308,7 @@ function FilterGroup({ title, children }: { title: string; children: React.React
 }
 
 /** Numbered pagination (shadcn Pagination) with prev / next; crawlable links with rel=prev/next. */
-function Pagination({ path, sp, total, t }: { path: string; sp: Params; total: number; t: Translator }) {
+export function Pagination({ path, sp, total, t }: { path: string; sp: Params; total: number; t: Translator }) {
   const pages = Math.ceil(total / PAGE_SIZE);
   if (pages <= 1) return null;
   const page = Math.min(currentPage(sp), pages);

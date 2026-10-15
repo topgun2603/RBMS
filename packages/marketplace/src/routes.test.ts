@@ -13,6 +13,7 @@ const OTHER = "66666666-6666-4666-8666-666666666666";
 function stubService(role: "owner" | "staff" = "owner") {
   return {
     publicVendor: vi.fn(async () => ({ id: VENDOR.id, slug: "murugan" })),
+    publicSellers: vi.fn(async () => ({ items: [], products: {} })),
     apply: vi.fn(async () => ({ id: VENDOR.id, status: "pending" })),
     memberships: vi.fn(async () => [{ vendorId: VENDOR.id, slug: "murugan", name: "Murugan", role }]),
     resolveVendor: vi.fn(async (_t: string, userId: string, header?: string | null) => {
@@ -99,6 +100,18 @@ describe("public", () => {
     expect(service.publicVendor).toHaveBeenCalledWith(TENANT, "murugan", { limit: 12 });
     const { app: none } = await build(stubService());
     expect((await none.inject({ method: "GET", url: `${M}/public/vendors/murugan` })).statusCode).toBe(403);
+  });
+  it("seller lookup splits comma lists and repeated params, needs only a tenant", async () => {
+    const service = stubService();
+    const { app, configs } = await build(service, { tenant });
+    const res = await app.inject({ method: "GET", url: `${M}/public/sellers?ids=a,b&productIds=p1&productIds=p2,p3` });
+    expect(res.statusCode).toBe(200);
+    expect(service.publicSellers).toHaveBeenCalledWith(TENANT, { ids: ["a", "b"], productIds: ["p1", "p2", "p3"] });
+    expect(configs[`GET ${M}/public/sellers`]).toMatchObject({ feature: "marketplace" });
+    expect((await app.inject({ method: "GET", url: `${M}/public/sellers` })).statusCode).toBe(200);
+    expect(service.publicSellers).toHaveBeenLastCalledWith(TENANT, { ids: [], productIds: [] });
+    const { app: none } = await build(stubService());
+    expect((await none.inject({ method: "GET", url: `${M}/public/sellers?ids=a` })).statusCode).toBe(403);
   });
   it("apply needs a signed-in user", async () => {
     const service = stubService();

@@ -39,6 +39,8 @@ export {
   accountMetadata,
   Blocks,
 } from "./pages/content";
+export { HelpPage, helpMetadata, HelpArticlePage, helpArticleMetadata, RaiseTicketPage, MyTicketsPage, TicketPage, helpPrivateMetadata } from "./pages/help";
+export { SellerPage, sellerMetadata, sellerJsonLd, sellerProductSummary } from "./pages/seller";
 export { StoreNotFound } from "./pages/errors";
 export { StoreErrorView } from "./client/error-view";
 
@@ -46,7 +48,7 @@ export { StoreErrorView } from "./client/error-view";
 export { proxyHandler, seoFileHandler, faviconHandler } from "./server/proxy";
 
 // server data helpers
-export { getRequestInfo, getConfig, getBranding, getMenus, getCart, apiGet, apiGetOrNull, apiGetSafe, UpstreamError, CART_COOKIE } from "./server/api";
+export { getRequestInfo, getConfig, getBranding, getMenus, getCart, getFeatures, hasFeature, apiGet, apiGetOrNull, apiGetSafe, UpstreamError, CART_COOKIE } from "./server/api";
 export { storeMetadata, toMetadata } from "./server/meta";
 
 // pure helpers
@@ -55,10 +57,13 @@ export { money, percentOff, imageUrl } from "./lib/format";
 export { renderMarkdown, Markdown, safeHref } from "./lib/markdown";
 export { en as storeMessagesEn, ta as storeMessagesTa, translatorFor, LOCALE_COOKIE } from "./lib/messages";
 export { hrefWith, apiSearchQuery, PAGE_SIZE } from "./lib/url";
+export { faqPageJsonLd, filterFaq } from "./lib/help";
+export { featureOn, helpCentreOn, STORE_FEATURES } from "./lib/features";
+export { isProxyAllowed } from "./server/proxy";
 
 // components (server-safe)
 export { ProductCard, ProductGrid, ProductGridSkeleton } from "./components/product-card";
-export { ListingSkeleton, ProductPageSkeleton, CartSkeleton, CheckoutSkeleton, AccountSkeleton, TrackSkeleton, RailSkeleton, Bone } from "./components/skeletons";
+export { ListingSkeleton, ProductPageSkeleton, CartSkeleton, CheckoutSkeleton, AccountSkeleton, TrackSkeleton, RailSkeleton, HelpSkeleton, SellerSkeleton, Bone } from "./components/skeletons";
 export { TrustBadges, PaymentIcons } from "./components/trust";
 export { EmptyBagArt, NoResultsArt, NoOrdersArt, EmptyWishlistArt, LostArt, OfflineArt } from "./components/illustrations";
 export { SizeChart, sizeKindFor } from "./components/size-guide";

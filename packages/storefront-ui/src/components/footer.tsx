@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { FacebookIcon, HeartIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
+import { FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
 import { NewsletterForm } from "../client/carousel";
 import { PaymentIcons, TrustBadges } from "./trust";
 import type { Translator } from "../lib/messages";
@@ -31,7 +31,7 @@ function whatsappUrl(v: string): string {
   return `https://wa.me/${d.length === 10 ? `91${d}` : d}`;
 }
 
-export function StoreFooter({ config, menu, t }: { config: StoreConfig; menu: MenuItem[]; t: Translator }) {
+export function StoreFooter({ config, menu, t, help = false }: { config: StoreConfig; menu: MenuItem[]; t: Translator; help?: boolean }) {
   const { shop, policies } = config;
   const social = [
     shop.social.instagram && { href: shop.social.instagram, label: "Instagram", icon: InstagramIcon },
@@ -46,6 +46,7 @@ export function StoreFooter({ config, menu, t }: { config: StoreConfig; menu: Me
 
   const quick = [
     { href: "/track", label: t("nav.track"), icon: PackageSearchIcon },
+    ...(help ? [{ href: "/help", label: t("nav.help"), icon: LifeBuoyIcon }] : []),
     { href: "/account", label: t("nav.account"), icon: UserRoundIcon },
     { href: "/account?tab=wishlist", label: t("nav.wishlist"), icon: HeartIcon },
     { href: "/cart", label: t("nav.cart"), icon: ShoppingBagIcon },
@@ -141,7 +142,15 @@ export function StoreFooter({ config, menu, t }: { config: StoreConfig; menu: Me
           <div className="grid content-start gap-3">
             <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t("footer.help")}</p>
             <FLink href="/track">{t("nav.track")}</FLink>
+            {help && <FLink href="/help">{t("help.title")}</FLink>}
             <FLink href="/account">{t("nav.account")}</FLink>
+          </div>
+        )}
+        {groups.length > 0 && help && !menu.some((m) => m.href === "/help" || m.children?.some((c) => c.href === "/help")) && (
+          <div className="grid content-start gap-3">
+            <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t("footer.help")}</p>
+            <FLink href="/help">{t("help.title")}</FLink>
+            <FLink href="/track">{t("nav.track")}</FLink>
           </div>
         )}
 

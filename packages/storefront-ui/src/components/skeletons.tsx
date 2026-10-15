@@ -184,3 +184,54 @@ export function RailSkeleton({ count = 4 }: { count?: number }) {
     </div>
   );
 }
+
+/** Help centre: hero, search pill, two FAQ groups. */
+export function HelpSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading">
+      <div className="border-b bg-tint-1 py-10 sm:py-14">
+        <div className="mx-auto grid max-w-xl justify-items-center gap-3 px-4">
+          <Bone className="size-14 rounded-2xl" />
+          <Bone className="h-3 w-32 rounded-full" />
+          <Bone className="h-10 w-64" />
+          <Bone className="h-4 w-80 max-w-full rounded-full" />
+        </div>
+      </div>
+      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:px-8">
+        <Bone className="mx-auto h-13 w-full max-w-2xl rounded-full" />
+        {[0, 1].map((g) => (
+          <div key={g} className="grid gap-4">
+            <Bone className="h-7 w-48" />
+            <div className="grid gap-px overflow-hidden rounded-2xl border">
+              {[0, 1, 2].map((i) => (
+                <Bone key={i} className="h-14 rounded-none" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Seller page: header with logo, then the product grid. */
+export function SellerSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading">
+      <div className="border-b bg-tint-1">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-5 px-4 py-10 sm:px-6 lg:px-8">
+          <Bone className="size-20 rounded-3xl sm:size-24" />
+          <div className="grid flex-1 gap-3">
+            <Bone className="h-5 w-40 rounded-full" />
+            <Bone className="h-9 w-72 max-w-full" />
+            <Bone className="h-4 w-24 rounded-full" />
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <Bone className="mb-6 h-8 w-64" />
+        <ProductGridSkeleton count={8} />
+      </div>
+    </div>
+  );
+}

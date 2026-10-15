@@ -335,11 +335,12 @@ function DeliveryOptions({ cart: c }: { cart: PricedCart }) {
   );
 }
 
-export function Totals({ cart: c, shipping, codFee }: { cart: PricedCart; shipping?: number | null; codFee?: number }) {
+export function Totals({ cart: c, shipping, codFee, loyalty }: { cart: PricedCart; shipping?: number | null; codFee?: number; loyalty?: { points: number; discount: number } }) {
   const { t } = useStore();
   const tax = c.taxExtra ?? 0;
   const ship = shipping ?? null;
-  const total = c.total + tax + (ship ?? 0) + (codFee ?? 0);
+  // Points are a pre-tax discount: the server re-prices GST; this is the estimate until the order comes back.
+  const total = Math.max(0, c.total + tax + (ship ?? 0) + (codFee ?? 0) - (loyalty?.discount ?? 0));
   return (
     <dl className="grid gap-2 text-sm">
       <div className="flex justify-between">
@@ -375,6 +376,14 @@ export function Totals({ cart: c, shipping, codFee }: { cart: PricedCart; shippi
           <dd className="tabular-nums">{money(codFee)}</dd>
         </div>
       ) : null}
+      <AnimatePresence initial={false}>
+        {loyalty && loyalty.discount > 0 && (
+          <motion.div key="points" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex justify-between overflow-hidden text-success-ink" data-testid="points-row">
+            <dt>{t("loyalty.discountRow", { points: loyalty.points })}</dt>
+            <dd className="tabular-nums">−{money(loyalty.discount)}</dd>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="mt-1 flex items-baseline justify-between border-t pt-3">
         <dt className="font-semibold">{t("cart.total")}</dt>
         <dd className="sf-price font-display text-2xl font-semibold" data-testid="cart-total">

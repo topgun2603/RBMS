@@ -116,6 +116,12 @@ export function marketplaceRoutes(service: MarketplaceService) {
       const q = pageQuery.parse(req.query ?? {});
       return service.publicVendor(tenantOf(req), slug, q);
     });
+    // Storefront "Sold by": `?ids=<seller uuid,…>&productIds=<product uuid,…>` (comma-separated or repeated).
+    app.get("/public/sellers", feature(MARKETPLACE_FEATURE), async (req) => {
+      const q = query(req) as Record<string, string | string[] | undefined>;
+      const list = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []).flatMap((s) => s.split(",")).filter(Boolean);
+      return service.publicSellers(tenantOf(req), { ids: list(q.ids), productIds: list(q.productIds) });
+    });
     app.post("/public/vendors/apply", feature(MARKETPLACE_FEATURE), async (req) => {
       const userId = userOf(req);
       return service.apply(tenantOf(req), userId, body(req) as ApplyInput);

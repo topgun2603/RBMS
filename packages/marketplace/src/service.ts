@@ -207,6 +207,24 @@ export interface PayoutRunResult {
   skipped: { vendorId: string; vendorName: string; reason: PayoutSkipReason; balance: number }[];
 }
 
+/** A seller as the storefront shows it ("Sold by …" links): active sellers only, no contact or payout data. */
+export interface PublicSellerCard {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+}
+
+export interface PublicSellers {
+  items: PublicSellerCard[];
+  /** productId → seller id, for the requested products sold by an active seller (shop products are left out). */
+  products: Record<string, string>;
+}
+
+/** Most ids per lookup (`ids` and `productIds` each). */
+export const PUBLIC_SELLERS_MAX = 50;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 export interface PublicVendor {
   id: string;
   name: string;
@@ -779,6 +797,34 @@ export class MarketplaceService {
       }),
     ]);
     return { id: row.id, name: row.name, slug: row.slug, description: row.description, logoUrl: row.logoUrl, productCount, products };
+  }
+
+  /**
+   * `GET /public/sellers?ids=&productIds=`: storefront "Sold by" cards for seller ids and/or the sellers of product ids
+   * (cart lines). Only active sellers of this shop; ids that aren't uuids are ignored; at most `PUBLIC_SELLERS_MAX` each.
+   */
+  async publicSellers(tenantId: string, q: { ids?: string[]; productIds?: string[] } = {}): Promise<PublicSellers> {
+    const clean = (l: string[] | undefined) => [...new Set((l ?? []).map((s) => s.trim().toLowerCase()).filter((s) => UUID_RE.test(s)))].slice(0, PUBLIC_SELLERS_MAX);
+    const ids = clean(q.ids);
+    const productIds = clean(q.productIds);
+    let byProduct: Record<string, string | null> = {};
+    if (productIds.length && this.deps.products?.productVendors) {
+      try {
+        byProduct = await this.deps.products.productVendors(tenantId, productIds);
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "marketplace: product sellers lookup failed");
+      }
+    }
+    const wanted = [...new Set([...ids, ...Object.values(byProduct).filter((v): v is string => !!v)])];
+    if (!wanted.length) return { items: [], products: {} };
+    const rows = await this.db
+      .select({ id: vendors.id, name: vendors.name, slug: vendors.slug, logoUrl: vendors.logoUrl })
+      .from(vendors)
+      .where(and(eq(vendors.tenantId, tenantId), inArray(vendors.id, wanted), eq(vendors.status, "active")));
+    const active = new Set(rows.map((r) => r.id));
+    const products: Record<string, string> = {};
+    for (const [p, v] of Object.entries(byProduct)) if (v && active.has(v)) products[p] = v;
+    return { items: rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug, logoUrl: r.logoUrl ?? null })), products };
   }
 
   /** A signed-in user applies to sell: a pending seller with them as owner. One pending application per user. */

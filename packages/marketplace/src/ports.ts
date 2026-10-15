@@ -75,6 +75,11 @@ export interface VendorProductsPort {
     vendorId: string,
     opts: { limit: number; offset: number; publicOnly?: boolean; q?: string },
   ): Promise<{ items: VendorProduct[]; total: number }>;
+  /**
+   * The seller of each product id (null = the shop's own; unknown ids left out). Optional: without it the storefront's
+   * "Sold by" lookup by product answers only for seller ids.
+   */
+  productVendors?(tenantId: string, productIds: string[]): Promise<Record<string, string | null>>;
 }
 
 /** Razorpay Route transfer statuses (`created` is treated like `pending`). */

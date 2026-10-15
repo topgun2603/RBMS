@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ArrowUpIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@srirealtime/ui/components/tooltip";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotionSafe, useScroll } from "@srirealtime/ui/motion";
+import { ChatLauncher } from "./chat-widget";
 import { useStore } from "./store-context";
 
 function WhatsAppGlyph({ className }: { className?: string }) {
@@ -23,7 +24,7 @@ function whatsappUrl(v: string, text: string): string {
 
 /**
  * Bottom-right floating actions: WhatsApp chat (when the shop set a WhatsApp number) with a tooltip, and a back-to-top
- * button that appears after scrolling. Moved up on the product page so they never cover the sticky buy bar.
+ * button that appears after scrolling, and the live chat launcher (shops with `chat` on). Moved up on the product page so they never cover the sticky buy bar.
  */
 export function FloatingActions({ whatsapp }: { whatsapp?: string | null }) {
   const { t, shell } = useStore();
@@ -31,6 +32,8 @@ export function FloatingActions({ whatsapp }: { whatsapp?: string | null }) {
   const pathname = usePathname();
   const { scrollY } = useScroll();
   const [showTop, setShowTop] = React.useState(false);
+  // While the chat panel is open the other bubbles step aside (the panel sits right above the launcher).
+  const [chatOpen, setChatOpen] = React.useState(false);
   useMotionValueEvent(scrollY, "change", (y) => setShowTop(y > 900));
   const lifted = pathname.startsWith("/p/");
   const hideAll = pathname === "/checkout";
@@ -38,7 +41,7 @@ export function FloatingActions({ whatsapp }: { whatsapp?: string | null }) {
   return (
     <div className={`pointer-events-none fixed right-4 z-30 flex flex-col items-end gap-3 transition-[bottom] duration-300 sm:right-6 ${lifted ? "bottom-24 lg:bottom-6" : "bottom-5 sm:bottom-6"}`}>
       <AnimatePresence>
-        {showTop && (
+        {showTop && !chatOpen && (
           <motion.button
             key="top"
             type="button"
@@ -56,7 +59,7 @@ export function FloatingActions({ whatsapp }: { whatsapp?: string | null }) {
           </motion.button>
         )}
       </AnimatePresence>
-      {whatsapp && (
+      {whatsapp && !chatOpen && (
         <Tooltip>
           <TooltipTrigger asChild>
             <motion.a
@@ -81,6 +84,7 @@ export function FloatingActions({ whatsapp }: { whatsapp?: string | null }) {
           </TooltipContent>
         </Tooltip>
       )}
+      <ChatLauncher onOpenChange={setChatOpen} />
     </div>
   );
 }

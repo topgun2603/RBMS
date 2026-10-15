@@ -7,3 +7,4 @@ export { call, ApiError } from "./client/api";
 export { StorePageTransition } from "./client/page-transition";
 export { flyToCart, bumpCart, CART_BUMP_EVENT } from "./client/fly-to-cart";
 export { useWishlist, WishlistHeart } from "./client/wishlist";
+export { openChat, CHAT_OPEN_EVENT } from "./client/chat-bus";

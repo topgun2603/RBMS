@@ -198,6 +198,67 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, `store-${nam
     await shot(page, "account-desktop");
   });
 
+  // ---- batch 4: chat, help centre, loyalty, seller pages (each skips when the shop has the feature off)
+  const features = await fetch(`${API}/v1/features`, { headers: { "x-tenant": HOST.split(".")[0] } })
+    .then((r) => r.json())
+    .then((j) => new Set(j.enabled ?? []))
+    .catch(() => new Set());
+
+  await step("chat: launcher → panel → message sent (feature chat)", async () => {
+    if (!features.has("chat")) return console.log("      chat off; skipped");
+    await page.waitForSelector('[data-testid="chat-launcher"]', { timeout: 20000 });
+    await page.click('[data-testid="chat-launcher"]');
+    await page.waitForSelector('[data-testid="chat-input"]', { timeout: 30000 });
+    await page.type('[data-testid="chat-input"]', `${SHOPPER}: hello from the store e2e`);
+    await page.keyboard.press("Enter");
+    await page.waitForSelector('[data-testid="chat-bubble-mine"] [data-testid="tick-sent"]', { timeout: 20000 });
+    await shot(page, "chat-desktop");
+    await page.click('[data-testid="chat-close"]');
+  });
+
+  await step("account: Points tab (feature loyalty)", async () => {
+    if (!features.has("loyalty")) return console.log("      loyalty off; skipped");
+    await page.goto(`${BASE}/account?tab=points`, { waitUntil: "networkidle2" });
+    await page.waitForFunction(() => document.querySelector('[data-testid="loyalty-panel"]') || /Start earning points|No points yet/.test(document.body.textContent), { timeout: 20000 });
+    await shot(page, "account-points-desktop");
+  });
+
+  await step("help centre: FAQ search, raise-ticket form (feature support)", async () => {
+    if (!features.has("support")) return console.log("      support off; skipped");
+    await page.goto(`${BASE}/help`, { waitUntil: "networkidle2" });
+    const items = await page.$$('[data-testid="faq-item"]');
+    if (items.length) {
+      const word = (await page.$eval('[data-testid="faq-item"] button', (b) => b.textContent.trim().split(/\s+/).find((w) => w.length > 3) ?? "")).replace(/[^\p{L}\p{N}]/gu, "");
+      await page.type('[data-testid="help-search"]', word);
+      await page.waitForSelector('[data-testid="help-count"]', { timeout: 10000 });
+    }
+    await shot(page, "help-desktop");
+    await page.goto(`${BASE}/help/new`, { waitUntil: "networkidle2" });
+    await page.waitForSelector('[data-testid="ticket-form"]', { timeout: 20000 });
+    console.log(`      ${items.length} FAQ articles; ticket form ready (signed in)`);
+  });
+
+  await step("seller page from a marketplace product (feature marketplace)", async () => {
+    if (!features.has("marketplace")) return console.log("      marketplace off; skipped");
+    const tenant = { "x-tenant": HOST.split(".")[0] };
+    const found = await fetch(`${API}/v1/catalog/public/search?q=clay%20lamp&limit=10`, { headers: tenant }).then((r) => r.json()).catch(() => ({ items: [] }));
+    let slug = null;
+    for (const p of found.items ?? []) {
+      const full = await fetch(`${API}/v1/catalog/public/products/${encodeURIComponent(p.slug)}`, { headers: tenant }).then((r) => r.json()).catch(() => null);
+      if (full?.vendorId) {
+        slug = p.slug;
+        break;
+      }
+    }
+    if (!slug) return console.log("      no seller product yet (run the batch-3 e2e first); skipped");
+    await page.goto(`${BASE}/p/${slug}`, { waitUntil: "networkidle2" });
+    await page.waitForSelector('[data-testid="sold-by"] a', { timeout: 20000 });
+    await Promise.all([page.waitForNavigation({ waitUntil: "networkidle2" }), page.click('[data-testid="sold-by"] a')]);
+    await page.waitForSelector('[data-testid="seller-name"]', { timeout: 20000 });
+    await shot(page, "seller-desktop");
+    console.log("      seller:", page.url());
+  });
+
   await step("phone width: home, product, cart, checkout", async () => {
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     await page.goto(`${BASE}/`, { waitUntil: "networkidle2" });
