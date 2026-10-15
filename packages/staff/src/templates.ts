@@ -67,6 +67,12 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     description: "Sees orders and marks them shipped or delivered.",
     permissions: ["orders.view", "orders.ship", "orders.deliver"],
   },
+  {
+    key: "stock-keeper",
+    name: "Stock keeper",
+    description: "Adds and edits products, adjusts and transfers stock, and records purchases.",
+    permissions: ["catalogue.view", "catalogue.manage", "inventory.adjust", "inventory.transfer", "inventory.purchases"],
+  },
 ];
 
 export const BUILTIN_ROLE_KEYS: readonly string[] = BUILTIN_ROLES.map((r) => r.key);
