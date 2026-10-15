@@ -302,7 +302,7 @@ export function NewsletterForm({ tone = "brand" }: { tone?: "brand" | "plain" })
           <motion.form
             key="form"
             exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
-            className="flex w-full flex-col gap-2 sm:flex-row"
+            className="flex w-full flex-col gap-2 sm:flex-row sm:items-start"
             onSubmit={(e) => {
               e.preventDefault();
               const v = new FormData(e.currentTarget).get("contact");
@@ -324,14 +324,14 @@ export function NewsletterForm({ tone = "brand" }: { tone?: "brand" | "plain" })
               minLength={5}
               placeholder={t("home.newsletterPlaceholder")}
               className={cn(
-                "h-12 flex-1 rounded-full px-5 text-sm outline-none",
+                "h-11 flex-1 rounded-full px-5 text-sm outline-none",
                 brand ? "border border-white/30 bg-white/95 text-neutral-900 placeholder:text-neutral-500 focus:ring-4 focus:ring-white/40" : "border border-input bg-card focus:ring-[3px] focus:ring-ring/30",
               )}
             />
             <motion.button
               type="submit"
               whileTap={{ scale: 0.96 }}
-              className={cn("h-12 rounded-full px-6 text-sm font-semibold focus-ring", brand ? "bg-neutral-900 text-white hover:bg-neutral-800" : "bg-primary text-primary-foreground hover:bg-primary/90")}
+              className={cn("h-11 rounded-full px-6 text-sm font-semibold focus-ring", brand ? "bg-neutral-900 text-white hover:bg-neutral-800" : "bg-primary text-primary-foreground hover:bg-primary/90")}
             >
               {t("home.subscribe")}
             </motion.button>

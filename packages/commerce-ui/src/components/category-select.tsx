@@ -10,8 +10,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldLabel,
   Input,
-  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -170,26 +173,25 @@ function QuickCategoryDialog({
           <DialogDescription>{t("commerce.categories.quickHint")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4" noValidate>
-          <div className="grid gap-2">
-            <Label htmlFor="quick-cat-name">{t("commerce.categories.name")}</Label>
-            <Input
-              id="quick-cat-name"
-              autoFocus
-              className="h-11"
-              value={name}
-              aria-invalid={!!error}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null);
-              }}
-            />
-            {error && <p className="text-xs text-destructive">{error}</p>}
-          </div>
+          <Field id="quick-cat-name" invalid={!!error}>
+            <FieldLabel>{t("commerce.categories.name")}</FieldLabel>
+            <FieldControl>
+              <Input
+                autoFocus
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                }}
+              />
+            </FieldControl>
+            <FieldError>{error}</FieldError>
+          </Field>
           {parentOptions.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="quick-cat-parent">{t("commerce.categories.parent")}</Label>
+            <Field id="quick-cat-parent">
+              <FieldLabel>{t("commerce.categories.parent")}</FieldLabel>
               <Select value={parentId} onValueChange={setParentId}>
-                <SelectTrigger id="quick-cat-parent" className="h-11 w-full">
+                <SelectTrigger id="quick-cat-parent" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,7 +203,7 @@ function QuickCategoryDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={save.isPending}>

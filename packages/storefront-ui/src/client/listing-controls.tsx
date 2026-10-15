@@ -24,7 +24,7 @@ export function SortSelect({ value, options }: { value: string; options: { value
         if (o) router.push(o.href, { scroll: false });
       }}
     >
-      <SelectTrigger className="h-10 min-w-44 rounded-full bg-card px-4 text-sm font-medium" aria-label={t("list.sort")}>
+      <SelectTrigger className="min-w-44 rounded-full bg-card px-4 text-sm font-medium" aria-label={t("list.sort")}>
         <ArrowUpDownIcon className="size-4 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>
@@ -45,7 +45,7 @@ export function FilterSheet({ children, activeCount, resultsLabel, chips }: { ch
   const [open, setOpen] = React.useState(false);
   return (
     <>
-      <Button variant="outline" className="h-10 rounded-full lg:hidden" onClick={() => setOpen(true)} data-testid="filter-button">
+      <Button variant="outline" className="rounded-full lg:hidden" onClick={() => setOpen(true)} data-testid="filter-button">
         <SlidersHorizontalIcon />
         {t("list.filters")}
         <AnimatePresence>

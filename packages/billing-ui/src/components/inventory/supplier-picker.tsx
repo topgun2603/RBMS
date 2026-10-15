@@ -77,46 +77,46 @@ export function SupplierPicker({
                 </Button>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5 sm:col-span-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
+              <div className="grid content-start gap-1.5 sm:col-span-2">
                 <Label htmlFor="oneoff-name" className="text-xs">
                   {t("billing.suppliers.name")}
                 </Label>
                 <Input
                   id="oneoff-name"
                   autoFocus={!value.name}
-                  className="h-11"
                   autoComplete="off"
                   value={value.name}
                   aria-invalid={invalid && !value.name.trim()}
                   onChange={(e) => onChange({ ...value, name: e.target.value })}
                 />
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid content-start gap-1.5">
                 <Label htmlFor="oneoff-gstin" className="text-xs">
                   {t("billing.supplierPicker.gstinOptional")}
                 </Label>
                 <Input
                   id="oneoff-gstin"
-                  className="h-11 font-mono uppercase"
+                  className="font-mono uppercase"
                   maxLength={15}
                   autoComplete="off"
                   spellCheck={false}
                   value={value.gstin}
                   aria-invalid={!!value.gstin && !isValidGstin(value.gstin)}
+                  aria-describedby={!!value.gstin && !isValidGstin(value.gstin) ? "oneoff-gstin-err" : undefined}
                   onChange={(e) => {
                     const gstin = e.target.value.toUpperCase().replace(/\s/g, "");
                     const st = isValidGstin(gstin) ? stateFromGstin(gstin) : null;
                     onChange({ ...value, gstin, stateCode: st ?? value.stateCode });
                   }}
                 />
-                {!!value.gstin && !isValidGstin(value.gstin) && <p className="text-xs text-destructive">{t("billing.validation.gstin")}</p>}
+                {!!value.gstin && !isValidGstin(value.gstin) && <p id="oneoff-gstin-err" className="text-xs text-destructive">{t("billing.validation.gstin")}</p>}
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid content-start gap-1.5">
                 <Label htmlFor="oneoff-state" className="text-xs">
                   {t("billing.customers.state")}
                 </Label>
-                <StateSelect id="oneoff-state" value={value.stateCode} onChange={(stateCode) => onChange({ ...value, stateCode })} className="h-11 w-full" />
+                <StateSelect id="oneoff-state" value={value.stateCode} onChange={(stateCode) => onChange({ ...value, stateCode })} className="w-full" />
               </div>
             </div>
           </motion.div>
@@ -196,7 +196,7 @@ function SupplierSearch({
         aria-label={t("billing.supplierPicker.search")}
         aria-invalid={invalid}
         placeholder={t("billing.supplierPicker.search")}
-        className="h-11 pl-9 text-base"
+        className="pl-9 text-base"
         autoComplete="off"
         value={q}
         onChange={(e) => {

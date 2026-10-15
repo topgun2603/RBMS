@@ -194,7 +194,7 @@ function TemplatesTab() {
     formExtra: (form) => <TemplatePreview form={form} />,
     toolbar: (
       <Tabs value={locale} onValueChange={(v) => setLocale(v as typeof locale)}>
-        <TabsList className="h-8">
+        <TabsList>
           <TabsTrigger value="all">{t("admin.common.all")}</TabsTrigger>
           <TabsTrigger value="en">{LOCALE_NAMES.en}</TabsTrigger>
           <TabsTrigger value="ta" lang="ta">
@@ -246,7 +246,7 @@ function TemplatePreview({ form }: { form: UseFormReturn<TemplateValues> }) {
   return (
     <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <div className="grid flex-1 gap-1.5">
+        <div className="grid flex-1 content-start gap-1.5">
           <Label htmlFor="preview-vars" className="text-xs">
             {t("admin.notifications.sampleVars")}
           </Label>
@@ -254,7 +254,8 @@ function TemplatePreview({ form }: { form: UseFormReturn<TemplateValues> }) {
             id="preview-vars"
             value={vars}
             onChange={(e) => setVars(e.target.value)}
-            className="h-8 font-mono text-xs"
+            size="sm"
+            className="font-mono text-xs"
             aria-invalid={parsedVars === null || undefined}
           />
         </div>

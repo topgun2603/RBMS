@@ -194,17 +194,18 @@ function RemindersForm({ profile, canEdit }: { profile: Partial<SellerProfile>; 
                 <Label htmlFor="custom-day" className="text-xs font-normal text-muted-foreground">
                   {t("billing.reminders.customLabel")}
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex items-start gap-2">
                   <Input
                     id="custom-day"
                     type="number"
                     inputMode="numeric"
                     min={1}
                     max={365}
-                    className="h-11 w-32"
+                    className="w-32"
                     placeholder="45"
                     value={custom}
                     aria-invalid={!!customError}
+                    aria-describedby="custom-day-hint"
                     onChange={(e) => {
                       setCustom(e.target.value);
                       setCustomError(null);
@@ -216,16 +217,16 @@ function RemindersForm({ profile, canEdit }: { profile: Partial<SellerProfile>; 
                       }
                     }}
                   />
-                  <Button type="button" variant="outline" size="lg" className="h-11" onClick={addCustom}>
+                  <Button type="button" variant="outline" onClick={addCustom}>
                     <PlusIcon /> {t("billing.reminders.add")}
                   </Button>
                 </div>
                 {customError ? (
-                  <p className="text-xs text-destructive" role="alert">
+                  <p id="custom-day-hint" className="text-xs text-destructive" role="alert">
                     {customError}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("billing.reminders.maxDays", { max: MAX_REMINDER_DAYS })}</p>
+                  <p id="custom-day-hint" className="text-xs text-muted-foreground">{t("billing.reminders.maxDays", { max: MAX_REMINDER_DAYS })}</p>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">

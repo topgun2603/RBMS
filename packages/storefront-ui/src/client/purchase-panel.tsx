@@ -297,7 +297,7 @@ export function DeliveryCheck({ weightGrams, subtotal }: { weightGrams: number; 
         {t("delivery.title")}
       </h2>
       <form
-        className="mt-3 flex gap-2"
+        className="mt-3 flex items-start gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void check(pin);
@@ -316,16 +316,17 @@ export function DeliveryCheck({ weightGrams, subtotal }: { weightGrams: number; 
             autoComplete="postal-code"
             placeholder={t("delivery.pincode")}
             aria-invalid={!!error}
-            className="h-11 w-full rounded-xl border border-input bg-background ps-9 pe-3 text-sm tabular-nums tracking-wider outline-none focus:ring-[3px] focus:ring-ring/30"
+            aria-describedby={error ? `${id}-pin-e` : undefined}
+            className="block h-11 w-full rounded-xl border border-input bg-background ps-9 pe-3 text-sm tabular-nums tracking-wider outline-none focus:ring-[3px] focus:ring-ring/30 aria-invalid:border-destructive"
           />
         </div>
-        <Button type="submit" variant="secondary" className="h-11 rounded-xl px-5" disabled={busy}>
+        <Button type="submit" variant="secondary" size="lg" className="rounded-xl px-5" disabled={busy}>
           {busy ? <Loader2Icon className="animate-spin" /> : t("delivery.check")}
         </Button>
       </form>
       <AnimatePresence initial={false}>
         {error && (
-          <motion.p key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2 flex items-center gap-1.5 text-sm text-danger-ink" role="alert">
+          <motion.p key="err" id={`${id}-pin-e`} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2 flex items-center gap-1.5 text-sm text-danger-ink" role="alert">
             <AlertCircleIcon className="size-4" />
             {error}
           </motion.p>

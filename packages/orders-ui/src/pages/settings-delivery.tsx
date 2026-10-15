@@ -330,20 +330,21 @@ function TestQuote() {
 
   return (
     <Section icon={SearchCheckIcon} tone="text-success-ink" title={t("orders.delivery.testTitle")} description={t("orders.delivery.testHint")}>
-      <form onSubmit={run} className="grid gap-3 sm:grid-cols-[8rem_7rem_minmax(0,1fr)_auto_auto] sm:items-end" noValidate>
+      <form onSubmit={run} className="grid items-start gap-3 sm:grid-cols-[8rem_7rem_minmax(0,1fr)_auto_auto]" noValidate>
         <Field label={t("orders.new.pincode")} htmlFor="tq-pin" error={error}>
-          <Input id="tq-pin" inputMode="numeric" className="h-11 tabular-nums" value={pincode} maxLength={6} onChange={(e) => (setPincode(digitsOnly(e.target.value, 6)), setError(null))} placeholder="600001" />
+          <Input id="tq-pin" inputMode="numeric" className="tabular-nums" value={pincode} maxLength={6} onChange={(e) => (setPincode(digitsOnly(e.target.value, 6)), setError(null))} placeholder="600001" />
         </Field>
         <Field label={t("orders.delivery.weight")} htmlFor="tq-w">
-          <Input id="tq-w" inputMode="numeric" className="h-11 text-right tabular-nums" value={weight} onChange={(e) => setWeight(digitsOnly(e.target.value, 7))} />
+          <Input id="tq-w" inputMode="numeric" className="text-right tabular-nums" value={weight} onChange={(e) => setWeight(digitsOnly(e.target.value, 7))} />
         </Field>
         <Field label={t("orders.delivery.subtotal")} htmlFor="tq-sub">
           <MoneyInput id="tq-sub" value={subtotal} onChange={(e) => setSubtotal(e.target.value)} />
         </Field>
-        <label className="flex h-11 items-center gap-2 text-sm">
+        {/* No label row of their own: sm:mt-7 = label row (20px) + gap (8px), so they line up with the inputs. */}
+        <label className="flex h-10 items-center gap-2 text-sm sm:mt-7">
           <Switch checked={cod} onCheckedChange={setCod} /> {t("orders.method.cod")}
         </label>
-        <Button type="submit" className="h-11" disabled={busy}>
+        <Button type="submit" className="sm:mt-7" disabled={busy}>
           {busy ? <Loader2Icon className="animate-spin" /> : <SearchCheckIcon />} {t("orders.delivery.check")}
         </Button>
       </form>
@@ -451,16 +452,16 @@ function CarrierCard({ canEdit }: { canEdit: boolean }) {
       ) : (
         <form onSubmit={(e) => void submit(e)} className="grid gap-4" noValidate>
           <fieldset disabled={!canEdit} className="grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid items-start gap-4 sm:grid-cols-2">
               <Field label={t("orders.carrier.email")} htmlFor="sr-email" error={error} hint={t("orders.carrier.emailHint")}>
-                <Input id="sr-email" type="email" autoComplete="off" className="h-11" value={email} onChange={(e) => (setEmail(e.target.value), setError(null))} />
+                <Input id="sr-email" type="email" autoComplete="off" value={email} onChange={(e) => (setEmail(e.target.value), setError(null))} />
               </Field>
               <Field label={t("orders.carrier.password")} htmlFor="sr-pass" optional={!!a?.configured} hint={a?.configured ? t("orders.carrier.passwordKeep") : undefined}>
-                <Input id="sr-pass" type="password" autoComplete="new-password" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="sr-pass" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </Field>
             </div>
             <Field label={t("orders.carrier.pickup")} htmlFor="sr-pickup" hint={t("orders.carrier.pickupHint")}>
-              <Input id="sr-pickup" className="h-11" value={pickup} onChange={(e) => setPickup(e.target.value)} />
+              <Input id="sr-pickup" value={pickup} onChange={(e) => setPickup(e.target.value)} />
             </Field>
             <div className="grid gap-2">
               <p className="text-sm font-medium">
@@ -472,7 +473,6 @@ function CarrierCard({ canEdit }: { canEdit: boolean }) {
                   <Input
                     key={k}
                     inputMode="decimal"
-                    className="h-11"
                     aria-label={t(`orders.ship.dims.${k}`)}
                     placeholder={t(`orders.ship.dims.${k}`)}
                     value={dims[k]}

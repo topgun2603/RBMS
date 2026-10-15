@@ -115,7 +115,7 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
       topbarEnd={
         <>
           {primary && (
-            <Button asChild size="sm" className="mr-1 hidden h-9 rounded-full px-4 md:inline-flex">
+            <Button asChild size="sm" className="mr-1 hidden rounded-full px-4 md:inline-flex">
               <Link href={primary.href}>
                 <primary.icon /> {primary.label}
               </Link>

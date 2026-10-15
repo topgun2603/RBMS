@@ -13,6 +13,10 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
+  Field,
+  FieldControl,
+  FieldLabel,
+  FieldRow,
   Input,
   Label,
   PageHeader,
@@ -92,17 +96,21 @@ function ProfileCard({ user }: { user: User }) {
           <Label>{t("admin.account.avatar")}</Label>
           <ImageUpload value={avatarUrl} onChange={setAvatarUrl} purpose="avatar" shape="circle" accept="image/png,image/jpeg,image/webp" />
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="acc-name">{t("admin.account.name")}</Label>
-            <Input id="acc-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label>{t("admin.account.language")}</Label>
+        <FieldRow className="gap-5">
+          <Field id="acc-name">
+            <FieldLabel>{t("admin.account.name")}</FieldLabel>
+            <FieldControl>
+              <Input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} />
+            </FieldControl>
+          </Field>
+          <Field id="acc-language">
+            <FieldLabel>{t("admin.account.language")}</FieldLabel>
             <Select value={locale} onValueChange={(v) => setLocaleDraft(v as Locale)}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
+              <FieldControl>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+              </FieldControl>
               <SelectContent>
                 {SUPPORTED_LOCALES.map((l) => (
                   <SelectItem key={l} value={l} lang={l}>
@@ -111,16 +119,20 @@ function ProfileCard({ user }: { user: User }) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="acc-phone">{t("admin.account.phone")}</Label>
-            <Input id="acc-phone" value={user.phone ?? "—"} readOnly disabled className="font-mono" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="acc-email">{t("admin.account.email")}</Label>
-            <Input id="acc-email" value={user.email ?? "—"} readOnly disabled />
-          </div>
-        </div>
+          </Field>
+          <Field id="acc-phone">
+            <FieldLabel>{t("admin.account.phone")}</FieldLabel>
+            <FieldControl>
+              <Input value={user.phone ?? "—"} readOnly disabled className="font-mono" />
+            </FieldControl>
+          </Field>
+          <Field id="acc-email">
+            <FieldLabel>{t("admin.account.email")}</FieldLabel>
+            <FieldControl>
+              <Input value={user.email ?? "—"} readOnly disabled />
+            </FieldControl>
+          </Field>
+        </FieldRow>
       </CardContent>
     </Card>
   );

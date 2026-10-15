@@ -84,15 +84,15 @@ export function ShareStatementDialog({
               <QrImage value={url} size={104} alt={t("billing.creditBook.statement.qrAlt")} className="border" />
               <div className="min-w-0 flex-1 space-y-2">
                 <BalancePill balance={customer.outstanding} />
-                <div className="flex gap-2">
+                <div className="flex items-start gap-2">
                   <Input
                     readOnly
                     value={url}
-                    className="h-11 font-mono text-xs"
+                    className="font-mono text-xs"
                     onFocus={(e) => e.target.select()}
                     aria-label={t("billing.creditBook.statement.link")}
                   />
-                  <CopyButton value={url} label={t("billing.share.copy")} copiedMessage={t("billing.share.copied")} className="size-11" />
+                  <CopyButton value={url} label={t("billing.share.copy")} copiedMessage={t("billing.share.copied")} />
                 </div>
               </div>
             </div>
@@ -102,7 +102,6 @@ export function ShareStatementDialog({
                 id="statement-phone"
                 type="tel"
                 inputMode="tel"
-                className="h-11"
                 placeholder="98765 43210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}

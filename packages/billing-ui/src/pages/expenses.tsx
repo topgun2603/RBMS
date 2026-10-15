@@ -163,7 +163,7 @@ function Expenses() {
           <DateRangePicker value={range} onChange={setRange} />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="h-11 w-full sm:w-52" aria-label={t("billing.expenses.category")}>
+              <SelectTrigger size="lg" className="w-full sm:w-52" aria-label={t("billing.expenses.category")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -113,20 +113,22 @@ export function OtpSignIn({ onSignedIn, className, compact }: { onSignedIn?: (us
               autoComplete={mode === "phone" ? "tel-national" : "email"}
               placeholder={mode === "phone" ? "98765 43210" : "you@example.com"}
               aria-invalid={!!error}
-              aria-describedby={`${id}-hint`}
-              className={cn("h-12 w-full rounded-xl border border-input bg-background pe-3 text-base tracking-wide outline-none focus:ring-[3px] focus:ring-ring/30", mode === "phone" ? "ps-[4.5rem]" : "ps-10")}
+              aria-describedby={[mode === "phone" ? `${id}-hint` : null, error ? `${id}-err` : null].filter(Boolean).join(" ") || undefined}
+              className={cn("block h-11 w-full rounded-xl border border-input bg-background pe-3 text-base tracking-wide outline-none focus:ring-[3px] focus:ring-ring/30", mode === "phone" ? "ps-[4.5rem]" : "ps-10")}
               data-testid="otp-target"
             />
           </div>
-          <p id={`${id}-hint`} className="text-xs text-muted-foreground">
-            {mode === "phone" ? t("auth.phoneHint") : ""}
-          </p>
+          {mode === "phone" && (
+            <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+              {t("auth.phoneHint")}
+            </p>
+          )}
           {error && (
-            <p className="text-sm text-danger-ink" role="alert">
+            <p id={`${id}-err`} className="text-sm text-danger-ink" role="alert">
               {error}
             </p>
           )}
-          <Button type="submit" size="lg" className="h-12 rounded-full text-base" disabled={busy} data-testid="otp-send">
+          <Button type="submit" size="lg" className="rounded-full text-base" disabled={busy} data-testid="otp-send">
             {busy && <Loader2Icon className="animate-spin" />}
             {busy ? t("auth.sending") : t("auth.sendCode")}
           </Button>
@@ -157,7 +159,7 @@ export function OtpSignIn({ onSignedIn, className, compact }: { onSignedIn?: (us
             </button>
           </p>
           <OtpInput value={code} onChange={setCode} onComplete={(c) => void verify(c)} autoFocus disabled={busy} invalid={!!error} aria-label={t("auth.code")} className="justify-center" />
-          <div className="grid gap-1.5">
+          <div className="grid content-start gap-1.5">
             <label htmlFor={`${id}-n`} className="text-sm font-medium">
               {t("auth.name")} <span className="text-muted-foreground">({t("common.optional")})</span>
             </label>
@@ -168,7 +170,7 @@ export function OtpSignIn({ onSignedIn, className, compact }: { onSignedIn?: (us
               {error}
             </p>
           )}
-          <Button type="submit" size="lg" className="h-12 rounded-full text-base" disabled={busy || code.length < 6} data-testid="otp-verify">
+          <Button type="submit" size="lg" className="rounded-full text-base" disabled={busy || code.length < 6} data-testid="otp-verify">
             {busy && <Loader2Icon className="animate-spin" />}
             {busy ? t("auth.verifying") : t("auth.verify")}
           </Button>

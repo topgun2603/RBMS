@@ -40,7 +40,7 @@ function BreadcrumbSeparator({ children, className, ...props }: React.ComponentP
 
 function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<"span">) {
   return (
-    <span data-slot="breadcrumb-ellipsis" role="presentation" aria-hidden="true" className={cn("flex size-9 items-center justify-center", className)} {...props}>
+    <span data-slot="breadcrumb-ellipsis" role="presentation" aria-hidden="true" className={cn("flex size-10 items-center justify-center", className)} {...props}>
       <MoreHorizontalIcon className="size-4" />
       <span className="sr-only">More</span>
     </span>

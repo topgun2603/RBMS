@@ -65,7 +65,7 @@ export function MembersTab() {
     );
 
   const invite = (
-    <Button size="lg" className="h-11" onClick={() => setDialog({ member: null })}>
+    <Button size="lg" onClick={() => setDialog({ member: null })}>
       <UserPlusIcon /> {t("workspace.team.invite")}
     </Button>
   );

@@ -146,12 +146,12 @@ function PaymentDialog({ order, open, onOpenChange }: { order: Order; open: bool
               options={MANUAL_PAYMENT_METHODS.map((m) => ({ value: m, label: t(`orders.method.${m}`) }))}
             />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field label={t("orders.payments.reference")} htmlFor="pay-ref" optional>
-              <Input id="pay-ref" className="h-11" value={reference} onChange={(e) => setReference(e.target.value)} placeholder={t("orders.payments.referencePlaceholder")} />
+              <Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder={t("orders.payments.referencePlaceholder")} />
             </Field>
             <Field label={t("orders.payments.date")} htmlFor="pay-date">
-              <Input id="pay-date" type="date" className="h-11" value={date} max={todayIST()} onChange={(e) => e.target.value && setDate(e.target.value)} />
+              <Input id="pay-date" type="date" value={date} max={todayIST()} onChange={(e) => e.target.value && setDate(e.target.value)} />
             </Field>
           </div>
           <DialogFooter className="gap-2">
@@ -227,7 +227,7 @@ function RefundDialog({ order, open, onOpenChange }: { order: Order; open: boole
             <Textarea id="refund-reason" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
           <Field label={t("orders.payments.reference")} htmlFor="refund-ref" optional>
-            <Input id="refund-ref" className="h-11" value={reference} onChange={(e) => setReference(e.target.value)} />
+            <Input id="refund-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
           </Field>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={action.isPending}>

@@ -50,10 +50,10 @@ export function StepRow({ step, compact }: { step: OnboardingStep; compact?: boo
       <div className="flex shrink-0 items-center gap-1">
         {state === "todo" && (
           <>
-            <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" disabled={action.isPending} onClick={() => act("skip")}>
+            <Button variant="ghost" size="sm" className="text-muted-foreground" disabled={action.isPending} onClick={() => act("skip")}>
               {t("workspace.onboarding.skip")}
             </Button>
-            <Button asChild size="sm" className="h-9">
+            <Button asChild size="sm">
               <ModuleLink href={href(step.href)} aria-label={t("workspace.onboarding.goAria", { step: stepLabel(t, step) })}>
                 {t("workspace.onboarding.go")} <ArrowRightIcon />
               </ModuleLink>
@@ -61,7 +61,7 @@ export function StepRow({ step, compact }: { step: OnboardingStep; compact?: boo
           </>
         )}
         {state === "skipped" && (
-          <Button variant="ghost" size="sm" className="h-9" disabled={action.isPending} onClick={() => act("unskip")}>
+          <Button variant="ghost" size="sm" disabled={action.isPending} onClick={() => act("unskip")}>
             <RedoIcon /> {t("workspace.onboarding.unskip")}
           </Button>
         )}

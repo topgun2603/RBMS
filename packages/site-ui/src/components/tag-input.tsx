@@ -35,7 +35,7 @@ export function TagInput({
   return (
     <div
       className={cn(
-        "flex min-h-11 flex-wrap items-center gap-1.5 rounded-xl border border-input bg-card px-2 py-1.5 shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/40",
+        "flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-input bg-card px-2 py-1 shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/40",
         disabled && "opacity-60",
       )}
     >
@@ -58,7 +58,7 @@ export function TagInput({
         value={draft}
         disabled={disabled || value.length >= max}
         placeholder={value.length ? undefined : placeholder}
-        className="h-8 min-w-24 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
+        className="h-7 min-w-24 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
         onChange={(e) => {
           const v = e.target.value;
           if (v.includes(",")) add(v);

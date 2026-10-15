@@ -22,6 +22,11 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   initials,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
   Input,
   Label,
   PageHeader,
@@ -152,7 +157,8 @@ export default function MembersPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("admin.members.search")}
-            className="h-8 pl-8"
+            size="sm"
+            className="pl-8"
             aria-label={t("admin.common.search")}
           />
         </div>
@@ -250,22 +256,17 @@ function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
             if (valid) invite.mutate();
           }}
         >
-          <div className="grid gap-2">
-            <Label htmlFor="invite-target">{t("admin.members.target")}</Label>
-            <Input
-              id="invite-target"
-              autoFocus
-              value={raw}
-              onChange={(e) => setRaw(e.target.value)}
-              placeholder={t("admin.login.targetPlaceholder")}
-              aria-invalid={touched && !isUuid && parsed.kind === "invalid"}
-            />
+          <Field id="invite-target">
+            <FieldLabel>{t("admin.members.target")}</FieldLabel>
+            <FieldControl>
+              <Input autoFocus value={raw} onChange={(e) => setRaw(e.target.value)} placeholder={t("admin.login.targetPlaceholder")} />
+            </FieldControl>
             {touched && !isUuid && parsed.kind === "invalid" ? (
-              <p className="text-xs text-destructive">{t("admin.login.targetInvalid")}</p>
+              <FieldError>{t("admin.login.targetInvalid")}</FieldError>
             ) : (
-              <p className="text-xs text-muted-foreground">{t("admin.members.targetHint")}</p>
+              <FieldHint>{t("admin.members.targetHint")}</FieldHint>
             )}
-          </div>
+          </Field>
           <div className="grid gap-2">
             <Label>{t("admin.members.roles")}</Label>
             <RolePicker value={roles} onChange={setRoles} idPrefix="invite-role" />

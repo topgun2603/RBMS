@@ -74,7 +74,8 @@ function UrlAdder({ onAdd, disabled }: { onAdd: (url: string) => void; disabled?
         value={url}
         placeholder="https://"
         aria-label={t("site.media.urlLabel")}
-        className="h-9 sm:w-72"
+        size="sm"
+        className="sm:w-72"
         onChange={(e) => setUrl(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -235,7 +236,7 @@ export function GalleryField({
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label={t("site.blocks.gallery")}>
         <AnimatePresence initial={false}>
           {keyed.map((img, i) => (
-            <motion.li key={img.k} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="grid gap-1.5">
+            <motion.li key={img.k} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="grid content-start gap-1.5">
               <div
                 {...(disabled ? {} : sort.itemProps(img.k))}
                 className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-muted ring-1 ring-border data-[dragging]:opacity-40 data-[over]:ring-2 data-[over]:ring-primary"
@@ -256,8 +257,8 @@ export function GalleryField({
                   </IconBtn>
                 </div>
               </div>
-              <Input value={img.alt} disabled={disabled} maxLength={200} aria-label={t("site.media.altFor", { n: i + 1 })} placeholder={t("site.media.alt")} className="h-8 text-xs" onChange={(e) => patch(i, { alt: e.target.value })} />
-              <Input value={img.caption} disabled={disabled} maxLength={300} aria-label={t("site.media.captionFor", { n: i + 1 })} placeholder={t("site.media.caption")} className="h-8 text-xs" onChange={(e) => patch(i, { caption: e.target.value })} />
+              <Input value={img.alt} disabled={disabled} maxLength={200} aria-label={t("site.media.altFor", { n: i + 1 })} placeholder={t("site.media.alt")} size="sm" className="text-xs" onChange={(e) => patch(i, { alt: e.target.value })} />
+              <Input value={img.caption} disabled={disabled} maxLength={300} aria-label={t("site.media.captionFor", { n: i + 1 })} placeholder={t("site.media.caption")} size="sm" className="text-xs" onChange={(e) => patch(i, { caption: e.target.value })} />
             </motion.li>
           ))}
           {pending.map((p) => (

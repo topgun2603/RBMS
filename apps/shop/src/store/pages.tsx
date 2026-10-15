@@ -31,7 +31,7 @@ export function WelcomeWidget() {
             {actions.map((a) => {
               const Icon: IconType = a.icon ?? ArrowRightIcon;
               return (
-                <Button key={`${a.module.id}:${a.id}`} asChild variant={a.primary ? "default" : "outline"} size="lg" className="h-11">
+                <Button key={`${a.module.id}:${a.id}`} asChild variant={a.primary ? "default" : "outline"} size="lg">
                   <Link href={a.absHref}>
                     <Icon /> {t(a.label)}
                   </Link>

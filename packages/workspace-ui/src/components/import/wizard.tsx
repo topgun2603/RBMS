@@ -293,7 +293,7 @@ function PreviewStep({
                 </span>
                 <Select value={v === null ? NONE : String(v)} onValueChange={(val) => setCol(c.key, val)}>
                   <SelectTrigger
-                    className={cn("h-10 w-44 shrink-0", v === null && c.required && "border-destructive")}
+                    className={cn("w-44 shrink-0", v === null && c.required && "border-destructive")}
                     aria-label={t("workspace.import.mapFor", { column: c.label })}
                   >
                     <SelectValue />
@@ -378,10 +378,10 @@ function PreviewStep({
           {nothing ? t("workspace.import.nothingValid") : preview.totals.invalid ? t("workspace.import.skipNote", { count: preview.totals.invalid }) : t("workspace.import.allGood")}
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="lg" className="h-11" onClick={onBack} disabled={commit.isPending}>
+          <Button variant="outline" size="lg" onClick={onBack} disabled={commit.isPending}>
             <RotateCcwIcon /> {t("workspace.import.otherFile")}
           </Button>
-          <Button size="lg" className="h-11" onClick={start} disabled={commit.isPending || missing.length > 0 || nothing}>
+          <Button size="lg" onClick={start} disabled={commit.isPending || missing.length > 0 || nothing}>
             {commit.isPending ? <Loader2Icon className="animate-spin" /> : <FileUpIcon />}
             {t("workspace.import.start", { count: preview.totals.valid })}
           </Button>

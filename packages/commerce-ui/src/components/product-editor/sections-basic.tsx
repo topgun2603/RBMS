@@ -4,7 +4,7 @@ import * as React from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { exclusiveOf } from "@srirealtime/gst";
 import { BadgePercentIcon, EyeIcon, FileTextIcon, ImagesIcon, PencilIcon, PlusIcon, SearchIcon, TagsIcon, Trash2Icon } from "lucide-react";
-import { Badge, Button, cn, Input, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
+import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@srirealtime/web";
 import { CategorySelect } from "../category-select";
 import { GstRateSelect, MoneyInput, Optional, Section } from "../bits";
@@ -33,7 +33,7 @@ export function BasicsSection() {
           <FormItem>
             <FormLabel>{t("commerce.editor.name")}</FormLabel>
             <FormControl>
-              <Input className="h-11 text-base" autoComplete="off" placeholder={t("commerce.editor.namePlaceholder")} {...field} />
+              <Input className="text-base" autoComplete="off" placeholder={t("commerce.editor.namePlaceholder")} {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -75,14 +75,14 @@ export function BasicsSection() {
           </FormItem>
         )}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid items-start gap-4 sm:grid-cols-2">
         <FormField
           control={form.control}
           name="categoryId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("commerce.editor.category")}</FormLabel>
-              <CategorySelect value={field.value} onChange={field.onChange} className="h-11 w-full" aria-label={t("commerce.editor.category")} />
+              <FormLabel htmlFor="product-category">{t("commerce.editor.category")}</FormLabel>
+              <CategorySelect id="product-category" value={field.value} onChange={field.onChange} className="w-full" aria-label={t("commerce.editor.category")} />
               <FormMessage />
             </FormItem>
           )}
@@ -97,7 +97,7 @@ export function BasicsSection() {
                 <Optional />
               </FormLabel>
               <FormControl>
-                <Input className="h-11" autoComplete="off" {...field} />
+                <Input autoComplete="off" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -134,7 +134,7 @@ export function PricingSection({ canManage, multi }: Ctx) {
   return (
     <Section id="pricing" icon={BadgePercentIcon} title={t("commerce.editor.pricing")} description={multi ? t("commerce.editor.pricingMultiHint") : t("commerce.editor.pricingHint")}>
       {!multi && (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid items-start gap-4 sm:grid-cols-3">
           <FormField
             control={form.control}
             name="variants.0.price"
@@ -142,7 +142,7 @@ export function PricingSection({ canManage, multi }: Ctx) {
               <FormItem>
                 <FormLabel>{t("commerce.editor.price")}</FormLabel>
                 <FormControl>
-                  <MoneyInput className="h-11 text-base font-semibold" disabled={!canManage} {...field} />
+                  <MoneyInput className="text-base font-semibold" disabled={!canManage} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -158,7 +158,7 @@ export function PricingSection({ canManage, multi }: Ctx) {
                   <Optional />
                 </FormLabel>
                 <FormControl>
-                  <MoneyInput className="h-11" disabled={!canManage} {...field} />
+                  <MoneyInput disabled={!canManage} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -175,7 +175,7 @@ export function PricingSection({ canManage, multi }: Ctx) {
                     <Optional />
                   </FormLabel>
                   <FormControl>
-                    <MoneyInput className="h-11" {...field} />
+                    <MoneyInput {...field} />
                   </FormControl>
                   <FormDescription>{t("commerce.editor.costHint")}</FormDescription>
                   <FormMessage />
@@ -187,14 +187,14 @@ export function PricingSection({ canManage, multi }: Ctx) {
       )}
       {!multi && <IdentifiersFields />}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid items-start gap-4 sm:grid-cols-3">
         <FormField
           control={form.control}
           name="gstRate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("commerce.editor.gstRate")}</FormLabel>
-              <GstRateSelect value={field.value} onChange={field.onChange} className="h-11 w-full" aria-label={t("commerce.editor.gstRate")} />
+              <FormLabel htmlFor="product-gst-rate">{t("commerce.editor.gstRate")}</FormLabel>
+              <GstRateSelect id="product-gst-rate" value={field.value} onChange={field.onChange} className="w-full" aria-label={t("commerce.editor.gstRate")} />
               <FormMessage />
             </FormItem>
           )}
@@ -209,7 +209,7 @@ export function PricingSection({ canManage, multi }: Ctx) {
                 <Optional />
               </FormLabel>
               <FormControl>
-                <Input inputMode="numeric" maxLength={8} className="h-11 font-mono" autoComplete="off" {...field} />
+                <Input inputMode="numeric" maxLength={8} className="font-mono" autoComplete="off" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -222,7 +222,7 @@ export function PricingSection({ canManage, multi }: Ctx) {
             <FormItem>
               <FormLabel>{t("commerce.editor.unit")}</FormLabel>
               <FormControl>
-                <Input list="commerce-units" className="h-11" autoComplete="off" {...field} />
+                <Input list="commerce-units" autoComplete="off" {...field} />
               </FormControl>
               <datalist id="commerce-units">
                 {["pcs", "nos", "pair", "set", "box", "pack", "kg", "g", "m", "l", "ml", "dozen"].map((u) => (
@@ -366,7 +366,7 @@ export function OrganisationSection() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input list="commerce-attribute-names" className="h-10" placeholder={t("commerce.editor.attributeName")} aria-label={t("commerce.editor.attributeNameN", { n: i + 1 })} {...field} />
+                      <Input list="commerce-attribute-names" placeholder={t("commerce.editor.attributeName")} aria-label={t("commerce.editor.attributeNameN", { n: i + 1 })} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -378,13 +378,13 @@ export function OrganisationSection() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input className="h-10" placeholder={t("commerce.editor.attributeValue")} aria-label={t("commerce.editor.attributeValueN", { n: i + 1 })} {...field} />
+                      <Input placeholder={t("commerce.editor.attributeValue")} aria-label={t("commerce.editor.attributeValueN", { n: i + 1 })} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="button" variant="ghost" size="icon" className="size-10" onClick={() => attrs.remove(i)} aria-label={t("commerce.editor.removeAttribute", { n: i + 1 })}>
+              <Button type="button" variant="ghost" size="icon" onClick={() => attrs.remove(i)} aria-label={t("commerce.editor.removeAttribute", { n: i + 1 })}>
                 <Trash2Icon />
               </Button>
             </div>
@@ -439,18 +439,18 @@ export function SeoSection({ isNew }: Ctx) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>{t("commerce.editor.slug")}</FormLabel>
-            <div className="flex items-center rounded-md border border-input shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
-              <span className="pl-3 text-sm whitespace-nowrap text-muted-foreground">/products/</span>
+            <InputGroup>
+              <InputGroupAddon>/products/</InputGroupAddon>
               <FormControl>
-                <Input
-                  className="h-11 border-0 pl-0.5 font-mono shadow-none focus-visible:ring-0"
+                <InputGroupInput
+                  className="font-mono"
                   placeholder={autoSlug || "p-…"}
                   autoComplete="off"
                   {...field}
                   onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
                 />
               </FormControl>
-            </div>
+            </InputGroup>
             <FormDescription>{isNew ? t("commerce.editor.slugHintNew") : t("commerce.editor.slugHint")}</FormDescription>
             <FormMessage />
           </FormItem>
@@ -461,12 +461,9 @@ export function SeoSection({ isNew }: Ctx) {
         name="seoTitle"
         render={({ field }) => (
           <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel>{t("commerce.editor.seoTitle")}</FormLabel>
-              <Counter n={field.value.length} max={70} />
-            </div>
+            <FormLabel aside={<Counter n={field.value.length} max={70} />}>{t("commerce.editor.seoTitle")}</FormLabel>
             <FormControl>
-              <Input className="h-11" placeholder={name || undefined} maxLength={120} {...field} />
+              <Input placeholder={name || undefined} maxLength={120} {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -477,10 +474,7 @@ export function SeoSection({ isNew }: Ctx) {
         name="seoDescription"
         render={({ field }) => (
           <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel>{t("commerce.editor.seoDescription")}</FormLabel>
-              <Counter n={field.value.length} max={160} />
-            </div>
+            <FormLabel aside={<Counter n={field.value.length} max={160} />}>{t("commerce.editor.seoDescription")}</FormLabel>
             <FormControl>
               <Textarea rows={3} maxLength={320} placeholder={t("commerce.editor.seoDescriptionPlaceholder")} {...field} />
             </FormControl>

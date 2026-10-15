@@ -53,7 +53,7 @@ export function RolesTab() {
         <AlertDescription className="text-foreground/90">{t("workspace.roles.ownersNote")}</AlertDescription>
       </Alert>
       <div className="flex justify-end">
-        <Button size="lg" className="h-11" onClick={() => setDraft({ mode: "new" })}>
+        <Button size="lg" onClick={() => setDraft({ mode: "new" })}>
           <PlusIcon /> {t("workspace.roles.new")}
         </Button>
       </div>

@@ -54,6 +54,8 @@ export interface ResourceField<V extends FieldValues> {
   type?: ResourceFieldType;
   placeholder?: string;
   description?: string;
+  /** Translated "optional" tag shown after the label, e.g. "optional" → "(optional)". */
+  optional?: string;
   options?: { value: string; label: string }[];
   /** Read-only when editing an existing row (natural keys such as ids). */
   lockOnEdit?: boolean;
@@ -205,7 +207,8 @@ export function ResourcePage<T, V extends FieldValues>({ config }: { config: Res
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={config.labels.searchPlaceholder ?? t("admin.common.search")}
-              className="h-8 pl-8"
+              size="sm"
+              className="pl-8"
               aria-label={t("admin.common.search")}
             />
           </div>
@@ -307,7 +310,7 @@ function ResourceFormDialog<T, V extends FieldValues>({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid items-start gap-4 sm:grid-cols-2">
               {config.fields.map((f) => (
                 <FormField
                   key={f.name}
@@ -323,10 +326,14 @@ function ResourceFormDialog<T, V extends FieldValues>({
                           type === "switch" && "flex flex-row items-center justify-between gap-3 rounded-md border px-3 py-2.5",
                         )}
                       >
-                        <div className={cn(type === "switch" && "space-y-0.5")}>
-                          <FormLabel>{f.label}</FormLabel>
-                          {type === "switch" && f.description && <FormDescription>{f.description}</FormDescription>}
-                        </div>
+                        {type === "switch" ? (
+                          <div className="grid min-w-0 gap-0.5">
+                            <FormLabel optional={f.optional}>{f.label}</FormLabel>
+                            {f.description && <FormDescription>{f.description}</FormDescription>}
+                          </div>
+                        ) : (
+                          <FormLabel optional={f.optional}>{f.label}</FormLabel>
+                        )}
                         <FormControl>
                           {type === "custom" ? (
                             <div>{f.render?.({ value: field.value, onChange: field.onChange, disabled })}</div>

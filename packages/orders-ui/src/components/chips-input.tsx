@@ -56,7 +56,7 @@ export function ChipsInput({
     <div className="grid gap-1">
       <div
         className={cn(
-          "flex min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
+          "flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
           bad && "border-destructive",
           disabled && "pointer-events-none opacity-50",
         )}
@@ -127,7 +127,7 @@ export function StateMultiSelect({ id, value, onChange, disabled }: { id?: strin
             id={id}
             type="button"
             disabled={disabled}
-            className="flex h-11 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 text-left text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
+            className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 text-left text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
           >
             <span className={cn("truncate", value.length === 0 && "text-muted-foreground")}>
               {value.length === 0 ? t("orders.delivery.pickStates") : t("orders.delivery.statesCount", { count: value.length })}

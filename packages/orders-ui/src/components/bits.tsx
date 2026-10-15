@@ -2,7 +2,18 @@
 
 import * as React from "react";
 import { CheckIcon, CopyIcon, ImageIcon } from "lucide-react";
-import { AnimatePresence, Button, cn, Input, motion, toast } from "@srirealtime/ui";
+import {
+  AnimatePresence,
+  Button,
+  cn,
+  Field as UiField,
+  FieldError as UiFieldError,
+  FieldHint,
+  FieldLabel,
+  Input,
+  motion,
+  toast,
+} from "@srirealtime/ui";
 import { absoluteUrl, useI18n } from "@srirealtime/web";
 
 /** Card section with a tinted icon chip, title and hint (same look as the catalogue screens). */
@@ -80,7 +91,7 @@ export function MoneyInput({ className, onChange, ...props }: Omit<React.Compone
         type="text"
         inputMode="decimal"
         autoComplete="off"
-        className={cn("h-11 pl-7 text-right tabular-nums", className)}
+        className={cn("pl-7 text-right tabular-nums", className)}
         onChange={(e) => {
           const v = e.target.value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
           const m = /^(\d*)(\.?\d{0,2})/.exec(v);
@@ -171,13 +182,18 @@ export function TotalRow({
   );
 }
 
-/** Field wrapper for plain (non-react-hook-form) inputs: label, control, hint or error. */
+/**
+ * Field wrapper for plain (non-react-hook-form) inputs: label row, control, then hint or error below it.
+ * Built on @srirealtime/ui's Field, so fields side by side keep their controls aligned. `htmlFor` is the control's id
+ * (give the input the same `id`); `aside` goes on the right of the label row (counter, small link, badge).
+ */
 export function Field({
   label,
   htmlFor,
   hint,
   error,
   optional,
+  aside,
   children,
   className,
 }: {
@@ -186,18 +202,19 @@ export function Field({
   hint?: React.ReactNode;
   error?: string | null;
   optional?: boolean;
+  aside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
-    <div className={cn("grid min-w-0 gap-1.5", className)}>
-      <label htmlFor={htmlFor} className="text-sm font-medium">
+    <UiField id={htmlFor} invalid={!!error} className={className}>
+      <FieldLabel optional={optional ? t("orders.common.optional") : undefined} aside={aside}>
         {label}
-        {optional && <Optional />}
-      </label>
+      </FieldLabel>
       {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
+      {error ? <UiFieldError>{error}</UiFieldError> : hint ? <FieldHint>{hint}</FieldHint> : null}
+    </UiField>
   );
 }
 

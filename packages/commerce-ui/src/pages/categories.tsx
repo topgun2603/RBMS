@@ -32,6 +32,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
   Input,
   Label,
   motion,
@@ -361,13 +366,15 @@ function CategoryDialog({ editing, onClose }: { editing: Editing; onClose: () =>
           <DialogDescription>{t("commerce.categories.dialogHint")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4" noValidate>
-          <div className="grid gap-2">
-            <Label htmlFor="cat-name">{t("commerce.categories.name")}</Label>
-            <Input id="cat-name" autoFocus className="h-11" value={name} aria-invalid={!!errors.name} onChange={(e) => setName(e.target.value)} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="cat-parent">{t("commerce.categories.parent")}</Label>
+          <Field id="cat-name" invalid={!!errors.name}>
+            <FieldLabel>{t("commerce.categories.name")}</FieldLabel>
+            <FieldControl>
+              <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+            </FieldControl>
+            <FieldError>{errors.name}</FieldError>
+          </Field>
+          <Field id="cat-parent">
+            <FieldLabel>{t("commerce.categories.parent")}</FieldLabel>
             <CategorySelect
               id="cat-parent"
               value={parentId}
@@ -375,26 +382,28 @@ function CategoryDialog({ editing, onClose }: { editing: Editing; onClose: () =>
               exclude={existing?.id}
               allowCreate={false}
               noneLabel={t("commerce.categories.topLevel")}
-              className="h-11 w-full"
+              className="w-full"
             />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="cat-slug">{t("commerce.categories.slug")}</Label>
-            <Input
-              id="cat-slug"
-              className="h-11 font-mono"
-              value={slug}
-              placeholder={slugify(name) || undefined}
-              aria-invalid={!!errors.slug}
-              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
-            />
-            {errors.slug ? <p className="text-xs text-destructive">{errors.slug}</p> : <p className="text-xs text-muted-foreground">{t("commerce.categories.slugHint")}</p>}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="cat-desc">{t("commerce.categories.description")}</Label>
-            <Textarea id="cat-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          <div className="grid gap-2">
+          </Field>
+          <Field id="cat-slug" invalid={!!errors.slug}>
+            <FieldLabel>{t("commerce.categories.slug")}</FieldLabel>
+            <FieldControl>
+              <Input
+                className="font-mono"
+                value={slug}
+                placeholder={slugify(name) || undefined}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+              />
+            </FieldControl>
+            {errors.slug ? <FieldError>{errors.slug}</FieldError> : <FieldHint>{t("commerce.categories.slugHint")}</FieldHint>}
+          </Field>
+          <Field id="cat-desc">
+            <FieldLabel>{t("commerce.categories.description")}</FieldLabel>
+            <FieldControl>
+              <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+            </FieldControl>
+          </Field>
+          <div className="grid content-start gap-2">
             <Label>{t("commerce.categories.image")}</Label>
             <ImageManager value={image} onChange={setImage} single />
           </div>

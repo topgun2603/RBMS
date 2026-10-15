@@ -80,7 +80,7 @@ export function StockSettingsDialog({
                 id="stk-level"
                 inputMode="decimal"
                 autoComplete="off"
-                className="h-11 text-right tabular-nums"
+                className="text-right tabular-nums"
                 placeholder="0"
                 disabled={!track}
                 value={level}

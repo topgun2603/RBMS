@@ -99,7 +99,7 @@ export function SeoPanel({
         hint={t("site.seo.count", { n: value.title.length, max: SNIPPET_TITLE })}
         onChange={(v) => set("title", v)}
       />
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-2">
         <Label htmlFor={`${idPrefix}-seo-desc`}>
           {t("site.seo.metaDescription")}
           <Optional />
@@ -119,7 +119,7 @@ export function SeoPanel({
         </p>
         <FieldError code={errors?.description} />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-2">
         <Label>
           {t("site.seo.image")}
           <Optional />

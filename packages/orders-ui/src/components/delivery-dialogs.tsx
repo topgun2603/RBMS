@@ -12,6 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Switch,
   toast,
 } from "@srirealtime/ui";
@@ -74,13 +77,14 @@ export function ZoneDialog({ open, onOpenChange, zone, nextSort }: { open: boole
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <Field label={t("orders.delivery.zoneName")} htmlFor="z-name" error={error}>
-            <Input id="z-name" autoFocus className="h-11" value={name} onChange={(e) => (setName(e.target.value), setError(null))} placeholder={t("orders.delivery.zoneNamePlaceholder")} />
+            <Input id="z-name" autoFocus value={name} onChange={(e) => (setName(e.target.value), setError(null))} placeholder={t("orders.delivery.zoneNamePlaceholder")} />
           </Field>
           <Field label={t("orders.delivery.states")} htmlFor="z-states" optional>
             <StateMultiSelect id="z-states" value={states} onChange={setStates} />
           </Field>
-          <Field label={t("orders.delivery.prefixes")} optional hint={t("orders.delivery.prefixesHint")}>
+          <Field label={t("orders.delivery.prefixes")} htmlFor="z-prefixes" optional hint={t("orders.delivery.prefixesHint")}>
             <ChipsInput
+              id="z-prefixes"
               value={prefixes}
               onChange={setPrefixes}
               inputMode="numeric"
@@ -90,8 +94,9 @@ export function ZoneDialog({ open, onOpenChange, zone, nextSort }: { open: boole
               aria-label={t("orders.delivery.prefixes")}
             />
           </Field>
-          <Field label={t("orders.delivery.pincodes")} optional hint={t("orders.delivery.pincodesHint")}>
+          <Field label={t("orders.delivery.pincodes")} htmlFor="z-pincodes" optional hint={t("orders.delivery.pincodesHint")}>
             <ChipsInput
+              id="z-pincodes"
               value={pincodes}
               onChange={setPincodes}
               inputMode="numeric"
@@ -222,7 +227,7 @@ export function RateDialog({ open, onOpenChange, zone, rate }: { open: boolean; 
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <Field label={t("orders.delivery.rateName")} htmlFor="r-name" error={errors.name} hint={t("orders.delivery.rateNameHint")}>
-            <Input id="r-name" className="h-11" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <ChipGroup<RateType>
             aria-label={t("orders.delivery.rateType")}
@@ -239,17 +244,19 @@ export function RateDialog({ open, onOpenChange, zone, rate }: { open: boolean; 
             <div className="grid gap-2">
               <p className="text-sm font-medium">{t("orders.delivery.slabs")}</p>
               {slabs.map((s, i) => (
-                <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
-                  <div className="relative">
-                    <Input
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2">
+                  <InputGroup>
+                    <InputGroupInput
                       inputMode="numeric"
-                      className="h-11 pr-14 text-right tabular-nums"
+                      className="pr-1.5 text-right tabular-nums"
                       aria-label={t("orders.delivery.upTo")}
                       value={s.upToGrams}
                       onChange={(e) => setSlabs((xs) => xs.map((x, j) => (j === i ? { ...x, upToGrams: e.target.value.replace(/\D/g, "") } : x)))}
                     />
-                    <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">{t("orders.delivery.gramsUnit")}</span>
-                  </div>
+                    <InputGroupAddon className="text-xs" aria-hidden>
+                      {t("orders.delivery.gramsUnit")}
+                    </InputGroupAddon>
+                  </InputGroup>
                   <MoneyInput aria-label={t("orders.delivery.charge")} value={s.amount} onChange={(e) => setSlabs((xs) => xs.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />
                   <Button type="button" variant="ghost" size="icon" onClick={() => setSlabs((xs) => xs.filter((_, j) => j !== i))} aria-label={t("orders.delivery.removeSlab")}>
                     <Trash2Icon />
@@ -273,11 +280,11 @@ export function RateDialog({ open, onOpenChange, zone, rate }: { open: boolean; 
           <Field label={t("orders.delivery.freeAbove")} htmlFor="r-free" optional={type !== "free_above"} error={errors.freeAbove} hint={t("orders.delivery.freeAboveHint")}>
             <MoneyInput id="r-free" value={freeAbove} onChange={(e) => setFreeAbove(e.target.value)} />
           </Field>
-          <Field label={t("orders.delivery.eta")} error={errors.eta}>
+          <Field label={t("orders.delivery.eta")} htmlFor="r-eta-min" error={errors.eta}>
             <div className="flex items-center gap-2">
-              <Input inputMode="numeric" className="h-11 w-20 text-center tabular-nums" aria-label={t("orders.delivery.etaMin")} value={etaMin} onChange={(e) => setEtaMin(e.target.value.replace(/\D/g, "").slice(0, 2))} />
+              <Input id="r-eta-min" inputMode="numeric" className="w-20 text-center tabular-nums" aria-label={t("orders.delivery.etaMin")} value={etaMin} onChange={(e) => setEtaMin(e.target.value.replace(/\D/g, "").slice(0, 2))} />
               <span className="text-muted-foreground">–</span>
-              <Input inputMode="numeric" className="h-11 w-20 text-center tabular-nums" aria-label={t("orders.delivery.etaMax")} value={etaMax} onChange={(e) => setEtaMax(e.target.value.replace(/\D/g, "").slice(0, 2))} />
+              <Input inputMode="numeric" className="w-20 text-center tabular-nums" aria-label={t("orders.delivery.etaMax")} value={etaMax} onChange={(e) => setEtaMax(e.target.value.replace(/\D/g, "").slice(0, 2))} />
               <span className="text-sm text-muted-foreground">{t("orders.delivery.days")}</span>
             </div>
           </Field>

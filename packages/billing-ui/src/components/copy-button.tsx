@@ -11,7 +11,7 @@ export function CopyButton({
   label,
   copiedMessage,
   variant = "outline",
-  size = "icon-lg",
+  size = "icon",
   showLabel,
   className,
 }: {

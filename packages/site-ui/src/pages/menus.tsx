@@ -206,13 +206,13 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
               </>
             )}
           </div>
-          <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1.2fr)]">
+          <div className="grid items-start gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1.2fr)]">
             <div className="grid content-start gap-1">
               <Label htmlFor={`mi-${n.key}-label`} className="text-xs">
                 {t("site.menus.label")}
               </Label>
-              <Input id={`mi-${n.key}-label`} className="h-10" value={n.label} maxLength={60} disabled={!canEdit} aria-invalid={!!errs.label} onChange={(e) => setNodes((x) => updateNode(x, n.key, { label: e.target.value }))} />
-              <FieldError code={errs.label} />
+              <Input id={`mi-${n.key}-label`} value={n.label} maxLength={60} disabled={!canEdit} aria-invalid={!!errs.label} aria-describedby={errs.label ? `mi-${n.key}-label-err` : undefined} onChange={(e) => setNodes((x) => updateNode(x, n.key, { label: e.target.value }))} />
+              <FieldError code={errs.label} id={`mi-${n.key}-label-err`} />
             </div>
             <div className="grid content-start gap-1">
               <Label htmlFor={`mi-${n.key}-type`} className="text-xs">
@@ -226,8 +226,8 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
               </Label>
               {n.type === "url" ? (
                 <>
-                  <Input id={`mi-${n.key}-target`} className="h-10" value={n.href} placeholder="/products" disabled={!canEdit} aria-invalid={!!errs.href} onChange={(e) => setNodes((x) => updateNode(x, n.key, { href: e.target.value }))} />
-                  {errs.href ? <FieldError code={errs.href} /> : <p className="text-[0.6875rem] text-muted-foreground">{t("site.common.linkHint")}</p>}
+                  <Input id={`mi-${n.key}-target`} value={n.href} placeholder="/products" disabled={!canEdit} aria-invalid={!!errs.href} aria-describedby={`mi-${n.key}-target-help`} onChange={(e) => setNodes((x) => updateNode(x, n.key, { href: e.target.value }))} />
+                  {errs.href ? <FieldError code={errs.href} id={`mi-${n.key}-target-help`} /> : <p id={`mi-${n.key}-target-help`} className="text-[0.6875rem] text-muted-foreground">{t("site.common.linkHint")}</p>}
                 </>
               ) : (
                 <>
@@ -305,7 +305,7 @@ function TypeSelect({ id, value, onChange, disabled }: { id: string; value: Menu
   const blog = useFeature("cms.blog");
   return (
     <Select value={value} onValueChange={(v) => onChange(v as MenuItemType)} disabled={disabled}>
-      <SelectTrigger id={id} className="h-10 w-full">
+      <SelectTrigger id={id} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

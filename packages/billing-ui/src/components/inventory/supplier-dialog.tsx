@@ -119,13 +119,13 @@ export function SupplierDialog({
                 <FormItem>
                   <FormLabel>{t("billing.suppliers.name")}</FormLabel>
                   <FormControl>
-                    <Input autoFocus className="h-11" autoComplete="off" {...field} />
+                    <Input autoFocus autoComplete="off" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid items-start gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="phone"
@@ -133,7 +133,7 @@ export function SupplierDialog({
                   <FormItem>
                     <FormLabel>{t("billing.customers.phone")}</FormLabel>
                     <FormControl>
-                      <Input type="tel" inputMode="tel" className="h-11" autoComplete="off" {...field} />
+                      <Input type="tel" inputMode="tel" autoComplete="off" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -146,7 +146,7 @@ export function SupplierDialog({
                   <FormItem>
                     <FormLabel>{t("billing.customers.email")}</FormLabel>
                     <FormControl>
-                      <Input type="email" inputMode="email" className="h-11" autoComplete="off" {...field} />
+                      <Input type="email" inputMode="email" autoComplete="off" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -162,7 +162,7 @@ export function SupplierDialog({
                   <div className="relative">
                     <FormControl>
                       <Input
-                        className="h-11 pr-9 font-mono uppercase"
+                        className="pr-9 font-mono uppercase"
                         autoComplete="off"
                         autoCapitalize="characters"
                         spellCheck={false}
@@ -194,7 +194,7 @@ export function SupplierDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("billing.customers.state")}</FormLabel>
-                  <StateSelect value={field.value} onChange={field.onChange} aria-label={t("billing.customers.state")} className="h-11 w-full" />
+                  <StateSelect value={field.value} onChange={field.onChange} aria-label={t("billing.customers.state")} className="w-full" />
                   <FormDescription>{t("billing.suppliers.stateHint")}</FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
   cn,
+  controlHeight,
   Input,
   Label,
   motion,
@@ -188,27 +189,28 @@ export function PurchaseForm() {
 
         {/* Bill details */}
         <Card className="gap-3 py-4">
-          <CardContent className="grid gap-4 px-4 sm:grid-cols-3">
+          <CardContent className="grid items-start gap-4 px-4 sm:grid-cols-3">
             <div className="grid content-start gap-1.5">
               <Label htmlFor="pur-bill">{t("billing.purchaseForm.billNumber")}</Label>
               <Input
                 id="pur-bill"
-                className="h-11 font-mono"
+                className="font-mono"
                 autoComplete="off"
                 maxLength={40}
                 value={billNumber}
                 aria-invalid={submitted && !!billError}
+                aria-describedby={submitted && billError ? "pur-bill-err" : undefined}
                 onChange={(e) => setBillNumber(e.target.value)}
               />
-              {submitted && billError && <p className="text-xs text-destructive">{billError}</p>}
+              {submitted && billError && <p id="pur-bill-err" className="text-xs text-destructive">{billError}</p>}
             </div>
             <div className="grid content-start gap-1.5">
               <Label htmlFor="pur-date">{t("billing.purchaseForm.date")}</Label>
-              <Input id="pur-date" type="date" className="h-11" value={date} max={todayIST()} onChange={(e) => setDate(e.target.value || todayIST())} />
+              <Input id="pur-date" type="date" value={date} max={todayIST()} onChange={(e) => setDate(e.target.value || todayIST())} />
             </div>
             <div className="grid content-start gap-1.5">
               <Label htmlFor="pur-paid">{t("billing.purchaseForm.paidLabel")}</Label>
-              <div className="flex h-11 items-center justify-between gap-3 rounded-md border px-3">
+              <div className={cn("flex items-center justify-between gap-3 rounded-md border px-3", controlHeight())}>
                 <span className="text-sm">{paid ? t("billing.purchases.paid") : t("billing.purchases.unpaid")}</span>
                 <Switch id="pur-paid" checked={paid} onCheckedChange={setPaid} />
               </div>
@@ -448,7 +450,7 @@ function LineRow({
         <Button
           type="button"
           variant="ghost"
-          size="icon-lg"
+          size="icon"
           className="shrink-0 text-muted-foreground hover:text-destructive"
           aria-label={t("billing.form.removeLine", { n: index + 1 })}
           onClick={onRemove}
@@ -456,8 +458,8 @@ function LineRow({
           <Trash2Icon />
         </Button>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:pl-7">
-        <div className="grid gap-1">
+      <div className="grid grid-cols-3 items-start gap-2 sm:grid-cols-6 sm:pl-7">
+        <div className="grid content-start gap-1">
           <Label htmlFor={`${id}-qty`} className="text-[0.6875rem] text-muted-foreground">
             {t("billing.form.qty")}
           </Label>
@@ -466,32 +468,33 @@ function LineRow({
             id={`${id}-qty`}
             inputMode="decimal"
             autoComplete="off"
-            className="h-11 text-right tabular-nums"
+            size="sm"
+            className="text-right tabular-nums"
             value={line.qty}
             aria-invalid={!!errors.qty}
             onChange={(e) => onChange({ qty: cleanQty(e.target.value) })}
           />
           <FieldError msg={errors.qty} />
         </div>
-        <div className="grid gap-1">
+        <div className="grid content-start gap-1">
           <Label htmlFor={`${id}-unit`} className="text-[0.6875rem] text-muted-foreground">
             {t("billing.form.unit")}
           </Label>
-          <Input id={`${id}-unit`} list="sr-units" autoComplete="off" className="h-11" maxLength={16} value={line.unit} onChange={(e) => onChange({ unit: e.target.value })} />
+          <Input id={`${id}-unit`} list="sr-units" autoComplete="off" size="sm" maxLength={16} value={line.unit} onChange={(e) => onChange({ unit: e.target.value })} />
         </div>
-        <div className="grid gap-1">
+        <div className="grid content-start gap-1">
           <Label htmlFor={`${id}-gst`} className="text-[0.6875rem] text-muted-foreground">
             {t("billing.form.gst")}
           </Label>
-          <GstRateSelect id={`${id}-gst`} value={line.gstRate} onChange={(gstRate) => onChange({ gstRate })} className="h-11 w-full" />
+          <GstRateSelect id={`${id}-gst`} value={line.gstRate} onChange={(gstRate) => onChange({ gstRate })} size="sm" className="w-full" />
         </div>
-        <div className="grid gap-1">
+        <div className="grid content-start gap-1">
           <Label htmlFor={`${id}-rate`} className="text-[0.6875rem] text-muted-foreground">
             {t("billing.purchaseForm.costPrice")}
           </Label>
           <MoneyInput
             id={`${id}-rate`}
-            className="h-11"
+            size="sm"
             value={line.rate}
             aria-invalid={!!errors.rate}
             onChange={(e) => onChange({ rate: e.target.value })}
@@ -499,13 +502,13 @@ function LineRow({
           />
           <FieldError msg={errors.rate} />
         </div>
-        <div className="grid gap-1">
+        <div className="grid content-start gap-1">
           <Label htmlFor={`${id}-disc`} className="text-[0.6875rem] text-muted-foreground">
             {t("billing.form.discount")}
           </Label>
           <MoneyInput
             id={`${id}-disc`}
-            className="h-11"
+            size="sm"
             placeholder="0"
             value={line.discount}
             aria-invalid={!!errors.discount}
@@ -514,7 +517,7 @@ function LineRow({
           />
           <FieldError msg={errors.discount} />
         </div>
-        <div className="grid gap-1">
+        <div className="grid content-start gap-1">
           <Label htmlFor={`${id}-hsn`} className="text-[0.6875rem] text-muted-foreground">
             {t("billing.form.hsn")}
           </Label>
@@ -523,7 +526,8 @@ function LineRow({
             inputMode="numeric"
             autoComplete="off"
             maxLength={8}
-            className="h-11 font-mono"
+            size="sm"
+            className="font-mono"
             value={line.hsn}
             aria-invalid={!!errors.hsn}
             onChange={(e) => onChange({ hsn: e.target.value.replace(/\D/g, "") })}
@@ -584,7 +588,7 @@ function ItemSearch({
         placeholder={t("billing.purchaseForm.itemPlaceholder")}
         autoComplete="off"
         autoFocus={autoFocus}
-        className="h-11 text-base font-medium"
+        className="text-base font-medium"
         value={value}
         onChange={(e) => {
           onChange(e.target.value);

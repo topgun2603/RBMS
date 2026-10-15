@@ -155,7 +155,7 @@ export default function TranslationsPage() {
 
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <Tabs value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-          <TabsList className="h-8">
+          <TabsList>
             {SUPPORTED_LOCALES.map((l) => (
               <TabsTrigger key={l} value={l} lang={l}>
                 {LOCALE_NAMES[l]}
@@ -169,7 +169,8 @@ export default function TranslationsPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("admin.translations.search")}
-            className="h-8 pl-8"
+            size="sm"
+            className="pl-8"
             aria-label={t("admin.common.search")}
           />
         </div>

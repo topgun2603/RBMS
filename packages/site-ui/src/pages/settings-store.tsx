@@ -83,7 +83,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
         <FormItem>
           <FormLabel>{label}</FormLabel>
           <FormControl>
-            <Input className="h-11" type={opts.type ?? "text"} inputMode={opts.inputMode} placeholder={opts.placeholder} disabled={disabled} {...field} value={String(field.value ?? "")} />
+            <Input type={opts.type ?? "text"} inputMode={opts.inputMode} placeholder={opts.placeholder} disabled={disabled} {...field} value={String(field.value ?? "")} />
           </FormControl>
           {opts.hint && <FormDescription>{opts.hint}</FormDescription>}
           <FormMessage />
@@ -145,7 +145,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
               </Label>
             )}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             {cod && (
               <FormField
                 control={form.control}
@@ -154,7 +154,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
                   <FormItem>
                     <FormLabel>{t("site.store.codMax")}</FormLabel>
                     <FormControl>
-                      <MoneyInput className="h-11" placeholder={t("site.store.noLimit")} disabled={disabled} {...field} />
+                      <MoneyInput placeholder={t("site.store.noLimit")} disabled={disabled} {...field} />
                     </FormControl>
                     <FormDescription>{t("site.store.codMaxHint")}</FormDescription>
                     <FormMessage />
@@ -169,7 +169,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
                 <FormItem>
                   <FormLabel>{t("site.store.minOrder")}</FormLabel>
                   <FormControl>
-                    <MoneyInput className="h-11" placeholder={t("site.store.none")} disabled={disabled} {...field} />
+                    <MoneyInput placeholder={t("site.store.none")} disabled={disabled} {...field} />
                   </FormControl>
                   <FormDescription>{field.value && rupeesToPaise(field.value) ? t("site.store.minOrderHintSet", { amount: money(rupeesToPaise(field.value)) }) : t("site.store.minOrderHint")}</FormDescription>
                   <FormMessage />
@@ -180,14 +180,14 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
         </Section>
 
         <Section icon={PhoneIcon} tone="text-info-ink" title={t("site.store.contactTitle")} description={t("site.store.contactHint")}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             {text("contactPhone", t("site.store.phone"), { type: "tel", inputMode: "tel", placeholder: "+91 98765 43210" })}
             {text("contactEmail", t("site.store.email"), { type: "email", inputMode: "email", placeholder: "hello@yourshop.in" })}
           </div>
         </Section>
 
         <Section icon={Share2Icon} tone="text-primary" title={t("site.store.socialTitle")} description={t("site.store.socialHint")}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             {text("instagram", "Instagram", { inputMode: "url", placeholder: "https://instagram.com/yourshop" })}
             {text("facebook", "Facebook", { inputMode: "url", placeholder: "https://facebook.com/yourshop" })}
             {text("youtube", "YouTube", { inputMode: "url", placeholder: "https://youtube.com/@yourshop" })}

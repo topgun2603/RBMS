@@ -87,22 +87,21 @@ export function CustomerPicker({
                 </Button>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
+              <div className="grid content-start gap-1.5">
                 <Label htmlFor="walkin-name" className="text-xs">
                   {t("billing.picker.name")}
                 </Label>
                 <Input
                   id="walkin-name"
                   autoFocus={!value.name}
-                  className="h-11"
                   autoComplete="off"
                   value={value.name}
                   aria-invalid={invalid && !value.name.trim()}
                   onChange={(e) => onChange({ ...value, name: e.target.value })}
                 />
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid content-start gap-1.5">
                 <Label htmlFor="walkin-phone" className="text-xs">
                   {t("billing.picker.phone")}
                 </Label>
@@ -110,24 +109,24 @@ export function CustomerPicker({
                   id="walkin-phone"
                   type="tel"
                   inputMode="tel"
-                  className="h-11"
                   autoComplete="off"
                   value={value.phone}
                   onChange={(e) => onChange({ ...value, phone: e.target.value })}
                 />
               </div>
-              <div className="grid gap-1.5 sm:col-span-2">
+              <div className="grid content-start gap-1.5 sm:col-span-2">
                 <Label htmlFor="walkin-gstin" className="text-xs">
                   {t("billing.picker.gstinOptional")}
                 </Label>
                 <Input
                   id="walkin-gstin"
-                  className="h-11 font-mono uppercase"
+                  className="font-mono uppercase"
                   maxLength={15}
                   autoComplete="off"
                   spellCheck={false}
                   value={value.gstin}
                   aria-invalid={!!value.gstin && !isValidGstin(value.gstin)}
+                  aria-describedby={!!value.gstin && !isValidGstin(value.gstin) ? "walkin-gstin-err" : undefined}
                   onChange={(e) => {
                     const gstin = e.target.value.toUpperCase().replace(/\s/g, "");
                     const st = isValidGstin(gstin) ? stateFromGstin(gstin) : null;
@@ -135,7 +134,7 @@ export function CustomerPicker({
                   }}
                 />
                 {!!value.gstin && !isValidGstin(value.gstin) && (
-                  <p className="text-xs text-destructive">{t("billing.validation.gstin")}</p>
+                  <p id="walkin-gstin-err" className="text-xs text-destructive">{t("billing.validation.gstin")}</p>
                 )}
               </div>
             </div>
@@ -218,7 +217,7 @@ function CustomerSearch({
         aria-label={t("billing.picker.search")}
         aria-invalid={invalid}
         placeholder={t("billing.picker.search")}
-        className="h-11 rounded-xl pl-9 text-base sm:text-sm"
+        className="rounded-xl pl-9 text-base sm:text-sm"
         autoComplete="off"
         value={q}
         onChange={(e) => {

@@ -411,19 +411,19 @@ function Profile({ me }: { me: Me }) {
         save.mutate();
       }}
     >
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-1.5">
         <label htmlFor="pf-name" className="text-sm font-medium">
           {t("account.name")}
         </label>
         <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30" />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-1.5">
         <label htmlFor="pf-phone" className="text-sm font-medium">
           {t("account.phone")}
         </label>
         <input id="pf-phone" value={prettyPhone(me.customer.phone)} readOnly className="h-11 rounded-xl border border-input bg-muted/50 px-3 text-sm text-muted-foreground" />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-1.5">
         <label htmlFor="pf-email" className="text-sm font-medium">
           {t("account.email")}
         </label>

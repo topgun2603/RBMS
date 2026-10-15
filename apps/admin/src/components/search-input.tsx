@@ -32,7 +32,8 @@ export function DebouncedSearch({
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-8 pl-8"
+        size="sm"
+        className="pl-8"
       />
     </div>
   );

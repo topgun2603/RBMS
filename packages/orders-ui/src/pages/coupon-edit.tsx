@@ -26,6 +26,9 @@ import {
   cn,
   EmptyState,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Skeleton,
   StatusPill,
   Switch,
@@ -238,18 +241,18 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
         <form onSubmit={onSubmit} noValidate className="grid gap-4">
           <fieldset disabled={disabled} className="grid min-w-0 gap-4">
             <Section icon={PercentIcon} title={t("orders.coupons.discount")}>
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+              <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
                 <FormField
                   control={form.control}
                   name="code"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("orders.coupons.code")}</FormLabel>
-                      <div className="flex gap-2">
+                      <div className="flex items-start gap-2">
                         <FormControl>
-                          <Input className="h-11 font-mono tracking-wide uppercase" autoComplete="off" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase().replace(/\s+/g, ""))} />
+                          <Input className="font-mono tracking-wide uppercase" autoComplete="off" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase().replace(/\s+/g, ""))} />
                         </FormControl>
-                        <Button type="button" variant="outline" size="icon-lg" className="h-11" onClick={() => form.setValue("code", randomCode(), { shouldDirty: true, shouldValidate: true })} aria-label={t("orders.coupons.generate")}>
+                        <Button type="button" variant="outline" size="icon" onClick={() => form.setValue("code", randomCode(), { shouldDirty: true, shouldValidate: true })} aria-label={t("orders.coupons.generate")}>
                           <ShuffleIcon />
                         </Button>
                       </div>
@@ -268,7 +271,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
                         <Optional />
                       </FormLabel>
                       <FormControl>
-                        <Input className="h-11" placeholder={t("orders.coupons.descriptionPlaceholder")} {...field} />
+                        <Input placeholder={t("orders.coupons.descriptionPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -294,23 +297,25 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
                 )}
               />
               {type !== "free_shipping" && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="value"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{type === "percent" ? t("orders.coupons.percentOff") : t("orders.coupons.amountOff")}</FormLabel>
-                        <FormControl>
-                          {type === "percent" ? (
-                            <div className="relative">
-                              <Input inputMode="numeric" className="h-11 pr-8 text-right tabular-nums" {...field} onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 3))} />
-                              <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                            </div>
-                          ) : (
+                        {type === "percent" ? (
+                          <InputGroup>
+                            <FormControl>
+                              <InputGroupInput inputMode="numeric" className="pr-1.5 text-right tabular-nums" {...field} onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 3))} />
+                            </FormControl>
+                            <InputGroupAddon aria-hidden>%</InputGroupAddon>
+                          </InputGroup>
+                        ) : (
+                          <FormControl>
                             <MoneyInput {...field} />
-                          )}
-                        </FormControl>
+                          </FormControl>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -354,7 +359,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
             </Section>
 
             <Section icon={CalendarRangeIcon} tone="text-info-ink" title={t("orders.coupons.validity")} description={t("orders.coupons.validityHint")}>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid items-start gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="startsAt"
@@ -365,7 +370,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
                         <Optional />
                       </FormLabel>
                       <FormControl>
-                        <Input type="date" className="h-11" {...field} />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -381,7 +386,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
                         <Optional />
                       </FormLabel>
                       <FormControl>
-                        <Input type="date" className="h-11" {...field} />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -391,7 +396,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
             </Section>
 
             <Section icon={ShieldCheckIcon} tone="text-warning-ink" title={t("orders.coupons.limits")}>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid items-start gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="usageLimit"
@@ -402,7 +407,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
                         <Optional />
                       </FormLabel>
                       <FormControl>
-                        <Input inputMode="numeric" className="h-11 tabular-nums" placeholder={t("orders.coupons.unlimited")} {...field} onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ""))} />
+                        <Input inputMode="numeric" className="tabular-nums" placeholder={t("orders.coupons.unlimited")} {...field} onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ""))} />
                       </FormControl>
                       <FormDescription>{t("orders.coupons.usageLimitHint")}</FormDescription>
                       <FormMessage />
@@ -419,7 +424,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
                         <Optional />
                       </FormLabel>
                       <FormControl>
-                        <Input inputMode="numeric" className="h-11 tabular-nums" placeholder={t("orders.coupons.unlimited")} {...field} onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ""))} />
+                        <Input inputMode="numeric" className="tabular-nums" placeholder={t("orders.coupons.unlimited")} {...field} onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ""))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -523,10 +528,10 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
           {canManage && (
             <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
               <div className="mx-auto flex max-w-4xl justify-end gap-2">
-                <Button asChild type="button" variant="outline" size="lg" className="h-11">
+                <Button asChild type="button" variant="outline" size="lg">
                   <ModuleLink to="coupons">{t("orders.common.cancel")}</ModuleLink>
                 </Button>
-                <Button type="submit" size="lg" className="h-11 flex-1 md:flex-none" disabled={save.isPending || (!!coupon && !form.formState.isDirty)}>
+                <Button type="submit" size="lg" className="flex-1 md:flex-none" disabled={save.isPending || (!!coupon && !form.formState.isDirty)}>
                   {save.isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
                   {coupon ? t("orders.common.save") : normalizeCode(code) ? t("orders.coupons.create", { code: normalizeCode(code) }) : t("orders.coupons.add")}
                 </Button>

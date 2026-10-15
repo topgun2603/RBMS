@@ -178,7 +178,7 @@ export function ImageManager({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.18 }}
-                className="group grid gap-1.5"
+                className="group grid content-start gap-1.5"
               >
                 <div
                   {...(disabled ? {} : sort.itemProps(img.url))}
@@ -218,7 +218,8 @@ export function ImageManager({
                   maxLength={200}
                   aria-label={t("commerce.media.altFor", { n: i + 1 })}
                   placeholder={t("commerce.media.alt")}
-                  className="h-8 text-xs"
+                  size="sm"
+                  className="text-xs"
                   onChange={(e) => onChange(value.map((x) => (x.url === img.url ? { ...x, alt: e.target.value } : x)))}
                 />
               </motion.li>
@@ -242,7 +243,8 @@ export function ImageManager({
               value={url}
               placeholder="https://"
               aria-label={t("commerce.media.urlLabel")}
-              className="h-9 sm:w-72"
+              size="sm"
+              className="sm:w-72"
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {

@@ -261,10 +261,10 @@ export default function OrdersPage() {
 
       {/* Filters */}
       <div className="mb-4 grid gap-3">
-        <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem]">
+        <div className="grid items-start gap-2 md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem]">
           <SearchField value={q} onChange={setQ} placeholder={t("orders.list.search")} />
           <Select value={payment || ALL} onValueChange={(v) => setPayment(v === ALL ? "" : (v as PaymentStatus))}>
-            <SelectTrigger className="h-11 w-full rounded-xl bg-card" aria-label={t("orders.list.filterPayment")}>
+            <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("orders.list.filterPayment")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -277,7 +277,7 @@ export default function OrdersPage() {
             </SelectContent>
           </Select>
           <Select value={channel || ALL} onValueChange={(v) => setChannel(v === ALL ? "" : (v as OrderChannel))}>
-            <SelectTrigger className="h-11 w-full rounded-xl bg-card" aria-label={t("orders.list.filterChannel")}>
+            <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("orders.list.filterChannel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -290,7 +290,7 @@ export default function OrdersPage() {
             </SelectContent>
           </Select>
           <Select value={preset} onValueChange={(v) => setPreset(v as DatePreset)}>
-            <SelectTrigger className="h-11 w-full rounded-xl bg-card" aria-label={t("orders.list.filterDate")}>
+            <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("orders.list.filterDate")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -306,7 +306,7 @@ export default function OrdersPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Input
               type="date"
-              className="h-10 w-40"
+              className="w-40"
               aria-label={t("orders.range.from")}
               value={custom.from}
               max={custom.to || todayIST()}
@@ -315,7 +315,7 @@ export default function OrdersPage() {
             <span className="text-muted-foreground">–</span>
             <Input
               type="date"
-              className="h-10 w-40"
+              className="w-40"
               aria-label={t("orders.range.to")}
               value={custom.to}
               min={custom.from}
@@ -474,7 +474,7 @@ export default function OrdersPage() {
                         <PaymentPill status={o.paymentStatus} />
                         <span className="text-xs text-muted-foreground">{t("orders.list.itemCount", { count: o.itemCount })}</span>
                         {next && (
-                          <Button size="sm" variant="secondary" className="ml-auto h-9" disabled={mover.busyId === o.id} onClick={() => mover.request(o, next)}>
+                          <Button size="sm" variant="secondary" className="ml-auto" disabled={mover.busyId === o.id} onClick={() => mover.request(o, next)}>
                             {mover.busyId === o.id ? <Loader2Icon className="animate-spin" /> : <ArrowRightIcon />}
                             {t(`orders.action.${next}`)}
                           </Button>

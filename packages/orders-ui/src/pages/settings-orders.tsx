@@ -79,7 +79,7 @@ function SettingsForm({ initial, canEdit }: { initial: OrderSettings; canEdit: b
         <Field label={t("orders.settings.prefix")} htmlFor="o-prefix" error={error} hint={t("orders.settings.prefixHint", { sample: sampleNumber(v.prefix) })}>
           <Input
             id="o-prefix"
-            className="h-11 w-40 font-mono uppercase"
+            className="w-40 font-mono uppercase"
             maxLength={6}
             disabled={!canEdit}
             value={v.prefix}

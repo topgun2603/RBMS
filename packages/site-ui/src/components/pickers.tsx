@@ -47,7 +47,7 @@ export function ProductPicker({
         <Input
           id={`${idPrefix}-search`}
           type="search"
-          className="h-11 pl-9"
+          className="pl-9"
           value={q}
           disabled={disabled}
           aria-label={t("site.pickers.searchProducts")}
@@ -159,7 +159,7 @@ export function CategoryPicker({ ids, onChange, max, disabled, idPrefix }: { ids
   if (all.length === 0) return <p className="rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">{t("site.pickers.noCategories")}</p>;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid items-start gap-3 sm:grid-cols-2">
       <ul className="max-h-60 overflow-y-auto rounded-xl border p-1" aria-label={t("site.pickers.categories")}>
         {all.map((c) => {
           const on = chosen.has(c.id);
@@ -258,7 +258,7 @@ export function SlugSelect({
       onValueChange={(v) => onChange(v, options.find((o) => o.slug === v)?.label ?? "")}
       disabled={disabled || loading}
     >
-      <SelectTrigger id={id} className="h-11 w-full" aria-invalid={invalid}>
+      <SelectTrigger id={id} className="w-full" aria-invalid={invalid}>
         <SelectValue placeholder={loading ? t("site.common.loading") : (placeholder ?? t(`site.pickers.pick.${type}`))} />
       </SelectTrigger>
       <SelectContent>

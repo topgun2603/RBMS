@@ -11,8 +11,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
   Input,
-  Label,
   toast,
 } from "@srirealtime/ui";
 import { describeError, useI18n } from "@srirealtime/web";
@@ -100,36 +104,33 @@ export function StockAdjustDialog({
               { value: "set", label: t("commerce.stock.set") },
             ]}
           />
-          <div className="grid gap-2">
-            <Label htmlFor="adjust-qty">{mode === "set" ? t("commerce.stock.newQty") : t("commerce.stock.qty")}</Label>
-            <Input
-              id="adjust-qty"
-              autoFocus
-              inputMode="decimal"
-              autoComplete="off"
-              className="h-11 text-right text-lg tabular-nums"
-              placeholder="0"
-              value={qty}
-              aria-invalid={!!error}
-              onChange={(e) => {
-                setQty(cleanQty(e.target.value));
-                setError(null);
-              }}
-            />
-            {error ? (
-              <p className="text-xs text-destructive">{error}</p>
-            ) : (
-              after !== null && (
-                <p className={after < 0 ? "text-xs text-danger-ink" : "text-xs text-muted-foreground"}>
-                  {t("commerce.stock.after", { qty: `${formatQty(after)} ${unit}` })}
-                </p>
-              )
+          <Field id="adjust-qty" invalid={!!error}>
+            <FieldLabel>{mode === "set" ? t("commerce.stock.newQty") : t("commerce.stock.qty")}</FieldLabel>
+            <FieldControl>
+              <Input
+                autoFocus
+                inputMode="decimal"
+                autoComplete="off"
+                className="text-right text-lg tabular-nums"
+                placeholder="0"
+                value={qty}
+                onChange={(e) => {
+                  setQty(cleanQty(e.target.value));
+                  setError(null);
+                }}
+              />
+            </FieldControl>
+            <FieldError>{error}</FieldError>
+            {!error && after !== null && (
+              <FieldHint className={after < 0 ? "text-danger-ink" : undefined}>{t("commerce.stock.after", { qty: `${formatQty(after)} ${unit}` })}</FieldHint>
             )}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="adjust-note">{t("commerce.stock.note")}</Label>
-            <Input id="adjust-note" className="h-11" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("commerce.stock.notePlaceholder")} />
-          </div>
+          </Field>
+          <Field id="adjust-note">
+            <FieldLabel>{t("commerce.stock.note")}</FieldLabel>
+            <FieldControl>
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("commerce.stock.notePlaceholder")} />
+            </FieldControl>
+          </Field>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={adjust.isPending}>
               {t("commerce.common.cancel")}

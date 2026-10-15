@@ -327,7 +327,7 @@ function AppEditorSheet({ editing, existing, onClose }: { editing: Editing; exis
         <Form {...form}>
           <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+              <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
                 <FormField
                   control={form.control}
                   name="name"

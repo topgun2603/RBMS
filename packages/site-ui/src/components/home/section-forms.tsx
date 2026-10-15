@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Input, Label, Textarea } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Textarea } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
 import { emptySlide, SECTION_LIST_LIMITS, USP_ICON_KEYS, uspIconKey, type FieldErrors, type FormOf, type SectionForm, type SlideForm } from "../../lib/sections";
 import { FieldError, Optional, TextField } from "../bits";
@@ -75,7 +75,7 @@ function moveIn<T>(list: T[], i: number, d: number): T[] {
 function CtaFields({ idp, label, href, onLabel, onHref, errors, prefix = "", disabled }: { idp: string; label: string; href: string; onLabel: (v: string) => void; onHref: (v: string) => void; errors: FieldErrors; prefix?: string; disabled?: boolean }) {
   const { t } = useI18n();
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid items-start gap-3 sm:grid-cols-2">
       <TextField id={`${idp}-cta-label`} label={t("site.home.ctaLabel")} optional value={label} placeholder={t("site.home.ctaLabelPlaceholder")} maxLength={60} disabled={disabled} error={errors[`${prefix}ctaLabel`]} onChange={onLabel} />
       <TextField id={`${idp}-cta-href`} label={t("site.home.ctaHref")} optional value={href} placeholder="/products" hint={t("site.common.linkHint")} disabled={disabled} error={errors[`${prefix}ctaHref`]} onChange={onHref} />
     </div>
@@ -96,8 +96,8 @@ function HeroFields({ form, onChange, errors, disabled, idp }: Props<"hero">) {
             <span className="text-sm font-medium">{t("site.home.slideN", { n: i + 1 })}</span>
             <ItemTools i={i} n={form.slides.length} disabled={disabled} onMove={(d) => onChange({ ...form, slides: moveIn(form.slides, i, d) })} onRemove={() => onChange({ ...form, slides: form.slides.filter((_, j) => j !== i) })} />
           </div>
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-            <div className="grid content-start gap-1.5">
+          <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <div className="grid content-start gap-2">
               <Label>
                 {t("site.home.image")}
                 <Optional />
@@ -106,7 +106,7 @@ function HeroFields({ form, onChange, errors, disabled, idp }: Props<"hero">) {
               <p className="text-xs text-muted-foreground">{t("site.home.heroImageHint")}</p>
               <FieldError code={errors[`slides.${i}.imageUrl`]} />
             </div>
-            <div className="grid content-start gap-1.5">
+            <div className="grid content-start gap-2">
               <Label>
                 {t("site.home.mobileImage")}
                 <Optional />
@@ -159,14 +159,14 @@ function CollectionFields({ form, onChange, errors, disabled, idp }: Props<"coll
   const { t } = useI18n();
   return (
     <div className="grid gap-4">
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-2">
         <Label htmlFor={`${idp}-col`}>{t("site.home.collection")}</Label>
         <SlugSelect id={`${idp}-col`} type="collection" value={form.collectionSlug} invalid={!!errors.collectionSlug} disabled={disabled} onChange={(collectionSlug) => onChange({ ...form, collectionSlug })} />
         <FieldError code={errors.collectionSlug} />
       </div>
       <TextField id={`${idp}-title`} label={t("site.home.sectionTitle")} optional hint={t("site.home.collectionTitleHint")} value={form.title} maxLength={120} disabled={disabled} error={errors.title} onChange={(title) => onChange({ ...form, title })} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-1.5">
+      <div className="grid items-start gap-4 sm:grid-cols-2">
+        <div className="grid content-start gap-2">
           <Label>{t("site.home.layout")}</Label>
           <ChipGroup<"carousel" | "grid">
             value={form.layout}
@@ -211,13 +211,13 @@ function BannerFields({ form, onChange, errors, disabled, idp }: Props<"banner">
   const { t } = useI18n();
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="grid content-start gap-1.5">
+      <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="grid content-start gap-2">
           <Label>{t("site.home.image")}</Label>
           <ImageField value={form.imageUrl} onChange={(imageUrl) => onChange({ ...form, imageUrl })} aspect="aspect-[16/5]" disabled={disabled} invalid={!!errors.imageUrl} />
           <FieldError code={errors.imageUrl} />
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className="grid content-start gap-2">
           <Label>
             {t("site.home.mobileImage")}
             <Optional />
@@ -226,7 +226,7 @@ function BannerFields({ form, onChange, errors, disabled, idp }: Props<"banner">
           <FieldError code={errors.mobileImageUrl} />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
         <TextField id={`${idp}-href`} label={t("site.home.bannerLink")} optional placeholder="/collections/sale" hint={t("site.common.linkHint")} value={form.href} disabled={disabled} error={errors.href} onChange={(href) => onChange({ ...form, href })} />
         <TextField id={`${idp}-alt`} label={t("site.media.alt")} hint={t("site.media.altHint")} value={form.alt} maxLength={200} disabled={disabled} error={errors.alt} onChange={(alt) => onChange({ ...form, alt })} />
       </div>
@@ -248,12 +248,12 @@ function ImageTextFields({ form, onChange, errors, disabled, idp }: Props<"image
   const { t } = useI18n();
   return (
     <div className="grid gap-4">
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-2">
         <Label>{t("site.home.image")}</Label>
         <ImageField value={form.imageUrl} onChange={(imageUrl) => onChange({ ...form, imageUrl })} aspect="aspect-[4/3]" disabled={disabled} invalid={!!errors.imageUrl} />
         <FieldError code={errors.imageUrl} />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-2">
         <Label>{t("site.home.imageSide")}</Label>
         <ChipGroup<"left" | "right">
           value={form.imageSide}
@@ -284,11 +284,13 @@ function TestimonialsFields({ form, onChange, errors, disabled, idp }: Props<"te
             <span className="text-sm font-medium">{t("site.home.testimonialN", { n: i + 1 })}</span>
             <ItemTools i={i} n={form.items.length} disabled={disabled} onMove={(d) => onChange({ ...form, items: moveIn(form.items, i, d) })} onRemove={() => onChange({ ...form, items: form.items.filter((_, j) => j !== i) })} />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${idp}-q${i}`}>{t("site.home.quote")}</Label>
-            <Textarea id={`${idp}-q${i}`} rows={3} value={it.quote} maxLength={600} disabled={disabled} aria-invalid={!!errors[`items.${i}.quote`]} onChange={(e) => set(i, { quote: e.target.value })} />
+          <UiField id={`${idp}-q${i}`}>
+            <FieldLabel>{t("site.home.quote")}</FieldLabel>
+            <FieldControl>
+              <Textarea rows={3} value={it.quote} maxLength={600} disabled={disabled} onChange={(e) => set(i, { quote: e.target.value })} />
+            </FieldControl>
             <FieldError code={errors[`items.${i}.quote`]} />
-          </div>
+          </UiField>
           <TextField id={`${idp}-n${i}`} label={t("site.home.customerName")} placeholder={t("site.home.customerNamePlaceholder")} value={it.name} maxLength={80} disabled={disabled} error={errors[`items.${i}.name`]} onChange={(name) => set(i, { name })} />
         </div>
       ))}
@@ -313,7 +315,7 @@ function UspFields({ form, onChange, errors, disabled, idp }: Props<"usp">) {
               <span className="text-sm font-medium">{t("site.home.uspN", { n: i + 1 })}</span>
               <ItemTools i={i} n={form.items.length} disabled={disabled} onMove={(d) => onChange({ ...form, items: moveIn(form.items, i, d) })} onRemove={() => onChange({ ...form, items: form.items.filter((_, j) => j !== i) })} />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid content-start gap-2">
               <Label id={`${idp}-icon${i}`}>{t("site.home.icon")}</Label>
               <div role="radiogroup" aria-labelledby={`${idp}-icon${i}`} className="flex flex-wrap gap-1.5">
                 {USP_ICON_KEYS.map((key) => {
@@ -341,7 +343,7 @@ function UspFields({ form, onChange, errors, disabled, idp }: Props<"usp">) {
               </div>
               <FieldError code={errors[`items.${i}.icon`]} />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <TextField id={`${idp}-t${i}`} label={t("site.home.uspTitle")} value={it.title} maxLength={60} disabled={disabled} error={errors[`items.${i}.title`]} onChange={(title) => set(i, { title })} />
               <TextField id={`${idp}-x${i}`} label={t("site.home.uspText")} optional value={it.text} maxLength={200} disabled={disabled} error={errors[`items.${i}.text`]} onChange={(text) => set(i, { text })} />
             </div>
@@ -361,14 +363,16 @@ function NewsletterFields({ form, onChange, errors, disabled, idp }: Props<"news
   return (
     <div className="grid gap-4">
       <TextField id={`${idp}-h`} label={t("site.home.heading")} value={form.heading} maxLength={120} disabled={disabled} error={errors.heading} onChange={(heading) => onChange({ ...form, heading })} />
-      <div className="grid gap-1.5">
-        <Label htmlFor={`${idp}-x`}>
+      <UiField id={`${idp}-x`}>
+        <FieldLabel>
           {t("site.home.text")}
           <Optional />
-        </Label>
-        <Input id={`${idp}-x`} className="h-11" value={form.text} maxLength={400} disabled={disabled} onChange={(e) => onChange({ ...form, text: e.target.value })} />
+        </FieldLabel>
+        <FieldControl>
+          <Input value={form.text} maxLength={400} disabled={disabled} onChange={(e) => onChange({ ...form, text: e.target.value })} />
+        </FieldControl>
         <FieldError code={errors.text} />
-      </div>
+      </UiField>
       <p className="text-xs text-muted-foreground">{t("site.home.newsletterHint")}</p>
     </div>
   );

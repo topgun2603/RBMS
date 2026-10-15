@@ -108,7 +108,7 @@ export function ReceiveDialog({
                 <DialogDescription>{t("billing.creditBook.receiveDialog.description", { name: customer.name })}</DialogDescription>
               </DialogHeader>
               <form onSubmit={(e) => void submit(e)} className="grid gap-4" noValidate>
-                <div className="grid gap-1.5">
+                <div className="grid content-start gap-1.5">
                   <Label htmlFor="receive-amount">{t("billing.creditBook.receiveDialog.amount")}</Label>
                   <MoneyInput
                     id="receive-amount"
@@ -128,8 +128,8 @@ export function ReceiveDialog({
                           : "")}
                   </p>
                 </div>
-                <div className="grid gap-1.5">
-                  <span className="text-sm font-medium" aria-hidden>
+                <div className="grid content-start gap-1.5">
+                  <span className="flex min-h-5 items-end text-sm leading-none font-medium" aria-hidden>
                     {t("billing.payment.method")}
                   </span>
                   <ChipGroup
@@ -140,30 +140,29 @@ export function ReceiveDialog({
                     className="flex-wrap"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-1.5">
+                <div className="grid grid-cols-2 items-start gap-3">
+                  <div className="grid content-start gap-1.5">
                     <Label htmlFor="receive-date">{t("billing.payment.date")}</Label>
                     <Input
                       id="receive-date"
                       type="date"
-                      className="h-11"
                       value={date}
                       max={todayIST()}
                       onChange={(e) => e.target.value && setDate(e.target.value)}
                     />
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid content-start gap-1.5">
                     <Label htmlFor="receive-ref">
                       {t("billing.payment.reference")} <span className="font-normal text-muted-foreground">({t("billing.common.optional")})</span>
                     </Label>
-                    <Input id="receive-ref" className="h-11" autoComplete="off" value={reference} onChange={(e) => setReference(e.target.value)} />
+                    <Input id="receive-ref" autoComplete="off" value={reference} onChange={(e) => setReference(e.target.value)} />
                   </div>
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid content-start gap-1.5">
                   <Label htmlFor="receive-note">
                     {t("billing.creditBook.receiveDialog.note")} <span className="font-normal text-muted-foreground">({t("billing.common.optional")})</span>
                   </Label>
-                  <Input id="receive-note" className="h-11" autoComplete="off" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+                  <Input id="receive-note" autoComplete="off" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
                 </div>
                 <DialogFooter className="gap-2">
                   <Button type="button" variant="outline" size="lg" className="h-11" onClick={() => onOpenChange(false)} disabled={receive.isPending}>

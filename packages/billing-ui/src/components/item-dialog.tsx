@@ -124,13 +124,13 @@ export function ItemDialog({
                 <FormItem>
                   <FormLabel>{t("billing.items.name")}</FormLabel>
                   <FormControl>
-                    <Input autoFocus className="h-11" autoComplete="off" {...field} />
+                    <Input autoFocus autoComplete="off" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 items-start gap-4">
               <FormField
                 control={form.control}
                 name="rate"
@@ -138,7 +138,7 @@ export function ItemDialog({
                   <FormItem>
                     <FormLabel>{t("billing.items.rate")}</FormLabel>
                     <FormControl>
-                      <MoneyInput className="h-11" {...field} />
+                      <MoneyInput {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,7 +150,7 @@ export function ItemDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("billing.items.gstRate")}</FormLabel>
-                    <GstRateSelect value={field.value} onChange={field.onChange} className="h-11 w-full" aria-label={t("billing.items.gstRate")} />
+                    <GstRateSelect value={field.value} onChange={field.onChange} className="w-full" aria-label={t("billing.items.gstRate")} />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -162,7 +162,7 @@ export function ItemDialog({
                   <FormItem>
                     <FormLabel>{t("billing.items.hsn")}</FormLabel>
                     <FormControl>
-                      <Input inputMode="numeric" className="h-11 font-mono" maxLength={8} autoComplete="off" {...field} />
+                      <Input inputMode="numeric" className="font-mono" maxLength={8} autoComplete="off" {...field} />
                     </FormControl>
                     <FormDescription>{t("billing.items.hsnHint")}</FormDescription>
                     <FormMessage />
@@ -176,7 +176,7 @@ export function ItemDialog({
                   <FormItem>
                     <FormLabel>{t("billing.items.unit")}</FormLabel>
                     <FormControl>
-                      <Input list="sr-units" className="h-11" autoComplete="off" {...field} />
+                      <Input list="sr-units" autoComplete="off" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,7 +192,7 @@ export function ItemDialog({
                   {t("billing.itemsStock.openingTitle")}
                   <span className="text-xs font-normal text-muted-foreground">({t("billing.common.optional")})</span>
                 </p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 items-start gap-4">
                   <FormField
                     control={form.control}
                     name="openingQty"
@@ -203,7 +203,7 @@ export function ItemDialog({
                           <Input
                             inputMode="decimal"
                             autoComplete="off"
-                            className="h-11 text-right tabular-nums"
+                            className="text-right tabular-nums"
                             placeholder="0"
                             {...field}
                             onChange={(e) => field.onChange(cleanQty(e.target.value))}
@@ -220,7 +220,7 @@ export function ItemDialog({
                       <FormItem>
                         <FormLabel>{t("billing.itemsStock.openingCost")}</FormLabel>
                         <FormControl>
-                          <MoneyInput className="h-11" {...field} />
+                          <MoneyInput {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

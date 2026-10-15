@@ -230,7 +230,7 @@ export default function ProductsPage() {
         <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_14rem_11rem]">
           <SearchField value={q} onChange={setQ} placeholder={t("commerce.products.search")} />
           <Select value={categoryId || ALL} onValueChange={(v) => setCategoryId(v === ALL ? "" : v)}>
-            <SelectTrigger className="h-11 w-full rounded-xl bg-card" aria-label={t("commerce.products.filterCategory")}>
+            <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("commerce.products.filterCategory")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -243,7 +243,7 @@ export default function ProductsPage() {
             </SelectContent>
           </Select>
           <Select value={channel || ALL} onValueChange={(v) => setChannel(v === ALL ? "" : (v as Channel))}>
-            <SelectTrigger className="h-11 w-full rounded-xl bg-card" aria-label={t("commerce.products.filterChannel")}>
+            <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("commerce.products.filterChannel")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

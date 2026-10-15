@@ -148,7 +148,7 @@ export function MemberDialog({
                   <FormItem>
                     <FormLabel>{t("workspace.team.target")}</FormLabel>
                     <FormControl>
-                      <Input autoFocus className="h-11" autoComplete="off" inputMode="email" placeholder={t("workspace.team.targetPlaceholder")} {...field} />
+                      <Input autoFocus autoComplete="off" inputMode="email" placeholder={t("workspace.team.targetPlaceholder")} {...field} />
                     </FormControl>
                     <FormDescription>{t("workspace.team.targetHint")}</FormDescription>
                     <FormMessage />

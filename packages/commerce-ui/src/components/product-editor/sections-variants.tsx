@@ -171,7 +171,7 @@ export function VariantsSection({
                         {t("commerce.variants.optionName")}
                       </Label>
                       <FormControl>
-                        <Input id={`opt-name-${i}`} list="commerce-option-names" className="h-11" disabled={!canManage} {...field} />
+                        <Input id={`opt-name-${i}`} list="commerce-option-names" disabled={!canManage} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -194,7 +194,7 @@ export function VariantsSection({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-11 sm:mt-5"
+                  className="sm:mt-5"
                   disabled={!canManage}
                   onClick={() => options.remove(i)}
                   aria-label={t("commerce.variants.removeOption", { name: watchedOptions[i]?.name || String(i + 1) })}
@@ -231,7 +231,7 @@ export function VariantsSection({
             <p className="text-sm font-medium">{t("commerce.variants.tableTitle")}</p>
             {canManage && watchedVariants.length > 1 && (
               <div className="flex items-center gap-2">
-                <MoneyInput value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} className="h-9 w-28" placeholder="0" aria-label={t("commerce.variants.bulkPrice")} />
+                <MoneyInput value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} size="sm" className="w-28" placeholder="0" aria-label={t("commerce.variants.bulkPrice")} />
                 <Button type="button" variant="secondary" size="sm" onClick={applyPriceToAll}>
                   {t("commerce.variants.applyAll")}
                 </Button>
@@ -256,7 +256,7 @@ export function VariantsSection({
               return (
                 <li
                   key={f.fieldKey}
-                  className="grid grid-cols-2 gap-2 rounded-xl border bg-card p-3 sm:grid-cols-3 lg:grid-cols-[minmax(6rem,1.4fr)_minmax(4.5rem,1fr)_minmax(4.5rem,1fr)_minmax(5rem,0.9fr)_minmax(5rem,0.9fr)_minmax(5rem,0.9fr)_3.75rem_2.25rem] lg:items-start lg:rounded-lg lg:border-border/70 lg:p-1.5"
+                  className="grid grid-cols-2 items-start gap-2 rounded-xl border bg-card p-3 sm:grid-cols-3 lg:grid-cols-[minmax(6rem,1.4fr)_minmax(4.5rem,1fr)_minmax(4.5rem,1fr)_minmax(5rem,0.9fr)_minmax(5rem,0.9fr)_minmax(5rem,0.9fr)_3.75rem_2.25rem] lg:rounded-lg lg:border-border/70 lg:p-1.5"
                 >
                   <Cell className="col-span-2 sm:col-span-3 lg:col-span-1" label={t("commerce.variants.col.variant")}>
                     <FormField
@@ -265,7 +265,7 @@ export function VariantsSection({
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input className="h-9 font-medium" placeholder={label} aria-label={t("commerce.variants.titleFor", { name: label })} disabled={!canManage} {...field} />
+                            <Input size="sm" className="font-medium" placeholder={label} aria-label={t("commerce.variants.titleFor", { name: label })} disabled={!canManage} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -298,8 +298,8 @@ export function VariantsSection({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
-                      className="size-9 text-muted-foreground hover:text-destructive"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-destructive"
                       disabled={!canManage || variants.fields.length <= 1}
                       onClick={() => row && setDeleting({ index: i, row })}
                       aria-label={t("commerce.variants.deleteFor", { name: label })}
@@ -330,7 +330,7 @@ export function VariantsSection({
 
 function Cell({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("grid gap-1", className)}>
+    <div className={cn("grid content-start gap-1", className)}>
       <span className="text-[0.6875rem] font-medium text-muted-foreground lg:sr-only">{label}</span>
       {children}
     </div>
@@ -349,7 +349,8 @@ function TextCell({ name, aria, mono, numeric }: { name: VariantField; aria: str
         <FormItem>
           <FormControl>
             <Input
-              className={cn("h-9", mono && "font-mono text-xs", numeric && "text-right tabular-nums")}
+              size="sm"
+              className={cn(mono && "font-mono text-xs", numeric && "text-right tabular-nums")}
               inputMode={numeric ? "numeric" : undefined}
               autoComplete="off"
               aria-label={aria}
@@ -373,7 +374,7 @@ function MoneyCell({ name, aria, disabled, strong }: { name: VariantField; aria:
       render={({ field }) => (
         <FormItem>
           <FormControl>
-            <MoneyInput className={cn("h-9", strong && "font-semibold")} aria-label={aria} disabled={disabled} {...field} />
+            <MoneyInput size="sm" className={cn(strong && "font-semibold")} aria-label={aria} disabled={disabled} {...field} />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -388,7 +389,7 @@ export function IdentifiersFields() {
   const { t } = useI18n();
   const form = useFormContext<ProductFormValues>();
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid items-start gap-4 sm:grid-cols-3">
       {(["sku", "barcode", "weight"] as const).map((k) => (
         <FormField
           key={k}
@@ -400,7 +401,7 @@ export function IdentifiersFields() {
               <FormControl>
                 <Input
                   id={`simple-${k}`}
-                  className={cn("h-11", k !== "weight" && "font-mono", k === "weight" && "text-right tabular-nums")}
+                  className={cn(k !== "weight" && "font-mono", k === "weight" && "text-right tabular-nums")}
                   inputMode={k === "weight" ? "numeric" : undefined}
                   autoComplete="off"
                   {...field}
@@ -448,7 +449,7 @@ export function InventorySection({ isNew, stock, stockLoading, unit }: { isNew: 
                         <FormControl>
                           <Input
                             inputMode="decimal"
-                            className="h-10 pr-12 text-right tabular-nums"
+                            className="pr-12 text-right tabular-nums"
                             placeholder="0"
                             aria-label={t("commerce.editor.openingFor", { name: label })}
                             {...field}

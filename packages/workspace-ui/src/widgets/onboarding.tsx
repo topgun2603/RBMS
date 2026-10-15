@@ -57,7 +57,7 @@ export function OnboardingWidget() {
                   <Button asChild variant="link" className="h-9 px-0">
                     <ModuleLink href={settingsHref(WORKSPACE_SETTINGS_PATHS.setup)}>{t("workspace.onboarding.viewAll", { total: s.total })}</ModuleLink>
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" onClick={dismiss} disabled={action.isPending}>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={dismiss} disabled={action.isPending}>
                     {t("workspace.onboarding.dismiss")}
                   </Button>
                 </div>

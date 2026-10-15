@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeftIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
+import { cn, controlHeight, type ControlSize } from "@srirealtime/ui";
 import { ModuleLink } from "../app/navigation";
 
 /** Standard page container. The enter animation is applied once by the app frame. */
@@ -77,11 +77,14 @@ export function SearchField({
   onChange,
   placeholder,
   className,
+  size = "lg",
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   className?: string;
+  /** Shared control scale; list-page toolbars use "lg" — give filter selects next to it the same size. */
+  size?: ControlSize;
 }) {
   return (
     <div className={cn("relative", className)}>
@@ -103,7 +106,7 @@ export function SearchField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-11 w-full rounded-xl border border-input bg-card pr-3 pl-9 text-base shadow-xs outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:text-sm"
+        className={cn(controlHeight(size), "w-full rounded-xl border border-input bg-card pr-3 pl-9 text-base shadow-xs outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:text-sm")}
       />
     </div>
   );

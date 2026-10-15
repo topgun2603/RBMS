@@ -63,7 +63,7 @@ export function VariantPicker({ onPick, disabled }: { onPick: (v: VariantLookup)
                 pick(items[active]);
               } else if (e.key === "Escape") setOpen(false);
             }}
-            className="h-12 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:text-sm"
+            className="h-11 w-full rounded-xl border border-input bg-card pr-10 pl-9 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:text-sm"
           />
           {search.isFetching && <Loader2Icon className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
         </div>

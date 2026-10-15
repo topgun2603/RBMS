@@ -36,28 +36,28 @@ export function DateRangePicker({
         options={presets.map((p) => ({ value: p, label: t(`billing.range.${p}`) }))}
       />
       {value.preset === "custom" ? (
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="grid gap-1">
+        <div className="flex flex-wrap items-start gap-2">
+          <div className="grid content-start gap-1">
             <Label htmlFor="range-from" className="text-xs text-muted-foreground">
               {t("billing.range.from")}
             </Label>
             <Input
               id="range-from"
               type="date"
-              className="h-10 w-40"
+              className="w-40"
               value={value.from}
               max={value.to || today}
               onChange={(e) => e.target.value && onChange({ ...value, from: e.target.value })}
             />
           </div>
-          <div className="grid gap-1">
+          <div className="grid content-start gap-1">
             <Label htmlFor="range-to" className="text-xs text-muted-foreground">
               {t("billing.range.to")}
             </Label>
             <Input
               id="range-to"
               type="date"
-              className="h-10 w-40"
+              className="w-40"
               value={value.to}
               min={value.from}
               max={today}

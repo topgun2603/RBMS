@@ -9,8 +9,13 @@ import {
   AuthLayout,
   Button,
   cn,
+  controlHeight,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
   Input,
-  Label,
   OtpInput,
   Separator,
   SlideIn,
@@ -147,32 +152,32 @@ export default function LoginPage() {
               <p className="text-sm text-muted-foreground">{t("admin.login.subtitle")}</p>
             </div>
             <form onSubmit={onIdentify} className="grid gap-4" noValidate>
-              <div className="grid gap-2">
-                <Label htmlFor="target">{t("admin.login.targetLabel")}</Label>
+              <Field id="target">
+                <FieldLabel>{t("admin.login.targetLabel")}</FieldLabel>
                 <div className="relative">
                   {parsed.kind === "email" ? (
                     <MailIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   ) : (
                     <SmartphoneIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   )}
-                  <Input
-                    id="target"
-                    autoFocus
-                    autoComplete="username"
-                    inputMode={raw.includes("@") ? "email" : "text"}
-                    placeholder={t("admin.login.targetPlaceholder")}
-                    value={raw}
-                    onChange={(e) => setRaw(e.target.value)}
-                    aria-invalid={touched && parsed.kind === "invalid"}
-                    className="h-10 pl-9"
-                  />
+                  <FieldControl>
+                    <Input
+                      autoFocus
+                      autoComplete="username"
+                      inputMode={raw.includes("@") ? "email" : "text"}
+                      placeholder={t("admin.login.targetPlaceholder")}
+                      value={raw}
+                      onChange={(e) => setRaw(e.target.value)}
+                      className="pl-9"
+                    />
+                  </FieldControl>
                 </div>
                 {touched && parsed.kind === "invalid" ? (
-                  <p className="text-xs text-destructive">{t("admin.login.targetInvalid")}</p>
+                  <FieldError>{t("admin.login.targetInvalid")}</FieldError>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("admin.login.targetHint")}</p>
+                  <FieldHint>{t("admin.login.targetHint")}</FieldHint>
                 )}
-              </div>
+              </Field>
 
               {parsed.kind === "phone" && (
                 <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("admin.login.channel")}>
@@ -184,7 +189,8 @@ export default function LoginPage() {
                       aria-checked={phoneChannel === c}
                       onClick={() => setPhoneChannel(c)}
                       className={cn(
-                        "flex h-9 items-center justify-center gap-2 rounded-md border text-sm transition-colors",
+                        "flex items-center justify-center gap-2 rounded-md border text-sm transition-colors",
+                        controlHeight(),
                         phoneChannel === c ? "border-primary bg-primary/5 font-medium text-foreground" : "text-muted-foreground hover:bg-accent",
                       )}
                     >

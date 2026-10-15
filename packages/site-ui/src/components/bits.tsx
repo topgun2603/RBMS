@@ -2,7 +2,18 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, ImageIcon, Loader2Icon, LockIcon, PencilLineIcon, SaveIcon, Undo2Icon } from "lucide-react";
-import { Button, cn, Input, Label, StatusPill } from "@srirealtime/ui";
+import {
+  Button,
+  cn,
+  Field as UiField,
+  FieldControl,
+  FieldError as UiFieldError,
+  FieldHint,
+  FieldLabel,
+  Input,
+  StatusPill,
+  type ControlSize,
+} from "@srirealtime/ui";
 import { absoluteUrl, useI18n } from "@srirealtime/web";
 import type { ContentStatus } from "../lib/types";
 
@@ -57,15 +68,18 @@ export function Optional() {
   return <span className="ml-1 text-xs font-normal text-muted-foreground">({t("site.common.optional")})</span>;
 }
 
-/** Inline field error, translated from a reason code ("required", "url", "tooLong" …) or a full key. */
-export function FieldError({ code, id }: { code?: string | null; id?: string }) {
+/**
+ * Inline field error, translated from a reason code ("required", "url", "tooLong" …) or a full key. Inside a ui
+ * `Field` it registers itself (marks the field invalid, joins the control's aria-describedby); `id` overrides the
+ * generated error id for hand-rolled markup.
+ */
+export function FieldError({ code, id, className }: { code?: string | null; id?: string; className?: string }) {
   const { t } = useI18n();
-  if (!code) return null;
-  const key = code.startsWith("site.") ? code : `site.validation.${code}`;
+  const key = code ? (code.startsWith("site.") ? code : `site.validation.${code}`) : null;
   return (
-    <p id={id} className="text-xs text-destructive" role="alert">
-      {t.has(key) ? t(key) : t("site.validation.invalid")}
-    </p>
+    <UiFieldError id={id} className={className} role="alert">
+      {key ? (t.has(key) ? t(key) : t("site.validation.invalid")) : null}
+    </UiFieldError>
   );
 }
 
@@ -77,12 +91,14 @@ export function TextField({
   onChange,
   error,
   optional,
+  aside,
   hint,
   placeholder,
   disabled,
   maxLength,
   className,
   inputClassName,
+  size,
   type = "text",
   inputMode,
 }: {
@@ -92,37 +108,40 @@ export function TextField({
   onChange: (v: string) => void;
   error?: string | null;
   optional?: boolean;
+  /** Right side of the label row (counter, link, small badge). */
+  aside?: React.ReactNode;
   hint?: React.ReactNode;
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
   className?: string;
   inputClassName?: string;
+  size?: ControlSize;
   type?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   return (
-    <div className={cn("grid content-start gap-1.5", className)}>
-      <Label htmlFor={id}>
+    <UiField id={id} invalid={!!error} className={className}>
+      <FieldLabel aside={aside}>
         {label}
         {optional && <Optional />}
-      </Label>
-      <Input
-        id={id}
-        type={type}
-        inputMode={inputMode}
-        value={value}
-        placeholder={placeholder}
-        disabled={disabled}
-        maxLength={maxLength}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${id}-err` : undefined}
-        className={cn("h-11", inputClassName)}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
-      <FieldError code={error} id={`${id}-err`} />
-    </div>
+      </FieldLabel>
+      <FieldControl>
+        <Input
+          type={type}
+          inputMode={inputMode}
+          value={value}
+          placeholder={placeholder}
+          disabled={disabled}
+          maxLength={maxLength}
+          size={size}
+          className={inputClassName}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </FieldControl>
+      {hint && !error && <FieldHint>{hint}</FieldHint>}
+      <FieldError code={error} />
+    </UiField>
   );
 }
 

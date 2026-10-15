@@ -293,16 +293,16 @@ function ShipDialog({
           <DialogDescription>{delivery ? t("orders.ship.bodyDelivery") : t("orders.ship.body")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4" noValidate>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field label={t("orders.ship.courier")} htmlFor="ship-courier" optional>
-              <Input id="ship-courier" className="h-11" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />
+              <Input id="ship-courier" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />
             </Field>
             <Field label={t("orders.ship.awb")} htmlFor="ship-awb" optional>
-              <Input id="ship-awb" className="h-11" value={awb} onChange={(e) => setAwb(e.target.value)} autoComplete="off" />
+              <Input id="ship-awb" value={awb} onChange={(e) => setAwb(e.target.value)} autoComplete="off" />
             </Field>
           </div>
           <Field label={t("orders.ship.url")} htmlFor="ship-url" optional error={error}>
-            <Input id="ship-url" type="url" inputMode="url" className="h-11" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
+            <Input id="ship-url" type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
           </Field>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>

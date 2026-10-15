@@ -29,6 +29,7 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
+  FieldLabel,
   Input,
   Label,
   motion,
@@ -163,15 +164,15 @@ function PaymentsSettings({ account }: { account: PaymentAccount }) {
             </CardTitle>
             <CardDescription>{t("billing.online.webhookHint")}</CardDescription>
           </CardHeader>
-          <CardContent className="flex gap-2 px-5">
+          <CardContent className="flex items-start gap-2 px-5">
             <Input
               readOnly
               value={account.webhookUrl}
-              className="h-11 font-mono text-xs"
+              className="font-mono text-xs"
               aria-label={t("billing.online.webhookTitle")}
               onFocus={(e) => e.target.select()}
             />
-            <CopyButton value={account.webhookUrl} label={t("billing.online.copyWebhook")} className="size-11" />
+            <CopyButton value={account.webhookUrl} label={t("billing.online.copyWebhook")} />
           </CardContent>
         </Card>
       </StaggerItem>
@@ -353,13 +354,12 @@ function KeyForm({ account, onSaved }: { account: PaymentAccount; onSaved: () =>
               </Alert>
             )}
             <div className="grid gap-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="rzp-key">{t("billing.online.keyId")}</Label>
-                <ModePill mode={KEY_RE.test(id) ? mode : null} />
-              </div>
+              <FieldLabel htmlFor="rzp-key" rowClassName="min-h-6" aside={<ModePill mode={KEY_RE.test(id) ? mode : null} />}>
+                {t("billing.online.keyId")}
+              </FieldLabel>
               <Input
                 id="rzp-key"
-                className="h-11 font-mono"
+                className="font-mono"
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="rzp_test_XXXXXXXXXXXXXX"
@@ -383,17 +383,18 @@ function KeyForm({ account, onSaved }: { account: PaymentAccount; onSaved: () =>
               <Input
                 id="rzp-secret"
                 type="password"
-                className="h-11 font-mono"
+                className="font-mono"
                 autoComplete="new-password"
                 placeholder={update ? t("billing.online.keepSecret") : ""}
                 value={keySecret}
                 aria-invalid={touched && !!errors.keySecret}
+                aria-describedby="rzp-secret-hint"
                 onChange={(e) => setKeySecret(e.target.value)}
               />
               {touched && errors.keySecret ? (
-                <p className="text-xs text-destructive">{errors.keySecret}</p>
+                <p id="rzp-secret-hint" className="text-xs text-destructive">{errors.keySecret}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">{t("billing.online.secretHint")}</p>
+                <p id="rzp-secret-hint" className="text-xs text-muted-foreground">{t("billing.online.secretHint")}</p>
               )}
             </div>
             <div className="grid gap-1.5">
@@ -403,7 +404,7 @@ function KeyForm({ account, onSaved }: { account: PaymentAccount; onSaved: () =>
               <Input
                 id="rzp-webhook"
                 type="password"
-                className="h-11 font-mono"
+                className="font-mono"
                 autoComplete="new-password"
                 placeholder={update ? t("billing.online.keepSecret") : ""}
                 value={webhookSecret}

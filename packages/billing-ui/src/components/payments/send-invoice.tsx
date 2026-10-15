@@ -191,13 +191,13 @@ function AskNumberDialog({
               inputMode="tel"
               autoComplete="tel"
               autoFocus
-              className="h-11"
               placeholder="98765 43210"
               value={value}
               aria-invalid={touched && invalid}
+              aria-describedby={touched && invalid ? "send-to-err" : undefined}
               onChange={(e) => setValue(e.target.value)}
             />
-            {touched && invalid && <p className="text-xs text-destructive">{t("billing.validation.phone")}</p>}
+            {touched && invalid && <p id="send-to-err" className="text-xs text-destructive">{t("billing.validation.phone")}</p>}
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" size="lg" disabled={busy} onClick={() => onOpenChange(false)}>

@@ -163,7 +163,7 @@ export function BlockEditor({
             {BLOCK_TYPES.map((type) => {
               const Icon = BLOCK_ICONS[type];
               return (
-                <Button key={type} type="button" variant="outline" className="h-11 justify-start" disabled={full} onClick={() => add(type)}>
+                <Button key={type} type="button" variant="outline" size="lg" className="justify-start" disabled={full} onClick={() => add(type)}>
                   <Icon /> {t(`site.blocks.type.${type}`)}
                 </Button>
               );
@@ -213,7 +213,7 @@ function BlockFields({
         <>
           <ImageField value={b.url} onChange={(url) => onChange({ ...b, url })} disabled={disabled} aspect="aspect-[16/9]" invalid={!!errors.url} />
           <FieldError code={errors.url} />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid items-start gap-3 sm:grid-cols-2">
             <TextField id={`${idp}-alt`} label={t("site.media.alt")} hint={t("site.media.altHint")} value={b.alt} maxLength={200} disabled={disabled} error={errors.alt} onChange={(alt) => onChange({ ...b, alt })} />
             <TextField id={`${idp}-cap`} label={t("site.media.caption")} optional value={b.caption} maxLength={300} disabled={disabled} error={errors.caption} onChange={(caption) => onChange({ ...b, caption })} />
           </div>
@@ -228,10 +228,10 @@ function BlockFields({
       );
     case "button":
       return (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid items-start gap-3 sm:grid-cols-2">
           <TextField id={`${idp}-label`} label={t("site.blocks.buttonLabel")} value={b.label} maxLength={60} disabled={disabled} error={errors.label} onChange={(label) => onChange({ ...b, label })} />
           <TextField id={`${idp}-href`} label={t("site.blocks.buttonLink")} hint={t("site.common.linkHint")} placeholder="/products" value={b.href} disabled={disabled} error={errors.href} onChange={(href) => onChange({ ...b, href })} />
-          <div className="grid gap-1.5 sm:col-span-2">
+          <div className="grid content-start gap-2 sm:col-span-2">
             <Label>{t("site.blocks.buttonStyle")}</Label>
             <ChipGroup<"primary" | "secondary">
               size="sm"
@@ -269,7 +269,7 @@ function BlockFields({
     case "video": {
       const id = extractYoutubeId(b.video);
       return (
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+        <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
           <div className="grid content-start gap-3">
             <TextField id={`${idp}-yt`} label={t("site.blocks.youtube")} placeholder="https://www.youtube.com/watch?v=…" hint={t("site.blocks.youtubeHint")} value={b.video} disabled={disabled} error={errors.video} onChange={(video) => onChange({ ...b, video })} />
             <TextField id={`${idp}-yt-title`} label={t("site.blocks.videoTitle")} optional value={b.title} maxLength={200} disabled={disabled} onChange={(title) => onChange({ ...b, title })} />

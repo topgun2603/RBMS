@@ -31,6 +31,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
+  FieldRow,
   Input,
   Label,
   motion,
@@ -173,33 +179,34 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
       <form onSubmit={submit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
           <Section id="details" icon={FileTextIcon} title={t("commerce.collections.details")}>
-            <div className="grid gap-2">
-              <Label htmlFor="col-name">{t("commerce.collections.name")}</Label>
-              <Input id="col-name" className="h-11 text-base" value={d.name} aria-invalid={!!errors.name} disabled={!canManage} onChange={(e) => set("name", e.target.value)} />
-              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="col-desc">
-                {t("commerce.collections.description")}
-                <Optional />
-              </Label>
-              <Textarea id="col-desc" rows={3} value={d.description} disabled={!canManage} onChange={(e) => set("description", e.target.value)} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="grid content-start gap-2">
-                <Label htmlFor="col-slug">{t("commerce.collections.slug")}</Label>
-                <Input
-                  id="col-slug"
-                  className="h-11 font-mono"
-                  value={d.slug}
-                  placeholder={slugify(d.name) || undefined}
-                  aria-invalid={!!errors.slug}
-                  disabled={!canManage}
-                  onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
-                />
-                {errors.slug && <p className="text-xs text-destructive">{errors.slug}</p>}
-              </div>
-              <Label htmlFor="col-active" className="flex items-center justify-between gap-4 self-end rounded-xl border px-4 py-2.5 font-normal">
+            <Field id="col-name" invalid={!!errors.name}>
+              <FieldLabel>{t("commerce.collections.name")}</FieldLabel>
+              <FieldControl>
+                <Input className="text-base" value={d.name} disabled={!canManage} onChange={(e) => set("name", e.target.value)} />
+              </FieldControl>
+              <FieldError>{errors.name}</FieldError>
+            </Field>
+            <Field id="col-desc">
+              <FieldLabel optional={<Optional />}>{t("commerce.collections.description")}</FieldLabel>
+              <FieldControl>
+                <Textarea rows={3} value={d.description} disabled={!canManage} onChange={(e) => set("description", e.target.value)} />
+              </FieldControl>
+            </Field>
+            <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <Field id="col-slug" invalid={!!errors.slug}>
+                <FieldLabel>{t("commerce.collections.slug")}</FieldLabel>
+                <FieldControl>
+                  <Input
+                    className="font-mono"
+                    value={d.slug}
+                    placeholder={slugify(d.name) || undefined}
+                    disabled={!canManage}
+                    onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                  />
+                </FieldControl>
+                <FieldError>{errors.slug}</FieldError>
+              </Field>
+              <Label htmlFor="col-active" className="flex items-center justify-between gap-4 rounded-xl border px-4 py-2.5 font-normal">
                 <span className="grid gap-0.5">
                   <span className="text-sm font-medium">{t("commerce.collections.active")}</span>
                   <span className="text-xs text-muted-foreground">{t("commerce.collections.activeHint")}</span>
@@ -207,7 +214,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
                 <Switch id="col-active" checked={d.active} disabled={!canManage} onCheckedChange={(v) => set("active", v)} />
               </Label>
             </div>
-            <div className="grid gap-2">
+            <div className="grid content-start gap-2">
               <Label>{t("commerce.collections.image")}</Label>
               <ImageManager value={d.image} onChange={(v) => set("image", v)} single disabled={!canManage} />
             </div>
@@ -232,33 +239,37 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
             {d.type === "manual" ? (
               <ManualPicker ids={d.productIds} onChange={(ids) => set("productIds", ids)} disabled={!canManage} />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="rule-cat">{t("commerce.collections.ruleCategory")}</Label>
+              <FieldRow cols={2}>
+                <Field id="rule-cat">
+                  <FieldLabel>{t("commerce.collections.ruleCategory")}</FieldLabel>
                   <CategorySelect
                     id="rule-cat"
                     value={d.categoryId}
                     onChange={(v) => set("categoryId", v)}
                     allowCreate={false}
                     noneLabel={t("commerce.collections.anyCategory")}
-                    className="h-11 w-full"
+                    className="w-full"
                     disabled={!canManage}
                   />
-                  <p className="text-xs text-muted-foreground">{t("commerce.collections.ruleCategoryHint")}</p>
-                </div>
-                <div className="grid content-start gap-2">
-                  <Label htmlFor="rule-tag">{t("commerce.collections.ruleTag")}</Label>
-                  <Input id="rule-tag" className="h-11" value={d.tag} placeholder={t("commerce.collections.ruleTagPlaceholder")} disabled={!canManage} onChange={(e) => set("tag", e.target.value.toLowerCase())} />
-                </div>
-                <div className="grid content-start gap-2">
-                  <Label htmlFor="rule-price">{t("commerce.collections.rulePriceMax")}</Label>
-                  <MoneyInput id="rule-price" className="h-11" value={d.priceMax} aria-invalid={!!errors.priceMax} disabled={!canManage} onChange={(e) => set("priceMax", e.target.value)} />
-                  {errors.priceMax && <p className="text-xs text-destructive">{errors.priceMax}</p>}
-                </div>
-                <div className="grid content-start gap-2">
-                  <Label htmlFor="rule-sort">{t("commerce.collections.ruleSort")}</Label>
+                  <FieldHint>{t("commerce.collections.ruleCategoryHint")}</FieldHint>
+                </Field>
+                <Field id="rule-tag">
+                  <FieldLabel>{t("commerce.collections.ruleTag")}</FieldLabel>
+                  <FieldControl>
+                    <Input value={d.tag} placeholder={t("commerce.collections.ruleTagPlaceholder")} disabled={!canManage} onChange={(e) => set("tag", e.target.value.toLowerCase())} />
+                  </FieldControl>
+                </Field>
+                <Field id="rule-price" invalid={!!errors.priceMax}>
+                  <FieldLabel>{t("commerce.collections.rulePriceMax")}</FieldLabel>
+                  <FieldControl>
+                    <MoneyInput value={d.priceMax} disabled={!canManage} onChange={(e) => set("priceMax", e.target.value)} />
+                  </FieldControl>
+                  <FieldError>{errors.priceMax}</FieldError>
+                </Field>
+                <Field id="rule-sort">
+                  <FieldLabel>{t("commerce.collections.ruleSort")}</FieldLabel>
                   <Select value={d.sort} onValueChange={(v) => set("sort", v as CollectionSort)} disabled={!canManage}>
-                    <SelectTrigger id="rule-sort" className="h-11 w-full">
+                    <SelectTrigger id="rule-sort" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -269,7 +280,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
                 <Label htmlFor="rule-sale" className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3 font-normal sm:col-span-2">
                   <span className="grid gap-0.5">
                     <span className="text-sm font-medium">{t("commerce.collections.ruleOnSale")}</span>
@@ -277,7 +288,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
                   </span>
                   <Switch id="rule-sale" checked={d.onSale} disabled={!canManage} onCheckedChange={(v) => set("onSale", v)} />
                 </Label>
-              </div>
+              </FieldRow>
             )}
           </Section>
         </div>
@@ -361,7 +372,7 @@ function ManualPicker({ ids, onChange, disabled }: { ids: string[]; onChange: (i
         </Label>
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input id="pick-search" type="search" className="h-11 pl-9" value={q} disabled={disabled} placeholder={t("commerce.collections.searchProducts")} onChange={(e) => setQ(e.target.value)} />
+          <Input id="pick-search" type="search" className="pl-9" value={q} disabled={disabled} placeholder={t("commerce.collections.searchProducts")} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className={cn("max-h-64 overflow-y-auto rounded-xl border", search.isPlaceholderData && "opacity-60")}>
           {search.isPending ? (

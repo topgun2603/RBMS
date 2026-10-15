@@ -6,6 +6,12 @@ import {
   Button,
   Checkbox,
   cn,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
+  FieldRow,
   Input,
   Label,
   Sheet,
@@ -95,21 +101,21 @@ export function RoleEditor({ draft, onClose, takenKeys }: { draft: RoleDraft | n
         </SheetHeader>
         <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col" noValidate>
           <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-5 py-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="role-name">{t("workspace.roles.name")}</Label>
-                <Input id="role-name" className="h-11" value={name} aria-invalid={!!nameError} onChange={(e) => setName(e.target.value)} autoFocus />
-                {nameError ? (
-                  <p className="text-xs text-destructive">{nameError}</p>
-                ) : (
-                  <p className="font-mono text-xs text-muted-foreground">{t("workspace.roles.keyHint", { key })}</p>
-                )}
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="role-desc">{t("workspace.roles.description")}</Label>
-                <Textarea id="role-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
-            </div>
+            <FieldRow cols={2}>
+              <Field id="role-name" invalid={!!nameError}>
+                <FieldLabel>{t("workspace.roles.name")}</FieldLabel>
+                <FieldControl>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+                </FieldControl>
+                {nameError ? <FieldError>{nameError}</FieldError> : <FieldHint className="font-mono">{t("workspace.roles.keyHint", { key })}</FieldHint>}
+              </Field>
+              <Field id="role-desc">
+                <FieldLabel>{t("workspace.roles.description")}</FieldLabel>
+                <FieldControl>
+                  <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+                </FieldControl>
+              </Field>
+            </FieldRow>
 
             <Label htmlFor="role-view-all" className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3 font-normal">
               <span className="grid gap-0.5">

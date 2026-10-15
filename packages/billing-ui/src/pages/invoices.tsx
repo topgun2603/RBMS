@@ -73,7 +73,8 @@ function InvoicesList() {
             type="search"
             aria-label={t("billing.invoices.search")}
             placeholder={t("billing.invoices.search")}
-            className="h-11 rounded-xl bg-card pl-9 text-base sm:text-sm"
+            size="lg"
+            className="rounded-xl bg-card pl-9 text-base sm:text-sm"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />

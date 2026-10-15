@@ -298,16 +298,16 @@ function CreateShipmentDialog({ order, open, onOpenChange }: { order: Order; ope
           )}
           {provider === "manual" && (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid items-start gap-4 sm:grid-cols-2">
                 <Field label={t("orders.ship.courier")} htmlFor="sh-courier">
-                  <Input id="sh-courier" className="h-11" value={courier} onChange={(e) => setCourier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />
+                  <Input id="sh-courier" value={courier} onChange={(e) => setCourier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />
                 </Field>
                 <Field label={t("orders.ship.awb")} htmlFor="sh-awb">
-                  <Input id="sh-awb" className="h-11" value={awb} onChange={(e) => setAwb(e.target.value)} autoComplete="off" />
+                  <Input id="sh-awb" value={awb} onChange={(e) => setAwb(e.target.value)} autoComplete="off" />
                 </Field>
               </div>
               <Field label={t("orders.ship.url")} htmlFor="sh-url" optional error={error}>
-                <Input id="sh-url" type="url" inputMode="url" className="h-11" value={url} onChange={(e) => (setUrl(e.target.value), setError(null))} placeholder="https://" />
+                <Input id="sh-url" type="url" inputMode="url" value={url} onChange={(e) => (setUrl(e.target.value), setError(null))} placeholder="https://" />
               </Field>
             </>
           )}
@@ -322,7 +322,6 @@ function CreateShipmentDialog({ order, open, onOpenChange }: { order: Order; ope
                   <Input
                     key={k}
                     inputMode="decimal"
-                    className="h-11"
                     aria-label={t(`orders.ship.dims.${k}`)}
                     placeholder={t(`orders.ship.dims.${k}`)}
                     value={dims[k]}
@@ -386,16 +385,16 @@ function FulfillmentDialog({ order, open, onOpenChange }: { order: Order; open: 
           <DialogDescription>{t("orders.ship.cardHintManual")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4" noValidate>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field label={t("orders.ship.courier")} htmlFor="ff-courier">
-              <Input id="ff-courier" className="h-11" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />
+              <Input id="ff-courier" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />
             </Field>
             <Field label={t("orders.ship.awb")} htmlFor="ff-awb">
-              <Input id="ff-awb" className="h-11" value={awb} onChange={(e) => setAwb(e.target.value)} autoComplete="off" />
+              <Input id="ff-awb" value={awb} onChange={(e) => setAwb(e.target.value)} autoComplete="off" />
             </Field>
           </div>
           <Field label={t("orders.ship.url")} htmlFor="ff-url" optional error={error}>
-            <Input id="ff-url" type="url" inputMode="url" className="h-11" value={url} onChange={(e) => (setUrl(e.target.value), setError(null))} placeholder="https://" />
+            <Input id="ff-url" type="url" inputMode="url" value={url} onChange={(e) => (setUrl(e.target.value), setError(null))} placeholder="https://" />
           </Field>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={action.isPending}>

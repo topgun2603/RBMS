@@ -121,15 +121,15 @@ export function StockAdjustDialog({
             </p>
           )}
 
-          <div className={cn("grid gap-4", mode === "add" && "sm:grid-cols-2")}>
-            <div className="grid gap-1.5">
+          <div className={cn("grid items-start gap-4", mode === "add" && "sm:grid-cols-2")}>
+            <div className="grid content-start gap-1.5">
               <Label htmlFor="adj-qty">{mode === "set" ? t("billing.adjust.qtySet") : t("billing.adjust.qty")}</Label>
               <Input
                 id="adj-qty"
                 autoFocus
                 inputMode="decimal"
                 autoComplete="off"
-                className="h-11 text-right text-base tabular-nums"
+                className="text-right text-base tabular-nums"
                 value={qty}
                 placeholder="0"
                 aria-invalid={touched && !!qtyError}
@@ -143,15 +143,15 @@ export function StockAdjustDialog({
               )}
             </div>
             {mode === "add" && (
-              <div className="grid gap-1.5">
+              <div className="grid content-start gap-1.5">
                 <Label htmlFor="adj-cost">
                   {t("billing.adjust.unitCost")} <span className="font-normal text-muted-foreground">({t("billing.common.optional")})</span>
                 </Label>
-                <MoneyInput id="adj-cost" className="h-11" value={cost} aria-invalid={!!costError} onChange={(e) => setCost(e.target.value)} />
+                <MoneyInput id="adj-cost" value={cost} aria-invalid={!!costError} aria-describedby="adj-cost-hint" onChange={(e) => setCost(e.target.value)} />
                 {costError ? (
-                  <p className="text-xs text-destructive">{costError}</p>
+                  <p id="adj-cost-hint" className="text-xs text-destructive">{costError}</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("billing.adjust.unitCostHint")}</p>
+                  <p id="adj-cost-hint" className="text-xs text-muted-foreground">{t("billing.adjust.unitCostHint")}</p>
                 )}
               </div>
             )}

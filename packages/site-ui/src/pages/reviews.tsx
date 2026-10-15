@@ -286,7 +286,7 @@ function ProductFilter({ value, onChange }: { value: ProductSummary | null; onCh
   const search = useProductSearch(debounced, open);
   if (value)
     return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-primary bg-primary/10 pr-1 pl-2 text-xs font-medium text-primary">
+      <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-primary bg-primary/10 pr-1 pl-2 text-xs font-medium text-primary">
         <Thumb src={value.image} className="size-5 rounded-full" />
         <span className="max-w-40 truncate">{value.name}</span>
         <button type="button" className="inline-flex size-6 items-center justify-center rounded-full outline-none hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("site.reviews.clearProduct")} onClick={() => onChange(null)}>
@@ -297,14 +297,14 @@ function ProductFilter({ value, onChange }: { value: ProductSummary | null; onCh
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 rounded-full">
+        <Button variant="outline" size="sm" className="rounded-full">
           <PackageIcon /> {t("site.reviews.anyProduct")} <ChevronDownIcon />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-2">
         <div className="relative mb-2">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input autoFocus type="search" className="h-10 pl-9" value={q} placeholder={t("site.pickers.searchProducts")} aria-label={t("site.pickers.searchProducts")} onChange={(e) => setQ(e.target.value)} />
+          <Input autoFocus type="search" className="pl-9" value={q} placeholder={t("site.pickers.searchProducts")} aria-label={t("site.pickers.searchProducts")} onChange={(e) => setQ(e.target.value)} />
         </div>
         <ul className="max-h-64 overflow-y-auto">
           {search.isPending ? (

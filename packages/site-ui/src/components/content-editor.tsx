@@ -14,7 +14,7 @@ import {
   Rows3Icon,
   Trash2Icon,
 } from "lucide-react";
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label, Textarea, toast } from "@srirealtime/ui";
+import { Button, cn, controlHeight, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label, Textarea, toast } from "@srirealtime/ui";
 import { ApiError, ConfirmDialog, describeError, Page, PageHeading, useI18n, useModuleHref } from "@srirealtime/web";
 import { PERMS, useCan } from "../lib/access";
 import { checkBlocks, fromBlockForm, toBlockForm, type BlockForm } from "../lib/blocks";
@@ -251,16 +251,16 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
           <Section id="ce-details" icon={Icon} title={t("site.editor.details")}>
             <TextField id="ce-title" label={t("site.editor.title")} value={d.title} maxLength={CMS_LIMITS.title} disabled={!canEdit} error={errs ? titleError : null} inputClassName="text-base" onChange={(v) => set("title", v)} />
-            <div className="grid gap-1.5">
+            <div className="grid content-start gap-2">
               <Label htmlFor="ce-slug">
                 <Link2Icon className="size-3.5 text-muted-foreground" /> {t("site.editor.slug")}
                 {isNew && <Optional />}
               </Label>
-              <div className="flex items-center overflow-hidden rounded-xl border border-input bg-card shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/40">
-                <span className="shrink-0 border-r bg-muted/50 px-3 py-2.5 font-mono text-xs text-muted-foreground">{kind === "page" ? "/" : "/blog/"}</span>
+              <div className={cn("flex items-center overflow-hidden rounded-xl border border-input bg-card shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/40", controlHeight())}>
+                <span className="flex h-full shrink-0 items-center border-r bg-muted/50 px-3 font-mono text-xs text-muted-foreground">{kind === "page" ? "/" : "/blog/"}</span>
                 <Input
                   id="ce-slug"
-                  className="h-11 rounded-none border-0 font-mono shadow-none focus-visible:ring-0"
+                  className="h-full rounded-none border-0 font-mono shadow-none focus-visible:ring-0"
                   value={d.slug}
                   placeholder={slugify(d.title) || undefined}
                   aria-invalid={!!slugProblem}
@@ -273,7 +273,7 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
                 />
               </div>
               {slugProblem ? (
-                <FieldError code={`site.slug.${slugProblem}`} />
+                <FieldError code={`site.slug.${slugProblem}`} id="ce-slug-hint" />
               ) : (
                 <p id="ce-slug-hint" className="text-xs text-muted-foreground">
                   {storeUrl ? storeUrl(path) : path} · {t("site.slug.hint")}
@@ -284,16 +284,16 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
             </div>
             {kind === "post" && (
               <>
-                <div className="grid gap-1.5">
+                <div className="grid content-start gap-2">
                   <Label htmlFor="ce-excerpt">
                     {t("site.posts.excerpt")}
                     <Optional />
                   </Label>
-                  <Textarea id="ce-excerpt" rows={2} maxLength={500} value={d.excerpt} disabled={!canEdit} onChange={(e) => set("excerpt", e.target.value)} />
-                  <p className="text-xs text-muted-foreground">{t("site.posts.excerptHint")}</p>
+                  <Textarea id="ce-excerpt" aria-describedby="ce-excerpt-hint" rows={2} maxLength={500} value={d.excerpt} disabled={!canEdit} onChange={(e) => set("excerpt", e.target.value)} />
+                  <p id="ce-excerpt-hint" className="text-xs text-muted-foreground">{t("site.posts.excerptHint")}</p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid content-start gap-1.5">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
+                  <div className="grid content-start gap-2">
                     <Label htmlFor="ce-tags">
                       {t("site.posts.tags")}
                       <Optional />

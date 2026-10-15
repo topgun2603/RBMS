@@ -82,7 +82,7 @@ function Purchases() {
       <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_16rem]">
         <SearchField value={q} onChange={setQ} placeholder={t("billing.purchases.search")} />
         <Select value={supplierId || ALL} onValueChange={setSupplier}>
-          <SelectTrigger className="h-11 w-full rounded-xl bg-card" aria-label={t("billing.purchases.supplierFilter")}>
+          <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("billing.purchases.supplierFilter")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="max-h-80">

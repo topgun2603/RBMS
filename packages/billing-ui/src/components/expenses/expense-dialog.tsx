@@ -173,7 +173,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
           <Form {...form}>
             <form onSubmit={onSubmit} className="grid gap-4" noValidate>
               <fieldset disabled={readOnly} className="grid gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="amount"
@@ -181,7 +181,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                       <FormItem>
                         <FormLabel>{t("billing.expenses.amount")}</FormLabel>
                         <FormControl>
-                          <MoneyInput autoFocus className="h-11 text-lg font-semibold" placeholder="0" {...field} />
+                          <MoneyInput autoFocus className="text-lg font-semibold" placeholder="0" {...field} />
                         </FormControl>
                         <FormDescription>{t("billing.expenses.amountHint")}</FormDescription>
                         <FormMessage />
@@ -195,14 +195,14 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                       <FormItem>
                         <FormLabel>{t("billing.expenses.date")}</FormLabel>
                         <FormControl>
-                          <Input type="date" className="h-11" max={todayIST()} {...field} />
+                          <Input type="date" max={todayIST()} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="categoryId"
@@ -210,7 +210,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                       <FormItem>
                         <FormLabel>{t("billing.expenses.category")}</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="h-11 w-full" aria-label={t("billing.expenses.category")}>
+                          <SelectTrigger className="w-full" aria-label={t("billing.expenses.category")}>
                             <SelectValue placeholder={t("billing.expenses.pickCategory")} />
                           </SelectTrigger>
                           <SelectContent>
@@ -231,7 +231,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("billing.expenses.gstRate")}</FormLabel>
-                        <GstRateSelect value={field.value} onChange={field.onChange} className="h-11 w-full" aria-label={t("billing.expenses.gstRate")} />
+                        <GstRateSelect value={field.value} onChange={field.onChange} className="w-full" aria-label={t("billing.expenses.gstRate")} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -255,7 +255,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                   </div>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="vendorName"
@@ -263,7 +263,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                       <FormItem>
                         <FormLabel>{t("billing.expenses.vendor")}</FormLabel>
                         <FormControl>
-                          <Input className="h-11" autoComplete="off" placeholder={t("billing.expenses.vendorPlaceholder")} {...field} />
+                          <Input autoComplete="off" placeholder={t("billing.expenses.vendorPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -278,7 +278,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                         <div className="relative">
                           <FormControl>
                             <Input
-                              className="h-11 pr-9 font-mono uppercase"
+                              className="pr-9 font-mono uppercase"
                               autoComplete="off"
                               autoCapitalize="characters"
                               spellCheck={false}
@@ -319,7 +319,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                   )}
                 />
 
-                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
                   <FormField
                     control={form.control}
                     name="note"
@@ -334,7 +334,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     )}
                   />
                   <div className="grid content-start gap-2">
-                    <span className="text-sm font-medium">{t("billing.expenses.receipt")}</span>
+                    <span className="flex min-h-5 items-end text-sm leading-none font-medium">{t("billing.expenses.receipt")}</span>
                     {receiptUrl ? (
                       <div className="relative">
                         <a href={receiptUrl} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border">
@@ -395,7 +395,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     <FormItem>
                       <FormLabel>{t("billing.expenses.reference")}</FormLabel>
                       <FormControl>
-                        <Input className="h-11" autoComplete="off" placeholder={t("billing.expenses.referencePlaceholder")} {...field} />
+                        <Input autoComplete="off" placeholder={t("billing.expenses.referencePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

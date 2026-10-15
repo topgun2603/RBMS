@@ -174,7 +174,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
               maxLength={opts.max}
               placeholder={opts.placeholder}
               autoComplete="off"
-              className={`h-11 ${opts.mono ? "font-mono" : ""} ${opts.upper ? "uppercase" : ""}`}
+              className={`${opts.mono ? "font-mono" : ""} ${opts.upper ? "uppercase" : ""}`.trim() || undefined}
               {...field}
               onChange={(e) => field.onChange(opts.upper ? e.target.value.toUpperCase() : e.target.value)}
             />
@@ -200,7 +200,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
               </CardTitle>
               <CardDescription>{t("billing.settings.businessHint")}</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 px-5 sm:grid-cols-2">
+            <CardContent className="grid items-start gap-4 px-5 sm:grid-cols-2">
               <div className="sm:col-span-2">{text("legalName", t("billing.settings.legalName"))}</div>
               <FormField
                 control={form.control}
@@ -211,7 +211,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
                     <div className="relative">
                       <FormControl>
                         <Input
-                          className="h-11 pr-9 font-mono uppercase"
+                          className="pr-9 font-mono uppercase"
                           maxLength={15}
                           autoComplete="off"
                           spellCheck={false}
@@ -233,7 +233,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("billing.settings.state")}</FormLabel>
-                    <StateSelect value={field.value} onChange={field.onChange} disabled={!canEdit} className="h-11 w-full" aria-label={t("billing.settings.state")} />
+                    <StateSelect value={field.value} onChange={field.onChange} disabled={!canEdit} className="w-full" aria-label={t("billing.settings.state")} />
                     <FormDescription>{field.value ? stateLabel(field.value) : ""}</FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -303,7 +303,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
               </CardTitle>
               <CardDescription>{t("billing.settings.paymentsHint")}</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 px-5 sm:grid-cols-2">
+            <CardContent className="grid items-start gap-4 px-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 {text("upiId", t("billing.settings.upiId"), { placeholder: "shop@okicici", hint: t("billing.settings.upiHint") })}
               </div>

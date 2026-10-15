@@ -101,10 +101,10 @@ function AddDomain() {
     <Section icon={PlusIcon} tone="text-info-ink" title={t("site.domain.addTitle")} description={t("site.domain.addHint")}>
       <form onSubmit={submit} noValidate className="grid gap-2">
         <Label htmlFor="dom-new">{t("site.domain.domain")}</Label>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
           <Input
             id="dom-new"
-            className="h-11 font-mono"
+            className="font-mono"
             inputMode="url"
             autoCapitalize="none"
             autoCorrect="off"
@@ -112,13 +112,22 @@ function AddDomain() {
             placeholder="shop.example.in"
             value={value}
             aria-invalid={!!error}
+            aria-describedby="dom-new-help"
             onChange={(e) => setValue(e.target.value)}
           />
-          <Button type="submit" size="lg" disabled={add.isPending || !value.trim()}>
+          <Button type="submit" disabled={add.isPending || !value.trim()}>
             {add.isPending ? <Loader2Icon className="animate-spin" /> : <PlusIcon />} {t("site.domain.add")}
           </Button>
         </div>
-        {error ? <p className="text-xs text-destructive">{error}</p> : <p className="text-xs text-muted-foreground">{t("site.domain.wwwTip")}</p>}
+        {error ? (
+          <p id="dom-new-help" className="text-xs text-destructive">
+            {error}
+          </p>
+        ) : (
+          <p id="dom-new-help" className="text-xs text-muted-foreground">
+            {t("site.domain.wwwTip")}
+          </p>
+        )}
       </form>
     </Section>
   );

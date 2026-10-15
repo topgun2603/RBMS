@@ -263,13 +263,13 @@ function ReviewForm({ productId, existing, onDone }: { productId: string; existi
           ))}
         </div>
       </fieldset>
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-1.5">
         <label htmlFor={`${id}-t`} className="text-sm font-medium">
           {t("reviews.titleField")} <span className="text-muted-foreground">({t("common.optional")})</span>
         </label>
         <input id={`${id}-t`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30" />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid content-start gap-1.5">
         <label htmlFor={`${id}-b`} className="text-sm font-medium">
           {t("reviews.bodyField")}
         </label>

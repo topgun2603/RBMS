@@ -9,8 +9,10 @@ import {
   cn,
   DataTable,
   EmptyState,
+  Field,
+  FieldControl,
+  FieldLabel,
   Input,
-  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -167,35 +169,35 @@ function AuditLog() {
           />
           <div className="flex gap-2">
             {filtered && (
-              <Button variant="ghost" size="sm" className="h-9" onClick={reset}>
+              <Button variant="ghost" size="sm" onClick={reset}>
                 <FilterXIcon /> {t("workspace.audit.clear")}
               </Button>
             )}
-            <Button variant="outline" size="sm" className="h-9" onClick={() => void download()} disabled={downloading}>
+            <Button variant="outline" size="sm" onClick={() => void download()} disabled={downloading}>
               {downloading ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />} {t("workspace.common.csv")}
             </Button>
           </div>
         </div>
         {preset === "custom" && (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="grid gap-1">
-              <Label htmlFor="audit-from" className="text-xs text-muted-foreground">
-                {t("workspace.audit.from")}
-              </Label>
-              <Input id="audit-from" type="date" className="h-10 w-40" value={range.from} max={range.to} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
-            </div>
-            <div className="grid gap-1">
-              <Label htmlFor="audit-to" className="text-xs text-muted-foreground">
-                {t("workspace.audit.to")}
-              </Label>
-              <Input id="audit-to" type="date" className="h-10 w-40" value={range.to} min={range.from} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
-            </div>
+          <div className="flex flex-wrap items-start gap-2">
+            <Field id="audit-from" className="w-40 gap-1">
+              <FieldLabel className="text-xs text-muted-foreground">{t("workspace.audit.from")}</FieldLabel>
+              <FieldControl>
+                <Input type="date" value={range.from} max={range.to} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
+              </FieldControl>
+            </Field>
+            <Field id="audit-to" className="w-40 gap-1">
+              <FieldLabel className="text-xs text-muted-foreground">{t("workspace.audit.to")}</FieldLabel>
+              <FieldControl>
+                <Input type="date" value={range.to} min={range.from} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
+              </FieldControl>
+            </Field>
           </div>
         )}
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid items-start gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {canSeeTeam && (
             <Select value={actor} onValueChange={setActor}>
-              <SelectTrigger className="h-10 w-full" aria-label={t("workspace.audit.member")}>
+              <SelectTrigger className="w-full" aria-label={t("workspace.audit.member")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -209,7 +211,7 @@ function AuditLog() {
             </Select>
           )}
           <Select value={group} onValueChange={setGroup}>
-            <SelectTrigger className="h-10 w-full" aria-label={t("workspace.audit.action")}>
+            <SelectTrigger className="w-full" aria-label={t("workspace.audit.action")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +224,7 @@ function AuditLog() {
             </SelectContent>
           </Select>
           <Select value={entityType} onValueChange={setEntityType}>
-            <SelectTrigger className="h-10 w-full" aria-label={t("workspace.audit.entityType")}>
+            <SelectTrigger className="w-full" aria-label={t("workspace.audit.entityType")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -235,7 +237,7 @@ function AuditLog() {
             </SelectContent>
           </Select>
           <Input
-            className="h-10 font-mono"
+            className="font-mono"
             value={entityId}
             onChange={(e) => setEntityId(e.target.value)}
             placeholder={t("workspace.audit.entityIdPlaceholder")}

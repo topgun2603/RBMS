@@ -210,7 +210,7 @@ export function CouponForm({ cart: c }: { cart: PricedCart }) {
             }
           }}
         >
-          <div key={shake} className={cn("flex gap-2", shake > 0 && "sf-shake")}>
+          <div key={shake} className={cn("flex items-start gap-2", shake > 0 && "sf-shake")}>
             <label htmlFor={id} className="sr-only">
               {t("cart.coupon")}
             </label>
@@ -227,11 +227,11 @@ export function CouponForm({ cart: c }: { cart: PricedCart }) {
                 autoCapitalize="characters"
                 aria-invalid={!!error}
                 aria-describedby={error ? `${id}-err` : undefined}
-                className="h-11 w-full rounded-xl border border-input bg-background ps-9 pe-3 text-sm font-medium uppercase outline-none transition-[border-color,box-shadow] placeholder:normal-case focus:ring-[3px] focus:ring-ring/30 aria-[invalid=true]:border-destructive"
+                className="block h-11 w-full rounded-xl border border-input bg-background ps-9 pe-3 text-sm font-medium uppercase outline-none transition-[border-color,box-shadow] placeholder:normal-case focus:ring-[3px] focus:ring-ring/30 aria-[invalid=true]:border-destructive"
                 data-testid="coupon-input"
               />
             </div>
-            <Button type="submit" variant="secondary" className="h-11 rounded-xl px-5" disabled={busy || !code.trim()}>
+            <Button type="submit" variant="secondary" size="lg" className="rounded-xl px-5" disabled={busy || !code.trim()}>
               {busy ? <Loader2Icon className="animate-spin" /> : t("cart.applyCoupon")}
             </Button>
           </div>
@@ -289,7 +289,7 @@ function DeliveryOptions({ cart: c }: { cart: PricedCart }) {
   return (
     <div className="grid gap-2">
       <form
-        className="flex gap-2"
+        className="flex items-start gap-2"
         onSubmit={async (e) => {
           e.preventDefault();
           if (!/^[1-9]\d{5}$/.test(pin)) return toast.error(t("delivery.invalidPin"));
@@ -307,7 +307,7 @@ function DeliveryOptions({ cart: c }: { cart: PricedCart }) {
           {t("delivery.pincode")}
         </label>
         <input id={id} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder={t("delivery.pincode")} className="h-11 flex-1 rounded-xl border border-input bg-background px-3 text-sm tabular-nums outline-none focus:ring-[3px] focus:ring-ring/30" />
-        <Button type="submit" variant="secondary" className="h-11 rounded-xl px-5" disabled={busy}>
+        <Button type="submit" variant="secondary" size="lg" className="rounded-xl px-5" disabled={busy}>
           {busy ? <Loader2Icon className="animate-spin" /> : t("delivery.check")}
         </Button>
       </form>

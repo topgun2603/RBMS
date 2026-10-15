@@ -4,6 +4,7 @@ import * as React from "react";
 import { Loader2Icon } from "lucide-react";
 import { GST_STATES } from "@srirealtime/gst";
 import { Button } from "@srirealtime/ui/components/button";
+import { Field, FieldControl, FieldError, FieldLabel } from "@srirealtime/ui/components/field";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { normalizeMobile, prettyPhone } from "../lib/format";
 import type { Address, AddressInput, PincodeInfo } from "../types";
@@ -111,57 +112,56 @@ export function AddressForm({
     }
   };
 
-  const field = (k: keyof Fields, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}, cls?: string) => (
-    <div className={cn("grid gap-1.5", cls)}>
-      <label htmlFor={`${id}-${k}`} className="text-sm font-medium">
-        {label}
-      </label>
-      <input
-        id={`${id}-${k}`}
-        value={f[k]}
-        onChange={set(k)}
-        aria-invalid={!!errors[k]}
-        aria-describedby={errors[k] ? `${id}-${k}-e` : undefined}
-        className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30 aria-invalid:border-destructive"
-        {...props}
-      />
-      {errors[k] && (
-        <p id={`${id}-${k}-e`} className="text-xs text-danger-ink">
-          {errors[k]}
-        </p>
-      )}
-    </div>
+  // Each field is a top-aligned column (label row → control → error), so an error under one field never pushes the
+  // control of its neighbour in the same row down. Label-row extras (the PIN lookup spinner) go in `aside`.
+  const field = (k: keyof Fields, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}, cls?: string, aside?: React.ReactNode) => (
+    <Field id={`${id}-${k}`} invalid={!!errors[k]} className={cn("gap-1.5", cls)}>
+      <FieldLabel aside={aside}>{label}</FieldLabel>
+      <FieldControl>
+        <input
+          value={f[k]}
+          onChange={set(k)}
+          className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30 aria-invalid:border-destructive"
+          {...props}
+        />
+      </FieldControl>
+      <FieldError className="text-danger-ink">{errors[k]}</FieldError>
+    </Field>
   );
 
   return (
-    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2" noValidate data-testid="address-form">
+    <form onSubmit={submit} className="grid items-start gap-4 sm:grid-cols-2" noValidate data-testid="address-form">
       {field("name", t("address.name"), { autoComplete: "name" })}
       {field("phone", t("address.phone"), { type: "tel", inputMode: "numeric", autoComplete: "tel-national", placeholder: "98765 43210" })}
-      <div className="relative">
-        {field("pincode", t("address.pincode"), { inputMode: "numeric", autoComplete: "postal-code", maxLength: 6, onChange: (e) => setF((x) => ({ ...x, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })) })}
-        {lookup && (
-          <span className="absolute top-0 right-0 flex items-center gap-1 text-xs text-muted-foreground">
+      {field(
+        "pincode",
+        t("address.pincode"),
+        { inputMode: "numeric", autoComplete: "postal-code", maxLength: 6, onChange: (e) => setF((x) => ({ ...x, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })) },
+        undefined,
+        lookup ? (
+          <span role="status" className="flex items-center gap-1">
             <Loader2Icon className="size-3 animate-spin" /> {t("address.lookingUp")}
           </span>
-        )}
-      </div>
+        ) : null,
+      )}
       {field("city", t("address.city"), { autoComplete: "address-level2" })}
       {field("line1", t("address.line1"), { autoComplete: "address-line1" }, "sm:col-span-2")}
       {field("line2", t("address.line2"), { autoComplete: "address-line2" }, "sm:col-span-2")}
       {field("landmark", t("address.landmark"))}
       {field("district", t("address.district"))}
-      <div className="grid gap-1.5">
-        <label htmlFor={`${id}-state`} className="text-sm font-medium">
-          {t("address.state")}
-        </label>
-        <select id={`${id}-state`} value={f.stateCode} onChange={set("stateCode")} autoComplete="address-level1" className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30">
-          {GST_STATES.filter((s) => s.code !== "97" && s.code !== "96").map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Field id={`${id}-state`} invalid={!!errors.stateCode} className="gap-1.5">
+        <FieldLabel>{t("address.state")}</FieldLabel>
+        <FieldControl>
+          <select value={f.stateCode} onChange={set("stateCode")} autoComplete="address-level1" className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30 aria-invalid:border-destructive">
+            {GST_STATES.filter((s) => s.code !== "97" && s.code !== "96").map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </FieldControl>
+        <FieldError className="text-danger-ink">{errors.stateCode}</FieldError>
+      </Field>
       {field("label", t("address.label"), { maxLength: 40 })}
       {formError && (
         <p className="text-sm text-danger-ink sm:col-span-2" role="alert">
@@ -169,12 +169,12 @@ export function AddressForm({
         </p>
       )}
       <div className="flex flex-wrap gap-2 sm:col-span-2">
-        <Button type="submit" size="lg" className="h-11 rounded-full px-6" disabled={busy} data-testid="address-save">
+        <Button type="submit" size="lg" className="rounded-full px-6" disabled={busy} data-testid="address-save">
           {busy && <Loader2Icon className="animate-spin" />}
           {busy ? t("address.saving") : (submitLabel ?? t("address.save"))}
         </Button>
         {onCancel && (
-          <Button type="button" variant="ghost" size="lg" className="h-11 rounded-full" onClick={onCancel}>
+          <Button type="button" variant="ghost" size="lg" className="rounded-full" onClick={onCancel}>
             {t("address.cancel")}
           </Button>
         )}

@@ -1,5 +1,6 @@
 // Utilities
 export { cn } from "./lib/utils";
+export { CONTROL_HEIGHT, CONTROL_SQUARE, controlHeight, type ControlSize } from "./lib/control";
 export { Slot } from "radix-ui";
 
 // shadcn components
@@ -37,6 +38,7 @@ export * from "./components/tooltip";
 // Kit components
 export * from "./components/chip-group";
 export * from "./components/color-input";
+export * from "./components/field";
 export * from "./components/initials-avatar";
 export * from "./components/meter";
 export * from "./components/status-pill";

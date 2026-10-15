@@ -46,9 +46,9 @@ export function CategoriesDialog({ open, onOpenChange }: { open: boolean; onOpen
           <DialogTitle>{t("billing.expenses.categoriesTitle")}</DialogTitle>
           <DialogDescription>{t("billing.expenses.categoriesHint")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={add} className="flex gap-2">
-          <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("billing.expenses.newCategory")} aria-label={t("billing.expenses.newCategory")} maxLength={60} />
-          <Button type="submit" className="h-11" disabled={!name.trim() || save.isPending}>
+        <form onSubmit={add} className="flex items-start gap-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("billing.expenses.newCategory")} aria-label={t("billing.expenses.newCategory")} maxLength={60} />
+          <Button type="submit" disabled={!name.trim() || save.isPending}>
             {save.isPending && !editing ? <Loader2Icon className="animate-spin" /> : <PlusIcon />} {t("billing.expenses.addCategory")}
           </Button>
         </form>
@@ -67,8 +67,7 @@ export function CategoriesDialog({ open, onOpenChange }: { open: boolean; onOpen
                 {editing?.id === c.id ? (
                   <>
                     <Input
-                      autoFocus
-                      className="h-9"
+                      autoFocus
                       value={editing.name}
                       maxLength={60}
                       aria-label={t("billing.expenses.renameCategory")}

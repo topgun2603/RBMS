@@ -24,6 +24,7 @@ import {
   Button,
   ChipGroup,
   cn,
+  controlHeight,
   EmptyState,
   Input,
   motion,
@@ -280,26 +281,26 @@ export default function NewOrderPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex items-center rounded-lg border bg-card">
-                          <Button type="button" variant="ghost" size="icon" onClick={() => step(l.key, -1)} aria-label={t("orders.new.less")}>
+                        <div className={cn("flex items-stretch overflow-hidden rounded-lg border bg-card", controlHeight("sm"))}>
+                          <Button type="button" variant="ghost" size="icon-sm" className="h-full rounded-none" onClick={() => step(l.key, -1)} aria-label={t("orders.new.less")}>
                             <MinusIcon />
                           </Button>
                           <input
                             inputMode="decimal"
-                            className="h-9 w-14 bg-transparent text-center text-sm tabular-nums outline-none"
+                            className="w-14 bg-transparent text-center text-sm tabular-nums outline-none"
                             aria-label={t("orders.new.qty")}
                             value={l.qty}
                             onChange={(e) => setLine(l.key, { qty: cleanQty(e.target.value) })}
                           />
-                          <Button type="button" variant="ghost" size="icon" onClick={() => step(l.key, 1)} aria-label={t("orders.new.more")}>
+                          <Button type="button" variant="ghost" size="icon-sm" className="h-full rounded-none" onClick={() => step(l.key, 1)} aria-label={t("orders.new.more")}>
                             <PlusIcon />
                           </Button>
                         </div>
                         <div className="w-28">
-                          <MoneyInput className="h-9" aria-label={t("orders.new.price")} value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} />
+                          <MoneyInput size="sm" aria-label={t("orders.new.price")} value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} />
                         </div>
                         <span className="ml-auto min-w-20 text-right font-semibold tabular-nums">{money(l.amount)}</span>
-                        <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-danger-ink" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={t("orders.common.removeNamed", { name: l.variant.productName })}>
+                        <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-danger-ink" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={t("orders.common.removeNamed", { name: l.variant.productName })}>
                           <Trash2Icon />
                         </Button>
                       </div>
@@ -313,14 +314,14 @@ export default function NewOrderPage() {
           {/* Customer */}
           <Section icon={UserIcon} title={t("orders.new.customer")}>
             <Field label={t("orders.new.name")} htmlFor="c-name" error={errors.name}>
-              <Input id="c-name" className="h-11" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!errors.name} />
+              <Input id="c-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!errors.name} />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid items-start gap-4 sm:grid-cols-2">
               <Field label={t("orders.new.phone")} htmlFor="c-phone" optional error={errors.phone} hint={t("orders.new.phoneHint")}>
-                <Input id="c-phone" type="tel" inputMode="tel" className="h-11" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} aria-invalid={!!errors.phone} />
+                <Input id="c-phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} aria-invalid={!!errors.phone} />
               </Field>
               <Field label={t("orders.new.email")} htmlFor="c-email" optional error={errors.email}>
-                <Input id="c-email" type="email" inputMode="email" className="h-11" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.email} />
+                <Input id="c-email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.email} />
               </Field>
             </div>
           </Section>
@@ -339,7 +340,7 @@ export default function NewOrderPage() {
           >
             {ship && (
               <>
-                <div className="grid gap-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                <div className="grid items-start gap-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
                   <Field
                     label={t("orders.new.pincode")}
                     htmlFor="a-pin"
@@ -350,7 +351,7 @@ export default function NewOrderPage() {
                       id="a-pin"
                       inputMode="numeric"
                       autoComplete="postal-code"
-                      className="h-11 tabular-nums"
+                      className="tabular-nums"
                       value={pincode}
                       maxLength={6}
                       onChange={(e) => {
@@ -362,27 +363,27 @@ export default function NewOrderPage() {
                     />
                   </Field>
                   <Field label={t("orders.new.line1")} htmlFor="a-line1" error={errors.line1}>
-                    <Input id="a-line1" className="h-11" autoComplete="address-line1" value={line1} onChange={(e) => setLine1(e.target.value)} aria-invalid={!!errors.line1} />
+                    <Input id="a-line1" autoComplete="address-line1" value={line1} onChange={(e) => setLine1(e.target.value)} aria-invalid={!!errors.line1} />
                   </Field>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   <Field label={t("orders.new.line2")} htmlFor="a-line2" optional>
-                    <Input id="a-line2" className="h-11" autoComplete="address-line2" value={line2} onChange={(e) => setLine2(e.target.value)} />
+                    <Input id="a-line2" autoComplete="address-line2" value={line2} onChange={(e) => setLine2(e.target.value)} />
                   </Field>
                   <Field label={t("orders.new.landmark")} htmlFor="a-landmark" optional>
-                    <Input id="a-landmark" className="h-11" value={landmark} onChange={(e) => setLandmark(e.target.value)} />
+                    <Input id="a-landmark" value={landmark} onChange={(e) => setLandmark(e.target.value)} />
                   </Field>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid items-start gap-4 sm:grid-cols-3">
                   <Field label={t("orders.new.city")} htmlFor="a-city" error={errors.city}>
-                    <Input id="a-city" className="h-11" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} aria-invalid={!!errors.city} />
+                    <Input id="a-city" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} aria-invalid={!!errors.city} />
                   </Field>
                   <Field label={t("orders.new.district")} htmlFor="a-district" optional>
-                    <Input id="a-district" className="h-11" value={district} onChange={(e) => setDistrict(e.target.value)} />
+                    <Input id="a-district" value={district} onChange={(e) => setDistrict(e.target.value)} />
                   </Field>
                   <Field label={t("orders.new.state")} htmlFor="a-state" error={errors.stateCode}>
                     <Select value={stateCode} onValueChange={setStateCode}>
-                      <SelectTrigger id="a-state" className="h-11 w-full">
+                      <SelectTrigger id="a-state" className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -418,7 +419,7 @@ export default function NewOrderPage() {
                   {t("orders.new.markPaid")}
                 </label>
                 {markPaid && (
-                  <Input className="h-11" aria-label={t("orders.payments.reference")} placeholder={t("orders.payments.referencePlaceholder")} value={reference} onChange={(e) => setReference(e.target.value)} />
+                  <Input aria-label={t("orders.payments.reference")} placeholder={t("orders.payments.referencePlaceholder")} value={reference} onChange={(e) => setReference(e.target.value)} />
                 )}
               </div>
             ) : (
@@ -428,7 +429,7 @@ export default function NewOrderPage() {
 
           {/* Notes */}
           <Section icon={NotebookPenIcon} tone="text-warning-ink" title={t("orders.new.notes")}>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid items-start gap-4 sm:grid-cols-2">
               <Field label={t("orders.new.internalNote")} htmlFor="n-int" optional hint={t("orders.timeline.noteInternal")}>
                 <Textarea id="n-int" rows={3} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
               </Field>
@@ -443,9 +444,9 @@ export default function NewOrderPage() {
         <div className="grid min-w-0 content-start gap-4 lg:sticky lg:top-20 lg:self-start">
           {couponsOn && (
             <Section icon={TicketPercentIcon} title={t("orders.new.coupon")}>
-              <div className="flex gap-2">
+              <div className="flex items-start gap-2">
                 <Input
-                  className="h-11 font-mono uppercase"
+                  className="font-mono uppercase"
                   aria-label={t("orders.new.couponCode")}
                   placeholder={t("orders.new.couponPlaceholder")}
                   value={code}
@@ -460,7 +461,7 @@ export default function NewOrderPage() {
                     }
                   }}
                 />
-                <Button type="button" variant="outline" className="h-11" disabled={!code.trim() || checking || lines.length === 0} onClick={() => void checkCoupon()}>
+                <Button type="button" variant="outline" disabled={!code.trim() || checking || lines.length === 0} onClick={() => void checkCoupon()}>
                   {checking && <Loader2Icon className="animate-spin" />}
                   {t("orders.new.apply")}
                 </Button>

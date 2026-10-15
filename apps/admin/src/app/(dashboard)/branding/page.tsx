@@ -16,6 +16,11 @@ import {
   CardTitle,
   ColorInput,
   cn,
+  controlHeight,
+  Field,
+  FieldControl,
+  FieldLabel,
+  FieldRow,
   Input,
   Label,
   PageHeader,
@@ -206,24 +211,26 @@ export default function BrandingPage() {
                 <CardDescription>{t("admin.branding.identityHint")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
-                <div className="grid gap-2">
-                  <Label htmlFor="appName">{t("admin.branding.appName")}</Label>
-                  <Input id="appName" value={draft.appName} maxLength={80} onChange={(e) => set("appName", e.target.value)} />
-                </div>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="grid gap-2">
+                <Field id="appName">
+                  <FieldLabel>{t("admin.branding.appName")}</FieldLabel>
+                  <FieldControl>
+                    <Input value={draft.appName} maxLength={80} onChange={(e) => set("appName", e.target.value)} />
+                  </FieldControl>
+                </Field>
+                <FieldRow className="gap-5">
+                  <Field>
                     <Label>{t("admin.branding.logo")}</Label>
                     <ImageUpload value={draft.logoUrl} onChange={(v) => set("logoUrl", v)} purpose="branding" shape="wide" />
-                  </div>
-                  <div className="grid gap-2">
+                  </Field>
+                  <Field>
                     <Label>{t("admin.branding.logoDark")}</Label>
                     <ImageUpload value={draft.logoDarkUrl} onChange={(v) => set("logoDarkUrl", v)} purpose="branding" shape="wide" dark />
-                  </div>
-                  <div className="grid gap-2">
+                  </Field>
+                  <Field>
                     <Label>{t("admin.branding.favicon")}</Label>
                     <ImageUpload value={draft.faviconUrl} onChange={(v) => set("faviconUrl", v)} purpose="branding" maxBytes={512 * 1024} />
-                  </div>
-                </div>
+                  </Field>
+                </FieldRow>
               </CardContent>
             </Card>
 
@@ -232,11 +239,13 @@ export default function BrandingPage() {
                 <CardTitle>{t("admin.branding.colors")}</CardTitle>
                 <CardDescription>{t("admin.branding.colorsHint")}</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-5 sm:grid-cols-3">
-                <div className="grid content-start gap-2">
-                  <Label htmlFor="c-primary">{t("admin.branding.primary")}</Label>
-                  <ColorInput id="c-primary" value={draft.primary} onChange={(v) => set("primary", v)} aria-label={t("admin.branding.primary")} />
-                </div>
+              <CardContent className="grid items-start gap-5 sm:grid-cols-3">
+                <Field id="c-primary">
+                  <FieldLabel>{t("admin.branding.primary")}</FieldLabel>
+                  <FieldControl>
+                    <ColorInput value={draft.primary} onChange={(v) => set("primary", v)} aria-label={t("admin.branding.primary")} />
+                  </FieldControl>
+                </Field>
                 <OptionalColor
                   id="c-secondary"
                   label={t("admin.branding.secondary")}
@@ -271,29 +280,31 @@ export default function BrandingPage() {
                     <span>{t("admin.branding.round")}</span>
                   </div>
                 </div>
-                <div className="grid gap-5 sm:grid-cols-3">
-                  <div className="grid gap-2">
-                    <Label>{t("admin.branding.fontSans")}</Label>
-                    <FontSelect value={draft.fontSans} onChange={(v) => set("fontSans", v ?? "Inter")} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>{t("admin.branding.fontHeading")}</Label>
-                    <FontSelect value={draft.fontHeading} onChange={(v) => set("fontHeading", v)} allowSame />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>{t("admin.branding.mode")}</Label>
+                <FieldRow cols={3} className="gap-5">
+                  <Field id="font-sans">
+                    <FieldLabel>{t("admin.branding.fontSans")}</FieldLabel>
+                    <FontSelect id="font-sans" value={draft.fontSans} onChange={(v) => set("fontSans", v ?? "Inter")} />
+                  </Field>
+                  <Field id="font-heading">
+                    <FieldLabel>{t("admin.branding.fontHeading")}</FieldLabel>
+                    <FontSelect id="font-heading" value={draft.fontHeading} onChange={(v) => set("fontHeading", v)} allowSame />
+                  </Field>
+                  <Field id="theme-mode">
+                    <FieldLabel>{t("admin.branding.mode")}</FieldLabel>
                     <Select value={draft.mode} onValueChange={(v) => set("mode", v as Draft["mode"])}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <FieldControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FieldControl>
                       <SelectContent>
                         <SelectItem value="light">{t("admin.theme.light")}</SelectItem>
                         <SelectItem value="dark">{t("admin.theme.dark")}</SelectItem>
                         <SelectItem value="system">{t("admin.theme.system")}</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                </div>
+                  </Field>
+                </FieldRow>
               </CardContent>
             </Card>
           </div>
@@ -306,7 +317,7 @@ export default function BrandingPage() {
                 {dirty && <Badge variant="warning">{t("admin.branding.unsaved")}</Badge>}
               </h2>
               <Tabs value={previewDark ? "dark" : "light"} onValueChange={(v) => setPreviewDark(v === "dark")}>
-                <TabsList className="h-8">
+                <TabsList>
                   <TabsTrigger value="light" aria-label={t("admin.theme.light")}>
                     <SunIcon />
                   </TabsTrigger>
@@ -377,32 +388,47 @@ function OptionalColor({
 }) {
   const { t } = useI18n();
   return (
-    <div className="grid content-start gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id}>{label}</Label>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {t("admin.branding.custom")}
-          <Switch checked={value !== null} onCheckedChange={(on) => onChange(on ? fallback : null)} aria-label={label} />
-        </label>
-      </div>
+    <Field id={id}>
+      <FieldLabel
+        aside={
+          <label className="flex items-center gap-1.5">
+            {t("admin.branding.custom")}
+            <Switch checked={value !== null} onCheckedChange={(on) => onChange(on ? fallback : null)} aria-label={label} />
+          </label>
+        }
+      >
+        {label}
+      </FieldLabel>
       {value !== null ? (
-        <ColorInput id={id} value={value} onChange={onChange} aria-label={label} />
+        <FieldControl>
+          <ColorInput value={value} onChange={onChange} aria-label={label} />
+        </FieldControl>
       ) : (
-        <div className="flex h-9 items-center rounded-md border border-dashed px-3 text-xs text-muted-foreground">
+        <div className={cn("flex items-center rounded-md border border-dashed px-3 text-xs text-muted-foreground", controlHeight())}>
           {t("admin.branding.useDefault")}
         </div>
       )}
-    </div>
+    </Field>
   );
 }
 
-function FontSelect({ value, onChange, allowSame }: { value: string | null; onChange: (v: string | null) => void; allowSame?: boolean }) {
+function FontSelect({
+  id,
+  value,
+  onChange,
+  allowSame,
+}: {
+  id?: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+  allowSame?: boolean;
+}) {
   const { t } = useI18n();
   const fonts: string[] = [...BRAND_FONTS];
   if (value && !fonts.includes(value)) fonts.unshift(value);
   return (
     <Select value={value ?? "__same"} onValueChange={(v) => onChange(v === "__same" ? null : v)}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger id={id} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

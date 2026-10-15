@@ -39,7 +39,7 @@ function StatCard({
       )}
       {...props}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex min-h-9 items-start justify-between gap-2">
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
         {Icon && (
           <div className={cn("icon-chip size-9", iconClassName ?? "text-primary")}>

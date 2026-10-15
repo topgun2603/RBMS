@@ -3,7 +3,19 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon, RefreshCwIcon, StoreIcon } from "lucide-react";
-import { AuthLayout, Button, FadeIn, Input, Label } from "@srirealtime/ui";
+import {
+  AuthLayout,
+  Button,
+  FadeIn,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@srirealtime/ui";
 import { LocaleSwitcher } from "../components/locale-switcher";
 import { Splash } from "../components/splash";
 import { ThemeToggle } from "../components/theme-toggle";
@@ -146,30 +158,25 @@ function OpenShop() {
           else window.location.assign(shopUrl(clean));
         }}
       >
-        <div className="grid gap-2">
-          <Label htmlFor="shop-slug">{t("web.open.slugLabel")}</Label>
-          <div className="flex items-center overflow-hidden rounded-md border shadow-xs focus-within:ring-[3px] focus-within:ring-ring/50">
-            <Input
-              id="shop-slug"
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              placeholder="raja"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              aria-invalid={touched && !valid}
-              className="h-11 border-0 shadow-none focus-visible:ring-0"
-            />
-            {!storage && <span className="shrink-0 pr-3 text-sm text-muted-foreground">.{root}</span>}
-          </div>
-          {touched && !valid ? (
-            <p className="text-xs text-destructive">{t("web.open.slugInvalid")}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground">{t("web.open.slugHint")}</p>
-          )}
-        </div>
-        <Button type="submit" size="lg" className="h-11">
+        <Field id="shop-slug">
+          <FieldLabel>{t("web.open.slugLabel")}</FieldLabel>
+          <InputGroup size="lg">
+            <FieldControl>
+              <InputGroupInput
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="raja"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+              />
+            </FieldControl>
+            {!storage && <InputGroupAddon>.{root}</InputGroupAddon>}
+          </InputGroup>
+          {touched && !valid ? <FieldError>{t("web.open.slugInvalid")}</FieldError> : <FieldHint>{t("web.open.slugHint")}</FieldHint>}
+        </Field>
+        <Button type="submit" size="lg">
           {t("web.open.go")} <ArrowRightIcon />
         </Button>
       </form>

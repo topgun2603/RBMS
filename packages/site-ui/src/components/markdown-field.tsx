@@ -67,7 +67,7 @@ export function MarkdownField({
     cn("inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", on ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground");
 
   return (
-    <div className="grid gap-1.5">
+    <div className="grid content-start gap-2">
       <Label htmlFor={id} className={cn(hideLabel && "sr-only")}>
         {label}
         {optional && <Optional />}

@@ -85,7 +85,7 @@ export function TrackLookup() {
   const id = React.useId();
   return (
     <form
-      className="flex flex-col gap-2 sm:flex-row"
+      className="flex flex-col gap-2 sm:flex-row sm:items-start"
       onSubmit={(e) => {
         e.preventDefault();
         const raw = v.trim();
@@ -97,8 +97,8 @@ export function TrackLookup() {
       <label htmlFor={id} className="sr-only">
         {t("order.lookupField")}
       </label>
-      <input id={id} value={v} onChange={(e) => setV(e.target.value)} placeholder={t("order.lookupField")} className="h-12 flex-1 rounded-full border border-input bg-card px-5 text-sm outline-none focus:ring-[3px] focus:ring-ring/30" />
-      <Button type="submit" size="lg" className="h-12 rounded-full px-8">
+      <input id={id} value={v} onChange={(e) => setV(e.target.value)} placeholder={t("order.lookupField")} className="h-11 flex-1 rounded-full border border-input bg-card px-5 text-sm outline-none focus:ring-[3px] focus:ring-ring/30" />
+      <Button type="submit" size="lg" className="rounded-full px-8">
         {t("order.lookupSubmit")}
       </Button>
     </form>

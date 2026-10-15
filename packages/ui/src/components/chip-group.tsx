@@ -38,7 +38,7 @@ function ChipGroup<T extends string>({ value, onChange, options, className, size
             onClick={() => onChange(o.value)}
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 rounded-full border font-medium whitespace-nowrap transition-[color,background-color,border-color,transform] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100",
-              size === "sm" ? "h-8 px-3 text-xs" : "h-9 px-3.5 text-sm",
+              size === "sm" ? "h-9 px-3 text-xs" : "h-10 px-3.5 text-sm",
               on
                 ? "border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                 : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",

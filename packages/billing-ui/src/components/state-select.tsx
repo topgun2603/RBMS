@@ -1,7 +1,7 @@
 "use client";
 
 import { GST_STATES } from "@srirealtime/gst";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
 
 /** GST state picker ("33 · Tamil Nadu"). Value is the 2-digit state code. */
@@ -11,6 +11,7 @@ export function StateSelect({
   onChange,
   disabled,
   className,
+  size,
   placeholder,
   "aria-label": ariaLabel,
 }: {
@@ -19,13 +20,15 @@ export function StateSelect({
   onChange: (code: string) => void;
   disabled?: boolean;
   className?: string;
+  /** Control height on the shared scale (sm 36px in dense rows; default 40px). */
+  size?: ControlSize;
   placeholder?: string;
   "aria-label"?: string;
 }) {
   const { t } = useI18n();
   return (
     <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className={className ?? "h-10 w-full"} aria-label={ariaLabel}>
+      <SelectTrigger id={id} size={size} className={className ?? "w-full"} aria-label={ariaLabel}>
         <SelectValue placeholder={placeholder ?? t("billing.common.selectState")} />
       </SelectTrigger>
       <SelectContent className="max-h-80">

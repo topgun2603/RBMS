@@ -10,7 +10,7 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
-import { cn, Label, Slot } from "@srirealtime/ui";
+import { cn, FieldLabel, fieldStyles, Slot, type FieldLabelProps } from "@srirealtime/ui";
 import { useI18n } from "@/lib/i18n";
 
 /** shadcn's react-hook-form helpers. Zod messages that look like i18n keys ("admin.…") are translated. */
@@ -51,26 +51,26 @@ const useFormField = () => {
   };
 };
 
+/**
+ * Same layout as @srirealtime/ui's Field: a `content-start` grid (label row → control → description/message) so
+ * fields side by side keep their controls aligned however much text sits under a neighbour.
+ */
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   const id = React.useId();
   return (
     <FormItemContext.Provider value={{ id }}>
-      <div data-slot="form-item" className={cn("grid gap-2", className)} {...props} />
+      <div data-slot="form-item" className={cn(fieldStyles.root, className)} {...props} />
     </FormItemContext.Provider>
   );
 }
 
-function FormLabel({ className, ...props }: React.ComponentProps<typeof Label>) {
+/**
+ * The label row: label text, an optional `optional` tag ("(optional)") and an `aside` (link, counter, small badge)
+ * on the right — all on one fixed-height row so the control below starts at the same offset in every column.
+ */
+function FormLabel(props: FieldLabelProps) {
   const { error, formItemId } = useFormField();
-  return (
-    <Label
-      data-slot="form-label"
-      data-error={!!error}
-      className={cn("data-[error=true]:text-destructive", className)}
-      htmlFor={formItemId}
-      {...props}
-    />
-  );
+  return <FieldLabel data-form-label="" invalid={!!error} htmlFor={formItemId} {...props} />;
 }
 
 function FormControl(props: React.ComponentProps<typeof Slot.Root>) {
@@ -88,7 +88,7 @@ function FormControl(props: React.ComponentProps<typeof Slot.Root>) {
 
 function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   const { formDescriptionId } = useFormField();
-  return <p data-slot="form-description" id={formDescriptionId} className={cn("text-xs text-muted-foreground", className)} {...props} />;
+  return <p data-slot="form-description" id={formDescriptionId} className={cn(fieldStyles.hint, className)} {...props} />;
 }
 
 function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
@@ -98,7 +98,7 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   const body = typeof raw === "string" && raw.startsWith("admin.") ? t(raw) : raw;
   if (!body) return null;
   return (
-    <p data-slot="form-message" id={formMessageId} className={cn("text-xs text-destructive", className)} {...props}>
+    <p data-slot="form-message" id={formMessageId} className={cn(fieldStyles.error, className)} {...props}>
       {body}
     </p>
   );

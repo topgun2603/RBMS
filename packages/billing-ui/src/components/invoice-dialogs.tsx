@@ -105,9 +105,10 @@ export function PaymentDialog({ invoice, open, onOpenChange }: { invoice: Invoic
               className="h-12 text-lg font-semibold"
               value={amount}
               aria-invalid={touched && !!error}
+              aria-describedby={touched && error ? "pay-amount-err" : undefined}
               onChange={(e) => setAmount(e.target.value)}
             />
-            {touched && error && <p className="text-xs text-destructive">{error}</p>}
+            {touched && error && <p id="pay-amount-err" className="text-xs text-destructive">{error}</p>}
           </div>
           <div className="grid gap-1.5">
             <Label>{t("billing.payment.method")}</Label>
@@ -130,14 +131,14 @@ export function PaymentDialog({ invoice, open, onOpenChange }: { invoice: Invoic
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
+          <div className="grid grid-cols-2 items-start gap-3">
+            <div className="grid content-start gap-1.5">
               <Label htmlFor="pay-date">{t("billing.payment.date")}</Label>
-              <Input id="pay-date" type="date" className="h-11" value={date} max={todayIST()} onChange={(e) => setDate(e.target.value || todayIST())} />
+              <Input id="pay-date" type="date" value={date} max={todayIST()} onChange={(e) => setDate(e.target.value || todayIST())} />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid content-start gap-1.5">
               <Label htmlFor="pay-ref">{t("billing.payment.reference")}</Label>
-              <Input id="pay-ref" className="h-11" maxLength={100} value={reference} onChange={(e) => setReference(e.target.value)} />
+              <Input id="pay-ref" maxLength={100} value={reference} onChange={(e) => setReference(e.target.value)} />
             </div>
           </div>
           <DialogFooter className="gap-2">
@@ -283,9 +284,9 @@ export function ShareDialog({
           <div className="grid gap-4">
             <div className="flex items-center gap-3">
               <QrImage value={url} size={96} alt={t("billing.share.qrAlt")} className="border" />
-              <div className="flex min-w-0 flex-1 gap-2">
-                <Input readOnly value={url} className="h-11 font-mono text-xs" onFocus={(e) => e.target.select()} aria-label={t("billing.share.link")} />
-                <Button variant="outline" size="icon-lg" onClick={() => void copy()} aria-label={t("billing.share.copy")}>
+              <div className="flex min-w-0 flex-1 items-start gap-2">
+                <Input readOnly value={url} className="font-mono text-xs" onFocus={(e) => e.target.select()} aria-label={t("billing.share.link")} />
+                <Button variant="outline" size="icon" onClick={() => void copy()} aria-label={t("billing.share.copy")}>
                   {copied ? <CheckIcon className="text-success" /> : <CopyIcon />}
                 </Button>
               </div>
@@ -296,7 +297,6 @@ export function ShareDialog({
                 id="share-phone"
                 type="tel"
                 inputMode="tel"
-                className="h-11"
                 placeholder="98765 43210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}

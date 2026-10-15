@@ -4,7 +4,22 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon, MailIcon, MessageCircleIcon, SmartphoneIcon } from "lucide-react";
-import { AnimatePresence, AuthLayout, Button, cn, Input, Label, OtpInput, SlideIn, toast } from "@srirealtime/ui";
+import {
+  AnimatePresence,
+  AuthLayout,
+  Button,
+  cn,
+  controlHeight,
+  Field,
+  FieldControl,
+  FieldError,
+  FieldHint,
+  FieldLabel,
+  Input,
+  OtpInput,
+  SlideIn,
+  toast,
+} from "@srirealtime/ui";
 import { BrandMark } from "../components/brand-mark";
 import { LocaleSwitcher } from "../components/locale-switcher";
 import { ThemeToggle } from "../components/theme-toggle";
@@ -121,32 +136,33 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
               <p className="text-sm text-muted-foreground">{t("web.login.subtitle")}</p>
             </div>
             <form onSubmit={onIdentify} className="grid gap-4" noValidate>
-              <div className="grid gap-2">
-                <Label htmlFor="target">{t("web.login.targetLabel")}</Label>
+              <Field id="target">
+                <FieldLabel>{t("web.login.targetLabel")}</FieldLabel>
                 <div className="relative">
                   {parsed.kind === "email" ? (
                     <MailIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   ) : (
                     <SmartphoneIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   )}
-                  <Input
-                    id="target"
-                    autoFocus
-                    autoComplete="username"
-                    inputMode={raw.includes("@") ? "email" : /^[\d\s+]*$/.test(raw) ? "tel" : "text"}
-                    placeholder={t("web.login.targetPlaceholder")}
-                    value={raw}
-                    onChange={(e) => setRaw(e.target.value)}
-                    aria-invalid={touched && parsed.kind === "invalid"}
-                    className="h-11 pl-9 text-base"
-                  />
+                  <FieldControl>
+                    <Input
+                      autoFocus
+                      autoComplete="username"
+                      inputMode={raw.includes("@") ? "email" : /^[\d\s+]*$/.test(raw) ? "tel" : "text"}
+                      placeholder={t("web.login.targetPlaceholder")}
+                      value={raw}
+                      onChange={(e) => setRaw(e.target.value)}
+                      size="lg"
+                      className="pl-9 text-base"
+                    />
+                  </FieldControl>
                 </div>
                 {touched && parsed.kind === "invalid" ? (
-                  <p className="text-xs text-destructive">{t("web.login.targetInvalid")}</p>
+                  <FieldError>{t("web.login.targetInvalid")}</FieldError>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("web.login.targetHint")}</p>
+                  <FieldHint>{t("web.login.targetHint")}</FieldHint>
                 )}
-              </div>
+              </Field>
 
               {parsed.kind === "phone" && (
                 <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("web.login.channel")}>
@@ -158,7 +174,8 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
                       aria-checked={phoneChannel === c}
                       onClick={() => setPhoneChannel(c)}
                       className={cn(
-                        "flex h-11 items-center justify-center gap-2 rounded-md border text-sm transition-colors",
+                        "flex items-center justify-center gap-2 rounded-md border text-sm transition-colors",
+                        controlHeight("lg"),
                         phoneChannel === c ? "border-primary bg-primary/5 font-medium text-foreground" : "text-muted-foreground hover:bg-accent",
                       )}
                     >
@@ -169,7 +186,7 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
                 </div>
               )}
 
-              <Button type="submit" size="lg" className="h-11" disabled={request.isPending || !raw.trim()}>
+              <Button type="submit" size="lg" disabled={request.isPending || !raw.trim()}>
                 {request.isPending && <Loader2Icon className="animate-spin" />}
                 {t("web.login.sendCode")}
               </Button>
@@ -210,7 +227,7 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
                     (sent ? t("web.login.expiresIn", { minutes: Math.max(1, Math.round((sent.expiresInSeconds ?? 300) / 60)) }) : "")}
                 </p>
               </div>
-              <Button type="submit" size="lg" className="h-11" disabled={verify.isPending || code.length !== OTP_LENGTH}>
+              <Button type="submit" size="lg" disabled={verify.isPending || code.length !== OTP_LENGTH}>
                 {verify.isPending && <Loader2Icon className="animate-spin" />}
                 {t("web.login.verify")}
               </Button>
