@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AppWindowIcon,
+  BadgeCheckIcon,
   BellIcon,
   Building2Icon,
   CircleUserIcon,
@@ -38,6 +39,7 @@ import { UserMenu } from "@/components/user-menu";
 import { isSuperAdmin, useMe } from "@/lib/auth";
 import { useFeatures } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
+import { kycNavLabel } from "@/lib/kyc-messages";
 import { readStored, SIDEBAR_KEY, useHydrated, useTenantSlug, useToken, writeStored } from "@/lib/session";
 
 const NextLink: AppShellLinkComponent = ({ href, children, ...props }) => (
@@ -48,6 +50,7 @@ const NextLink: AppShellLinkComponent = ({ href, children, ...props }) => (
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
+  const kycNav = kycNavLabel(useI18n().locale);
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const hydrated = useHydrated();
@@ -107,11 +110,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/plans", label: t("admin.nav.platformPlans"), icon: LayersIcon },
           { href: "/platform/apps", label: t("admin.nav.platformApps"), icon: AppWindowIcon },
           { href: "/platform/privacy-requests", label: t("admin.nav.privacyRequests"), icon: FileLockIcon },
+          { href: "/platform/kyc", label: kycNav, icon: BadgeCheckIcon },
         ],
       });
     }
     return s;
-  }, [t, tenant, superadmin, isModuleOff]);
+  }, [t, kycNav, tenant, superadmin, isModuleOff]);
 
   if (hydrated && token && me.isError) {
     return (

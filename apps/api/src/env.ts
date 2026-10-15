@@ -1,4 +1,4 @@
-﻿import { loadEnv, optionalString } from "@srirealtime/core";
+import { loadEnv, optionalString } from "@srirealtime/core";
 import { z } from "zod";
 
 export const envSchema = z.object({
@@ -18,7 +18,7 @@ export const envSchema = z.object({
   CORS_ORIGINS: z
     .string()
     .default(
-      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003",
+      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004",
     ),
   /** Billing app URL for invoice share links; {slug} is replaced with the shop's subdomain. */
   BILLING_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/billing"),

@@ -8,7 +8,7 @@ export default function config(phase: string): NextConfig {
     // doesn't delete the files the dev server is serving.
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: [
+    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/marketplace-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", 
       "@srirealtime/web",
       "@srirealtime/billing-ui",
       "@srirealtime/commerce-ui",

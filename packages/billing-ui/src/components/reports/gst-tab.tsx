@@ -6,6 +6,7 @@ import { Card, cn, Skeleton } from "@srirealtime/ui";
 import { BarList } from "../charts/bar-list";
 import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";
+import { Gstr1Card } from "./gstr1-card";
 import { compactINR, formatQty, money, stateLabel } from "../../lib/format";
 import { useI18n } from "@srirealtime/web";
 import { REPORT_PATHS, useGstSummary, usePurchasesReport } from "../../lib/queries-v2";
@@ -35,7 +36,14 @@ export function GstTab({ from, to }: RangeProps) {
   const gst = useGstSummary(from, to);
   const pur = usePurchasesReport(from, to);
 
-  if (gst.isError && !gst.data) return <TabError error={gst.error} onRetry={() => void gst.refetch()} />;
+  if (gst.isError && !gst.data) {
+    return (
+      <div className="grid gap-4">
+        <Gstr1Card />
+        <TabError error={gst.error} onRetry={() => void gst.refetch()} />
+      </div>
+    );
+  }
   const loading = gst.isPending;
   const raw = gst.data;
   // Read defensively: any section may be missing while the API settles.
@@ -67,6 +75,7 @@ export function GstTab({ from, to }: RangeProps) {
 
   return (
     <Refreshing active={gst.isPlaceholderData}>
+      <Gstr1Card />
       <TileGrid>
         {[
           <StatTile key="a" label={t("billing.reports.gst.taxable")} value={taxable} icon={ScrollTextIcon} loading={loading} />,

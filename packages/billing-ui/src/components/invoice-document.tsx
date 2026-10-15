@@ -251,6 +251,11 @@ export function InvoiceDocument({
             <dt className="font-semibold">{t("billing.totals.grandTotal")}</dt>
             <dd className="font-heading text-xl font-bold text-primary tabular-nums">{money(totals.total)}</dd>
           </div>
+          {!!totals.loyalty?.discount && (
+            <p className="text-right text-xs text-muted-foreground">
+              {t("billing.loyalty.usedOnBill", { amount: money(totals.loyalty.discount), points: totals.loyalty.points })}
+            </p>
+          )}
           {inv.paid > 0 && (
             <>
               <TotalRow label={t("billing.totals.paid")} value={money(inv.paid)} />

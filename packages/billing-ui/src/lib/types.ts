@@ -146,7 +146,8 @@ export interface Invoice extends InvoiceSummary {
   placeOfSupply: string;
   interState: boolean;
   lines: LineTotals[];
-  totals: Omit<InvoiceTotals, "lines">;
+  /** `loyalty` (batch 3): points redeemed on the bill and the discount they gave (paise). */
+  totals: Omit<InvoiceTotals, "lines"> & { loyalty?: { points: number; discount: number } };
   amountInWords: string;
   notes: string | null;
   payments: Payment[];
@@ -192,6 +193,8 @@ export interface InvoiceInput {
   lines: LineInput[];
   notes?: string | null;
   issue?: boolean;
+  /** Loyalty points to redeem as a bill discount. Only with `issue: true` (a draft can't redeem). */
+  loyaltyPoints?: number;
 }
 
 export interface PublicInvoiceResponse {

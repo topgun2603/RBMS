@@ -13,8 +13,8 @@ larger UI module) that any app mounts. Nothing app-specific.
 | 1 | catalogue (products/variants/categories; billing items move here), inventory locations + reservations, orders, coupons, staff (roles + permissions), audit, documents (PDF), importexport | done (e2e `apps/api/test/e2e/batch1.mjs`) |
 | 2a | server: storefront (shoppers, cart, checkout, tracking, wishlist), delivery, search + collections, reviews, cms + seo, onboarding, analytics, expenses, custom-domain (docs/commerce-batch2.md) | done (e2e `batch2.mjs`) |
 | 2b | UI: storefront app (SSR), store-admin screens (catalogue, orders, coupons, delivery, CMS, reviews), Team & roles, audit log, import/export, onboarding, expenses, analytics | done (see below; browser test `apps/store/test/e2e.cjs`) |
-| 3 | marketplace + payouts, chat, support, whatsapp inbox + campaigns, kyc, loyalty, gst-einvoice, multi-branch, api + webhooks, advanced reports (back end) — contract docs/batch3.md | in progress (round A: marketplace, chat, support, kyc, loyalty) |
-| 4 | Wave B UIs: POS counter, vendor dashboard, chat, inbox, support desk, KYC flows, loyalty, e-invoice, branches, API keys, report builder — contract docs/batch4.md | in progress (pos-ui, marketplace-ui + apps/seller, inbox-ui, growth-ui; storefront additions next) |
+| 3 | marketplace + payouts, chat, support, whatsapp inbox + campaigns, kyc, loyalty, gst-einvoice, multi-branch, api + webhooks, advanced reports (back end) — contract docs/batch3.md | done (e2e `batch3.mjs`) |
+| 4 | Wave B UIs: POS counter, vendor dashboard, chat, inbox, support desk, KYC flows, loyalty, e-invoice, branches, API keys, report builder — contract docs/batch4.md | admin UIs done (pos-ui, marketplace-ui + apps/seller :3004, inbox-ui, growth-ui, e-invoice/loyalty in billing-ui, admin KYC queue); storefront additions next |
 | 5 | sign-up + onboarding, plan subscriptions (Razorpay Subscriptions / UPI Autopay), landing + pricing | |
 | 6 | safety net: e2e tests in repo + CI, backups + restore drill, monitoring | |
 | 7 | AWS: RDS, ElastiCache, S3, ECS/App Runner, wildcard domain + SSL, CI/CD | |

@@ -13,8 +13,12 @@
   "dependencies": {
     "@srirealtime/billing-ui": "workspace:*",
     "@srirealtime/commerce-ui": "workspace:*",
+    "@srirealtime/growth-ui": "workspace:*",
     "@srirealtime/i18n": "workspace:*",
+    "@srirealtime/inbox-ui": "workspace:*",
+    "@srirealtime/marketplace-ui": "workspace:*",
     "@srirealtime/orders-ui": "workspace:*",
+    "@srirealtime/pos-ui": "workspace:*",
     "@srirealtime/site-ui": "workspace:*",
     "@srirealtime/ui": "workspace:*",
     "@srirealtime/web": "workspace:*",

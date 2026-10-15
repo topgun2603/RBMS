@@ -30,6 +30,7 @@ import {
   type AppShellNavSection,
 } from "@srirealtime/ui";
 import { BrandMark } from "../components/brand-mark";
+import { BranchSwitcher } from "../components/branch-switcher";
 import { LocaleSwitcher } from "../components/locale-switcher";
 import { ThemeToggle } from "../components/theme-toggle";
 import { displayName, useSignOut } from "../lib/auth";
@@ -121,6 +122,7 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
               </Link>
             </Button>
           )}
+          <BranchSwitcher />
           <LocaleSwitcher />
           <ThemeToggle />
           <UserMenu />

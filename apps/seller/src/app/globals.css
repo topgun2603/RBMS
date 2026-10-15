@@ -1,0 +1,16 @@
+@import "@srirealtime/ui/styles.css";
+
+/* Scan the app, the kit and the mounted UI module for Tailwind classes (workspace packages are TS source). */
+@source "../";
+@source "../../../../packages/web/src";
+@source "../../../../packages/marketplace-ui/src";
+
+/* Number inputs without spinners (prices and quantities are typed, not clicked). */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

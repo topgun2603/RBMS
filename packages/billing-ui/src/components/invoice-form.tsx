@@ -37,9 +37,11 @@ import {
 } from "@srirealtime/ui";
 import { CustomerPicker, type Party } from "./customer-picker";
 import { GstRateSelect } from "./gst-rate-select";
+import { LoyaltyRedeemCard, LoyaltySummaryRows, useLoyaltyRedeem } from "./loyalty-redeem";
 import { UnitList } from "./item-dialog";
 import { MoneyInput } from "./money-input";
 import { StateSelect } from "./state-select";
+import { redeemFailure } from "../lib/loyalty";
 import { addDays, money, paiseToInput, parseQty, rupeesToPaise, stateLabel, todayIST } from "../lib/format";
 import { sellerProfileGaps, useCustomer, useItems, useSaveInvoice, useSellerProfile } from "../lib/queries";
 import type { GstRate, Invoice, InvoiceInput, Item } from "../lib/types";
@@ -193,6 +195,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const lineTotals = new Map(priced.map((p, i) => [p.line.key, totals.lines[i]]));
   const inter = totals.igst > 0 || (!!sellerState && !!effectivePos && sellerState !== effectivePos);
   const gaps = sellerProfileGaps(seller.data);
+  const loyalty = useLoyaltyRedeem(party, totals.total);
 
   const updateLine = (key: string, patch: Partial<LineDraft>) =>
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -230,6 +233,8 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
       notes: notes.trim() || undefined,
       issue,
     };
+    // Points are redeemed only when the bill is issued; a draft can't redeem.
+    if (issue && loyalty.points > 0) body.loyaltyPoints = loyalty.points;
     if (party.kind === "saved") {
       body.customerId = party.customer.id;
       if (invoice) body.customer = null;
@@ -265,7 +270,9 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
     } catch (err) {
       const msg = describeError(err, t);
       if (isPlanLimit(err)) setPlanError(msg);
-      toast.error(msg);
+      const lf = redeemFailure(err, body.loyaltyPoints !== undefined);
+      if (lf) loyalty.setFailure(lf);
+      toast.error(lf ? t("billing.loyalty.rejected") : msg, lf ? { description: msg } : undefined);
     }
   };
 
@@ -450,6 +457,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
               />
             </div>
             {totals.total > 0 && <p className="text-xs leading-snug text-muted-foreground">{amountInWordsINR(totals.total)}</p>}
+            <LoyaltySummaryRows state={loyalty} total={totals.total} />
             {totals.taxBreakup.length > 1 && (
               <div className="mt-2 grid gap-1 rounded-md bg-muted/50 p-2 text-xs">
                 {totals.taxBreakup.map((b) => (
@@ -467,6 +475,8 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
             </p>
           </CardContent>
         </Card>
+
+        <LoyaltyRedeemCard state={loyalty} />
 
         {/* Desktop actions */}
         <div className="hidden gap-2 lg:grid">

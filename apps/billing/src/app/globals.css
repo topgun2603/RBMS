@@ -3,6 +3,9 @@
 /* Scan the app, the kit and the mounted UI modules for Tailwind classes (workspace packages are TS source). */
 @source "../";
 @source "../../../../packages/web/src";
+@source "../../../../packages/growth-ui/src";
+@source "../../../../packages/inbox-ui/src";
+@source "../../../../packages/pos-ui/src";
 @source "../../../../packages/billing-ui/src";
 @source "../../../../packages/workspace-ui/src";
 

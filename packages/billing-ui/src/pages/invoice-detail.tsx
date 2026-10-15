@@ -49,6 +49,7 @@ import {
   toast,
   useReducedMotionSafe,
 } from "@srirealtime/ui";
+import { EINVOICE_FEATURE, EInvoiceCard } from "../components/einvoice/einvoice-card";
 import { InvoiceDocument } from "../components/invoice-document";
 import { CancelDialog, PaymentDialog, ShareDialog } from "../components/invoice-dialogs";
 import { isOnlinePayment, MessagesTimeline, SendInvoiceButton } from "../components/payments/send-invoice";
@@ -146,6 +147,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   const flags = useArrivalFlags();
   const whatsapp = useFeature("invoices.whatsapp");
   const documents = useFeature("documents");
+  const einvoice = useFeature(EINVOICE_FEATURE);
   const pdf = usePdf();
   const pdfName = `${(inv.number ?? t("billing.status.draft")).replace(/[/\\]/g, "-")}.pdf`;
   const downloadPdf = () => void pdf.run("a4", PDF_PATHS.invoice(inv.id), { mode: "download", fallbackName: pdfName });
@@ -422,6 +424,8 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
               </CardContent>
             </Card>
           )}
+
+          {einvoice && !draft && !!inv.customer.gstin?.trim() && <EInvoiceCard invoice={inv} />}
 
           {sendable && whatsapp && (
             <Card className="gap-3 py-4">

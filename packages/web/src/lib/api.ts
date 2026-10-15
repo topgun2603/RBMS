@@ -1,5 +1,6 @@
 "use client";
 
+import { BRANCH_HEADER, getStoredBranch, isBranchError, setStoredBranch } from "./branch";
 import { getToken, LOCALE_KEY, readStored, setToken } from "./session";
 import { currentTenantSlug } from "./tenant";
 
@@ -87,6 +88,9 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   if (token) headers.set("authorization", `Bearer ${token}`);
   const slug = tenant === undefined ? currentTenantSlug() : tenant;
   if (slug) headers.set("x-tenant", slug);
+  // The current branch (multi-branch shops) goes with every signed-in call for this shop.
+  const branch = !anonymous && slug ? getStoredBranch(slug) : null;
+  if (branch && !headers.has(BRANCH_HEADER)) headers.set(BRANCH_HEADER, branch);
   const locale = readStored(LOCALE_KEY);
   if (locale) headers.set("accept-language", locale);
 
@@ -129,6 +133,8 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
       details?: unknown;
     } | null;
     if (res.status === 401 && !anonymous) handleUnauthorized();
+    // A closed branch or a removed assignment: forget it so the next call uses the server's choice.
+    if (branch && isBranchError(e?.code)) setStoredBranch(null, slug);
     throw new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Request failed", e?.details);
   }
   return data as T;
@@ -144,6 +150,8 @@ export async function apiDownload(path: string, query: QueryParams, fallbackName
   if (token) headers.set("authorization", `Bearer ${token}`);
   const slug = currentTenantSlug();
   if (slug) headers.set("x-tenant", slug);
+  const branch = slug ? getStoredBranch(slug) : null;
+  if (branch) headers.set(BRANCH_HEADER, branch);
   let res: Response;
   try {
     res = await fetch(apiUrl(path, query), { headers, credentials: "include" });
@@ -157,6 +165,7 @@ export async function apiDownload(path: string, query: QueryParams, fallbackName
       .then((j: { error?: ErrBody }) => j.error ?? null)
       .catch(() => null);
     if (res.status === 401) handleUnauthorized();
+    if (branch && isBranchError(e?.code)) setStoredBranch(null, slug);
     throw new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Download failed", e?.details);
   }
   const blob = await res.blob();

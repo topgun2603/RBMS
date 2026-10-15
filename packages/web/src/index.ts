@@ -44,6 +44,15 @@ export {
 export * from "./lib/types";
 export { permissionMatches, permissionsAllow, permissionAllows, explicitlyGranted, type PermissionReq, type PermissionHolder } from "./lib/permissions";
 export { normalizeTarget, humanizeKey } from "./lib/format";
+export {
+  getStoredBranch,
+  setStoredBranch,
+  useStoredBranch,
+  branchKey,
+  isBranchError,
+  BRANCH_HEADER,
+  BRANCH_KEY_PREFIX,
+} from "./lib/branch";
 export { useDebounced } from "./lib/use-debounced";
 
 // i18n, branding, features
@@ -87,6 +96,16 @@ export { LocaleSwitcher } from "./components/locale-switcher";
 export { BrandMark } from "./components/brand-mark";
 export { Splash } from "./components/splash";
 export { SettingsNav } from "./components/settings-nav";
+export {
+  BranchSwitcher,
+  useMyBranches,
+  useCurrentBranch,
+  pickCurrentBranch,
+  myBranchesQueryKey,
+  MULTI_BRANCH_FEATURE,
+  type MyBranchItem,
+  type MyBranchesResponse,
+} from "./components/branch-switcher";
 export { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFormField } from "./components/form";
 
 // Module system

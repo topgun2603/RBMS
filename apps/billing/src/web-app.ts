@@ -1,3 +1,6 @@
+import { growthModule } from "@srirealtime/growth-ui";
+import { inboxModule } from "@srirealtime/inbox-ui";
+import { posModule } from "@srirealtime/pos-ui";
 import { billingModule } from "@srirealtime/billing-ui";
 import { createWebApp } from "@srirealtime/web";
 import { workspaceModule } from "@srirealtime/workspace-ui";
@@ -10,6 +13,6 @@ export const webApp = createWebApp({
   appId: "BL",
   name: "Billing",
   tenant: { from: "hostname" },
-  modules: [billingModule(), workspaceModule()],
+  modules: [billingModule(), posModule(), inboxModule({ basePath: "/inbox" }), growthModule(), workspaceModule()],
   home: "dashboard",
 });
