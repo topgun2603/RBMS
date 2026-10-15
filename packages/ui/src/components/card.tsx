@@ -1,11 +1,15 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
 
+/** Elevated surface: rounded-2xl, soft layered shadow and a 1px hairline ring (no shadow in print). */
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn("flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-xs", className)}
+      className={cn(
+        "flex flex-col gap-6 rounded-2xl border border-card-ring bg-card py-6 text-card-foreground shadow-elevated print:shadow-none",
+        className,
+      )}
       {...props}
     />
   );
@@ -25,7 +29,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="card-title" className={cn("font-heading leading-none font-semibold", className)} {...props} />;
+  return <div data-slot="card-title" className={cn("font-heading leading-none font-semibold tracking-tight", className)} {...props} />;
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {

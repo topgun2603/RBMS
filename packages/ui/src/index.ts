@@ -30,7 +30,11 @@ export * from "./components/textarea";
 export * from "./components/tooltip";
 
 // Kit components
+export * from "./components/chip-group";
 export * from "./components/color-input";
+export * from "./components/initials-avatar";
+export * from "./components/meter";
+export * from "./components/status-pill";
 export * from "./components/data-table";
 export * from "./components/empty-state";
 export * from "./components/otp-input";

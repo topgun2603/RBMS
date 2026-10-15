@@ -1,0 +1,30 @@
+/** Saved item details; items are owned by the invoices module (apps/api wires the adapter). */
+export interface CatalogItem {
+  id: string;
+  name: string;
+  hsn: string | null;
+  unit: string;
+  /** Selling rate, paise per unit. */
+  rate: number;
+  gstRate: number;
+}
+
+export interface ItemCatalogPort {
+  /** Items of the tenant with these ids (unknown or deleted ids are left out). */
+  getItems(tenantId: string, ids: string[]): Promise<CatalogItem[]>;
+  /** All saved items of the tenant, optionally filtered by name/HSN. */
+  listItems(tenantId: string, q?: string): Promise<CatalogItem[]>;
+}
+
+/** The shop's own GST state code (from the billing seller profile). */
+export interface SellerStatePort {
+  stateCode(tenantId: string): Promise<string | null>;
+}
+
+export interface LoggerPort {
+  info(o: unknown, m?: string): void;
+  warn(o: unknown, m?: string): void;
+  error(o: unknown, m?: string): void;
+}
+
+export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };

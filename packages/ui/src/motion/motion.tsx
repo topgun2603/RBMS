@@ -139,13 +139,15 @@ export interface AnimatedNumberProps extends Omit<React.ComponentProps<"span">, 
   /** Formats the in-flight value (default: rounded, locale grouped). */
   format?: (n: number) => string;
   duration?: number;
+  /** Count up from this value on mount (e.g. 0 for hero figures). Default: start at `value`. */
+  from?: number;
 }
 
 /** Counts from the previous value to `value`. Renders the final value directly with reduced motion. */
-export function AnimatedNumber({ value, format, duration = 0.5, ...props }: AnimatedNumberProps) {
+export function AnimatedNumber({ value, format, duration = 0.5, from, ...props }: AnimatedNumberProps) {
   const reduced = useReducedMotionSafe();
-  const [display, setDisplay] = React.useState(value);
-  const previous = React.useRef(value);
+  const [display, setDisplay] = React.useState(from ?? value);
+  const previous = React.useRef(from ?? value);
   const fmt = format ?? ((n: number) => Math.round(n).toLocaleString());
 
   React.useEffect(() => {

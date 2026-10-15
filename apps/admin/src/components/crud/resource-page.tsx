@@ -40,7 +40,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { QueryError } from "@/components/query-state";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-export type ResourceFieldType = "text" | "textarea" | "number" | "switch" | "select" | "json" | "tags";
+export type ResourceFieldType = "text" | "textarea" | "number" | "switch" | "select" | "json" | "tags" | "custom";
+
+export interface ResourceCustomFieldProps {
+  value: unknown;
+  onChange: (value: unknown) => void;
+  disabled: boolean;
+}
 
 export interface ResourceField<V extends FieldValues> {
   name: FieldPath<V>;
@@ -54,6 +60,8 @@ export interface ResourceField<V extends FieldValues> {
   /** Spans both columns of the form grid. */
   wide?: boolean;
   rows?: number;
+  /** For type "custom": renders the control (always spans both columns). */
+  render?: (props: ResourceCustomFieldProps) => React.ReactNode;
 }
 
 export interface ResourceLabels<T> {
@@ -311,7 +319,7 @@ function ResourceFormDialog<T, V extends FieldValues>({
                     return (
                       <FormItem
                         className={cn(
-                          (f.wide || type === "textarea" || type === "json") && "sm:col-span-2",
+                          (f.wide || type === "textarea" || type === "json" || type === "custom") && "sm:col-span-2",
                           type === "switch" && "flex flex-row items-center justify-between gap-3 rounded-md border px-3 py-2.5",
                         )}
                       >
@@ -320,7 +328,9 @@ function ResourceFormDialog<T, V extends FieldValues>({
                           {type === "switch" && f.description && <FormDescription>{f.description}</FormDescription>}
                         </div>
                         <FormControl>
-                          {type === "switch" ? (
+                          {type === "custom" ? (
+                            <div>{f.render?.({ value: field.value, onChange: field.onChange, disabled })}</div>
+                          ) : type === "switch" ? (
                             <Switch checked={!!field.value} onCheckedChange={field.onChange} disabled={disabled} />
                           ) : type === "select" ? (
                             <Select value={(field.value as string) ?? ""} onValueChange={field.onChange} disabled={disabled}>

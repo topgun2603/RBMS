@@ -24,10 +24,16 @@ export interface PlansDeps {
   cacheTtlMs?: number;
 }
 
-const moduleId = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/, "Invalid module id");
+/** A module id ("invoices") or a feature key ("invoices.credit-book"). */
+/** A module id, a feature key (`module.name`) or a module wildcard (`module.*`). */
+const moduleId = z
+  .string()
+  .regex(/^[a-z][a-z0-9-]{0,39}(\.([a-z][a-z0-9-]{0,39}|\*))?$/, "Invalid module id, feature key or module.* wildcard");
 const usageKey = z.string().regex(/^[a-z][a-z0-9_]{0,63}$/, "Invalid key");
+/** Plain flags ("remove_branding") or feature keys ("invoices.reminders": false denies that feature). */
+const featureKey = z.string().regex(/^[a-z][a-z0-9_-]{0,63}(\.[a-z][a-z0-9_-]{0,63})?$/, "Invalid key");
 const limitsSchema = z.record(usageKey, z.number().int().min(-1));
-const featuresSchema = z.record(usageKey, z.boolean());
+const featuresSchema = z.record(featureKey, z.boolean());
 
 export const planInputSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "Invalid plan id"),

@@ -19,3 +19,5 @@ export type {
   SlideInProps,
   StaggerProps,
 } from "./motion";
+export { SuccessCheck } from "./success-check";
+export type { SuccessCheckProps } from "./success-check";

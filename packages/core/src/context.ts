@@ -4,6 +4,8 @@ export interface TenantRef {
   id: string;
   slug: string;
   planId: string | null;
+  /** Which product/app the tenant belongs to, e.g. "BL" (billing), "EC" (ecommerce). Null = none. */
+  appId: string | null;
 }
 
 export interface UserRef {

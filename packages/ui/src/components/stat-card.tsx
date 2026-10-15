@@ -7,6 +7,8 @@ export interface StatCardProps extends Omit<React.ComponentProps<"div">, "title"
   value: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ComponentType<{ className?: string }>;
+  /** Text colour class for the icon chip (default text-primary). */
+  iconClassName?: string;
   /** e.g. "+12%" — tone controls its colour. */
   trend?: React.ReactNode;
   trendTone?: "up" | "down" | "neutral";
@@ -20,6 +22,7 @@ function StatCard({
   value,
   description,
   icon: Icon,
+  iconClassName,
   trend,
   trendTone = "neutral",
   loading,
@@ -30,13 +33,16 @@ function StatCard({
   return (
     <div
       data-slot="stat-card"
-      className={cn("flex flex-col gap-3 rounded-xl border bg-card p-5 text-card-foreground shadow-xs", className)}
+      className={cn(
+        "flex flex-col gap-3 rounded-2xl border border-card-ring bg-card p-5 text-card-foreground shadow-elevated print:shadow-none",
+        className,
+      )}
       {...props}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
         {Icon && (
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <div className={cn("icon-chip size-9", iconClassName ?? "text-primary")}>
             <Icon className="size-4" />
           </div>
         )}
@@ -54,8 +60,8 @@ function StatCard({
               <span
                 className={cn(
                   "text-xs font-medium",
-                  trendTone === "up" && "text-success",
-                  trendTone === "down" && "text-destructive",
+                  trendTone === "up" && "text-success-ink",
+                  trendTone === "down" && "text-danger-ink",
                   trendTone === "neutral" && "text-muted-foreground",
                 )}
               >

@@ -8,6 +8,27 @@
       "when": 1791986940315,
       "tag": "0000_dusty_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791991733366,
+      "tag": "0001_white_charles_xavier",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791994851031,
+      "tag": "0002_heavy_slyde",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791996519112,
+      "tag": "0003_blushing_human_cannonball",
+      "breakpoints": true
     }
   ]
 }

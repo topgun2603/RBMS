@@ -41,4 +41,25 @@ describe("seedPlans", () => {
     expect(byId.enterprise!.isPublic).toBe(false);
     expect(Object.values(byId.enterprise!.limits).every((v) => v === -1)).toBe(true);
   });
+
+  it("grant billing features as in docs/features.md", () => {
+    const byId = Object.fromEntries(seedPlans.map((p) => [p.id, planInputSchema.parse(p)]));
+    const free = ["invoices", "invoices.whatsapp", "invoices.reports"];
+    expect(byId.free!.modules).toEqual(free);
+    expect(byId.starter!.modules).toEqual(
+      expect.arrayContaining([...free, "invoices.credit-book", "invoices.gst-reports", "inventory", "payments"]),
+    );
+    expect(byId.starter!.modules).not.toContain("invoices.reminders");
+    for (const id of ["pro", "enterprise"]) {
+      // Whole billing modules via wildcards; no individual feature keys.
+      expect(byId[id]!.modules).toEqual(expect.arrayContaining(["invoices.*", "inventory.*", "payments.*"]));
+      expect(byId[id]!.modules.filter((m) => m.includes(".") && !m.endsWith(".*"))).toEqual([]);
+    }
+  });
+
+  it("accept feature keys in modules and features", () => {
+    const ok = planInputSchema.safeParse({ id: "x", name: "X", modules: ["invoices.credit-book"], features: { "invoices.reminders": false } });
+    expect(ok.success).toBe(true);
+    expect(planInputSchema.safeParse({ id: "x", name: "X", modules: ["a.b.c"] }).success).toBe(false);
+  });
 });

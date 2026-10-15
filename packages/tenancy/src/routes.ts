@@ -42,6 +42,7 @@ const listQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 const statusBody = z.object({ status: z.enum(TENANT_STATUSES) });
+const appBody = z.object({ appId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,32}$/, "Invalid app id").nullable() });
 const planBody = z.object({ planId: z.string().min(1).max(64).nullable() });
 const domainBody = z.object({ domain: z.string().trim().min(4).max(253) });
 
@@ -185,6 +186,13 @@ export function tenancyRoutes(
       const { planId } = planBody.parse(req.body);
       if (planId !== null && !/^[a-z0-9][a-z0-9_-]*$/.test(planId)) throw badRequest("Invalid plan id");
       return service.setPlan(id, planId);
+    });
+
+    app.patch("/tenants/:id/app", async (req) => {
+      requireSuperAdmin(req.ctx);
+      const { id } = uuidParam("id").parse(req.params) as { id: string };
+      const { appId } = appBody.parse(req.body);
+      return service.setApp(id, appId);
     });
   };
 }

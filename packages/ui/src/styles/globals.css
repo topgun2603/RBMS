@@ -8,8 +8,13 @@
  * injected as an *unlayered* stylesheet that overrides --primary, --primary-foreground,
  * --secondary(-foreground), --accent(-foreground), --ring, --radius, --font-sans and
  * --font-heading on :root. Our defaults live in @layer base so unlayered tenant CSS always
- * wins, regardless of load order. Everything else (charts, sidebar active state, focus
- * rings) is derived from those variables.
+ * wins, regardless of load order. Everything else (page tint, hero band, sidebar active state,
+ * focus rings, the single-series chart colour) is derived from those variables.
+ *
+ * Surfaces, from back to front:
+ *   --page        soft tint of the brand primary over --background (app canvas)
+ *   --card        elevated surfaces (cards, dialogs) + --elevation-1 shadow + 1px ring
+ *   --popover     floating layers + --elevation-2
  */
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -23,86 +28,142 @@
   /* `.light` lets a subtree (e.g. a branding preview) opt back into light tokens inside a dark page. */
   :root,
   .light {
-    --radius: 0.625rem;
-    --font-sans: "Inter", "Noto Sans Tamil", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-      "Helvetica Neue", Arial, sans-serif;
+    --radius: 0.75rem;
+    /*
+     * Apps may load fonts with next/font and expose them as --font-jakarta / --font-noto-tamil.
+     * Tamil glyphs fall through to Noto Sans Tamil inside the same stack.
+     */
+    --font-sans: var(--font-jakarta, "Plus Jakarta Sans"), var(--font-noto-tamil, "Noto Sans Tamil"), "Inter", ui-sans-serif,
+      system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-heading: var(--font-sans);
 
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    /* Warm neutrals (hue ~70) instead of flat greys. */
+    --background: oklch(0.992 0.003 85);
+    --foreground: oklch(0.21 0.014 60);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.21 0.014 60);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
+    --popover-foreground: oklch(0.21 0.014 60);
+    --primary: oklch(0.5 0.2 272);
+    --primary-foreground: oklch(0.985 0.005 270);
+    --secondary: oklch(0.965 0.006 80);
+    --secondary-foreground: oklch(0.25 0.014 60);
+    --muted: oklch(0.962 0.006 80);
+    --muted-foreground: oklch(0.5 0.016 60);
+    --accent: oklch(0.955 0.008 80);
+    --accent-foreground: oklch(0.22 0.014 60);
+    --destructive: oklch(0.577 0.215 27.3);
     --destructive-foreground: oklch(0.985 0 0);
     --success: oklch(0.6 0.15 155);
-    --warning: oklch(0.75 0.16 75);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --warning: oklch(0.76 0.16 75);
+    --info: oklch(0.6 0.15 250);
+    /* Text-safe inks for status pills (>= 4.5:1 on their own tinted chip). */
+    --success-ink: oklch(0.42 0.11 155);
+    --warning-ink: oklch(0.47 0.11 60);
+    --danger-ink: oklch(0.47 0.18 27);
+    --info-ink: oklch(0.45 0.14 255);
+    --border: oklch(0.915 0.007 80);
+    --input: oklch(0.89 0.008 80);
+    --ring: color-mix(in oklch, var(--primary) 60%, transparent);
 
-    /* Charts derive from the (tenant-overridable) primary so they follow the brand. */
+    --page: color-mix(in oklch, var(--primary) 4%, var(--background));
+    --elevation-1: 0 1px 2px oklch(0.25 0.02 60 / 0.05), 0 6px 20px -8px oklch(0.25 0.03 60 / 0.12);
+    --elevation-2: 0 2px 6px oklch(0.25 0.02 60 / 0.06), 0 16px 40px -12px oklch(0.25 0.03 60 / 0.22);
+    --card-ring: oklch(0.25 0.02 60 / 0.07);
+
+    /* Charts. The single-series trend uses --primary; categorical series use this fixed order. */
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --series-6: #008300;
+    --series-7: #6250d6;
+    --series-8: #e34948;
+    /* Ordinal sequential (one hue, light -> dark); lightest step >= 2:1 on cards. */
+    --seq-1: #7fb0ec;
+    --seq-2: #5596e2;
+    --seq-3: #2a78d6;
+    --seq-4: #1f5eae;
+    --seq-5: #164383;
+    --chart-grid: oklch(0.25 0.02 60 / 0.08);
+    --chart-axis: oklch(0.5 0.016 60);
+
+    /* Kept for existing consumers. */
     --chart-1: var(--primary);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
+    --chart-2: var(--series-3);
+    --chart-3: var(--series-1);
+    --chart-4: var(--series-4);
+    --chart-5: var(--series-2);
 
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar: oklch(0.997 0.002 85);
+    --sidebar-foreground: oklch(0.21 0.014 60);
     --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: var(--primary-foreground);
-    --sidebar-accent: oklch(0.955 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-accent: color-mix(in oklch, var(--primary) 9%, var(--sidebar));
+    --sidebar-accent-foreground: oklch(0.2 0.014 60);
+    --sidebar-border: oklch(0.925 0.006 80);
     --sidebar-ring: var(--ring);
   }
 
+  /* Dark is designed, not inverted: deep warm charcoal, lifted cards, softer borders, brighter inks. */
   .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.185 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
+    --background: oklch(0.165 0.006 60);
+    --foreground: oklch(0.955 0.006 85);
+    --card: oklch(0.205 0.007 60);
+    --card-foreground: oklch(0.955 0.006 85);
+    --popover: oklch(0.228 0.008 60);
+    --popover-foreground: oklch(0.955 0.006 85);
+    --primary: oklch(0.72 0.15 272);
+    --primary-foreground: oklch(0.18 0.03 272);
+    --secondary: oklch(0.26 0.008 60);
+    --secondary-foreground: oklch(0.955 0.006 85);
+    --muted: oklch(0.255 0.008 60);
+    --muted-foreground: oklch(0.72 0.012 75);
+    --accent: oklch(0.27 0.009 60);
+    --accent-foreground: oklch(0.955 0.006 85);
+    --destructive: oklch(0.68 0.19 22);
     --destructive-foreground: oklch(0.985 0 0);
-    --success: oklch(0.7 0.15 155);
+    --success: oklch(0.72 0.15 155);
     --warning: oklch(0.8 0.15 80);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --info: oklch(0.72 0.13 250);
+    --success-ink: oklch(0.83 0.13 155);
+    --warning-ink: oklch(0.86 0.13 85);
+    --danger-ink: oklch(0.8 0.13 22);
+    --info-ink: oklch(0.82 0.1 250);
+    --border: oklch(1 0 0 / 9%);
+    --input: oklch(1 0 0 / 14%);
+    --ring: color-mix(in oklch, var(--primary) 65%, transparent);
 
-    --chart-1: var(--primary);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
+    --page: color-mix(in oklch, var(--primary) 5%, var(--background));
+    --elevation-1: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 1px 2px oklch(0 0 0 / 0.35), 0 10px 28px -12px oklch(0 0 0 / 0.6);
+    --elevation-2: 0 1px 0 oklch(1 0 0 / 0.05) inset, 0 4px 10px oklch(0 0 0 / 0.35), 0 24px 48px -16px oklch(0 0 0 / 0.7);
+    --card-ring: oklch(1 0 0 / 0.06);
 
-    --sidebar: oklch(0.175 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    /* On dark surfaces more magnitude = more light. */
+    --seq-1: #1f4f8a;
+    --seq-2: #2a68b5;
+    --seq-3: #3987e5;
+    --seq-4: #6aa6ee;
+    --seq-5: #a3c8f5;
+    --chart-grid: oklch(1 0 0 / 0.08);
+    --chart-axis: oklch(0.72 0.012 75);
+
+    --sidebar: oklch(0.185 0.007 60);
+    --sidebar-foreground: oklch(0.955 0.006 85);
     --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: var(--primary-foreground);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-accent: color-mix(in oklch, var(--primary) 16%, var(--sidebar));
+    --sidebar-accent-foreground: oklch(0.97 0.006 85);
+    --sidebar-border: oklch(1 0 0 / 8%);
     --sidebar-ring: var(--ring);
   }
 }
@@ -126,14 +187,35 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-success-ink: var(--success-ink);
+  --color-warning-ink: var(--warning-ink);
+  --color-danger-ink: var(--danger-ink);
+  --color-info-ink: var(--info-ink);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-page: var(--page);
+  --color-card-ring: var(--card-ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-series-7: var(--series-7);
+  --color-series-8: var(--series-8);
+  --color-seq-1: var(--seq-1);
+  --color-seq-2: var(--seq-2);
+  --color-seq-3: var(--seq-3);
+  --color-seq-4: var(--seq-4);
+  --color-seq-5: var(--seq-5);
+  --color-chart-grid: var(--chart-grid);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -143,10 +225,14 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  --shadow-elevated: var(--elevation-1);
+  --shadow-raised: var(--elevation-2);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
 /*
@@ -157,6 +243,33 @@
   --font-heading: var(--font-sans);
 }
 
+/* Brand hero band: gradient from the tenant primary, a soft radial glow and a faint dot grid. */
+@utility hero-band {
+  color: var(--primary-foreground);
+  background-color: var(--primary);
+  background-image:
+    radial-gradient(60% 90% at 88% 0%, color-mix(in oklch, white 26%, transparent), transparent 70%),
+    radial-gradient(50% 70% at 0% 100%, color-mix(in oklch, black 18%, transparent), transparent 70%),
+    linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 72%, black));
+}
+
+@utility hero-dots {
+  background-image: radial-gradient(color-mix(in oklch, var(--primary-foreground) 22%, transparent) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+  mask-image: linear-gradient(115deg, transparent 35%, black 100%);
+}
+
+/* Tinted chip behind an icon: `icon-chip` + a text colour (text-primary, text-success...). */
+@utility icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background-color: color-mix(in oklch, currentColor 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, currentColor 14%, transparent);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -165,7 +278,8 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
+    background-color: var(--page);
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
   }
@@ -176,10 +290,14 @@
   h5,
   h6 {
     font-family: var(--font-heading, var(--font-sans));
+    letter-spacing: -0.01em;
   }
-  /* Tamil glyphs are taller; give them a touch more line height. */
+  /* Tamil glyphs are taller; give them a touch more line height and no negative tracking. */
   :lang(ta) body {
     line-height: 1.6;
+  }
+  :lang(ta) :is(h1, h2, h3, h4, h5, h6) {
+    letter-spacing: 0;
   }
 }
 

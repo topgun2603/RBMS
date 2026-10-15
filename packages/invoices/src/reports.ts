@@ -1,0 +1,339 @@
+/** Pure report shaping: GST return summaries, zero-filled trends and CSV (no database). */
+import { isValidGstin, type GstRate, type LineTotals, type TaxBreakupRow } from "@srirealtime/gst";
+import { addDaysISO, daysBetween } from "./ledger";
+
+/** GSTR-1 B2CL threshold: inter-state invoices to unregistered buyers above ₹1,00,000. */
+export const B2CL_THRESHOLD_PAISE = 100_000_00;
+/** Longest allowed report period (one year plus a day, so 1 Apr → 1 Apr works). */
+export const MAX_REPORT_DAYS = 366;
+
+// ------------------------------------------------------------------ dates
+
+/** Every date from `from` to `to`, inclusive, oldest first. */
+export function dateList(from: string, to: string): string[] {
+  const n = daysBetween(from, to);
+  return Array.from({ length: Math.max(n + 1, 0) }, (_, i) => addDaysISO(from, i));
+}
+
+/** The last `days` IST dates ending today: { from, to }. */
+export function trendRange(today: string, days: number): { from: string; to: string } {
+  return { from: addDaysISO(today, -(Math.max(days, 1) - 1)), to: today };
+}
+
+/** A problem with a report period, or null when it is fine. */
+export function rangeProblem(from: string, to: string): string | null {
+  if (to < from) return "'to' must be on or after 'from'";
+  if (daysBetween(from, to) > MAX_REPORT_DAYS) return "Reports cover at most one year";
+  return null;
+}
+
+export interface TrendPoint {
+  date: string;
+  invoiced: number;
+  collected: number;
+  count: number;
+}
+
+/** One point per day from `from` to `to`; days without data are zeros. */
+export function zeroFillTrend(
+  from: string,
+  to: string,
+  invoiced: readonly { date: string; amount: number; count: number }[],
+  collected: readonly { date: string; amount: number }[],
+): TrendPoint[] {
+  const inv = new Map<string, { amount: number; count: number }>();
+  for (const r of invoiced) {
+    const cur = inv.get(r.date) ?? { amount: 0, count: 0 };
+    inv.set(r.date, { amount: cur.amount + r.amount, count: cur.count + r.count });
+  }
+  const col = new Map<string, number>();
+  for (const r of collected) col.set(r.date, (col.get(r.date) ?? 0) + r.amount);
+  return dateList(from, to).map((date) => ({
+    date,
+    invoiced: inv.get(date)?.amount ?? 0,
+    collected: col.get(date) ?? 0,
+    count: inv.get(date)?.count ?? 0,
+  }));
+}
+
+// ------------------------------------------------------------------ GST summary
+
+export interface GstInvoice {
+  id: string;
+  number: string | null;
+  customerName: string;
+  customerGstin: string | null;
+  placeOfSupply: string;
+  interState: boolean;
+  /** Invoice grand total (after round-off), paise. */
+  total: number;
+  lines: readonly Pick<LineTotals, "description" | "hsn" | "unit" | "qty" | "gstRate" | "taxable" | "cgst" | "sgst" | "igst">[];
+}
+
+export type GstSection = "b2b" | "b2cl" | "b2cs";
+
+export interface B2bRow {
+  gstin: string;
+  name: string;
+  invoices: number;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total: number;
+}
+export interface B2clRow {
+  placeOfSupply: string;
+  rate: GstRate;
+  taxable: number;
+  igst: number;
+}
+export interface B2csRow {
+  placeOfSupply: string;
+  rate: GstRate;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+}
+export interface HsnRow {
+  hsn: string;
+  description: string;
+  unit: string;
+  /** GST rate of the group (HSN summary is per HSN + unit + rate). */
+  rate: GstRate;
+  qty: number;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total: number;
+}
+
+export interface GstSummary {
+  b2b: B2bRow[];
+  b2cl: B2clRow[];
+  b2cs: B2csRow[];
+  hsn: HsnRow[];
+  byRate: TaxBreakupRow[];
+  gstr3b: { outwardTaxable: number; igst: number; cgst: number; sgst: number; nilRated: number };
+  totals: { invoices: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
+}
+
+/**
+ * GSTR-1 section of an invoice: B2B when the buyer has a valid GSTIN; B2CL when inter-state to an unregistered
+ * buyer and the invoice is above ₹1,00,000; otherwise B2CS.
+ */
+export function gstSection(inv: Pick<GstInvoice, "customerGstin" | "interState" | "total">): GstSection {
+  if (inv.customerGstin && isValidGstin(inv.customerGstin)) return "b2b";
+  if (inv.interState && inv.total > B2CL_THRESHOLD_PAISE) return "b2cl";
+  return "b2cs";
+}
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+function getOrAdd<K, V>(map: Map<K, V>, key: K, make: () => V): V {
+  let v = map.get(key);
+  if (!v) {
+    v = make();
+    map.set(key, v);
+  }
+  return v;
+}
+
+/** Builds the GSTR-1 / GSTR-3B style summary from issued (non-cancelled) invoices. */
+export function gstSummary(invoices: readonly GstInvoice[]): GstSummary {
+  const b2b = new Map<string, B2bRow>();
+  const b2cl = new Map<string, B2clRow>();
+  const b2cs = new Map<string, B2csRow>();
+  const hsn = new Map<string, HsnRow>();
+  const byRate = new Map<GstRate, TaxBreakupRow>();
+  const gstr3b = { outwardTaxable: 0, igst: 0, cgst: 0, sgst: 0, nilRated: 0 };
+  const totals = { invoices: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 };
+
+  for (const inv of invoices) {
+    const section = gstSection(inv);
+    totals.invoices += 1;
+    totals.total += inv.total;
+    if (section === "b2b") {
+      const gstin = inv.customerGstin!.replace(/\s+/g, "").toUpperCase();
+      const row = getOrAdd(b2b, gstin, () => ({ gstin, name: inv.customerName, invoices: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 }));
+      row.invoices += 1;
+      row.total += inv.total;
+    }
+    for (const l of inv.lines) {
+      const rate = l.gstRate;
+      totals.taxable += l.taxable;
+      totals.cgst += l.cgst;
+      totals.sgst += l.sgst;
+      totals.igst += l.igst;
+      if (rate > 0) gstr3b.outwardTaxable += l.taxable;
+      else gstr3b.nilRated += l.taxable;
+      gstr3b.igst += l.igst;
+      gstr3b.cgst += l.cgst;
+      gstr3b.sgst += l.sgst;
+
+      const br = getOrAdd(byRate, rate, () => ({ gstRate: rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 }));
+      br.taxable += l.taxable;
+      br.cgst += l.cgst;
+      br.sgst += l.sgst;
+      br.igst += l.igst;
+
+      if (section === "b2b") {
+        const row = b2b.get(inv.customerGstin!.replace(/\s+/g, "").toUpperCase())!;
+        row.taxable += l.taxable;
+        row.cgst += l.cgst;
+        row.sgst += l.sgst;
+        row.igst += l.igst;
+      } else if (section === "b2cl") {
+        const row = getOrAdd(b2cl, `${inv.placeOfSupply}|${rate}`, () => ({ placeOfSupply: inv.placeOfSupply, rate, taxable: 0, igst: 0 }));
+        row.taxable += l.taxable;
+        row.igst += l.igst;
+      } else {
+        const row = getOrAdd(b2cs, `${inv.placeOfSupply}|${rate}`, () => ({
+          placeOfSupply: inv.placeOfSupply,
+          rate,
+          taxable: 0,
+          cgst: 0,
+          sgst: 0,
+          igst: 0,
+        }));
+        row.taxable += l.taxable;
+        row.cgst += l.cgst;
+        row.sgst += l.sgst;
+        row.igst += l.igst;
+      }
+
+      const code = l.hsn ?? "";
+      const unit = (l.unit ?? "").trim().toLowerCase();
+      const h = getOrAdd(hsn, `${code}|${unit}|${rate}`, () => ({
+        hsn: code,
+        description: l.description,
+        unit,
+        rate,
+        qty: 0,
+        taxable: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
+        total: 0,
+      }));
+      h.qty = round3(h.qty + l.qty);
+      h.taxable += l.taxable;
+      h.cgst += l.cgst;
+      h.sgst += l.sgst;
+      h.igst += l.igst;
+      h.total += l.taxable + l.cgst + l.sgst + l.igst;
+    }
+  }
+
+  const byPosRate = (a: { placeOfSupply: string; rate: number }, b: { placeOfSupply: string; rate: number }) =>
+    a.placeOfSupply.localeCompare(b.placeOfSupply) || a.rate - b.rate;
+  return {
+    b2b: [...b2b.values()].sort((a, b) => a.gstin.localeCompare(b.gstin)),
+    b2cl: [...b2cl.values()].sort(byPosRate),
+    b2cs: [...b2cs.values()].sort(byPosRate),
+    hsn: [...hsn.values()].sort((a, b) => a.hsn.localeCompare(b.hsn) || a.unit.localeCompare(b.unit) || a.rate - b.rate),
+    byRate: [...byRate.values()].sort((a, b) => a.gstRate - b.gstRate),
+    gstr3b,
+    totals,
+  };
+}
+
+// ------------------------------------------------------------------ CSV
+
+export type CsvValue = string | number | boolean | null | undefined;
+
+/** Paise → "1234.50" for spreadsheets. */
+export const rupees = (paise: number | null | undefined) => ((paise ?? 0) / 100).toFixed(2);
+
+const csvCell = (v: CsvValue): string => {
+  if (v === null || v === undefined) return "";
+  let s = String(v);
+  // Spreadsheet formula injection: text starting with = + - @ is shown as text.
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) || /^\s|\s$/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** RFC 4180 CSV with CRLF line ends and a UTF-8 BOM (so Excel shows ₹ and Tamil correctly). */
+export function toCsv(headers: readonly string[], rows: readonly (readonly CsvValue[])[]): string {
+  const lines = [headers, ...rows].map((r) => r.map(csvCell).join(","));
+  return `﻿${lines.join("\r\n")}\r\n`;
+}
+
+/** `attachment; filename="sales-register-2026-04-01-2026-04-30.csv"` (name sanitised). */
+export function csvDisposition(name: string, from?: string | null, to?: string | null): string {
+  const parts = [name, from, to].filter(Boolean).join("-").replace(/[^A-Za-z0-9._-]/g, "_");
+  return `attachment; filename="${parts}.csv"`;
+}
+
+// ------------------------------------------------------------------ CSV builders for each report (money in rupees)
+
+export const csvBuilders = {
+  salesRegister: (items: readonly {
+    number: string | null; date: string; customer: string; gstin: string | null; placeOfSupply: string;
+    taxable: number; cgst: number; sgst: number; igst: number; total: number; paid: number; status: string;
+  }[]) =>
+    toCsv(
+      ["Date", "Invoice", "Customer", "GSTIN", "Place of supply", "Taxable", "CGST", "SGST", "IGST", "Total", "Paid", "Status"],
+      items.map((i) => [i.date, i.number, i.customer, i.gstin, i.placeOfSupply, rupees(i.taxable), rupees(i.cgst), rupees(i.sgst), rupees(i.igst), rupees(i.total), rupees(i.paid), i.status]),
+    ),
+
+  gst: (summary: GstSummary, section: "hsn" | "b2b" | "b2cl" | "b2cs") => {
+    switch (section) {
+      case "b2b":
+        return toCsv(
+          ["GSTIN", "Name", "Invoices", "Taxable", "CGST", "SGST", "IGST", "Total"],
+          summary.b2b.map((r) => [r.gstin, r.name, r.invoices, rupees(r.taxable), rupees(r.cgst), rupees(r.sgst), rupees(r.igst), rupees(r.total)]),
+        );
+      case "b2cl":
+        return toCsv(
+          ["Place of supply", "Rate", "Taxable", "IGST"],
+          summary.b2cl.map((r) => [r.placeOfSupply, r.rate, rupees(r.taxable), rupees(r.igst)]),
+        );
+      case "b2cs":
+        return toCsv(
+          ["Place of supply", "Rate", "Taxable", "CGST", "SGST", "IGST"],
+          summary.b2cs.map((r) => [r.placeOfSupply, r.rate, rupees(r.taxable), rupees(r.cgst), rupees(r.sgst), rupees(r.igst)]),
+        );
+      default:
+        return toCsv(
+          ["HSN", "Description", "Unit", "Rate", "Quantity", "Taxable", "CGST", "SGST", "IGST", "Total"],
+          summary.hsn.map((r) => [r.hsn, r.description, r.unit, r.rate, r.qty, rupees(r.taxable), rupees(r.cgst), rupees(r.sgst), rupees(r.igst), rupees(r.total)]),
+        );
+    }
+  },
+
+  payments: (items: readonly { date: string; number: string | null; customer: string; method: string; amount: number; reference: string | null; source: string }[]) =>
+    toCsv(
+      ["Date", "Invoice", "Customer", "Method", "Amount", "Reference", "Source"],
+      items.map((i) => [i.date, i.number, i.customer, i.method, rupees(i.amount), i.reference, i.source]),
+    ),
+
+  ageing: (customers: readonly { name: string; current: number; d1_30: number; d31_60: number; d61_90: number; d90_plus: number; total: number }[]) =>
+    toCsv(
+      ["Customer", "Current", "1-30 days", "31-60 days", "61-90 days", "90+ days", "Total"],
+      customers.map((c) => [c.name, rupees(c.current), rupees(c.d1_30), rupees(c.d31_60), rupees(c.d61_90), rupees(c.d90_plus), rupees(c.total)]),
+    ),
+
+  trend: (items: readonly TrendPoint[]) =>
+    toCsv(["Date", "Invoiced", "Collected", "Bills"], items.map((i) => [i.date, rupees(i.invoiced), rupees(i.collected), i.count])),
+
+  topItems: (items: readonly { description: string; qty: number; unit: string; taxable: number }[]) =>
+    toCsv(["Item", "Quantity", "Unit", "Taxable"], items.map((i) => [i.description, i.qty, i.unit, rupees(i.taxable)])),
+
+  topCustomers: (items: readonly { name: string; invoices: number; total: number }[]) =>
+    toCsv(["Customer", "Invoices", "Total"], items.map((i) => [i.name, i.invoices, rupees(i.total)])),
+
+  ledger: (entries: readonly { date: string; type: string; number: string | null; description: string; debit: number; credit: number; balance: number }[]) =>
+    toCsv(
+      ["Date", "Type", "Invoice", "Description", "Debit", "Credit", "Balance"],
+      entries.map((e) => [e.date, e.type, e.number, e.description, rupees(e.debit), rupees(e.credit), rupees(e.balance)]),
+    ),
+
+  creditBook: (items: readonly { customer: { name: string; phone: string | null }; balance: number; overdue: number; lastActivity: string | null }[]) =>
+    toCsv(
+      ["Customer", "Phone", "Balance", "Overdue", "Last activity"],
+      items.map((i) => [i.customer.name, i.customer.phone, rupees(i.balance), rupees(i.overdue), i.lastActivity]),
+    ),
+};

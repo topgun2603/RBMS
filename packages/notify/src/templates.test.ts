@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { composeMessage } from "./compose";
+import { placeholders, render } from "./render";
 import { BUILTIN_TEMPLATES, baseLocale, pickTemplate, type TemplateCandidate } from "./templates";
 
 const T = "11111111-1111-1111-1111-111111111111";
@@ -90,5 +91,65 @@ describe("composeMessage", () => {
   it("renders a raw body without a template", () => {
     const msg = composeMessage({ channel: "push", to: "tok", template: null, subject: "Hi {{n}}", body: "Body {{n}}", vars: { n: 1 }, locale: "en", config: {} });
     expect(msg).toMatchObject({ subject: "Hi 1", body: "Body 1", data: { n: "1" } });
+  });
+});
+
+describe("billing templates", () => {
+  const VARS: Record<string, string[]> = {
+    "invoice.issued": ["shop", "customer", "number", "amount", "dueDate", "link"],
+    "invoice.reminder": ["shop", "customer", "number", "amount", "dueDate", "link"],
+    "payment.received": ["shop", "customer", "number", "amount", "balance"],
+  };
+  // Long but realistic values: 30-char shop, 24-char customer, 16-char number, crore amount, ~60-char link.
+  const sample = {
+    shop: "Sri Lakshmi Silks and Sarees 1",
+    customer: "Ravichandran Subramanian",
+    number: "SRISLK/26-27/123",
+    amount: "Rs.1,00,00,000.00",
+    balance: "Rs.1,00,00,000.00",
+    dueDate: "14 Oct 2026",
+    link: "https://sri-lakshmi-silks.srirealtime.com/i/AbCdEfGhIjKlMnOpQrStUv",
+  };
+  const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\[~\]|€]*$/;
+
+  it("ships sms + whatsapp in English and Tamil", () => {
+    for (const key of Object.keys(VARS)) {
+      for (const channel of ["sms", "whatsapp"] as const) {
+        for (const locale of ["en", "ta"]) {
+          const t = BUILTIN_TEMPLATES.find((b) => b.key === key && b.channel === channel && b.locale === locale);
+          expect(t, `${key}/${channel}/${locale}`).toBeDefined();
+          expect(t!.subject).toBeNull();
+          expect(pickTemplate([], { tenantId: null, key, channel, locale })?.template).toBe(t);
+        }
+      }
+    }
+  });
+
+  it("only uses the variables the invoices module sends", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS)) {
+      for (const name of placeholders(t.body)) expect(VARS[t.key], `${t.key}/${t.locale}: ${name}`).toContain(name);
+      expect(placeholders(t.body)).toContain("shop");
+    }
+  });
+
+  it("keeps English SMS within two GSM-7 segments", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS && b.channel === "sms" && b.locale === "en")) {
+      const text = render(t.body, sample);
+      expect(text, t.key).toMatch(GSM7);
+      expect(text.length, t.key).toBeLessThanOrEqual(306);
+    }
+  });
+
+  it("writes the Tamil versions in Tamil script", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS && b.locale === "ta")) {
+      expect(t.body).toMatch(/[஀-௿]{3,}/);
+    }
+  });
+
+  it("renders a reminder", () => {
+    const t = pickTemplate([], { tenantId: null, key: "invoice.reminder", channel: "whatsapp", locale: "en" })!.template;
+    expect(render(t.body, { ...sample, amount: "₹950.00" })).toBe(
+      "Sri Lakshmi Silks and Sarees 1: Dear Ravichandran Subramanian, ₹950.00 is pending on your account. Please pay: https://sri-lakshmi-silks.srirealtime.com/i/AbCdEfGhIjKlMnOpQrStUv Ignore if already paid.",
+    );
   });
 });

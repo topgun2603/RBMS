@@ -19,7 +19,7 @@ function AuthLayout({ logo, title, description, footer, corner, children, classN
   return (
     <div
       data-slot="auth-layout"
-      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background px-4 py-10"
+      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-page px-4 py-10"
     >
       {/* Brand-tinted backdrop: derives from --primary so tenant branding shows through. */}
       <div
@@ -33,7 +33,7 @@ function AuthLayout({ logo, title, description, footer, corner, children, classN
       {corner && <div className="absolute top-4 right-4 z-10 flex items-center gap-1">{corner}</div>}
       <div className={cn("relative z-10 flex w-full max-w-sm flex-col items-center gap-6", className)}>
         {logo && <div className="flex items-center justify-center">{logo}</div>}
-        <div className="w-full rounded-xl border bg-card/95 p-6 text-card-foreground shadow-lg shadow-black/5 backdrop-blur sm:p-8">
+        <div className="w-full rounded-2xl border border-card-ring bg-card/95 p-6 text-card-foreground shadow-raised backdrop-blur sm:p-8">
           {(title || description) && (
             <div className="mb-6 space-y-1.5 text-center">
               {title && <h1 className="font-heading text-xl font-semibold tracking-tight">{title}</h1>}

@@ -71,6 +71,8 @@ export interface AppShellProps {
   defaultCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   labels?: Partial<AppShellLabels>;
+  /** Show the hamburger + slide-over nav on small screens (default true). Turn off when the app has its own mobile nav. */
+  showMobileMenu?: boolean;
   children: React.ReactNode;
   className?: string;
 }
@@ -94,6 +96,7 @@ function AppShell({
   defaultCollapsed = false,
   onCollapsedChange,
   labels,
+  showMobileMenu = true,
   children,
   className,
 }: AppShellProps) {
@@ -110,16 +113,16 @@ function AppShell({
   React.useEffect(() => setMobileOpen(false), [currentPath]);
 
   return (
-    <div data-slot="app-shell" className={cn("flex min-h-dvh w-full bg-background", className)}>
+    <div data-slot="app-shell" className={cn("flex min-h-dvh w-full bg-page", className)}>
       {/* Desktop sidebar */}
       <aside
         data-collapsed={collapsed || undefined}
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out md:flex",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out md:flex print:hidden",
           collapsed ? "w-[3.75rem]" : "w-64",
         )}
       >
-        <div className={cn("flex h-14 shrink-0 items-center border-b border-sidebar-border", collapsed ? "justify-center px-2" : "px-4")}>
+        <div className={cn("flex h-16 shrink-0 items-center", collapsed ? "justify-center px-2" : "px-4")}>
           {collapsed ? (brandCollapsed ?? brand) : brand}
         </div>
         <ScrollArea className="min-h-0 flex-1">
@@ -139,7 +142,7 @@ function AppShell({
         <SheetContent side="left" className="w-72 gap-0 bg-sidebar p-0 text-sidebar-foreground" closeLabel={l.close}>
           <SheetTitle className="sr-only">{l.navigation}</SheetTitle>
           <SheetDescription className="sr-only">{l.navigation}</SheetDescription>
-          <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-4">{brand}</div>
+          <div className="flex h-16 shrink-0 items-center px-4">{brand}</div>
           <ScrollArea className="min-h-0 flex-1">
             <SidebarNav
               sections={sections}
@@ -155,11 +158,11 @@ function AppShell({
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-4">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-page/85 px-3 backdrop-blur-md supports-[backdrop-filter]:bg-page/70 sm:px-4">
           <Button
             variant="ghost"
             size="icon-sm"
-            className="md:hidden"
+            className={cn("md:hidden", !showMobileMenu && "hidden")}
             aria-label={l.openNavigation}
             onClick={() => setMobileOpen(true)}
           >
@@ -217,7 +220,7 @@ function SidebarNav({
             (collapsed ? (
               si > 0 && <div className="mx-2 mb-1 h-px bg-sidebar-border" />
             ) : (
-              <div className="px-2 pb-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
+              <div className="px-2.5 pb-1.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">
                 {section.title}
               </div>
             ))}
@@ -231,7 +234,7 @@ function SidebarNav({
                 aria-current={active ? "page" : undefined}
                 aria-label={collapsed ? item.label : undefined}
                 className={cn(
-                  "group/nav relative flex h-9 items-center gap-3 rounded-md text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                  "group/nav relative flex h-10 items-center gap-3 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                   collapsed ? "justify-center px-0" : "px-2.5",
                   active
                     ? "text-sidebar-accent-foreground"
@@ -242,7 +245,7 @@ function SidebarNav({
                   <motion.span
                     layoutId={`sr-nav-active-${layoutGroup}`}
                     transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }}
-                    className="absolute inset-0 rounded-md bg-sidebar-accent"
+                    className="absolute inset-0 rounded-lg bg-sidebar-accent shadow-xs ring-1 ring-primary/10"
                   >
                     <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-sidebar-primary" />
                   </motion.span>

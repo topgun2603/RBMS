@@ -227,6 +227,52 @@ export interface I18nOverride {
   appId: string | null;
 }
 
+/** A feature a module declares (GET /features/registry). See docs/features.md. */
+export interface FeatureDef {
+  /** "<moduleId>" for a module's base feature, "<moduleId>.<name>" for optional parts. */
+  key: string;
+  module: string;
+  label: string;
+  description: string;
+  dependsOn?: string[];
+  shopToggle?: boolean;
+  defaultOn?: boolean;
+}
+
+/** Why a feature is off, first failing level in the order app → plan → dependency → shop. */
+export type FeatureReason = "app" | "plan" | "shop" | "dependency";
+
+export interface FeatureState {
+  key: string;
+  module: string;
+  label: string;
+  description: string;
+  dependsOn: string[];
+  shopToggle: boolean;
+  enabled: boolean;
+  reason: FeatureReason | null;
+  /** App + plan + dependencies allow it (the owner's switch aside). */
+  available: boolean;
+  /** The owner's switch; null = never touched (uses defaultOn). */
+  shopEnabled: boolean | null;
+}
+
+/** GET /features (current workspace) and GET /features/tenants/:id. */
+export interface FeaturesResponse {
+  appId: string | null;
+  planId: string | null;
+  features: FeatureState[];
+  enabled: string[];
+}
+
+/** An app profile: which features a product (appId) offers. */
+export interface AppProfile {
+  appId: string;
+  name: string;
+  features: string[];
+  tenantCount: number;
+}
+
 export interface Paged<T> {
   items: T[];
   total?: number;

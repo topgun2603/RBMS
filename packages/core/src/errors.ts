@@ -20,3 +20,6 @@ export const tooMany = (message = "Too many attempts, try again later") => new A
 /** A plan limit or disabled module blocked the action. */
 export const paymentRequired = (message: string, details?: unknown) =>
   new AppError(402, "plan_limit", message, details);
+/** A feature is switched off for this shop by its app profile, a missing dependency, or the shop owner. */
+export const featureDisabled = (feature: string, reason: "app" | "shop" | "dependency", message?: string) =>
+  new AppError(403, "feature_disabled", message ?? `This feature is turned off: ${feature}`, { feature, reason });

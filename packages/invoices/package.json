@@ -1,0 +1,27 @@
+{
+  "name": "@srirealtime/invoices",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./calc": "./src/calc/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@srirealtime/core": "workspace:*",
+    "@srirealtime/db": "workspace:*",
+    "@srirealtime/gst": "workspace:*",
+    "drizzle-orm": "^0.44.0",
+    "zod": "^3.25.0"
+  },
+  "peerDependencies": {
+    "fastify": "^5.3.0"
+  },
+  "devDependencies": {
+    "fastify": "^5.3.0"
+  }
+}

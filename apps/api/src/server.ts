@@ -1,14 +1,16 @@
 import cors from "@fastify/cors";
 import { AppError, emptyContext, type SrModule } from "@srirealtime/core";
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyInstance, type preHandlerAsyncHookHandler } from "fastify";
 import { ZodError } from "zod";
 
 export interface ServerOptions {
-  corsOrigins: string[];
+  corsOrigins: Array<string | RegExp>;
   /** Shared with the modules so every log line goes through one pino instance. Omit for silent tests. */
   loggerInstance?: FastifyBaseLogger;
   /** Hooks that fill req.ctx, run in order on every request (tenancy first, then auth). */
   contextHooks: Array<(app: FastifyInstance) => void>;
+  /** Global preHandler hooks run after the context hooks, e.g. the features check of `config.feature`. */
+  preHandlers?: preHandlerAsyncHookHandler[];
   modules: SrModule[];
 }
 
@@ -28,6 +30,7 @@ export async function buildServer(opts: ServerOptions) {
     if (lang) req.ctx.locale = lang;
   });
   for (const hook of opts.contextHooks) hook(app);
+  for (const handler of opts.preHandlers ?? []) app.addHook("preHandler", handler);
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {

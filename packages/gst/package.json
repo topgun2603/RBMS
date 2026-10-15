@@ -1,0 +1,14 @@
+{
+  "name": "@srirealtime/gst",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure, browser-safe Indian GST utilities: tax calc, GSTIN, state codes, numbering, amount in words, UPI links.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  }
+}

@@ -3,7 +3,16 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2Icon, ExternalLinkIcon, LayersIcon, Loader2Icon, MoreHorizontalIcon, PauseCircleIcon, PlayCircleIcon } from "lucide-react";
+import {
+  Building2Icon,
+  ExternalLinkIcon,
+  LayersIcon,
+  Loader2Icon,
+  MoreHorizontalIcon,
+  PauseCircleIcon,
+  PlayCircleIcon,
+  ToggleRightIcon,
+} from "lucide-react";
 import {
   Badge,
   Button,
@@ -30,6 +39,7 @@ import {
   type DataTableColumn,
 } from "@srirealtime/ui";
 import { StatusBadge } from "@/components/badges";
+import { TenantFeaturesSheet } from "@/components/features/tenant-features-sheet";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
@@ -61,6 +71,7 @@ function TenantsList() {
   const [page, setPage] = React.useState(0);
   const [statusTarget, setStatusTarget] = React.useState<Tenant | null>(null);
   const [planTarget, setPlanTarget] = React.useState<Tenant | null>(null);
+  const [featuresTarget, setFeaturesTarget] = React.useState<Tenant | null>(null);
 
   const tenants = useQuery({
     queryKey: ["platform", "tenants", q, page],
@@ -138,6 +149,9 @@ function TenantsList() {
             <DropdownMenuItem onSelect={() => setPlanTarget(tn)}>
               <LayersIcon /> {t("admin.platform.changePlan")}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setFeaturesTarget(tn)}>
+              <ToggleRightIcon /> {t("admin.featuresUi.tenantAction")}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant={tn.status === "active" ? "destructive" : "default"} onSelect={() => setStatusTarget(tn)}>
               {tn.status === "active" ? <PauseCircleIcon /> : <PlayCircleIcon />}
@@ -192,6 +206,7 @@ function TenantsList() {
         onConfirm={() => (statusTarget ? setStatus.mutateAsync(statusTarget) : undefined)}
       />
       <ChangePlanDialog tenant={planTarget} onClose={() => setPlanTarget(null)} />
+      <TenantFeaturesSheet tenant={featuresTarget} onClose={() => setFeaturesTarget(null)} />
     </Page>
   );
 }
@@ -210,6 +225,7 @@ function ChangePlanDialog({ tenant, onClose }: { tenant: Tenant | null; onClose:
     onSuccess: () => {
       toast.success(t("admin.platform.planChanged"));
       void qc.invalidateQueries({ queryKey: ["platform", "tenants"] });
+      void qc.invalidateQueries({ queryKey: ["features"] });
       onClose();
     },
     onError: (err) => toast.error(describeError(err, t)),

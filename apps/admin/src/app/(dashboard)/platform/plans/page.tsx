@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { EyeOffIcon, LayersIcon } from "lucide-react";
 import { Badge } from "@srirealtime/ui";
-import { jsonText, parseJsonObject, ResourcePage, splitTags, type ResourceConfig } from "@/components/crud/resource-page";
+import { jsonText, parseJsonObject, ResourcePage, type ResourceConfig } from "@/components/crud/resource-page";
+import { PlanModulesPicker } from "@/components/features/plan-modules-picker";
 import { SuperAdminOnly } from "@/components/superadmin-only";
 import { Page } from "@/components/page";
 import { paiseToRupees } from "@/lib/format";
@@ -22,7 +23,7 @@ const planSchema = z.object({
   description: z.string().max(500, "admin.validation.tooLong"),
   priceMonthly: money,
   priceYearly: money,
-  modules: z.string(),
+  modules: z.array(z.string()),
   limits: z.string().refine(jsonText, "admin.validation.jsonObject"),
   features: z.string().refine(jsonText, "admin.validation.jsonObject"),
   isPublic: z.boolean(),
@@ -108,7 +109,7 @@ function PlansResource() {
       description: "",
       priceMonthly: 0,
       priceYearly: 0,
-      modules: "",
+      modules: [],
       limits: "{}",
       features: "{}",
       isPublic: true,
@@ -120,7 +121,7 @@ function PlansResource() {
       description: p.description ?? "",
       priceMonthly: paiseToRupees(p.priceMonthlyPaise),
       priceYearly: paiseToRupees(p.priceYearlyPaise),
-      modules: p.modules.join(", "),
+      modules: [...p.modules],
       limits: JSON.stringify(p.limits, null, 2),
       features: JSON.stringify(p.features, null, 2),
       isPublic: p.isPublic,
@@ -131,7 +132,7 @@ function PlansResource() {
       description: v.description.trim() || null,
       priceMonthlyPaise: Math.round(v.priceMonthly * 100),
       priceYearlyPaise: Math.round(v.priceYearly * 100),
-      modules: splitTags(v.modules),
+      modules: v.modules.map((m) => m.trim()).filter(Boolean),
       limits: parseJsonObject<Record<string, number>>(v.limits),
       features: parseJsonObject<Record<string, boolean>>(v.features),
       isPublic: v.isPublic,
@@ -143,7 +144,15 @@ function PlansResource() {
       { name: "description", label: t("admin.common.description"), wide: true },
       { name: "priceMonthly", label: t("admin.platform.priceMonthly"), type: "number" },
       { name: "priceYearly", label: t("admin.platform.priceYearly"), type: "number" },
-      { name: "modules", label: t("admin.plans.modules"), wide: true, placeholder: "notify, uploads, branding", description: t("admin.platform.modulesHint") },
+      {
+        name: "modules",
+        label: t("admin.featuresUi.planFeatures"),
+        type: "custom",
+        description: t("admin.featuresUi.planFeaturesHint"),
+        render: ({ value, onChange, disabled }) => (
+          <PlanModulesPicker value={(value as string[] | undefined) ?? []} onChange={onChange} disabled={disabled} />
+        ),
+      },
       { name: "limits", label: t("admin.platform.limits"), type: "json", description: t("admin.platform.limitsHint") },
       { name: "features", label: t("admin.platform.features"), type: "json", description: t("admin.platform.featuresHint") },
       { name: "isPublic", label: t("admin.platform.public"), type: "switch", description: t("admin.platform.publicHint") },

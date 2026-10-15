@@ -18,6 +18,8 @@ export interface TenancyDeps {
   rootDomain: string;
   /** Called after a tenant's plan changes (wire to plans.service.invalidate). */
   onPlanChange?: (tenantId: string, planId: string | null) => void | Promise<void>;
+  /** Called after a tenant's app changes (wire to features.service.invalidate). */
+  onAppChange?: (tenantId: string, appId: string | null) => void | Promise<void>;
   /**
    * Optional DNS check for custom domains (e.g. a TXT record lookup). When set, owners/admins can
    * verify their own domains; when absent, only a super-admin can mark a domain verified.
@@ -57,7 +59,7 @@ interface CacheEntry {
 
 const MAX_CACHE_ENTRIES = 10_000;
 
-export const toTenantRef = (t: Tenant): TenantRef => ({ id: t.id, slug: t.slug, planId: t.planId });
+export const toTenantRef = (t: Tenant): TenantRef => ({ id: t.id, slug: t.slug, planId: t.planId, appId: t.appId ?? null });
 
 /** Public view of a tenant, safe to show to anyone who can reach its host. */
 export const publicTenant = (t: Tenant) => ({ id: t.id, slug: t.slug, name: t.name, appId: t.appId, status: t.status });
@@ -195,6 +197,27 @@ export class TenancyService {
     this.invalidate(tenantId);
     await this.deps.onPlanChange?.(tenantId, planId);
     return t;
+  }
+
+  /** Moves a tenant to another app (product), e.g. "BL" or "EC"; null = no app. */
+  async setApp(tenantId: string, appId: string | null): Promise<Tenant> {
+    const [t] = await this.db.update(tenants).set({ appId }).where(eq(tenants.id, tenantId)).returning();
+    if (!t) throw notFound("Tenant");
+    this.invalidate(tenantId);
+    await this.deps.onAppChange?.(tenantId, appId);
+    return t;
+  }
+
+  /** The TenantRef for a tenant id (uncached; null when missing). */
+  async getRef(tenantId: string): Promise<TenantRef | null> {
+    const t = await this.getById(tenantId);
+    return t ? toTenantRef(t) : null;
+  }
+
+  /** Number of tenants per app id (tenants without an app are left out). */
+  async countByApp(): Promise<Record<string, number>> {
+    const rows = await this.db.select({ appId: tenants.appId, n: count() }).from(tenants).groupBy(tenants.appId);
+    return Object.fromEntries(rows.filter((r) => r.appId).map((r) => [r.appId!, r.n]));
   }
 
   async setStatus(tenantId: string, status: TenantStatus): Promise<Tenant> {

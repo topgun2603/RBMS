@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  AppWindowIcon,
   BellIcon,
   Building2Icon,
   CircleUserIcon,
@@ -16,6 +17,7 @@ import {
   PaletteIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
+  ToggleRightIcon,
   UsersIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -34,6 +36,7 @@ import { TenantSwitcher } from "@/components/tenant-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { isSuperAdmin, useMe } from "@/lib/auth";
+import { useFeatures } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import { readStored, SIDEBAR_KEY, useHydrated, useTenantSlug, useToken, writeStored } from "@/lib/session";
 
@@ -53,6 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const me = useMe();
   const superadmin = isSuperAdmin(me.data?.user);
   const isPlatformRoute = pathname.startsWith("/platform");
+  const { isModuleOff } = useFeatures();
 
   const [collapsed, setCollapsed] = React.useState(false);
   React.useEffect(() => setCollapsed(readStored(SIDEBAR_KEY) === "1"), []);
@@ -67,19 +71,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sections = React.useMemo<AppShellNavSection[]>(() => {
     const s: AppShellNavSection[] = [];
     if (tenant) {
+      // `module`: hide the item when every feature of that module is off for this workspace.
+      const items: (AppShellNavSection["items"][number] & { module?: string })[] = [
+        { href: "/", label: t("admin.nav.overview"), icon: LayoutDashboardIcon },
+        { href: "/members", label: t("admin.nav.members"), icon: UsersIcon },
+        { href: "/branding", label: t("admin.nav.branding"), icon: PaletteIcon },
+        { href: "/plans", label: t("admin.nav.plans"), icon: GaugeIcon },
+        { href: "/settings", label: t("admin.nav.settings"), icon: SlidersHorizontalIcon },
+        { href: "/features", label: t("admin.nav.features"), icon: ToggleRightIcon },
+        { href: "/notifications", label: t("admin.nav.notifications"), icon: BellIcon },
+        { href: "/files", label: t("admin.nav.files"), icon: FolderOpenIcon },
+        { href: "/translations", label: t("admin.nav.translations"), icon: LanguagesIcon },
+      ];
       s.push({
         id: "workspace",
         title: t("admin.nav.workspace"),
-        items: [
-          { href: "/", label: t("admin.nav.overview"), icon: LayoutDashboardIcon },
-          { href: "/members", label: t("admin.nav.members"), icon: UsersIcon },
-          { href: "/branding", label: t("admin.nav.branding"), icon: PaletteIcon },
-          { href: "/plans", label: t("admin.nav.plans"), icon: GaugeIcon },
-          { href: "/settings", label: t("admin.nav.settings"), icon: SlidersHorizontalIcon },
-          { href: "/notifications", label: t("admin.nav.notifications"), icon: BellIcon },
-          { href: "/files", label: t("admin.nav.files"), icon: FolderOpenIcon },
-          { href: "/translations", label: t("admin.nav.translations"), icon: LanguagesIcon },
-        ],
+        items: items.filter((i) => !i.module || !isModuleOff(i.module)).map(({ module: _m, ...i }) => i),
       });
     }
     s.push({
@@ -98,12 +105,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/tenants", label: t("admin.nav.tenants"), icon: Building2Icon },
           { href: "/platform/users", label: t("admin.nav.users"), icon: UsersRoundIcon },
           { href: "/platform/plans", label: t("admin.nav.platformPlans"), icon: LayersIcon },
+          { href: "/platform/apps", label: t("admin.nav.platformApps"), icon: AppWindowIcon },
           { href: "/platform/privacy-requests", label: t("admin.nav.privacyRequests"), icon: FileLockIcon },
         ],
       });
     }
     return s;
-  }, [t, tenant, superadmin]);
+  }, [t, tenant, superadmin, isModuleOff]);
 
   if (hydrated && token && me.isError) {
     return (

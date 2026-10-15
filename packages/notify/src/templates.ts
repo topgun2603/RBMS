@@ -23,6 +23,17 @@ const OTP_TA =
 const OTP_SUBJECT_EN = "Your {{app}} verification code";
 const OTP_SUBJECT_TA = "உங்கள் {{app}} சரிபார்ப்புக் குறியீடு";
 
+// Billing (invoices module). English SMS stays within GSM-7 (amounts arrive as "Rs.1,234.50") and 2 segments.
+// Vars — invoice.issued: shop, customer, number, amount, dueDate, link; invoice.reminder: shop, customer, amount,
+// link (+ number, dueDate for automatic reminders); payment.received: shop, customer, number, amount, balance.
+const INVOICE_ISSUED_EN = "{{shop}}: Dear {{customer}}, your bill {{number}} for {{amount}} is ready. View and pay: {{link}}";
+const INVOICE_ISSUED_TA = "{{shop}}: வணக்கம் {{customer}}, உங்கள் பில் {{number}} ({{amount}}) தயாராக உள்ளது. பார்க்க / செலுத்த: {{link}}";
+const INVOICE_REMINDER_EN = "{{shop}}: Dear {{customer}}, {{amount}} is pending on your account. Please pay: {{link}} Ignore if already paid.";
+const INVOICE_REMINDER_TA =
+  "{{shop}}: வணக்கம் {{customer}}, உங்கள் கணக்கில் {{amount}} நிலுவையில் உள்ளது. செலுத்த: {{link}} ஏற்கனவே செலுத்தியிருந்தால் இதைப் புறக்கணிக்கவும்.";
+const PAYMENT_RECEIVED_EN = "{{shop}}: Thank you {{customer}}! We received {{amount}} for bill {{number}}. Balance due: {{balance}}.";
+const PAYMENT_RECEIVED_TA = "{{shop}}: நன்றி {{customer}}! பில் {{number}}-க்கு {{amount}} பெற்றுக்கொண்டோம். மீதி நிலுவை: {{balance}}.";
+
 function builtin(key: string, channels: Channel[], locale: string, body: string, subject: string | null): TemplateContent[] {
   return channels.map((channel) => ({
     key,
@@ -38,6 +49,12 @@ function builtin(key: string, channels: Channel[], locale: string, body: string,
 export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...builtin("auth.otp", ["sms", "whatsapp", "email"], "en", OTP_EN, OTP_SUBJECT_EN),
   ...builtin("auth.otp", ["sms", "whatsapp", "email"], "ta", OTP_TA, OTP_SUBJECT_TA),
+  ...builtin("invoice.issued", ["sms", "whatsapp"], "en", INVOICE_ISSUED_EN, null),
+  ...builtin("invoice.issued", ["sms", "whatsapp"], "ta", INVOICE_ISSUED_TA, null),
+  ...builtin("invoice.reminder", ["sms", "whatsapp"], "en", INVOICE_REMINDER_EN, null),
+  ...builtin("invoice.reminder", ["sms", "whatsapp"], "ta", INVOICE_REMINDER_TA, null),
+  ...builtin("payment.received", ["sms", "whatsapp"], "en", PAYMENT_RECEIVED_EN, null),
+  ...builtin("payment.received", ["sms", "whatsapp"], "ta", PAYMENT_RECEIVED_TA, null),
 ];
 
 /**
