@@ -1,5 +1,13 @@
 /** Pure invoice rules shared by the service (no database). */
-import { DEFAULT_INVOICE_PREFIX, isValidGstin, sanitizePrefix, stateFromGstin } from "./calc";
+import {
+  DEFAULT_INVOICE_PREFIX,
+  isValidGstin,
+  sanitizePrefix,
+  stateFromGstin,
+  taxableOfInclusive,
+  type LineInput,
+  type LineTotals,
+} from "./calc";
 import { DEFAULT_REMINDER_DAYS, SELLER_FIELDS, type SellerProfile } from "./ports";
 import type { InvoiceStatus } from "./schema";
 
@@ -83,4 +91,70 @@ export function monthRange(today: string): { from: string; to: string } {
   const m = Number(today.slice(5, 7));
   const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
   return { from: `${today.slice(0, 7)}-01`, to: next };
+}
+
+/**
+ * Splits `total` (integer paise) across `weights` proportionally, largest remainder first (ties: earlier entry).
+ * Shares are integers summing exactly to `total`; a share never exceeds its weight when `total <= sum(weights)`.
+ */
+export function allocateProportional(total: number, weights: readonly number[]): number[] {
+  const sum = weights.reduce((s, w) => s + Math.max(w, 0), 0);
+  if (total <= 0 || sum <= 0) return weights.map(() => 0);
+  const exact = weights.map((w) => (total * Math.max(w, 0)) / sum);
+  const shares = exact.map(Math.floor);
+  let left = total - shares.reduce((s, v) => s + v, 0);
+  const order = exact
+    .map((e, i) => ({ i, frac: e - Math.floor(e) }))
+    .filter((o) => (weights[o.i] ?? 0) > 0)
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (let k = 0; left > 0 && order.length > 0; k = (k + 1) % order.length, left -= 1) shares[order[k]!.i]! += 1;
+  return shares;
+}
+
+export interface BillDiscountOptions {
+  /** Throw a RangeError when the discount is more than the bill's line totals (default true); false caps it. */
+  strict?: boolean;
+}
+
+const lineInputOf = (l: LineTotals): LineInput => {
+  const out: LineInput = { description: l.description, qty: l.qty, rate: l.rate, gstRate: l.gstRate };
+  if (l.hsn) out.hsn = l.hsn;
+  if (l.unit) out.unit = l.unit;
+  if (l.discount) out.discount = l.discount;
+  if (l.itemId) out.itemId = l.itemId;
+  if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
+  return out;
+};
+
+/**
+ * Applies a bill-level, GST-inclusive discount (e.g. a loyalty points redemption) to computed lines.
+ *
+ * A loyalty redemption is a discount given at the time of supply and shown on the invoice, so under Sec 15(3)(a) of
+ * the CGST Act it is excluded from the value of supply: it reduces the taxable value of every line pro-rata by value
+ * (each line's share of the bill total) and GST is recomputed on the reduced charge.
+ *
+ * `discount` (paise) is split across the lines in proportion to their totals (largest remainder, integers, the shares
+ * sum exactly to `discount`, no line goes below zero). Each discounted line becomes an `inclusiveTotal` line charging
+ * `total − share`, with its `discount` raised by the taxable value it lost so `amount` stays the original amount.
+ * Lines with a zero share are returned unchanged. Recompute with `computeInvoice`: the exact (pre round-off) total
+ * drops by exactly `discount`, so a whole-rupee discount leaves the round-off unchanged and the new grand total is
+ * the old one minus `discount`.
+ */
+export function applyBillDiscount(lines: readonly LineTotals[], discount: number, opts: BillDiscountOptions = {}): LineInput[] {
+  if (!Number.isInteger(discount) || discount < 0) throw new RangeError("The discount must be whole paise, zero or more");
+  const available = lines.reduce((s, l) => s + Math.max(l.total, 0), 0);
+  let d = discount;
+  if (d > available) {
+    if (opts.strict !== false) throw new RangeError("The discount is more than the bill");
+    d = available;
+  }
+  const shares = allocateProportional(d, lines.map((l) => l.total));
+  return lines.map((l, i) => {
+    const share = shares[i] ?? 0;
+    const base = lineInputOf(l);
+    if (share <= 0) return base;
+    const inclusiveTotal = l.total - share;
+    const lost = l.taxable - taxableOfInclusive(inclusiveTotal, l.gstRate);
+    return { ...base, discount: (l.discount ?? 0) + Math.max(lost, 0), inclusiveTotal };
+  });
 }

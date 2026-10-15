@@ -6,6 +6,7 @@ import type {
   PublicProductSummary,
   PublicVariant,
   Product,
+  ProductEventData,
   ProductSummary,
   Variant,
 } from "./types";
@@ -203,6 +204,23 @@ export function toSummary(
     ...priceRange(variants),
     variantCount: variants.length,
     channels: p.channels,
+    vendorId: p.vendorId,
+    updatedAt: p.updatedAt,
+  };
+}
+
+/** `product.created` / `product.updated` event payload: the product plus its price range over live variants. */
+export function productEventData(
+  p: Pick<Product, "id" | "name" | "slug" | "status" | "vendorId" | "updatedAt">,
+  variants: readonly Pick<Variant, "price">[],
+): ProductEventData {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    status: p.status,
+    vendorId: p.vendorId,
+    ...priceRange(variants),
     updatedAt: p.updatedAt,
   };
 }

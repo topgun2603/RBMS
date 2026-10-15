@@ -28,3 +28,14 @@ export function createJobs(deps: JobsDeps) {
 export { JobsService, type QueuePort } from "./service";
 export { MemoryJobsDriver } from "./memory-driver";
 export type { DefineOptions, EnqueueOptions, JobHandler, JobMeta, LoggerPort, ScheduleOptions } from "./types";
+export {
+  createRedisNonceStore,
+  createRedisPubSub,
+  defaultRedisClient,
+  LONG_LIVED_REDIS_OPTIONS,
+  type RedisClientLike,
+  type RedisHelperOptions,
+  type RedisNonceStore,
+  type RedisPubSub,
+  type RedisRole,
+} from "./redis";

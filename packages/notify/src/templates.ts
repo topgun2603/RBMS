@@ -81,6 +81,143 @@ function orderTemplates(): TemplateContent[] {
   ]);
 }
 
+// Batch 3 modules. English SMS stays within GSM-7 (amounts arrive pre-formatted, e.g. "Rs.1,234.50") and short.
+// Vars:
+//   marketplace.vendor_approved: vendorName; marketplace.vendor_order: vendorName, orderNumber, amount;
+//   marketplace.payout_paid: vendorName, amount, reference
+//   support.*: shop, number, subject, message, link, status, priority, customer
+//     (created/reply go to the customer; new/assigned/customer_reply/overdue go to staff)
+//   chat.message: shop, sender, preview, title, link (also push: subject = title)
+//   developer.webhook_disabled: url, failures
+type Copy = { body: string; subject: string };
+const BATCH3: Record<string, { en: Copy; ta: Copy; push?: { en: string; ta: string } }> = {
+  "marketplace.vendor_approved": {
+    en: {
+      body: "{{app}}: Congratulations {{vendorName}}! Your seller account is approved. You can now list products and receive orders.",
+      subject: "Your seller account is approved - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: வாழ்த்துகள் {{vendorName}}! உங்கள் விற்பனையாளர் கணக்கு அங்கீகரிக்கப்பட்டது. இப்போது பொருட்களைப் பட்டியலிட்டு ஆர்டர்களைப் பெறலாம்.",
+      subject: "உங்கள் விற்பனையாளர் கணக்கு அங்கீகரிக்கப்பட்டது - {{app}}",
+    },
+  },
+  "marketplace.vendor_order": {
+    en: {
+      body: "{{app}}: {{vendorName}}, new order {{orderNumber}} for {{amount}}. Please pack and ship it soon.",
+      subject: "New order {{orderNumber}} - {{vendorName}}",
+    },
+    ta: {
+      body: "{{app}}: {{vendorName}}, புதிய ஆர்டர் {{orderNumber}} ({{amount}}). விரைவில் பேக் செய்து அனுப்பவும்.",
+      subject: "புதிய ஆர்டர் {{orderNumber}} - {{vendorName}}",
+    },
+  },
+  "marketplace.payout_paid": {
+    en: {
+      body: "{{app}}: {{vendorName}}, your payout of {{amount}} has been sent. Ref: {{reference}}",
+      subject: "Payout of {{amount}} sent - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{vendorName}}, உங்கள் {{amount}} தொகை அனுப்பப்பட்டது. குறிப்பு எண்: {{reference}}",
+      subject: "{{amount}} தொகை அனுப்பப்பட்டது - {{app}}",
+    },
+  },
+  "support.created": {
+    en: {
+      body: "{{shop}}: Dear {{customer}}, we received your request {{number}} ({{subject}}). We will reply soon. View: {{link}}",
+      subject: "[{{number}}] We received your request - {{shop}}",
+    },
+    ta: {
+      body: "{{shop}}: வணக்கம் {{customer}}, உங்கள் கோரிக்கை {{number}} ({{subject}}) பெறப்பட்டது. விரைவில் பதிலளிப்போம். பார்க்க: {{link}}",
+      subject: "[{{number}}] உங்கள் கோரிக்கை பெறப்பட்டது - {{shop}}",
+    },
+  },
+  "support.reply": {
+    en: {
+      body: "{{shop}}: Dear {{customer}}, we replied to your request {{number}}: {{message}} View and reply: {{link}}",
+      subject: "[{{number}}] New reply: {{subject}} - {{shop}}",
+    },
+    ta: {
+      body: "{{shop}}: வணக்கம் {{customer}}, உங்கள் கோரிக்கை {{number}}-க்கு பதில்: {{message}} பார்க்க / பதிலளிக்க: {{link}}",
+      subject: "[{{number}}] புதிய பதில்: {{subject}} - {{shop}}",
+    },
+  },
+  "support.new": {
+    en: {
+      body: "{{shop}}: New ticket {{number}} from {{customer}} ({{priority}}): {{subject}}. Open: {{link}}",
+      subject: "[{{number}}] New ticket: {{subject}}",
+    },
+    ta: {
+      body: "{{shop}}: புதிய டிக்கெட் {{number}} — {{customer}} ({{priority}}): {{subject}}. பார்க்க: {{link}}",
+      subject: "[{{number}}] புதிய டிக்கெட்: {{subject}}",
+    },
+  },
+  "support.assigned": {
+    en: {
+      body: "{{shop}}: Ticket {{number}} ({{priority}}) is assigned to you: {{subject}}. Open: {{link}}",
+      subject: "[{{number}}] Assigned to you: {{subject}}",
+    },
+    ta: {
+      body: "{{shop}}: டிக்கெட் {{number}} ({{priority}}) உங்களுக்கு ஒதுக்கப்பட்டது: {{subject}}. பார்க்க: {{link}}",
+      subject: "[{{number}}] உங்களுக்கு ஒதுக்கப்பட்டது: {{subject}}",
+    },
+  },
+  "support.customer_reply": {
+    en: {
+      body: "{{shop}}: {{customer}} replied on ticket {{number}}: {{message}} Open: {{link}}",
+      subject: "[{{number}}] Customer reply: {{subject}}",
+    },
+    ta: {
+      body: "{{shop}}: டிக்கெட் {{number}}-இல் {{customer}} பதில்: {{message}} பார்க்க: {{link}}",
+      subject: "[{{number}}] வாடிக்கையாளர் பதில்: {{subject}}",
+    },
+  },
+  "support.overdue": {
+    en: {
+      body: "{{shop}}: Ticket {{number}} ({{priority}}, {{status}}) is overdue: {{subject}}. Please respond: {{link}}",
+      subject: "[{{number}}] Overdue: {{subject}}",
+    },
+    ta: {
+      body: "{{shop}}: டிக்கெட் {{number}} ({{priority}}, {{status}}) காலக்கெடு கடந்துவிட்டது: {{subject}}. பதிலளிக்கவும்: {{link}}",
+      subject: "[{{number}}] காலக்கெடு கடந்தது: {{subject}}",
+    },
+  },
+  "chat.message": {
+    en: {
+      body: "{{shop}}: New message from {{sender}}: {{preview}} Reply: {{link}}",
+      subject: "{{title}}",
+    },
+    ta: {
+      body: "{{shop}}: {{sender}} அனுப்பிய புதிய செய்தி: {{preview}} பதிலளிக்க: {{link}}",
+      subject: "{{title}}",
+    },
+    push: { en: "{{sender}}: {{preview}}", ta: "{{sender}}: {{preview}}" },
+  },
+  "developer.webhook_disabled": {
+    en: {
+      body: "{{app}}: Your webhook {{url}} was turned off after {{failures}} failed deliveries in a row. Fix it and turn it back on in Developer settings.",
+      subject: "Webhook turned off after {{failures}} failures - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: உங்கள் webhook {{url}} தொடர்ந்து {{failures}} முறை தோல்வியடைந்ததால் நிறுத்தப்பட்டது. சரிசெய்து Developer அமைப்புகளில் மீண்டும் இயக்கவும்.",
+      subject: "{{failures}} தோல்விகளுக்குப் பின் webhook நிறுத்தப்பட்டது - {{app}}",
+    },
+  },
+};
+
+function batch3Templates(): TemplateContent[] {
+  return Object.entries(BATCH3).flatMap(([key, t]) =>
+    (["en", "ta"] as const).flatMap((locale) => {
+      const copy = t[locale];
+      const list = builtin(key, ["sms", "whatsapp", "email"], locale, copy.body, copy.subject);
+      if (t.push) list.push({ key, channel: "push", locale, subject: copy.subject, body: t.push[locale], providerRef: null });
+      return list;
+    }),
+  );
+}
+
+/** Template keys added for the batch 3 modules (marketplace, support, chat, developer). */
+export const BATCH3_TEMPLATE_KEYS: readonly string[] = Object.keys(BATCH3);
+
 function builtin(key: string, channels: Channel[], locale: string, body: string, subject: string | null): TemplateContent[] {
   return channels.map((channel) => ({
     key,
@@ -103,6 +240,7 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...builtin("payment.received", ["sms", "whatsapp"], "en", PAYMENT_RECEIVED_EN, null),
   ...builtin("payment.received", ["sms", "whatsapp"], "ta", PAYMENT_RECEIVED_TA, null),
   ...orderTemplates(),
+  ...batch3Templates(),
 ];
 
 /**

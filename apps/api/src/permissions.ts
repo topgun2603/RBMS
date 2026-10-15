@@ -1,4 +1,4 @@
-import { requirePermission, type PermissionDef } from "@srirealtime/core";
+import { AppError, requirePermission, type PermissionDef } from "@srirealtime/core";
 import { CATALOGUE_PERMISSIONS } from "@srirealtime/catalogue";
 import { INVENTORY_PERMISSIONS, INVENTORY_ROUTE_PERMISSIONS } from "@srirealtime/inventory";
 import { ORDER_PERMISSIONS_KEYS } from "@srirealtime/orders";
@@ -23,6 +23,14 @@ export const INVOICE_PERMISSIONS: PermissionDef[] = [
   { key: "settings.manage", module: "invoices", label: "Manage settings", description: "Shop settings such as the payment account." },
   { key: "payments.receive", module: "invoices", label: "Receive payments", description: "Record payments against bills." },
   { key: "customers.create", module: "invoices", label: "Add customers", description: "Add and edit customers." },
+];
+
+/**
+ * Using a customer's loyalty points on a bill or a counter order (the `loyaltyPoints` field). Declared by the host on
+ * the loyalty module: the loyalty package only knows `loyalty.manage` (members, adjustments, settings).
+ */
+export const LOYALTY_HOST_PERMISSIONS: PermissionDef[] = [
+  { key: "loyalty.redeem", module: "loyalty", label: "Redeem loyalty points", description: "Use a customer's loyalty points as a discount on a bill or order." },
 ];
 
 export const CATALOGUE_PERMISSION_DEFS: PermissionDef[] = CATALOGUE_PERMISSIONS.map((p) => ({ ...p, module: "catalogue" }));
@@ -119,10 +127,71 @@ async function discountGuard(req: FastifyRequest) {
     requirePermission(req.ctx, "invoices.discount");
   }
 }
-const ROUTE_GUARDS: Record<string, (req: FastifyRequest) => Promise<void>> = {
-  "POST /v1/invoices/": discountGuard,
-  [`PATCH ${BILL}`]: discountGuard,
+/** `loyaltyPoints` on a bill or a staff order needs `loyalty.redeem`. */
+async function loyaltyGuard(req: FastifyRequest) {
+  const points = (req.body as { loyaltyPoints?: unknown } | null)?.loyaltyPoints;
+  if (points !== undefined && points !== null && Number(points) > 0) requirePermission(req.ctx, "loyalty.redeem");
+}
+const both =
+  (...guards: ((req: FastifyRequest) => Promise<void>)[]) =>
+  async (req: FastifyRequest) => {
+    for (const g of guards) await g(req);
+  };
+export const ROUTE_GUARDS: Record<string, (req: FastifyRequest) => Promise<void>> = {
+  "POST /v1/invoices/": both(discountGuard, loyaltyGuard),
+  [`PATCH ${BILL}`]: both(discountGuard, loyaltyGuard),
+  [`POST ${BILL}/issue`]: loyaltyGuard,
+  "POST /v1/orders/": loyaltyGuard,
 };
+
+/**
+ * Fixed-window counter per key (in-memory, per API instance — enough to stop a script hammering one form; put a shared
+ * limiter in front for multi-instance deployments). `hit` returns false once `limit` hits happened within `windowMs`.
+ */
+export class WindowLimiter {
+  private readonly hits = new Map<string, number[]>();
+  constructor(
+    readonly limit: number,
+    readonly windowMs: number,
+    private readonly now: () => number = Date.now,
+  ) {}
+  hit(key: string): boolean {
+    const t = this.now();
+    const recent = (this.hits.get(key) ?? []).filter((x) => t - x < this.windowMs);
+    if (recent.length >= this.limit) {
+      this.hits.set(key, recent);
+      return false;
+    }
+    recent.push(t);
+    this.hits.set(key, recent);
+    if (this.hits.size > 50_000) this.hits.clear();
+    return true;
+  }
+}
+
+/**
+ * Guest tickets (`POST /v1/support/public/tickets` with an OTP-verified guest token, no account): at most 5 an hour per
+ * verified phone and 20 an hour per IP address (higher, as an office or a mobile carrier's NAT shares one address).
+ * 429 `rate_limited` otherwise. Unverifiable tokens aren't counted (the route answers 401); signed-in requesters are
+ * not limited here.
+ */
+export function guestTicketGuard(
+  phoneOf: (tenantId: string, token: string) => { phone: string } | null,
+  opts = { perPhone: 5, perIp: 20, windowMs: 3_600_000 },
+) {
+  const byPhone = new WindowLimiter(opts.perPhone, opts.windowMs);
+  const byIp = new WindowLimiter(opts.perIp, opts.windowMs);
+  return async (req: FastifyRequest) => {
+    if (req.ctx.user || !req.ctx.tenant) return;
+    const h = req.headers["x-guest-token"];
+    const token = (Array.isArray(h) ? h[0] : h)?.trim();
+    const phone = token ? phoneOf(req.ctx.tenant.id, token)?.phone : null;
+    if (!phone) return; // the route answers 401
+    const tooMany = () => new AppError(429, "rate_limited", "Too many tickets from this number; please try again in an hour");
+    if (!byPhone.hit(`${req.ctx.tenant.id}:${phone}`)) throw tooMany();
+    if (req.ctx.ip && !byIp.hit(`${req.ctx.tenant.id}:${req.ctx.ip}`)) throw tooMany();
+  };
+}
 
 /**
  * Registers an `onRoute` hook that copies `ROUTE_PERMISSIONS` into each matching route's `config.permission` and adds

@@ -62,7 +62,7 @@ export { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 export { renderStatement } from "./renderers/statement";
 export { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 export { renderPurchase } from "./renderers/purchase";
-export { esc, page, qrSvg, money, fmtDate, stateLabel } from "./html";
+export { esc, page, qrSvg, money, fmtDate, fmtDateTime, stateLabel, type QrErrorCorrection } from "./html";
 export { fontFaceCss, FONT_STACK } from "./fonts";
 export { labels, normalizeLocale, type Labels } from "./labels";
 export { documentsRoutes } from "./routes";

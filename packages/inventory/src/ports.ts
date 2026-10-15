@@ -21,6 +21,16 @@ export interface SellerStatePort {
   stateCode(tenantId: string): Promise<string | null>;
 }
 
+/**
+ * Outgoing domain events (the developer module's webhooks, wired in kit). Best effort: errors are logged and never
+ * fail the stock operation. Emits `stock.low` `{ itemId, name, locationId, qty, reorderLevel, status }` (status
+ * "low" | "out") when a tracked item at a location goes ok -> low/out or low -> out through applySale, commit, adjust
+ * or a transfer out.
+ */
+export interface EventsPort {
+  emit(tenantId: string, type: string, data: unknown): Promise<void>;
+}
+
 export interface LoggerPort {
   info(o: unknown, m?: string): void;
   warn(o: unknown, m?: string): void;

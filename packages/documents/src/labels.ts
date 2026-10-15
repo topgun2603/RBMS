@@ -85,6 +85,15 @@ const en = {
   boughtBy: "Bought by",
   itc: "Input tax credit",
   unpaid: "Unpaid",
+  // GST e-invoice
+  einvoice: "e-Invoice",
+  irn: "IRN",
+  ackNo: "Ack No.",
+  ackDate: "Ack Date",
+  ewbNo: "E-way bill no.",
+  ewbValidTill: "Valid till",
+  einvoiceQr: "Signed QR code",
+  einvoiceMock: "TEST e-invoice (mock, not valid)",
 } as const;
 
 export type LabelKey = keyof typeof en;
@@ -173,6 +182,14 @@ const ta: Labels = {
   boughtBy: "வாங்கியவர்",
   itc: "உள்ளீட்டு வரி வரவு (ITC)",
   unpaid: "செலுத்தவில்லை",
+  einvoice: "மின் விலைப்பட்டியல் (e-Invoice)",
+  irn: "IRN",
+  ackNo: "ஒப்புகை எண் (Ack No.)",
+  ackDate: "ஒப்புகை தேதி (Ack Date)",
+  ewbNo: "இ-வே பில் எண் (E-way bill)",
+  ewbValidTill: "செல்லுபடி வரை",
+  einvoiceQr: "கையொப்பமிட்ட QR குறியீடு",
+  einvoiceMock: "சோதனை மின் விலைப்பட்டியல் (TEST e-invoice, mock) — செல்லாது",
 };
 
 export function labels(locale: DocLocale): Labels {

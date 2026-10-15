@@ -108,7 +108,8 @@ Seed (apps/api `pnpm seed`):
 End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent; development databases only):
 - `e2e-bill` (BL, pro), `e2e-store` (EC, pro: the demo store catalogue, WELCOME10, delivery zones, published home, about
   page, menus, store settings) and `e2e-lite` (BL, starter, for plan checks). The e2e scripts in `apps/api/test/e2e` only
-  write to these shops; `test:e2e:all` seeds them and runs `batch1.mjs`, `batch2.mjs` and `billing.mjs` in sequence, then
+  write to these shops; `test:e2e:all` seeds them and runs `batch1.mjs`, `batch2.mjs`, `billing.mjs` and `batch3.mjs` (sections in
+  `test/e2e/b3/`, docs/batch3.md "Integration") in sequence, then
   the storefront browser test when the dev servers are up.
 - Storefront browser test: `pnpm --filter @srirealtime/store test:e2e` (`apps/store/test/e2e.cjs`). Needs the api (:4000,
   test OTP on) and store (:3003) dev servers and Chrome (`CHROME_PATH`, default the Windows install path; puppeteer-core

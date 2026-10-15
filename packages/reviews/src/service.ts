@@ -23,7 +23,7 @@ import {
   type ReviewInput,
   type StaffReviewQuery,
 } from "./logic";
-import { noopLogger, type LoggerPort, type OrdersPort, type ProductsPort, type ReviewSettings, type ReviewSettingsPort, type ShopperPort } from "./ports";
+import { noopLogger, type EventsPort, type LoggerPort, type OrdersPort, type ProductsPort, type ReviewSettings, type ReviewSettingsPort, type ShopperPort } from "./ports";
 import { productReviews, reviewVotes, type ReviewStatus } from "./schema";
 
 export interface ReviewsDeps {
@@ -38,6 +38,8 @@ export interface ReviewsDeps {
   settings?: ReviewSettingsPort;
   /** When given, `ratings()` (the catalogue's ratings port) returns nothing for shops with `reviews` off. */
   featureGate?: FeatureGatePort;
+  /** Webhook events (developer module). Without it nothing is emitted. */
+  events?: EventsPort;
   log?: LoggerPort;
   now?: () => Date;
 }
@@ -199,7 +201,26 @@ export class ReviewsService {
         set: { ...values, updatedAt: this.now() },
       })
       .returning();
-    return toReview(row!);
+    const review = toReview(row!);
+    await this.emit(tenantId, "review.created", {
+      id: review.id,
+      productId: review.productId,
+      rating: review.rating,
+      title: review.title,
+      status: review.status,
+      createdAt: review.createdAt,
+    });
+    return review;
+  }
+
+  /** Best effort: a failing events port is logged, never thrown. */
+  private async emit(tenantId: string, type: string, data: unknown): Promise<void> {
+    if (!this.deps.events) return;
+    try {
+      await this.deps.events.emit(tenantId, type, data);
+    } catch (err) {
+      this.log.warn({ err, tenantId, type }, "reviews: event emit failed");
+    }
   }
 
   /** One helpful vote per user (repeat votes are ignored); only approved reviews, not your own. */

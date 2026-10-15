@@ -26,6 +26,7 @@ const paymentParam = z.object({ id: z.string().uuid(), paymentId: z.string().uui
 const receiptParam = z.object({ id: z.string().uuid(), receiptId: z.string().uuid() });
 const tokenParam = z.object({ token: z.string().min(1).max(128) });
 const cancelBody = z.object({ reason: z.string().max(500).nullish() });
+const issueBody = z.object({ loyaltyPoints: z.number().int().positive().optional() });
 const formatQuery = z.object({ format: z.enum(["json", "csv"]).default("json") });
 const gstCsvQuery = z.object({ section: z.enum(["hsn", "b2b", "b2cl", "b2cs"]).default("hsn") });
 const body = (req: { body: unknown }) => (req.body ?? {}) as Record<string, unknown>;
@@ -181,7 +182,9 @@ export function invoicesRoutes(service: InvoicesService) {
       // invoices
       staff.get("/", BASE, async (req) => service.list(requireTenant(req.ctx).id, req.query as InvoiceListQuery));
       staff.get("/summary", BASE, async (req) => service.summary(requireTenant(req.ctx).id));
-      staff.post("/", BASE, async (req) => service.create(requireTenant(req.ctx), body(req) as InvoiceInput));
+      staff.post("/", BASE, async (req) =>
+        service.create(requireTenant(req.ctx), body(req) as InvoiceInput, { branchId: req.ctx.branch?.id ?? null }),
+      );
       staff.get(BILL_ID, BASE, async (req) => {
         const { id } = idParam.parse(req.params);
         return service.get(requireTenant(req.ctx).id, id);
@@ -197,7 +200,11 @@ export function invoicesRoutes(service: InvoicesService) {
       });
       staff.post(`${BILL_ID}/issue`, BASE, async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.issue(requireTenant(req.ctx), id);
+        const { loyaltyPoints } = issueBody.parse(body(req));
+        return service.issue(requireTenant(req.ctx), id, {
+          branchId: req.ctx.branch?.id ?? null,
+          ...(loyaltyPoints !== undefined ? { loyaltyPoints } : {}),
+        });
       });
       staff.post(`${BILL_ID}/cancel`, BASE, async (req) => {
         const { id } = idParam.parse(req.params);

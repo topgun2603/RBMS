@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { computeInvoice } from "@srirealtime/gst";
 import {
+  allocateLoyaltyDiscount,
   allowedTransitions,
   balanceOf,
   BLOCKING_EFFECTS,
@@ -408,6 +409,84 @@ describe("computeOrderTotals", () => {
     expect(principalRate([{ gstRate: 5, amount: 100 }, { gstRate: 18, amount: 50 }])).toBe(5);
     expect(principalRate([{ gstRate: 5, amount: 100 }, { gstRate: 12, amount: 100 }])).toBe(12);
     expect(principalRate([])).toBe(0);
+  });
+
+  describe("loyalty points", () => {
+    const opts = { shipping: 0, sellerState: "33", placeOfSupply: "33" };
+    const exact = (t: { taxable: number; cgst: number; sgst: number; igst: number }) => t.taxable + t.cgst + t.sgst + t.igst;
+
+    it("allocates over what each line still charges, summing exactly", () => {
+      expect(allocateLoyaltyDiscount(10000, [{ gross: 30000 }, { gross: 10000 }])).toEqual([7500, 2500]);
+      expect(allocateLoyaltyDiscount(100, [{ gross: 100 }, { gross: 100 }, { gross: 100 }])).toEqual([34, 33, 33]);
+      // Coupon shares come off first: remaining 20000 / 10000.
+      expect(allocateLoyaltyDiscount(3001, [{ gross: 30000 }, { gross: 10000 }], [10000, 0])).toEqual([2001, 1000]);
+      // Never above a line's remaining charge; a fully discounted line gets nothing.
+      expect(allocateLoyaltyDiscount(50000, [{ gross: 10000 }, { gross: 5000 }], [0, 5000])).toEqual([10000, 0]);
+      expect(allocateLoyaltyDiscount(0, [{ gross: 10000 }])).toEqual([0]);
+      for (const d of [1, 7, 333, 9999, 12345]) {
+        const parts = allocateLoyaltyDiscount(d, [{ gross: 49900 }, { gross: 12999 }, { gross: 333 }], [4990, 0, 33]);
+        expect(parts.reduce((s, v) => s + v, 0)).toBe(d);
+        expect(parts[0]).toBeLessThanOrEqual(49900 - 4990);
+        expect(parts[2]).toBeLessThanOrEqual(300);
+      }
+    });
+
+    it("tax-inclusive lines: the total drops by exactly the points discount", () => {
+      const base = lines([item({ id: "v1", price: 49900, gstRate: 5 }), item({ id: "v2", price: 129900, gstRate: 18 })]);
+      const before = computeOrderTotals(base, opts);
+      for (const d of [1, 100, 2345, 9999]) {
+        const ld = allocateLoyaltyDiscount(d, base);
+        const after = computeOrderTotals(base, { ...opts, loyaltyDiscounts: ld, loyaltyPoints: d });
+        expect(exact(before.totals) - exact(after.totals)).toBe(d);
+        after.lines.forEach((l, i) => {
+          expect(l.total).toBe(base[i]!.gross - ld[i]!);
+          // The line discount carries the share on the exclusive basis; taxable + discount = amount.
+          expect(l.discount).toBe(exclusiveOf(ld[i]!, l.gstRate, true));
+          expect(l.taxable + l.discount).toBe(l.amount);
+        });
+        expect(after.totals.loyalty).toEqual({ points: d, discount: d });
+        expect(after.totals.discount).toBe(0);
+      }
+      expect(computeOrderTotals(base, { ...opts, loyaltyDiscounts: [0, 0] }).totals.loyalty).toBeUndefined();
+    });
+
+    it("mixed with a coupon: coupon first, points on the rest", () => {
+      const base = lines([item()], 2); // 2 x Rs 499
+      const coupon = [9980];
+      const ld = allocateLoyaltyDiscount(10000, base, coupon);
+      const withCoupon = computeOrderTotals(base, { ...opts, lineDiscounts: coupon });
+      const r = computeOrderTotals(base, { ...opts, lineDiscounts: coupon, loyaltyDiscounts: ld, loyaltyPoints: 100 });
+      expect(r.lines[0]!.total).toBe(99800 - 9980 - 10000);
+      expect(exact(withCoupon.totals) - exact(r.totals)).toBe(10000);
+      expect(r.lines[0]!.discount).toBe(exclusiveOf(9980 + 10000, 5, true));
+      expect(r.totals).toMatchObject({ discount: 9980, loyalty: { points: 100, discount: 10000 }, total: 79800 });
+    });
+
+    it("exclusive lines: the share is converted to the exclusive basis and GST is recomputed", () => {
+      const base = lines([item({ taxInclusive: false, price: 10000, rate: 10000, gstRate: 18 })]);
+      const r = computeOrderTotals(base, { ...opts, loyaltyDiscounts: [1180], loyaltyPoints: 12 });
+      expect(r.lines[0]).toMatchObject({ discount: 1000, taxable: 9000, cgst: 810, sgst: 810, total: 10620 });
+      expect(r.totals).toMatchObject({ total: 10600, loyalty: { points: 12, discount: 1180 } });
+      // Capped at the line's remaining charge.
+      const capped = computeOrderTotals(base, { ...opts, lineDiscounts: [10000], loyaltyDiscounts: [500] });
+      expect(capped.totals.loyalty).toBeUndefined();
+      expect(capped.lines[0]!.total).toBe(0);
+    });
+
+    it("a GST invoice copied from the order equals the order", () => {
+      const base = lines([item({ id: "v1", price: 49900, gstRate: 5 }), item({ id: "v2", taxInclusive: false, price: 10000, rate: 10000, gstRate: 18 })]);
+      const coupon = [1000, 500];
+      const ld = allocateLoyaltyDiscount(4321, base, coupon);
+      const r = computeOrderTotals(base, { shipping: 4900, sellerState: "33", placeOfSupply: "33", lineDiscounts: coupon, loyaltyDiscounts: ld, loyaltyPoints: 43 });
+      const inv = computeInvoice(
+        [
+          ...r.lines.map((x) => ({ description: x.name, qty: x.qty, rate: x.rate, discount: x.discount || undefined, gstRate: x.gstRate, inclusiveTotal: x.taxInclusive && x.gstRate ? x.total : undefined })),
+          ...[r.totals.shippingLine].filter((x) => x != null),
+        ],
+        { sellerState: "33", placeOfSupply: "33" },
+      );
+      expect({ taxable: inv.taxable, cgst: inv.cgst, sgst: inv.sgst, total: inv.total }).toEqual({ taxable: r.totals.taxable, cgst: r.totals.cgst, sgst: r.totals.sgst, total: r.totals.total });
+    });
   });
 
   it("splits a discount proportionally", () => {

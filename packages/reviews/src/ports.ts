@@ -28,6 +28,14 @@ export interface ReviewSettingsPort {
   get(tenantId: string): Promise<Partial<ReviewSettings>>;
 }
 
+/**
+ * Outgoing domain events (the developer module's webhooks, wired in kit). Best effort: errors are logged and never
+ * fail the review write. Emits `review.created` `{ id, productId, rating, title, status, createdAt }` on every submit.
+ */
+export interface EventsPort {
+  emit(tenantId: string, type: string, data: unknown): Promise<void>;
+}
+
 export interface LoggerPort {
   info(o: unknown, m?: string): void;
   warn(o: unknown, m?: string): void;

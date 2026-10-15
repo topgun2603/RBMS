@@ -41,6 +41,11 @@ export const checkoutBodySchema = z
     deliveryOptionId: z.string().trim().min(1).max(100),
     paymentMethod: z.enum(["online", "cod"]),
     customerNote: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().max(1000).optional()),
+    /**
+     * Loyalty points to redeem (orders asks the loyalty module, which may refuse with its own 400). The COD maximum
+     * is checked on the estimate before points, so a points discount never makes a too-large COD order allowed.
+     */
+    loyaltyPoints: z.number().int("Whole points only").positive().max(10_000_000).optional(),
   })
   .refine((b) => b.addressId !== undefined || b.address !== undefined, { message: "Choose or enter an address", path: ["address"] });
 export type CheckoutBody = z.input<typeof checkoutBodySchema>;
@@ -86,7 +91,10 @@ export interface CheckoutPlan {
   shipping: number;
   /** Paise sent to orders as the COD fee (COD only): charged as its own line, never waived. */
   codFee: number;
-  /** What the shopper will roughly pay: goods − discount + GST on exclusive items + shipping (free-shipping coupons waive it). */
+  /**
+   * What the shopper will roughly pay: goods − discount + GST on exclusive items + shipping (free-shipping coupons
+   * waive it). Before any loyalty points: the COD maximum is checked on this amount.
+   */
   estimatedTotal: number;
 }
 

@@ -46,7 +46,8 @@ export function statusPermissions(status: unknown): [string, ...string[]] {
 
 /**
  * Routes under /v1/orders (staff: owner, admin or staff member; feature `orders`). Returns additionally need
- * `orders.returns` (checked by the service). `GET /` accepts `format=csv`.
+ * `orders.returns` (checked by the service). `GET /` accepts `format=csv` and filters (`status`, `paymentStatus`,
+ * `channel`, `branchId`, `q`, `from`, `to`).
  */
 export function ordersRoutes(service: OrdersService) {
   return async (app: FastifyInstance) => {
@@ -72,7 +73,12 @@ export function ordersRoutes(service: OrdersService) {
       staff.get("/summary", FEATURE, async (req) => service.summary(tenantOf(req)));
       staff.post("/", FEATURE, async (req) => {
         requirePermission(req.ctx, ORDER_PERMISSIONS_KEYS.manage);
-        return service.create(tenantOf(req), body(req) as ManualOrderInput, userOf(req));
+        // Multi-branch shops: the order belongs to the request's branch and reserves at its stock location (unless the body names one).
+        const branch = req.ctx.branch ?? null;
+        return service.create(tenantOf(req), body(req) as ManualOrderInput, userOf(req), {
+          branchId: branch?.id ?? null,
+          locationId: branch?.locationId ?? null,
+        });
       });
       staff.get(ID, FEATURE, async (req) => {
         const { id } = idParam.parse(req.params);

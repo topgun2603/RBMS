@@ -52,7 +52,7 @@ describe("built-in templates", () => {
 
   it("cashier: bills, payments, customers, catalogue read", () => {
     const perms = resolvePermissions(["staff", "role:cashier"], new Map());
-    expect(perms).toEqual(["catalogue.view", "customers.create", "invoices.create", "payments.receive"]);
+    expect(perms).toEqual(["catalogue.view", "customers.create", "invoices.create", "loyalty.redeem", "payments.receive"]);
   });
 
   it("staff default: all *.view + create bills", () => {
@@ -365,7 +365,7 @@ describe("built-in role template sync", () => {
   });
 
   it("legacy row already equal to the current template → only the hash is recorded", () => {
-    expect(builtinRoleSyncs([row("cashier", ["catalogue.view", "customers.create", "invoices.create", "payments.receive"], null)])).toEqual([
+    expect(builtinRoleSyncs([row("cashier", ["catalogue.view", "customers.create", "invoices.create", "loyalty.redeem", "payments.receive"], null)])).toEqual([
       { key: "cashier", templateHash: BUILTIN_TEMPLATE_HASHES.get("cashier") },
     ]);
   });

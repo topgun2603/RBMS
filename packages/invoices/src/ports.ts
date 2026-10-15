@@ -1,4 +1,6 @@
 import type { TenantRef } from "@srirealtime/core";
+import type { InvoiceStatus } from "./schema";
+import type { Customer, Invoice } from "./service";
 
 /** The shop's own details, read from the `billing` settings namespace (apps/api wires it). */
 export interface SellerProfile {
@@ -77,7 +79,13 @@ export interface BrandingPort {
 export interface StockPort {
   applySale(
     tenantId: string,
-    sale: { refId: string; lines: { itemId: string; qty: number }[]; refNumber?: string | null },
+    sale: {
+      refId: string;
+      lines: { itemId: string; qty: number }[];
+      refNumber?: string | null;
+      /** Stock location to take the stock from (the bill's branch location). Absent/null = the default location. */
+      locationId?: string | null;
+    },
   ): Promise<unknown>;
   reverseSale(tenantId: string, refId: string): Promise<unknown>;
 }
@@ -136,6 +144,53 @@ export interface NotifierPort {
 /** Implemented by the payments module: whether the shop can take online payments. */
 export interface PaymentsAvailabilityPort {
   isEnabled(tenantId: string): Promise<{ enabled: boolean; provider: "razorpay" | "mock" | null; mode?: "test" | "live" | null }>;
+}
+
+/** A shop branch's seller details (branches module). Null fields fall back to the billing profile. */
+export interface BranchSellerInfo {
+  branchId: string;
+  isDefault: boolean;
+  gstin: string | null;
+  stateCode: string | null;
+  address: string | null;
+  city: string | null;
+  pincode: string | null;
+  phone: string | null;
+  invoicePrefix: string | null;
+  stockLocationId: string | null;
+}
+
+/** Implemented by the branches module. */
+export interface BranchPort {
+  /** Null when the branch is unknown (the bill then uses the billing profile alone). */
+  seller(tenantId: string, branchId: string): Promise<BranchSellerInfo | null>;
+}
+
+/** Implemented by the loyalty module (`service.redeem` / `service.reverse` with refType "invoice"). */
+export interface LoyaltyRedeemPort {
+  /** Uses points on a bill; returns the discount (paise). Throws (e.g. 409 loyalty_redeem) when not allowed. Idempotent per invoiceId. */
+  redeem(
+    tenantId: string,
+    input: { phone: string; name?: string | null; points: number; invoiceId: string; orderAmount: number },
+  ): Promise<{ points: number; discount: number }>;
+  /** Gives the points back (failed issue). */
+  reverse(tenantId: string, invoiceId: string): Promise<unknown>;
+}
+
+/**
+ * Domain events (developer webhooks, loyalty earn, ...). Called after the write committed; awaited, but a failing
+ * handler is only logged and never fails the request.
+ */
+export interface InvoiceEventsPort {
+  issued?(tenantId: string, invoice: Invoice): Promise<void> | void;
+  /** The bill's status became `paid` (any path: payment on the bill, receipt allocation, online payment). */
+  paid?(tenantId: string, invoice: Invoice): Promise<void> | void;
+  cancelled?(tenantId: string, invoice: Invoice, previousStatus: InvoiceStatus): Promise<void> | void;
+  paymentReceived?(
+    tenantId: string,
+    e: { invoice: Invoice; amount: number; method: string; source: "manual" | "receipt" | "online" },
+  ): Promise<void> | void;
+  customerCreated?(tenantId: string, customer: Customer): Promise<void> | void;
 }
 
 export interface LoggerPort {

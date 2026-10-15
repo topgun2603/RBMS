@@ -31,6 +31,7 @@ import {
   pickDefault,
   planVariants,
   priceRange,
+  productEventData,
   SLUG_RE,
   slugify,
   toPublicProduct,
@@ -84,6 +85,7 @@ import type {
   CategoryNode,
   ListResult,
   Product,
+  ProductScope,
   ProductSummary,
   PublicCategory,
   PublicProduct,
@@ -92,6 +94,7 @@ import type {
   StoreVariantLookup,
   Variant,
   VariantLookup,
+  VendorProductItem,
 } from "./types";
 
 export interface LoggerPort {
@@ -101,6 +104,23 @@ export interface LoggerPort {
 }
 
 export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
+
+/**
+ * Marketplace sellers (implemented with the marketplace module in kit): the seller (`vendors.id`) the signed-in user
+ * works for in this shop, or null when they are not a seller. `header` is the request's `x-vendor` header (for users
+ * of several sellers). May throw an AppError (e.g. 400 when a seller must be chosen).
+ */
+export interface VendorScopePort {
+  vendorFor(tenantId: string, userId: string, header: string | null): Promise<string | null>;
+}
+
+/**
+ * Outgoing domain events (the developer module's webhooks, wired in kit). Best effort: emitted after the write
+ * commits; errors are logged, never thrown. `product.created` / `product.updated` with `ProductEventData`.
+ */
+export interface EventsPort {
+  emit(tenantId: string, type: string, data: unknown): Promise<void>;
+}
 
 export interface CatalogueDeps {
   db: Db;
@@ -114,6 +134,13 @@ export interface CatalogueDeps {
   availability?: AvailabilityPort;
   /** Product ratings for `sort=rating` (reviews). Without it rating sort falls back to relevance. */
   ratings?: RatingsPort;
+  /**
+   * Marketplace sellers. When given, signed-in users who aren't owner/admin/staff may use the vendor routes
+   * (`CATALOGUE_VENDOR_ROUTES`) on their own products. Without it they get 403 as before.
+   */
+  vendorScope?: VendorScopePort;
+  /** Webhook events (`product.created`, `product.updated`). Without it nothing is emitted. */
+  events?: EventsPort;
   /** Clock override for tests. */
   now?: () => Date;
 }
@@ -214,6 +241,8 @@ const productFields = {
 export const productInputSchema = z
   .object({
     ...productFields,
+    /** Marketplace seller owning the product (staff only; vendor-scoped calls use the seller). */
+    vendorId: opt(uuid),
     variants: z.array(variantInputSchema).min(1, "Add at least one variant").max(MAX_VARIANTS).optional(),
     // Simple product shorthand (used when `variants` is omitted).
     price: money.optional(),
@@ -247,6 +276,8 @@ export const productPatchSchema = z.object({
   options: optionsSchema.optional(),
   images: images.optional(),
   seo,
+  /** Assign the product to a seller (null = the shop's own). Ignored for vendor-scoped calls. */
+  vendorId: opt(uuid),
 });
 export type ProductPatch = z.input<typeof productPatchSchema>;
 
@@ -388,6 +419,7 @@ const toProductBase = (p: ProductRow): Omit<Product, "variants"> => ({
   options: p.options ?? [],
   images: p.images ?? [],
   seo: p.seo ?? null,
+  vendorId: p.vendorId ?? null,
   createdAt: p.createdAt,
   updatedAt: p.updatedAt,
 });
@@ -624,12 +656,13 @@ export class CatalogueService {
   // ================================================================ products
 
   /** Staff `GET /products`: the search matching (see searchMatchSql) plus SKU, barcode and HSN substrings. */
-  private productFilters(tenantId: string, query: z.output<typeof productListQuerySchema>): SQL | undefined {
+  private productFilters(tenantId: string, query: z.output<typeof productListQuerySchema>, scope?: ProductScope): SQL | undefined {
     const pat = query.q ? likePattern(query.q) : null;
     const match = searchMatchSql(parseQuery(query.q));
     return and(
       eq(catalogProducts.tenantId, tenantId),
       isNull(catalogProducts.deletedAt),
+      scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined,
       query.status ? eq(catalogProducts.status, query.status) : undefined,
       query.categoryId ? eq(catalogProducts.categoryId, query.categoryId) : undefined,
       query.channel ? sql`${catalogProducts.channels} @> array[${query.channel}]::text[]` : undefined,
@@ -664,9 +697,10 @@ export class CatalogueService {
     return out;
   }
 
-  async listProducts(tenantId: string, query: ProductListQuery = {}): Promise<ListResult<ProductSummary>> {
+  /** With a scope: only that seller's products. */
+  async listProducts(tenantId: string, query: ProductListQuery = {}, scope?: ProductScope): Promise<ListResult<ProductSummary>> {
     const parsed = productListQuerySchema.parse(query);
-    const where = this.productFilters(tenantId, parsed);
+    const where = this.productFilters(tenantId, parsed, scope);
     const text = parseQuery(parsed.q);
     const order = text.text ? relevanceOrderSql(text) : [asc(catalogProducts.name), asc(catalogProducts.id)];
     const [rows, [counted]] = await Promise.all([
@@ -688,13 +722,17 @@ export class CatalogueService {
   }
 
   /** Every variant of the matching products (CSV export; capped at 20 000 products). */
-  async exportProducts(tenantId: string, query: Omit<ProductListQuery, "limit" | "offset"> = {}): Promise<ProductExportRow[]> {
+  async exportProducts(
+    tenantId: string,
+    query: Omit<ProductListQuery, "limit" | "offset"> = {},
+    scope?: ProductScope,
+  ): Promise<ProductExportRow[]> {
     const parsed = productListQuerySchema.parse({ ...query, limit: 1, offset: 0 });
     const rows = await this.db
       .select({ p: catalogProducts, categoryName: catalogCategories.name })
       .from(catalogProducts)
       .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
-      .where(this.productFilters(tenantId, parsed))
+      .where(this.productFilters(tenantId, parsed, scope))
       .orderBy(asc(catalogProducts.name), asc(catalogProducts.id))
       .limit(20_000);
     const out: ProductExportRow[] = [];
@@ -709,11 +747,19 @@ export class CatalogueService {
     return out;
   }
 
-  private async productRow(tenantId: string, id: string, db: DbOrTx = this.db): Promise<ProductRow> {
+  /** 404 when missing, deleted, or (with a scope) not that seller's. */
+  private async productRow(tenantId: string, id: string, db: DbOrTx = this.db, scope?: ProductScope): Promise<ProductRow> {
     const [row] = await db
       .select()
       .from(catalogProducts)
-      .where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, id), isNull(catalogProducts.deletedAt)))
+      .where(
+        and(
+          eq(catalogProducts.tenantId, tenantId),
+          eq(catalogProducts.id, id),
+          isNull(catalogProducts.deletedAt),
+          scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined,
+        ),
+      )
       .limit(1);
     if (!row) throw notFound("Product");
     return row;
@@ -724,8 +770,8 @@ export class CatalogueService {
     return { ...toProductBase(row), variants: variants.map(toVariant) };
   }
 
-  async getProduct(tenantId: string, id: string): Promise<Product> {
-    return this.assemble(tenantId, await this.productRow(tenantId, id));
+  async getProduct(tenantId: string, id: string, scope?: ProductScope): Promise<Product> {
+    return this.assemble(tenantId, await this.productRow(tenantId, id, this.db, scope));
   }
 
   /** Taken product slugs that could collide with `base` (all products, deleted too: slugs stay reserved). */
@@ -785,8 +831,10 @@ export class CatalogueService {
     }));
   }
 
-  async createProduct(tenantId: string, input: ProductInput): Promise<Product> {
+  /** With a scope the product belongs to that seller (`vendorId` in the body is ignored). */
+  async createProduct(tenantId: string, input: ProductInput, scope?: ProductScope): Promise<Product> {
     const b = productInputSchema.parse(input);
+    const vendorId = scope ? scope.vendorId : (b.vendorId ?? null);
     const variantInputs: ParsedVariant[] = b.variants ?? [
       {
         price: b.price!,
@@ -811,7 +859,7 @@ export class CatalogueService {
 
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.db.transaction(async (tx) => {
+        const created = await this.db.transaction(async (tx) => {
           const slugValue = await this.productSlug(tenantId, b.name, b.slug, tx);
           const [row] = await tx
             .insert(catalogProducts)
@@ -833,12 +881,15 @@ export class CatalogueService {
               options,
               images: b.images.map((i) => ({ url: i.url, alt: i.alt ?? null })),
               seo: b.seo ?? null,
+              vendorId,
             })
             .returning();
           await tx.insert(catalogVariants).values(variants.map((v) => ({ ...v, tenantId, productId: row!.id })));
           await this.refreshSearchText(tx, tenantId, [row!.id]);
           return this.assemble(tenantId, row!, tx);
         });
+        await this.emitProduct(tenantId, "product.created", created);
+        return created;
       } catch (err) {
         // Two products with the same name created at once: pick the next free slug.
         const c = uniqueViolation(err);
@@ -848,9 +899,10 @@ export class CatalogueService {
     }
   }
 
-  async updateProduct(tenantId: string, id: string, input: ProductPatch): Promise<Product> {
+  /** With a scope: only that seller's products (others 404), and `vendorId` can't be changed. */
+  async updateProduct(tenantId: string, id: string, input: ProductPatch, scope?: ProductScope): Promise<Product> {
     const b = productPatchSchema.parse(input);
-    const current = await this.productRow(tenantId, id);
+    const current = await this.productRow(tenantId, id, this.db, scope);
     const set: Partial<ProductRow> = {};
     if (b.name !== undefined) set.name = b.name;
     if (b.slug !== undefined && b.slug !== null && b.slug !== current.slug) {
@@ -874,9 +926,11 @@ export class CatalogueService {
     if (b.options !== undefined) set.options = b.options;
     if (b.images !== undefined) set.images = b.images.map((i) => ({ url: i.url, alt: i.alt ?? null }));
     if (b.seo !== undefined) set.seo = b.seo;
+    if (b.vendorId !== undefined && !scope) set.vendorId = b.vendorId ?? null;
     if (Object.keys(set).length === 0) return this.assemble(tenantId, current);
+    let updated: Product;
     try {
-      return await this.db.transaction(async (tx) => {
+      updated = await this.db.transaction(async (tx) => {
         const [row] = await tx
           .update(catalogProducts)
           .set(set)
@@ -889,16 +943,25 @@ export class CatalogueService {
     } catch (err) {
       mapUniqueError(err);
     }
+    await this.emitProduct(tenantId, "product.updated", updated);
+    return updated;
   }
 
   /** Soft delete: the product is archived and hidden; its variant ids stay valid on old bills and stock. */
-  async deleteProduct(tenantId: string, id: string): Promise<void> {
+  async deleteProduct(tenantId: string, id: string, scope?: ProductScope): Promise<void> {
     const at = this.now();
     await this.db.transaction(async (tx) => {
       const rows = await tx
         .update(catalogProducts)
         .set({ deletedAt: at, status: "archived" })
-        .where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, id), isNull(catalogProducts.deletedAt)))
+        .where(
+          and(
+            eq(catalogProducts.tenantId, tenantId),
+            eq(catalogProducts.id, id),
+            isNull(catalogProducts.deletedAt),
+            scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined,
+          ),
+        )
         .returning({ id: catalogProducts.id });
       if (rows.length === 0) throw notFound("Product");
       await tx
@@ -910,9 +973,14 @@ export class CatalogueService {
 
   // ================================================================ variants
 
-  private async variantWithProduct(tenantId: string, variantId: string, db: DbOrTx = this.db): Promise<{ v: VariantRow; p: ProductRow } | null> {
+  private async variantWithProduct(
+    tenantId: string,
+    variantId: string,
+    db: DbOrTx = this.db,
+    scope?: ProductScope,
+  ): Promise<{ v: VariantRow; p: ProductRow } | null> {
     const [row] = await this.variantJoin(db)
-      .where(this.live(tenantId, eq(catalogVariants.id, variantId)))
+      .where(this.live(tenantId, eq(catalogVariants.id, variantId), scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined))
       .limit(1);
     return row ?? null;
   }
@@ -933,11 +1001,12 @@ export class CatalogueService {
     }
   }
 
-  async addVariant(tenantId: string, productId: string, input: VariantInput): Promise<Variant> {
+  async addVariant(tenantId: string, productId: string, input: VariantInput, scope?: ProductScope): Promise<Variant> {
     const b = variantInputSchema.parse(input);
+    let added: Variant;
     try {
-      return await this.db.transaction(async (tx) => {
-        const product = await this.productRow(tenantId, productId, tx);
+      added = await this.db.transaction(async (tx) => {
+        const product = await this.productRow(tenantId, productId, tx, scope);
         const siblings = (await this.variantsOf(tenantId, [productId], tx)).get(productId) ?? [];
         if (siblings.length >= MAX_VARIANTS) throw conflict(`A product can have at most ${MAX_VARIANTS} variants`);
         this.assertUniqueCombo(siblings, b.optionValues);
@@ -975,13 +1044,16 @@ export class CatalogueService {
     } catch (err) {
       mapUniqueError(err);
     }
+    await this.emitProductById(tenantId, productId);
+    return added;
   }
 
-  async updateVariant(tenantId: string, id: string, input: Partial<VariantInput>): Promise<Variant> {
+  async updateVariant(tenantId: string, id: string, input: Partial<VariantInput>, scope?: ProductScope): Promise<Variant> {
     const b = variantPatchSchema.parse(input);
+    let updated: Variant;
     try {
-      return await this.db.transaction(async (tx) => {
-        const found = await this.variantWithProduct(tenantId, id, tx);
+      updated = await this.db.transaction(async (tx) => {
+        const found = await this.variantWithProduct(tenantId, id, tx, scope);
         if (!found) throw notFound("Variant");
         const { v, p } = found;
         if (b.isDefault === false && v.isDefault) throw badRequest("Make another variant the default instead");
@@ -1026,17 +1098,21 @@ export class CatalogueService {
     } catch (err) {
       mapUniqueError(err);
     }
+    await this.emitProductById(tenantId, updated.productId);
+    return updated;
   }
 
   /** Soft-deletes a variant; the last one can't go (delete the product instead). The default moves on if needed. */
-  async deleteVariant(tenantId: string, id: string): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const found = await this.variantWithProduct(tenantId, id, tx);
+  async deleteVariant(tenantId: string, id: string, scope?: ProductScope): Promise<void> {
+    const productId = await this.db.transaction(async (tx) => {
+      const found = await this.variantWithProduct(tenantId, id, tx, scope);
       if (!found) throw notFound("Variant");
       const siblings = (await this.variantsOf(tenantId, [found.p.id], tx)).get(found.p.id) ?? [];
       if (siblings.length <= 1) throw conflict("A product needs at least one variant; delete the product instead");
       await this.softDeleteVariant(tx, tenantId, found.v, siblings);
+      return found.p.id;
     });
+    await this.emitProductById(tenantId, productId);
   }
 
   private async softDeleteVariant(tx: DbOrTx, tenantId: string, v: VariantRow, siblings: VariantRow[]) {
@@ -1052,11 +1128,12 @@ export class CatalogueService {
   }
 
   /** Creates the cartesian product of the (merged) option values; existing variants are kept (see `planVariants`). */
-  async generateVariants(tenantId: string, productId: string, input: GenerateVariantsInput): Promise<Product> {
+  async generateVariants(tenantId: string, productId: string, input: GenerateVariantsInput, scope?: ProductScope): Promise<Product> {
     const b = generateVariantsSchema.parse(input);
+    let generated: Product;
     try {
-      return await this.db.transaction(async (tx) => {
-        const product = await this.productRow(tenantId, productId, tx);
+      generated = await this.db.transaction(async (tx) => {
+        const product = await this.productRow(tenantId, productId, tx, scope);
         const existing = (await this.variantsOf(tenantId, [productId], tx)).get(productId) ?? [];
         const plan = planVariants(
           existing.map((v) => ({ id: v.id, optionValues: v.optionValues ?? {} })),
@@ -1100,6 +1177,40 @@ export class CatalogueService {
     } catch (err) {
       mapUniqueError(err);
     }
+    await this.emitProduct(tenantId, "product.updated", generated);
+    return generated;
+  }
+
+  // ================================================================ events
+
+  /** Best effort, after the write committed: a failing events port is logged, never thrown. */
+  private async emitProduct(tenantId: string, type: "product.created" | "product.updated", product: Product): Promise<void> {
+    const events = this.deps.events;
+    if (!events) return;
+    try {
+      await events.emit(tenantId, type, productEventData(product, product.variants));
+    } catch (err) {
+      this.log.warn({ err, tenantId, type, productId: product.id }, "catalogue: event emit failed");
+    }
+  }
+
+  /** `product.updated` for a product re-read after a variant write (only when events are wired). */
+  private async emitProductById(tenantId: string, productId: string): Promise<void> {
+    if (!this.deps.events) return;
+    let product: Product;
+    try {
+      const [row] = await this.db
+        .select()
+        .from(catalogProducts)
+        .where(and(eq(catalogProducts.tenantId, tenantId), eq(catalogProducts.id, productId)))
+        .limit(1);
+      if (!row) return;
+      product = await this.assemble(tenantId, row);
+    } catch (err) {
+      this.log.warn({ err, tenantId, productId }, "catalogue: product unavailable for event");
+      return;
+    }
+    await this.emitProduct(tenantId, "product.updated", product);
   }
 
   // ================================================================ lookups
@@ -1861,6 +1972,83 @@ export class CatalogueService {
       .limit(n);
   }
 
+  // ================================================================ marketplace (products of a seller)
+
+  /** Live products of a seller; `publicOnly` = what the online store shows (active and sold on "store"). */
+  private vendorWhere(tenantId: string, vendorId: string, opts: { publicOnly?: boolean; q?: string } = {}): SQL {
+    const q = opts.q?.trim().slice(0, 100);
+    const pat = q ? likePattern(q) : null;
+    return and(
+      opts.publicOnly ? this.publicWhere(tenantId) : and(eq(catalogProducts.tenantId, tenantId), isNull(catalogProducts.deletedAt)),
+      eq(catalogProducts.vendorId, vendorId),
+      pat ? or(searchMatchSql(parseQuery(q)) ?? undefined, ilike(catalogProducts.name, pat), ilike(catalogProducts.brand, pat)) : undefined,
+    )!;
+  }
+
+  /** A seller's products, newest first (marketplace's `VendorProductsPort.list`). Unknown sellers have none. */
+  async vendorProducts(
+    tenantId: string,
+    vendorId: string,
+    opts: { limit: number; offset: number; publicOnly?: boolean; q?: string },
+  ): Promise<{ items: VendorProductItem[]; total: number }> {
+    if (!uuid.safeParse(vendorId).success) return { items: [], total: 0 };
+    const limitValue = Math.min(Math.max(Math.trunc(opts.limit) || 0, 1), 200);
+    const offsetValue = Math.max(Math.trunc(opts.offset) || 0, 0);
+    const where = this.vendorWhere(tenantId, vendorId, opts);
+    const [rows, [counted]] = await Promise.all([
+      this.db
+        .select({
+          id: catalogProducts.id,
+          name: catalogProducts.name,
+          slug: catalogProducts.slug,
+          status: catalogProducts.status,
+          images: catalogProducts.images,
+        })
+        .from(catalogProducts)
+        .where(where)
+        .orderBy(desc(catalogProducts.createdAt), asc(catalogProducts.id))
+        .limit(limitValue)
+        .offset(offsetValue),
+      this.db.select({ total: count() }).from(catalogProducts).where(where),
+    ]);
+    const variants = await this.variantsOf(tenantId, rows.map((r) => r.id));
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        slug: r.slug,
+        status: r.status,
+        image: r.images?.[0]?.url ?? null,
+        ...priceRange(variants.get(r.id) ?? []),
+      })),
+      total: counted?.total ?? 0,
+    };
+  }
+
+  /** How many live products a seller has (`publicOnly`: shown in the store). Marketplace's `VendorProductsPort.count`. */
+  async vendorProductCount(tenantId: string, vendorId: string, opts: { publicOnly?: boolean } = {}): Promise<number> {
+    if (!uuid.safeParse(vendorId).success) return 0;
+    const [counted] = await this.db.select({ total: count() }).from(catalogProducts).where(this.vendorWhere(tenantId, vendorId, opts));
+    return counted?.total ?? 0;
+  }
+
+  /**
+   * The seller of each product (null = the shop's own), for splitting orders. Deleted products are included (old
+   * orders point at them); unknown ids are left out.
+   */
+  async productVendors(tenantId: string, productIds: string[]): Promise<Record<string, string | null>> {
+    const unique = [...new Set(productIds)].filter((id) => uuid.safeParse(id).success);
+    const out: Record<string, string | null> = {};
+    for (let i = 0; i < unique.length; i += 500) {
+      const rows = await this.db
+        .select({ id: catalogProducts.id, vendorId: catalogProducts.vendorId })
+        .from(catalogProducts)
+        .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, unique.slice(i, i + 500))));
+      for (const r of rows) out[r.id] = r.vendorId ?? null;
+    }
+    return out;
+  }
+
   // ================================================================ item ports (invoices, inventory, orders)
 
   /** Sellable variants (archived products excluded), optionally only those sold on `channel`. */
@@ -1936,6 +2124,7 @@ export class CatalogueService {
         await tx.update(catalogVariants).set({ price }).where(and(eq(catalogVariants.tenantId, tenantId), eq(catalogVariants.id, v.id)));
       }
     });
+    if (Object.keys(productSet).length > 0 || b.rate !== undefined) await this.emitProductById(tenantId, p.id);
     return this.getItem(tenantId, variantId);
   }
 

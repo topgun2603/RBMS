@@ -1,4 +1,4 @@
-import { badRequest, notFound, requireSuperAdmin, requireUser } from "@srirealtime/core";
+import { AppError, badRequest, notFound, requireSuperAdmin, requireUser } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
@@ -12,6 +12,10 @@ const otpVerifyBody = z.object({
   target: z.string().min(3).max(254),
   code: z.string().min(4).max(10),
   name: z.string().trim().min(1).max(120).optional(),
+});
+const guestVerifyBody = z.object({
+  target: z.string().min(3).max(254),
+  code: z.string().min(4).max(10),
 });
 const googleBody = z.object({ idToken: z.string().min(10).max(8192) });
 const profileBody = z.object({
@@ -59,6 +63,15 @@ export function authRoutes(service: AuthService) {
       const body = otpVerifyBody.parse(req.body);
       const r = await service.verifyOtp({ ...body, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
       return signedIn(req, reply, r);
+    });
+
+    // Guest phone verification (no account, no session): request the code with /otp/request first.
+    app.post("/guest/verify", async (req) => {
+      const tenant = req.ctx.tenant;
+      if (!tenant) throw new AppError(400, "tenant_required", "Guest verification needs a shop");
+      const body = guestVerifyBody.parse(req.body);
+      const r = await service.verifyGuestOtp({ target: body.target, code: body.code, tenantId: tenant.id, ip: req.ctx.ip });
+      return { guestToken: r.guestToken, expiresAt: r.expiresAt, phone: r.phone };
     });
 
     app.post("/google", async (req, reply) => {

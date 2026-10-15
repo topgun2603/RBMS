@@ -1,5 +1,5 @@
-import { requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
-import type { FastifyInstance } from "fastify";
+import { forbidden, isSuperAdmin, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { CollectionInput, CollectionListQuery, CollectionPatch, CollectionProductsQuery } from "./collections";
 import { csvDisposition, toCsv, type CsvColumn } from "./csv";
@@ -18,7 +18,9 @@ import {
   type PublicProductQuery,
   type VariantInput,
   type VariantSearchQuery,
+  type VendorScopePort,
 } from "./service";
+import type { ProductScope } from "./types";
 
 const idParam = z.object({ id: z.string().uuid() });
 const slugParam = z.object({ slug: z.string().trim().min(1).max(120) });
@@ -31,6 +33,80 @@ const BASE = { config: { feature: CATALOGUE_FEATURE_KEYS.base } };
 const VARIANTS = { config: { feature: CATALOGUE_FEATURE_KEYS.variants } };
 /** Collection writes also declare `catalogue.manage` (enforced by the host's staff preHandler). */
 const MANAGE = { config: { feature: CATALOGUE_FEATURE_KEYS.base, permission: CATALOGUE_PERMISSIONS[0].key } };
+
+// ------------------------------------------------------------------ marketplace sellers (vendor scoping)
+
+/** Where the host mounts these routes. */
+export const CATALOGUE_ROUTE_PREFIX = "/v1/catalog";
+
+/** Staff routes a marketplace seller may use on their own products (relative to the prefix). */
+const VENDOR_PATHS = [
+  "GET /categories",
+  "GET /categories/tree",
+  "GET /products",
+  "POST /products",
+  "GET /products/:id",
+  "PATCH /products/:id",
+  "DELETE /products/:id",
+  "POST /products/:id/variants",
+  "POST /products/:id/variants/generate",
+  "PATCH /variants/:id",
+  "DELETE /variants/:id",
+] as const;
+
+/**
+ * `"METHOD /v1/catalog/..."` keys (route patterns, as `req.routeOptions.url`) that sellers may use when the
+ * `vendorScope` dep is wired. Everything else under the staff routes stays owner/admin/staff only.
+ */
+export const CATALOGUE_VENDOR_ROUTES: string[] = VENDOR_PATHS.map((k) => {
+  const i = k.indexOf(" ");
+  return `${k.slice(0, i)} ${CATALOGUE_ROUTE_PREFIX}${k.slice(i + 1)}`;
+});
+
+const routeKey = (method: string, url: string) => `${method.toUpperCase()} ${url.length > 1 ? url.replace(/\/+$/, "") : url}`;
+const VENDOR_KEYS = new Set(CATALOGUE_VENDOR_ROUTES);
+/** `CATALOGUE_VENDOR_ROUTES` as a set, for `${req.method} ${req.routeOptions.url}` lookups. */
+export const CATALOGUE_VENDOR_ROUTE_KEYS: ReadonlySet<string> = VENDOR_KEYS;
+const VENDOR_RELATIVE_KEYS = new Set<string>(VENDOR_PATHS);
+
+/** True for a vendor-allowed route; `url` is the full route pattern (`req.routeOptions.url`). */
+export const isCatalogueVendorRoute = (method: string, url: string | undefined): boolean =>
+  Boolean(url) && VENDOR_KEYS.has(routeKey(method, url!));
+
+/** Owners, admins and staff of the tenant (or super-admins): full catalogue access, exactly as without vendor scoping. */
+export const isCatalogueStaff = (ctx: RequestContext): boolean =>
+  isSuperAdmin(ctx) || ["owner", "admin", "staff"].some((r) => ctx.user?.tenantRoles.includes(r) ?? false);
+
+/**
+ * For the host's global permission preHandler (which runs before these routes' own hooks): true when the request
+ * is a signed-in non-staff user on a vendor-allowed route. The host should skip its `config.permission` check for
+ * such requests; the catalogue's staff hook then resolves the seller (`vendorScope`) and answers 403 for non-sellers
+ * (or when `vendorScope` isn't wired).
+ */
+export function isCatalogueVendorCandidate(req: Pick<FastifyRequest, "method" | "routeOptions"> & { ctx: RequestContext }): boolean {
+  return Boolean(req.ctx?.user) && !isCatalogueStaff(req.ctx) && isCatalogueVendorRoute(req.method, req.routeOptions?.url);
+}
+
+const vendorIds = new WeakMap<object, string>();
+
+/** The seller a catalogue request is scoped to (set by the staff hook), or null for staff / non-vendor requests. */
+export const vendorIdOf = (req: object): string | null => vendorIds.get(req) ?? null;
+
+/** `[scope]` for vendor-scoped requests, `[]` otherwise (staff calls keep their exact arguments). */
+const scopeArgs = (req: object): [] | [ProductScope] => {
+  const vendorId = vendorIds.get(req);
+  return vendorId ? [{ vendorId }] : [];
+};
+
+const headerValue = (v: string | string[] | undefined): string | null => {
+  const s = Array.isArray(v) ? v[0] : v;
+  return s && s.trim() ? s.trim() : null;
+};
+
+export interface CatalogueRouteOptions {
+  /** Marketplace sellers; without it non-staff users get 403 on every staff route (as before). */
+  vendorScope?: VendorScopePort;
+}
 
 /** `GET /products?format=csv`: one row per variant. */
 export const PRODUCT_CSV_COLUMNS: CsvColumn<ProductExportRow>[] = [
@@ -59,8 +135,13 @@ export const PRODUCT_CSV_COLUMNS: CsvColumn<ProductExportRow>[] = [
  * sold in the store (listing, search + suggestions, collections); everything else needs an owner, admin or staff member
  * (collection writes also declare `catalogue.manage`). Every route declares its feature:
  * "catalogue", and "catalogue.variants" for variant writes (enforced by the host).
+ *
+ * With `vendorScope`, signed-in users who aren't staff may use `CATALOGUE_VENDOR_ROUTES` as a marketplace seller
+ * (`x-vendor` header picks the seller): they see and write only their own products (others 404), and products they
+ * create belong to them.
  */
-export function catalogueRoutes(service: CatalogueService) {
+export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteOptions = {}) {
+  const { vendorScope } = opts;
   return async (app: FastifyInstance) => {
     // ---- public storefront
     app.get("/public/categories", BASE, async (req) => service.publicCategories(tid(req)));
@@ -80,8 +161,20 @@ export function catalogueRoutes(service: CatalogueService) {
     // ---- staff
     await app.register(async (staff) => {
       staff.addHook("preHandler", async (req) => {
-        requireRole(req.ctx, "owner", "admin", "staff");
-        requireTenant(req.ctx);
+        const user = req.ctx.user;
+        if (!vendorScope || !user || isCatalogueStaff(req.ctx)) {
+          requireRole(req.ctx, "owner", "admin", "staff");
+          requireTenant(req.ctx);
+          return;
+        }
+        // A signed-in non-staff user: only as a seller, only on the vendor routes.
+        const tenant = requireTenant(req.ctx);
+        const url = req.routeOptions.url ?? "";
+        const relative = url.startsWith(staff.prefix) ? url.slice(staff.prefix.length) : url;
+        if (!VENDOR_RELATIVE_KEYS.has(routeKey(req.method, relative))) throw forbidden();
+        const vendorId = await vendorScope.vendorFor(tenant.id, user.id, headerValue(req.headers["x-vendor"]));
+        if (!vendorId) throw forbidden("You're not a seller in this shop");
+        vendorIds.set(req, vendorId);
       });
 
       // categories
@@ -103,44 +196,44 @@ export function catalogueRoutes(service: CatalogueService) {
       staff.get("/products", BASE, async (req, reply) => {
         const q = query(req);
         const { format } = formatQuery.parse(q);
-        if (format !== "csv") return service.listProducts(tid(req), q as ProductListQuery);
+        if (format !== "csv") return service.listProducts(tid(req), q as ProductListQuery, ...scopeArgs(req));
         const { limit: _l, offset: _o, format: _f, ...filters } = q;
-        const rows = await service.exportProducts(tid(req), filters as ProductListQuery);
+        const rows = await service.exportProducts(tid(req), filters as ProductListQuery, ...scopeArgs(req));
         reply.header("content-type", "text/csv; charset=utf-8");
         reply.header("content-disposition", csvDisposition(`products-${todayIST()}`));
         return toCsv(rows, PRODUCT_CSV_COLUMNS);
       });
-      staff.post("/products", BASE, async (req) => service.createProduct(tid(req), body(req) as ProductInput));
+      staff.post("/products", BASE, async (req) => service.createProduct(tid(req), body(req) as ProductInput, ...scopeArgs(req)));
       staff.get("/products/:id", BASE, async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.getProduct(tid(req), id);
+        return service.getProduct(tid(req), id, ...scopeArgs(req));
       });
       staff.patch("/products/:id", BASE, async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.updateProduct(tid(req), id, body(req) as ProductPatch);
+        return service.updateProduct(tid(req), id, body(req) as ProductPatch, ...scopeArgs(req));
       });
       staff.delete("/products/:id", BASE, async (req) => {
         const { id } = idParam.parse(req.params);
-        await service.deleteProduct(tid(req), id);
+        await service.deleteProduct(tid(req), id, ...scopeArgs(req));
         return { ok: true };
       });
 
       // variant writes
       staff.post("/products/:id/variants", VARIANTS, async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.addVariant(tid(req), id, body(req) as VariantInput);
+        return service.addVariant(tid(req), id, body(req) as VariantInput, ...scopeArgs(req));
       });
       staff.post("/products/:id/variants/generate", VARIANTS, async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.generateVariants(tid(req), id, body(req) as GenerateVariantsInput);
+        return service.generateVariants(tid(req), id, body(req) as GenerateVariantsInput, ...scopeArgs(req));
       });
       staff.patch("/variants/:id", VARIANTS, async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.updateVariant(tid(req), id, body(req) as Partial<VariantInput>);
+        return service.updateVariant(tid(req), id, body(req) as Partial<VariantInput>, ...scopeArgs(req));
       });
       staff.delete("/variants/:id", VARIANTS, async (req) => {
         const { id } = idParam.parse(req.params);
-        await service.deleteVariant(tid(req), id);
+        await service.deleteVariant(tid(req), id, ...scopeArgs(req));
         return { ok: true };
       });
 

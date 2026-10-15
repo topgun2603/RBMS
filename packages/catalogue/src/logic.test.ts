@@ -10,6 +10,7 @@ import {
   pickDefault,
   planVariants,
   priceRange,
+  productEventData,
   shortId,
   slugify,
   toPublicProduct,
@@ -191,6 +192,7 @@ const product: Product = {
   options: [{ name: "Size", values: ["S", "M"] }],
   images: [{ url: "https://img/1.jpg", alt: null }],
   seo: null,
+  vendorId: null,
   variants: [variant({ id: "v1", title: "S", price: 1500, mrp: 2000 }), variant({ id: "v2", title: "M", price: 1000, mrp: 1100, isDefault: false, position: 1 })],
   createdAt: new Date("2026-10-01T00:00:00Z"),
   updatedAt: new Date("2026-10-02T00:00:00Z"),
@@ -211,9 +213,24 @@ describe("output shapes", () => {
       priceMax: 1500,
       variantCount: 2,
       channels: ["store", "billing"],
+      vendorId: null,
       updatedAt: product.updatedAt,
     });
     expect(toPublicSummary(base, variants, null)).toMatchObject({ priceMin: 1000, priceMax: 1500, mrp: 1100, taxInclusive: true });
+  });
+
+  it("builds product event payloads with the price range and seller", () => {
+    expect(productEventData({ ...product, vendorId: "v-1" }, product.variants)).toEqual({
+      id: "p1",
+      name: "Shirt",
+      slug: "shirt",
+      status: "active",
+      vendorId: "v-1",
+      priceMin: 1000,
+      priceMax: 1500,
+      updatedAt: product.updatedAt,
+    });
+    expect(productEventData(product, [])).toMatchObject({ vendorId: null, priceMin: 0, priceMax: 0 });
   });
 
   it("never exposes cost prices (or status/channels) publicly", () => {

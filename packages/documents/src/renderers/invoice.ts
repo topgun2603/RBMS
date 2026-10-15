@@ -1,7 +1,7 @@
 import { amountInWordsINR, upiLink } from "@srirealtime/gst";
-import { esc, escLines, fmtDate, money, page, pct, qrSvg, qty, safeImageUrl, stateLabel } from "../html";
-import { labels } from "../labels";
-import type { InvoiceDocData, RenderContext } from "../types";
+import { esc, escLines, fmtDate, fmtDateTime, money, page, pct, qrSvg, qty, safeImageUrl, stateLabel } from "../html";
+import { labels, type Labels } from "../labels";
+import type { DocLocale, InvoiceDocData, InvoiceEinvoice, RenderContext } from "../types";
 
 const CSS = `
 .doc{position:relative}
@@ -39,7 +39,59 @@ const CSS = `
 .sign .line{margin-top:34px;border-top:1px dashed #9ca3af;padding-top:2px;font-weight:600}
 .cg{margin-top:14px;text-align:center;font-size:7pt;color:#6b7280}
 .cancel{color:#dc2626}
+.einv{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:1px solid #e5e7eb;padding:8px 0}
+.einv .info{flex:1;min-width:0;font-size:8.5pt}
+.einv dl{margin:0}
+.einv .row{display:flex;gap:6px;margin-top:2px}
+.einv .row dt{color:#6b7280;flex:none;min-width:64px}
+.einv .row dd{margin:0;font-weight:600;min-width:0}
+.irn{font-family:"SR Noto Sans",monospace;font-size:7.5pt;word-break:break-all;overflow-wrap:anywhere}
+.einv .qrbox{flex:none;text-align:center}
+.mockeinv{display:inline-block;margin-top:4px;border:1.5px solid #dc2626;color:#dc2626;font-weight:700;font-size:8pt;padding:1px 6px;border-radius:4px}
 `;
+
+/**
+ * The e-invoice signed QR as SVG, or "" when there is none or it cannot be encoded. Low error correction ("L")
+ * keeps the ~1 KB JWT scannable at print sizes.
+ */
+function einvoiceQr(e: InvoiceEinvoice, sizePx: number, label: string): string {
+  if (!e.signedQrCode) return "";
+  try {
+    return qrSvg(e.signedQrCode, sizePx, label, "L");
+  } catch {
+    return "";
+  }
+}
+
+/** Label/value pairs printed in the e-invoice block (A4 and 80 mm). */
+function einvoiceRows(e: InvoiceEinvoice, t: Labels, locale: DocLocale): Array<[string, string, boolean]> {
+  const rows: Array<[string, string, boolean]> = [[t.irn, e.irn, true]];
+  if (e.ackNo) rows.push([t.ackNo, e.ackNo, false]);
+  if (e.ackDate) rows.push([t.ackDate, fmtDateTime(e.ackDate, locale), false]);
+  if (e.ewbNo) {
+    rows.push([t.ewbNo, e.ewbNo, false]);
+    if (e.ewbValidTill) rows.push([t.ewbValidTill, fmtDateTime(e.ewbValidTill, locale), false]);
+  }
+  return rows;
+}
+
+/** A4 "e-Invoice" block: IRN (wrapping monospace), Ack No./Date, e-way bill and the signed QR. */
+function einvoiceBlockA4(e: InvoiceEinvoice | null | undefined, t: Labels, locale: DocLocale): string {
+  if (!e?.irn) return "";
+  const rows = einvoiceRows(e, t, locale)
+    .map(([k, v, mono]) => `<div class="row"><dt>${esc(k)}</dt><dd${mono ? ' class="irn"' : ' class="num"'}>${esc(v)}</dd></div>`)
+    .join("");
+  const qr = einvoiceQr(e, 150, t.einvoiceQr);
+  return `
+<section class="einv avoid">
+  <div class="info">
+    <p class="label">${esc(t.einvoice)}</p>
+    <dl>${rows}</dl>
+    ${e.mock ? `<p class="mockeinv">${esc(t.einvoiceMock)}</p>` : ""}
+  </div>
+  ${qr ? `<div class="qrbox">${qr}<p class="xs muted">${esc(t.einvoiceQr)}</p></div>` : ""}
+</section>`;
+}
 
 /** The UPI deep link printed as a QR, when the bill still has a balance. */
 export function invoiceUpi(inv: InvoiceDocData, brandName: string, noteLabel: string): string | null {
@@ -145,7 +197,7 @@ ${cancelled ? `<div class="stamp" aria-hidden="true">${L("cancelled")}</div>` : 
       <dt>${L("placeOfSupply")}</dt><dd>${esc(stateLabel(inv.placeOfSupply))}</dd>
     </dl>
   </div>
-</header>
+</header>${einvoiceBlockA4(inv.einvoice, t, ctx.locale)}
 <section class="buyer avoid">
   <p class="label">${L("billTo")}</p>
   <p class="b">${esc(buyer.name || "—")}</p>
@@ -216,7 +268,23 @@ td{padding:1px 0;vertical-align:top}
 .grand td{font-size:11pt;font-weight:700;border-top:1px solid #000;padding-top:3px}
 .qr{margin:4px auto}
 .stamp{position:static;transform:none;font-size:14pt;color:#000;border:2px solid #000;margin:4px 0;padding:2px}
+.irn{font-family:"SR Noto Sans",monospace;font-size:7pt;word-break:break-all;overflow-wrap:anywhere}
+.mockeinv{border:1.5px solid #000;font-weight:700;padding:1px 2px;margin-top:2px}
 `;
+  const e = inv.einvoice?.irn ? inv.einvoice : null;
+  const einv = e
+    ? (() => {
+        const qr = einvoiceQr(e, 190, t.einvoiceQr);
+        const [irnRow, ...rest] = einvoiceRows(e, t, ctx.locale);
+        return `
+<hr>
+<p class="b c">${L("einvoice")}</p>
+<p class="xs">${esc(irnRow![0])}:</p><p class="irn">${esc(irnRow![1])}</p>
+<table>${rest.map(([k, v]) => row(k, v, "small")).join("")}</table>
+${e.mock ? `<p class="mockeinv c">${L("einvoiceMock")}</p>` : ""}
+${qr ? `<div class="c">${qr}</div>` : ""}`;
+      })()
+    : "";
   const body = `
 <div class="c">
   <h1>${esc(brandName)}</h1>
@@ -253,7 +321,7 @@ ${inv.lines
   ${row(t.grandTotal, money(totals.total), "grand")}
   ${inv.paid > 0 ? row(t.paid, money(inv.paid)) + row(t.balance, money(inv.balance), "b") : ""}
 </table>
-<p class="xs" style="margin-top:3px">${esc(inv.amountInWords || amountInWordsINR(totals.total))}</p>
+<p class="xs" style="margin-top:3px">${esc(inv.amountInWords || amountInWordsINR(totals.total))}</p>${einv}
 ${
   upi
     ? `<hr><div class="c"><p class="b">${L("scanToPay")} ${esc(money(inv.balance))}</p>${qrSvg(upi, 120, `UPI ${money(inv.balance)}`)}<p class="xs">${esc(s.upiId)}</p></div>`

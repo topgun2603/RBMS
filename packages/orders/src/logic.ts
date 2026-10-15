@@ -308,6 +308,20 @@ export function splitProportionally(total: number, amounts: readonly number[]): 
   return out;
 }
 
+/**
+ * Splits a loyalty-points discount `discount` (paise, as charged) over the goods lines, proportionally to what each
+ * line still charges after its coupon share (`gross − couponShare`), by largest remainder: the parts are whole paise,
+ * add up exactly to `min(discount, Σ remaining)`, and none exceeds its line's remaining charge.
+ */
+export function allocateLoyaltyDiscount(
+  discount: number,
+  lines: readonly { gross: number }[],
+  couponDiscounts?: readonly number[],
+): number[] {
+  const remaining = lines.map((l, i) => Math.max(l.gross - Math.min(Math.max(couponDiscounts?.[i] ?? 0, 0), l.gross), 0));
+  return splitProportionally(Math.max(Math.floor(discount), 0), remaining);
+}
+
 export const SHIPPING_SAC = "996812";
 export const SHIPPING_DESCRIPTION = "Shipping charges";
 /** Cash-on-delivery fee: its own taxed line (same SAC and rate rule as shipping), never waived by a free-shipping coupon. */
@@ -325,6 +339,13 @@ export function principalRate(lines: readonly { gstRate: GstRate; amount: number
 export interface TotalsOptions {
   /** Coupon discount per line, as charged (same order as `lines`). */
   lineDiscounts?: readonly number[];
+  /**
+   * Loyalty-points discount per goods line, as charged (same order as `lines`; see `allocateLoyaltyDiscount`). Capped
+   * at what the line still charges after its coupon share.
+   */
+  loyaltyDiscounts?: readonly number[];
+  /** Points redeemed for `loyaltyDiscounts`; recorded in `totals.loyalty`. */
+  loyaltyPoints?: number;
   /** Shipping charged, GST-inclusive. */
   shipping: number;
   freeShipping?: boolean;
@@ -339,16 +360,31 @@ export interface TotalsOptions {
  * for tax-inclusive lines, and shipping as a GST-inclusive composite-supply line at the principal item's rate.
  * Tax-inclusive lines (and shipping/COD) carry `inclusiveTotal` = what is charged, so their GST is worked out
  * backwards and the line total equals the charged price exactly (₹999 stays ₹999.00, not ₹999.01).
+ *
+ * Loyalty points (`loyaltyDiscounts`) are a discount allowed at the time of supply and recorded on the invoice
+ * (Sec 15(3)(a) CGST Act), so they reduce each line's taxable value pro-rata and the GST is worked out again on the
+ * lower value — not a payment method. Tax-inclusive lines: the charged share comes off `inclusiveTotal`
+ * (gross − coupon − loyalty), so the line total drops by exactly that share. Exclusive lines: the share is charged
+ * money (GST-inclusive), so it is converted to the exclusive basis (`exclusiveOf(share, gstRate, true)`) and added to
+ * the line discount; the total then drops by the share to within a paisa. Each line's `discount` (exclusive basis)
+ * includes its loyalty share, so an invoice copied from the order equals it. `totals.discount` stays the coupon only.
  */
 export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOptions): { lines: OrderLine[]; totals: OrderTotals } {
   const discountsCharged = base.map((_, i) => Math.max(opts.lineDiscounts?.[i] ?? 0, 0));
+  const loyaltyCharged = base.map((l, i) => {
+    const share = Math.min(discountsCharged[i]!, l.gross);
+    return Math.min(Math.max(Math.round(opts.loyaltyDiscounts?.[i] ?? 0), 0), l.gross - share);
+  });
   const inputs: LineInput[] = base.map((l, i) => {
     const amount = lineAmount(l.qty, l.rate);
     const share = Math.min(discountsCharged[i]!, l.gross);
-    const discount = Math.min(exclusiveOf(share, l.gstRate, l.taxInclusive), amount);
+    const loyalty = loyaltyCharged[i]!;
+    const discount = l.taxInclusive
+      ? Math.min(exclusiveOf(share + loyalty, l.gstRate, true), amount)
+      : Math.min(share + exclusiveOf(loyalty, l.gstRate, true), amount);
     const input: LineInput = { description: l.name, qty: l.qty, rate: l.rate, gstRate: l.gstRate, itemId: l.variantId, discount };
     // Tax-inclusive price: the line total is what the customer is charged; GST is taken out of it, not re-added.
-    if (l.taxInclusive && l.gstRate) input.inclusiveTotal = l.gross - share;
+    if (l.taxInclusive && l.gstRate) input.inclusiveTotal = l.gross - share - loyalty;
     if (l.hsn) input.hsn = l.hsn;
     if (l.unit) input.unit = l.unit;
     return input;
@@ -395,6 +431,7 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
   });
   const shippingLine = shippingCharged > 0 ? computed.lines[base.length]! : null;
   const codFeeLine = codFee > 0 ? computed.lines[base.length + (shippingLine ? 1 : 0)]! : null;
+  const loyaltyDiscount = loyaltyCharged.reduce((s, v) => s + v, 0);
   return {
     lines,
     totals: {
@@ -415,6 +452,7 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
       sellerState: opts.sellerState,
       placeOfSupply: opts.placeOfSupply,
       interState: isInterState(opts.sellerState, opts.placeOfSupply),
+      ...(loyaltyDiscount > 0 ? { loyalty: { points: Math.max(Math.round(opts.loyaltyPoints ?? 0), 0), discount: loyaltyDiscount } } : {}),
     },
   };
 }

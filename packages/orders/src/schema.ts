@@ -53,6 +53,8 @@ export const orders = pgTable(
     invoiceId: uuid("invoice_id"),
     invoiceNumber: text("invoice_number"),
     locationId: uuid("location_id"),
+    /** Shop branch the order belongs to (multi-branch shops); null when the shop doesn't use branches. */
+    branchId: uuid("branch_id"),
     /** Internal (staff) note. */
     notes: text("notes"),
     customerNote: text("customer_note"),
@@ -72,6 +74,7 @@ export const orders = pgTable(
     unique("orders_access_token_uq").on(t.accessToken),
     index("orders_tenant_placed_idx").on(t.tenantId, t.placedAt),
     index("orders_tenant_status_placed_idx").on(t.tenantId, t.status, t.placedAt),
+    index("orders_tenant_branch_placed_idx").on(t.tenantId, t.branchId, t.placedAt),
     index("orders_tenant_account_idx").on(t.tenantId, sql`(${t.customer}->>'accountId')`),
     index("orders_tenant_phone_idx").on(t.tenantId, sql`(${t.customer}->>'phone')`),
   ],

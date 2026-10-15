@@ -102,10 +102,19 @@ export function storeAvailabilityPort(
   };
 }
 
-/** orders → the store's OrdersPort; `cancelForCustomer` = ownership check + the normal cancel transition. */
-export function storeOrdersPort(orders: Orders): StoreOrdersPort {
+/**
+ * orders → the store's OrdersPort; `cancelForCustomer` = ownership check + the normal cancel transition. Store orders
+ * go to the shop's default branch (`defaultBranch`, null when the shop doesn't use branches): its id and stock location.
+ */
+export function storeOrdersPort(
+  orders: Orders,
+  defaultBranch: (tenantId: string) => Promise<{ id: string; locationId: string | null } | null> = async () => null,
+): StoreOrdersPort {
   return {
-    createFromCheckout: async (tenant, input) => (await orders.createFromCheckout(tenant, input)) as StoreOrder,
+    createFromCheckout: async (tenant, input) => {
+      const branch = await defaultBranch(tenant.id);
+      return (await orders.createFromCheckout(tenant, { ...input, branchId: branch?.id ?? null, locationId: branch?.locationId ?? null })) as StoreOrder;
+    },
     listForCustomer: (tenantId, accountId, query) => orders.listForCustomer(tenantId, accountId, query),
     getForCustomer: async (tenantId, accountId, orderId) => (await orders.getForCustomer(tenantId, accountId, orderId)) as StoreOrder,
     getByToken: async (token, tenantId) => (await orders.getByToken(token, tenantId)) as StoreOrder,

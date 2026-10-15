@@ -17,6 +17,7 @@ const app = await buildServer({
   onResponse: kit.onResponse,
   modules: kit.modules,
   routeRules: kit.routeRules,
+  routeCollector: kit.routeCollector,
 });
 
 await kit.start();

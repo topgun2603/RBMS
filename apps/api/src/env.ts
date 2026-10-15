@@ -53,10 +53,27 @@ export const envSchema = z.object({
   WHATSAPP_TOKEN: optionalString(),
   WHATSAPP_PHONE_NUMBER_ID: optionalString(),
   FCM_SERVICE_ACCOUNT_JSON: optionalString(),
+  /** Signs chat (and live WhatsApp inbox) stream tokens; share it between API instances. Must be set in production. */
+  CHAT_STREAM_SECRET: z.string().min(16).default("dev-only-chat-stream-secret"),
+  /** KYC provider (Surepass/IDfy-like HTTP API, platform-wide). Unset = the mock provider (development only). */
+  KYC_BASE_URL: optionalString(),
+  KYC_TOKEN: optionalString(),
+  /** Name stored on each check, e.g. "surepass". */
+  KYC_PROVIDER_NAME: optionalString(),
+  /** Encrypts shops' WhatsApp tokens/app secrets. Default: derived from APP_SECRET. */
+  WHATSAPP_SECRET_KEY: optionalString(),
+  /** GSP (e-invoice) REST base URLs and the platform's ASP client credentials. Unset = mock only (development). */
+  EINVOICE_GSP_BASE_URL: optionalString(),
+  EINVOICE_GSP_SANDBOX_URL: optionalString(),
+  EINVOICE_GSP_CLIENT_ID: optionalString(),
+  EINVOICE_GSP_CLIENT_SECRET: optionalString(),
 })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production" && (e.APP_SECRET.length < 32 || e.APP_SECRET.startsWith("dev-only"))) {
       ctx.addIssue({ code: "custom", path: ["APP_SECRET"], message: "Set a random 32+ character secret in production" });
+    }
+    if (e.NODE_ENV === "production" && e.CHAT_STREAM_SECRET.startsWith("dev-only")) {
+      ctx.addIssue({ code: "custom", path: ["CHAT_STREAM_SECRET"], message: "Set a random secret in production" });
     }
     if (e.TEST_OTP_CODE && !/^\d{4,10}$/.test(e.TEST_OTP_CODE)) {
       ctx.addIssue({ code: "custom", path: ["TEST_OTP_CODE"], message: "Use 4–10 digits" });

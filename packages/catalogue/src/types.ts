@@ -60,6 +60,8 @@ export interface Product {
   options: ProductOption[];
   images: ProductImage[];
   seo: Seo | null;
+  /** Marketplace seller owning the product; null = the shop's own product. */
+  vendorId: string | null;
   variants: Variant[];
   createdAt: Date;
   updatedAt: Date;
@@ -78,6 +80,39 @@ export interface ProductSummary {
   priceMax: number;
   variantCount: number;
   channels: Channel[];
+  /** Marketplace seller owning the product; null = the shop's own product. */
+  vendorId: string | null;
+  updatedAt: Date;
+}
+
+/**
+ * Vendor-scoped access (marketplace sellers): service methods given a scope only see and write that seller's
+ * products (others are 404) and create products owned by it.
+ */
+export interface ProductScope {
+  vendorId: string;
+}
+
+/** One product of a seller (`vendorProducts()`; marketplace's `VendorProduct`). Paise. */
+export interface VendorProductItem {
+  id: string;
+  name: string;
+  slug: string;
+  status: ProductStatus;
+  image: string | null;
+  priceMin: number;
+  priceMax: number;
+}
+
+/** Payload of the `product.created` / `product.updated` events. Prices in paise. */
+export interface ProductEventData {
+  id: string;
+  name: string;
+  slug: string;
+  status: ProductStatus;
+  vendorId: string | null;
+  priceMin: number;
+  priceMax: number;
   updatedAt: Date;
 }
 

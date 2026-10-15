@@ -51,7 +51,7 @@ export interface OrderLine {
   gstRate: GstRate;
   hsn: string | null;
   taxInclusive: boolean;
-  /** Paise, before GST (the coupon share of this line, converted to the exclusive basis). */
+  /** Paise, before GST: the coupon share plus the loyalty-points share of this line, converted to the exclusive basis. */
   discount: number;
   /** qty × rate (tax-inclusive lines: taxable + discount, the GST taken out of the charged total; within a paisa of qty × rate). */
   amount: number;
@@ -65,8 +65,13 @@ export interface OrderLine {
 export interface OrderTotals {
   /** Σ qty × price as charged (what the customer sees in the cart). */
   subtotal: number;
-  /** Coupon discount on the goods, as charged. */
+  /** Coupon discount on the goods, as charged (loyalty points are in `loyalty`, not here). */
   discount: number;
+  /**
+   * Loyalty points redeemed on this order and their discount (paise, as charged), spread over the goods lines'
+   * taxable values (a discount at the time of supply, Sec 15(3)(a) CGST Act). Absent when no points were used.
+   */
+  loyalty?: { points: number; discount: number };
   /** Shipping charged (GST-inclusive), after any free-shipping coupon. */
   shipping: number;
   /** Shipping waived by a free-shipping coupon. */

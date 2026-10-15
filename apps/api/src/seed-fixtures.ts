@@ -7,6 +7,23 @@ import type { Kit } from "./kit";
  * idempotent: it only creates what is missing, so owners' edits survive re-runs.
  */
 
+/** Batch-3 feature grants (docs/batch3.md). e-invoice keys are listed one by one: they don't start with the module id. */
+export const BATCH3_ALL = [
+  "marketplace.*",
+  "chat",
+  "support.*",
+  "kyc",
+  "loyalty",
+  "whatsapp.*",
+  "gst-einvoice",
+  "gst-ewaybill",
+  "multi-branch",
+  "developer",
+  "reports.advanced",
+];
+const BATCH3_EC = ["marketplace.*", "chat", "support.*", "kyc", "loyalty", "whatsapp.*", "developer", "reports.advanced", "gst-einvoice"];
+const BATCH3_BL = ["support", "loyalty", "whatsapp.*", "gst-einvoice", "gst-ewaybill", "multi-branch", "developer", "reports.advanced"];
+
 /**
  * App profiles (docs/features.md, docs/commerce-batch1.md "Plans and app profiles"): a feature key grants that
  * feature, `module.*` the whole module. Billing: catalogue without variants, no orders/coupons for now.
@@ -16,7 +33,21 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
     appId: "BL",
     name: "Billing",
     // No online store for billing shops; the setup checklist and expenses (profit report) are useful to every shop.
-    features: ["invoices.*", "inventory.*", "payments.*", "catalogue", "staff", "audit", "importexport", "documents", "onboarding", "expenses"],
+    features: [
+      "invoices.*",
+      "inventory.*",
+      "payments.*",
+      "catalogue",
+      "staff",
+      "audit",
+      "importexport",
+      "documents",
+      "onboarding",
+      "expenses",
+      // Batch 3: counter help desk, loyalty points, WhatsApp inbox + campaigns, GST e-invoice / e-way bill, branches,
+      // API keys + webhooks and the report builder.
+      ...BATCH3_BL,
+    ],
   },
   {
     appId: "EC",
@@ -46,6 +77,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "onboarding",
       "expenses",
       "custom-domain",
+      // Batch 3: sellers (marketplace + KYC), chat, help desk + FAQ, loyalty, WhatsApp, e-invoice, API keys, reports.
+      ...BATCH3_EC,
     ],
   },
 ];
@@ -56,9 +89,9 @@ const STORE_STARTER = [...STORE_FREE, "reviews", "analytics", "expenses", "store
 const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo", "reviews.*", "analytics.*", "expenses.*", "custom-domain"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
   free: ["catalogue", "orders", "documents", ...STORE_FREE],
-  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit", ...STORE_STARTER],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO],
+  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit", ...STORE_STARTER, "support", "chat", "loyalty"],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL],
 };
 const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   ...plan,

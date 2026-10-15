@@ -1,4 +1,4 @@
-import { forbidden, unauthorized } from "./errors";
+import { AppError, forbidden, unauthorized } from "./errors";
 
 export interface TenantRef {
   id: string;
@@ -23,10 +23,25 @@ export interface UserRef {
   permissions?: string[];
 }
 
-/** Per-request context. Tenancy fills `tenant`, auth fills `user`. */
+/**
+ * The shop branch a request works in (multi-branch shops, `@srirealtime/branches`). `locationId` is the branch's
+ * inventory stock location, null when none is linked.
+ */
+export interface BranchRef {
+  id: string;
+  code: string;
+  locationId: string | null;
+}
+
+/** Per-request context. Tenancy fills `tenant`, auth fills `user`, the branches hook (after auth) fills `branch`. */
 export interface RequestContext {
   tenant: TenantRef | null;
   user: UserRef | null;
+  /**
+   * Current branch, filled by the branches context hook. Undefined when that hook isn't mounted, null when the shop
+   * doesn't use branches (feature `multi-branch` off or no branches yet). Treat undefined like null.
+   */
+  branch?: BranchRef | null;
   locale: string;
   ip: string | null;
   userAgent: string | null;
@@ -48,6 +63,15 @@ export function requireUser(ctx: RequestContext): UserRef {
 export function requireTenant(ctx: RequestContext): TenantRef {
   if (!ctx.tenant) throw forbidden("This action needs a tenant");
   return ctx.tenant;
+}
+
+/**
+ * The current branch, or 400 `branch_required` when the request has none (the branches hook isn't mounted, the
+ * shop has `multi-branch` off, or it has no branches yet). See `RequestContext.branch`.
+ */
+export function requireBranch(ctx: RequestContext): BranchRef {
+  if (!ctx.branch) throw new AppError(400, "branch_required", "Choose a branch for this action");
+  return ctx.branch;
 }
 
 export const isSuperAdmin = (ctx: RequestContext) => ctx.user?.platformRoles.includes("superadmin") ?? false;

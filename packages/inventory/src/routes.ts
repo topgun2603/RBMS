@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { csvDisposition, toCsv, type CsvColumn } from "./csv";
@@ -70,6 +70,22 @@ const LOCATIONS = { config: { feature: INVENTORY_FEATURE_KEYS.locations } };
  * tenant. Stock and availability routes belong to the "inventory" feature, locations and transfers to
  * "inventory.locations", suppliers and purchases to "inventory.purchases" (enforced by the host).
  */
+/**
+ * Multi-branch shops: a request without `locationId` works at the current branch's stock location (`req.ctx.branch`,
+ * filled by the branches context hook). `locationId=all` asks for every location (the shop-wide view). Without a
+ * branch (single-branch shops) nothing changes: lists and reads cover every location, writes use the default one.
+ */
+export function atBranch<T>(req: { ctx: RequestContext }, input: T): T {
+  const v = (input ?? {}) as Record<string, unknown>;
+  if (v.locationId === "all") {
+    const { locationId: _all, ...rest } = v;
+    return rest as T;
+  }
+  const loc = req.ctx.branch?.locationId;
+  if (!loc || (v.locationId !== undefined && v.locationId !== null && v.locationId !== "")) return input;
+  return { ...v, locationId: loc } as T;
+}
+
 export function inventoryRoutes(service: InventoryService) {
   return async (root: FastifyInstance) => {
     const tid = (req: { ctx: Parameters<typeof requireTenant>[0] }) => requireTenant(req.ctx).id;
@@ -85,25 +101,25 @@ export function inventoryRoutes(service: InventoryService) {
       });
 
       // ---- stock
-      app.get("/stock", STOCK, async (req) => service.listStock(tid(req), req.query as StockQuery));
+      app.get("/stock", STOCK, async (req) => service.listStock(tid(req), atBranch(req, req.query as StockQuery)));
       app.get("/stock/:itemId", STOCK, async (req) => {
         const { itemId } = itemParam.parse(req.params);
-        return service.getStock(tid(req), itemId, req.query as LocationQuery);
+        return service.getStock(tid(req), itemId, atBranch(req, req.query as LocationQuery));
       });
       app.patch("/stock/:itemId", STOCK, async (req) => {
         const { itemId } = itemParam.parse(req.params);
-        return service.updateStock(tid(req), itemId, body(req) as StockPatch);
+        return service.updateStock(tid(req), itemId, atBranch(req, body(req) as StockPatch));
       });
       app.post("/stock/:itemId/adjust", STOCK, async (req) => {
         const { itemId } = itemParam.parse(req.params);
-        return service.adjust(tid(req), itemId, body(req) as AdjustInput, uid(req));
+        return service.adjust(tid(req), itemId, atBranch(req, body(req) as AdjustInput), uid(req));
       });
       app.get("/stock/:itemId/movements", STOCK, async (req) => {
         const { itemId } = itemParam.parse(req.params);
-        return service.movements(tid(req), itemId, req.query as MovementsQuery);
+        return service.movements(tid(req), itemId, atBranch(req, req.query as MovementsQuery));
       });
-      app.get("/summary", STOCK, async (req) => service.summary(tid(req), (req.query ?? {}) as LocationQuery));
-      app.get("/availability", STOCK, async (req) => service.availability(tid(req), req.query as AvailabilityQuery));
+      app.get("/summary", STOCK, async (req) => service.summary(tid(req), atBranch(req, (req.query ?? {}) as LocationQuery)));
+      app.get("/availability", STOCK, async (req) => service.availability(tid(req), atBranch(req, req.query as AvailabilityQuery)));
 
       // ---- locations and transfers
       app.get("/locations", LOCATIONS, async (req) => service.listLocations(tid(req), (req.query ?? {}) as LocationListQuery));
@@ -143,7 +159,7 @@ export function inventoryRoutes(service: InventoryService) {
 
       // ---- purchases
       app.get("/purchases", PURCHASES, async (req) => service.listPurchases(tid(req), req.query as PurchaseListQuery));
-      app.post("/purchases", PURCHASES, async (req) => service.createPurchase(tid(req), body(req) as PurchaseInput, uid(req)));
+      app.post("/purchases", PURCHASES, async (req) => service.createPurchase(tid(req), atBranch(req, body(req) as PurchaseInput), uid(req)));
       app.get("/purchases/:id", PURCHASES, async (req) => {
         const { id } = idParam.parse(req.params);
         return service.getPurchase(tid(req), id);
@@ -159,7 +175,7 @@ export function inventoryRoutes(service: InventoryService) {
 
       // ---- reports
       app.get("/reports/stock", STOCK, async (req, reply) => {
-        const { q, format, locationId } = stockReportQuerySchema.parse(req.query ?? {});
+        const { q, format, locationId } = stockReportQuerySchema.parse(atBranch(req, req.query ?? {}));
         const report = await service.stockReport(tid(req), { q, locationId });
         if (format !== "csv") return report;
         const today = service.today();

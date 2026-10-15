@@ -142,6 +142,8 @@ export interface CheckoutOrderInput {
   /** Paise, GST-inclusive: the COD fee (cash on delivery only). Charged separately; a free-shipping coupon doesn't waive it. */
   codFee?: number;
   customerNote?: string | null;
+  /** Loyalty points to redeem; orders prices the discount (a discount on the goods' taxable value). */
+  loyaltyPoints?: number;
 }
 
 /** The parts of orders' `CustomerOrder` the store reads (structurally compatible). */
@@ -158,7 +160,17 @@ export interface StoreOrder {
   customerNote: string | null;
   shippingAddress: { city: string; pincode: string; stateCode: string } | null;
   lines: { variantId: string; productId: string; name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
-  totals: { subtotal: number; discount: number; shipping: number; shippingWaived?: number; codFee?: number; roundOff?: number; total: number };
+  totals: {
+    subtotal: number;
+    discount: number;
+    shipping: number;
+    shippingWaived?: number;
+    codFee?: number;
+    roundOff?: number;
+    total: number;
+    /** Loyalty points redeemed and their discount (paise); absent when none were used. */
+    loyalty?: { points: number; discount: number };
+  };
   fulfillment: { carrier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null };
   events: { type: string; fromStatus: string | null; toStatus: string | null; message: string | null; createdAt: Date }[];
   placedAt: Date;

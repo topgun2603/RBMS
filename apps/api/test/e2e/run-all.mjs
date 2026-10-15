@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const apiDir = join(here, "..", "..");
-const SCRIPTS = ["batch1.mjs", "batch2.mjs", "billing.mjs"];
+const SCRIPTS = ["batch1.mjs", "batch2.mjs", "billing.mjs", "batch3.mjs"];
 
 const seed = spawnSync("pnpm run seed:e2e", { cwd: apiDir, shell: true, encoding: "utf8" });
 if (seed.status !== 0) {
@@ -18,8 +18,24 @@ if (seed.status !== 0) {
 }
 console.log("seed:e2e ok\n");
 
+/** The dev API runs in watch mode and restarts when files change: wait until it answers before each script. */
+async function waitForApi(maxMs = 90_000) {
+  const api = process.env.API_URL ?? "http://localhost:4000";
+  const until = Date.now() + maxMs;
+  for (;;) {
+    try {
+      if ((await fetch(`${api}/health`)).ok) return true;
+    } catch {
+      // restarting or down
+    }
+    if (Date.now() > until) return false;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
 const totals = [];
 for (const script of SCRIPTS) {
+  if (!(await waitForApi())) console.error(`API not answering /health before ${script}; running it anyway`);
   const started = Date.now();
   const r = spawnSync(process.execPath, [join(here, script)], { cwd: apiDir, stdio: ["ignore", "pipe", "inherit"], encoding: "utf8" });
   process.stdout.write(`===== ${script}\n${r.stdout}`);

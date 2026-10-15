@@ -160,7 +160,7 @@ export interface TrackingView {
   placedAt: Date;
   timeline: { type: string; status: string | null; message: string | null; at: Date }[];
   lines: { name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
-  totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number };
+  totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number; loyalty?: { points: number; discount: number } };
   fulfillment: { carrier: string | null; trackingNumber: string | null; trackingUrl: string | null };
   shipTo: { city: string; pincode: string } | null;
   cancelReason: string | null;
@@ -736,6 +736,7 @@ export class StorefrontService {
       shipping: plan.shipping,
       codFee: plan.codFee,
       customerNote: b.customerNote ?? null,
+      ...(b.loyaltyPoints ? { loyaltyPoints: b.loyaltyPoints } : {}),
     });
 
     await this.afterOrder(row, customer, plan.address);
@@ -806,7 +807,14 @@ export class StorefrontService {
       placedAt: o.placedAt,
       timeline,
       lines: o.lines.map((l) => ({ name: l.name, image: l.image, qty: l.qty, unit: l.unit, price: l.price, total: l.total })),
-      totals: { subtotal: o.totals.subtotal, discount: o.totals.discount, shipping: o.totals.shipping, codFee: o.totals.codFee ?? 0, total: o.totals.total },
+      totals: {
+        subtotal: o.totals.subtotal,
+        discount: o.totals.discount,
+        shipping: o.totals.shipping,
+        codFee: o.totals.codFee ?? 0,
+        total: o.totals.total,
+        ...(o.totals.loyalty ? { loyalty: o.totals.loyalty } : {}),
+      },
       fulfillment: {
         carrier: o.fulfillment.carrier ?? null,
         trackingNumber: o.fulfillment.trackingNumber ?? null,

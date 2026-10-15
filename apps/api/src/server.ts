@@ -21,6 +21,11 @@ export interface ServerOptions {
   modules: SrModule[];
   /** Annotates module routes while they are registered (e.g. host-side `config.permission`), then checks every rule matched. */
   routeRules?: { register(app: FastifyInstance): void; assertAllMatched(): void };
+  /**
+   * Sees every route as it is registered (the developer module's OpenAPI listing). Registered after `routeRules` (so
+   * host-attached `config.permission` is visible) and before the modules mount.
+   */
+  routeCollector?: { register(app: FastifyInstance): void };
 }
 
 export async function buildServer(opts: ServerOptions) {
@@ -60,6 +65,7 @@ export async function buildServer(opts: ServerOptions) {
   app.get("/health", async () => ({ ok: true }));
 
   opts.routeRules?.register(app);
+  opts.routeCollector?.register(app);
   for (const m of opts.modules) {
     if (m.routes) await app.register(async (scoped) => m.routes!(scoped), { prefix: `/v1/${m.id}` });
   }

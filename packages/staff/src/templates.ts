@@ -50,13 +50,20 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "documents.*",
       "importexport.*",
       "audit.view",
+      // Batch 3: help desk, chat, loyalty, WhatsApp inbox + campaigns, saving/scheduling reports.
+      "support.*",
+      "chat.*",
+      "loyalty.*",
+      "whatsapp.*",
+      "reports.manage",
     ],
   },
   {
     key: "cashier",
     name: "Cashier",
     description: "Creates bills, receives payments and adds customers.",
-    permissions: ["invoices.create", "payments.receive", "customers.create", "catalogue.view"],
+    // loyalty.redeem: use a customer's points on the bill (quotes need only a staff role).
+    permissions: ["invoices.create", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem"],
   },
   {
     key: "accountant",
@@ -86,6 +93,8 @@ export const BUILTIN_ROLE_KEYS: readonly string[] = BUILTIN_ROLES.map((r) => r.k
  * whenever a template in BUILTIN_ROLES changes (rows seeded since then carry their hash and need no entry).
  */
 export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (readonly string[])[]>> = {
+  // Batch 2 (before batch 3 added support/chat/loyalty/whatsapp/reports.manage to the manager and loyalty.redeem to the cashier).
+  cashier: [["invoices.create", "payments.receive", "customers.create", "catalogue.view"]],
   // Batch 1 (60011aa, 9ed3d7b): before the online store added cms.* and reviews.*.
   manager: [
     [
@@ -99,6 +108,24 @@ export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (rea
       "customers.*",
       "reports.*",
       "expenses.*",
+      "documents.*",
+      "importexport.*",
+      "audit.view",
+    ],
+    // Batch 2: with the online store, before batch 3.
+    [
+      "*.view",
+      "catalogue.*",
+      "orders.*",
+      "coupons.*",
+      "inventory.*",
+      "invoices.*",
+      "payments.*",
+      "customers.*",
+      "reports.*",
+      "expenses.*",
+      "cms.*",
+      "reviews.*",
       "documents.*",
       "importexport.*",
       "audit.view",

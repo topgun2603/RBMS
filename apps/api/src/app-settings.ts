@@ -1,4 +1,8 @@
+import { LOYALTY_SETTINGS_DEFAULTS, LOYALTY_SETTINGS_SCHEMA } from "@srirealtime/loyalty";
+import { MARKETPLACE_SETTINGS_DEFAULTS, MARKETPLACE_SETTINGS_SCHEMA } from "@srirealtime/marketplace";
 import { REVIEW_SETTINGS_DEFAULTS, REVIEW_SETTINGS_SCHEMA } from "@srirealtime/reviews";
+import { SUPPORT_SETTINGS_DEFAULTS, SUPPORT_SETTINGS_SCHEMA } from "@srirealtime/support";
+import { WHATSAPP_SETTINGS_DEFAULTS, WHATSAPP_SETTINGS_SCHEMA } from "@srirealtime/whatsapp";
 import type { SettingsService } from "@srirealtime/settings";
 import { z } from "zod";
 
@@ -126,6 +130,12 @@ export function defineAppSettings(settings: SettingsService) {
 
   // Product review moderation (read by the reviews module).
   settings.define("reviews", REVIEW_SETTINGS_SCHEMA, REVIEW_SETTINGS_DEFAULTS);
+
+  // Batch 3 (docs/batch3.md): sellers and payouts, help desk SLAs, loyalty points rules, WhatsApp inbox/campaigns.
+  settings.define("marketplace", MARKETPLACE_SETTINGS_SCHEMA, MARKETPLACE_SETTINGS_DEFAULTS);
+  settings.define("support", SUPPORT_SETTINGS_SCHEMA, SUPPORT_SETTINGS_DEFAULTS);
+  settings.define("loyalty", LOYALTY_SETTINGS_SCHEMA, LOYALTY_SETTINGS_DEFAULTS);
+  settings.define("whatsapp", WHATSAPP_SETTINGS_SCHEMA, WHATSAPP_SETTINGS_DEFAULTS);
 
   settings.define(
     "notifications",

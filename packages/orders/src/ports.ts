@@ -1,3 +1,4 @@
+import type { OrderPaymentStatus, OrderStatus } from "./schema";
 import type { Order } from "./service";
 
 /** A sellable catalogue variant (docs/commerce-batch1.md §1, `CatalogItem`). */
@@ -150,11 +151,40 @@ export interface OrderPaymentEvent {
   /** Paise. */
   amount: number;
   source: "online" | "cod" | "manual";
+  /** The order's payment status after this payment. */
+  paymentStatus: OrderPaymentStatus;
 }
 
-/** Optional listener (kit: the storefront's customer stats). Called after the payment is stored; failures are logged. */
+export interface OrderStatusChangedEvent {
+  tenantId: string;
+  order: Order;
+  from: OrderStatus;
+  to: OrderStatus;
+}
+
+/**
+ * Optional listeners (kit: storefront customer stats, developer webhooks `order.created` / `order.status_changed`,
+ * loyalty earn/reverse). Called after the change is stored; failures are logged and never fail the request.
+ */
 export interface OrderEventsPort {
   paymentRecorded?(e: OrderPaymentEvent): Promise<void> | void;
+  /** A new order was stored (after the placement commit and its messages, before any auto-confirm). */
+  created?(tenantId: string, order: Order): Promise<void> | void;
+  /** After every successful status change (staff, customer cancel, auto-confirm, courier updates). */
+  statusChanged?(e: OrderStatusChangedEvent): Promise<void> | void;
+}
+
+/**
+ * Loyalty points redeemed at placement (kit: the loyalty service with memberKey = phone, refType "order",
+ * refId = orderId). `redeem` returns the discount in paise (it may lower `points` to what it allowed) and throws an
+ * AppError when the points can't be used; `reverse` gives the points back (idempotent).
+ */
+export interface OrderLoyaltyPort {
+  redeem(
+    tenantId: string,
+    input: { phone: string; name?: string | null; points: number; orderId: string; orderAmount: number },
+  ): Promise<{ points: number; discount: number }>;
+  reverse(tenantId: string, orderId: string): Promise<unknown>;
 }
 
 export interface LoggerPort {

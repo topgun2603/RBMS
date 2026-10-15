@@ -250,6 +250,20 @@ export class PaymentsService {
     this.log.info({ tenantId }, "payments: account removed");
   }
 
+  /**
+   * The shop's decrypted Razorpay key id and secret, or null when no account is configured or it is disabled.
+   *
+   * INTERNAL USE ONLY (e.g. marketplace Razorpay Route transfers wired in apps/api kit.ts). The secret must never
+   * be returned from a route, logged or sent to a browser; there is deliberately no HTTP endpoint for it.
+   */
+  async credentials(tenantId: string): Promise<{ keyId: string; keySecret: string } | null> {
+    const row = await this.accountRow(tenantId);
+    if (!row || !row.enabled) return null;
+    const keySecret = this.secretOf(row, "key");
+    if (!keySecret) return null;
+    return { keyId: row.keyId, keySecret };
+  }
+
   private async accountRow(tenantId: string): Promise<PaymentAccountRow | null> {
     const [row] = await this.db.select().from(paymentAccounts).where(eq(paymentAccounts.tenantId, tenantId)).limit(1);
     return row ?? null;

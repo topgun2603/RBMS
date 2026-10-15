@@ -44,6 +44,43 @@ export function fmtDate(value: string | Date | null | undefined, locale: DocLoca
   return dateFmts[locale].format(d);
 }
 
+const dateTimeFmts: Record<DocLocale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Kolkata",
+  }),
+  ta: new Intl.DateTimeFormat("ta-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Kolkata",
+  }),
+};
+
+/**
+ * Date and time in IST. Strings without a zone ("2026-10-15 12:34:00", as the GST portal returns them) are IST;
+ * a bare "YYYY-MM-DD" prints as a date only.
+ */
+export function fmtDateTime(value: string | Date | null | undefined, locale: DocLocale): string {
+  if (!value) return "—";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return fmtDate(value, locale);
+  let d: Date;
+  if (typeof value === "string") {
+    const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/.exec(value.trim());
+    d = new Date(m ? `${m[1]}T${m[2]}+05:30` : value);
+  } else d = value;
+  if (Number.isNaN(d.getTime())) return esc(String(value));
+  return dateTimeFmts[locale].format(d);
+}
+
 /** Only http(s) and data:image URLs may be used as image sources. */
 export function safeImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -72,9 +109,14 @@ export function safeCss(css: string | null | undefined): string {
     .slice(0, 20_000);
 }
 
-/** QR code as an inline SVG (synchronous; built from qrcode's module matrix). */
-export function qrSvg(text: string, sizePx = 112, label = "QR code"): string {
-  const qr = QRCode.create(text, { errorCorrectionLevel: "M" });
+export type QrErrorCorrection = "L" | "M" | "Q" | "H";
+
+/**
+ * QR code as an inline SVG (synchronous; built from qrcode's module matrix). Error correction defaults to "M";
+ * pass "L" for long payloads such as the e-invoice signed QR (~1 KB JWT), which keeps the symbol smaller.
+ */
+export function qrSvg(text: string, sizePx = 112, label = "QR code", errorCorrectionLevel: QrErrorCorrection = "M"): string {
+  const qr = QRCode.create(text, { errorCorrectionLevel });
   const n = qr.modules.size;
   const quiet = 2;
   const dim = n + quiet * 2;

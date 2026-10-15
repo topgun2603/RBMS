@@ -53,6 +53,21 @@ export interface InvoiceDocData {
   balance: number;
   cancelReason?: string | null;
   updatedAt?: Date | string | null;
+  /** GST e-invoice registration (from the einvoice module); printed as an "e-Invoice" block with the signed QR. */
+  einvoice?: InvoiceEinvoice | null;
+}
+
+/** IRN details of an e-invoice. Dates are ISO strings, "YYYY-MM-DD HH:mm:ss" (IST) or Dates. */
+export interface InvoiceEinvoice {
+  irn: string;
+  ackNo: string | null;
+  ackDate: string | Date | null;
+  /** The signed QR payload from the IRP (a JWT, often ~1 KB). */
+  signedQrCode: string | null;
+  ewbNo?: string | null;
+  ewbValidTill?: string | Date | null;
+  /** True for the mock driver: printed with a clear "not valid" label. */
+  mock: boolean;
 }
 
 export interface DocLedgerEntry {

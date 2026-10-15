@@ -150,3 +150,59 @@ describe("other renderers", () => {
     expect(b).toContain("₹600.00");
   });
 });
+
+describe("e-invoice block", () => {
+  // A realistic signed QR: a ~1 KB JWT-like string.
+  const signedQrCode = `eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ0NDQwNUM3ODFFNDgyNTA3MkIzNENBNEY4QkRDNjA2Qzg2QjU3MjAiLCJ0eXAiOiJKV1QifQ.${Buffer.from(
+    JSON.stringify({ data: JSON.stringify({ SellerGstin: "33AAACR5055K1ZE", BuyerGstin: "33AAACR5055K1ZE", DocNo: "INV/26-27/0042", DocTyp: "INV", DocDt: "15/10/2026", TotInvVal: 5000.5, ItemCnt: 3, MainHsnCode: "5007", Irn: "a".repeat(64), IrnDt: "2026-10-15 12:34:00" }), iss: "NIC Sandbox" }),
+  ).toString("base64url")}.${"x".repeat(342)}`;
+  const irn = "3c3f6b4e0d2a1f9e8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a";
+  const einvoice = { irn, ackNo: "112610012345678", ackDate: "2026-10-15 12:34:00", signedQrCode, ewbNo: "331009876543", ewbValidTill: "2026-10-16 23:59:00", mock: false };
+
+  it("prints IRN, Ack No./Date, e-way bill and the signed QR on A4", () => {
+    expect(signedQrCode.length).toBeGreaterThan(900);
+    const b = bodyOf(renderInvoice(sampleInvoice({ einvoice }), en));
+    expect(b).toContain('<section class="einv avoid">');
+    expect(b).toContain("e-Invoice");
+    expect(b).toContain(`<dd class="irn">${irn}</dd>`);
+    expect(b).toContain("Ack No.");
+    expect(b).toContain("112610012345678");
+    expect(b).toContain("15 Oct 2026, 12:34");
+    expect(b).toContain("E-way bill no.");
+    expect(b).toContain("331009876543");
+    expect(b).toContain('aria-label="Signed QR code"');
+    expect(b).not.toContain("TEST e-invoice");
+  });
+
+  it("labels mock e-invoices and works without a QR or e-way bill", () => {
+    const b = bodyOf(renderInvoice(sampleInvoice({ einvoice: { ...einvoice, mock: true, signedQrCode: null, ewbNo: null } }), en));
+    expect(b).toContain("TEST e-invoice (mock, not valid)");
+    expect(b).not.toContain('aria-label="Signed QR code"');
+    expect(b).not.toContain("E-way bill no.");
+  });
+
+  it("prints nothing without an e-invoice", () => {
+    expect(bodyOf(renderInvoice(sampleInvoice(), en))).not.toContain('class="einv');
+    expect(bodyOf(renderInvoice(sampleInvoice({ einvoice: null }), en))).not.toContain('class="einv');
+    expect(bodyOf(renderInvoiceThermal(sampleInvoice(), en))).not.toContain("e-Invoice");
+  });
+
+  it("uses Tamil labels", () => {
+    const b = bodyOf(renderInvoice(sampleInvoice({ einvoice: { ...einvoice, mock: true } }), ta));
+    expect(b).toContain("மின் விலைப்பட்டியல் (e-Invoice)");
+    expect(b).toContain("ஒப்புகை எண்");
+    expect(b).toContain("சோதனை மின் விலைப்பட்டியல்");
+  });
+
+  it("prints a compact block on the 80 mm receipt", () => {
+    const b = bodyOf(renderInvoiceThermal(sampleInvoice({ einvoice: { ...einvoice, mock: true } }), en));
+    expect(b).toContain(`<p class="irn">${irn}</p>`);
+    expect(b).toContain("112610012345678");
+    expect(b).toContain("TEST e-invoice (mock, not valid)");
+    expect(b).toContain('aria-label="Signed QR code"');
+  });
+
+  it("encodes long payloads with low error correction", () => {
+    expect(qrSvg(signedQrCode, 150, "x", "L")).toMatch(/^<svg/);
+  });
+});

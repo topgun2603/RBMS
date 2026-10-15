@@ -20,7 +20,8 @@ export function createAuth(deps: AuthDeps) {
 }
 
 export { AuthService, createGoogleVerifier, toAuthUser } from "./service";
-export type { AuthConfig, AuthDeps, AuthUser, DirectoryUser, SessionInfo, SessionMeta, SignInResult } from "./service";
+export type { AuthConfig, AuthDeps, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
+export { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 export type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 export {
   detectTarget,

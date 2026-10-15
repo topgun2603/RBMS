@@ -71,18 +71,36 @@ export interface DocumentPortDeps {
   seller: (tenantId: string) => Promise<DocSeller>;
   isEnabled: (tenantId: string, feature: string) => Promise<boolean>;
   branding: BrandingPort["get"];
+  /** IRN, Ack no/date and signed QR of an e-invoiced bill (null when none or e-invoicing is off). */
+  einvoice?: (tenantId: string, invoiceId: string) => Promise<EInvoiceDocInfo | null>;
+}
+
+export interface EInvoiceDocInfo {
+  irn: string;
+  ackNo: string | null;
+  ackDate: string | Date | null;
+  signedQrCode: string | null;
+  ewbNo?: string | null;
+  ewbValidTill?: string | Date | null;
+  mock: boolean;
 }
 
 export function documentPorts(d: DocumentPortDeps) {
+  /** Adds the e-invoice block (IRN) to a bill; a failing lookup never blocks the PDF. */
+  const withIrn = async <T extends { id?: string }>(tenantId: string, inv: T | null): Promise<T | null> => {
+    if (!inv?.id || !d.einvoice) return inv;
+    const einvoice = await d.einvoice(tenantId, inv.id).catch(() => null);
+    return einvoice ? { ...inv, einvoice } : inv;
+  };
   const invoices: InvoiceDocPort = {
-    invoice: (tenantId, id) => d.invoices.get(tenantId, id).catch(nullOn404),
+    invoice: async (tenantId, id) => withIrn(tenantId, await d.invoices.get(tenantId, id).catch(nullOn404)),
     publicInvoice: async (token) => {
       // paymentTarget resolves the shop behind the share token (getPublic doesn't expose it).
       const target = await d.invoices.paymentTarget(token).catch(nullOn404);
       if (!target || !(await d.isEnabled(target.tenantId, "invoices"))) return null;
       const found = await d.invoices.getPublic(token, target.tenantId).catch(nullOn404);
       // branding null → the documents module asks the branding port (which carries the primary colour).
-      return found ? { tenantId: target.tenantId, invoice: found.invoice, branding: null } : null;
+      return found ? { tenantId: target.tenantId, invoice: (await withIrn(target.tenantId, found.invoice))!, branding: null } : null;
     },
   };
 

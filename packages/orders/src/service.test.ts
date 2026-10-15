@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 import { ordersCsv } from "./csv";
 import { createOrders } from "./index";
-import type { CatalogItem, CouponPort, StockPort } from "./ports";
+import type { CatalogItem, CouponPort, OrderLoyaltyPort, StockPort } from "./ports";
 import { ordersRoutes } from "./routes";
 import {
   addressSchema,
@@ -110,6 +110,10 @@ describe("SQL", () => {
     expect(withStatus.params).toContain("2026-09-30T18:30:00.000Z");
     const counts = db.select().from(orders).where(svc.listConditions(T, p, false)).toSQL();
     expect(counts.params).not.toContain("placed");
+    const byBranch = db.select().from(orders).where(svc.listConditions(T, listQuerySchema.parse({ branchId: V1 }), true)).toSQL();
+    expect(byBranch.sql).toContain('"orders"."branch_id" = $');
+    expect(byBranch.params).toEqual([T, V1]);
+    expect(() => listQuerySchema.parse({ branchId: "main" })).toThrow(ZodError);
   });
 });
 
@@ -195,12 +199,78 @@ describe("placing orders: blocking side effects", () => {
       settings: { get: async () => ({}) },
       events: { paymentRecorded },
     });
-    const row = { tenantId: T, id: V1, channel: "store", customer: { name: "M", phone: null, email: null, accountId: V2 } };
+    const row = { tenantId: T, id: V1, channel: "store", paymentStatus: "paid", customer: { name: "M", phone: null, email: null, accountId: V2 } };
     const notify = (svc as unknown as { paymentRecorded: (r: typeof row, a: number, s: string) => Promise<void> }).paymentRecorded.bind(svc);
     await expect(notify(row, 5000, "cod")).resolves.toBeUndefined();
-    expect(paymentRecorded).toHaveBeenCalledWith({ tenantId: T, orderId: V1, channel: "store", accountId: V2, amount: 5000, source: "cod" });
+    expect(paymentRecorded).toHaveBeenCalledWith({ tenantId: T, orderId: V1, channel: "store", accountId: V2, amount: 5000, source: "cod", paymentStatus: "paid" });
     await notify(row, 0, "manual");
     expect(paymentRecorded).toHaveBeenCalledTimes(1);
+  });
+
+  describe("loyalty points", () => {
+    const loyaltyPort = (discount = 10000) => ({
+      redeem: vi.fn(async (_t: string, i: { points: number; orderId: string }) => ({ points: i.points, discount })),
+      reverse: vi.fn(async (_t: string, _orderId: string) => undefined),
+    });
+    const withLoyalty = (loyalty: OrderLoyaltyPort | undefined, patch: { stock?: StockPort; coupons?: CouponPort } = {}) =>
+      new OrdersService({
+        db,
+        catalog: { getVariants: async () => [item(V1)] },
+        seller: { get: async () => ({ stateCode: "33" }) },
+        settings: { get: async () => ({}) },
+        loyalty,
+        ...patch,
+      });
+    const withPhone = { customer: { name: "Meena", phone: "98765 43210" }, lines: [{ variantId: V1, qty: 2 }], loyaltyPoints: 100 };
+    const checkout = { customer: { name: "M", phone: "9876543210" }, shippingAddress: address, lines: [{ variantId: V1, qty: 1 }], paymentMethod: "cod" as const };
+
+    it("validates points and the checkout branch", () => {
+      expect(manualOrderSchema.parse(withPhone).loyaltyPoints).toBe(100);
+      expect(() => manualOrderSchema.parse({ ...withPhone, loyaltyPoints: 0 })).toThrow(ZodError);
+      expect(() => manualOrderSchema.parse({ ...withPhone, loyaltyPoints: 1.5 })).toThrow(ZodError);
+      expect(() => checkoutSchema.parse({ ...checkout, loyaltyPoints: -5 })).toThrow(ZodError);
+      expect(checkoutSchema.parse({ ...checkout, loyaltyPoints: 50 }).loyaltyPoints).toBe(50);
+      expect(checkoutSchema.parse({ ...checkout, branchId: V2 }).branchId).toBe(V2);
+      expect(() => checkoutSchema.parse({ ...checkout, branchId: "main" })).toThrow(ZodError);
+    });
+
+    it("needs the customer's phone and the loyalty module", async () => {
+      const port = loyaltyPort();
+      await expect(withLoyalty(port).create(T, { ...withPhone, customer: { name: "Walk-in" } })).rejects.toMatchObject({ status: 400, code: "loyalty_phone_required" });
+      await expect(withLoyalty(undefined).create(T, withPhone)).rejects.toMatchObject({ status: 400, code: "loyalty_unavailable" });
+      expect(port.redeem).not.toHaveBeenCalled();
+    });
+
+    it("redeems against the goods after the coupon and gives the points back when stock fails", async () => {
+      const port = loyaltyPort();
+      const short = new AppError(409, "insufficient_stock", "Not enough stock", []);
+      const stock: StockPort = { reserve: vi.fn(async () => Promise.reject(short)), release: vi.fn(), commit: vi.fn() };
+      const coupons: CouponPort = {
+        evaluate: vi.fn(async () => ({ valid: true as const, couponId: "c1", discount: 9980, freeShipping: false, lineDiscounts: [9980] })),
+        redeem: vi.fn(),
+        release: vi.fn(),
+      };
+      const svc = withLoyalty(port, { stock, coupons });
+      // First-order lookup needs the database; not under test here.
+      vi.spyOn(svc as unknown as { isFirstOrder: () => Promise<undefined> }, "isFirstOrder").mockResolvedValue(undefined);
+      await expect(svc.create(T, { ...withPhone, couponCode: "D10" })).rejects.toBe(short);
+      const orderId = (vi.mocked(stock.reserve).mock.calls[0]![1] as { refId: string }).refId;
+      expect(port.redeem).toHaveBeenCalledWith(T, { phone: "+919876543210", name: "Meena", points: 100, orderId, orderAmount: 99800 - 9980 });
+      expect(port.reverse).toHaveBeenCalledWith(T, orderId);
+    });
+
+    it("gives the points back when the order can't be stored", async () => {
+      const port = loyaltyPort();
+      await expect(withLoyalty(port).create(T, withPhone)).rejects.toThrow();
+      const orderId = port.redeem.mock.calls[0]![1].orderId;
+      expect(port.reverse).toHaveBeenCalledWith(T, orderId);
+    });
+
+    it("refuses a discount above the order amount (and reverses it)", async () => {
+      const port = loyaltyPort(200000);
+      await expect(withLoyalty(port).create(T, withPhone)).rejects.toMatchObject({ code: "loyalty_invalid" });
+      expect(port.reverse).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("checkout needs the orders feature", async () => {
@@ -229,6 +299,7 @@ describe("csv", () => {
       itemCount: 2,
       total: 64900,
       paid: 0,
+      branchId: null,
       placedAt: new Date("2026-10-15T06:00:00Z"),
     };
     const csv = ordersCsv([row]);
@@ -256,6 +327,7 @@ describe("routes", () => {
       itemCount: 1,
       total: 10000,
       paid: 0,
+      branchId: null,
       placedAt: new Date("2026-10-15T06:00:00Z"),
     };
     const service = {
@@ -302,7 +374,7 @@ describe("routes", () => {
     expect(service.summary).toHaveBeenCalledWith(T);
     expect(service.get).not.toHaveBeenCalled();
     await app.inject({ method: "POST", url: "/v1/orders", payload: { customer: { name: "Ravi" } } });
-    expect(service.create).toHaveBeenCalledWith(T, { customer: { name: "Ravi" } }, "u1");
+    expect(service.create).toHaveBeenCalledWith(T, { customer: { name: "Ravi" } }, "u1", { branchId: null, locationId: null });
     await app.inject({ url: `/v1/orders/${id}` });
     expect(service.get).toHaveBeenCalledWith(T, id);
     await app.inject({ method: "POST", url: `/v1/orders/${id}/status`, payload: { status: "shipped" } });
@@ -319,6 +391,15 @@ describe("routes", () => {
     expect(service.retryInvoice).toHaveBeenCalledWith(T, id, "u1");
     expect(new Set(features)).toEqual(new Set(["orders"]));
     expect((await app.inject({ url: "/v1/orders/not-an-id" })).statusCode).toBe(404);
+  });
+
+  it("manual orders take the request's branch and its stock location", async () => {
+    const branch = { id: V1, code: "MDU", locationId: V2 };
+    const { app, service } = await build(ctx({ tenant, user: staffUser, branch }));
+    await app.inject({ method: "POST", url: "/v1/orders", payload: { customer: { name: "Ravi" } } });
+    expect(service.create).toHaveBeenCalledWith(T, { customer: { name: "Ravi" } }, "u1", { branchId: V1, locationId: V2 });
+    await app.inject({ url: `/v1/orders?branchId=${V1}` });
+    expect(service.list).toHaveBeenCalledWith(T, { branchId: V1 });
   });
 
   it("returns CSV on request", async () => {

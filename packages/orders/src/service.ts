@@ -13,6 +13,7 @@ import { and, asc, count, desc, eq, gte, ilike, lt, ne, or, sql, type SQL } from
 import { z } from "zod";
 import { ORDER_FEATURES_KEYS } from "./features";
 import {
+  allocateLoyaltyDiscount,
   allowedTransitions,
   balanceOf,
   buildBaseLines,
@@ -46,6 +47,7 @@ import {
   type NotifierPort,
   type NotifierSendInput,
   type OrderEventsPort,
+  type OrderLoyaltyPort,
   type OrderPaymentEvent,
   type OrderSettings,
   type OrderSettingsPort,
@@ -99,8 +101,10 @@ export interface OrdersDeps {
   /** Checks `orders` (checkout), `orders.returns` and `coupons` outside the route pipeline. Without it all are on. */
   featureGate?: FeatureGatePort;
   links?: OrderLinks;
-  /** Told about money recorded on orders (best effort). */
+  /** Told about new orders, status changes and money recorded on orders (best effort). */
   events?: OrderEventsPort;
+  /** Loyalty points redeemed at placement (`loyaltyPoints`). Without it orders asking for points are refused. */
+  loyalty?: OrderLoyaltyPort;
   /** State code used when the shop has none set. Default "33" (Tamil Nadu). */
   defaultStateCode?: string;
   log?: LoggerPort;
@@ -127,6 +131,7 @@ export interface OrderSummary {
   itemCount: number;
   total: number;
   paid: number;
+  branchId: string | null;
   placedAt: Date;
 }
 
@@ -170,6 +175,8 @@ export interface Order {
   invoiceId: string | null;
   invoiceNumber: string | null;
   locationId: string | null;
+  /** Shop branch (multi-branch shops), null otherwise. */
+  branchId: string | null;
   notes: string | null;
   customerNote: string | null;
   cancelReason: string | null;
@@ -188,7 +195,7 @@ export interface Order {
 }
 
 /** What a storefront customer sees: no internal notes or staff ids. */
-export type CustomerOrder = Omit<Order, "notes" | "events" | "nextStatuses" | "stockState" | "locationId"> & {
+export type CustomerOrder = Omit<Order, "notes" | "events" | "nextStatuses" | "stockState" | "locationId" | "branchId"> & {
   events: Omit<OrderEvent, "actorUserId" | "data">[];
 };
 
@@ -231,6 +238,8 @@ const qty = z
   .max(100_000)
   .refine((q) => Math.abs(Math.round(q * 1000) - q * 1000) < 1e-6, "Quantity allows up to 3 decimals");
 const locale = z.string().trim().regex(/^[a-z]{2}([-_][A-Za-z]{2})?$/, "Invalid locale");
+/** Loyalty points to redeem on the order (needs the customer's phone and the loyalty port). */
+const loyaltyPoints = z.number().int("Whole points only").positive().max(10_000_000);
 
 export const addressSchema = z.object({
   name: opt(z.string().trim().max(120)),
@@ -281,6 +290,7 @@ export const manualOrderSchema = z.object({
   notes: opt(z.string().trim().max(2000)),
   customerNote: opt(z.string().trim().max(1000)),
   locationId: opt(z.string().uuid()),
+  loyaltyPoints: loyaltyPoints.optional(),
   /** Overrides the shop's backorder setting for this order. */
   allowBackorder: z.boolean().optional(),
   /** Record full payment now (counter sale paid in cash/UPI). */
@@ -306,6 +316,9 @@ export const checkoutSchema = z.object({
   codFee: money.default(0),
   customerNote: opt(z.string().trim().max(1000)),
   locationId: opt(z.string().uuid()),
+  /** Shop branch the order belongs to (the host passes the default branch for storefront orders). */
+  branchId: opt(z.string().uuid()),
+  loyaltyPoints: loyaltyPoints.optional(),
 });
 export type CheckoutInput = z.input<typeof checkoutSchema>;
 
@@ -354,6 +367,7 @@ export const listQuerySchema = z
     status: z.enum(ORDER_STATUSES).optional(),
     paymentStatus: z.enum(PAYMENT_STATUSES).optional(),
     channel: z.enum(ORDER_CHANNELS).optional(),
+    branchId: z.string().uuid().optional(),
     q: z.string().trim().max(100).optional(),
     from: dateStr.optional(),
     to: dateStr.optional(),
@@ -494,6 +508,9 @@ interface PlaceDraft {
   notes: string | null;
   customerNote: string | null;
   locationId: string | null;
+  branchId: string | null;
+  /** Loyalty points to redeem. */
+  loyaltyPoints?: number;
   allowBackorder?: boolean;
   markPaid?: { method: OrderPaymentMethod; reference: string | null };
   createdBy: string | null;
@@ -520,6 +537,7 @@ export class OrdersService {
   private readonly featureGate?: FeatureGatePort;
   private readonly links: OrderLinks;
   private readonly orderEvents?: OrderEventsPort;
+  private readonly loyalty?: OrderLoyaltyPort;
   private readonly defaultState: string;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
@@ -537,6 +555,7 @@ export class OrdersService {
     this.featureGate = deps.featureGate;
     this.links = deps.links ?? {};
     this.orderEvents = deps.events;
+    this.loyalty = deps.loyalty;
     this.defaultState = deps.defaultStateCode ?? DEFAULT_STATE_CODE;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
@@ -604,6 +623,7 @@ export class OrdersService {
       invoiceId: r.invoiceId,
       invoiceNumber: r.invoiceNumber,
       locationId: r.locationId,
+      branchId: r.branchId ?? null,
       notes: r.notes,
       customerNote: r.customerNote,
       cancelReason: r.cancelReason,
@@ -632,7 +652,11 @@ export class OrdersService {
     return this.full(await this.row(this.db, tenantId, id));
   }
 
-  private summaryOf(r: Pick<OrderRow, "id" | "number" | "channel" | "status" | "paymentStatus" | "paymentMethod" | "customer" | "lines" | "total" | "paid" | "placedAt">): OrderSummary {
+  private summaryOf(
+    r: Pick<OrderRow, "id" | "number" | "channel" | "status" | "paymentStatus" | "paymentMethod" | "customer" | "lines" | "total" | "paid" | "placedAt"> & {
+      branchId?: string | null;
+    },
+  ): OrderSummary {
     return {
       id: r.id,
       number: r.number,
@@ -645,6 +669,7 @@ export class OrdersService {
       itemCount: r.lines?.length ?? 0,
       total: r.total,
       paid: r.paid,
+      branchId: r.branchId ?? null,
       placedAt: r.placedAt,
     };
   }
@@ -655,6 +680,7 @@ export class OrdersService {
     if (withStatus && p.status) conds.push(eq(orders.status, p.status));
     if (p.paymentStatus) conds.push(eq(orders.paymentStatus, p.paymentStatus));
     if (p.channel) conds.push(eq(orders.channel, p.channel));
+    if (p.branchId) conds.push(eq(orders.branchId, p.branchId));
     const { start, end } = istRange(p.from, p.to);
     if (start) conds.push(gte(orders.placedAt, start));
     if (end) conds.push(lt(orders.placedAt, end));
@@ -688,6 +714,7 @@ export class OrdersService {
           lines: orders.lines,
           total: orders.total,
           paid: orders.paid,
+          branchId: orders.branchId,
           placedAt: orders.placedAt,
         })
         .from(orders)
@@ -727,7 +754,7 @@ export class OrdersService {
   // ================================================================ storefront customers
 
   private toCustomerOrder(o: Order): CustomerOrder {
-    const { notes: _n, events, nextStatuses: _s, stockState: _st, locationId: _l, ...rest } = o;
+    const { notes: _n, events, nextStatuses: _s, stockState: _st, locationId: _l, branchId: _b, ...rest } = o;
     return {
       ...rest,
       events: events
@@ -802,8 +829,17 @@ export class OrdersService {
 
   // ================================================================ placing orders
 
-  /** Manual order entered by staff (phone/WhatsApp orders, counter sales, marketplace orders typed in). */
-  async create(tenantId: string, input: ManualOrderInput, actorUserId: string | null = null): Promise<Order> {
+  /**
+   * Manual order entered by staff (phone/WhatsApp orders, counter sales, marketplace orders typed in). `opts` comes
+   * from the request's branch: the order is stored under `branchId`, and stock is reserved at the body's
+   * `locationId`, else the branch's location.
+   */
+  async create(
+    tenantId: string,
+    input: ManualOrderInput,
+    actorUserId: string | null = null,
+    opts: { branchId?: string | null; locationId?: string | null } = {},
+  ): Promise<Order> {
     const b = manualOrderSchema.parse(input);
     return this.place(tenantId, {
       channel: b.channel,
@@ -817,7 +853,9 @@ export class OrdersService {
       shipping: b.shipping,
       notes: b.notes ?? null,
       customerNote: b.customerNote ?? null,
-      locationId: b.locationId ?? null,
+      locationId: b.locationId ?? opts.locationId ?? null,
+      branchId: opts.branchId ?? null,
+      loyaltyPoints: b.loyaltyPoints,
       allowBackorder: b.allowBackorder,
       markPaid: b.markPaid ? { method: b.paymentMethod, reference: b.paymentReference ?? null } : undefined,
       createdBy: actorUserId,
@@ -848,6 +886,8 @@ export class OrdersService {
       notes: null,
       customerNote: b.customerNote ?? null,
       locationId: b.locationId ?? null,
+      branchId: b.branchId ?? null,
+      loyaltyPoints: b.loyaltyPoints,
       createdBy: null,
     });
   }
@@ -871,6 +911,7 @@ export class OrdersService {
     const placeOfSupply = draft.shippingAddress?.stateCode ?? draft.billingAddress?.stateCode ?? sellerState;
     const subtotal = base.reduce((s, l) => s + l.gross, 0);
     const customerKey = customerKeyOf(draft.customer);
+    const id = newId();
 
     // Coupon: evaluated here (pure rules in the coupons module), redeemed as a blocking effect below.
     let couponCode: string | null = null;
@@ -900,103 +941,136 @@ export class OrdersService {
           : splitProportionally(result.discount, base.map((l) => l.gross));
     }
 
-    const { lines, totals } = computeOrderTotals(base, {
-      lineDiscounts,
-      shipping: draft.shipping,
-      freeShipping,
-      codFee: draft.codFee ?? 0,
-      sellerState,
-      placeOfSupply,
-    });
+    // Loyalty points: redeemed now (the discount must be known to price the order), given back if placement fails.
+    let loyalty: { points: number; discounts: number[] } | null = null;
+    if (draft.loyaltyPoints) {
+      const phone = draft.customer.phone;
+      if (!phone) throw new AppError(400, "loyalty_phone_required", "Add the customer's phone number to use loyalty points");
+      if (!this.loyalty) throw new AppError(400, "loyalty_unavailable", "Loyalty points can't be used in this shop");
+      const orderAmount = base.reduce((s, l, i) => s + l.gross - Math.min(Math.max(lineDiscounts?.[i] ?? 0, 0), l.gross), 0);
+      const redeemed = await this.loyalty.redeem(tenantId, {
+        phone,
+        name: draft.customer.name || null,
+        points: draft.loyaltyPoints,
+        orderId: id,
+        orderAmount,
+      });
+      const discount = Math.round(redeemed.discount);
+      if (discount > orderAmount) {
+        await this.reverseLoyalty(tenantId, id);
+        throw new AppError(400, "loyalty_invalid", "The points discount is more than the order amount", { discount, orderAmount });
+      }
+      if (discount > 0) loyalty = { points: redeemed.points, discounts: allocateLoyaltyDiscount(discount, base, lineDiscounts) };
+      else await this.reverseLoyalty(tenantId, id);
+    }
 
-    const now = this.now();
-    const fy = financialYear(todayIST(now));
-    const prefix = sanitizePrefix(settings.prefix);
-    const id = newId();
-    const paid = draft.markPaid ? totals.total : 0;
     // The order as it will be stored; effects read from (and update) this copy.
-    const row: OrderRow = {
-      id,
-      tenantId,
-      number: "",
-      fy,
-      seq: 0,
-      channel: draft.channel,
-      customer: draft.customer,
-      shippingAddress: draft.shippingAddress,
-      billingAddress: draft.billingAddress,
-      lines,
-      totals,
-      total: totals.total,
-      paid,
-      refunded: 0,
-      currency: "INR",
-      status: "placed",
-      paymentStatus: derivePaymentStatus({ total: totals.total, paid, refunded: 0, paymentMethod: draft.paymentMethod }),
-      paymentMethod: draft.paymentMethod,
-      fulfillment: {},
-      stockState: "none",
-      couponCode,
-      invoiceId: null,
-      invoiceNumber: null,
-      locationId: draft.locationId,
-      notes: draft.notes,
-      customerNote: draft.customerNote,
-      cancelReason: null,
-      accessToken: randomToken(18),
-      placedAt: now,
-      confirmedAt: null,
-      shippedAt: null,
-      deliveredAt: null,
-      cancelledAt: null,
-      createdBy: draft.createdBy,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const effects = planPlacement({ couponCode, notifyOwner: settings.notifyOwner });
-    const ctx: EffectContext = {
-      actorUserId: draft.createdBy,
-      couponAmount: totals.discount + totals.shippingWaived,
-      allowBackorder: draft.allowBackorder ?? settings.allowBackorder,
-    };
-    const blocking = effects.filter(isBlocking);
-    // Stock reservation and coupon redemption must succeed (409 insufficient_stock / coupon_invalid pass through).
-    await runEffects(blocking, (e) => this.applyEffect(row, e, ctx), { mode: "blocking", undo: (e) => this.undoEffect(row, e) });
-
+    let row: OrderRow;
+    let effects: OrderEffect[];
+    let ctx: EffectContext;
     try {
-      await this.db.transaction(async (tx) => {
-        const [series] = await allocateOrderSeqStatement(tx, { tenantId, fy, prefix });
-        row.seq = series!.seq;
-        row.number = formatInvoiceNumber(prefix, fy, row.seq);
-        await tx.insert(orders).values(row);
-        await tx.insert(orderEvents).values({
-          tenantId,
-          orderId: id,
-          type: "status",
-          toStatus: "placed",
-          message: "Order placed",
-          actorUserId: draft.createdBy,
-          data: { channel: draft.channel },
-        });
-        if (draft.markPaid && paid > 0) {
+      const { lines, totals } = computeOrderTotals(base, {
+        lineDiscounts,
+        ...(loyalty ? { loyaltyDiscounts: loyalty.discounts, loyaltyPoints: loyalty.points } : {}),
+        shipping: draft.shipping,
+        freeShipping,
+        codFee: draft.codFee ?? 0,
+        sellerState,
+        placeOfSupply,
+      });
+
+      const now = this.now();
+      const fy = financialYear(todayIST(now));
+      const prefix = sanitizePrefix(settings.prefix);
+      const paid = draft.markPaid ? totals.total : 0;
+      row = {
+        id,
+        tenantId,
+        number: "",
+        fy,
+        seq: 0,
+        channel: draft.channel,
+        customer: draft.customer,
+        shippingAddress: draft.shippingAddress,
+        billingAddress: draft.billingAddress,
+        lines,
+        totals,
+        total: totals.total,
+        paid,
+        refunded: 0,
+        currency: "INR",
+        status: "placed",
+        paymentStatus: derivePaymentStatus({ total: totals.total, paid, refunded: 0, paymentMethod: draft.paymentMethod }),
+        paymentMethod: draft.paymentMethod,
+        fulfillment: {},
+        stockState: "none",
+        couponCode,
+        invoiceId: null,
+        invoiceNumber: null,
+        locationId: draft.locationId,
+        branchId: draft.branchId,
+        notes: draft.notes,
+        customerNote: draft.customerNote,
+        cancelReason: null,
+        accessToken: randomToken(18),
+        placedAt: now,
+        confirmedAt: null,
+        shippedAt: null,
+        deliveredAt: null,
+        cancelledAt: null,
+        createdBy: draft.createdBy,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      effects = planPlacement({ couponCode, notifyOwner: settings.notifyOwner });
+      ctx = {
+        actorUserId: draft.createdBy,
+        couponAmount: totals.discount + totals.shippingWaived,
+        allowBackorder: draft.allowBackorder ?? settings.allowBackorder,
+      };
+      const blocking = effects.filter(isBlocking);
+      // Stock reservation and coupon redemption must succeed (409 insufficient_stock / coupon_invalid pass through).
+      await runEffects(blocking, (e) => this.applyEffect(row, e, ctx), { mode: "blocking", undo: (e) => this.undoEffect(row, e) });
+
+      try {
+        await this.db.transaction(async (tx) => {
+          const [series] = await allocateOrderSeqStatement(tx, { tenantId, fy, prefix });
+          row.seq = series!.seq;
+          row.number = formatInvoiceNumber(prefix, fy, row.seq);
+          await tx.insert(orders).values(row);
           await tx.insert(orderEvents).values({
             tenantId,
             orderId: id,
-            type: "payment",
-            message: `Payment received: ${moneyText(paid, "whatsapp")}`,
+            type: "status",
+            toStatus: "placed",
+            message: "Order placed",
             actorUserId: draft.createdBy,
-            data: { amount: paid, method: draft.markPaid.method, reference: draft.markPaid.reference, source: "manual" },
+            data: { channel: draft.channel },
           });
-        }
-      });
+          if (draft.markPaid && paid > 0) {
+            await tx.insert(orderEvents).values({
+              tenantId,
+              orderId: id,
+              type: "payment",
+              message: `Payment received: ${moneyText(paid, "whatsapp")}`,
+              actorUserId: draft.createdBy,
+              data: { amount: paid, method: draft.markPaid.method, reference: draft.markPaid.reference, source: "manual" },
+            });
+          }
+        });
+      } catch (err) {
+        for (const e of [...blocking].reverse()) await this.undoEffect(row, e).catch(() => undefined);
+        throw err;
+      }
     } catch (err) {
-      for (const e of [...blocking].reverse()) await this.undoEffect(row, e).catch(() => undefined);
+      if (loyalty) await this.reverseLoyalty(tenantId, id);
       throw err;
     }
     this.log.info({ tenantId, orderId: id, number: row.number, channel: row.channel, total: row.total }, "order placed");
 
     await this.runBestEffort(row, effects.filter((e) => !isBlocking(e)), ctx);
+    await this.emitCreated(tenantId, id);
 
     if (shouldAutoConfirm(settings, row)) {
       try {
@@ -1061,7 +1135,35 @@ export class OrdersService {
     this.log.info({ tenantId, orderId: id, from: plan.from, to: plan.to }, "order status changed");
 
     await this.runBestEffort(row, plan.effects, { actorUserId, reason: b.note ?? `Order ${row.number} ${plan.to}` });
-    return this.get(tenantId, id);
+    const order = await this.get(tenantId, id);
+    if (this.orderEvents?.statusChanged) {
+      try {
+        await this.orderEvents.statusChanged({ tenantId, order, from: plan.from, to: plan.to });
+      } catch (err) {
+        this.log.error({ err, tenantId, orderId: id, from: plan.from, to: plan.to }, "orders: status listener failed");
+      }
+    }
+    return order;
+  }
+
+  /** Tells the events port about a new order. Never throws. */
+  private async emitCreated(tenantId: string, id: string) {
+    if (!this.orderEvents?.created) return;
+    try {
+      await this.orderEvents.created(tenantId, await this.get(tenantId, id));
+    } catch (err) {
+      this.log.error({ err, tenantId, orderId: id }, "orders: created listener failed");
+    }
+  }
+
+  /** Gives back points redeemed for an order that wasn't placed. Never throws. */
+  private async reverseLoyalty(tenantId: string, orderId: string) {
+    if (!this.loyalty) return;
+    try {
+      await this.loyalty.reverse(tenantId, orderId);
+    } catch (err) {
+      this.log.error({ err, tenantId, orderId }, "orders: giving back loyalty points failed");
+    }
   }
 
   // ================================================================ side effects
@@ -1302,7 +1404,11 @@ export class OrdersService {
   }
 
   /** Tells the events port about a stored payment. Never throws. */
-  private async paymentRecorded(row: Pick<OrderRow, "tenantId" | "id" | "channel" | "customer">, amount: number, source: OrderPaymentEvent["source"]) {
+  private async paymentRecorded(
+    row: Pick<OrderRow, "tenantId" | "id" | "channel" | "customer" | "paymentStatus">,
+    amount: number,
+    source: OrderPaymentEvent["source"],
+  ) {
     if (!this.orderEvents?.paymentRecorded || amount <= 0) return;
     try {
       await this.orderEvents.paymentRecorded({
@@ -1312,6 +1418,7 @@ export class OrdersService {
         accountId: row.customer?.accountId ?? null,
         amount,
         source,
+        paymentStatus: row.paymentStatus,
       });
     } catch (err) {
       this.log.error({ err, tenantId: row.tenantId, orderId: row.id, source }, "orders: payment listener failed");

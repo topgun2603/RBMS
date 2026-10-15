@@ -87,6 +87,8 @@ export const catalogProducts = pgTable(
     options: jsonb("options").$type<ProductOption[]>().notNull().default([]),
     images: jsonb("images").$type<ProductImage[]>().notNull().default([]),
     seo: jsonb("seo").$type<Seo>(),
+    /** Marketplace seller (`vendors.id`, marketplace module) that owns the product; null = the shop's own product. */
+    vendorId: uuid("vendor_id"),
     /**
      * Lowercased name + brand + tags + attribute values + category names (with ancestors) + variant option values,
      * maintained by the service on every product/variant/category write (`buildSearchText`). Needs `pg_trgm`
@@ -102,6 +104,7 @@ export const catalogProducts = pgTable(
     unique("catalog_products_tenant_slug_uq").on(t.tenantId, t.slug),
     index("catalog_products_tenant_name_idx").on(t.tenantId, t.name),
     index("catalog_products_tenant_category_idx").on(t.tenantId, t.categoryId),
+    index("catalog_products_tenant_vendor_idx").on(t.tenantId, t.vendorId),
     index("catalog_products_search_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
     index("catalog_products_search_tsv_idx").using("gin", t.searchVector),
   ],

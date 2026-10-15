@@ -1,7 +1,7 @@
 import { AppError } from "@srirealtime/core";
 import { describe, expect, it } from "vitest";
 import { normalizeIndianMobile, parseAddress } from "./address";
-import { checkoutError, DEFAULT_STORE_SETTINGS, normalizeStoreSettings, validateCheckout, type CheckoutCheckInput } from "./checkout";
+import { checkoutBodySchema, checkoutError, DEFAULT_STORE_SETTINGS, normalizeStoreSettings, validateCheckout, type CheckoutCheckInput } from "./checkout";
 import type { DeliveryQuote } from "./ports";
 import type { PricedCart, PricedLine } from "./pricing";
 import { RateLimiter } from "./ratelimit";
@@ -196,6 +196,16 @@ describe("address helpers", () => {
   it("parseAddress trims and blanks optional fields", () => {
     const r = parseAddress({ ...address, line2: "  ", landmark: "Near temple", stateCode: 33 });
     expect(r.ok && r.address).toMatchObject({ line2: null, landmark: "Near temple", stateCode: "33", phone: "+919876543210" });
+  });
+});
+
+describe("checkoutBodySchema", () => {
+  const body = { cartToken: "tok_123", addressId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", deliveryOptionId: "standard", paymentMethod: "cod" };
+  it("takes optional loyalty points: positive whole numbers up to 10,000,000", () => {
+    expect(checkoutBodySchema.parse(body).loyaltyPoints).toBeUndefined();
+    expect(checkoutBodySchema.parse({ ...body, loyaltyPoints: 250 }).loyaltyPoints).toBe(250);
+    expect(checkoutBodySchema.parse({ ...body, loyaltyPoints: 10_000_000 }).loyaltyPoints).toBe(10_000_000);
+    for (const bad of [0, -1, 1.5, 10_000_001, "100"]) expect(checkoutBodySchema.safeParse({ ...body, loyaltyPoints: bad }).success).toBe(false);
   });
 });
 

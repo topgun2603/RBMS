@@ -138,11 +138,17 @@ describe("allocateSeqStatement", () => {
   it("upserts and increments the series atomically", () => {
     const { sql, params } = allocateSeqStatement(db, { tenantId: "t1", fy: "26-27", prefix: "INV" }).toSQL();
     expect(sql).toContain('insert into "invoice_series"');
-    expect(sql).toContain('on conflict ("tenant_id","fy") do update set');
+    expect(sql).toContain('on conflict ("tenant_id","branch_id","fy") do update set');
     expect(sql).toContain('"next_seq" = "invoice_series"."next_seq" + 1');
     expect(sql).toContain('returning "next_seq"');
     expect(params).toContain("t1");
     expect(params).toContain("26-27");
+  });
+  it("keys the series by branch (null without one)", () => {
+    const branchId = "55555555-5555-4555-8555-555555555555";
+    const { params } = allocateSeqStatement(db, { tenantId: "t1", fy: "26-27", prefix: "MDU", branchId }).toSQL();
+    expect(params).toContain(branchId);
+    expect(params).toContain("MDU");
   });
 });
 

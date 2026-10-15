@@ -21,6 +21,9 @@ export class ResendDriver implements ChannelDriver {
         subject: msg.subject ?? "",
         html: msg.html,
         text: msg.body,
+        ...(msg.attachments?.length
+          ? { attachments: msg.attachments.map((a) => ({ filename: a.filename, content: a.content })) }
+          : {}),
       }),
     });
     return { providerId: res?.id };

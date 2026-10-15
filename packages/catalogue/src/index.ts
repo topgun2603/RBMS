@@ -14,7 +14,18 @@ export * from "./csv";
 export * from "./service";
 export * from "./features";
 export * from "./adapters";
-export { catalogueRoutes, PRODUCT_CSV_COLUMNS } from "./routes";
+export {
+  catalogueRoutes,
+  PRODUCT_CSV_COLUMNS,
+  CATALOGUE_ROUTE_PREFIX,
+  CATALOGUE_VENDOR_ROUTES,
+  CATALOGUE_VENDOR_ROUTE_KEYS,
+  isCatalogueStaff,
+  isCatalogueVendorCandidate,
+  isCatalogueVendorRoute,
+  vendorIdOf,
+  type CatalogueRouteOptions,
+} from "./routes";
 
 /** HTTP module id: routes are mounted at `/v1/catalog`. Feature keys use "catalogue" (`catalogue`, `catalogue.*`). */
 export const CATALOGUE_MODULE_ID = "catalog";
@@ -28,7 +39,7 @@ export function createCatalogue(deps: CatalogueDeps) {
   const module = defineModule({
     id: CATALOGUE_MODULE_ID,
     tables: { catalogCategories, catalogProducts, catalogVariants, catalogCollections },
-    routes: catalogueRoutes(service),
+    routes: catalogueRoutes(service, { vendorScope: deps.vendorScope }),
     features: CATALOGUE_FEATURES,
   });
   return {
@@ -38,5 +49,11 @@ export function createCatalogue(deps: CatalogueDeps) {
     itemSource: billingItemSource(service),
     /** Pass as `catalog` to createInventory. */
     itemCatalog: inventoryItemCatalog(service),
+    /** Pass as `products` to createMarketplace (its `VendorProductsPort`). */
+    vendorProducts: {
+      count: (tenantId: string, vendorId: string, opts?: { publicOnly?: boolean }) => service.vendorProductCount(tenantId, vendorId, opts),
+      list: (tenantId: string, vendorId: string, opts: { limit: number; offset: number; publicOnly?: boolean; q?: string }) =>
+        service.vendorProducts(tenantId, vendorId, opts),
+    },
   };
 }

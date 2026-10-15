@@ -223,3 +223,78 @@ describe("order templates", () => {
     expect(msg.html).toContain("https://sri-lakshmi-silks.srirealtime.com/o/");
   });
 });
+
+describe("batch 3 templates", () => {
+  const VARS: Record<string, string[]> = {
+    "marketplace.vendor_approved": ["app", "vendorName"],
+    "marketplace.vendor_order": ["app", "vendorName", "orderNumber", "amount"],
+    "marketplace.payout_paid": ["app", "vendorName", "amount", "reference"],
+    "support.created": ["shop", "number", "subject", "message", "link", "status", "priority", "customer"],
+    "support.reply": ["shop", "number", "subject", "message", "link", "status", "priority", "customer"],
+    "support.new": ["shop", "number", "subject", "message", "link", "status", "priority", "customer"],
+    "support.assigned": ["shop", "number", "subject", "message", "link", "status", "priority", "customer"],
+    "support.customer_reply": ["shop", "number", "subject", "message", "link", "status", "priority", "customer"],
+    "support.overdue": ["shop", "number", "subject", "message", "link", "status", "priority", "customer"],
+    "chat.message": ["shop", "sender", "preview", "title", "link"],
+    "developer.webhook_disabled": ["app", "url", "failures"],
+  };
+  const sample = {
+    app: "SriKit",
+    shop: "Sri Lakshmi Silks",
+    vendorName: "Murugan Handlooms",
+    orderNumber: "ORD/26-27/0042",
+    amount: "Rs.12,450.00",
+    reference: "trf_ABC123",
+    number: "TKT-0042",
+    subject: "Saree colour is different",
+    message: "We will send a replacement.",
+    link: "https://shop.example/s/AbCdEf",
+    status: "open",
+    priority: "high",
+    customer: "Ravi",
+    sender: "Ravi",
+    preview: "Is this available in red?",
+    title: "Ravi",
+    url: "https://hooks.example.com/srikit",
+    failures: "20",
+  };
+  const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\[~\]|€]*$/;
+
+  it("ships sms, whatsapp and email (and push for chat) in English and Tamil", () => {
+    for (const key of Object.keys(VARS)) {
+      const channels = key === "chat.message" ? (["sms", "whatsapp", "email", "push"] as const) : (["sms", "whatsapp", "email"] as const);
+      for (const channel of channels) {
+        for (const locale of ["en", "ta"]) {
+          const t = pickTemplate([], { tenantId: null, key, channel, locale })?.template;
+          expect(t, `${key}/${channel}/${locale}`).toBeDefined();
+          expect(t!.locale).toBe(locale);
+          if (channel === "email" || channel === "push") expect(t!.subject, `${key}/${channel}/${locale} subject`).toBeTruthy();
+          else expect(t!.subject).toBeNull();
+        }
+      }
+    }
+  });
+
+  it("only uses the documented variables", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS)) {
+      for (const name of [...placeholders(t.body), ...placeholders(t.subject ?? "")]) {
+        expect(VARS[t.key], `${t.key}/${t.channel}/${t.locale}: ${name}`).toContain(name);
+      }
+    }
+  });
+
+  it("keeps English SMS short and GSM-7", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS && b.channel === "sms" && b.locale === "en")) {
+      const text = render(t.body, sample);
+      expect(text, t.key).toMatch(GSM7);
+      expect(text.length, t.key).toBeLessThanOrEqual(306);
+    }
+  });
+
+  it("writes the Tamil versions in Tamil script", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS && b.locale === "ta" && b.channel !== "push")) {
+      expect(t.body, t.key).toMatch(/[஀-௿]{3,}/);
+      if (t.channel === "email" && t.key !== "chat.message") expect(t.subject, t.key).toMatch(/[஀-௿]{3,}/);
+    }
+  });
+});

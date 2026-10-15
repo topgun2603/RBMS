@@ -40,3 +40,34 @@ describe("routePermissions", () => {
     expect(() => rules.assertAllMatched()).toThrow("DELETE /v1/x/:id");
   });
 });
+
+describe("guest ticket limits", () => {
+  it("WindowLimiter allows `limit` hits per window, then refuses until the window moves on", async () => {
+    const { WindowLimiter } = await import("./permissions");
+    let now = 0;
+    const l = new WindowLimiter(2, 1000, () => now);
+    expect([l.hit("a"), l.hit("a"), l.hit("a"), l.hit("b")]).toEqual([true, true, false, true]);
+    now = 1001;
+    expect(l.hit("a")).toBe(true);
+  });
+
+  it("guestTicketGuard: 5 per verified phone, unverifiable tokens and signed-in users not counted", async () => {
+    const { guestTicketGuard } = await import("./permissions");
+    const guard = guestTicketGuard((_t, token) => (token === "good" ? { phone: "+919999000001" } : null), { perPhone: 5, perIp: 20, windowMs: 3_600_000 });
+    const req = (token: string | undefined, user: unknown = null, ip = "10.0.0.1") =>
+      ({ headers: token ? { "x-guest-token": token } : {}, ctx: { user, tenant: { id: "t1" }, ip } }) as never;
+    for (let i = 0; i < 10; i++) await guard(req("bad"));
+    for (let i = 0; i < 5; i++) await guard(req("good"));
+    await expect(guard(req("good"))).rejects.toMatchObject({ status: 429, code: "rate_limited" });
+    await guard(req("good", { id: "u1" })); // signed in: not limited here
+  });
+
+  it("guestTicketGuard: 20 per IP across phones", async () => {
+    const { guestTicketGuard } = await import("./permissions");
+    let n = 0;
+    const guard = guestTicketGuard((_t, token) => ({ phone: token }), { perPhone: 5, perIp: 20, windowMs: 3_600_000 });
+    const req = () => ({ headers: { "x-guest-token": `+91999900${String(n++).padStart(4, "0")}` }, ctx: { user: null, tenant: { id: "t1" }, ip: "10.0.0.2" } }) as never;
+    for (let i = 0; i < 20; i++) await guard(req());
+    await expect(guard(req())).rejects.toMatchObject({ status: 429 });
+  });
+});

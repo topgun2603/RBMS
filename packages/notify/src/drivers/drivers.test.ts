@@ -203,3 +203,37 @@ describe("ConsoleDriver", () => {
     expect(info).toHaveBeenCalledWith(expect.objectContaining({ channel: "sms", body: "hello" }), expect.stringContaining("sms"));
   });
 });
+
+describe("email attachments", () => {
+  const content = Buffer.from("a,b\n1,2\n").toString("base64");
+
+  it("Resend sends filename + base64 content", async () => {
+    const m = mockFetch({ body: { id: "em_2" } });
+    await new ResendDriver({ apiKey: "k", from: "f" }, m.fetch).send({
+      to: "a@b.in",
+      subject: "S",
+      body: "T",
+      attachments: [{ filename: "report.csv", contentType: "text/csv", content }],
+    });
+    expect(jsonBody(m.calls[0]!).attachments).toEqual([{ filename: "report.csv", content }]);
+  });
+
+  it("Resend omits attachments when there are none", async () => {
+    const m = mockFetch({ body: { id: "em_3" } });
+    await new ResendDriver({ apiKey: "k", from: "f" }, m.fetch).send({ to: "a@b.in", body: "T" });
+    expect(jsonBody(m.calls[0]!)).not.toHaveProperty("attachments");
+  });
+
+  it("Console logs attachment names and sizes, never content", async () => {
+    const info = vi.fn();
+    await new ConsoleDriver("email", { info, warn: vi.fn(), error: vi.fn() }).send({
+      to: "x@y",
+      body: "hi",
+      attachments: [{ filename: "report.csv", contentType: "text/csv", content }],
+    });
+    const [entry, line] = info.mock.calls[0]!;
+    expect(entry.attachments).toEqual([{ filename: "report.csv", contentType: "text/csv", size: 8 }]);
+    expect(JSON.stringify(entry)).not.toContain(content);
+    expect(line).toBe("[notify:console] email → x@y (attachments: report.csv 8 B)");
+  });
+});

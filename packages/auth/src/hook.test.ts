@@ -62,3 +62,22 @@ describe("authContextHook permissions", () => {
     expect((await get(build(["staff"], { permissionsFor }).app)).permissions).toEqual([]);
   });
 });
+
+describe("authContextHook with unknown bearer tokens", () => {
+  it("leaves a user set by an earlier hook alone (e.g. an sk_test_ API key)", async () => {
+    const service = { cookieName: "sr_session", authenticate: vi.fn(async () => null) } as unknown as AuthService;
+    const app = Fastify();
+    app.decorateRequest("ctx", null as never);
+    const apiPrincipal = { id: "key-1", sessionId: "", platformRoles: [], tenantRoles: ["staff"], permissions: ["orders.view"] };
+    app.addHook("onRequest", async (req) => {
+      req.ctx = emptyContext();
+      req.ctx.tenant = tenant;
+      req.ctx.user = apiPrincipal;
+    });
+    authContextHook(service, { rolesFor: vi.fn(async () => []) })(app);
+    app.get("/me", async (req) => req.ctx.user);
+    const res = await app.inject({ method: "GET", url: "/me", headers: { authorization: "Bearer sk_test_abcdef123456" } });
+    expect(res.json()).toEqual(apiPrincipal);
+    expect(service.authenticate).toHaveBeenCalledWith("sk_test_abcdef123456");
+  });
+});

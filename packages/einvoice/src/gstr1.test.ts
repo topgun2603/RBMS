@@ -1,0 +1,156 @@
+import { describe, expect, it } from "vitest";
+import { buildGstr1, gstr1Section, periodRange, splitDocNumber } from "./gstr1";
+import { BUYER_KA_GSTIN, BUYER_TN_GSTIN, invoice, line, SELLER_GSTIN } from "./test-fixtures";
+import type { EInvoiceSource } from "./ports";
+
+const b2c = (over: Partial<EInvoiceSource> & { inter?: boolean } = {}) => {
+  const b = invoice(over);
+  return { ...b, buyer: { ...b.buyer, gstin: null, name: "Walk-in" } };
+};
+
+describe("periodRange", () => {
+  it("parses MMYYYY", () => {
+    expect(periodRange("102026")).toEqual({ from: "2026-10-01", to: "2026-10-31" });
+    expect(periodRange("022028")).toEqual({ from: "2028-02-01", to: "2028-02-29" });
+    expect(periodRange("132026")).toBeNull();
+    expect(periodRange("2026-10")).toBeNull();
+  });
+});
+
+describe("gstr1Section", () => {
+  it("b2b with a valid buyer GSTIN, b2cl above ₹1 lakh inter-state, else b2cs", () => {
+    expect(gstr1Section(invoice())).toBe("b2b");
+    expect(gstr1Section(b2c({ inter: true }))).toBe("b2cs");
+    const big = b2c({ inter: true, lines: [line("Gold zari saree", "5007", 1, "pcs", 150_000_00, 5, true)] });
+    expect(gstr1Section(big)).toBe("b2cl");
+    const bigIntra = b2c({ lines: [line("Gold zari saree", "5007", 1, "pcs", 150_000_00, 5, false)] });
+    expect(gstr1Section(bigIntra)).toBe("b2cs");
+  });
+});
+
+describe("splitDocNumber", () => {
+  it("splits the trailing sequence", () => {
+    expect(splitDocNumber("INV/26-27/0042")).toEqual({ series: "INV/26-27/", seq: 42 });
+    expect(splitDocNumber("ABC")).toEqual({ series: "ABC", seq: null });
+  });
+});
+
+describe("buildGstr1", () => {
+  const invoices: EInvoiceSource[] = [
+    invoice({ id: "1", number: "INV/26-27/0040", date: "2026-10-02" }),
+    invoice({ id: "2", number: "INV/26-27/0041", date: "2026-10-05", inter: true }),
+    invoice({ id: "3", number: "INV/26-27/0043", date: "2026-10-09" }),
+    { ...b2c({ id: "4", number: "INV/26-27/0044", date: "2026-10-10" }) },
+    { ...b2c({ id: "5", number: "INV/26-27/0045", date: "2026-10-11", inter: true }) },
+    {
+      ...b2c({ id: "6", number: "INV/26-27/0046", date: "2026-10-12", inter: true, lines: [line("Gold zari saree", "5007", 1, "pcs", 150_000_00, 5, true)] }),
+    },
+    { ...invoice({ id: "7", number: "INV/26-27/0042", date: "2026-10-06" }), status: "cancelled" },
+    { ...invoice({ id: "8", number: null, date: "2026-10-06" }), status: "draft" },
+    invoice({ id: "9", number: "INV/26-27/0039", date: "2026-09-30" }),
+    invoice({ id: "10", number: "CN/26-27/0001", date: "2026-10-13", docType: "CRN" }),
+  ];
+  const { json, warnings, counts } = buildGstr1(invoices, { gstin: SELLER_GSTIN.toLowerCase(), period: "102026" });
+
+  it("header", () => {
+    expect(json.gstin).toBe(SELLER_GSTIN);
+    expect(json.fp).toBe("102026");
+    expect(counts).toEqual({ b2b: 3, b2cl: 1, b2cs: 2, cancelled: 1, skipped: 2 });
+    expect(warnings).toEqual([expect.stringContaining("INV/26-27/0039"), expect.stringContaining("CN/26-27/0001")]);
+  });
+
+  it("b2b groups invoices by buyer GSTIN with per-rate items", () => {
+    expect(json.b2b.map((b) => b.ctin)).toEqual([BUYER_KA_GSTIN, BUYER_TN_GSTIN].sort());
+    const tn = json.b2b.find((b) => b.ctin === BUYER_TN_GSTIN)!;
+    expect(tn.inv.map((i) => i.inum)).toEqual(["INV/26-27/0040", "INV/26-27/0043"]);
+    expect(tn.inv[0]).toEqual({
+      inum: "INV/26-27/0040",
+      idt: "02-10-2026",
+      val: 3277,
+      pos: "33",
+      rchrg: "N",
+      inv_typ: "R",
+      itms: [
+        { num: 1, itm_det: { txval: 2400, rt: 5, camt: 60, samt: 60, csamt: 0 } },
+        { num: 2, itm_det: { txval: 675.5, rt: 12, camt: 40.53, samt: 40.53, csamt: 0 } },
+      ],
+    });
+    const ka = json.b2b.find((b) => b.ctin === BUYER_KA_GSTIN)!;
+    expect(ka.inv[0]!.pos).toBe("29");
+    expect(ka.inv[0]!.itms).toEqual([
+      { num: 1, itm_det: { txval: 2400, rt: 5, iamt: 120, csamt: 0 } },
+      { num: 2, itm_det: { txval: 675.5, rt: 12, iamt: 81.06, csamt: 0 } },
+    ]);
+  });
+
+  it("b2cl lists large inter-state B2C invoices by place of supply", () => {
+    expect(json.b2cl).toEqual([
+      {
+        pos: "29",
+        inv: [{ inum: "INV/26-27/0046", idt: "12-10-2026", val: 157500, itms: [{ num: 1, itm_det: { txval: 150000, rt: 5, iamt: 7500, csamt: 0 } }] }],
+      },
+    ]);
+  });
+
+  it("b2cs aggregates by supply type, place of supply and rate", () => {
+    expect(json.b2cs).toEqual([
+      { sply_ty: "INTER", rt: 5, typ: "OE", pos: "29", txval: 2400, iamt: 120, csamt: 0 },
+      { sply_ty: "INTER", rt: 12, typ: "OE", pos: "29", txval: 675.5, iamt: 81.06, csamt: 0 },
+      { sply_ty: "INTRA", rt: 5, typ: "OE", pos: "33", txval: 2400, camt: 60, samt: 60, csamt: 0 },
+      { sply_ty: "INTRA", rt: 12, typ: "OE", pos: "33", txval: 675.5, camt: 40.53, samt: 40.53, csamt: 0 },
+    ]);
+  });
+
+  it("hsn is split into B2B and B2C tabs, keyed by HSN + UQC + rate", () => {
+    if (!("hsn_b2b" in json.hsn)) throw new Error("expected split layout");
+    expect(json.hsn.hsn_b2b).toEqual([
+      { num: 1, hsn_sc: "50072010", desc: "Silk blouse material", uqc: "MTR", qty: 4.5, rt: 12, txval: 2026.5, iamt: 81.06, camt: 81.06, samt: 81.06, csamt: 0 },
+      { num: 2, hsn_sc: "5208", desc: "Cotton saree", uqc: "NOS", qty: 6, rt: 5, txval: 7200, iamt: 120, camt: 120, samt: 120, csamt: 0 },
+    ]);
+    expect(json.hsn.hsn_b2c.map((r) => [r.hsn_sc, r.qty, r.txval])).toEqual([
+      ["5007", 1, 150000],
+      ["50072010", 3, 1351],
+      ["5208", 4, 4800],
+    ]);
+  });
+
+  it("legacy layout merges both tabs into data", () => {
+    const legacy = buildGstr1(invoices, { gstin: SELLER_GSTIN, period: "102026", hsnLayout: "legacy" }).json.hsn;
+    if (!("data" in legacy)) throw new Error("expected legacy layout");
+    expect(legacy.data.map((r) => [r.hsn_sc, r.qty, r.txval])).toEqual([
+      ["5007", 1, 150000],
+      ["50072010", 7.5, 3377.5],
+      ["5208", 10, 12000],
+    ]);
+  });
+
+  it("doc_issue counts numbered bills including cancelled ones", () => {
+    expect(json.doc_issue).toEqual({
+      doc_det: [
+        {
+          doc_num: 1,
+          doc_typ: "Invoices for outward supply",
+          docs: [{ num: 1, from: "INV/26-27/0040", to: "INV/26-27/0046", totnum: 7, cancel: 1, net_issue: 6 }],
+        },
+      ],
+    });
+  });
+
+  it("service lines report UQC NA with zero quantity", () => {
+    const r = buildGstr1([invoice({ lines: [line("Stitching", "998821", 3, "job", 10_000, 5, false)] })], { gstin: SELLER_GSTIN, period: "102026" });
+    if (!("hsn_b2b" in r.json.hsn)) throw new Error("layout");
+    expect(r.json.hsn.hsn_b2b[0]).toMatchObject({ hsn_sc: "998821", uqc: "NA", qty: 0, txval: 300 });
+  });
+
+  it("skips bills of another GSTIN and rejects a bad period", () => {
+    const r = buildGstr1([invoice()], { gstin: BUYER_KA_GSTIN, period: "102026" });
+    expect(r.json.b2b).toEqual([]);
+    expect(r.counts.skipped).toBe(1);
+    expect(() => buildGstr1([], { gstin: SELLER_GSTIN, period: "2026" })).toThrow(RangeError);
+  });
+
+  it("an empty month still yields a valid skeleton", () => {
+    const r = buildGstr1([], { gstin: SELLER_GSTIN, period: "112026" });
+    expect(r.json).toEqual({ gstin: SELLER_GSTIN, fp: "112026", b2b: [], b2cl: [], b2cs: [], hsn: { hsn_b2b: [], hsn_b2c: [] }, doc_issue: { doc_det: [] } });
+  });
+});

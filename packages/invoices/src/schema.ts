@@ -6,7 +6,6 @@ import {
   integer,
   jsonb,
   pgTable,
-  primaryKey,
   real,
   text,
   timestamp,
@@ -27,6 +26,16 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 /** Where an invoice payment came from: entered on the bill, allocated from a customer receipt, or paid online. */
 export const PAYMENT_SOURCES = ["manual", "receipt", "online"] as const;
 export type PaymentSource = (typeof PAYMENT_SOURCES)[number];
+
+/** Points used on a bill (loyalty redemption), stored on `invoices.totals`. */
+export interface LoyaltyRedemption {
+  points: number;
+  /** Paise taken off the bill (GST-inclusive). */
+  discount: number;
+}
+
+/** Totals stored on an invoice: the computed totals without lines, plus any loyalty redemption. */
+export type StoredInvoiceTotals = Omit<InvoiceTotals, "lines"> & { loyalty?: LoyaltyRedemption };
 
 export const MESSAGE_CHANNELS = ["whatsapp", "sms"] as const;
 export type MessageChannel = (typeof MESSAGE_CHANNELS)[number];
@@ -105,6 +114,8 @@ export const invoices = pgTable(
     id: pk(),
     tenantId: tenantId(),
     customerId: uuid("customer_id"),
+    /** Shop branch (multi-branch shops); null = no branch. Drives the number series and seller details. */
+    branchId: uuid("branch_id"),
     customer: jsonb("customer").$type<CustomerSnapshot>().notNull(),
     /** Null until issued (drafts show the live profile). */
     seller: jsonb("seller").$type<SellerProfile>(),
@@ -117,7 +128,7 @@ export const invoices = pgTable(
     placeOfSupply: text("place_of_supply").notNull(),
     interState: boolean("inter_state").notNull().default(false),
     lines: jsonb("lines").$type<LineTotals[]>().notNull(),
-    totals: jsonb("totals").$type<Omit<InvoiceTotals, "lines">>().notNull(),
+    totals: jsonb("totals").$type<StoredInvoiceTotals>().notNull(),
     /** Paise. */
     total: integer("total").notNull(),
     paid: integer("paid").notNull().default(0),
@@ -129,7 +140,12 @@ export const invoices = pgTable(
     ...timestamps(),
   },
   (t) => [
-    unique("invoices_tenant_fy_seq_uq").on(t.tenantId, t.fy, t.seq),
+    // One number per (branch series, FY, seq); bills without a branch share the "no branch" series (coalesced to the
+    // nil uuid so they collide like any other branch). Only numbered bills: drafts have no fy/seq yet.
+    uniqueIndex("invoices_tenant_branch_fy_seq_uq")
+      .on(t.tenantId, sql`coalesce(${t.branchId}, '00000000-0000-0000-0000-000000000000'::uuid)`, t.fy, t.seq)
+      .where(sql`${t.seq} is not null`),
+    index("invoices_tenant_branch_date_idx").on(t.tenantId, t.branchId, t.date),
     index("invoices_tenant_status_date_idx").on(t.tenantId, t.status, t.date),
     index("invoices_tenant_customer_idx").on(t.tenantId, t.customerId),
     // runReminders scans open bills by due date across tenants.
@@ -205,17 +221,22 @@ export const invoiceMessages = pgTable(
   ],
 );
 
-/** Per-tenant, per-FY invoice counter. `next_seq` holds the last number handed out. */
+/**
+ * Per-tenant, per-branch, per-FY invoice counter (`branch_id` null = no branch). `next_seq` holds the last number
+ * handed out.
+ */
 export const invoiceSeries = pgTable(
   "invoice_series",
   {
+    id: pk(),
     tenantId: tenantId(),
+    branchId: uuid("branch_id"),
     fy: text("fy").notNull(),
     prefix: text("prefix").notNull(),
     nextSeq: integer("next_seq").notNull(),
     ...timestamps(),
   },
-  (t) => [primaryKey({ name: "invoice_series_pk", columns: [t.tenantId, t.fy] })],
+  (t) => [unique("invoice_series_tenant_branch_fy_uq").on(t.tenantId, t.branchId, t.fy).nullsNotDistinct()],
 );
 
 export type BillingCustomer = typeof billingCustomers.$inferSelect;

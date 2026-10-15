@@ -1,4 +1,4 @@
-import { AppError, badRequest, conflict, notFound, randomToken, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
+import { AppError, badRequest, conflict, newId, notFound, randomToken, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   amountInWordsINR,
@@ -35,6 +35,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  like,
   lt,
   lte,
   ne,
@@ -65,6 +66,7 @@ import {
   type LedgerEntry,
 } from "./ledger";
 import {
+  applyBillDiscount,
   balanceOf,
   deriveStatus,
   isOverdue,
@@ -75,13 +77,17 @@ import {
 } from "./logic";
 import {
   noopLogger,
+  type BranchPort,
+  type BranchSellerInfo,
   type BrandingPort,
   type CustomerSnapshot,
   type EntitlementsPort,
+  type InvoiceEventsPort,
   type ItemSourceInput,
   type ItemSourcePort,
   type ItemSourceRecord,
   type LoggerPort,
+  type LoyaltyRedeemPort,
   type NotifierPort,
   type PaymentsAvailabilityPort,
   type SellerProfile,
@@ -108,9 +114,11 @@ import {
   type InvoicePaymentRow,
   type InvoiceRow,
   type InvoiceStatus,
+  type LoyaltyRedemption,
   type MessageChannel,
   type PaymentMethod,
   type PaymentSource,
+  type StoredInvoiceTotals,
 } from "./schema";
 
 export const MODULE_ID = "invoices";
@@ -159,6 +167,15 @@ export interface InvoicesDeps {
    * (same Item shape, `rate` = GST-exclusive); without it the `billing_items` table is used.
    */
   items?: ItemSourcePort;
+  /**
+   * Multi-branch shops (branches module): a bill's branch overrides the seller GSTIN/state/address/phone and the
+   * number prefix, keeps its own number series and takes stock from the branch location.
+   */
+  branches?: BranchPort;
+  /** Loyalty points redemption on bills (loyalty module). Without it `loyaltyPoints` is refused (400 loyalty_unavailable). */
+  loyalty?: LoyaltyRedeemPort;
+  /** Domain events (issued, paid, cancelled, payment received, customer created), called after commit. */
+  events?: InvoiceEventsPort;
   log?: LoggerPort;
   /** Clock override for tests. */
   now?: () => Date;
@@ -203,6 +220,8 @@ export interface Item {
 export interface InvoiceSummary {
   id: string;
   number: string | null;
+  /** Shop branch of the bill; null = no branch. */
+  branchId: string | null;
   status: InvoiceStatus;
   date: string;
   dueDate: string | null;
@@ -239,7 +258,8 @@ export interface Invoice extends InvoiceSummary {
   placeOfSupply: string;
   interState: boolean;
   lines: LineTotals[];
-  totals: Omit<InvoiceTotals, "lines">;
+  /** `totals.loyalty` = points used on the bill and the discount they gave. */
+  totals: StoredInvoiceTotals;
   amountInWords: string;
   notes: string | null;
   payments: InvoicePayment[];
@@ -504,6 +524,23 @@ const walkInSchema = z.object({
   stateCode: opt(stateCode),
 });
 
+const loyaltyPointsSchema = z.number().int("Points are whole numbers").positive().max(MAX_PAISE);
+
+export const issueOptionsSchema = z.object({
+  branchId: z.string().uuid().nullish(),
+  loyaltyPoints: loyaltyPointsSchema.optional(),
+});
+export interface IssueOptions {
+  /** The request's branch (used when the draft has none). */
+  branchId?: string | null;
+  /** Loyalty points to redeem on the bill. */
+  loyaltyPoints?: number;
+}
+export interface CreateOptions {
+  /** The request's branch, stored on the draft. */
+  branchId?: string | null;
+}
+
 export const invoiceInputSchema = z.object({
   customerId: opt(z.string().uuid()),
   customer: walkInSchema.nullable().optional(),
@@ -513,6 +550,8 @@ export const invoiceInputSchema = z.object({
   lines: z.array(lineInputSchema).min(1, "Add at least one line").max(200),
   notes: opt(z.string().trim().max(2000)),
   issue: z.boolean().optional(),
+  /** Loyalty points to use on the bill; only together with `issue: true`. */
+  loyaltyPoints: loyaltyPointsSchema.optional(),
 });
 export const invoicePatchSchema = invoiceInputSchema.partial();
 export type InvoiceInput = z.input<typeof invoiceInputSchema>;
@@ -560,6 +599,7 @@ export const invoiceListQuerySchema = listQuerySchema.extend({
   /** An InvoiceStatus, or "overdue". */
   status: z.enum([...INVOICE_STATUSES, "overdue"]).optional(),
   customerId: z.string().uuid().optional(),
+  branchId: z.string().uuid().optional(),
   from: dateStr.optional(),
   to: dateStr.optional(),
 });
@@ -582,16 +622,23 @@ export const ledgerQuerySchema = z.object({ from: dateStr.optional(), to: dateSt
 });
 export type LedgerQuery = z.input<typeof ledgerQuerySchema>;
 
-export const reportRangeSchema = z.object({ from: dateStr, to: dateStr }).superRefine(checkRange);
+const branchFilter = z.string().uuid().optional();
+
+export const reportRangeSchema = z.object({ from: dateStr, to: dateStr, branchId: branchFilter }).superRefine(checkRange);
 export type ReportRange = z.input<typeof reportRangeSchema>;
 
 export const topQuerySchema = z
-  .object({ from: dateStr, to: dateStr, limit: z.coerce.number().int().min(1).max(100).default(10) })
+  .object({ from: dateStr, to: dateStr, limit: z.coerce.number().int().min(1).max(100).default(10), branchId: branchFilter })
   .superRefine(checkRange);
 export type TopQuery = z.input<typeof topQuerySchema>;
 
-export const trendQuerySchema = z.object({ days: z.coerce.number().int().min(1).max(366).default(30) });
-export const ageingQuerySchema = z.object({ asOf: dateStr.optional() });
+export const trendQuerySchema = z.object({ days: z.coerce.number().int().min(1).max(366).default(30), branchId: branchFilter });
+export const ageingQuerySchema = z.object({ asOf: dateStr.optional(), branchId: branchFilter });
+
+/** Range for `salesByBranch` (inclusive, no one-year cap). */
+export const branchSalesRangeSchema = z.object({ from: dateStr, to: dateStr }).superRefine((v, ctx) => {
+  if (v.to < v.from) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["to"], message: "'to' must be on or after 'from'" });
+});
 
 const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
 const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
@@ -702,22 +749,52 @@ const toReceipt = (r: CustomerReceiptRow): Receipt => ({
 
 const publicSeller = ({ autoReminders: _a, reminderDays: _r, sendPaymentReceipts: _s, ...rest }: SellerProfile): PublicSeller => rest;
 
+const loyaltyOnIssue = () => new AppError(400, "loyalty_on_issue", "Points are applied when the bill is issued");
+
 const notConfigured = (what: string) => new AppError(503, "not_configured", `${what} is not set up`);
 
 /**
- * Hands out the next invoice sequence for (tenant, FY). The row lock taken by the upsert serialises
- * concurrent issues until the surrounding transaction ends; a rollback leaves no gap.
+ * Hands out the next invoice sequence for (tenant, branch, FY); `branchId` null/absent = the series of bills without
+ * a branch. The unique constraint is NULLS NOT DISTINCT, so ON CONFLICT also matches the null-branch row (PG15+).
+ * The row lock taken by the upsert serialises concurrent issues until the surrounding transaction ends; a rollback
+ * leaves no gap.
  */
-export function allocateSeqStatement(db: DbOrTx, args: { tenantId: string; fy: string; prefix: string }) {
+export function allocateSeqStatement(db: DbOrTx, args: { tenantId: string; fy: string; prefix: string; branchId?: string | null }) {
   const current = sql`${sql.identifier("invoice_series")}.${sql.identifier("next_seq")}`;
   return db
     .insert(invoiceSeries)
-    .values({ tenantId: args.tenantId, fy: args.fy, prefix: args.prefix, nextSeq: 1 })
+    .values({ tenantId: args.tenantId, branchId: args.branchId ?? null, fy: args.fy, prefix: args.prefix, nextSeq: 1 })
     .onConflictDoUpdate({
-      target: [invoiceSeries.tenantId, invoiceSeries.fy],
+      target: [invoiceSeries.tenantId, invoiceSeries.branchId, invoiceSeries.fy],
       set: { nextSeq: sql`${current} + 1`, prefix: args.prefix, updatedAt: sql`now()` },
     })
     .returning({ seq: invoiceSeries.nextSeq });
+}
+
+/** The billing profile with a branch's non-null seller fields laid over it (prefix sanitised, state from GSTIN). */
+export function mergeBranchSeller(profile: SellerProfile, branch: BranchSellerInfo | null): SellerProfile {
+  if (!branch) return profile;
+  const merged: Partial<SellerProfile> = { ...profile };
+  for (const k of ["gstin", "address", "city", "pincode", "phone", "invoicePrefix"] as const) {
+    const v = branch[k];
+    if (v !== null && v !== undefined && String(v).trim() !== "") merged[k] = v;
+  }
+  if (branch.stateCode && branch.stateCode.trim() !== "") merged.stateCode = branch.stateCode;
+  else if (branch.gstin && isValidGstin(normalizeGstin(branch.gstin))) merged.stateCode = stateFromGstin(normalizeGstin(branch.gstin));
+  // normalizeSeller sanitises the prefix and upper-cases the GSTIN.
+  return normalizeSeller(merged);
+}
+
+/** Branch context of an issue: the branch id stored on the bill and what the branches port said about it. */
+interface IssueBranch {
+  branchId: string | null;
+  info: BranchSellerInfo | null;
+}
+
+interface IssueLoyalty {
+  points: number;
+  phone: string;
+  name: string | null;
 }
 
 export class InvoicesService {
@@ -731,6 +808,9 @@ export class InvoicesService {
   private readonly paymentsAvailability?: PaymentsAvailabilityPort;
   private readonly featureGate?: FeatureGatePort;
   private readonly itemSource?: ItemSourcePort;
+  private readonly branches?: BranchPort;
+  private readonly loyalty?: LoyaltyRedeemPort;
+  private readonly events?: InvoiceEventsPort;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
 
@@ -745,6 +825,9 @@ export class InvoicesService {
     this.paymentsAvailability = deps.paymentsAvailability;
     this.featureGate = deps.featureGate;
     this.itemSource = deps.items;
+    this.branches = deps.branches;
+    this.loyalty = deps.loyalty;
+    this.events = deps.events;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
   }
@@ -758,6 +841,32 @@ export class InvoicesService {
       this.log.warn({ err, tenantId, feature: key }, "invoices: feature check failed");
       return false;
     }
+  }
+
+  /**
+   * Calls one event handler after a commit. Awaited, but a failure is only logged: events never fail the request.
+   * `build` (e.g. loading the Invoice DTO) runs only when the handler exists.
+   */
+  private async emit<K extends keyof InvoiceEventsPort>(
+    name: K,
+    tenantId: string,
+    call: (handler: NonNullable<InvoiceEventsPort[K]>) => Promise<void> | void,
+  ): Promise<void> {
+    const handler = this.events?.[name];
+    if (!handler) return;
+    try {
+      await call(handler.bind(this.events) as NonNullable<InvoiceEventsPort[K]>);
+    } catch (err) {
+      this.log.error({ err, tenantId, event: name }, "invoices: event handler failed");
+    }
+  }
+
+  /** Seller details for a bill: the billing profile, overridden by the branch's details when it has a branch. */
+  private async sellerFor(tenantId: string, branchId: string | null): Promise<{ seller: SellerProfile; branch: IssueBranch }> {
+    const profile = await this.sellerProfile(tenantId);
+    if (!branchId || !this.branches) return { seller: profile, branch: { branchId, info: null } };
+    const info = await this.branches.seller(tenantId, branchId);
+    return { seller: mergeBranchSeller(profile, info), branch: { branchId, info } };
   }
 
   private today() {
@@ -907,7 +1016,9 @@ export class InvoicesService {
       .insert(billingCustomers)
       .values({ tenantId, ...snap, openingBalance: b.openingBalance ?? 0, creditLimit: b.creditLimit ?? null })
       .returning();
-    return toCustomer(row!);
+    const customer = toCustomer(row!);
+    await this.emit("customerCreated", tenantId, (h) => h(tenantId, customer));
+    return customer;
   }
 
   async updateCustomer(tenantId: string, id: string, input: Partial<CustomerInput>): Promise<Customer> {
@@ -987,7 +1098,8 @@ export class InvoicesService {
   /** Records money received on account and allocates it oldest-first to open bills; the rest is advance. */
   async addReceipt(tenantId: string, customerId: string, input: ReceiptInput, userId: string | null = null): Promise<ReceiptResult> {
     const b = receiptInputSchema.parse(input);
-    return this.db.transaction(async (tx) => {
+    const paidNow: string[] = [];
+    const result = await this.db.transaction(async (tx) => {
       // Locks the customer so concurrent receipts allocate one after the other.
       const [cust] = await tx
         .select({ id: billingCustomers.id })
@@ -1040,15 +1152,28 @@ export class InvoicesService {
         );
         for (const a of allocations) {
           const bill = bills.find((x) => x.id === a.invoiceId)!;
+          const next = applyPaidDelta(bill, a.amount);
           await tx
             .update(invoices)
-            .set(applyPaidDelta(bill, a.amount))
+            .set(next)
             .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, a.invoiceId)));
+          if (next.status === "paid" && bill.status !== "paid") paidNow.push(a.invoiceId);
         }
       }
       this.log.info({ tenantId, customerId, receiptId: receipt!.id, allocated: allocations.length, advance }, "receipt recorded");
       return { receipt: toReceipt(receipt!), allocations, advance };
     });
+    if (this.events && result.allocations.length > 0) {
+      for (const a of result.allocations) {
+        await this.emit("paymentReceived", tenantId, async (h) =>
+          h(tenantId, { invoice: await this.get(tenantId, a.invoiceId), amount: a.amount, method: b.method, source: "receipt" }),
+        );
+        if (paidNow.includes(a.invoiceId)) {
+          await this.emit("paid", tenantId, async (h) => h(tenantId, await this.get(tenantId, a.invoiceId)));
+        }
+      }
+    }
+    return result;
   }
 
   /** Deletes a receipt and takes its allocated money back off the bills. */
@@ -1301,10 +1426,15 @@ export class InvoicesService {
 
   // ================================================================ invoices: reads
 
-  private toSummary(r: Pick<InvoiceRow, "id" | "number" | "status" | "date" | "dueDate" | "total" | "paid">, customerName: string, today: string): InvoiceSummary {
+  private toSummary(
+    r: Pick<InvoiceRow, "id" | "number" | "status" | "date" | "dueDate" | "total" | "paid"> & { branchId?: string | null },
+    customerName: string,
+    today: string,
+  ): InvoiceSummary {
     return {
       id: r.id,
       number: r.number,
+      branchId: r.branchId ?? null,
       status: r.status,
       date: r.date,
       dueDate: r.dueDate,
@@ -1323,7 +1453,7 @@ export class InvoicesService {
     extra: { warnings?: string[]; messages?: InvoiceMessage[] } = {},
   ): Promise<Invoice> {
     const [seller, messages] = await Promise.all([
-      row.seller ?? liveSeller ?? this.sellerProfile(row.tenantId),
+      row.seller ?? liveSeller ?? this.sellerFor(row.tenantId, row.branchId).then((x) => x.seller),
       extra.messages ?? (row.status === "draft" ? [] : this.messagesFor(row.tenantId, row.id)),
     ]);
     return {
@@ -1397,6 +1527,7 @@ export class InvoicesService {
       conds.push(eq(invoices.status, p.status));
     }
     if (p.customerId) conds.push(eq(invoices.customerId, p.customerId));
+    if (p.branchId) conds.push(eq(invoices.branchId, p.branchId));
     if (p.from) conds.push(gte(invoices.date, p.from));
     if (p.to) conds.push(lte(invoices.date, p.to));
     if (p.q) {
@@ -1415,6 +1546,7 @@ export class InvoicesService {
         .select({
           id: invoices.id,
           number: invoices.number,
+          branchId: invoices.branchId,
           status: invoices.status,
           date: invoices.date,
           dueDate: invoices.dueDate,
@@ -1432,8 +1564,8 @@ export class InvoicesService {
     return { items: rows.map((r) => this.toSummary(r, r.customerName ?? "", today)), total: counted?.total ?? 0 };
   }
 
-  /** Bills (issued, partially paid, paid) per date. */
-  private async invoicedByDate(tenantId: string, from: string, to: string) {
+  /** Bills (issued, partially paid, paid) per date; `branchId` narrows to one branch's bills. */
+  private async invoicedByDate(tenantId: string, from: string, to: string, branchId?: string) {
     const rows = await this.db
       .select({
         date: invoices.date,
@@ -1441,13 +1573,33 @@ export class InvoicesService {
         count: count(),
       })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.status, BILLED_STATUSES), gte(invoices.date, from), lte(invoices.date, to)))
+      .where(this.billedIn(tenantId, from, to, branchId))
       .groupBy(invoices.date);
     return rows.map((r) => ({ date: r.date, amount: num(r.amount), count: r.count }));
   }
 
-  /** Money received per date: payments entered on (non-cancelled) bills plus customer receipts. */
-  private async collectedByDate(tenantId: string, from: string, to: string) {
+  /**
+   * Money received per date: payments entered on (non-cancelled) bills plus customer receipts. With `branchId`:
+   * every payment on that branch's bills, receipt allocations included (receipts themselves have no branch).
+   */
+  private async collectedByDate(tenantId: string, from: string, to: string, branchId?: string) {
+    if (branchId) {
+      const rows = await this.db
+        .select({ date: invoicePayments.date, amount: sql<string>`coalesce(sum(${invoicePayments.amount}), 0)` })
+        .from(invoicePayments)
+        .innerJoin(invoices, and(eq(invoices.id, invoicePayments.invoiceId), eq(invoices.tenantId, tenantId)))
+        .where(
+          and(
+            eq(invoicePayments.tenantId, tenantId),
+            eq(invoices.branchId, branchId),
+            ne(invoices.status, "cancelled"),
+            gte(invoicePayments.date, from),
+            lte(invoicePayments.date, to),
+          ),
+        )
+        .groupBy(invoicePayments.date);
+      return rows.map((r) => ({ date: r.date, amount: num(r.amount) }));
+    }
     const [direct, received] = await Promise.all([
       this.db
         .select({ date: invoicePayments.date, amount: sql<string>`coalesce(sum(${invoicePayments.amount}), 0)` })
@@ -1586,32 +1738,49 @@ export class InvoicesService {
     }
   }
 
-  /** Creates a draft; with `issue: true` it is issued in the same transaction. */
-  async create(tenant: TenantRef, input: InvoiceInput): Promise<Invoice> {
+  /** 400 unless the loyalty port is wired and the bill's customer has a phone. */
+  private loyaltyFor(points: number, customer: CustomerSnapshot): IssueLoyalty {
+    if (!this.loyalty) throw new AppError(400, "loyalty_unavailable", "Loyalty points can't be used in this shop");
+    const phoneNo = customer.phone?.trim();
+    if (!phoneNo) throw new AppError(400, "loyalty_phone_required", "Add the customer's phone number to use loyalty points");
+    return { points, phone: toIndianE164(phoneNo) ?? phoneNo, name: customer.name || null };
+  }
+
+  /**
+   * Creates a draft; with `issue: true` it is issued in the same transaction. `opts.branchId` (the request's branch)
+   * is stored on the draft and decides the seller details. `loyaltyPoints` is only accepted with `issue: true`.
+   */
+  async create(tenant: TenantRef, input: InvoiceInput, opts: CreateOptions = {}): Promise<Invoice> {
     const b = invoiceInputSchema.parse(input);
-    const seller = await this.sellerProfile(tenant.id);
+    if (b.loyaltyPoints && !b.issue) throw loyaltyOnIssue();
+    const branchId = issueOptionsSchema.shape.branchId.parse(opts.branchId) ?? null;
+    const { seller, branch } = await this.sellerFor(tenant.id, branchId);
     const values = await this.buildDraft(tenant.id, this.fromInput(b), seller);
     if (!b.issue) {
       const [row] = await this.db
         .insert(invoices)
-        .values({ tenantId: tenant.id, status: "draft", ...values })
+        .values({ tenantId: tenant.id, status: "draft", branchId, ...values })
         .returning();
       return this.toInvoice(row!, [], seller, { warnings: await this.warningsFor(row!), messages: [] });
     }
+    const loyalty = b.loyaltyPoints ? this.loyaltyFor(b.loyaltyPoints, values.customer) : null;
+    // The id exists before the insert so a points redemption can reference the bill.
+    const id = newId();
     const check = { lines: values.lines.map(toLineInput), placeOfSupply: values.placeOfSupply };
-    const issued = await this.issueWith(tenant, seller, check, async (tx) => {
+    const issued = await this.issueWith(tenant, id, seller, branch, check, loyalty, async (tx) => {
       const [row] = await tx
         .insert(invoices)
-        .values({ tenantId: tenant.id, status: "draft", ...values })
+        .values({ id, tenantId: tenant.id, status: "draft", branchId, ...values })
         .returning();
       return row!;
     });
-    return this.afterIssue(issued);
+    return this.afterIssue(issued, branch);
   }
 
-  /** Drafts only. Omitted fields keep their value; `issue: true` issues after saving. */
+  /** Drafts only. Omitted fields keep their value; `issue: true` issues after saving (with `loyaltyPoints`, if any). */
   async update(tenant: TenantRef, id: string, input: Partial<InvoiceInput>): Promise<Invoice> {
     const b = invoicePatchSchema.parse(input);
+    if (b.loyaltyPoints && !b.issue) throw loyaltyOnIssue();
     const row = await this.row(this.db, tenant.id, id);
     if (row.status !== "draft") throw badRequest("Only draft invoices can be edited");
     const customerChanged = b.customerId !== undefined || b.customer !== undefined;
@@ -1625,7 +1794,7 @@ export class InvoicesService {
       lines: b.lines ?? row.lines.map(toLineInput),
       notes: b.notes !== undefined ? b.notes : row.notes,
     };
-    const seller = await this.sellerProfile(tenant.id);
+    const { seller } = await this.sellerFor(tenant.id, row.branchId);
     const values = await this.buildDraft(tenant.id, src, seller);
     const [updated] = await this.db
       .update(invoices)
@@ -1633,7 +1802,7 @@ export class InvoicesService {
       .where(and(eq(invoices.tenantId, tenant.id), eq(invoices.id, id), eq(invoices.status, "draft")))
       .returning();
     if (!updated) throw conflict("This invoice was issued or removed meanwhile; reload and try again");
-    if (b.issue) return this.issue(tenant, id);
+    if (b.issue) return this.issue(tenant, id, b.loyaltyPoints ? { loyaltyPoints: b.loyaltyPoints } : {});
     return this.toInvoice(updated, [], seller, { warnings: await this.warningsFor(updated), messages: [] });
   }
 
@@ -1649,33 +1818,50 @@ export class InvoicesService {
 
   // ================================================================ invoices: issue
 
-  /** Assigns the next number in the FY series, snapshots seller and customer, consumes plan quota. */
-  async issue(tenant: TenantRef, id: string): Promise<Invoice> {
+  /**
+   * Assigns the next number in the (branch, FY) series, snapshots seller and customer, consumes plan quota.
+   * The branch is the draft's, else `opts.branchId`. `opts.loyaltyPoints` redeems points as a bill discount.
+   */
+  async issue(tenant: TenantRef, id: string, opts: IssueOptions = {}): Promise<Invoice> {
+    const o = issueOptionsSchema.parse(opts);
     const row = await this.row(this.db, tenant.id, id);
     if (row.status !== "draft") throw badRequest("Only drafts can be issued");
-    const seller = await this.sellerProfile(tenant.id);
+    const { seller, branch } = await this.sellerFor(tenant.id, row.branchId ?? o.branchId ?? null);
+    let loyalty: IssueLoyalty | null = null;
+    if (o.loyaltyPoints) {
+      const { customer } = await this.resolveCustomer(this.db, tenant.id, {
+        customerId: row.customerId,
+        walkIn: null,
+        fallback: row.customer,
+      });
+      loyalty = this.loyaltyFor(o.loyaltyPoints, customer);
+    }
     const check = { lines: row.lines.map(toLineInput), placeOfSupply: row.placeOfSupply };
-    const issued = await this.issueWith(tenant, seller, check, (tx) => this.row(tx, tenant.id, id, true));
-    return this.afterIssue(issued);
+    const issued = await this.issueWith(tenant, id, seller, branch, check, loyalty, (tx) => this.row(tx, tenant.id, id, true));
+    return this.afterIssue(issued, branch);
   }
 
-  /** Post-commit work for a freshly issued bill: stock, credit-limit warning, response. */
-  private async afterIssue(issued: InvoiceRow): Promise<Invoice> {
-    await this.stockSale(issued);
+  /** Post-commit work for a freshly issued bill: stock, credit-limit warning, `issued` event, response. */
+  private async afterIssue(issued: InvoiceRow, branch?: IssueBranch): Promise<Invoice> {
+    await this.stockSale(issued, branch);
     // Payments need an issued bill, so a just-issued one has none.
-    return this.toInvoice(issued, [], undefined, { warnings: await this.warningsFor(issued), messages: [] });
+    const invoice = await this.toInvoice(issued, [], undefined, { warnings: await this.warningsFor(issued), messages: [] });
+    await this.emit("issued", issued.tenantId, (h) => h(issued.tenantId, invoice));
+    return invoice;
   }
 
   private saleLines(row: Pick<InvoiceRow, "lines">) {
     return row.lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId!, qty: l.qty }));
   }
 
-  private async stockSale(row: InvoiceRow): Promise<void> {
+  private async stockSale(row: InvoiceRow, branch?: IssueBranch): Promise<void> {
     if (!this.stock) return;
     const lines = this.saleLines(row);
     if (lines.length === 0) return;
+    const sale: Parameters<StockPort["applySale"]>[1] = { refId: row.id, lines, refNumber: row.number };
+    if (branch?.info) sale.locationId = branch.info.stockLocationId;
     try {
-      await this.stock.applySale(row.tenantId, { refId: row.id, lines, refNumber: row.number });
+      await this.stock.applySale(row.tenantId, sale);
     } catch (err) {
       this.log.error({ err, tenantId: row.tenantId, invoiceId: row.id }, "invoices: stock update after issue failed");
     }
@@ -1691,28 +1877,52 @@ export class InvoicesService {
   }
 
   /**
-   * Checks the draft can be issued, consumes quota, then (in one transaction) loads the draft via `load`,
-   * allocates the number and marks it issued. Quota is released if anything after consuming fails.
+   * Checks the draft can be issued, consumes quota, redeems loyalty points (before the transaction, so the discount
+   * is known), then (in one transaction) loads the draft via `load`, allocates the number and marks it issued.
+   * If anything after consuming fails, the points are given back and the quota is released.
    */
   private async issueWith(
     tenant: TenantRef,
+    invoiceId: string,
     seller: SellerProfile,
+    branch: IssueBranch,
     check: { lines: LineInput[]; placeOfSupply: string },
+    loyalty: IssueLoyalty | null,
     load: (tx: DbOrTx) => Promise<InvoiceRow>,
   ): Promise<InvoiceRow> {
     if (!seller.stateCode) {
       throw badRequest("Complete the business profile (state, GSTIN, address) in billing settings before issuing invoices");
     }
     // Fail fast before touching the quota; applyIssue re-checks inside the transaction.
-    this.assertIssuable(check.lines, check.placeOfSupply, seller);
+    const expected = this.assertIssuable(check.lines, check.placeOfSupply, seller);
 
     await this.entitlements?.consume(tenant, QUOTA_KEY, 1);
+    let redeemed = false;
     try {
+      let redemption: (LoyaltyRedemption & { expectedTotal: number }) | null = null;
+      if (loyalty) {
+        const r = await this.loyalty!.redeem(tenant.id, {
+          phone: loyalty.phone,
+          name: loyalty.name,
+          points: loyalty.points,
+          invoiceId,
+          orderAmount: expected.total,
+        });
+        redeemed = true;
+        redemption = { points: r.points, discount: r.discount, expectedTotal: expected.total };
+      }
       return await this.db.transaction(async (tx) => {
         const draft = await load(tx);
-        return this.applyIssue(tx, tenant.id, draft, seller);
+        return this.applyIssue(tx, tenant.id, draft, seller, branch, redemption);
       });
     } catch (err) {
+      if (redeemed) {
+        await Promise.resolve()
+          .then(() => this.loyalty!.reverse(tenant.id, invoiceId))
+          .catch((e: unknown) => {
+            this.log.error({ err: e, tenantId: tenant.id, invoiceId }, "invoices: failed to give back loyalty points after a failed issue");
+          });
+      }
       if (this.entitlements?.release) {
         await this.entitlements.release(tenant, QUOTA_KEY, 1).catch((e: unknown) => {
           this.log.error({ err: e, tenantId: tenant.id }, "invoices: failed to release quota after a failed issue");
@@ -1729,9 +1939,76 @@ export class InvoicesService {
     return totals;
   }
 
-  private async applyIssue(tx: DbOrTx, tenantId: string, draft: InvoiceRow, seller: SellerProfile): Promise<InvoiceRow> {
+  /**
+   * Makes sure the (tenant, branch, FY) series row exists before `allocateSeqStatement` upserts it, so numbers
+   * continue instead of restarting: the shop's default branch adopts the legacy series (no branch) of that FY;
+   * any other new series starts after the highest seq already used in the tenant + FY by bills with the same
+   * prefix (or of the same branch), so a re-created or adopted series never repeats a printed number.
+   */
+  private async prepareSeries(
+    tx: DbOrTx,
+    a: { tenantId: string; branchId: string | null; isDefault: boolean; fy: string; prefix: string },
+  ): Promise<void> {
+    const seriesBranch = a.branchId ? eq(invoiceSeries.branchId, a.branchId) : isNull(invoiceSeries.branchId);
+    const [existing] = await tx
+      .select({ id: invoiceSeries.id })
+      .from(invoiceSeries)
+      .where(and(eq(invoiceSeries.tenantId, a.tenantId), eq(invoiceSeries.fy, a.fy), seriesBranch))
+      .limit(1);
+    if (existing) return;
+    if (a.branchId && a.isDefault) {
+      const adopted = await tx
+        .update(invoiceSeries)
+        .set({ branchId: a.branchId, updatedAt: sql`now()` })
+        .where(and(eq(invoiceSeries.tenantId, a.tenantId), eq(invoiceSeries.fy, a.fy), isNull(invoiceSeries.branchId)))
+        .returning({ id: invoiceSeries.id });
+      if (adopted.length > 0) return;
+    }
+    const prefixPattern = `${a.prefix.replace(/[\\%_]/g, "\\$&")}/%`;
+    const [used] = await tx
+      .select({ last: sql<string | null>`max(${invoices.seq})` })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.tenantId, a.tenantId),
+          eq(invoices.fy, a.fy),
+          or(like(invoices.number, prefixPattern), a.branchId ? eq(invoices.branchId, a.branchId) : isNull(invoices.branchId)),
+        ),
+      );
+    const last = num(used?.last);
+    if (last > 0) {
+      await tx
+        .insert(invoiceSeries)
+        .values({ tenantId: a.tenantId, branchId: a.branchId, fy: a.fy, prefix: a.prefix, nextSeq: last })
+        .onConflictDoNothing();
+    }
+  }
+
+  private async applyIssue(
+    tx: DbOrTx,
+    tenantId: string,
+    draft: InvoiceRow,
+    seller: SellerProfile,
+    branch: IssueBranch,
+    redemption: (LoyaltyRedemption & { expectedTotal: number }) | null,
+  ): Promise<InvoiceRow> {
     if (draft.status !== "draft") throw badRequest("Only drafts can be issued");
-    const totals = this.assertIssuable(draft.lines.map(toLineInput), draft.placeOfSupply, seller);
+    let totals = this.assertIssuable(draft.lines.map(toLineInput), draft.placeOfSupply, seller);
+    let stored: StoredInvoiceTotals = withoutLines(totals);
+    if (redemption) {
+      // The points were redeemed against this exact bill amount.
+      if (totals.total !== redemption.expectedTotal) throw conflict("This invoice was changed meanwhile; reload and try again");
+      const d = redemption.discount;
+      const exact = totals.total - totals.roundOff;
+      if (!Number.isInteger(d) || d < 0 || d >= totals.total || d > exact) {
+        throw new AppError(409, "loyalty_redeem", "The points discount can't be more than the bill");
+      }
+      if (d > 0) {
+        totals = computeInvoice(applyBillDiscount(totals.lines, d), { sellerState: seller.stateCode!, placeOfSupply: draft.placeOfSupply });
+        if (totals.total <= 0) throw new AppError(409, "loyalty_redeem", "The points discount can't be more than the bill");
+      }
+      stored = { ...withoutLines(totals), loyalty: { points: redemption.points, discount: d } };
+    }
     const { customer } = await this.resolveCustomer(tx, tenantId, {
       customerId: draft.customerId,
       walkIn: null,
@@ -1740,7 +2017,8 @@ export class InvoicesService {
 
     const fy = financialYear(draft.date);
     const prefix = seller.invoicePrefix ?? DEFAULT_INVOICE_PREFIX;
-    const [series] = await allocateSeqStatement(tx, { tenantId, fy, prefix });
+    await this.prepareSeries(tx, { tenantId, branchId: branch.branchId, isDefault: branch.info?.isDefault ?? false, fy, prefix });
+    const [series] = await allocateSeqStatement(tx, { tenantId, fy, prefix, branchId: branch.branchId });
     const seq = series!.seq;
 
     const [updated] = await tx
@@ -1750,18 +2028,19 @@ export class InvoicesService {
         number: formatInvoiceNumber(prefix, fy, seq),
         fy,
         seq,
+        branchId: branch.branchId,
         seller,
         customer,
         interState: isInterState(seller.stateCode!, draft.placeOfSupply),
         lines: totals.lines,
-        totals: withoutLines(totals),
+        totals: stored,
         total: totals.total,
         issuedAt: this.now(),
       })
       .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, draft.id), eq(invoices.status, "draft")))
       .returning();
     if (!updated) throw conflict("This invoice was changed meanwhile; reload and try again");
-    this.log.info({ tenantId, invoiceId: updated.id, number: updated.number }, "invoice issued");
+    this.log.info({ tenantId, invoiceId: updated.id, number: updated.number, branchId: branch.branchId }, "invoice issued");
     return updated;
   }
 
@@ -1773,7 +2052,10 @@ export class InvoicesService {
    */
   async cancel(tenantId: string, id: string, reason?: string | null): Promise<Invoice> {
     const why = z.string().trim().max(500).nullish().parse(reason) || null;
+    let previousStatus: InvoiceStatus | null = null;
     const row = await this.db.transaction(async (tx) => {
+      const before = await this.row(tx, tenantId, id, true);
+      previousStatus = before.status;
       const [cancelled] = await tx
         .update(invoices)
         .set({ status: "cancelled", cancelledAt: this.now(), cancelReason: why })
@@ -1808,13 +2090,18 @@ export class InvoicesService {
       throw badRequest(existing.status === "draft" ? "Drafts can't be cancelled; delete them instead" : "This invoice is already cancelled");
     }
     await this.stockReverse(row);
-    return this.toInvoice(row, await this.payments(this.db, tenantId, id));
+    const invoice = await this.toInvoice(row, await this.payments(this.db, tenantId, id));
+    const prev = previousStatus as InvoiceStatus | null;
+    if (prev) await this.emit("cancelled", tenantId, (h) => h(tenantId, invoice, prev));
+    return invoice;
   }
 
   async addPayment(tenantId: string, id: string, input: PaymentInput, userId: string | null = null): Promise<Invoice> {
     const b = paymentInputSchema.parse(input);
+    let before: InvoiceStatus | null = null;
     const row = await this.db.transaction(async (tx) => {
       const inv = await this.row(tx, tenantId, id, true);
+      before = inv.status;
       const problem = paymentProblem(inv, b.amount);
       if (problem) throw badRequest(problem);
       await tx.insert(invoicePayments).values({
@@ -1835,7 +2122,10 @@ export class InvoicesService {
         .returning();
       return updated!;
     });
-    return this.toInvoice(row, await this.payments(this.db, tenantId, id));
+    const invoice = await this.toInvoice(row, await this.payments(this.db, tenantId, id));
+    await this.emit("paymentReceived", tenantId, (h) => h(tenantId, { invoice, amount: b.amount, method: b.method, source: "manual" }));
+    if (row.status === "paid" && (before as InvoiceStatus | null) !== "paid") await this.emit("paid", tenantId, (h) => h(tenantId, invoice));
+    return invoice;
   }
 
   async deletePayment(tenantId: string, id: string, paymentId: string): Promise<Invoice> {
@@ -2175,7 +2465,7 @@ export class InvoicesService {
   async recordOnlinePayment(input: OnlinePaymentInput): Promise<{ recorded: boolean; invoice: Invoice }> {
     const b = onlinePaymentSchema.parse(input);
     const method: PaymentMethod = b.method === "wallet" ? "other" : b.method;
-    const { recorded, row } = await this.db.transaction(async (tx) => {
+    const { recorded, row, before } = await this.db.transaction(async (tx) => {
       const inv = await this.row(tx, b.tenantId, b.invoiceId, true);
       const [dup] = await tx
         .select({ id: invoicePayments.id })
@@ -2189,7 +2479,7 @@ export class InvoicesService {
           ),
         )
         .limit(1);
-      if (dup) return { recorded: false, row: inv };
+      if (dup) return { recorded: false, row: inv, before: inv.status };
       if (inv.status === "cancelled" || inv.status === "draft" || b.amount > balanceOf(inv)) {
         this.log.warn(
           { tenantId: b.tenantId, invoiceId: inv.id, status: inv.status, amount: b.amount, balance: balanceOf(inv) },
@@ -2210,13 +2500,18 @@ export class InvoicesService {
         .set(applyPaidDelta(inv, b.amount))
         .where(and(eq(invoices.tenantId, b.tenantId), eq(invoices.id, inv.id)))
         .returning();
-      return { recorded: true, row: updated! };
+      return { recorded: true, row: updated!, before: inv.status };
     });
     if (recorded) {
       this.log.info({ tenantId: b.tenantId, invoiceId: row.id, amount: b.amount }, "online payment recorded");
       await this.sendPaymentReceipt(row, b.amount);
     }
-    return { recorded, invoice: await this.toInvoice(row, await this.payments(this.db, b.tenantId, row.id)) };
+    const invoice = await this.toInvoice(row, await this.payments(this.db, b.tenantId, row.id));
+    if (recorded) {
+      await this.emit("paymentReceived", b.tenantId, (h) => h(b.tenantId, { invoice, amount: b.amount, method, source: "online" }));
+      if (row.status === "paid" && before !== "paid") await this.emit("paid", b.tenantId, (h) => h(b.tenantId, invoice));
+    }
+    return { recorded, invoice };
   }
 
   /** `payment.received` thank-you, when the shop wants it and the customer has a mobile. Never throws. */
@@ -2257,16 +2552,44 @@ export class InvoicesService {
 
   // ================================================================ reports
 
+  /** Billed (issued, partially paid, paid) bills dated from..to inclusive, optionally of one branch. */
+  private billedIn(tenantId: string, from: string, to: string, branchId?: string | null) {
+    return and(
+      eq(invoices.tenantId, tenantId),
+      inArray(invoices.status, BILLED_STATUSES),
+      gte(invoices.date, from),
+      lte(invoices.date, to),
+      branchId ? eq(invoices.branchId, branchId) : undefined,
+    );
+  }
+
+  /**
+   * Sales per branch (for the branches summary): issued / partially paid / paid bills dated from..to inclusive,
+   * grouped by branch; `branchId: null` = bills without a branch. `sales` = sum of bill totals (paise).
+   */
+  async salesByBranch(tenantId: string, range: { from: string; to: string }): Promise<{ branchId: string | null; sales: number; bills: number }[]> {
+    const { from, to } = branchSalesRangeSchema.parse(range);
+    const rows = await this.db
+      .select({ branchId: invoices.branchId, sales: sql<string>`coalesce(sum(${invoices.total}), 0)`, bills: count() })
+      .from(invoices)
+      .where(this.billedIn(tenantId, from, to))
+      .groupBy(invoices.branchId);
+    return rows.map((r) => ({ branchId: r.branchId ?? null, sales: num(r.sales), bills: r.bills }));
+  }
+
   /** Invoiced, collected and bill count per IST day for the last `days` days (zero-filled, oldest first). */
-  async salesTrend(tenantId: string, query: { days?: unknown } = {}): Promise<{ items: TrendPoint[] }> {
-    const { days } = trendQuerySchema.parse(query);
+  async salesTrend(tenantId: string, query: { days?: unknown; branchId?: string } = {}): Promise<{ items: TrendPoint[] }> {
+    const { days, branchId } = trendQuerySchema.parse(query);
     const { from, to } = trendRange(this.today(), days);
-    const [inv, col] = await Promise.all([this.invoicedByDate(tenantId, from, to), this.collectedByDate(tenantId, from, to)]);
+    const [inv, col] = await Promise.all([
+      this.invoicedByDate(tenantId, from, to, branchId),
+      this.collectedByDate(tenantId, from, to, branchId),
+    ]);
     return { items: zeroFillTrend(from, to, inv, col) };
   }
 
   async salesRegister(tenantId: string, query: ReportRange): Promise<SalesRegister> {
-    const { from, to } = reportRangeSchema.parse(query);
+    const { from, to, branchId } = reportRangeSchema.parse(query);
     const rows = await this.db
       .select({
         id: invoices.id,
@@ -2280,7 +2603,7 @@ export class InvoicesService {
         status: invoices.status,
       })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.status, BILLED_STATUSES), gte(invoices.date, from), lte(invoices.date, to)))
+      .where(this.billedIn(tenantId, from, to, branchId))
       .orderBy(asc(invoices.date), asc(invoices.fy), asc(invoices.seq));
     const items: SalesRegisterRow[] = rows.map((r) => ({
       id: r.id,
@@ -2310,7 +2633,7 @@ export class InvoicesService {
   }
 
   async gstSummary(tenantId: string, query: ReportRange): Promise<GstSummary> {
-    const { from, to } = reportRangeSchema.parse(query);
+    const { from, to, branchId } = reportRangeSchema.parse(query);
     const rows = await this.db
       .select({
         id: invoices.id,
@@ -2322,7 +2645,7 @@ export class InvoicesService {
         lines: invoices.lines,
       })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.status, BILLED_STATUSES), gte(invoices.date, from), lte(invoices.date, to)));
+      .where(this.billedIn(tenantId, from, to, branchId));
     return gstSummary(
       rows.map((r) => ({
         id: r.id,
@@ -2339,7 +2662,7 @@ export class InvoicesService {
 
   /** Money received in the period: payments on (non-cancelled) bills, online payments and customer receipts. */
   async paymentsReport(tenantId: string, query: ReportRange): Promise<PaymentsReport> {
-    const { from, to } = reportRangeSchema.parse(query);
+    const { from, to, branchId } = reportRangeSchema.parse(query);
     const [direct, receipts] = await Promise.all([
       this.db
         .select({
@@ -2357,24 +2680,27 @@ export class InvoicesService {
         .where(
           and(
             eq(invoicePayments.tenantId, tenantId),
-            isNull(invoicePayments.receiptId),
+            // Per branch: every payment on its bills, receipt allocations included (receipts have no branch).
+            branchId ? eq(invoices.branchId, branchId) : isNull(invoicePayments.receiptId),
             ne(invoices.status, "cancelled"),
             gte(invoicePayments.date, from),
             lte(invoicePayments.date, to),
           ),
         ),
-      this.db
-        .select({
-          date: customerReceipts.date,
-          customer: billingCustomers.name,
-          method: customerReceipts.method,
-          amount: customerReceipts.amount,
-          reference: customerReceipts.reference,
-          createdAt: customerReceipts.createdAt,
-        })
-        .from(customerReceipts)
-        .innerJoin(billingCustomers, and(eq(billingCustomers.id, customerReceipts.customerId), eq(billingCustomers.tenantId, tenantId)))
-        .where(and(eq(customerReceipts.tenantId, tenantId), gte(customerReceipts.date, from), lte(customerReceipts.date, to))),
+      branchId
+        ? Promise.resolve([] as { date: string; customer: string; method: PaymentMethod; amount: number; reference: string | null; createdAt: Date }[])
+        : this.db
+            .select({
+              date: customerReceipts.date,
+              customer: billingCustomers.name,
+              method: customerReceipts.method,
+              amount: customerReceipts.amount,
+              reference: customerReceipts.reference,
+              createdAt: customerReceipts.createdAt,
+            })
+            .from(customerReceipts)
+            .innerJoin(billingCustomers, and(eq(billingCustomers.id, customerReceipts.customerId), eq(billingCustomers.tenantId, tenantId)))
+            .where(and(eq(customerReceipts.tenantId, tenantId), gte(customerReceipts.date, from), lte(customerReceipts.date, to))),
     ]);
     const rows = [
       ...direct.map((p) => ({
@@ -2386,7 +2712,7 @@ export class InvoicesService {
           method: p.method,
           amount: p.amount,
           reference: p.reference,
-          source: p.source === "online" ? ("online" as const) : ("bill" as const),
+          source: p.source === "online" ? ("online" as const) : p.source === "receipt" ? ("receipt" as const) : ("bill" as const),
         },
       })),
       ...receipts.map((r) => ({
@@ -2417,8 +2743,9 @@ export class InvoicesService {
    * Receivables ageing as of `asOf` (default today): each bill's balance counts only payments dated on or before
    * `asOf`; bills dated after it are left out. Buckets by days past due (no due date = due on the bill date).
    */
-  async ageing(tenantId: string, query: { asOf?: string } = {}): Promise<AgeingResult> {
-    const asOf = ageingQuerySchema.parse(query).asOf ?? this.today();
+  async ageing(tenantId: string, query: { asOf?: string; branchId?: string } = {}): Promise<AgeingResult> {
+    const q = ageingQuerySchema.parse(query);
+    const asOf = q.asOf ?? this.today();
     const paidAsOf = sql<string>`coalesce((select sum(p.amount) from ${invoicePayments} p where p.tenant_id = ${invoices.tenantId} and p.invoice_id = ${invoices.id} and p.date <= ${asOf}), 0)`;
     const rows = await this.db
       .select({
@@ -2434,6 +2761,7 @@ export class InvoicesService {
           eq(invoices.tenantId, tenantId),
           inArray(invoices.status, BILLED_STATUSES),
           lte(invoices.date, asOf),
+          q.branchId ? eq(invoices.branchId, q.branchId) : undefined,
           // Open now, or paid with money dated after asOf (so it was open then).
           or(
             inArray(invoices.status, [...OPEN_STATUSES]),
@@ -2449,7 +2777,8 @@ export class InvoicesService {
   }
 
   async topItems(tenantId: string, query: TopQuery): Promise<{ items: TopItemRow[] }> {
-    const { from, to, limit } = topQuerySchema.parse(query);
+    const { from, to, limit, branchId } = topQuerySchema.parse(query);
+    const branchSql = branchId ? sql`and ${invoices.branchId} = ${branchId}` : sql``;
     const statuses = sql.join(
       BILLED_STATUSES.map((s) => sql`${s}`),
       sql`, `,
@@ -2464,6 +2793,7 @@ export class InvoicesService {
       where ${invoices.tenantId} = ${tenantId}
         and ${invoices.status} in (${statuses})
         and ${invoices.date} >= ${from} and ${invoices.date} <= ${to}
+        ${branchSql}
       group by coalesce(l->>'itemId', 'd:' || lower(trim(l->>'description'))), coalesce(l->>'unit', '')
       order by taxable desc
       limit ${limit}
@@ -2481,7 +2811,7 @@ export class InvoicesService {
 
   /** Saved customers by billed amount (walk-in bills are left out). */
   async topCustomers(tenantId: string, query: TopQuery): Promise<{ items: TopCustomerRow[] }> {
-    const { from, to, limit } = topQuerySchema.parse(query);
+    const { from, to, limit, branchId } = topQuerySchema.parse(query);
     const total = sql<string>`sum(${invoices.total})`;
     const rows = await this.db
       .select({
@@ -2499,6 +2829,7 @@ export class InvoicesService {
           inArray(invoices.status, BILLED_STATUSES),
           gte(invoices.date, from),
           lte(invoices.date, to),
+          branchId ? eq(invoices.branchId, branchId) : undefined,
         ),
       )
       .groupBy(invoices.customerId)

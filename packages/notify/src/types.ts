@@ -7,8 +7,26 @@ export interface TemplateRef {
   params: string[];
 }
 
+/** An email attachment. JSON-serialisable so it can travel through the job queue. */
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  /** File content, base64-encoded. */
+  content: string;
+}
+
+/** Decoded size in bytes of a base64 string (no decoding needed). */
+export function base64Size(b64: string): number {
+  const s = b64.replace(/\s/g, "");
+  if (!s) return 0;
+  const pad = s.endsWith("==") ? 2 : s.endsWith("=") ? 1 : 0;
+  return Math.floor((s.length * 3) / 4) - pad;
+}
+
 export interface OutboundMessage {
   to: string;
+  /** Email only. */
+  attachments?: EmailAttachment[];
   subject?: string;
   body: string;
   html?: string;

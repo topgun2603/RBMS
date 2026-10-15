@@ -358,3 +358,20 @@ describe("account", () => {
     expect(await setup([[]], { allowMock: false }).service.isEnabled(TENANT)).toEqual({ enabled: false, provider: null, mode: null });
   });
 });
+
+describe("credentials (internal)", () => {
+  const make = (rows: unknown[][]) => new PaymentsService({ db: fakeDb(rows).db, config });
+
+  it("returns the decrypted key id and secret for an enabled account", async () => {
+    expect(await make([[account()]]).credentials(TENANT)).toEqual({ keyId: "rzp_test_abcdef123", keySecret: "key-secret" });
+  });
+
+  it("is null when not configured or disabled", async () => {
+    expect(await make([[]]).credentials(TENANT)).toBeNull();
+    expect(await make([[account({ enabled: false })]]).credentials(TENANT)).toBeNull();
+  });
+
+  it("fails closed when the secret cannot be decrypted", async () => {
+    await expect(make([[account({ keySecretEnc: "garbage" })]]).credentials(TENANT)).rejects.toBeInstanceOf(AppError);
+  });
+});

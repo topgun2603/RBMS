@@ -11,6 +11,7 @@ import {
   type Channel,
   type ChannelDriver,
   type ContactLookup,
+  type EmailAttachment,
   type LoggerPort,
   type NotifyConfig,
   type OutboundMessage,
@@ -38,6 +39,8 @@ export interface SendInput {
   locale?: string;
   subject?: string;
   body?: string;
+  /** Email only (base64 content); any other channel is rejected with a 400. */
+  attachments?: EmailAttachment[];
 }
 
 export interface SendResult {
@@ -105,6 +108,20 @@ export interface NotifyServiceDeps {
 
 const tenantFilter = (col: typeof notifyTemplates.tenantId | typeof notifyLog.tenantId, tenantId: string | null): SQL =>
   tenantId ? eq(col, tenantId) : isNull(col);
+
+/** Attachments only make sense on email; each needs a filename, a content type and base64 content. */
+export function validateAttachments(channel: Channel, attachments: EmailAttachment[] | undefined): EmailAttachment[] | undefined {
+  if (!attachments?.length) return undefined;
+  if (channel !== "email") throw badRequest(`Attachments are only supported on the email channel (got ${channel})`);
+  return attachments.map((a, i) => {
+    if (!a || typeof a.filename !== "string" || !a.filename.trim()) throw badRequest(`Attachment ${i + 1} needs a filename`);
+    if (typeof a.contentType !== "string" || !a.contentType.trim()) throw badRequest(`Attachment "${a.filename}" needs a contentType`);
+    if (typeof a.content !== "string" || !/^[A-Za-z0-9+/\s]*={0,2}\s*$/.test(a.content)) {
+      throw badRequest(`Attachment "${a.filename}" content must be base64`);
+    }
+    return { filename: a.filename, contentType: a.contentType, content: a.content };
+  });
+}
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err)).slice(0, 1000);
 
@@ -193,6 +210,7 @@ export class NotifyService {
   private async sendInternal(input: SendInput, opts: { inline: boolean; secrets?: string[] }): Promise<SendResult> {
     const tenantId = input.tenantId ?? null;
     const locale = baseLocale(input.locale);
+    const attachments = validateAttachments(input.channel, input.attachments);
     let template: TemplateContent | null = null;
     if (input.template) {
       const found = await this.resolveTemplate(tenantId, input.template, input.channel, locale);
@@ -211,6 +229,7 @@ export class NotifyService {
       locale: template?.locale ?? locale,
       config: this.deps.config,
     });
+    if (attachments) message.attachments = attachments;
 
     const [row] = await this.db
       .insert(notifyLog)

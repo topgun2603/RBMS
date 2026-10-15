@@ -42,14 +42,16 @@ import {
   locationCodeFrom,
   locationDeleteProblem,
   locationPatchProblem,
+  lowStockEvents,
   netByLocationItem,
   publicStockFlags,
   reserveDecision,
   transferProblem,
   type ShortItem,
+  type StockDrop,
   type StockLevelInput,
 } from "./levels";
-import { noopLogger, type CatalogItem, type ItemCatalogPort, type LoggerPort, type SellerStatePort } from "./ports";
+import { noopLogger, type CatalogItem, type EventsPort, type ItemCatalogPort, type LoggerPort, type SellerStatePort } from "./ports";
 import {
   LOCATION_TYPES,
   purchases,
@@ -88,6 +90,8 @@ export interface InventoryDeps {
   db: Db;
   catalog: ItemCatalogPort;
   sellerState: SellerStatePort;
+  /** Webhook events (`stock.low`). Without it nothing is emitted and no extra reads happen. */
+  events?: EventsPort;
   log?: LoggerPort;
   /** Clock override for tests. */
   now?: () => Date;
@@ -761,6 +765,7 @@ export function upsertStockStatement(
       avgCost: stockItems.avgCost,
       track: stockItems.track,
       reserved: stockItems.reserved,
+      reorderLevel: stockItems.reorderLevel,
     });
 }
 
@@ -793,6 +798,7 @@ export class InventoryService {
   private readonly sellerState: SellerStatePort;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
+  private readonly events: EventsPort | null;
   /** Tenants whose legacy (null-location) rows were moved to the default location by this process. */
   private readonly healed = new Set<string>();
 
@@ -802,6 +808,7 @@ export class InventoryService {
     this.sellerState = deps.sellerState;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
+    this.events = deps.events ?? null;
   }
 
   today() {
@@ -1086,7 +1093,7 @@ export class InventoryService {
   // ================================================================ stock primitives
 
   /** Applies one stock change inside `tx`: upsert qty (and reserved), update average cost, append a movement. */
-  private async change(tx: DbOrTx, c: StockChange): Promise<{ qtyMilli: number; avgCost: number | null }> {
+  private async change(tx: DbOrTx, c: StockChange, drops?: StockDrop[]): Promise<{ qtyMilli: number; avgCost: number | null }> {
     const [row] = await upsertStockStatement(tx, {
       tenantId: c.tenantId,
       locationId: c.locationId,
@@ -1095,6 +1102,15 @@ export class InventoryService {
       reservedDeltaMilli: c.reservedDeltaMilli,
     });
     const qtyMilli = toMilli(row!.qty);
+    if (drops && c.deltaMilli < 0) {
+      drops.push({
+        locationId: c.locationId,
+        itemId: c.itemId,
+        beforeMilli: qtyMilli - c.deltaMilli,
+        afterMilli: qtyMilli,
+        reorderMilli: toMilli(row!.reorderLevel),
+      });
+    }
     let avgCost = row!.avgCost;
     const unitCost = c.unitCost ?? null;
     if (unitCost !== null && c.deltaMilli > 0) {
@@ -1123,6 +1139,47 @@ export class InventoryService {
       createdAt: this.now(),
     });
     return { qtyMilli, avgCost };
+  }
+
+  /** A collector for `change()` when events are wired (else undefined: no extra work). */
+  private dropSink(): StockDrop[] | undefined {
+    return this.events ? [] : undefined;
+  }
+
+  /**
+   * After the stock write committed: `stock.low` per tracked item that got low or ran out at a location. Never
+   * throws (errors are logged).
+   */
+  private async emitLowStock(tenantId: string, drops: StockDrop[] | undefined): Promise<void> {
+    const events = this.events;
+    if (!events || !drops || drops.length === 0) return;
+    try {
+      const ids = [...new Set(drops.map((d) => d.itemId))];
+      const low = lowStockEvents(drops, await this.untrackedOf(this.db, tenantId, ids));
+      if (low.length === 0) return;
+      const names = new Map<string, string>();
+      try {
+        for (const i of await this.catalog.getItems(tenantId, [...new Set(low.map((e) => e.itemId))])) names.set(i.id, i.name);
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "inventory: item names unavailable for stock.low");
+      }
+      for (const e of low) {
+        try {
+          await events.emit(tenantId, "stock.low", {
+            itemId: e.itemId,
+            name: names.get(e.itemId) ?? "",
+            locationId: e.locationId,
+            qty: e.qty,
+            reorderLevel: e.reorderLevel,
+            status: e.status,
+          });
+        } catch (err) {
+          this.log.warn({ err, tenantId, itemId: e.itemId }, "inventory: stock.low emit failed");
+        }
+      }
+    } catch (err) {
+      this.log.warn({ err, tenantId }, "inventory: stock.low check failed");
+    }
   }
 
   /** All rows of one item (every location). */
@@ -1328,6 +1385,7 @@ export class InventoryService {
     const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
     const qtyMilli = toMilli(b.qty);
     const unitCost = b.unitCost ?? null;
+    const drops = this.dropSink();
     await this.db.transaction(async (tx) => {
       // Make sure the row exists, then lock it to read the current qty (needed for "set").
       const [current] = await this.lockRows(tx, tenantId, [loc.id], [itemId]);
@@ -1356,8 +1414,9 @@ export class InventoryService {
         unitCost: delta > 0 ? unitCost : null,
         note: b.note ?? null,
         createdBy: userId,
-      });
+      }, drops);
     });
+    await this.emitLowStock(tenantId, drops);
     return this.levelRow(item, await this.itemRows(this.db, tenantId, itemId), loc.id);
   }
 
@@ -1370,7 +1429,8 @@ export class InventoryService {
     const lines = mergeQtyLines(b.lines);
     if (lines.length === 0) return { applied: false, items: 0 };
     const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
-    return this.db.transaction(async (tx) => {
+    const drops = this.dropSink();
+    const result = await this.db.transaction(async (tx) => {
       await lockRef(tx, tenantId, "invoice", b.refId);
       const [existing] = await tx
         .select({ id: stockMovements.id })
@@ -1403,12 +1463,14 @@ export class InventoryService {
           refType: "invoice",
           refId: b.refId,
           refNumber: b.refNumber ?? null,
-        });
+        }, drops);
         items++;
       }
       this.log.info({ tenantId, refId: b.refId, items, locationId: loc.id }, "inventory: sale applied");
       return { applied: items > 0, items };
     });
+    await this.emitLowStock(tenantId, drops);
+    return result;
   }
 
   /** Puts back the stock of a cancelled invoice (where it was taken). No-op unless a sale was applied and not yet reversed. */
@@ -1473,6 +1535,7 @@ export class InventoryService {
     const missing = ids.filter((id) => !found.has(id));
     if (missing.length > 0) throw badRequest("Some lines refer to items that no longer exist", { itemIds: missing });
 
+    const drops = this.dropSink();
     const row = await this.db.transaction(async (tx) => {
       const untracked = await this.untrackedOf(tx, tenantId, ids);
       const locked = await this.lockRows(tx, tenantId, [b.fromLocationId, b.toLocationId], ids);
@@ -1506,7 +1569,7 @@ export class InventoryService {
           note: b.note ?? null,
           createdBy: userId,
         };
-        await this.change(tx, { ...common, locationId: b.fromLocationId, deltaMilli: -l.milli, reason: "transfer_out" });
+        await this.change(tx, { ...common, locationId: b.fromLocationId, deltaMilli: -l.milli, reason: "transfer_out" }, drops);
         // Incoming stock carries the source's average cost into the destination's moving average.
         await this.change(tx, {
           ...common,
@@ -1519,6 +1582,7 @@ export class InventoryService {
       return created!;
     });
     this.log.info({ tenantId, transferId: row.id, lines: lines.length }, "inventory: transfer recorded");
+    await this.emitLowStock(tenantId, drops);
     return toTransfer(row);
   }
 
@@ -1657,7 +1721,8 @@ export class InventoryService {
   ): Promise<{ committed: boolean; items: number }> {
     const rt = refTypeSchema.parse(refType);
     const ref = refIdSchema.parse(refId);
-    return this.db.transaction(async (tx) => {
+    const drops = this.dropSink();
+    const result = await this.db.transaction(async (tx) => {
       await lockRef(tx, tenantId, rt, ref);
       const active = activeReservations(await this.reservationsOf(tx, tenantId, rt, ref));
       if (active.length === 0) return { committed: false, items: 0 };
@@ -1674,7 +1739,7 @@ export class InventoryService {
           refId: ref,
           refNumber: opts.refNumber ?? null,
           createdBy: opts.userId ?? null,
-        });
+        }, drops);
       }
       const now = this.now();
       await tx
@@ -1692,6 +1757,8 @@ export class InventoryService {
       this.log.info({ tenantId, refType: rt, refId: ref, items: active.length }, "inventory: reservation committed");
       return { committed: true, items: active.length };
     });
+    await this.emitLowStock(tenantId, drops);
+    return result;
   }
 
   /** Current reservation lines of a ref (any status). */

@@ -2,7 +2,7 @@
  * Pure rules for stock locations, availability and reservations (no database).
  * Quantities are integer thousandths ("milli"), as in ./logic.
  */
-import { fromMilli, toMilli } from "./logic";
+import { fromMilli, stockStatus, toMilli, type StockStatus } from "./logic";
 
 /** One stock row (one location) as read from the database; numeric columns arrive as strings. */
 export interface StockLevelInput {
@@ -209,4 +209,47 @@ export function netByLocationItem(
     .filter(([, v]) => v.milli !== 0)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([, v]) => v);
+}
+
+/** One stock decrease at a location, as seen inside the stock write (row locked): qty before and after, milli. */
+export interface StockDrop {
+  locationId: string;
+  itemId: string;
+  beforeMilli: number;
+  afterMilli: number;
+  reorderMilli: number;
+}
+
+const STATUS_RANK: Record<StockStatus, number> = { ok: 0, low: 1, out: 2 };
+
+/** "low" / "out" when stock got worse across the reorder level or zero (ok → low/out, low → out); else null. */
+export function lowStockTransition(beforeMilli: number, afterMilli: number, reorderMilli: number): "low" | "out" | null {
+  const before = stockStatus(beforeMilli, reorderMilli);
+  const after = stockStatus(afterMilli, reorderMilli);
+  if (after === "ok" || STATUS_RANK[after] <= STATUS_RANK[before]) return null;
+  return after;
+}
+
+/**
+ * `stock.low` candidates of one stock operation: changes are merged per (location, item) — first `before`, last
+ * `after` and reorder level — and kept when `lowStockTransition` says the item got low or ran out there. Untracked
+ * items are left out. Order: first appearance.
+ */
+export function lowStockEvents(
+  drops: readonly StockDrop[],
+  untracked: ReadonlySet<string> = new Set(),
+): { locationId: string; itemId: string; qty: number; reorderLevel: number; status: "low" | "out" }[] {
+  const merged = new Map<string, StockDrop>();
+  for (const d of drops) {
+    const key = `${d.locationId}|${d.itemId}`;
+    const cur = merged.get(key);
+    merged.set(key, cur ? { ...cur, afterMilli: d.afterMilli, reorderMilli: d.reorderMilli } : { ...d });
+  }
+  const out: { locationId: string; itemId: string; qty: number; reorderLevel: number; status: "low" | "out" }[] = [];
+  for (const d of merged.values()) {
+    if (untracked.has(d.itemId)) continue;
+    const status = lowStockTransition(d.beforeMilli, d.afterMilli, d.reorderMilli);
+    if (status) out.push({ locationId: d.locationId, itemId: d.itemId, qty: fromMilli(d.afterMilli), reorderLevel: fromMilli(d.reorderMilli), status });
+  }
+  return out;
 }

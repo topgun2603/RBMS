@@ -1,6 +1,7 @@
 import {
   addDays,
   addMinutes,
+  AppError,
   badRequest,
   forbidden,
   notFound,
@@ -13,6 +14,7 @@ import {
 import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, otpHash, otpRetryAfter, type Target } from "./helpers";
 import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 import { authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
@@ -38,6 +40,21 @@ export interface AuthConfig {
    * The host must never pass this in production (apps/api only wires it when NODE_ENV !== "production").
    */
   testOtp?: { code: string; targets: string[] };
+  /**
+   * Secret for guest phone tokens (`verifyGuestOtp` / `verifyGuestToken`). Without it guest verification answers
+   * 503 not_configured. Use a long random value distinct from other secrets.
+   */
+  guestTokenSecret?: string;
+  /** Lifetime of a guest phone token. Default 60 minutes. */
+  guestTokenTtlMinutes?: number;
+}
+
+export interface GuestVerifyResult {
+  /** Signed token proving the phone was verified for this tenant; send it back to guest endpoints. */
+  guestToken: string;
+  expiresAt: Date;
+  /** The verified phone number in E.164 form. */
+  phone: string;
 }
 
 export interface AuthDeps {
@@ -134,7 +151,10 @@ const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export class AuthService {
   private readonly db: Db;
-  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp">> & { googleClientIds: string[] };
+  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp" | "guestTokenSecret">> & {
+    googleClientIds: string[];
+    guestTokenSecret: string | null;
+  };
   private readonly testOtp: { code: string; targets: string[] } | null;
   private readonly verifyGoogle: GoogleTokenVerifier;
 
@@ -150,6 +170,8 @@ export class AuthService {
       otpMaxPerHour: c.otpMaxPerHour ?? 5,
       googleClientIds: c.googleClientIds ?? [],
       cookieName: c.cookieName ?? "sr_session",
+      guestTokenSecret: c.guestTokenSecret || null,
+      guestTokenTtlMinutes: c.guestTokenTtlMinutes && c.guestTokenTtlMinutes > 0 ? c.guestTokenTtlMinutes : 60,
     };
     const t = c.testOtp;
     const targets = (t?.targets ?? []).map((s) => s.trim()).filter(Boolean);
@@ -254,10 +276,44 @@ export class AuthService {
     name?: string | null;
   }): Promise<SignInResult> {
     const target = this.parseTarget(input.target);
+    await this.checkOtpCode(target, input.code);
+    return this.signInTarget(target.value, input);
+  }
+
+  /**
+   * Verifies a phone OTP for a guest (no account): never creates a user or a session. Returns a short-lived token
+   * bound to the tenant and phone that guest endpoints check with `verifyGuestToken`. Request the code first with
+   * `requestOtp` (POST /otp/request), exactly like sign-in.
+   */
+  async verifyGuestOtp(input: { target: string; code: string; tenantId: string; ip?: string | null }): Promise<GuestVerifyResult> {
+    const secret = this.cfg.guestTokenSecret;
+    if (!secret) throw new AppError(503, "not_configured", "Guest verification is not configured");
+    if (!input.tenantId) throw new AppError(400, "tenant_required", "Guest verification needs a shop");
+    const target = this.parseTarget(input.target);
+    if (target.kind !== "phone") throw badRequest("Enter a valid mobile number");
+    await this.checkOtpCode(target, input.code);
+    const expiresAt = addMinutes(new Date(), this.cfg.guestTokenTtlMinutes);
+    const guestToken = signGuestToken(secret, { tenantId: input.tenantId, phone: target.value, expiresAt });
+    this.deps.log?.info({ tenantId: input.tenantId, target: maskTarget(target.value) }, "auth: guest phone verified");
+    return { guestToken, expiresAt, phone: target.value };
+  }
+
+  /** Checks a guest token from `verifyGuestOtp`: signature, expiry and tenant must match. Null otherwise. */
+  verifyGuestToken(tenantId: string, token: string): { phone: string } | null {
+    const secret = this.cfg.guestTokenSecret;
+    if (!secret || !tenantId || !token) return null;
+    return verifyGuestTokenWith(secret, tenantId, token);
+  }
+
+  /**
+   * Checks a code for a normalised target: test identities accept the fixed test code; otherwise the newest live
+   * code is checked, counting attempts, and consumed atomically on success. Throws on any failure.
+   */
+  private async checkOtpCode(target: Target, rawCode: string): Promise<void> {
     if (this.isTestTarget(target.value)) {
-      const code = String(input.code ?? "").replace(/\s/g, "");
+      const code = String(rawCode ?? "").replace(/\s/g, "");
       if (!safeEqual(code, this.testOtp!.code)) throw badRequest("Incorrect code");
-      return this.signInTarget(target.value, input);
+      return;
     }
     const now = new Date();
     const [otp] = await this.db
@@ -280,7 +336,7 @@ export class AuthService {
       .returning({ attempts: authOtps.attempts });
     const attempts = bumped?.attempts ?? otp.attempts + 1;
 
-    const code = String(input.code ?? "").replace(/\s/g, "");
+    const code = String(rawCode ?? "").replace(/\s/g, "");
     if (!safeEqual(otpHash(code, target.value), otp.codeHash)) {
       if (attempts >= max) {
         await this.db.update(authOtps).set({ expiresAt: now }).where(eq(authOtps.id, otp.id));
@@ -297,7 +353,6 @@ export class AuthService {
       .returning({ id: authOtps.id });
     if (consumed.length === 0) throw badRequest("The code has already been used");
 
-    return this.signInTarget(target.value, input);
   }
 
   /** True when test OTPs are configured and `target` (normalised) is one of the test identities. */
