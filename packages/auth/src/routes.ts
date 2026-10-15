@@ -71,7 +71,7 @@ export function authRoutes(service: AuthService) {
       const me = requireUser(req.ctx);
       const user = await service.getUser(me.id);
       if (!user) throw notFound("User");
-      return { user, tenantRoles: me.tenantRoles };
+      return { user, tenantRoles: me.tenantRoles, permissions: me.permissions ?? [] };
     });
 
     app.patch("/me", async (req) => {

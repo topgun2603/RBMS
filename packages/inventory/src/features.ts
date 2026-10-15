@@ -4,6 +4,7 @@ import type { FeatureDef } from "@srirealtime/core";
 export const INVENTORY_FEATURE_KEYS = {
   stock: "inventory",
   purchases: "inventory.purchases",
+  locations: "inventory.locations",
 } as const;
 
 export const INVENTORY_FEATURES: FeatureDef[] = [
@@ -22,5 +23,13 @@ export const INVENTORY_FEATURES: FeatureDef[] = [
     description: "Suppliers and purchase bills with input tax credit (ITC); purchases add to stock.",
     dependsOn: [INVENTORY_FEATURE_KEYS.stock],
     shopToggle: true,
+  },
+  {
+    key: INVENTORY_FEATURE_KEYS.locations,
+    module: "inventory",
+    label: "Multiple stock locations",
+    description: "Stores and warehouses with their own stock, and transfers between them.",
+    dependsOn: [INVENTORY_FEATURE_KEYS.stock],
+    shopToggle: false,
   },
 ];

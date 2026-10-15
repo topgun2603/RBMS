@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInvoice, computeLine, isGstRate, isInterState, lineAmount, type LineInput } from "./gst";
+import { computeInvoice, computeLine, exclusiveOf, isGstRate, isInterState, lineAmount, type LineInput } from "./gst";
 
 const TN = "33";
 const KA = "29";
@@ -145,5 +145,24 @@ describe("isGstRate", () => {
   it("accepts only GST slabs", () => {
     for (const r of [0, 0.25, 3, 5, 12, 18, 28]) expect(isGstRate(r)).toBe(true);
     for (const r of [1, 7.5, 40, -5, "5"]) expect(isGstRate(r)).toBe(false);
+  });
+});
+
+describe("exclusiveOf", () => {
+  it("returns exclusive prices unchanged", () => {
+    expect(exclusiveOf(105000, 5, false)).toBe(105000);
+    expect(exclusiveOf(12345, 0, true)).toBe(12345);
+  });
+  it("takes GST out of tax-inclusive prices", () => {
+    expect(exclusiveOf(105000, 5, true)).toBe(100000); // ₹1,050 MRP incl. 5% → ₹1,000
+    expect(exclusiveOf(11800, 18, true)).toBe(10000);
+    expect(exclusiveOf(999, 12, true)).toBe(892); // 891.96 → 892
+    expect(exclusiveOf(10025, 0.25, true)).toBe(10000);
+    expect(exclusiveOf(0, 28, true)).toBe(0);
+  });
+  it("adds back to (about) the inclusive price on a bill line", () => {
+    const rate = exclusiveOf(49900, 12, true);
+    const l = computeLine({ description: "Shirt", qty: 1, rate, gstRate: 12 }, false);
+    expect(Math.abs(l.total - 49900)).toBeLessThanOrEqual(1);
   });
 });

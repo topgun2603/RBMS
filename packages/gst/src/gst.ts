@@ -75,6 +75,18 @@ export function lineAmount(qty: number, rate: number): number {
   return round((milli * rate) / 1000);
 }
 
+/**
+ * The GST-exclusive rate (paise) of a catalogue price. A tax-inclusive price (typical MRP retail) has its GST taken
+ * out: `round(price × 100 / (100 + gstRate))`; an exclusive price is returned unchanged. Use it wherever a catalogue
+ * price becomes an invoice/order line `rate`.
+ */
+export function exclusiveOf(price: number, gstRate: number, taxInclusive: boolean): number {
+  if (!taxInclusive || !gstRate) return price;
+  // Basis points keep 0.25% exact.
+  const bp = Math.round(gstRate * 100);
+  return round((price * 10_000) / (10_000 + bp));
+}
+
 export function computeLine(line: LineInput, interState: boolean): LineTotals {
   const amount = lineAmount(line.qty, line.rate);
   const discount = line.discount ?? 0;

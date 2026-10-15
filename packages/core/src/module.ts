@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { PermissionDef } from "./permissions";
 
 /**
  * A pluggable module. The API host mounts each module's routes under `/v1/<id>`
@@ -15,6 +16,8 @@ export interface SrModule {
   stop?: () => Promise<void> | void;
   /** Features this module declares (see docs/features.md). */
   features?: FeatureDef[];
+  /** Permissions this module declares; the staff module collects them for custom roles. */
+  permissions?: PermissionDef[];
 }
 
 /**

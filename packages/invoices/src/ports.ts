@@ -82,6 +82,41 @@ export interface StockPort {
   reverseSale(tenantId: string, refId: string): Promise<unknown>;
 }
 
+/** A saved item as an item source returns it (`rate` = GST-exclusive paise per unit). */
+export interface ItemSourceRecord {
+  id: string;
+  name: string;
+  hsn: string | null;
+  unit: string;
+  rate: number;
+  gstRate: number;
+  createdAt: Date;
+}
+
+/** Validated item fields handed to the source (already parsed by the invoices item schemas). */
+export interface ItemSourceInput {
+  name: string;
+  hsn: string | null;
+  unit: string;
+  rate: number;
+  gstRate: number;
+}
+
+/**
+ * Where saved items live when not in `billing_items` (implemented with the catalogue in apps/api: an item is a catalogue
+ * variant). When wired, every `/v1/invoices/items*` route and getItem/listItems/createItem/updateItem/deleteItem use it.
+ */
+export interface ItemSourcePort {
+  list(tenantId: string, query: { q?: string; limit: number; offset: number }): Promise<{ items: ItemSourceRecord[]; total: number }>;
+  /** Null when unknown or deleted. */
+  get(tenantId: string, id: string): Promise<ItemSourceRecord | null>;
+  create(tenantId: string, input: ItemSourceInput): Promise<ItemSourceRecord>;
+  /** Null when unknown or deleted. */
+  update(tenantId: string, id: string, patch: Partial<ItemSourceInput>): Promise<ItemSourceRecord | null>;
+  /** False when unknown or already deleted. */
+  remove(tenantId: string, id: string): Promise<boolean>;
+}
+
 export interface NotifierSendInput {
   tenantId: string;
   channel: "whatsapp" | "sms";

@@ -23,3 +23,6 @@ export const paymentRequired = (message: string, details?: unknown) =>
 /** A feature is switched off for this shop by its app profile, a missing dependency, or the shop owner. */
 export const featureDisabled = (feature: string, reason: "app" | "shop" | "dependency", message?: string) =>
   new AppError(403, "feature_disabled", message ?? `This feature is turned off: ${feature}`, { feature, reason });
+/** The member's roles don't include a permission the action needs. */
+export const permissionDenied = (permission: string, message?: string) =>
+  new AppError(403, "permission_denied", message ?? `You don't have permission for this: ${permission}`, { permission });

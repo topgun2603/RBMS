@@ -34,6 +34,53 @@ const INVOICE_REMINDER_TA =
 const PAYMENT_RECEIVED_EN = "{{shop}}: Thank you {{customer}}! We received {{amount}} for bill {{number}}. Balance due: {{balance}}.";
 const PAYMENT_RECEIVED_TA = "{{shop}}: நன்றி {{customer}}! பில் {{number}}-க்கு {{amount}} பெற்றுக்கொண்டோம். மீதி நிலுவை: {{balance}}.";
 
+// Orders (orders module). Customer messages go out on WhatsApp + email (SMS kept for tenants who switch to it);
+// English SMS stays within GSM-7 and 2 segments. Vars:
+//   order.placed / order.received (to the shop owner): shop, customer, number, amount, items, link
+//   order.confirmed, order.delivered, order.cancelled: shop, customer, number, link
+//   order.shipped: shop, customer, number, tracking ("<carrier> <tracking no.>" or "-"), link (tracking URL if any)
+// The orders module also sends carrier, trackingNumber, trackingUrl, orderLink, reason and paymentMethod for overrides.
+const ORDER_EN = {
+  placed: "{{shop}}: Thank you {{customer}}! We received your order {{number}} ({{items}}, {{amount}}). Track it: {{link}}",
+  received: "{{shop}}: New order {{number}} from {{customer}}: {{items}}, {{amount}}. Open: {{link}}",
+  confirmed: "{{shop}}: Dear {{customer}}, your order {{number}} is confirmed. We will ship it soon. Track: {{link}}",
+  shipped: "{{shop}}: Dear {{customer}}, your order {{number}} has been shipped. Courier: {{tracking}}. Track: {{link}}",
+  delivered: "{{shop}}: Dear {{customer}}, your order {{number}} has been delivered. Thank you for shopping with us! {{link}}",
+  cancelled: "{{shop}}: Dear {{customer}}, your order {{number}} has been cancelled. Need help? Contact us: {{link}}",
+};
+const ORDER_TA = {
+  placed: "{{shop}}: நன்றி {{customer}}! உங்கள் ஆர்டர் {{number}} ({{items}}, {{amount}}) பெறப்பட்டது. நிலையைப் பார்க்க: {{link}}",
+  received: "{{shop}}: புதிய ஆர்டர் {{number}} — {{customer}}: {{items}}, {{amount}}. பார்க்க: {{link}}",
+  confirmed: "{{shop}}: வணக்கம் {{customer}}, உங்கள் ஆர்டர் {{number}} உறுதிசெய்யப்பட்டது. விரைவில் அனுப்புவோம். நிலை: {{link}}",
+  shipped: "{{shop}}: வணக்கம் {{customer}}, உங்கள் ஆர்டர் {{number}} அனுப்பப்பட்டது. கூரியர்: {{tracking}}. கண்காணிக்க: {{link}}",
+  delivered: "{{shop}}: வணக்கம் {{customer}}, உங்கள் ஆர்டர் {{number}} டெலிவரி செய்யப்பட்டது. எங்களிடம் வாங்கியதற்கு நன்றி! {{link}}",
+  cancelled: "{{shop}}: வணக்கம் {{customer}}, உங்கள் ஆர்டர் {{number}} ரத்து செய்யப்பட்டது. உதவிக்கு எங்களைத் தொடர்பு கொள்ளவும்: {{link}}",
+};
+const ORDER_SUBJECT_EN = {
+  placed: "Order {{number}} received - {{shop}}",
+  received: "New order {{number}} from {{customer}}",
+  confirmed: "Order {{number}} confirmed - {{shop}}",
+  shipped: "Order {{number}} shipped - {{shop}}",
+  delivered: "Order {{number}} delivered - {{shop}}",
+  cancelled: "Order {{number}} cancelled - {{shop}}",
+};
+const ORDER_SUBJECT_TA = {
+  placed: "ஆர்டர் {{number}} பெறப்பட்டது - {{shop}}",
+  received: "புதிய ஆர்டர் {{number}} - {{customer}}",
+  confirmed: "ஆர்டர் {{number}} உறுதிசெய்யப்பட்டது - {{shop}}",
+  shipped: "ஆர்டர் {{number}} அனுப்பப்பட்டது - {{shop}}",
+  delivered: "ஆர்டர் {{number}} டெலிவரி செய்யப்பட்டது - {{shop}}",
+  cancelled: "ஆர்டர் {{number}} ரத்து செய்யப்பட்டது - {{shop}}",
+};
+const ORDER_STEPS = ["placed", "received", "confirmed", "shipped", "delivered", "cancelled"] as const;
+
+function orderTemplates(): TemplateContent[] {
+  return ORDER_STEPS.flatMap((step) => [
+    ...builtin(`order.${step}`, ["sms", "whatsapp", "email"], "en", ORDER_EN[step], ORDER_SUBJECT_EN[step]),
+    ...builtin(`order.${step}`, ["sms", "whatsapp", "email"], "ta", ORDER_TA[step], ORDER_SUBJECT_TA[step]),
+  ]);
+}
+
 function builtin(key: string, channels: Channel[], locale: string, body: string, subject: string | null): TemplateContent[] {
   return channels.map((channel) => ({
     key,
@@ -55,6 +102,7 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...builtin("invoice.reminder", ["sms", "whatsapp"], "ta", INVOICE_REMINDER_TA, null),
   ...builtin("payment.received", ["sms", "whatsapp"], "en", PAYMENT_RECEIVED_EN, null),
   ...builtin("payment.received", ["sms", "whatsapp"], "ta", PAYMENT_RECEIVED_TA, null),
+  ...orderTemplates(),
 ];
 
 /**

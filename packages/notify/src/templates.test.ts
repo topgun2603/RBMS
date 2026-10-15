@@ -35,7 +35,7 @@ describe("pickTemplate", () => {
   it("ignores other tenants' rows and returns null when nothing matches", () => {
     const other = cand("22222222-2222-2222-2222-222222222222", "ta", "other");
     expect(pickTemplate([other], opts)?.source).toBe("builtin");
-    expect(pickTemplate([], { ...opts, key: "order.placed" })).toBeNull();
+    expect(pickTemplate([], { ...opts, key: "order.unknown" })).toBeNull();
     expect(pickTemplate([], { ...opts, channel: "push" })).toBeNull();
   });
 
@@ -151,5 +151,75 @@ describe("billing templates", () => {
     expect(render(t.body, { ...sample, amount: "₹950.00" })).toBe(
       "Sri Lakshmi Silks and Sarees 1: Dear Ravichandran Subramanian, ₹950.00 is pending on your account. Please pay: https://sri-lakshmi-silks.srirealtime.com/i/AbCdEfGhIjKlMnOpQrStUv Ignore if already paid.",
     );
+  });
+});
+
+describe("order templates", () => {
+  const VARS: Record<string, string[]> = {
+    "order.placed": ["shop", "customer", "number", "amount", "items", "link"],
+    "order.received": ["shop", "customer", "number", "amount", "items", "link"],
+    "order.confirmed": ["shop", "customer", "number", "link"],
+    "order.shipped": ["shop", "customer", "number", "tracking", "link"],
+    "order.delivered": ["shop", "customer", "number", "link"],
+    "order.cancelled": ["shop", "customer", "number", "link"],
+  };
+  const sample = {
+    shop: "Sri Lakshmi Silks and Sarees 1",
+    customer: "Ravichandran Subramanian",
+    number: "ORDERS/26-27/1234",
+    amount: "Rs.1,00,00,000.00",
+    items: "12 items",
+    tracking: "Professional Couriers 123456789012",
+    link: "https://sri-lakshmi-silks.srirealtime.com/o/AbCdEfGhIjKlMnOpQrStUvWx",
+  };
+  const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\[~\]|€]*$/;
+
+  it("ships sms, whatsapp and email in English and Tamil", () => {
+    for (const key of Object.keys(VARS)) {
+      for (const channel of ["sms", "whatsapp", "email"] as const) {
+        for (const locale of ["en", "ta"]) {
+          const t = BUILTIN_TEMPLATES.find((b) => b.key === key && b.channel === channel && b.locale === locale);
+          expect(t, `${key}/${channel}/${locale}`).toBeDefined();
+          if (channel === "email") expect(t!.subject, `${key}/${locale} subject`).toBeTruthy();
+          else expect(t!.subject).toBeNull();
+          expect(pickTemplate([], { tenantId: null, key, channel, locale })?.template).toBe(t);
+        }
+      }
+    }
+  });
+
+  it("only uses the documented variables, always naming the shop and order", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS)) {
+      const used = [...placeholders(t.body), ...placeholders(t.subject ?? "")];
+      for (const name of used) expect(VARS[t.key], `${t.key}/${t.locale}: ${name}`).toContain(name);
+      expect(placeholders(t.body)).toEqual(expect.arrayContaining(["shop", "number"]));
+    }
+  });
+
+  it("keeps English SMS within two GSM-7 segments", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS && b.channel === "sms" && b.locale === "en")) {
+      const text = render(t.body, sample);
+      expect(text, t.key).toMatch(GSM7);
+      expect(text.length, t.key).toBeLessThanOrEqual(306);
+    }
+  });
+
+  it("writes the Tamil versions (and subjects) in Tamil script", () => {
+    for (const t of BUILTIN_TEMPLATES.filter((b) => b.key in VARS && b.locale === "ta")) {
+      expect(t.body).toMatch(/[஀-௿]{3,}/);
+      if (t.subject) expect(t.subject).toMatch(/[஀-௿]{3,}/);
+    }
+  });
+
+  it("renders a shipped message and an email with subject", () => {
+    const wa = pickTemplate([], { tenantId: null, key: "order.shipped", channel: "whatsapp", locale: "en" })!.template;
+    expect(render(wa.body, { ...sample, amount: "₹950.00", tracking: "DTDC D123", link: "https://t.example/D123", number: "ORD/26-27/0007" })).toBe(
+      "Sri Lakshmi Silks and Sarees 1: Dear Ravichandran Subramanian, your order ORD/26-27/0007 has been shipped. Courier: DTDC D123. Track: https://t.example/D123",
+    );
+    const email = pickTemplate([], { tenantId: null, key: "order.placed", channel: "email", locale: "ta" })!.template;
+    const msg = composeMessage({ channel: "email", to: "a@b.in", template: email, vars: sample, locale: "ta", config: {} });
+    expect(msg.subject).toBe("ஆர்டர் ORDERS/26-27/1234 பெறப்பட்டது - Sri Lakshmi Silks and Sarees 1");
+    expect(msg.body).toContain("நன்றி Ravichandran Subramanian!");
+    expect(msg.html).toContain("https://sri-lakshmi-silks.srirealtime.com/o/");
   });
 });

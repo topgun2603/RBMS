@@ -342,3 +342,86 @@ describe("createInvoices", () => {
     ]);
   });
 });
+
+describe("items facade (ItemSourcePort)", () => {
+  const tenantId = "11111111-1111-4111-8111-111111111111";
+  const itemId = "33333333-3333-4333-8333-333333333333";
+  const record = { id: itemId, name: "Silk saree", hsn: "5007", unit: "pcs", rate: 650_000, gstRate: 5, createdAt: new Date("2026-10-01T00:00:00Z") };
+
+  function setup() {
+    const items = {
+      list: vi.fn(async () => ({ items: [record], total: 1 })),
+      get: vi.fn(async (_t: string, id: string) => (id === itemId ? record : null)),
+      create: vi.fn(async () => record),
+      update: vi.fn(async (_t: string, id: string) => (id === itemId ? record : null)),
+      remove: vi.fn(async (_t: string, id: string) => id === itemId),
+    };
+    // The db never connects: any table access would fail, proving the port is used.
+    const { service } = createInvoices({
+      db,
+      seller: { get: async () => ({}) },
+      branding: { get: async () => ({ appName: null, logoUrl: null, css: "" }) },
+      publicBaseUrl: "https://bill.example.com/",
+      items,
+    });
+    return { service, items };
+  }
+
+  it("delegates every item method with validated input and keeps the Item shape", async () => {
+    const { service, items } = setup();
+    expect(await service.listItems(tenantId, { q: " silk ", limit: "10" as unknown as number })).toEqual({ items: [record], total: 1 });
+    expect(items.list).toHaveBeenCalledWith(tenantId, { q: "silk", limit: 10, offset: 0 });
+    expect(await service.getItem(tenantId, itemId)).toEqual(record);
+    expect(Object.keys(await service.getItem(tenantId, itemId)).sort()).toEqual(["createdAt", "gstRate", "hsn", "id", "name", "rate", "unit"]);
+
+    await service.createItem(tenantId, { name: " Silk saree ", hsn: "", rate: 650_000, gstRate: 5 });
+    expect(items.create).toHaveBeenCalledWith(tenantId, { name: "Silk saree", hsn: null, unit: "pcs", rate: 650_000, gstRate: 5 });
+
+    await service.updateItem(tenantId, itemId, { rate: 600_000, hsn: "" });
+    expect(items.update).toHaveBeenCalledWith(tenantId, itemId, { rate: 600_000, hsn: null });
+    // An empty patch reads the item instead.
+    await service.updateItem(tenantId, itemId, {});
+    expect(items.update).toHaveBeenCalledTimes(1);
+
+    await service.deleteItem(tenantId, itemId);
+    expect(items.remove).toHaveBeenCalledWith(tenantId, itemId);
+  });
+
+  it("maps a missing item to 404 and rejects bad input before the port", async () => {
+    const { service, items } = setup();
+    const other = "44444444-4444-4444-8444-444444444444";
+    await expect(service.getItem(tenantId, other)).rejects.toMatchObject({ status: 404, code: "not_found", message: "Item not found" });
+    await expect(service.updateItem(tenantId, other, { rate: 1 })).rejects.toMatchObject({ status: 404 });
+    await expect(service.deleteItem(tenantId, other)).rejects.toMatchObject({ status: 404 });
+    await expect(service.createItem(tenantId, { name: "x", rate: 1, gstRate: 7 as 5 })).rejects.toBeInstanceOf(ZodError);
+    expect(items.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps the /v1/invoices/items HTTP contract", async () => {
+    const { service, items } = setup();
+    const app = Fastify();
+    app.decorateRequest("ctx", null as never);
+    app.addHook("onRequest", async (req) => {
+      req.ctx = {
+        ...emptyContext(),
+        tenant: { id: tenantId, slug: "sri", planId: "pro", appId: "BL" },
+        user: { id: "u1", sessionId: "s1", platformRoles: [], tenantRoles: ["staff"] },
+      };
+    });
+    app.setErrorHandler((err: { status?: number; statusCode?: number }, _req, reply) => {
+      reply.status(err.status ?? (err instanceof ZodError ? 400 : (err.statusCode ?? 500))).send({ error: true });
+    });
+    await app.register(invoicesRoutes(service), { prefix: "/v1/invoices" });
+    const json = { ...record, createdAt: record.createdAt.toISOString() };
+
+    expect((await app.inject({ url: "/v1/invoices/items?q=silk" })).json()).toEqual({ items: [json], total: 1 });
+    expect((await app.inject({ url: `/v1/invoices/items/${itemId}` })).json()).toEqual(json);
+    expect((await app.inject({ url: "/v1/invoices/items/44444444-4444-4444-8444-444444444444" })).statusCode).toBe(404);
+    const created = await app.inject({ method: "POST", url: "/v1/invoices/items", payload: { name: "Silk saree", rate: 650_000, gstRate: 5 } });
+    expect(created.json()).toEqual(json);
+    expect((await app.inject({ method: "POST", url: "/v1/invoices/items", payload: { name: "" } })).statusCode).toBe(400);
+    expect((await app.inject({ method: "PATCH", url: `/v1/invoices/items/${itemId}`, payload: { rate: 1 } })).json()).toEqual(json);
+    expect((await app.inject({ method: "DELETE", url: `/v1/invoices/items/${itemId}` })).json()).toEqual({ ok: true });
+    expect(items.remove).toHaveBeenCalledTimes(1);
+  });
+});

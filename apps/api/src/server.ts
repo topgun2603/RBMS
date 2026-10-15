@@ -1,6 +1,11 @@
 import cors from "@fastify/cors";
 import { AppError, emptyContext, type SrModule } from "@srirealtime/core";
-import Fastify, { type FastifyBaseLogger, type FastifyInstance, type preHandlerAsyncHookHandler } from "fastify";
+import Fastify, {
+  type FastifyBaseLogger,
+  type FastifyInstance,
+  type onResponseAsyncHookHandler,
+  type preHandlerAsyncHookHandler,
+} from "fastify";
 import { ZodError } from "zod";
 
 export interface ServerOptions {
@@ -11,7 +16,11 @@ export interface ServerOptions {
   contextHooks: Array<(app: FastifyInstance) => void>;
   /** Global preHandler hooks run after the context hooks, e.g. the features check of `config.feature`. */
   preHandlers?: preHandlerAsyncHookHandler[];
+  /** Global onResponse hooks, e.g. the audit log of successful mutating requests. They must never throw. */
+  onResponse?: onResponseAsyncHookHandler[];
   modules: SrModule[];
+  /** Annotates module routes while they are registered (e.g. host-side `config.permission`), then checks every rule matched. */
+  routeRules?: { register(app: FastifyInstance): void; assertAllMatched(): void };
 }
 
 export async function buildServer(opts: ServerOptions) {
@@ -31,6 +40,7 @@ export async function buildServer(opts: ServerOptions) {
   });
   for (const hook of opts.contextHooks) hook(app);
   for (const handler of opts.preHandlers ?? []) app.addHook("preHandler", handler);
+  for (const handler of opts.onResponse ?? []) app.addHook("onResponse", handler);
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {
@@ -49,9 +59,11 @@ export async function buildServer(opts: ServerOptions) {
 
   app.get("/health", async () => ({ ok: true }));
 
+  opts.routeRules?.register(app);
   for (const m of opts.modules) {
     if (m.routes) await app.register(async (scoped) => m.routes!(scoped), { prefix: `/v1/${m.id}` });
   }
+  opts.routeRules?.assertAllMatched();
 
   return app;
 }

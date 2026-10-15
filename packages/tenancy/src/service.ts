@@ -10,6 +10,7 @@ import {
   type TenantMembership,
   type TenantStatus,
 } from "./schema";
+import { normalizeMemberRoles } from "./roles";
 import { isPlatformHost, isValidDomain, normalizeHost, slugFromHost, validateSlug } from "./slug";
 
 export interface TenancyDeps {
@@ -68,8 +69,6 @@ function isUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
   return e?.code === "23505" || e?.cause?.code === "23505";
 }
-
-const uniqRoles = (roles: string[]) => [...new Set(roles)];
 
 export class TenancyService {
   private readonly db: Db;
@@ -323,10 +322,12 @@ export class TenancyService {
     return m ?? null;
   }
 
-  /** Adds a member, or reactivates an existing one with the given roles. */
+  /**
+   * Adds a member, or reactivates an existing one with the given roles. Roles are validated by
+   * `normalizeMemberRoles` (one base level + optional `role:<key>` entries).
+   */
   async addMember(tenantId: string, userId: string, roles: string[] = ["member"]): Promise<TenantMembership> {
-    const r = uniqRoles(roles);
-    if (r.length === 0) throw badRequest("At least one role is required");
+    const r = normalizeMemberRoles(roles);
     const [m] = await this.db
       .insert(tenantMemberships)
       .values({ tenantId, userId, roles: r })
@@ -338,9 +339,9 @@ export class TenancyService {
     return m!;
   }
 
+  /** Replaces a member's roles (validated like `addMember`). Keeps at least one owner. */
   async updateRoles(tenantId: string, userId: string, roles: string[]): Promise<TenantMembership> {
-    const r = uniqRoles(roles);
-    if (r.length === 0) throw badRequest("At least one role is required");
+    const r = normalizeMemberRoles(roles);
     return this.db.transaction(async (tx) => {
       const [current] = await tx
         .select()
@@ -355,6 +356,38 @@ export class TenancyService {
       const [m] = await tx
         .update(tenantMemberships)
         .set({ roles: r })
+        .where(and(eq(tenantMemberships.tenantId, tenantId), eq(tenantMemberships.userId, userId)))
+        .returning();
+      return m!;
+    });
+  }
+
+  /** Alias of `updateRoles` (the staff module's MembershipPort name). */
+  setMemberRoles(tenantId: string, userId: string, roles: string[]): Promise<TenantMembership> {
+    return this.updateRoles(tenantId, userId, roles);
+  }
+
+  /** Activates or deactivates a member (inactive members get no roles in `rolesFor`). Keeps one active owner. */
+  async setMemberStatus(tenantId: string, userId: string, status: "active" | "inactive"): Promise<TenantMembership> {
+    return this.db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(tenantMemberships)
+        .where(and(eq(tenantMemberships.tenantId, tenantId), eq(tenantMemberships.userId, userId)))
+        .for("update")
+        .limit(1);
+      if (!current) throw notFound("Member");
+      if (
+        status === "inactive" &&
+        current.status === "active" &&
+        current.roles.includes("owner") &&
+        (await this.ownerCount(tx, tenantId)) <= 1
+      ) {
+        throw badRequest("A tenant needs at least one owner");
+      }
+      const [m] = await tx
+        .update(tenantMemberships)
+        .set({ status })
         .where(and(eq(tenantMemberships.tenantId, tenantId), eq(tenantMemberships.userId, userId)))
         .returning();
       return m!;

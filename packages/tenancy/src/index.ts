@@ -6,6 +6,7 @@ import { TenancyService, type TenancyDeps } from "./service";
 
 export * from "./schema";
 export * from "./slug";
+export * from "./roles";
 export { TenancyService, publicTenant, toTenantRef } from "./service";
 export type { CreateTenantInput, ResolveInput, TenancyDeps, TenantWithRoles } from "./service";
 export { tenancyRoutes } from "./routes";

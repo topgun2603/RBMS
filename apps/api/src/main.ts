@@ -14,7 +14,9 @@ const app = await buildServer({
   corsOrigins: env.CORS_ORIGINS.split(",").map((s) => corsOrigin(s.trim())),
   contextHooks: kit.contextHooks,
   preHandlers: kit.preHandlers,
+  onResponse: kit.onResponse,
   modules: kit.modules,
+  routeRules: kit.routeRules,
 });
 
 await kit.start();

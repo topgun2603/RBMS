@@ -71,6 +71,21 @@ export function defineAppSettings(settings: SettingsService) {
     },
   );
 
+  // Order handling (read by the orders module through its OrderSettingsPort).
+  settings.define(
+    "orders",
+    z.object({
+      prefix: z.string().regex(/^[A-Z0-9-]{1,6}$/, "1–6 capital letters, digits or hyphens"),
+      /** When the GST invoice for an order is issued. */
+      invoiceOn: z.enum(["confirmed", "delivered"]),
+      allowBackorder: z.boolean(),
+      /** Confirm new orders automatically (online orders once paid). */
+      autoConfirm: z.boolean(),
+      notifyOwner: z.boolean(),
+    }),
+    { prefix: "ORD", invoiceOn: "delivered", allowBackorder: false, autoConfirm: false, notifyOwner: true },
+  );
+
   settings.define(
     "notifications",
     z.object({

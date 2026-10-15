@@ -1,0 +1,366 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  allowedTransitions,
+  balanceOf,
+  BLOCKING_EFFECTS,
+  buildBaseLines,
+  computeOrderTotals,
+  customerKeyOf,
+  derivePaymentStatus,
+  exclusiveOf,
+  istRange,
+  itemsText,
+  monthStart,
+  moneyText,
+  normalizeSettings,
+  ORDER_TEMPLATES,
+  planPlacement,
+  planTransition,
+  principalRate,
+  runEffects,
+  shouldAutoConfirm,
+  splitProportionally,
+  toIndianE164,
+  type OrderEffect,
+  type TransitionState,
+} from "./logic";
+import type { CatalogItem } from "./ports";
+import { ORDER_STATUSES, type OrderStatus } from "./schema";
+
+// ------------------------------------------------------------------ status machine
+
+const ALLOWED: Record<OrderStatus, OrderStatus[]> = {
+  placed: ["confirmed", "packed", "shipped", "delivered", "cancelled"],
+  confirmed: ["packed", "shipped", "delivered", "cancelled"],
+  packed: ["shipped", "delivered", "cancelled"],
+  shipped: ["delivered"],
+  delivered: ["returned"],
+  cancelled: [],
+  returned: [],
+};
+
+const state = (patch: Partial<TransitionState> = {}): TransitionState => ({
+  status: "placed",
+  paymentMethod: "online",
+  total: 10_000,
+  paid: 0,
+  stockState: "reserved",
+  couponCode: null,
+  invoiceId: null,
+  ...patch,
+});
+const opts = { invoiceOn: "delivered" as const, returnsEnabled: true };
+const types = (effects: OrderEffect[]) => effects.map((e) => (e.type === "notify" ? `notify:${e.template}:${e.audience}` : e.type));
+
+describe("allowedTransitions / planTransition: every pair", () => {
+  for (const from of ORDER_STATUSES) {
+    for (const to of ORDER_STATUSES) {
+      const allowed = ALLOWED[from].includes(to);
+      it(`${from} → ${to}: ${allowed ? "allowed" : from === to ? "same" : "refused"}`, () => {
+        const plan = planTransition(state({ status: from }), to, opts);
+        expect(plan.ok).toBe(allowed);
+        if (!plan.ok) expect(plan.code).toBe(from === to ? "same_status" : "not_allowed");
+      });
+    }
+  }
+
+  it("lists next statuses; returns only with the feature", () => {
+    for (const s of ORDER_STATUSES) expect(allowedTransitions(s, { returnsEnabled: true })).toEqual(ALLOWED[s]);
+    expect(allowedTransitions("delivered", { returnsEnabled: false })).toEqual([]);
+    const plan = planTransition(state({ status: "delivered" }), "returned", { ...opts, returnsEnabled: false });
+    expect(plan).toMatchObject({ ok: false, code: "feature_disabled" });
+  });
+});
+
+describe("planTransition: side effects", () => {
+  it("confirmed notifies; invoices only when invoiceOn = confirmed", () => {
+    const p = planTransition(state(), "confirmed", opts);
+    expect(p.ok && types(p.effects)).toEqual(["notify:order.confirmed:customer"]);
+    const q = planTransition(state(), "confirmed", { ...opts, invoiceOn: "confirmed" });
+    expect(q.ok && types(q.effects)).toEqual(["invoice.create", "notify:order.confirmed:customer"]);
+    const has = planTransition(state({ invoiceId: "inv1" }), "confirmed", { ...opts, invoiceOn: "confirmed" });
+    expect(has.ok && types(has.effects)).toEqual(["notify:order.confirmed:customer"]);
+  });
+
+  it("packed has no side effects; shipped notifies", () => {
+    const p = planTransition(state({ status: "confirmed" }), "packed", opts);
+    expect(p.ok && p.effects).toEqual([]);
+    const s = planTransition(state({ status: "packed" }), "shipped", opts);
+    expect(s.ok && types(s.effects)).toEqual(["notify:order.shipped:customer"]);
+  });
+
+  it("delivered commits stock, invoices and notifies", () => {
+    const p = planTransition(state({ status: "shipped", paid: 10_000 }), "delivered", opts);
+    expect(p.ok && types(p.effects)).toEqual(["stock.commit", "invoice.create", "notify:order.delivered:customer"]);
+  });
+
+  it("delivered COD: marks paid before invoicing", () => {
+    const p = planTransition(state({ status: "shipped", paymentMethod: "cod" }), "delivered", opts);
+    expect(p.ok && types(p.effects)).toEqual(["stock.commit", "payment.collectCod", "invoice.create", "notify:order.delivered:customer"]);
+    const paid = planTransition(state({ status: "shipped", paymentMethod: "cod", paid: 10_000 }), "delivered", opts);
+    expect(paid.ok && types(paid.effects)).not.toContain("payment.collectCod");
+  });
+
+  it("delivered with invoiceOn = confirmed doesn't invoice twice, but catches up when missing", () => {
+    const done = planTransition(state({ status: "shipped", invoiceId: "inv1", paid: 10_000 }), "delivered", { ...opts, invoiceOn: "confirmed" });
+    expect(done.ok && types(done.effects)).toEqual(["stock.commit", "notify:order.delivered:customer"]);
+    const missing = planTransition(state({ status: "shipped", paid: 10_000 }), "delivered", { ...opts, invoiceOn: "confirmed" });
+    expect(missing.ok && types(missing.effects)).toContain("invoice.create");
+  });
+
+  it("delivered without reserved stock doesn't commit", () => {
+    const p = planTransition(state({ status: "shipped", stockState: "none", paid: 10_000 }), "delivered", opts);
+    expect(p.ok && types(p.effects)).toEqual(["invoice.create", "notify:order.delivered:customer"]);
+  });
+
+  it("skipping forward gathers the steps' effects and notifies once for the final status", () => {
+    const p = planTransition(state({ paymentMethod: "cash", paid: 0 }), "delivered", { ...opts, invoiceOn: "confirmed" });
+    expect(p.ok && p.path).toEqual(["confirmed", "packed", "shipped", "delivered"]);
+    expect(p.ok && types(p.effects)).toEqual(["stock.commit", "invoice.create", "notify:order.delivered:customer"]);
+  });
+
+  it("cancelled releases stock and coupon, cancels the invoice, notifies", () => {
+    const p = planTransition(state({ status: "confirmed", couponCode: "DIWALI10", invoiceId: "inv1" }), "cancelled", opts);
+    expect(p.ok && types(p.effects)).toEqual(["stock.release", "invoice.cancel", "coupon.release", "notify:order.cancelled:customer"]);
+    const bare = planTransition(state({ stockState: "none" }), "cancelled", opts);
+    expect(bare.ok && types(bare.effects)).toEqual(["notify:order.cancelled:customer"]);
+    expect(bare.ok && bare.path).toEqual(["cancelled"]);
+  });
+
+  it("returned restocks sold stock and cancels the invoice, no message", () => {
+    const p = planTransition(state({ status: "delivered", stockState: "committed", invoiceId: "inv1" }), "returned", opts);
+    expect(p.ok && types(p.effects)).toEqual(["stock.restock", "invoice.cancel"]);
+    const none = planTransition(state({ status: "delivered", stockState: "none" }), "returned", opts);
+    expect(none.ok && none.effects).toEqual([]);
+  });
+});
+
+describe("planPlacement / auto-confirm", () => {
+  it("reserves stock, redeems the coupon, then tells customer and owner", () => {
+    expect(types(planPlacement({ couponCode: "DIWALI10", notifyOwner: true }))).toEqual([
+      "stock.reserve",
+      "coupon.redeem",
+      "notify:order.placed:customer",
+      "notify:order.received:owner",
+    ]);
+    expect(types(planPlacement({ couponCode: null, notifyOwner: false }))).toEqual(["stock.reserve", "notify:order.placed:customer"]);
+    expect(BLOCKING_EFFECTS).toEqual(["stock.reserve", "coupon.redeem"]);
+    expect(ORDER_TEMPLATES.placed).toBe("order.placed");
+  });
+  it("auto-confirms non-online orders at once and online orders once paid", () => {
+    const o = { status: "placed" as const, paymentMethod: "online" as const, paid: 0, total: 100 };
+    expect(shouldAutoConfirm({ autoConfirm: true }, o)).toBe(false);
+    expect(shouldAutoConfirm({ autoConfirm: true }, { ...o, paid: 100 })).toBe(true);
+    expect(shouldAutoConfirm({ autoConfirm: true }, { ...o, paymentMethod: "cod" })).toBe(true);
+    expect(shouldAutoConfirm({ autoConfirm: false }, { ...o, paymentMethod: "cod" })).toBe(false);
+    expect(shouldAutoConfirm({ autoConfirm: true }, { ...o, status: "confirmed", paid: 100 })).toBe(false);
+  });
+});
+
+describe("runEffects", () => {
+  const e1: OrderEffect = { type: "stock.reserve" };
+  const e2: OrderEffect = { type: "coupon.redeem" };
+  const e3: OrderEffect = { type: "notify", template: "order.placed", audience: "customer" };
+
+  it("blocking: undoes completed effects in reverse and rethrows", async () => {
+    const undo = vi.fn(async () => undefined);
+    const run = vi.fn(async (e: OrderEffect) => {
+      if (e.type === "coupon.redeem") throw new Error("usage_limit");
+    });
+    await expect(runEffects([e1, e2, e3], run, { mode: "blocking", undo })).rejects.toThrow("usage_limit");
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(undo.mock.calls).toEqual([[e1]]);
+  });
+
+  it("best-effort: reports failures and keeps going", async () => {
+    const onFailure = vi.fn();
+    const run = vi.fn(async (e: OrderEffect) => {
+      if (e.type === "stock.reserve") throw new Error("down");
+    });
+    const r = await runEffects([e1, e2, e3], run, { mode: "best-effort", onFailure });
+    expect(run).toHaveBeenCalledTimes(3);
+    expect(r.failed).toEqual([e1]);
+    expect(r.done).toEqual([e2, e3]);
+    expect(onFailure).toHaveBeenCalledWith(e1, expect.any(Error));
+  });
+
+  it("best-effort survives a failing failure reporter", async () => {
+    const r = await runEffects([e1, e3], async (e) => {
+      if (e === e1) throw new Error("x");
+    }, {
+      mode: "best-effort",
+      onFailure: () => {
+        throw new Error("log down");
+      },
+    });
+    expect(r.done).toEqual([e3]);
+  });
+});
+
+describe("payment status", () => {
+  const p = (patch: Partial<Parameters<typeof derivePaymentStatus>[0]>) =>
+    derivePaymentStatus({ total: 1000, paid: 0, refunded: 0, paymentMethod: "online", ...patch });
+  it("derives from money and method", () => {
+    expect(p({})).toBe("pending");
+    expect(p({ paymentMethod: "cod" })).toBe("cod");
+    expect(p({ paymentMethod: "cash" })).toBe("unpaid");
+    expect(p({ paymentMethod: "cash", paid: 500 })).toBe("unpaid");
+    expect(p({ paid: 1000 })).toBe("paid");
+    expect(p({ paid: 1000, refunded: 300 })).toBe("partially_refunded");
+    expect(p({ paid: 1000, refunded: 1000 })).toBe("refunded");
+    expect(p({ total: 0, paymentMethod: "cash" })).toBe("paid");
+  });
+  it("balance", () => {
+    expect(balanceOf({ total: 1000, paid: 1000, refunded: 200 })).toBe(200);
+  });
+});
+
+// ------------------------------------------------------------------ pricing
+
+const item = (patch: Partial<CatalogItem> = {}): CatalogItem => ({
+  id: "v1",
+  productId: "p1",
+  name: "Cotton Saree – Red",
+  sku: "SAR-RED",
+  barcode: null,
+  hsn: "5208",
+  unit: "pcs",
+  rate: 47524,
+  price: 49900,
+  taxInclusive: true,
+  gstRate: 5,
+  image: null,
+  categoryId: "c1",
+  ...patch,
+});
+
+describe("exclusiveOf", () => {
+  it("strips GST from tax-inclusive prices only", () => {
+    expect(exclusiveOf(49900, 5, true)).toBe(47524);
+    expect(exclusiveOf(11800, 18, true)).toBe(10000);
+    expect(exclusiveOf(10000, 0, true)).toBe(10000);
+    expect(exclusiveOf(10000, 18, false)).toBe(10000);
+    expect(exclusiveOf(100, 0.25, true)).toBe(100);
+  });
+});
+
+describe("buildBaseLines", () => {
+  it("prices from the catalogue and ignores client prices unless allowed", () => {
+    const r = buildBaseLines([item()], [{ variantId: "v1", qty: 2, price: 100 }], { allowPriceOverride: false });
+    expect(r.ok && r.lines[0]).toMatchObject({ price: 49900, rate: 47524, gross: 99800, gstRate: 5, categoryId: "c1" });
+    const m = buildBaseLines([item()], [{ variantId: "v1", qty: 2, price: 45000 }], { allowPriceOverride: true });
+    expect(m.ok && m.lines[0]).toMatchObject({ price: 45000, rate: exclusiveOf(45000, 5, true), gross: 90000 });
+  });
+  it("reports unknown variants and bad GST rates", () => {
+    expect(buildBaseLines([item()], [{ variantId: "v2", qty: 1 }], { allowPriceOverride: false })).toEqual({ ok: false, missing: ["v2"], badGst: [] });
+    expect(buildBaseLines([item({ gstRate: 7 })], [{ variantId: "v1", qty: 1 }], { allowPriceOverride: false })).toEqual({
+      ok: false,
+      missing: [],
+      badGst: ["v1"],
+    });
+  });
+  it("handles fractional quantities", () => {
+    const r = buildBaseLines([item({ unit: "m", price: 12050, taxInclusive: false })], [{ variantId: "v1", qty: 2.5 }], { allowPriceOverride: false });
+    expect(r.ok && r.lines[0]!.gross).toBe(30125);
+  });
+});
+
+describe("computeOrderTotals", () => {
+  const lines = (items: CatalogItem[], qty = 1) => {
+    const r = buildBaseLines(items, items.map((i) => ({ variantId: i.id, qty })), { allowPriceOverride: false });
+    if (!r.ok) throw new Error("bad");
+    return r.lines;
+  };
+
+  it("tax-inclusive MRP: the customer pays the shelf price", () => {
+    const { lines: l, totals } = computeOrderTotals(lines([item()]), { shipping: 0, sellerState: "33", placeOfSupply: "33" });
+    expect(l[0]).toMatchObject({ rate: 47524, taxable: 47524, cgst: 1188, sgst: 1188, igst: 0, discount: 0, price: 49900, variantId: "v1" });
+    expect(totals).toMatchObject({ subtotal: 49900, discount: 0, shipping: 0, total: 49900, interState: false, shippingLine: null });
+  });
+
+  it("inter-state supply uses IGST", () => {
+    const { totals } = computeOrderTotals(lines([item({ taxInclusive: false, price: 10000, rate: 10000, gstRate: 18 })]), {
+      shipping: 0,
+      sellerState: "33",
+      placeOfSupply: "29",
+    });
+    expect(totals).toMatchObject({ taxable: 10000, igst: 1800, cgst: 0, sgst: 0, total: 11800, interState: true });
+  });
+
+  it("coupon shares are converted to the exclusive basis on tax-inclusive lines", () => {
+    // ₹499 saree with ₹49.90 off (10%): the customer pays ₹449.10 → rounds to ₹449.
+    const { lines: l, totals } = computeOrderTotals(lines([item()]), { lineDiscounts: [4990], shipping: 0, sellerState: "33", placeOfSupply: "33" });
+    expect(l[0]!.discount).toBe(exclusiveOf(4990, 5, true)); // 4752
+    expect(l[0]!.taxable).toBe(47524 - 4752);
+    expect(totals.discount).toBe(4990);
+    expect(totals.total).toBe(44900);
+  });
+
+  it("coupon on exclusive lines reduces the taxable value directly", () => {
+    const { lines: l } = computeOrderTotals(lines([item({ taxInclusive: false, price: 10000, rate: 10000, gstRate: 18 })]), {
+      lineDiscounts: [1000],
+      shipping: 0,
+      sellerState: "33",
+      placeOfSupply: "33",
+    });
+    expect(l[0]).toMatchObject({ discount: 1000, taxable: 9000, cgst: 810, sgst: 810, total: 10620 });
+  });
+
+  it("shipping is a GST-inclusive composite line at the principal item's rate", () => {
+    const base = lines([item({ id: "v1", gstRate: 5, price: 49900 }), item({ id: "v2", gstRate: 12, price: 10000, taxInclusive: true })]);
+    const { lines: l, totals } = computeOrderTotals(base, { shipping: 5000, sellerState: "33", placeOfSupply: "33" });
+    expect(l).toHaveLength(2);
+    expect(totals.shippingLine).toMatchObject({ description: "Shipping charges", hsn: "996812", gstRate: 5, rate: exclusiveOf(5000, 5, true) });
+    expect(totals.shipping).toBe(5000);
+    expect(totals.total).toBe(49900 + 10000 + 5000);
+  });
+
+  it("free shipping waives the charge", () => {
+    const { totals } = computeOrderTotals(lines([item()]), { shipping: 5000, freeShipping: true, sellerState: "33", placeOfSupply: "33" });
+    expect(totals).toMatchObject({ shipping: 0, shippingWaived: 5000, shippingLine: null, total: 49900 });
+  });
+
+  it("principal rate: largest taxable value, ties to the higher rate", () => {
+    expect(principalRate([{ gstRate: 5, amount: 100 }, { gstRate: 18, amount: 50 }])).toBe(5);
+    expect(principalRate([{ gstRate: 5, amount: 100 }, { gstRate: 12, amount: 100 }])).toBe(12);
+    expect(principalRate([])).toBe(0);
+  });
+
+  it("splits a discount proportionally", () => {
+    expect(splitProportionally(100, [300, 100])).toEqual([75, 25]);
+    expect(splitProportionally(10, [1, 1, 1])).toEqual([1, 1, 1]);
+    expect(splitProportionally(100, [100, 100, 100])).toEqual([34, 33, 33]);
+  });
+});
+
+describe("helpers", () => {
+  it("settings defaults", () => {
+    expect(normalizeSettings({})).toEqual({ prefix: "ORD", invoiceOn: "delivered", allowBackorder: false, autoConfirm: false, notifyOwner: true });
+    expect(normalizeSettings({ prefix: " SHOP ", invoiceOn: "confirmed", autoConfirm: true, notifyOwner: false })).toMatchObject({
+      prefix: "SHOP",
+      invoiceOn: "confirmed",
+      autoConfirm: true,
+      notifyOwner: false,
+    });
+  });
+  it("customer keys and phones", () => {
+    expect(customerKeyOf({ accountId: "a1", phone: "9876543210" })).toBe("acct:a1");
+    expect(customerKeyOf({ phone: "098765 43210" })).toBe("ph:+919876543210");
+    expect(customerKeyOf({ email: " Ravi@Mail.com " })).toBe("em:ravi@mail.com");
+    expect(customerKeyOf({})).toBeNull();
+    expect(toIndianE164("+1 555 0100")).toBeNull();
+  });
+  it("text helpers", () => {
+    expect(moneyText(123450, "sms")).toBe("Rs.1,234.50");
+    expect(moneyText(123450, "whatsapp")).toBe("₹1,234.50");
+    expect(itemsText([{ qty: 2, unit: "pcs" }, { qty: 2.5, unit: "m" }])).toBe("3 items");
+    expect(itemsText([{ qty: 1, unit: "pcs" }])).toBe("1 item");
+  });
+  it("IST ranges", () => {
+    const r = istRange("2026-10-01", "2026-10-31");
+    expect(r.start?.toISOString()).toBe("2026-09-30T18:30:00.000Z");
+    expect(r.end?.toISOString()).toBe("2026-10-31T18:30:00.000Z");
+    expect(istRange(null, null)).toEqual({ start: null, end: null });
+    expect(monthStart("2026-10-15")).toBe("2026-10-01");
+  });
+});

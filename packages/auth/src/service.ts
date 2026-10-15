@@ -11,10 +11,10 @@ import {
   tooMany,
 } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, desc, eq, gt, ilike, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { detectTarget, maskTarget, normalizeEmail, otpHash, otpRetryAfter, type Target } from "./helpers";
-import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender } from "./ports";
+import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 import { authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
 
 export interface AuthConfig {
@@ -39,6 +39,8 @@ export interface AuthDeps {
   config: AuthConfig;
   otp: OtpSender;
   memberships: MembershipLookup;
+  /** Resolves `user.permissions` from tenant roles (wire to staff.resolver). Default: owner/admin → ["*"], others → []. */
+  permissions?: PermissionResolverPort;
   log?: LoggerPort;
   /** Override Google ID token verification (tests). */
   verifyGoogleToken?: GoogleTokenVerifier;
@@ -55,6 +57,15 @@ export interface AuthUser {
   platformRoles: string[];
   status: UserStatus;
   createdAt: Date;
+}
+
+/** Minimal user details for member lists. */
+export interface DirectoryUser {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  lastLoginAt: Date | null;
 }
 
 export interface SessionInfo {
@@ -389,6 +400,20 @@ export class AuthService {
   async getUser(id: string): Promise<AuthUser | null> {
     const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return row ? toAuthUser(row) : null;
+  }
+
+  /**
+   * Directory entries for many users at once (staff lists). Unknown ids are left out.
+   * Shape matches the staff module's `UserDirectoryPort.getUsers`.
+   */
+  async getUsers(ids: string[]): Promise<DirectoryUser[]> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return [];
+    const rows = await this.db
+      .select({ id: users.id, name: users.name, phone: users.phone, email: users.email, lastLoginAt: users.lastLoginAt })
+      .from(users)
+      .where(inArray(users.id, unique));
+    return rows;
   }
 
   async updateProfile(id: string, patch: { name?: string | null; avatarUrl?: string | null; locale?: string }): Promise<AuthUser> {

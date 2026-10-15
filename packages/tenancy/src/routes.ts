@@ -14,8 +14,9 @@ import { z } from "zod";
 import { TENANT_STATUSES } from "./schema";
 import { publicTenant, type TenancyService } from "./service";
 
-const role = z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/, "Invalid role");
-const roles = z.array(role).min(1).max(10);
+/** Base levels and `role:<key>` custom roles; the service validates the combination (normalizeMemberRoles). */
+const role = z.string().regex(/^(role:)?[a-z][a-z0-9_-]{0,31}$/, "Invalid role");
+const roles = z.array(role).min(1).max(21);
 const uuidParam = (name: string) => z.object({ [name]: z.string().uuid() });
 
 const createTenantBody = z.object({

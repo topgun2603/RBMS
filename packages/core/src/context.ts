@@ -15,6 +15,12 @@ export interface UserRef {
   platformRoles: string[];
   /** Roles inside the current tenant, e.g. "owner", "admin", "staff", "member". */
   tenantRoles: string[];
+  /**
+   * Permission patterns in the current tenant (`"*"`, `"invoices.*"`, `"invoices.cancel"`), filled by auth from the
+   * member's roles; `[]` without a tenant. Optional in the type so older hand-built contexts (tests) stay valid —
+   * treat a missing value as `[]`. Check with `hasPermission` / `requirePermission`.
+   */
+  permissions?: string[];
 }
 
 /** Per-request context. Tenancy fills `tenant`, auth fills `user`. */

@@ -87,7 +87,8 @@ describe("upsertStockStatement", () => {
   it("adds the delta atomically and returns the new qty", () => {
     const { sql, params } = upsertStockStatement(db, { tenantId: "t1", itemId: ITEM, deltaMilli: -2500 }).toSQL();
     expect(sql).toContain('insert into "stock_items"');
-    expect(sql).toContain('on conflict ("tenant_id","item_id") do update set');
+    // Multi-location: one row per (tenant, location, item).
+    expect(sql).toContain('on conflict ("tenant_id","location_id","item_id") do update set');
     expect(sql).toMatch(/"qty" = "stock_items"\."qty" \+ \$\d+::numeric/);
     expect(sql).toContain('returning "id", "qty", "avg_cost", "track"');
     expect(params).toContain("-2.500");
@@ -158,6 +159,24 @@ describe("applySale", () => {
   });
 });
 
+describe("backfillLocations", () => {
+  it("reports the rows it moved (the first heal of a tenant is the counted one)", async () => {
+    const main = { id: "loc-main", tenantId: "t1", name: "Main", code: "MAIN", isDefault: true, active: true };
+    const db = {
+      execute: vi.fn(async () => [{ tenant_id: "t1" }]),
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => [main] }) }) }),
+    };
+    const service = new InventoryService({ db: db as never, catalog: { getItems: vi.fn(), listItems: vi.fn() }, sellerState: { stateCode: vi.fn() } });
+    // Like the database: the legacy rows move once, later heals find nothing.
+    const heal = vi
+      .spyOn(service as unknown as { healTenant: () => Promise<unknown> }, "healTenant")
+      .mockResolvedValueOnce({ stockItems: 2, movements: 14, skipped: 0 })
+      .mockResolvedValue({ stockItems: 0, movements: 0, skipped: 0 });
+    expect(await service.backfillLocations()).toEqual({ tenants: 1, stockItems: 2, movements: 14, skipped: 0 });
+    expect(heal).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("createInventory", () => {
   it("builds the module", () => {
     const { module, service } = createInventory({
@@ -166,7 +185,15 @@ describe("createInventory", () => {
       sellerState: { stateCode: async () => "33" },
     });
     expect(module.id).toBe("inventory");
-    expect(Object.keys(module.tables ?? {})).toEqual(["stockItems", "stockMovements", "suppliers", "purchases"]);
+    expect(Object.keys(module.tables ?? {})).toEqual([
+      "stockItems",
+      "stockMovements",
+      "suppliers",
+      "purchases",
+      "stockLocations",
+      "stockTransfers",
+      "stockReservations",
+    ]);
     expect(service).toBeInstanceOf(InventoryService);
   });
 });

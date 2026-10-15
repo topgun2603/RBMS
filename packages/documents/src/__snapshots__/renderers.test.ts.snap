@@ -1,0 +1,93 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`invoice (A4) > is deterministic (snapshot of the body) 1`] = `
+"<body>
+<article class="doc">
+
+<header class="head">
+  <div>
+    <div class="brand"><span class="name">Raja Textiles &lt;Pvt&gt;</span></div>
+    <div class="seller"><p>12, Gandhi Road<br>T. Nagar</p><p>Chennai – 600017</p><p>State: 33 – Tamil Nadu</p><p>+919876543210 · raja@example.com</p><p class="strong">GSTIN: <span class="mono">33AAACR5055K1ZE</span></p></div>
+  </div>
+  <div class="title">
+    <h1>Tax Invoice</h1>
+    <dl class="meta">
+      <dt>Invoice no.</dt><dd class="num">INV/26-27/0042</dd>
+      <dt>Date</dt><dd class="num">15 Oct 2026</dd>
+      <dt>Due date</dt><dd class="num">30 Oct 2026</dd>
+      <dt>Place of supply</dt><dd>33 – Tamil Nadu</dd>
+    </dl>
+  </div>
+</header>
+<section class="buyer avoid">
+  <p class="label">Bill to</p>
+  <p class="b">முருகன் ஸ்டோர்ஸ்</p>
+  <p class="muted">5, Car Street<br>Madurai</p>
+  <p class="small muted">State: 33 – Tamil Nadu &nbsp; +919800000001</p>
+  <p class="small b">GSTIN: <span class="mono">33AAACR5055K1ZE</span></p>
+</section>
+<table class="lines">
+<thead><tr><th>#</th><th>Item</th><th>HSN/SAC</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Taxable</th><th class="r">GST</th><th class="r">CGST</th><th class="r">SGST</th><th class="r">Amount</th></tr></thead>
+<tbody>
+<tr>
+<td class="muted num">1</td>
+<td><div class="b">பட்டு சேலை (Silk saree)</div><div class="xs muted">Discount: −₹100.00</div></td>
+<td class="mono small">5007</td>
+<td class="r num">2 pcs</td>
+<td class="r num">₹2,500.00</td>
+<td class="r num">₹4,900.00</td>
+<td class="r num">5%</td>
+<td class="r num">₹122.50</td><td class="r num">₹122.50</td>
+<td class="r num b">₹5,145.00</td>
+</tr>
+<tr>
+<td class="muted num">2</td>
+<td><div class="b">Cotton dhoti &quot;premium&quot; &lt;b&gt;</div></td>
+<td class="mono small">5208</td>
+<td class="r num">1.5 m</td>
+<td class="r num">₹450.50</td>
+<td class="r num">₹675.75</td>
+<td class="r num">5%</td>
+<td class="r num">₹16.89</td><td class="r num">₹16.89</td>
+<td class="r num b">₹709.53</td>
+</tr>
+<tr>
+<td class="muted num">3</td>
+<td><div class="b">Stitching</div></td>
+<td class="mono small">9988</td>
+<td class="r num">1 job</td>
+<td class="r num">₹300.00</td>
+<td class="r num">₹300.00</td>
+<td class="r num">18%</td>
+<td class="r num">₹27.00</td><td class="r num">₹27.00</td>
+<td class="r num b">₹354.00</td>
+</tr>
+</tbody>
+</table>
+<section class="sum avoid">
+  <div class="left">
+    <p class="label">Tax breakup</p>
+<table class="breakup"><thead><tr><th>GST</th><th class="r">Taxable</th><th class="r">CGST</th><th class="r">SGST</th><th class="r">Total tax</th></tr></thead><tbody>
+<tr><td class="num">5%</td><td class="r num">₹5,575.75</td><td class="r num">₹139.39</td><td class="r num">₹139.39</td><td class="r num">₹278.78</td></tr><tr><td class="num">18%</td><td class="r num">₹300.00</td><td class="r num">₹27.00</td><td class="r num">₹27.00</td><td class="r num">₹54.00</td></tr>
+</tbody></table>
+    <div class="words"><p class="xs muted">Amount in words</p><p class="b">Six Thousand Two Hundred Nine Rupees Only</p></div>
+  </div>
+  <dl class="right"><div class="tot"><dt>Subtotal</dt><dd class="num">₹5,975.75</dd></div><div class="tot"><dt>Discount</dt><dd class="num">−₹100.00</dd></div><div class="tot"><dt>Taxable value</dt><dd class="num">₹5,875.75</dd></div><div class="tot"><dt>CGST</dt><dd class="num">₹166.39</dd></div><div class="tot"><dt>SGST</dt><dd class="num">₹166.39</dd></div><div class="tot"><dt>Round off</dt><dd class="num">+₹0.47</dd></div><div class="tot grand"><dt>Total</dt><dd class="num">₹6,209.00</dd></div><div class="tot"><dt>Paid</dt><dd class="num">₹1,000.00</dd></div><div class="tot b"><dt>Balance</dt><dd class="num">₹5,209.00</dd></div></dl>
+</section>
+<section class="foot avoid">
+  <div class="left">
+    <div><p class="label">Bank details</p><p>Indian Bank</p><p>A/c no.: <span class="mono">1234567890</span></p><p>IFSC: <span class="mono">IDIB000T001</span></p><p>UPI: <span class="mono">raja@okicici</span></p></div>
+    <div><p class="label">Notes</p><p>Deliver before Deepavali</p></div>
+    <div><p class="label">Terms &amp; conditions</p><p class="muted">Goods once sold will not be taken back.</p></div>
+    
+  </div>
+  <div>
+    <div class="pay"><svg xmlns="http://www.w3.org/2000/svg" class="qr" width="104" height="104" viewBox="0 0 45 45" shape-rendering="crispEdges" role="img" aria-label="UPI ₹5,209.00"><rect width="45" height="45" fill="#fff"/><path d="M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM11 2h1v1h-1zM12 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM21 2h1v1h-1zM23 2h1v1h-1zM33 2h1v1h-1zM36 2h1v1h-1zM37 2h1v1h-1zM38 2h1v1h-1zM39 2h1v1h-1zM40 2h1v1h-1zM41 2h1v1h-1zM42 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM12 3h1v1h-1zM15 3h1v1h-1zM17 3h1v1h-1zM20 3h1v1h-1zM27 3h1v1h-1zM29 3h1v1h-1zM31 3h1v1h-1zM32 3h1v1h-1zM36 3h1v1h-1zM42 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM15 4h1v1h-1zM16 4h1v1h-1zM17 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM23 4h1v1h-1zM24 4h1v1h-1zM26 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM33 4h1v1h-1zM36 4h1v1h-1zM38 4h1v1h-1zM39 4h1v1h-1zM40 4h1v1h-1zM42 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM16 5h1v1h-1zM20 5h1v1h-1zM21 5h1v1h-1zM22 5h1v1h-1zM23 5h1v1h-1zM25 5h1v1h-1zM27 5h1v1h-1zM28 5h1v1h-1zM29 5h1v1h-1zM34 5h1v1h-1zM36 5h1v1h-1zM38 5h1v1h-1zM39 5h1v1h-1zM40 5h1v1h-1zM42 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM18 6h1v1h-1zM22 6h1v1h-1zM25 6h1v1h-1zM26 6h1v1h-1zM30 6h1v1h-1zM31 6h1v1h-1zM33 6h1v1h-1zM36 6h1v1h-1zM38 6h1v1h-1zM39 6h1v1h-1zM40 6h1v1h-1zM42 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM14 7h1v1h-1zM15 7h1v1h-1zM17 7h1v1h-1zM19 7h1v1h-1zM20 7h1v1h-1zM22 7h1v1h-1zM24 7h1v1h-1zM27 7h1v1h-1zM29 7h1v1h-1zM32 7h1v1h-1zM36 7h1v1h-1zM42 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h1v1h-1zM37 8h1v1h-1zM38 8h1v1h-1zM39 8h1v1h-1zM40 8h1v1h-1zM41 8h1v1h-1zM42 8h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM13 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM21 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM29 9h1v1h-1zM30 9h1v1h-1zM33 9h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM13 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM27 10h1v1h-1zM28 10h1v1h-1zM29 10h1v1h-1zM30 10h1v1h-1zM31 10h1v1h-1zM32 10h1v1h-1zM34 10h1v1h-1zM36 10h1v1h-1zM37 10h1v1h-1zM38 10h1v1h-1zM39 10h1v1h-1zM40 10h1v1h-1zM2 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM9 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM18 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM25 11h1v1h-1zM27 11h1v1h-1zM30 11h1v1h-1zM33 11h1v1h-1zM34 11h1v1h-1zM35 11h1v1h-1zM36 11h1v1h-1zM37 11h1v1h-1zM38 11h1v1h-1zM39 11h1v1h-1zM41 11h1v1h-1zM42 11h1v1h-1zM2 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM18 12h1v1h-1zM20 12h1v1h-1zM22 12h1v1h-1zM26 12h1v1h-1zM29 12h1v1h-1zM30 12h1v1h-1zM32 12h1v1h-1zM34 12h1v1h-1zM37 12h1v1h-1zM38 12h1v1h-1zM39 12h1v1h-1zM3 13h1v1h-1zM9 13h1v1h-1zM13 13h1v1h-1zM15 13h1v1h-1zM20 13h1v1h-1zM23 13h1v1h-1zM26 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM30 13h1v1h-1zM32 13h1v1h-1zM38 13h1v1h-1zM39 13h1v1h-1zM41 13h1v1h-1zM42 13h1v1h-1zM5 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM26 14h1v1h-1zM27 14h1v1h-1zM28 14h1v1h-1zM30 14h1v1h-1zM35 14h1v1h-1zM39 14h1v1h-1zM40 14h1v1h-1zM2 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM14 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM22 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM26 15h1v1h-1zM29 15h1v1h-1zM30 15h1v1h-1zM35 15h1v1h-1zM36 15h1v1h-1zM37 15h1v1h-1zM38 15h1v1h-1zM39 15h1v1h-1zM40 15h1v1h-1zM42 15h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM15 16h1v1h-1zM17 16h1v1h-1zM21 16h1v1h-1zM24 16h1v1h-1zM25 16h1v1h-1zM26 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM29 16h1v1h-1zM32 16h1v1h-1zM36 16h1v1h-1zM37 16h1v1h-1zM38 16h1v1h-1zM40 16h1v1h-1zM41 16h1v1h-1zM2 17h1v1h-1zM3 17h1v1h-1zM4 17h1v1h-1zM5 17h1v1h-1zM6 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM21 17h1v1h-1zM22 17h1v1h-1zM23 17h1v1h-1zM25 17h1v1h-1zM26 17h1v1h-1zM32 17h1v1h-1zM36 17h1v1h-1zM38 17h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM6 18h1v1h-1zM7 18h1v1h-1zM8 18h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM13 18h1v1h-1zM14 18h1v1h-1zM17 18h1v1h-1zM21 18h1v1h-1zM23 18h1v1h-1zM24 18h1v1h-1zM26 18h1v1h-1zM27 18h1v1h-1zM28 18h1v1h-1zM30 18h1v1h-1zM31 18h1v1h-1zM32 18h1v1h-1zM34 18h1v1h-1zM35 18h1v1h-1zM39 18h1v1h-1zM40 18h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM7 19h1v1h-1zM10 19h1v1h-1zM11 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM27 19h1v1h-1zM33 19h1v1h-1zM35 19h1v1h-1zM36 19h1v1h-1zM38 19h1v1h-1zM41 19h1v1h-1zM42 19h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM8 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM15 20h1v1h-1zM19 20h1v1h-1zM23 20h1v1h-1zM27 20h1v1h-1zM28 20h1v1h-1zM29 20h1v1h-1zM32 20h1v1h-1zM34 20h1v1h-1zM35 20h1v1h-1zM36 20h1v1h-1zM39 20h1v1h-1zM40 20h1v1h-1zM3 21h1v1h-1zM9 21h1v1h-1zM10 21h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM14 21h1v1h-1zM16 21h1v1h-1zM17 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM22 21h1v1h-1zM29 21h1v1h-1zM31 21h1v1h-1zM32 21h1v1h-1zM34 21h1v1h-1zM35 21h1v1h-1zM36 21h1v1h-1zM39 21h1v1h-1zM41 21h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM7 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM14 22h1v1h-1zM18 22h1v1h-1zM23 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM29 22h1v1h-1zM30 22h1v1h-1zM31 22h1v1h-1zM32 22h1v1h-1zM34 22h1v1h-1zM41 22h1v1h-1zM3 23h1v1h-1zM4 23h1v1h-1zM5 23h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM22 23h1v1h-1zM25 23h1v1h-1zM26 23h1v1h-1zM28 23h1v1h-1zM30 23h1v1h-1zM31 23h1v1h-1zM32 23h1v1h-1zM33 23h1v1h-1zM35 23h1v1h-1zM36 23h1v1h-1zM37 23h1v1h-1zM38 23h1v1h-1zM39 23h1v1h-1zM40 23h1v1h-1zM42 23h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM7 24h1v1h-1zM8 24h1v1h-1zM10 24h1v1h-1zM12 24h1v1h-1zM14 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM18 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM29 24h1v1h-1zM31 24h1v1h-1zM34 24h1v1h-1zM36 24h1v1h-1zM37 24h1v1h-1zM39 24h1v1h-1zM40 24h1v1h-1zM5 25h1v1h-1zM6 25h1v1h-1zM9 25h1v1h-1zM10 25h1v1h-1zM12 25h1v1h-1zM13 25h1v1h-1zM14 25h1v1h-1zM15 25h1v1h-1zM16 25h1v1h-1zM17 25h1v1h-1zM21 25h1v1h-1zM23 25h1v1h-1zM24 25h1v1h-1zM25 25h1v1h-1zM26 25h1v1h-1zM28 25h1v1h-1zM29 25h1v1h-1zM34 25h1v1h-1zM38 25h1v1h-1zM39 25h1v1h-1zM3 26h1v1h-1zM4 26h1v1h-1zM7 26h1v1h-1zM8 26h1v1h-1zM9 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM12 26h1v1h-1zM17 26h1v1h-1zM18 26h1v1h-1zM19 26h1v1h-1zM20 26h1v1h-1zM24 26h1v1h-1zM26 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM30 26h1v1h-1zM31 26h1v1h-1zM35 26h1v1h-1zM40 26h1v1h-1zM4 27h1v1h-1zM5 27h1v1h-1zM6 27h1v1h-1zM7 27h1v1h-1zM9 27h1v1h-1zM11 27h1v1h-1zM12 27h1v1h-1zM15 27h1v1h-1zM16 27h1v1h-1zM17 27h1v1h-1zM20 27h1v1h-1zM21 27h1v1h-1zM22 27h1v1h-1zM23 27h1v1h-1zM27 27h1v1h-1zM33 27h1v1h-1zM34 27h1v1h-1zM36 27h1v1h-1zM37 27h1v1h-1zM38 27h1v1h-1zM42 27h1v1h-1zM2 28h1v1h-1zM7 28h1v1h-1zM8 28h1v1h-1zM9 28h1v1h-1zM12 28h1v1h-1zM13 28h1v1h-1zM16 28h1v1h-1zM19 28h1v1h-1zM22 28h1v1h-1zM23 28h1v1h-1zM28 28h1v1h-1zM29 28h1v1h-1zM30 28h1v1h-1zM35 28h1v1h-1zM2 29h1v1h-1zM4 29h1v1h-1zM7 29h1v1h-1zM12 29h1v1h-1zM16 29h1v1h-1zM18 29h1v1h-1zM20 29h1v1h-1zM21 29h1v1h-1zM23 29h1v1h-1zM26 29h1v1h-1zM29 29h1v1h-1zM32 29h1v1h-1zM35 29h1v1h-1zM37 29h1v1h-1zM38 29h1v1h-1zM39 29h1v1h-1zM41 29h1v1h-1zM42 29h1v1h-1zM2 30h1v1h-1zM4 30h1v1h-1zM5 30h1v1h-1zM6 30h1v1h-1zM8 30h1v1h-1zM10 30h1v1h-1zM11 30h1v1h-1zM14 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM26 30h1v1h-1zM27 30h1v1h-1zM28 30h1v1h-1zM29 30h1v1h-1zM31 30h1v1h-1zM34 30h1v1h-1zM35 30h1v1h-1zM36 30h1v1h-1zM40 30h1v1h-1zM42 30h1v1h-1zM2 31h1v1h-1zM3 31h1v1h-1zM6 31h1v1h-1zM9 31h1v1h-1zM14 31h1v1h-1zM15 31h1v1h-1zM16 31h1v1h-1zM18 31h1v1h-1zM19 31h1v1h-1zM23 31h1v1h-1zM26 31h1v1h-1zM31 31h1v1h-1zM32 31h1v1h-1zM33 31h1v1h-1zM35 31h1v1h-1zM36 31h1v1h-1zM37 31h1v1h-1zM38 31h1v1h-1zM39 31h1v1h-1zM40 31h1v1h-1zM41 31h1v1h-1zM42 31h1v1h-1zM2 32h1v1h-1zM4 32h1v1h-1zM5 32h1v1h-1zM7 32h1v1h-1zM8 32h1v1h-1zM11 32h1v1h-1zM12 32h1v1h-1zM13 32h1v1h-1zM15 32h1v1h-1zM17 32h1v1h-1zM20 32h1v1h-1zM25 32h1v1h-1zM27 32h1v1h-1zM29 32h1v1h-1zM32 32h1v1h-1zM33 32h1v1h-1zM36 32h1v1h-1zM39 32h1v1h-1zM41 32h1v1h-1zM2 33h1v1h-1zM4 33h1v1h-1zM5 33h1v1h-1zM9 33h1v1h-1zM11 33h1v1h-1zM12 33h1v1h-1zM14 33h1v1h-1zM16 33h1v1h-1zM17 33h1v1h-1zM23 33h1v1h-1zM28 33h1v1h-1zM29 33h1v1h-1zM33 33h1v1h-1zM34 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM39 33h1v1h-1zM41 33h1v1h-1zM2 34h1v1h-1zM4 34h1v1h-1zM8 34h1v1h-1zM9 34h1v1h-1zM10 34h1v1h-1zM12 34h1v1h-1zM13 34h1v1h-1zM14 34h1v1h-1zM16 34h1v1h-1zM18 34h1v1h-1zM19 34h1v1h-1zM22 34h1v1h-1zM27 34h1v1h-1zM28 34h1v1h-1zM30 34h1v1h-1zM31 34h1v1h-1zM32 34h1v1h-1zM33 34h1v1h-1zM34 34h1v1h-1zM35 34h1v1h-1zM36 34h1v1h-1zM37 34h1v1h-1zM38 34h1v1h-1zM39 34h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM14 35h1v1h-1zM16 35h1v1h-1zM18 35h1v1h-1zM20 35h1v1h-1zM21 35h1v1h-1zM22 35h1v1h-1zM23 35h1v1h-1zM25 35h1v1h-1zM26 35h1v1h-1zM27 35h1v1h-1zM28 35h1v1h-1zM31 35h1v1h-1zM32 35h1v1h-1zM33 35h1v1h-1zM34 35h1v1h-1zM38 35h1v1h-1zM39 35h1v1h-1zM42 35h1v1h-1zM2 36h1v1h-1zM3 36h1v1h-1zM4 36h1v1h-1zM5 36h1v1h-1zM6 36h1v1h-1zM7 36h1v1h-1zM8 36h1v1h-1zM12 36h1v1h-1zM13 36h1v1h-1zM20 36h1v1h-1zM23 36h1v1h-1zM29 36h1v1h-1zM31 36h1v1h-1zM32 36h1v1h-1zM33 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM38 36h1v1h-1zM39 36h1v1h-1zM2 37h1v1h-1zM8 37h1v1h-1zM10 37h1v1h-1zM11 37h1v1h-1zM14 37h1v1h-1zM15 37h1v1h-1zM16 37h1v1h-1zM17 37h1v1h-1zM18 37h1v1h-1zM21 37h1v1h-1zM22 37h1v1h-1zM23 37h1v1h-1zM24 37h1v1h-1zM30 37h1v1h-1zM34 37h1v1h-1zM38 37h1v1h-1zM41 37h1v1h-1zM42 37h1v1h-1zM2 38h1v1h-1zM4 38h1v1h-1zM5 38h1v1h-1zM6 38h1v1h-1zM8 38h1v1h-1zM10 38h1v1h-1zM12 38h1v1h-1zM13 38h1v1h-1zM14 38h1v1h-1zM16 38h1v1h-1zM18 38h1v1h-1zM20 38h1v1h-1zM22 38h1v1h-1zM23 38h1v1h-1zM27 38h1v1h-1zM28 38h1v1h-1zM30 38h1v1h-1zM34 38h1v1h-1zM35 38h1v1h-1zM36 38h1v1h-1zM37 38h1v1h-1zM38 38h1v1h-1zM40 38h1v1h-1zM2 39h1v1h-1zM4 39h1v1h-1zM5 39h1v1h-1zM6 39h1v1h-1zM8 39h1v1h-1zM10 39h1v1h-1zM11 39h1v1h-1zM12 39h1v1h-1zM16 39h1v1h-1zM18 39h1v1h-1zM19 39h1v1h-1zM21 39h1v1h-1zM25 39h1v1h-1zM27 39h1v1h-1zM28 39h1v1h-1zM30 39h1v1h-1zM33 39h1v1h-1zM37 39h1v1h-1zM40 39h1v1h-1zM2 40h1v1h-1zM4 40h1v1h-1zM5 40h1v1h-1zM6 40h1v1h-1zM8 40h1v1h-1zM10 40h1v1h-1zM11 40h1v1h-1zM12 40h1v1h-1zM16 40h1v1h-1zM17 40h1v1h-1zM19 40h1v1h-1zM20 40h1v1h-1zM22 40h1v1h-1zM23 40h1v1h-1zM27 40h1v1h-1zM29 40h1v1h-1zM30 40h1v1h-1zM32 40h1v1h-1zM33 40h1v1h-1zM34 40h1v1h-1zM36 40h1v1h-1zM38 40h1v1h-1zM39 40h1v1h-1zM2 41h1v1h-1zM8 41h1v1h-1zM12 41h1v1h-1zM15 41h1v1h-1zM17 41h1v1h-1zM19 41h1v1h-1zM22 41h1v1h-1zM23 41h1v1h-1zM24 41h1v1h-1zM29 41h1v1h-1zM30 41h1v1h-1zM32 41h1v1h-1zM34 41h1v1h-1zM35 41h1v1h-1zM37 41h1v1h-1zM38 41h1v1h-1zM39 41h1v1h-1zM41 41h1v1h-1zM2 42h1v1h-1zM3 42h1v1h-1zM4 42h1v1h-1zM5 42h1v1h-1zM6 42h1v1h-1zM7 42h1v1h-1zM8 42h1v1h-1zM10 42h1v1h-1zM16 42h1v1h-1zM18 42h1v1h-1zM19 42h1v1h-1zM20 42h1v1h-1zM24 42h1v1h-1zM26 42h1v1h-1zM27 42h1v1h-1zM28 42h1v1h-1zM29 42h1v1h-1zM31 42h1v1h-1zM40 42h1v1h-1z" fill="#000"/></svg><div class="r"><p class="b">Scan to pay</p><p class="amt num">₹5,209.00</p><p class="xs muted">GPay, PhonePe, Paytm or any UPI app</p></div></div>
+    <div class="sign"><p class="muted">For Raja Textiles &lt;Pvt&gt;</p><div class="line">Authorised signatory</div></div>
+  </div>
+</section>
+<p class="cg">This is a computer-generated invoice.</p>
+</article>
+</body>
+</html>"
+`;

@@ -1,4 +1,4 @@
-import { badRequest, conflict, notFound } from "@srirealtime/core";
+import { AppError, badRequest, conflict, notFound } from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   computeInvoice,
@@ -18,7 +18,7 @@ import {
   type LineInput,
   type TaxBreakupRow,
 } from "@srirealtime/gst";
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
   adjustmentDelta,
@@ -28,20 +28,44 @@ import {
   mergeQtyLines,
   milliToDecimal,
   movingAverageCost,
-  netByItem,
   stockStatus,
   stockValue,
   toMilli,
   unitCostOf,
   type StockStatus,
 } from "./logic";
+import {
+  activeReservations,
+  aggregateStock,
+  checkAvailability,
+  isItemTracked,
+  locationCodeFrom,
+  locationDeleteProblem,
+  locationPatchProblem,
+  netByLocationItem,
+  publicStockFlags,
+  reserveDecision,
+  transferProblem,
+  type ShortItem,
+  type StockLevelInput,
+} from "./levels";
 import { noopLogger, type CatalogItem, type ItemCatalogPort, type LoggerPort, type SellerStatePort } from "./ports";
 import {
+  LOCATION_TYPES,
   purchases,
+  type LocationType,
   type MovementReason,
+  type ReservationStatus,
   stockItems,
+  stockLocations,
   stockMovements,
+  stockReservations,
+  stockTransfers,
   suppliers,
+  type StockLocationRow,
+  type StockReservationRow,
+  type StockTransferRow,
+  type TransferLine,
   type PurchaseLine,
   type PurchaseRow,
   type PurchaseStatus,
@@ -51,13 +75,14 @@ import {
   type SupplierSnapshot,
 } from "./schema";
 
-
 export const MODULE_ID = "inventory";
 /** Money columns are Postgres `integer` (paise). */
 export const MAX_PAISE = 2_000_000_000;
 /** numeric(14,3) holds up to 99,999,999,999.999; stay well inside it. */
 export const MAX_QTY = 1_000_000_000;
 export const DEFAULT_SUPPLIER_NAME = "Cash purchase";
+export const DEFAULT_LOCATION_NAME = "Main";
+export const DEFAULT_LOCATION_CODE = "MAIN";
 
 export interface InventoryDeps {
   db: Db;
@@ -91,18 +116,87 @@ export interface StockRow {
   updatedAt: Date | null;
 }
 
+/** A StockRow with reservations, for one location (`locationId`) or summed over all locations (`locationId: null`). */
+export interface StockLevelRow extends StockRow {
+  reserved: number;
+  /** qty − reserved. */
+  available: number;
+  locationId: string | null;
+}
+
+export interface StockLocation {
+  id: string;
+  name: string;
+  code: string;
+  type: LocationType;
+  address: string | null;
+  isDefault: boolean;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StockTransfer {
+  id: string;
+  fromLocationId: string;
+  toLocationId: string;
+  lines: TransferLine[];
+  note: string | null;
+  createdBy: string | null;
+  createdAt: Date;
+}
+
+export interface ItemAvailability {
+  itemId: string;
+  /** qty − reserved (sum over locations unless a location was asked for). */
+  available: number;
+  tracked: boolean;
+}
+
+export interface PublicItemAvailability {
+  itemId: string;
+  inStock: boolean;
+  lowStock: boolean;
+}
+
+export interface ReservationLine {
+  itemId: string;
+  locationId: string;
+  qty: number;
+  status: ReservationStatus;
+}
+
+export interface ReserveInput {
+  /** e.g. "order". */
+  refType: string;
+  refId: string;
+  /** Default location when omitted. */
+  locationId?: string | null;
+  lines: { itemId: string; qty: number }[];
+  /** Hold the stock even when it isn't available (reserved may exceed qty). */
+  allowBackorder?: boolean;
+}
+
+export interface BackfillResult {
+  tenants: number;
+  stockItems: number;
+  movements: number;
+  /** Legacy rows left with a null location because the item already had a row at the default location. */
+  skipped: number;
+}
+
 export interface StockTotals {
   stockValue: number;
   lowCount: number;
   outCount: number;
 }
 
-export interface StockList extends ListResult<StockRow> {
+export interface StockList extends ListResult<StockLevelRow> {
   totals: StockTotals;
 }
 
 export interface StockSummary extends StockTotals {
-  lowItems: StockRow[];
+  lowItems: StockLevelRow[];
 }
 
 export interface Movement {
@@ -117,6 +211,7 @@ export interface Movement {
   refNumber: string | null;
   note: string | null;
   createdBy: string | null;
+  locationId: string | null;
 }
 
 export interface Supplier {
@@ -185,6 +280,8 @@ export interface SaleInput {
   refId: string;
   /** Invoice number, shown on movements. */
   refNumber?: string | null;
+  /** Default location when omitted. */
+  locationId?: string | null;
   lines: { itemId: string; qty: number }[];
 }
 
@@ -205,31 +302,40 @@ const stateCode = z.union([z.string(), z.number()]).transform((v, ctx) => {
   return c;
 });
 const gstin = z.string().transform(normalizeGstin).refine(isValidGstin, "Invalid GSTIN");
-const phone = z.string().trim().regex(/^\+?[0-9][0-9 -]{5,19}$/, "Invalid phone number");
+const phone = z
+  .string()
+  .trim()
+  .regex(/^\+?[0-9][0-9 -]{5,19}$/, "Invalid phone number");
 const email = z.string().trim().toLowerCase().email().max(254);
-const hsn = z.string().trim().regex(/^[0-9]{2,8}$/, "HSN/SAC must be 2–8 digits");
+const hsn = z
+  .string()
+  .trim()
+  .regex(/^[0-9]{2,8}$/, "HSN/SAC must be 2–8 digits");
 const gstRate = z
   .number()
   .refine(isGstRate, `GST rate must be one of ${GST_RATES.join(", ")}`)
   .transform((v) => v as GstRate);
-const qtyNumber = z.coerce
-  .number()
-  .finite()
-  .refine(hasAtMost3Decimals, "Quantity allows up to 3 decimals");
+const qtyNumber = z.coerce.number().finite().refine(hasAtMost3Decimals, "Quantity allows up to 3 decimals");
 const positiveQty = qtyNumber.refine((q) => q > 0 && q <= MAX_QTY, "Quantity must be more than 0");
 const nonNegativeQty = qtyNumber.refine((q) => q >= 0 && q <= MAX_QTY, "Quantity can't be negative");
 const uuid = z.string().uuid();
 const formatParam = z.enum(["json", "csv"]).default("json");
 
+/** Optional location filter/target: the default location for writes, all locations (summed) for lists. */
+const locationIdParam = z.preprocess((v) => (v === "" || v === null ? undefined : v), uuid.optional());
+
 export const stockQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
   filter: z.enum(["all", "low", "out", "untracked"]).default("all"),
+  locationId: locationIdParam,
 });
 export type StockQuery = z.input<typeof stockQuerySchema>;
 
 export const stockPatchSchema = z.object({
   track: z.boolean().optional(),
   reorderLevel: nonNegativeQty.optional(),
+  /** Reorder level is per location; `track` always applies to the item at every location. */
+  locationId: locationIdParam,
 });
 export type StockPatch = z.input<typeof stockPatchSchema>;
 
@@ -239,9 +345,11 @@ export const adjustInputSchema = z
     qty: nonNegativeQty,
     note: opt(z.string().trim().max(500)),
     unitCost: opt(money),
+    locationId: locationIdParam,
   })
   .superRefine((b, ctx) => {
-    if (b.mode !== "set" && b.qty <= 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["qty"], message: "Quantity must be more than 0" });
+    if (b.mode !== "set" && b.qty <= 0)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["qty"], message: "Quantity must be more than 0" });
   });
 export type AdjustInput = z.input<typeof adjustInputSchema>;
 
@@ -251,9 +359,16 @@ export const pageQuerySchema = z.object({
 });
 export type PageQuery = z.input<typeof pageQuerySchema>;
 
+export const movementsQuerySchema = pageQuerySchema.extend({ locationId: locationIdParam });
+export type MovementsQuery = z.input<typeof movementsQuerySchema>;
+
+export const locationQuerySchema = z.object({ locationId: locationIdParam });
+export type LocationQuery = z.input<typeof locationQuerySchema>;
+
 export const saleInputSchema = z.object({
   refId: z.string().trim().min(1).max(100),
   refNumber: opt(z.string().trim().max(50)),
+  locationId: locationIdParam,
   lines: z.array(z.object({ itemId: uuid, qty: positiveQty })).max(500),
 });
 
@@ -313,6 +428,8 @@ export const purchaseInputSchema = z.object({
   lines: z.array(purchaseLineSchema).min(1, "Add at least one line").max(200),
   notes: opt(z.string().trim().max(2000)),
   paid: z.boolean().default(false),
+  /** Where the stock arrives (default location when omitted). */
+  locationId: locationIdParam,
 });
 export type PurchaseInput = z.input<typeof purchaseInputSchema>;
 
@@ -329,7 +446,90 @@ export const paidInputSchema = z.object({ paid: z.boolean() });
 export const purchaseReportQuerySchema = z
   .object({ from: dateStr, to: dateStr, format: formatParam })
   .refine((v) => v.from <= v.to, { message: "`from` must be on or before `to`", path: ["from"] });
-export const stockReportQuerySchema = z.object({ q: z.string().trim().max(100).optional(), format: formatParam });
+export const stockReportQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  format: formatParam,
+  locationId: locationIdParam,
+});
+
+// ---- locations, transfers, availability, reservations
+
+const locationCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9][A-Z0-9_-]{0,15}$/, "Code: up to 16 letters, digits, - or _");
+
+export const locationInputSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(80),
+  code: opt(locationCode),
+  type: z.enum(LOCATION_TYPES).default("store"),
+  address: opt(z.string().trim().max(500)),
+  isDefault: z.boolean().optional(),
+  active: z.boolean().optional(),
+});
+export type LocationInput = z.input<typeof locationInputSchema>;
+
+export const locationPatchSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  code: locationCode.optional(),
+  type: z.enum(LOCATION_TYPES).optional(),
+  address: opt(z.string().trim().max(500)),
+  isDefault: z.boolean().optional(),
+  active: z.boolean().optional(),
+});
+export type LocationPatch = z.input<typeof locationPatchSchema>;
+
+const boolParam = z.preprocess((v) => (v === "true" || v === "1" ? true : v === "false" || v === "0" ? false : v), z.boolean());
+export const locationListQuerySchema = z.object({ includeInactive: boolParam.default(true) });
+export type LocationListQuery = z.input<typeof locationListQuerySchema>;
+
+export const transferInputSchema = z.object({
+  fromLocationId: uuid,
+  toLocationId: uuid,
+  lines: z
+    .array(z.object({ itemId: uuid, qty: positiveQty }))
+    .min(1, "Add at least one line")
+    .max(500),
+  note: opt(z.string().trim().max(500)),
+});
+export type TransferInput = z.input<typeof transferInputSchema>;
+
+export const transferListQuerySchema = pageQuerySchema.extend({ locationId: locationIdParam });
+export type TransferListQuery = z.input<typeof transferListQuerySchema>;
+
+/** `itemIds=a,b,c` (or repeated) → unique uuids, 1..200. */
+const itemIdsParam = z.preprocess((v) => {
+  const list = Array.isArray(v) ? v : typeof v === "string" ? [v] : v;
+  if (!Array.isArray(list)) return list;
+  return [
+    ...new Set(
+      list
+        .flatMap((x) => (typeof x === "string" ? x.split(",") : [x]))
+        .map((x) => (typeof x === "string" ? x.trim() : x))
+        .filter((x) => x !== ""),
+    ),
+  ];
+}, z.array(uuid).min(1, "Give at least one itemId").max(200));
+export const availabilityQuerySchema = z.object({ itemIds: itemIdsParam, locationId: locationIdParam });
+export type AvailabilityQuery = z.input<typeof availabilityQuerySchema>;
+
+const refTypeSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z][a-z0-9_-]{0,39}$/, "Invalid ref type");
+const refIdSchema = z.string().trim().min(1).max(100);
+export const reserveInputSchema = z.object({
+  refType: refTypeSchema,
+  refId: refIdSchema,
+  locationId: locationIdParam,
+  lines: z.array(z.object({ itemId: uuid, qty: positiveQty })).max(500),
+  allowBackorder: z.boolean().optional(),
+});
+
+/** 409 `insufficient_stock` with `{ items: { itemId, available, requested }[] }`. */
+export const insufficientStock = (items: ShortItem[]) =>
+  new AppError(409, "insufficient_stock", "Not enough stock for some items", { items });
 
 const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
 
@@ -404,7 +604,10 @@ const toPurchaseSummary = (r: PurchaseRow): PurchaseSummary => ({
 const withoutLines = ({ lines: _lines, ...rest }: InvoiceTotals): Omit<InvoiceTotals, "lines"> => rest;
 
 /** Builds a StockRow from a catalog item and its (optional) stock row. Untracked items are always "ok". */
-export function buildStockRow(item: CatalogItem, stock: Pick<StockItemRow, "qty" | "reorderLevel" | "track" | "avgCost" | "updatedAt"> | null): StockRow {
+export function buildStockRow(
+  item: CatalogItem,
+  stock: (Pick<StockItemRow, "qty" | "reorderLevel" | "track" | "avgCost"> & { updatedAt: Date | null }) | null,
+): StockRow {
   const qtyMilli = toMilli(stock?.qty ?? 0);
   const reorderMilli = toMilli(stock?.reorderLevel ?? 0);
   const track = stock?.track ?? true;
@@ -423,6 +626,74 @@ export function buildStockRow(item: CatalogItem, stock: Pick<StockItemRow, "qty"
     updatedAt: stock?.updatedAt ?? null,
   };
 }
+
+/**
+ * StockRow (exact legacy shape and math) plus reserved/available, from an item's rows at one location or at
+ * every location (summed). `track` is the item-level switch (false if any location has it off).
+ */
+export function buildStockLevelRow(
+  item: CatalogItem,
+  rows: readonly StockLevelInput[],
+  opts: { locationId: string | null; track?: boolean },
+): StockLevelRow {
+  const agg = aggregateStock(rows);
+  const track = opts.track ?? agg?.track ?? true;
+  const base = buildStockRow(
+    item,
+    agg
+      ? {
+          qty: milliToDecimal(agg.qtyMilli),
+          reorderLevel: milliToDecimal(agg.reorderMilli),
+          track,
+          avgCost: agg.avgCost,
+          updatedAt: agg.updatedAt,
+        }
+      : track
+        ? null
+        : { qty: "0", reorderLevel: "0", track, avgCost: null, updatedAt: null },
+  );
+  return {
+    ...base,
+    reserved: fromMilli(agg?.reservedMilli ?? 0),
+    available: fromMilli(agg?.availableMilli ?? 0),
+    locationId: opts.locationId,
+  };
+}
+
+const toLocation = (r: StockLocationRow): StockLocation => ({
+  id: r.id,
+  name: r.name,
+  code: r.code,
+  type: r.type,
+  address: r.address,
+  isDefault: r.isDefault,
+  active: r.active,
+  createdAt: r.createdAt,
+  updatedAt: r.updatedAt,
+});
+
+const toTransfer = (r: StockTransferRow): StockTransfer => ({
+  id: r.id,
+  fromLocationId: r.fromLocationId,
+  toLocationId: r.toLocationId,
+  lines: r.lines,
+  note: r.note,
+  createdBy: r.createdBy,
+  createdAt: r.createdAt,
+});
+
+const toReservationLine = (r: Pick<StockReservationRow, "itemId" | "locationId" | "qty" | "status">): ReservationLine => ({
+  itemId: r.itemId,
+  locationId: r.locationId,
+  qty: fromMilli(toMilli(r.qty)),
+  status: r.status,
+});
+
+/** Postgres unique violation. */
+const isUniqueViolation = (e: unknown) => {
+  const err = e as { code?: string; cause?: { code?: string } };
+  return err?.code === "23505" || err?.cause?.code === "23505";
+};
 
 /** Totals over tracked rows. */
 export function stockTotals(rows: readonly StockRow[]): StockTotals {
@@ -455,26 +726,51 @@ export function mergeTaxBreakup(list: readonly (readonly TaxBreakupRow[])[]): Ta
 }
 
 /**
- * Adds `deltaMilli` to an item's stock, creating the row if needed. The upsert takes the row lock, so
- * concurrent changes to the same item serialise until the transaction ends. Returns the new qty.
+ * Adds `deltaMilli` to an item's stock at a location (and optionally `reservedDeltaMilli` to its reserved qty,
+ * never below 0), creating the row if needed. The upsert takes the row lock, so concurrent changes to the same
+ * row serialise until the transaction ends. Returns the new qty. The service always passes a location.
  */
-export function upsertStockStatement(db: DbOrTx, args: { tenantId: string; itemId: string; deltaMilli: number }) {
+export function upsertStockStatement(
+  db: DbOrTx,
+  args: { tenantId: string; locationId?: string | null; itemId: string; deltaMilli: number; reservedDeltaMilli?: number },
+) {
   const delta = milliToDecimal(args.deltaMilli);
-  const current = sql`${sql.identifier("stock_items")}.${sql.identifier("qty")}`;
+  const col = (name: string) => sql`${sql.identifier("stock_items")}.${sql.identifier(name)}`;
+  const rd = args.reservedDeltaMilli ?? 0;
+  const reservedDelta = milliToDecimal(rd);
   return db
     .insert(stockItems)
-    .values({ tenantId: args.tenantId, itemId: args.itemId, qty: delta })
-    .onConflictDoUpdate({
-      target: [stockItems.tenantId, stockItems.itemId],
-      set: { qty: sql`${current} + ${delta}::numeric`, updatedAt: sql`now()` },
+    .values({
+      tenantId: args.tenantId,
+      locationId: args.locationId ?? null,
+      itemId: args.itemId,
+      qty: delta,
+      ...(rd > 0 ? { reserved: reservedDelta } : {}),
     })
-    .returning({ id: stockItems.id, qty: stockItems.qty, avgCost: stockItems.avgCost, track: stockItems.track });
+    .onConflictDoUpdate({
+      target: [stockItems.tenantId, stockItems.locationId, stockItems.itemId],
+      set: {
+        qty: sql`${col("qty")} + ${delta}::numeric`,
+        ...(rd !== 0 ? { reserved: sql`greatest(${col("reserved")} + ${reservedDelta}::numeric, 0)` } : {}),
+        updatedAt: sql`now()`,
+      },
+    })
+    .returning({
+      id: stockItems.id,
+      qty: stockItems.qty,
+      avgCost: stockItems.avgCost,
+      track: stockItems.track,
+      reserved: stockItems.reserved,
+    });
 }
 
 interface StockChange {
   tenantId: string;
+  locationId: string;
   itemId: string;
   deltaMilli: number;
+  /** Also changes the reserved qty (commit of a reservation). */
+  reservedDeltaMilli?: number;
   reason: MovementReason;
   refType?: RefType | null;
   refId?: string | null;
@@ -485,7 +781,7 @@ interface StockChange {
   createdBy?: string | null;
 }
 
-/** Transaction-scoped advisory lock so two applySale/reverseSale calls for one ref can't interleave. */
+/** Transaction-scoped advisory lock so two applySale/reverseSale (or reserve/release/commit) calls for one ref can't interleave. */
 const lockRef = (tx: DbOrTx, tenantId: string, refType: RefType, refId: string) =>
   tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`inventory:${tenantId}:${refType}:${refId}`}))`);
 
@@ -497,6 +793,8 @@ export class InventoryService {
   private readonly sellerState: SellerStatePort;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
+  /** Tenants whose legacy (null-location) rows were moved to the default location by this process. */
+  private readonly healed = new Set<string>();
 
   constructor(deps: InventoryDeps) {
     this.db = deps.db;
@@ -510,11 +808,292 @@ export class InventoryService {
     return todayIST(this.now());
   }
 
+  // ================================================================ locations (self-healing default)
+
+  /**
+   * The tenant's default location, created lazily ("Main", code MAIN). The first call per process and tenant also
+   * moves legacy rows without a location (stock_items, stock_movements) to it, so a tenant heals on first use.
+   * Call it outside transactions.
+   */
+  async ensureDefaultLocation(tenantId: string): Promise<StockLocation> {
+    return toLocation(await this.defaultLocationRow(tenantId));
+  }
+
+  private async defaultLocationRow(tenantId: string): Promise<StockLocationRow> {
+    const find = async () =>
+      (
+        await this.db
+          .select()
+          .from(stockLocations)
+          .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.isDefault, true)))
+          .limit(1)
+      )[0] ?? null;
+    let row = await find();
+    if (!row) {
+      // Conflicts (a concurrent first call, or a MAIN code without a default) are ignored; re-read below.
+      await this.db
+        .insert(stockLocations)
+        .values({ tenantId, name: DEFAULT_LOCATION_NAME, code: DEFAULT_LOCATION_CODE, type: "store", isDefault: true, active: true })
+        .onConflictDoNothing();
+      row = await find();
+      if (!row) {
+        await this.db
+          .insert(stockLocations)
+          .values({
+            tenantId,
+            name: DEFAULT_LOCATION_NAME,
+            code: `${DEFAULT_LOCATION_CODE}-${Date.now() % 100000}`,
+            type: "store",
+            isDefault: true,
+            active: true,
+          })
+          .onConflictDoNothing();
+        row = await find();
+      }
+      if (!row) throw conflict("Could not create the default stock location; try again");
+      this.log.info({ tenantId, locationId: row.id }, "inventory: default location created");
+    }
+    if (!this.healed.has(tenantId)) {
+      await this.healTenant(tenantId, row.id);
+      this.healed.add(tenantId);
+    }
+    return row;
+  }
+
+  /** Moves this tenant's rows without a location to `defaultId`. Rows that would collide are left (and counted). */
+  private async healTenant(tenantId: string, defaultId: string): Promise<Omit<BackfillResult, "tenants">> {
+    const items = await this.db
+      .update(stockItems)
+      .set({ locationId: defaultId })
+      .where(
+        and(
+          eq(stockItems.tenantId, tenantId),
+          isNull(stockItems.locationId),
+          sql`not exists (select 1 from ${stockItems} s2 where s2.tenant_id = ${tenantId} and s2.location_id = ${defaultId} and s2.item_id = ${stockItems.itemId})`,
+        ),
+      )
+      .returning({ id: stockItems.id });
+    const moves = await this.db
+      .update(stockMovements)
+      .set({ locationId: defaultId })
+      .where(and(eq(stockMovements.tenantId, tenantId), isNull(stockMovements.locationId)))
+      .returning({ id: stockMovements.id });
+    const [left] = await this.db
+      .select({ n: count() })
+      .from(stockItems)
+      .where(and(eq(stockItems.tenantId, tenantId), isNull(stockItems.locationId)));
+    const skipped = left?.n ?? 0;
+    if (items.length > 0 || moves.length > 0) {
+      this.log.info({ tenantId, stockItems: items.length, movements: moves.length }, "inventory: legacy rows moved to default location");
+    }
+    if (skipped > 0) this.log.warn({ tenantId, skipped }, "inventory: legacy stock rows collide with default-location rows; left as is");
+    return { stockItems: items.length, movements: moves.length, skipped };
+  }
+
+  /**
+   * One-off data migration: gives every tenant with legacy rows (null location) a default location and moves the
+   * rows to it. Safe to run repeatedly and while serving traffic.
+   */
+  async backfillLocations(): Promise<BackfillResult> {
+    const rows = await this.db.execute<{ tenant_id: string }>(
+      sql`select distinct tenant_id from ${stockItems} where location_id is null
+          union select distinct tenant_id from ${stockMovements} where location_id is null`,
+    );
+    const tenants = [...rows].map((r) => r.tenant_id);
+    const out: BackfillResult = { tenants: tenants.length, stockItems: 0, movements: 0, skipped: 0 };
+    for (const tenantId of tenants) {
+      // Heal explicitly below so the moved rows are counted (defaultLocationRow would otherwise heal first, uncounted).
+      const wasHealed = this.healed.has(tenantId);
+      this.healed.add(tenantId);
+      let def: StockLocationRow;
+      try {
+        def = await this.defaultLocationRow(tenantId);
+      } catch (err) {
+        if (!wasHealed) this.healed.delete(tenantId);
+        throw err;
+      }
+      const r = await this.healTenant(tenantId, def.id);
+      out.stockItems += r.stockItems;
+      out.movements += r.movements;
+      out.skipped += r.skipped;
+    }
+    return out;
+  }
+
+  private async locationRow(db: DbOrTx, tenantId: string, id: string): Promise<StockLocationRow | null> {
+    const [row] = await db
+      .select()
+      .from(stockLocations)
+      .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.id, id)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /** The given location (404 if unknown; 400 if inactive and `active` is required) or the default one. Heals the tenant. */
+  private async resolveLocation(tenantId: string, locationId: string | null | undefined, opts: { active?: boolean } = {}) {
+    const def = locationId && this.healed.has(tenantId) ? null : await this.defaultLocationRow(tenantId);
+    if (!locationId) return def!;
+    const loc = def && def.id === locationId ? def : await this.locationRow(this.db, tenantId, locationId);
+    if (!loc) throw notFound("Location");
+    if (opts.active && !loc.active) throw badRequest("This location is inactive");
+    return loc;
+  }
+
+  async listLocations(tenantId: string, query: LocationListQuery = {}): Promise<ListResult<StockLocation>> {
+    const { includeInactive } = locationListQuerySchema.parse(query);
+    await this.defaultLocationRow(tenantId);
+    const rows = await this.db
+      .select()
+      .from(stockLocations)
+      .where(and(eq(stockLocations.tenantId, tenantId), includeInactive ? undefined : eq(stockLocations.active, true)))
+      .orderBy(desc(stockLocations.isDefault), asc(stockLocations.name), asc(stockLocations.id));
+    return { items: rows.map(toLocation), total: rows.length };
+  }
+
+  async getLocation(tenantId: string, id: string): Promise<StockLocation> {
+    await this.defaultLocationRow(tenantId);
+    const row = await this.locationRow(this.db, tenantId, id);
+    if (!row) throw notFound("Location");
+    return toLocation(row);
+  }
+
+  private async freeCode(tenantId: string, base: string): Promise<string> {
+    const taken = new Set(
+      (
+        await this.db
+          .select({ code: stockLocations.code })
+          .from(stockLocations)
+          .where(and(eq(stockLocations.tenantId, tenantId), ilike(stockLocations.code, `${base}%`)))
+      ).map((r) => r.code),
+    );
+    if (!taken.has(base)) return base;
+    for (let i = 2; ; i++) if (!taken.has(`${base}${i}`)) return `${base}${i}`;
+  }
+
+  async createLocation(tenantId: string, input: LocationInput): Promise<StockLocation> {
+    const b = locationInputSchema.parse(input);
+    if (b.isDefault && b.active === false) throw badRequest("An inactive location can't be the default");
+    await this.defaultLocationRow(tenantId);
+    const code = b.code ?? (await this.freeCode(tenantId, locationCodeFrom(b.name)));
+    try {
+      const row = await this.db.transaction(async (tx) => {
+        if (b.isDefault) {
+          await tx
+            .update(stockLocations)
+            .set({ isDefault: false })
+            .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.isDefault, true)));
+        }
+        const [created] = await tx
+          .insert(stockLocations)
+          .values({
+            tenantId,
+            name: b.name,
+            code,
+            type: b.type,
+            address: b.address ?? null,
+            isDefault: b.isDefault ?? false,
+            active: b.active ?? true,
+          })
+          .returning();
+        return created!;
+      });
+      return toLocation(row);
+    } catch (e) {
+      if (isUniqueViolation(e)) throw conflict(`A location with code ${code} already exists`);
+      throw e;
+    }
+  }
+
+  /** Can't deactivate or un-default the default location; making another location the default moves the flag. */
+  async updateLocation(tenantId: string, id: string, input: LocationPatch): Promise<StockLocation> {
+    const b = locationPatchSchema.parse(input);
+    await this.defaultLocationRow(tenantId);
+    try {
+      const row = await this.db.transaction(async (tx) => {
+        const [current] = await tx
+          .select()
+          .from(stockLocations)
+          .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.id, id)))
+          .limit(1)
+          .for("update");
+        if (!current) throw notFound("Location");
+        const problem = locationPatchProblem(current, b);
+        if (problem) throw badRequest(problem);
+        const set: Partial<StockLocationRow> = {};
+        if (b.name !== undefined) set.name = b.name;
+        if (b.code !== undefined) set.code = b.code;
+        if (b.type !== undefined) set.type = b.type;
+        if (b.address !== undefined) set.address = b.address;
+        if (b.active !== undefined) set.active = b.active;
+        if (b.isDefault === true && !current.isDefault) {
+          await tx
+            .update(stockLocations)
+            .set({ isDefault: false })
+            .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.isDefault, true)));
+          set.isDefault = true;
+        }
+        if (Object.keys(set).length === 0) return current;
+        const [updated] = await tx
+          .update(stockLocations)
+          .set(set)
+          .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.id, id)))
+          .returning();
+        return updated!;
+      });
+      return toLocation(row);
+    } catch (e) {
+      if (isUniqueViolation(e)) throw conflict(`A location with code ${b.code ?? ""} already exists`);
+      throw e;
+    }
+  }
+
+  /** Only empty locations without history can be deleted (deactivate the others). */
+  async deleteLocation(tenantId: string, id: string): Promise<void> {
+    await this.defaultLocationRow(tenantId);
+    await this.db.transaction(async (tx) => {
+      const [loc] = await tx
+        .select()
+        .from(stockLocations)
+        .where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.id, id)))
+        .limit(1)
+        .for("update");
+      if (!loc) throw notFound("Location");
+      const atLoc = <T extends typeof stockItems | typeof stockMovements | typeof stockReservations>(t: T) =>
+        and(eq(t.tenantId, tenantId), eq(t.locationId, id));
+      const [[stock], [res], [moves]] = await Promise.all([
+        tx
+          .select({ n: count() })
+          .from(stockItems)
+          .where(and(atLoc(stockItems), or(ne(stockItems.qty, "0"), ne(stockItems.reserved, "0")))),
+        tx
+          .select({ n: count() })
+          .from(stockReservations)
+          .where(and(atLoc(stockReservations), eq(stockReservations.status, "active"))),
+        tx.select({ n: count() }).from(stockMovements).where(atLoc(stockMovements)),
+      ]);
+      const problem = locationDeleteProblem({
+        isDefault: loc.isDefault,
+        stockRows: stock?.n ?? 0,
+        activeReservations: res?.n ?? 0,
+        movements: moves?.n ?? 0,
+      });
+      if (problem) throw new AppError(problem.status, problem.status === 409 ? "conflict" : "bad_request", problem.message);
+      await tx.delete(stockItems).where(atLoc(stockItems));
+      await tx.delete(stockLocations).where(and(eq(stockLocations.tenantId, tenantId), eq(stockLocations.id, id)));
+    });
+  }
+
   // ================================================================ stock primitives
 
-  /** Applies one stock change inside `tx`: upsert qty, update average cost, append a movement. */
+  /** Applies one stock change inside `tx`: upsert qty (and reserved), update average cost, append a movement. */
   private async change(tx: DbOrTx, c: StockChange): Promise<{ qtyMilli: number; avgCost: number | null }> {
-    const [row] = await upsertStockStatement(tx, { tenantId: c.tenantId, itemId: c.itemId, deltaMilli: c.deltaMilli });
+    const [row] = await upsertStockStatement(tx, {
+      tenantId: c.tenantId,
+      locationId: c.locationId,
+      itemId: c.itemId,
+      deltaMilli: c.deltaMilli,
+      reservedDeltaMilli: c.reservedDeltaMilli,
+    });
     const qtyMilli = toMilli(row!.qty);
     let avgCost = row!.avgCost;
     const unitCost = c.unitCost ?? null;
@@ -522,11 +1101,15 @@ export class InventoryService {
       const next = movingAverageCost(qtyMilli - c.deltaMilli, avgCost, c.deltaMilli, unitCost);
       if (next !== avgCost) {
         avgCost = next;
-        await tx.update(stockItems).set({ avgCost }).where(and(eq(stockItems.tenantId, c.tenantId), eq(stockItems.id, row!.id)));
+        await tx
+          .update(stockItems)
+          .set({ avgCost })
+          .where(and(eq(stockItems.tenantId, c.tenantId), eq(stockItems.id, row!.id)));
       }
     }
     await tx.insert(stockMovements).values({
       tenantId: c.tenantId,
+      locationId: c.locationId,
       itemId: c.itemId,
       delta: milliToDecimal(c.deltaMilli),
       qtyAfter: milliToDecimal(qtyMilli),
@@ -542,14 +1125,42 @@ export class InventoryService {
     return { qtyMilli, avgCost };
   }
 
-  private async stockRow(db: DbOrTx, tenantId: string, itemId: string, lock = false): Promise<StockItemRow | null> {
-    const q = db
+  /** All rows of one item (every location). */
+  private async itemRows(db: DbOrTx, tenantId: string, itemId: string) {
+    return db
       .select()
       .from(stockItems)
-      .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.itemId, itemId)))
-      .limit(1);
-    const [row] = lock ? await q.for("update") : await q;
-    return row ?? null;
+      .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.itemId, itemId)));
+  }
+
+  /** Item ids (of `itemIds`) that are untracked at any location. */
+  private async untrackedOf(db: DbOrTx, tenantId: string, itemIds: string[]): Promise<Set<string>> {
+    if (itemIds.length === 0) return new Set();
+    const rows = await db
+      .select({ itemId: stockItems.itemId })
+      .from(stockItems)
+      .where(and(eq(stockItems.tenantId, tenantId), inArray(stockItems.itemId, itemIds), eq(stockItems.track, false)));
+    return new Set(rows.map((r) => r.itemId));
+  }
+
+  /** Creates missing rows (qty 0) for these items at these locations, then locks them in item, location order. */
+  private async lockRows(tx: DbOrTx, tenantId: string, locationIds: string[], itemIds: string[]) {
+    if (itemIds.length === 0) return [];
+    await tx
+      .insert(stockItems)
+      .values(locationIds.flatMap((locationId) => itemIds.map((itemId) => ({ tenantId, locationId, itemId }))))
+      .onConflictDoNothing({ target: [stockItems.tenantId, stockItems.locationId, stockItems.itemId] });
+    return tx
+      .select()
+      .from(stockItems)
+      .where(and(eq(stockItems.tenantId, tenantId), inArray(stockItems.locationId, locationIds), inArray(stockItems.itemId, itemIds)))
+      .orderBy(asc(stockItems.itemId), asc(stockItems.locationId))
+      .for("update");
+  }
+
+  private levelRow(item: CatalogItem, all: readonly StockItemRow[], locationId: string | null): StockLevelRow {
+    const rows = locationId ? all.filter((r) => r.locationId === locationId) : all;
+    return buildStockLevelRow(item, rows, { locationId, track: isItemTracked(all) });
   }
 
   private async catalogItem(tenantId: string, itemId: string): Promise<CatalogItem> {
@@ -560,21 +1171,28 @@ export class InventoryService {
 
   // ================================================================ stock reads
 
-  private async allRows(tenantId: string, q?: string): Promise<StockRow[]> {
+  /** Every saved item with its stock at `locationId`, or summed over all locations. */
+  private async allRows(tenantId: string, q?: string, locationId?: string | null): Promise<StockLevelRow[]> {
     const [items, stock] = await Promise.all([
       this.catalog.listItems(tenantId, q || undefined),
       this.db.select().from(stockItems).where(eq(stockItems.tenantId, tenantId)),
     ]);
-    const byItem = new Map(stock.map((s) => [s.itemId, s]));
+    const byItem = new Map<string, StockItemRow[]>();
+    for (const s of stock) {
+      const list = byItem.get(s.itemId);
+      if (list) list.push(s);
+      else byItem.set(s.itemId, [s]);
+    }
     return items
-      .map((i) => buildStockRow(i, byItem.get(i.id) ?? null))
+      .map((i) => this.levelRow(i, byItem.get(i.id) ?? [], locationId ?? null))
       .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.itemId.localeCompare(b.itemId));
   }
 
   /** Every saved item with its stock. Totals cover the tracked items matching `q`. */
   async listStock(tenantId: string, query: StockQuery = {}): Promise<StockList> {
     const p = stockQuerySchema.parse(query);
-    const all = await this.allRows(tenantId, p.q);
+    const loc = p.locationId ? await this.resolveLocation(tenantId, p.locationId) : null;
+    const all = await this.allRows(tenantId, p.q, loc?.id);
     const items = all.filter((r) => {
       if (p.filter === "untracked") return !r.track;
       if (p.filter === "low") return r.track && r.status === "low";
@@ -584,13 +1202,18 @@ export class InventoryService {
     return { items, total: items.length, totals: stockTotals(all) };
   }
 
-  async getStock(tenantId: string, itemId: string): Promise<StockRow> {
-    const [item, stock] = await Promise.all([this.catalogItem(tenantId, itemId), this.stockRow(this.db, tenantId, itemId)]);
-    return buildStockRow(item, stock);
+  /** One item's stock at `locationId`, or summed over all locations. */
+  async getStock(tenantId: string, itemId: string, query: LocationQuery = {}): Promise<StockLevelRow> {
+    const p = locationQuerySchema.parse(query);
+    const loc = p.locationId ? await this.resolveLocation(tenantId, p.locationId) : null;
+    const [item, rows] = await Promise.all([this.catalogItem(tenantId, itemId), this.itemRows(this.db, tenantId, itemId)]);
+    return this.levelRow(item, rows, loc?.id ?? null);
   }
 
-  async summary(tenantId: string): Promise<StockSummary> {
-    const all = await this.allRows(tenantId);
+  async summary(tenantId: string, query: LocationQuery = {}): Promise<StockSummary> {
+    const p = locationQuerySchema.parse(query);
+    const loc = p.locationId ? await this.resolveLocation(tenantId, p.locationId) : null;
+    const all = await this.allRows(tenantId, undefined, loc?.id);
     const rank = (s: StockStatus) => (s === "out" ? 0 : 1);
     const lowItems = all
       .filter((r) => r.track && r.status !== "ok")
@@ -599,9 +1222,14 @@ export class InventoryService {
     return { ...stockTotals(all), lowItems };
   }
 
-  async movements(tenantId: string, itemId: string, query: PageQuery = {}): Promise<ListResult<Movement>> {
-    const { limit, offset } = pageQuerySchema.parse(query);
-    const where = and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.itemId, itemId));
+  async movements(tenantId: string, itemId: string, query: MovementsQuery = {}): Promise<ListResult<Movement>> {
+    const { limit, offset, locationId } = movementsQuerySchema.parse(query);
+    const loc = locationId ? await this.resolveLocation(tenantId, locationId) : null;
+    const where = and(
+      eq(stockMovements.tenantId, tenantId),
+      eq(stockMovements.itemId, itemId),
+      loc ? eq(stockMovements.locationId, loc.id) : undefined,
+    );
     const [rows, [counted]] = await Promise.all([
       this.db
         .select()
@@ -624,53 +1252,104 @@ export class InventoryService {
         refNumber: m.refNumber,
         note: m.note,
         createdBy: m.createdBy,
+        locationId: m.locationId,
       })),
       total: counted?.total ?? 0,
     };
   }
 
+  /** Staff view: available (qty − reserved) per item at `locationId`, or summed over all locations. */
+  async availability(tenantId: string, query: AvailabilityQuery): Promise<ListResult<ItemAvailability>> {
+    const levels = await this.levels(tenantId, query);
+    const items = levels.map((l) => ({ itemId: l.itemId, available: fromMilli(l.availableMilli), tracked: l.track }));
+    return { items, total: items.length };
+  }
+
+  /** Storefront view: booleans only (`lowStock` = available ≤ reorder level). */
+  async publicAvailability(tenantId: string, query: AvailabilityQuery): Promise<ListResult<PublicItemAvailability>> {
+    const levels = await this.levels(tenantId, query);
+    const items = levels.map((l) => ({ itemId: l.itemId, ...publicStockFlags(l) }));
+    return { items, total: items.length };
+  }
+
+  private async levels(tenantId: string, query: AvailabilityQuery) {
+    const p = availabilityQuerySchema.parse(query);
+    const loc = p.locationId ? await this.resolveLocation(tenantId, p.locationId) : null;
+    const rows = await this.db
+      .select()
+      .from(stockItems)
+      .where(and(eq(stockItems.tenantId, tenantId), inArray(stockItems.itemId, p.itemIds)));
+    return p.itemIds.map((itemId) => {
+      const all = rows.filter((r) => r.itemId === itemId);
+      const agg = aggregateStock(loc ? all.filter((r) => r.locationId === loc.id) : all);
+      return {
+        itemId,
+        availableMilli: agg?.availableMilli ?? 0,
+        reorderMilli: agg?.reorderMilli ?? 0,
+        track: isItemTracked(all),
+      };
+    });
+  }
+
   // ================================================================ stock writes
 
-  async updateStock(tenantId: string, itemId: string, input: StockPatch): Promise<StockRow> {
+  /** `track` applies to the item at every location; `reorderLevel` to the given (default) location. */
+  async updateStock(tenantId: string, itemId: string, input: StockPatch): Promise<StockLevelRow> {
     const b = stockPatchSchema.parse(input);
     const item = await this.catalogItem(tenantId, itemId);
+    const loc = await this.resolveLocation(tenantId, b.locationId);
     const set: { track?: boolean; reorderLevel?: string } = {};
     if (b.track !== undefined) set.track = b.track;
     if (b.reorderLevel !== undefined) set.reorderLevel = milliToDecimal(toMilli(b.reorderLevel));
     if (Object.keys(set).length > 0) {
-      await this.db
-        .insert(stockItems)
-        .values({ tenantId, itemId, ...set })
-        .onConflictDoUpdate({ target: [stockItems.tenantId, stockItems.itemId], set: { ...set, updatedAt: sql`now()` } });
+      await this.db.transaction(async (tx) => {
+        if (b.track !== undefined) {
+          await tx
+            .update(stockItems)
+            .set({ track: b.track })
+            .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.itemId, itemId)));
+        }
+        await tx
+          .insert(stockItems)
+          .values({ tenantId, locationId: loc.id, itemId, ...set })
+          .onConflictDoUpdate({
+            target: [stockItems.tenantId, stockItems.locationId, stockItems.itemId],
+            set: { ...set, updatedAt: sql`now()` },
+          });
+      });
     }
-    return buildStockRow(item, await this.stockRow(this.db, tenantId, itemId));
+    return this.levelRow(item, await this.itemRows(this.db, tenantId, itemId), loc.id);
   }
 
-  /** Manual stock change. The item's first movement is recorded as `opening`, later ones as `adjustment`. */
-  async adjust(tenantId: string, itemId: string, input: AdjustInput, userId: string | null = null): Promise<StockRow> {
+  /** Manual stock change at a location. The first movement there is recorded as `opening`, later ones as `adjustment`. */
+  async adjust(tenantId: string, itemId: string, input: AdjustInput, userId: string | null = null): Promise<StockLevelRow> {
     const b = adjustInputSchema.parse(input);
     const item = await this.catalogItem(tenantId, itemId);
+    const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
     const qtyMilli = toMilli(b.qty);
     const unitCost = b.unitCost ?? null;
     await this.db.transaction(async (tx) => {
       // Make sure the row exists, then lock it to read the current qty (needed for "set").
-      await tx.insert(stockItems).values({ tenantId, itemId }).onConflictDoNothing({ target: [stockItems.tenantId, stockItems.itemId] });
-      const current = await this.stockRow(tx, tenantId, itemId, true);
+      const [current] = await this.lockRows(tx, tenantId, [loc.id], [itemId]);
       const delta = adjustmentDelta(b.mode, qtyMilli, toMilli(current?.qty ?? 0));
       if (delta === 0) {
         // Nothing moves; "set" with a cost just records the cost.
         if (unitCost !== null && current) {
-          await tx.update(stockItems).set({ avgCost: unitCost }).where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.id, current.id)));
+          await tx
+            .update(stockItems)
+            .set({ avgCost: unitCost })
+            .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.id, current.id)));
         }
         return;
       }
       const [prior] = await tx
         .select({ id: stockMovements.id })
         .from(stockMovements)
-        .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.itemId, itemId)))
+        .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.itemId, itemId), eq(stockMovements.locationId, loc.id)))
         .limit(1);
       await this.change(tx, {
         tenantId,
+        locationId: loc.id,
         itemId,
         deltaMilli: delta,
         reason: prior ? "adjustment" : "opening",
@@ -679,17 +1358,18 @@ export class InventoryService {
         createdBy: userId,
       });
     });
-    return buildStockRow(item, await this.stockRow(this.db, tenantId, itemId));
+    return this.levelRow(item, await this.itemRows(this.db, tenantId, itemId), loc.id);
   }
 
   /**
-   * Reduces stock for an issued invoice. Idempotent per refId; lines for the same item are merged and
-   * untracked items are skipped. Returns whether anything was applied.
+   * Reduces stock for an issued invoice at `locationId` (default location). Idempotent per refId; lines for the
+   * same item are merged and untracked items are skipped. Returns whether anything was applied.
    */
   async applySale(tenantId: string, input: SaleInput): Promise<{ applied: boolean; items: number }> {
     const b = saleInputSchema.parse(input);
     const lines = mergeQtyLines(b.lines);
     if (lines.length === 0) return { applied: false, items: 0 };
+    const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
     return this.db.transaction(async (tx) => {
       await lockRef(tx, tenantId, "invoice", b.refId);
       const [existing] = await tx
@@ -706,28 +1386,17 @@ export class InventoryService {
         .limit(1);
       if (existing) return { applied: false, items: 0 };
 
-      const untracked = new Set(
-        (
-          await tx
-            .select({ itemId: stockItems.itemId })
-            .from(stockItems)
-            .where(
-              and(
-                eq(stockItems.tenantId, tenantId),
-                inArray(
-                  stockItems.itemId,
-                  lines.map((l) => l.itemId),
-                ),
-                eq(stockItems.track, false),
-              ),
-            )
-        ).map((r) => r.itemId),
+      const untracked = await this.untrackedOf(
+        tx,
+        tenantId,
+        lines.map((l) => l.itemId),
       );
       let items = 0;
       for (const l of lines) {
         if (untracked.has(l.itemId)) continue;
         await this.change(tx, {
           tenantId,
+          locationId: loc.id,
           itemId: l.itemId,
           deltaMilli: -l.milli,
           reason: "sale",
@@ -737,18 +1406,25 @@ export class InventoryService {
         });
         items++;
       }
-      this.log.info({ tenantId, refId: b.refId, items }, "inventory: sale applied");
+      this.log.info({ tenantId, refId: b.refId, items, locationId: loc.id }, "inventory: sale applied");
       return { applied: items > 0, items };
     });
   }
 
-  /** Puts back the stock of a cancelled invoice. No-op unless a sale was applied and not yet reversed. */
+  /** Puts back the stock of a cancelled invoice (where it was taken). No-op unless a sale was applied and not yet reversed. */
   async reverseSale(tenantId: string, refId: string): Promise<{ reversed: boolean; items: number }> {
     const ref = z.string().trim().min(1).max(100).parse(refId);
+    const def = await this.defaultLocationRow(tenantId);
     return this.db.transaction(async (tx) => {
       await lockRef(tx, tenantId, "invoice", ref);
       const moves = await tx
-        .select({ itemId: stockMovements.itemId, delta: stockMovements.delta, reason: stockMovements.reason, refNumber: stockMovements.refNumber })
+        .select({
+          locationId: stockMovements.locationId,
+          itemId: stockMovements.itemId,
+          delta: stockMovements.delta,
+          reason: stockMovements.reason,
+          refNumber: stockMovements.refNumber,
+        })
         .from(stockMovements)
         .where(
           and(
@@ -760,10 +1436,11 @@ export class InventoryService {
         );
       const sales = moves.filter((m) => m.reason === "sale");
       if (sales.length === 0 || moves.some((m) => m.reason === "sale_cancel")) return { reversed: false, items: 0 };
-      const net = netByItem(sales);
+      const net = netByLocationItem(sales, def.id);
       for (const n of net) {
         await this.change(tx, {
           tenantId,
+          locationId: n.locationId,
           itemId: n.itemId,
           deltaMilli: -n.milli,
           reason: "sale_cancel",
@@ -775,6 +1452,258 @@ export class InventoryService {
       this.log.info({ tenantId, refId: ref, items: net.length }, "inventory: sale reversed");
       return { reversed: true, items: net.length };
     });
+  }
+
+  // ================================================================ transfers
+
+  /** Moves stock between two locations at once (both movements in one transaction). 409 when the source is short. */
+  async createTransfer(tenantId: string, input: TransferInput, userId: string | null = null): Promise<StockTransfer> {
+    const b = transferInputSchema.parse(input);
+    const lines = mergeQtyLines(b.lines);
+    if (lines.length === 0) throw badRequest("Add at least one line");
+    await this.defaultLocationRow(tenantId);
+    const [from, to] = await Promise.all([
+      this.locationRow(this.db, tenantId, b.fromLocationId),
+      this.locationRow(this.db, tenantId, b.toLocationId),
+    ]);
+    const problem = transferProblem(b.fromLocationId, b.toLocationId, from, to);
+    if (problem) throw problem.status === 404 ? new AppError(404, "not_found", problem.message) : badRequest(problem.message);
+    const ids = lines.map((l) => l.itemId);
+    const found = new Set((await this.catalog.getItems(tenantId, ids)).map((i) => i.id));
+    const missing = ids.filter((id) => !found.has(id));
+    if (missing.length > 0) throw badRequest("Some lines refer to items that no longer exist", { itemIds: missing });
+
+    const row = await this.db.transaction(async (tx) => {
+      const untracked = await this.untrackedOf(tx, tenantId, ids);
+      const locked = await this.lockRows(tx, tenantId, [b.fromLocationId, b.toLocationId], ids);
+      const source = new Map(
+        locked
+          .filter((r) => r.locationId === b.fromLocationId)
+          .map((r) => [r.itemId, { qtyMilli: toMilli(r.qty), reservedMilli: toMilli(r.reserved), avgCost: r.avgCost }]),
+      );
+      const check = checkAvailability(lines, source, untracked);
+      if (!check.ok) throw insufficientStock(check.items);
+      const [created] = await tx
+        .insert(stockTransfers)
+        .values({
+          tenantId,
+          fromLocationId: b.fromLocationId,
+          toLocationId: b.toLocationId,
+          lines: lines.map((l) => ({ itemId: l.itemId, qty: fromMilli(l.milli) })),
+          note: b.note ?? null,
+          createdBy: userId,
+          createdAt: this.now(),
+        })
+        .returning();
+      const refNumber = `${from!.code} → ${to!.code}`;
+      for (const l of lines) {
+        const common = {
+          tenantId,
+          itemId: l.itemId,
+          refType: "transfer",
+          refId: created!.id,
+          refNumber,
+          note: b.note ?? null,
+          createdBy: userId,
+        };
+        await this.change(tx, { ...common, locationId: b.fromLocationId, deltaMilli: -l.milli, reason: "transfer_out" });
+        // Incoming stock carries the source's average cost into the destination's moving average.
+        await this.change(tx, {
+          ...common,
+          locationId: b.toLocationId,
+          deltaMilli: l.milli,
+          reason: "transfer_in",
+          unitCost: source.get(l.itemId)?.avgCost ?? null,
+        });
+      }
+      return created!;
+    });
+    this.log.info({ tenantId, transferId: row.id, lines: lines.length }, "inventory: transfer recorded");
+    return toTransfer(row);
+  }
+
+  async listTransfers(tenantId: string, query: TransferListQuery = {}): Promise<ListResult<StockTransfer>> {
+    const { limit, offset, locationId } = transferListQuerySchema.parse(query);
+    const where = and(
+      eq(stockTransfers.tenantId, tenantId),
+      locationId ? or(eq(stockTransfers.fromLocationId, locationId), eq(stockTransfers.toLocationId, locationId)) : undefined,
+    );
+    const [rows, [counted]] = await Promise.all([
+      this.db
+        .select()
+        .from(stockTransfers)
+        .where(where)
+        .orderBy(desc(stockTransfers.createdAt), desc(stockTransfers.id))
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ total: count() }).from(stockTransfers).where(where),
+    ]);
+    return { items: rows.map(toTransfer), total: counted?.total ?? 0 };
+  }
+
+  // ================================================================ reservations
+
+  private reservationsOf(tx: DbOrTx, tenantId: string, refType: string, refId: string) {
+    return tx
+      .select()
+      .from(stockReservations)
+      .where(and(eq(stockReservations.tenantId, tenantId), eq(stockReservations.refType, refType), eq(stockReservations.refId, refId)))
+      .orderBy(asc(stockReservations.itemId), asc(stockReservations.locationId))
+      .for("update");
+  }
+
+  /**
+   * Holds stock for a reference (e.g. an order) at `locationId` (default location). Idempotent per ref: a ref
+   * that already holds or sold stock returns its lines unchanged (`reserved: false`). All-or-nothing: 409
+   * `insufficient_stock` `{ items: { itemId, available, requested }[] }` unless `allowBackorder`. Untracked items
+   * are not held.
+   */
+  async reserve(
+    tenantId: string,
+    input: ReserveInput,
+    opts: { allowBackorder?: boolean } = {},
+  ): Promise<{ reserved: boolean; items: ReservationLine[] }> {
+    const b = reserveInputSchema.parse(input);
+    const allowBackorder = opts.allowBackorder ?? b.allowBackorder ?? false;
+    const lines = mergeQtyLines(b.lines);
+    const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
+    return this.db.transaction(async (tx) => {
+      await lockRef(tx, tenantId, b.refType, b.refId);
+      const existing = await this.reservationsOf(tx, tenantId, b.refType, b.refId);
+      if (reserveDecision(existing) === "noop") return { reserved: false, items: existing.map(toReservationLine) };
+      if (lines.length === 0) return { reserved: false, items: [] };
+
+      const ids = lines.map((l) => l.itemId);
+      const untracked = await this.untrackedOf(tx, tenantId, ids);
+      const tracked = ids.filter((id) => !untracked.has(id));
+      const locked = await this.lockRows(tx, tenantId, [loc.id], tracked);
+      const stock = new Map(locked.map((r) => [r.itemId, { qtyMilli: toMilli(r.qty), reservedMilli: toMilli(r.reserved) }]));
+      const check = checkAvailability(lines, stock, untracked, { allowBackorder });
+      if (!check.ok) throw insufficientStock(check.items);
+
+      const now = this.now();
+      const out: ReservationLine[] = [];
+      for (const l of check.lines) {
+        const qty = milliToDecimal(l.milli);
+        await tx
+          .update(stockItems)
+          .set({ reserved: sql`${stockItems.reserved} + ${qty}::numeric`, updatedAt: sql`now()` })
+          .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.locationId, loc.id), eq(stockItems.itemId, l.itemId)));
+        await tx
+          .insert(stockReservations)
+          .values({
+            tenantId,
+            refType: b.refType,
+            refId: b.refId,
+            locationId: loc.id,
+            itemId: l.itemId,
+            qty,
+            status: "active",
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [stockReservations.tenantId, stockReservations.refType, stockReservations.refId, stockReservations.itemId],
+            set: { locationId: loc.id, qty, status: "active", releasedAt: null, committedAt: null, updatedAt: now },
+          });
+        out.push({ itemId: l.itemId, locationId: loc.id, qty: fromMilli(l.milli), status: "active" });
+      }
+      this.log.info({ tenantId, refType: b.refType, refId: b.refId, items: out.length }, "inventory: stock reserved");
+      return { reserved: out.length > 0, items: out };
+    });
+  }
+
+  /** Gives back the stock held for a ref. Idempotent (no active reservation = no-op). */
+  async release(tenantId: string, refType: string, refId: string): Promise<{ released: boolean; items: number }> {
+    const rt = refTypeSchema.parse(refType);
+    const ref = refIdSchema.parse(refId);
+    return this.db.transaction(async (tx) => {
+      await lockRef(tx, tenantId, rt, ref);
+      const active = activeReservations(await this.reservationsOf(tx, tenantId, rt, ref));
+      if (active.length === 0) return { released: false, items: 0 };
+      for (const r of active) {
+        await tx
+          .update(stockItems)
+          .set({ reserved: sql`greatest(${stockItems.reserved} - ${r.qty}::numeric, 0)`, updatedAt: sql`now()` })
+          .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.locationId, r.locationId), eq(stockItems.itemId, r.itemId)));
+      }
+      const now = this.now();
+      await tx
+        .update(stockReservations)
+        .set({ status: "released", releasedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(stockReservations.tenantId, tenantId),
+            inArray(
+              stockReservations.id,
+              active.map((r) => r.id),
+            ),
+          ),
+        );
+      this.log.info({ tenantId, refType: rt, refId: ref, items: active.length }, "inventory: reservation released");
+      return { released: true, items: active.length };
+    });
+  }
+
+  /**
+   * Turns the stock held for a ref into a sale: a `sale` movement with the ref (qty −, reserved −) per line.
+   * Idempotent (no active reservation = no-op).
+   */
+  async commit(
+    tenantId: string,
+    refType: string,
+    refId: string,
+    opts: { refNumber?: string | null; userId?: string | null } = {},
+  ): Promise<{ committed: boolean; items: number }> {
+    const rt = refTypeSchema.parse(refType);
+    const ref = refIdSchema.parse(refId);
+    return this.db.transaction(async (tx) => {
+      await lockRef(tx, tenantId, rt, ref);
+      const active = activeReservations(await this.reservationsOf(tx, tenantId, rt, ref));
+      if (active.length === 0) return { committed: false, items: 0 };
+      for (const r of active) {
+        const milli = toMilli(r.qty);
+        await this.change(tx, {
+          tenantId,
+          locationId: r.locationId,
+          itemId: r.itemId,
+          deltaMilli: -milli,
+          reservedDeltaMilli: -milli,
+          reason: "sale",
+          refType: rt,
+          refId: ref,
+          refNumber: opts.refNumber ?? null,
+          createdBy: opts.userId ?? null,
+        });
+      }
+      const now = this.now();
+      await tx
+        .update(stockReservations)
+        .set({ status: "committed", committedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(stockReservations.tenantId, tenantId),
+            inArray(
+              stockReservations.id,
+              active.map((r) => r.id),
+            ),
+          ),
+        );
+      this.log.info({ tenantId, refType: rt, refId: ref, items: active.length }, "inventory: reservation committed");
+      return { committed: true, items: active.length };
+    });
+  }
+
+  /** Current reservation lines of a ref (any status). */
+  async getReservation(tenantId: string, refType: string, refId: string): Promise<ReservationLine[]> {
+    const rt = refTypeSchema.parse(refType);
+    const ref = refIdSchema.parse(refId);
+    const rows = await this.db
+      .select()
+      .from(stockReservations)
+      .where(and(eq(stockReservations.tenantId, tenantId), eq(stockReservations.refType, rt), eq(stockReservations.refId, ref)))
+      .orderBy(asc(stockReservations.itemId));
+    return rows.map(toReservationLine);
   }
 
   // ================================================================ suppliers
@@ -964,6 +1893,7 @@ export class InventoryService {
       if (missing.length > 0) throw badRequest("Some lines refer to items that no longer exist", { itemIds: missing });
     }
 
+    const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
     const row = await this.db.transaction(async (tx) => {
       const [created] = await tx
         .insert(purchases)
@@ -984,7 +1914,7 @@ export class InventoryService {
           createdBy: userId,
         })
         .returning();
-      await this.addPurchaseStock(tx, tenantId, created!, stockLines, userId);
+      await this.addPurchaseStock(tx, tenantId, loc.id, created!, stockLines, userId);
       return created!;
     });
     this.log.info({ tenantId, purchaseId: row.id, total: row.total }, "inventory: purchase recorded");
@@ -994,32 +1924,22 @@ export class InventoryService {
   private async addPurchaseStock(
     tx: DbOrTx,
     tenantId: string,
+    locationId: string,
     p: PurchaseRow,
     lines: { itemId: string; milli: number; taxable: number }[],
     userId: string | null,
   ) {
     if (lines.length === 0) return;
-    const untracked = new Set(
-      (
-        await tx
-          .select({ itemId: stockItems.itemId })
-          .from(stockItems)
-          .where(
-            and(
-              eq(stockItems.tenantId, tenantId),
-              inArray(
-                stockItems.itemId,
-                lines.map((l) => l.itemId),
-              ),
-              eq(stockItems.track, false),
-            ),
-          )
-      ).map((r) => r.itemId),
+    const untracked = await this.untrackedOf(
+      tx,
+      tenantId,
+      lines.map((l) => l.itemId),
     );
     for (const l of lines) {
       if (untracked.has(l.itemId)) continue;
       await this.change(tx, {
         tenantId,
+        locationId,
         itemId: l.itemId,
         deltaMilli: l.milli,
         reason: "purchase",
@@ -1034,6 +1954,7 @@ export class InventoryService {
 
   /** Cancels a purchase and takes back the stock it added. Idempotent: a cancelled purchase is returned as is. */
   async cancelPurchase(tenantId: string, id: string, userId: string | null = null): Promise<Purchase> {
+    const def = await this.defaultLocationRow(tenantId);
     const row = await this.db.transaction(async (tx) => {
       const p = await this.purchaseRow(tx, tenantId, id, true);
       if (p.status === "cancelled") return p;
@@ -1044,7 +1965,12 @@ export class InventoryService {
         .returning();
       if (!updated) throw conflict("This purchase was changed meanwhile; reload and try again");
       const moves = await tx
-        .select({ itemId: stockMovements.itemId, delta: stockMovements.delta, reason: stockMovements.reason })
+        .select({
+          locationId: stockMovements.locationId,
+          itemId: stockMovements.itemId,
+          delta: stockMovements.delta,
+          reason: stockMovements.reason,
+        })
         .from(stockMovements)
         .where(
           and(
@@ -1055,9 +1981,10 @@ export class InventoryService {
           ),
         );
       // Net of what is still applied (guards against a half-reversed history).
-      for (const n of netByItem(moves)) {
+      for (const n of netByLocationItem(moves, def.id)) {
         await this.change(tx, {
           tenantId,
+          locationId: n.locationId,
           itemId: n.itemId,
           deltaMilli: -n.milli,
           reason: "purchase_cancel",
@@ -1087,9 +2014,14 @@ export class InventoryService {
   // ================================================================ reports
 
   /** Valuation of tracked items. */
-  async stockReport(tenantId: string, query: { q?: string } = {}): Promise<{ items: StockRow[]; total: number; totals: StockTotals }> {
+  async stockReport(
+    tenantId: string,
+    query: { q?: string; locationId?: string | null } = {},
+  ): Promise<{ items: StockLevelRow[]; total: number; totals: StockTotals }> {
     const q = z.string().trim().max(100).optional().parse(query.q);
-    const rows = (await this.allRows(tenantId, q)).filter((r) => r.track);
+    const { locationId } = locationQuerySchema.parse({ locationId: query.locationId });
+    const loc = locationId ? await this.resolveLocation(tenantId, locationId) : null;
+    const rows = (await this.allRows(tenantId, q, loc?.id)).filter((r) => r.track);
     return { items: rows, total: rows.length, totals: stockTotals(rows) };
   }
 

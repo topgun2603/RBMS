@@ -77,6 +77,9 @@ import {
   type BrandingPort,
   type CustomerSnapshot,
   type EntitlementsPort,
+  type ItemSourceInput,
+  type ItemSourcePort,
+  type ItemSourceRecord,
   type LoggerPort,
   type NotifierPort,
   type PaymentsAvailabilityPort,
@@ -150,6 +153,11 @@ export interface InvoicesDeps {
    * where "invoices.reminders" is off. Without it every feature counts as on.
    */
   featureGate?: FeatureGatePort;
+  /**
+   * Saved items from elsewhere (the catalogue, wired in apps/api). When given, the items API is a facade over it
+   * (same Item shape, `rate` = GST-exclusive); without it the `billing_items` table is used.
+   */
+  items?: ItemSourcePort;
   log?: LoggerPort;
   /** Clock override for tests. */
   now?: () => Date;
@@ -648,7 +656,7 @@ const toCustomer = (c: BillingCustomer, agg: CustomerAggregates = {}): Customer 
   createdAt: c.createdAt,
 });
 
-const toItem = (i: BillingItem): Item => ({
+const toItem = (i: BillingItem | ItemSourceRecord): Item => ({
   id: i.id,
   name: i.name,
   hsn: i.hsn,
@@ -710,6 +718,7 @@ export class InvoicesService {
   private readonly notifier?: NotifierPort;
   private readonly paymentsAvailability?: PaymentsAvailabilityPort;
   private readonly featureGate?: FeatureGatePort;
+  private readonly itemSource?: ItemSourcePort;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
 
@@ -723,6 +732,7 @@ export class InvoicesService {
     this.notifier = deps.notifier;
     this.paymentsAvailability = deps.paymentsAvailability;
     this.featureGate = deps.featureGate;
+    this.itemSource = deps.items;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
   }
@@ -1191,6 +1201,10 @@ export class InvoicesService {
 
   async listItems(tenantId: string, query: ListQuery = {}): Promise<ListResult<Item>> {
     const { q, limit, offset } = listQuerySchema.parse(query);
+    if (this.itemSource) {
+      const page = await this.itemSource.list(tenantId, { q, limit, offset });
+      return { items: page.items.map(toItem), total: page.total };
+    }
     const pat = q ? likePattern(q) : null;
     const where = and(
       eq(billingItems.tenantId, tenantId),
@@ -1211,6 +1225,11 @@ export class InvoicesService {
   }
 
   async getItem(tenantId: string, id: string): Promise<Item> {
+    if (this.itemSource) {
+      const found = await this.itemSource.get(tenantId, id);
+      if (!found) throw notFound("Item");
+      return toItem(found);
+    }
     const [row] = await this.db
       .select()
       .from(billingItems)
@@ -1222,6 +1241,9 @@ export class InvoicesService {
 
   async createItem(tenantId: string, input: ItemInput): Promise<Item> {
     const b = itemInputSchema.parse(input);
+    if (this.itemSource) {
+      return toItem(await this.itemSource.create(tenantId, { name: b.name, hsn: b.hsn ?? null, unit: b.unit, rate: b.rate, gstRate: b.gstRate }));
+    }
     const [row] = await this.db
       .insert(billingItems)
       .values({ tenantId, name: b.name, hsn: b.hsn ?? null, unit: b.unit, rate: b.rate, gstRate: b.gstRate })
@@ -1231,13 +1253,18 @@ export class InvoicesService {
 
   async updateItem(tenantId: string, id: string, input: Partial<ItemInput>): Promise<Item> {
     const b = itemPatchSchema.parse(input);
-    const set: Partial<BillingItem> = {};
+    const set: Partial<ItemSourceInput> = {};
     if (b.name !== undefined) set.name = b.name;
     if (b.hsn !== undefined) set.hsn = b.hsn;
     if (b.unit !== undefined) set.unit = b.unit;
     if (b.rate !== undefined) set.rate = b.rate;
     if (b.gstRate !== undefined) set.gstRate = b.gstRate;
     if (Object.keys(set).length === 0) return this.getItem(tenantId, id);
+    if (this.itemSource) {
+      const updated = await this.itemSource.update(tenantId, id, set);
+      if (!updated) throw notFound("Item");
+      return toItem(updated);
+    }
     const [row] = await this.db
       .update(billingItems)
       .set(set)
@@ -1248,6 +1275,10 @@ export class InvoicesService {
   }
 
   async deleteItem(tenantId: string, id: string): Promise<void> {
+    if (this.itemSource) {
+      if (!(await this.itemSource.remove(tenantId, id))) throw notFound("Item");
+      return;
+    }
     const rows = await this.db
       .update(billingItems)
       .set({ deletedAt: this.now() })

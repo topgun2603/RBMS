@@ -35,3 +35,11 @@ export interface GoogleClaims {
  * Injectable so tests can avoid the network; the default uses Google's JWKS via jose.
  */
 export type GoogleTokenVerifier = (idToken: string, audience: string[]) => Promise<GoogleClaims>;
+
+/**
+ * Turns a member's tenant roles into permission patterns. Implemented by the staff module (cached there).
+ * When absent, auth uses `defaultPermissionsFor`: owner/admin → ["*"], everyone else → [].
+ */
+export interface PermissionResolverPort {
+  permissionsFor(tenantId: string, roles: string[]): Promise<string[]>;
+}

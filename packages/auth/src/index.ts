@@ -15,13 +15,13 @@ export function createAuth(deps: AuthDeps) {
     tables: { ...schema },
     routes: authRoutes(service),
   });
-  const contextHook = authContextHook(service, deps.memberships, deps.log);
+  const contextHook = authContextHook(service, deps.memberships, deps.log, deps.permissions);
   return { service, module, contextHook };
 }
 
 export { AuthService, createGoogleVerifier, toAuthUser } from "./service";
-export type { AuthConfig, AuthDeps, AuthUser, SessionInfo, SessionMeta, SignInResult } from "./service";
-export type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender } from "./ports";
+export type { AuthConfig, AuthDeps, AuthUser, DirectoryUser, SessionInfo, SessionMeta, SignInResult } from "./service";
+export type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 export {
   detectTarget,
   maskTarget,
@@ -34,5 +34,5 @@ export {
   sessionCookie,
 } from "./helpers";
 export type { Target, OtpRateLimitInput } from "./helpers";
-export { authContextHook, tokenFromRequest } from "./hook";
+export { authContextHook, defaultPermissionsFor, tokenFromRequest } from "./hook";
 export * from "./schema";

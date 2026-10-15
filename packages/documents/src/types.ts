@@ -1,0 +1,189 @@
+import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
+
+/**
+ * Data shapes the built-in renderers need. They mirror (structurally) the invoices/inventory/orders services'
+ * own types, so the kit can pass those objects straight through; this package never imports them.
+ */
+
+export type Paper = "A4" | "80mm" | "A6";
+export type DocLocale = "en" | "ta";
+
+/** The shop's details printed on documents (invoices' PublicSeller is assignable to it). */
+export interface DocSeller {
+  legalName: string | null;
+  gstin: string | null;
+  address: string | null;
+  city: string | null;
+  pincode: string | null;
+  stateCode: string | null;
+  phone: string | null;
+  email: string | null;
+  terms?: string | null;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  ifsc?: string | null;
+  upiId?: string | null;
+}
+
+export interface DocParty {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  address?: string | null;
+  stateCode?: string | null;
+}
+
+/** A GST invoice (invoices' `Invoice` and `PublicInvoice` are assignable to it). */
+export interface InvoiceDocData {
+  id?: string;
+  number: string | null;
+  status: "draft" | "issued" | "partially_paid" | "paid" | "cancelled" | (string & {});
+  date: string;
+  dueDate: string | null;
+  customer: DocParty;
+  seller: DocSeller;
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  amountInWords?: string | null;
+  notes: string | null;
+  paid: number;
+  balance: number;
+  cancelReason?: string | null;
+  updatedAt?: Date | string | null;
+}
+
+export interface DocLedgerEntry {
+  date: string;
+  type: "opening" | "invoice" | "payment" | "receipt" | "cancel" | (string & {});
+  number: string | null;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+/** A customer statement (credit book ledger). */
+export interface StatementDocData {
+  customer: DocParty & { id?: string };
+  seller: DocSeller;
+  ledger: { openingBalance: number; entries: DocLedgerEntry[]; closingBalance: number };
+  from?: string | null;
+  to?: string | null;
+  /** "YYYY-MM-DD"; defaults to `to`, else the last entry's date. */
+  generatedOn?: string | null;
+}
+
+export interface DocAddress {
+  name?: string | null;
+  phone?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  landmark?: string | null;
+  city?: string | null;
+  district?: string | null;
+  state?: string | null;
+  stateCode?: string | null;
+  pincode?: string | null;
+  country?: string | null;
+}
+
+export interface OrderDocLine {
+  name: string;
+  sku?: string | null;
+  qty: number;
+  unit?: string | null;
+  price?: number | null;
+  total?: number | null;
+}
+
+/** An order for packing slips and shipping labels. */
+export interface OrderDocData {
+  id?: string;
+  number: string;
+  /** "YYYY-MM-DD" or a timestamp. */
+  placedAt: string | Date;
+  customer: { name: string; phone?: string | null; email?: string | null };
+  shippingAddress: DocAddress | null;
+  lines: OrderDocLine[];
+  total: number;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  fulfillment?: { carrier?: string | null; trackingNumber?: string | null } | null;
+  customerNote?: string | null;
+  notes?: string | null;
+  /** The shop (ship-from). */
+  seller: DocSeller;
+  /** Parcel weight in grams, if known. */
+  weightGrams?: number | null;
+  updatedAt?: Date | string | null;
+}
+
+/** A supplier bill recorded in inventory (inventory's `Purchase` plus the shop's details). */
+export interface PurchaseDocData {
+  id?: string;
+  billNumber: string;
+  date: string;
+  supplier: { name: string; gstin?: string | null; stateCode?: string | null; phone?: string | null; address?: string | null };
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  total: number;
+  paid: boolean;
+  status: "recorded" | "cancelled" | (string & {});
+  notes: string | null;
+  /** The buying shop. */
+  shop: DocSeller;
+  updatedAt?: Date | string | null;
+}
+
+export interface Branding {
+  appName: string | null;
+  logoUrl: string | null;
+  /** Extra CSS from the tenant's branding (sanitised before use). */
+  css: string;
+  /** Primary colour, e.g. "#0f766e". */
+  primary: string | null;
+}
+
+export interface RenderContext {
+  locale: DocLocale;
+  branding: Branding;
+}
+
+// ------------------------------------------------------------------ ports (implemented in apps/api kit)
+
+export interface InvoiceDocPort {
+  /** A staff-visible invoice of the tenant, or null when it doesn't exist. */
+  invoice(tenantId: string, id: string): Promise<InvoiceDocData | null>;
+  /** The invoice behind a public share token (null = unknown token or the shop's feature is off). */
+  publicInvoice(token: string): Promise<{ tenantId?: string | null; invoice: InvoiceDocData; branding?: Partial<Branding> | null } | null>;
+}
+
+export interface StatementDocPort {
+  /** Ledger of a customer for the range (default: the service's own default range). */
+  statement(tenantId: string, customerId: string, range: { from?: string; to?: string }): Promise<StatementDocData | null>;
+}
+
+export interface OrderDocPort {
+  order(tenantId: string, id: string): Promise<OrderDocData | null>;
+}
+
+export interface PurchaseDocPort {
+  purchase(tenantId: string, id: string): Promise<PurchaseDocData | null>;
+}
+
+export interface BrandingPort {
+  get(tenantId: string): Promise<Partial<Branding> | null>;
+}
+
+export interface LoggerPort {
+  info(obj: unknown, msg?: string): void;
+  warn(obj: unknown, msg?: string): void;
+  error(obj: unknown, msg?: string): void;
+}
+
+export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };

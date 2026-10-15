@@ -8,8 +8,13 @@ import {
   purchaseReportQuerySchema,
   stockReportQuerySchema,
   type AdjustInput,
+  type AvailabilityQuery,
   type InventoryService,
-  type PageQuery,
+  type LocationInput,
+  type LocationListQuery,
+  type LocationPatch,
+  type LocationQuery,
+  type MovementsQuery,
   type PurchaseInput,
   type PurchaseListQuery,
   type PurchaseSummary,
@@ -18,6 +23,8 @@ import {
   type StockRow,
   type SupplierInput,
   type SupplierListQuery,
+  type TransferInput,
+  type TransferListQuery,
 } from "./service";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -56,86 +63,114 @@ function sendCsv(reply: FastifyReply, name: string, from: string, to: string, cs
 
 const STOCK = { config: { feature: INVENTORY_FEATURE_KEYS.stock } };
 const PURCHASES = { config: { feature: INVENTORY_FEATURE_KEYS.purchases } };
+const LOCATIONS = { config: { feature: INVENTORY_FEATURE_KEYS.locations } };
 
 /**
- * Routes under /v1/inventory. All of them need an owner, admin or staff member of the current tenant.
- * Stock routes belong to the "inventory" feature, suppliers and purchases to "inventory.purchases" (enforced by the host).
+ * Routes under /v1/inventory. Everything except /public/* needs an owner, admin or staff member of the current
+ * tenant. Stock and availability routes belong to the "inventory" feature, locations and transfers to
+ * "inventory.locations", suppliers and purchases to "inventory.purchases" (enforced by the host).
  */
 export function inventoryRoutes(service: InventoryService) {
-  return async (app: FastifyInstance) => {
-    app.addHook("preHandler", async (req) => {
-      requireRole(req.ctx, "owner", "admin", "staff");
-      requireTenant(req.ctx);
-    });
+  return async (root: FastifyInstance) => {
     const tid = (req: { ctx: Parameters<typeof requireTenant>[0] }) => requireTenant(req.ctx).id;
     const uid = (req: { ctx: Parameters<typeof requireUser>[0] }) => requireUser(req.ctx).id;
 
-    // ---- stock
-    app.get("/stock", STOCK, async (req) => service.listStock(tid(req), req.query as StockQuery));
-    app.get("/stock/:itemId", STOCK, async (req) => {
-      const { itemId } = itemParam.parse(req.params);
-      return service.getStock(tid(req), itemId);
-    });
-    app.patch("/stock/:itemId", STOCK, async (req) => {
-      const { itemId } = itemParam.parse(req.params);
-      return service.updateStock(tid(req), itemId, body(req) as StockPatch);
-    });
-    app.post("/stock/:itemId/adjust", STOCK, async (req) => {
-      const { itemId } = itemParam.parse(req.params);
-      return service.adjust(tid(req), itemId, body(req) as AdjustInput, uid(req));
-    });
-    app.get("/stock/:itemId/movements", STOCK, async (req) => {
-      const { itemId } = itemParam.parse(req.params);
-      return service.movements(tid(req), itemId, req.query as PageQuery);
-    });
-    app.get("/summary", STOCK, async (req) => service.summary(tid(req)));
+    // ---- public (storefront): any request with a tenant; booleans only.
+    root.get("/public/availability", STOCK, async (req) => service.publicAvailability(tid(req), req.query as AvailabilityQuery));
 
-    // ---- suppliers
-    app.get("/suppliers", PURCHASES, async (req) => service.listSuppliers(tid(req), req.query as SupplierListQuery));
-    app.post("/suppliers", PURCHASES, async (req) => service.createSupplier(tid(req), body(req) as SupplierInput));
-    app.get("/suppliers/:id", PURCHASES, async (req) => {
-      const { id } = idParam.parse(req.params);
-      return service.getSupplier(tid(req), id);
-    });
-    app.patch("/suppliers/:id", PURCHASES, async (req) => {
-      const { id } = idParam.parse(req.params);
-      return service.updateSupplier(tid(req), id, body(req) as Partial<SupplierInput>);
-    });
-    app.delete("/suppliers/:id", PURCHASES, async (req) => {
-      const { id } = idParam.parse(req.params);
-      await service.deleteSupplier(tid(req), id);
-      return { ok: true };
-    });
+    await root.register(async (app) => {
+      app.addHook("preHandler", async (req) => {
+        requireRole(req.ctx, "owner", "admin", "staff");
+        requireTenant(req.ctx);
+      });
 
-    // ---- purchases
-    app.get("/purchases", PURCHASES, async (req) => service.listPurchases(tid(req), req.query as PurchaseListQuery));
-    app.post("/purchases", PURCHASES, async (req) => service.createPurchase(tid(req), body(req) as PurchaseInput, uid(req)));
-    app.get("/purchases/:id", PURCHASES, async (req) => {
-      const { id } = idParam.parse(req.params);
-      return service.getPurchase(tid(req), id);
-    });
-    app.post("/purchases/:id/cancel", PURCHASES, async (req) => {
-      const { id } = idParam.parse(req.params);
-      return service.cancelPurchase(tid(req), id, uid(req));
-    });
-    app.post("/purchases/:id/paid", PURCHASES, async (req) => {
-      const { id } = idParam.parse(req.params);
-      return service.setPurchasePaid(tid(req), id, body(req) as { paid: boolean });
-    });
+      // ---- stock
+      app.get("/stock", STOCK, async (req) => service.listStock(tid(req), req.query as StockQuery));
+      app.get("/stock/:itemId", STOCK, async (req) => {
+        const { itemId } = itemParam.parse(req.params);
+        return service.getStock(tid(req), itemId, req.query as LocationQuery);
+      });
+      app.patch("/stock/:itemId", STOCK, async (req) => {
+        const { itemId } = itemParam.parse(req.params);
+        return service.updateStock(tid(req), itemId, body(req) as StockPatch);
+      });
+      app.post("/stock/:itemId/adjust", STOCK, async (req) => {
+        const { itemId } = itemParam.parse(req.params);
+        return service.adjust(tid(req), itemId, body(req) as AdjustInput, uid(req));
+      });
+      app.get("/stock/:itemId/movements", STOCK, async (req) => {
+        const { itemId } = itemParam.parse(req.params);
+        return service.movements(tid(req), itemId, req.query as MovementsQuery);
+      });
+      app.get("/summary", STOCK, async (req) => service.summary(tid(req), (req.query ?? {}) as LocationQuery));
+      app.get("/availability", STOCK, async (req) => service.availability(tid(req), req.query as AvailabilityQuery));
 
-    // ---- reports
-    app.get("/reports/stock", STOCK, async (req, reply) => {
-      const { q, format } = stockReportQuerySchema.parse(req.query ?? {});
-      const report = await service.stockReport(tid(req), { q });
-      if (format !== "csv") return report;
-      const today = service.today();
-      return sendCsv(reply, "stock", today, today, toCsv(report.items, STOCK_CSV_COLUMNS));
-    });
-    app.get("/reports/purchases", PURCHASES, async (req, reply) => {
-      const { from, to, format } = purchaseReportQuerySchema.parse(req.query ?? {});
-      const report = await service.purchaseReport(tid(req), { from, to });
-      if (format !== "csv") return report;
-      return sendCsv(reply, "purchases", from, to, toCsv(report.rows, PURCHASE_CSV_COLUMNS));
+      // ---- locations and transfers
+      app.get("/locations", LOCATIONS, async (req) => service.listLocations(tid(req), (req.query ?? {}) as LocationListQuery));
+      app.post("/locations", LOCATIONS, async (req) => service.createLocation(tid(req), body(req) as LocationInput));
+      app.get("/locations/:id", LOCATIONS, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.getLocation(tid(req), id);
+      });
+      app.patch("/locations/:id", LOCATIONS, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.updateLocation(tid(req), id, body(req) as LocationPatch);
+      });
+      app.delete("/locations/:id", LOCATIONS, async (req) => {
+        const { id } = idParam.parse(req.params);
+        await service.deleteLocation(tid(req), id);
+        return { ok: true };
+      });
+      app.get("/transfers", LOCATIONS, async (req) => service.listTransfers(tid(req), req.query as TransferListQuery));
+      app.post("/transfers", LOCATIONS, async (req) => service.createTransfer(tid(req), body(req) as TransferInput, uid(req)));
+
+      // ---- suppliers
+      app.get("/suppliers", PURCHASES, async (req) => service.listSuppliers(tid(req), req.query as SupplierListQuery));
+      app.post("/suppliers", PURCHASES, async (req) => service.createSupplier(tid(req), body(req) as SupplierInput));
+      app.get("/suppliers/:id", PURCHASES, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.getSupplier(tid(req), id);
+      });
+      app.patch("/suppliers/:id", PURCHASES, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.updateSupplier(tid(req), id, body(req) as Partial<SupplierInput>);
+      });
+      app.delete("/suppliers/:id", PURCHASES, async (req) => {
+        const { id } = idParam.parse(req.params);
+        await service.deleteSupplier(tid(req), id);
+        return { ok: true };
+      });
+
+      // ---- purchases
+      app.get("/purchases", PURCHASES, async (req) => service.listPurchases(tid(req), req.query as PurchaseListQuery));
+      app.post("/purchases", PURCHASES, async (req) => service.createPurchase(tid(req), body(req) as PurchaseInput, uid(req)));
+      app.get("/purchases/:id", PURCHASES, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.getPurchase(tid(req), id);
+      });
+      app.post("/purchases/:id/cancel", PURCHASES, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.cancelPurchase(tid(req), id, uid(req));
+      });
+      app.post("/purchases/:id/paid", PURCHASES, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.setPurchasePaid(tid(req), id, body(req) as { paid: boolean });
+      });
+
+      // ---- reports
+      app.get("/reports/stock", STOCK, async (req, reply) => {
+        const { q, format, locationId } = stockReportQuerySchema.parse(req.query ?? {});
+        const report = await service.stockReport(tid(req), { q, locationId });
+        if (format !== "csv") return report;
+        const today = service.today();
+        return sendCsv(reply, "stock", today, today, toCsv(report.items, STOCK_CSV_COLUMNS));
+      });
+      app.get("/reports/purchases", PURCHASES, async (req, reply) => {
+        const { from, to, format } = purchaseReportQuerySchema.parse(req.query ?? {});
+        const report = await service.purchaseReport(tid(req), { from, to });
+        if (format !== "csv") return report;
+        return sendCsv(reply, "purchases", from, to, toCsv(report.rows, PURCHASE_CSV_COLUMNS));
+      });
     });
   };
 }
