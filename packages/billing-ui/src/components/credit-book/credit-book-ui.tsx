@@ -11,6 +11,8 @@ import {
   FileTextIcon,
   HandCoinsIcon,
   WalletIcon,
+  Undo2Icon,
+  BanknoteIcon,
 } from "lucide-react";
 import { StatusPill, toast, type StatusTone } from "@srirealtime/ui";
 import { describeError, useI18n, useOptionalShop } from "@srirealtime/web";
@@ -74,6 +76,8 @@ export const LEDGER_TYPE: Record<LedgerEntryType, { icon: Icon; tone: string }> 
   payment: { icon: WalletIcon, tone: "text-success-ink" },
   receipt: { icon: HandCoinsIcon, tone: "text-success-ink" },
   cancel: { icon: BanIcon, tone: "text-muted-foreground" },
+  credit_note: { icon: Undo2Icon, tone: "text-success-ink" },
+  refund: { icon: BanknoteIcon, tone: "text-warning-ink" },
 };
 
 export const ledgerTypeMeta = (type: string) => LEDGER_TYPE[type as LedgerEntryType] ?? LEDGER_TYPE.opening;

@@ -19,7 +19,7 @@ export function FunnelChart({ rows, label }: { rows: FunnelRow[]; label: (step: 
       {rows.map((r, i) => (
         <li key={r.step} className="grid gap-1">
           {i > 0 && (
-            <p className="flex items-center gap-1 pl-1 text-[0.6875rem] text-muted-foreground">
+            <p className="flex items-center gap-1 pl-1 text-xs text-muted-foreground">
               <ArrowDownIcon className="size-3" aria-hidden />
               {r.dropOff === null ? t("site.analytics.noDropData") : t("site.analytics.dropOff", { pct: pct(r.dropOff) })}
             </p>

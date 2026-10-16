@@ -7,14 +7,24 @@ import type { BillingInterval } from "./schema";
  */
 export interface SubscriptionProvider {
   readonly name: "razorpay" | "mock";
+  /**
+   * Whether `createSubscription` can collect an `upfront` amount with the mandate authorisation (Razorpay `addons`).
+   * Upgrades use it to charge the first period minus the proration credit now, with the recurring charges starting
+   * one period later. Without it the credit becomes a balance on the next invoice.
+   */
+  readonly supportsUpfront?: boolean;
   /** A provider plan charging `amountPaise` (GST included) every `interval`. */
   createPlan(input: { planId: string; name: string; interval: BillingInterval; amountPaise: number }): Promise<{ id: string }>;
-  /** Starts a subscription; the customer authorises the mandate at `shortUrl`. `startAt` = first charge (trial end). */
+  /**
+   * Starts a subscription; the customer authorises the mandate at `shortUrl`. `startAt` = first recurring charge
+   * (trial end). `upfront` (GST included) is charged with the authorisation (only when `supportsUpfront`).
+   */
   createSubscription(input: {
     providerPlanId: string;
     interval: BillingInterval;
     startAt?: Date | null;
     notes: Record<string, string>;
+    upfront?: { amountPaise: number; name: string } | null;
   }): Promise<{ id: string; shortUrl: string }>;
   cancel(id: string, atCycleEnd: boolean): Promise<void>;
   /** Moves a subscription to another provider plan from the next cycle (downgrades). Optional. */
@@ -70,6 +80,8 @@ export interface RazorpayProviderOptions {
 /** Razorpay Subscriptions over REST (`/v1/plans`, `/v1/subscriptions`), Basic auth with the platform key. */
 export class RazorpaySubscriptionProvider implements SubscriptionProvider {
   readonly name = "razorpay" as const;
+  /** Razorpay's `addons` collect an upfront amount with the authorisation transaction. */
+  readonly supportsUpfront = true;
   private readonly fetchFn: typeof fetch;
   private readonly baseUrl: string;
   private readonly auth: string;
@@ -92,7 +104,13 @@ export class RazorpaySubscriptionProvider implements SubscriptionProvider {
     return { id: r.id };
   }
 
-  async createSubscription(input: { providerPlanId: string; interval: BillingInterval; startAt?: Date | null; notes: Record<string, string> }) {
+  async createSubscription(input: {
+    providerPlanId: string;
+    interval: BillingInterval;
+    startAt?: Date | null;
+    notes: Record<string, string>;
+    upfront?: { amountPaise: number; name: string } | null;
+  }) {
     const body: Record<string, unknown> = {
       plan_id: input.providerPlanId,
       total_count: totalCount(input.interval),
@@ -101,6 +119,12 @@ export class RazorpaySubscriptionProvider implements SubscriptionProvider {
     };
     // Razorpay rejects a start in the past; a start within a minute means "now".
     if (input.startAt && input.startAt.getTime() > Date.now() + 60_000) body.start_at = unix(input.startAt);
+    // Offers (`offer_id`) must be made in the Dashboard and can't carry a per-shop amount, so a proration credit is
+    // applied by charging the reduced first period as an upfront add-on and starting the plan's own charges a period
+    // later. Add-ons can't be negative.
+    if (input.upfront && input.upfront.amountPaise > 0) {
+      body.addons = [{ item: { name: input.upfront.name.slice(0, 100), amount: input.upfront.amountPaise, currency: "INR" } }];
+    }
     const r = await this.request<{ id: string; short_url: string }>("POST", "/subscriptions", body);
     return { id: r.id, shortUrl: r.short_url };
   }
@@ -167,7 +191,9 @@ export const MOCK_WEBHOOK_SECRET = "mock_webhook_secret";
  */
 export class MockSubscriptionProvider implements SubscriptionProvider {
   readonly name = "mock" as const;
-  private readonly subs = new Map<string, ProviderSubscription & { cancelled?: boolean }>();
+  /** Mirrors Razorpay: the upfront amount is "charged" when the mandate is authorised (`/mock/authorize`). */
+  readonly supportsUpfront = true;
+  private readonly subs = new Map<string, ProviderSubscription & { upfrontPaise?: number; startAt?: Date | null }>();
 
   constructor(private readonly opts: { authUrl: (subscriptionId: string, notes: Record<string, string>) => Promise<string> | string; webhookSecret?: string }) {}
 
@@ -175,11 +201,25 @@ export class MockSubscriptionProvider implements SubscriptionProvider {
     return { id: `plan_mock_${input.planId}_${input.interval}_${input.amountPaise}` };
   }
 
-  async createSubscription(input: { providerPlanId: string; notes: Record<string, string> }) {
+  async createSubscription(input: { providerPlanId: string; notes: Record<string, string>; startAt?: Date | null; upfront?: { amountPaise: number; name: string } | null }) {
     const id = `sub_mock_${randomBytes(8).toString("hex")}`;
     const shortUrl = await this.opts.authUrl(id, input.notes);
-    this.subs.set(id, { id, status: "created", planId: input.providerPlanId, currentStart: null, currentEnd: null, shortUrl });
+    this.subs.set(id, {
+      id,
+      status: "created",
+      planId: input.providerPlanId,
+      currentStart: null,
+      currentEnd: null,
+      shortUrl,
+      upfrontPaise: input.upfront?.amountPaise ?? 0,
+      startAt: input.startAt ?? null,
+    });
     return { id, shortUrl };
+  }
+
+  /** The upfront amount the mock collects on authorisation (0 when none). */
+  upfrontOf(id: string): number {
+    return this.subs.get(id)?.upfrontPaise ?? 0;
   }
 
   async cancel(id: string) {

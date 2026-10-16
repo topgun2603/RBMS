@@ -46,7 +46,7 @@ export function HomePreview({
             <MonitorIcon className="size-3.5" /> {t("site.preview.desktop")}
           </button>
         </div>
-        {note && <p className="min-w-0 truncate text-[0.6875rem] text-muted-foreground">{note}</p>}
+        {note && <p className="min-w-0 truncate text-xs text-muted-foreground">{note}</p>}
       </div>
       <div
         className={cn(
@@ -83,7 +83,7 @@ export function HomePreview({
                     )}
                   >
                     {hidden && (
-                      <span className="absolute -top-2.5 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-foreground/85 px-2 py-0.5 text-[0.6875rem] font-medium text-background shadow-sm">
+                      <span className="absolute -top-2.5 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-foreground/85 px-2 py-0.5 text-xs font-medium text-background shadow-sm">
                         <EyeOffIcon className="size-3" aria-hidden /> {t("site.preview.hiddenBadge")}
                       </span>
                     )}
@@ -308,7 +308,7 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
                   <Icon className="size-5" />
                 </span>
                 <p className="text-xs font-semibold">{it.title}</p>
-                {it.text && <p className="text-[0.6875rem] text-muted-foreground">{it.text}</p>}
+                {it.text && <p className="text-xs text-muted-foreground">{it.text}</p>}
               </div>
             );
           })}

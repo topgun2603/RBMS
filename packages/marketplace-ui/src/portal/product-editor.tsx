@@ -1,9 +1,27 @@
 "use client";
 
 import * as React from "react";
-import { BoxesIcon, ImageIcon, InfoIcon, LayersIcon, Loader2Icon, PlusIcon, ReceiptIndianRupeeIcon, SendIcon, Trash2Icon, UndoIcon, XIcon } from "lucide-react";
+import {
+  BoxesIcon,
+  HourglassIcon,
+  ImageIcon,
+  InfoIcon,
+  LayersIcon,
+  Loader2Icon,
+  MessageSquareWarningIcon,
+  PlusIcon,
+  ReceiptIndianRupeeIcon,
+  SaveIcon,
+  SendIcon,
+  Trash2Icon,
+  UndoIcon,
+  XIcon,
+} from "lucide-react";
 import { GST_RATES } from "@srirealtime/gst";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   AnimatePresence,
   Badge,
   Button,
@@ -33,11 +51,23 @@ import {
   Textarea,
   toast,
 } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
-import { cartesian, comboKey, discountPct, money, paiseToInput, rupeesToPaise, variantTitle } from "../lib/logic";
-import { useAddVariant, useCreateProduct, useDeleteProduct, useDeleteVariant, useMyProduct, useUpdateProduct, useUpdateVariant } from "../lib/vendor";
-import type { CatalogProduct, ProductImage, ProductOption, ProductStatus } from "../lib/types";
-import { ImageManager, ProductStatusPill } from "./product-bits";
+import { ConfirmDialog, describeError, Page, PageHeading, QueryError, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+import { cartesian, comboKey, discountPct, listingState, money, paiseToInput, parseQty, rupeesToPaise, variantTitle, type ListingState } from "../lib/logic";
+import { useMarketplaceSettings } from "../lib/queries";
+import {
+  useAddVariant,
+  useAdjustStock,
+  useCreateProduct,
+  useDeleteProduct,
+  useDeleteVariant,
+  useMyProduct,
+  useMyReviews,
+  useMyStock,
+  useUpdateProduct,
+  useUpdateVariant,
+} from "../lib/vendor";
+import type { CatalogProduct, ProductImage, ProductOption, ProductStatus, VendorStockItem } from "../lib/types";
+import { ImageManager, ListingPill } from "./product-bits";
 
 interface Row {
   key: string;
@@ -171,12 +201,17 @@ function Editor({ product }: { product: CatalogProduct | null }) {
   const del = useDeleteProduct();
   const [d, setD] = React.useState<Draft>(() => (product ? fromProduct(product) : emptyDraft()));
   const [tried, setTried] = React.useState(false);
-  const [saving, setSaving] = React.useState<ProductStatus | null>(null);
+  const [saving, setSaving] = React.useState<ProductStatus | "keep" | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
   const errors = validate(d);
   const shown: Errors = tried ? errors : {};
   const status: ProductStatus = product?.status ?? "draft";
+  const reviews = useMyReviews(product ? [product.id] : []);
+  const review = reviews.data?.items.find((r) => r.productId === product?.id) ?? null;
+  const state: ListingState = product ? listingState(status, review) : "draft";
+  // Public settings key: whether the shop reviews seller products before they go live.
+  const autoApprove = useMarketplaceSettings().data?.autoApproveProducts ?? false;
 
   const setOptions = (options: ProductOption[]) => setD((x) => ({ ...x, options, rows: syncRows(options, x.rows) }));
   const toggleVariants = (on: boolean) => {
@@ -184,7 +219,8 @@ function Editor({ product }: { product: CatalogProduct | null }) {
     setD((x) => ({ ...x, hasVariants: on, options, rows: syncRows(options, x.rows) }));
   };
 
-  const save = async (next: ProductStatus) => {
+  /** `next` = the status to ask for; "keep" saves the changes without touching it (a product in review). */
+  const save = async (next: ProductStatus | "keep") => {
     setTried(true);
     if (Object.keys(errors).length) {
       toast.error(t("marketplace.validation.fixErrors"));
@@ -199,7 +235,7 @@ function Editor({ product }: { product: CatalogProduct | null }) {
       taxInclusive: d.taxInclusive,
       unit: d.unit,
       images: d.images,
-      status: next,
+      ...(next === "keep" ? {} : { status: next }),
       channels: ["store"],
     };
     const options = d.hasVariants ? d.options.filter((o) => o.name.trim() && o.values.length) : [];
@@ -212,10 +248,10 @@ function Editor({ product }: { product: CatalogProduct | null }) {
           Object.assign(body, { price: rupeesToPaise(r.price), mrp: r.mrp.trim() ? rupeesToPaise(r.mrp) : null, sku: r.sku.trim() || null });
         }
         const created = await create.mutateAsync(body);
-        toast.success(t(next === "active" ? "marketplace.editor.submitted" : "marketplace.editor.savedDraft"));
+        toast.success(t(next !== "active" ? "marketplace.editor.savedDraft" : created.status === "active" ? "marketplace.editor.submitted" : "marketplace.editor.sentForReview"));
         navigate(`products/${created.id}`, { replace: true });
       } else {
-        await update.mutateAsync({ id: product.id, patch: { ...fields, options } });
+        const saved = await update.mutateAsync({ id: product.id, patch: { ...fields, options } });
         const keep = new Set<string>();
         for (const [i, r] of d.rows.entries()) {
           const body = variantBody(r, options, i);
@@ -225,7 +261,20 @@ function Editor({ product }: { product: CatalogProduct | null }) {
           } else await addVariant.mutateAsync({ productId: product.id, variant: body });
         }
         for (const v of product.variants) if (!keep.has(v.id)) await deleteVariant.mutateAsync(v.id);
-        toast.success(t(next !== status ? (next === "active" ? "marketplace.editor.submitted" : "marketplace.editor.movedToDraft") : "marketplace.common.saved"));
+        const asked = next === "active" && status !== "active";
+        toast.success(
+          t(
+            asked
+              ? saved.status === "active"
+                ? "marketplace.editor.submitted"
+                : "marketplace.editor.sentForReview"
+              : next !== "keep" && next !== status
+                ? state === "in_review"
+                  ? "marketplace.editor.withdrawn"
+                  : "marketplace.editor.movedToDraft"
+                : "marketplace.common.saved",
+          ),
+        );
       }
     } catch (err) {
       toast.error(describeError(err, t));
@@ -241,7 +290,7 @@ function Editor({ product }: { product: CatalogProduct | null }) {
       <PageHeading
         back={{ href: "products", label: t("marketplace.portal.nav.products") }}
         title={product ? product.name : t("marketplace.editor.newTitle")}
-        description={product ? <ProductStatusPill status={product.status} /> : t("marketplace.editor.newBody")}
+        description={product ? <ListingPill state={state} /> : t("marketplace.editor.newBody")}
         actions={
           product && (
             <Button variant="ghost" onClick={() => setDeleting(true)} className="text-danger-ink">
@@ -252,6 +301,38 @@ function Editor({ product }: { product: CatalogProduct | null }) {
       />
 
       <div className="grid gap-4 pb-28 md:pb-20">
+        <AnimatePresence initial={false}>
+          {state === "changes" && review?.reason && (
+            <motion.div key="changes" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
+              <Alert variant="destructive" data-testid="review-reason">
+                <MessageSquareWarningIcon />
+                <AlertTitle>{t("marketplace.editor.changesTitle")}</AlertTitle>
+                <AlertDescription>
+                  <p className="font-medium text-foreground">{review.reason}</p>
+                  <p>{t("marketplace.editor.changesBody")}</p>
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+          {state === "live_review" && (
+            <motion.div key="re-review" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
+              <Alert data-testid="re-review-note">
+                <HourglassIcon />
+                <AlertTitle>{t("marketplace.editor.reReviewTitle")}</AlertTitle>
+                <AlertDescription>{t("marketplace.editor.reReviewBody")}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+          {state === "in_review" && (
+            <motion.div key="review" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
+              <Alert>
+                <HourglassIcon />
+                <AlertTitle>{t("marketplace.editor.reviewTitle")}</AlertTitle>
+                <AlertDescription>{t("marketplace.editor.reviewBody")}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <Section icon={ImageIcon} title={t("marketplace.editor.basics")}>
           <Field invalid={!!shown.name}>
             <FieldLabel>{t("marketplace.editor.name")}</FieldLabel>
@@ -357,17 +438,15 @@ function Editor({ product }: { product: CatalogProduct | null }) {
         </Section>
 
         <Section icon={BoxesIcon} title={t("marketplace.editor.stock")}>
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <InfoIcon className="mt-0.5 size-4 shrink-0" /> {t("marketplace.editor.stockNote")}
-          </p>
+          <StockSection product={product} />
         </Section>
       </div>
 
       {/* Sticky action bar above the phone tab bar. */}
       <div className="fixed inset-x-0 bottom-16 z-30 border-t bg-card/95 px-4 py-3 backdrop-blur md:sticky md:bottom-4 md:mx-auto md:max-w-4xl md:rounded-2xl md:border md:shadow-elevated">
         <div className="mx-auto flex max-w-4xl items-center justify-end gap-2">
-          <p className="mr-auto hidden text-meta text-muted-foreground sm:block">{t(status === "active" ? "marketplace.editor.liveNote" : "marketplace.editor.draftNote")}</p>
-          {status === "active" && product ? (
+          <p className="mr-auto hidden text-meta text-muted-foreground sm:block">{t(BAR_NOTE[state], { review: autoApprove ? "" : t("marketplace.editor.reviewHint") })}</p>
+          {(state === "live" || state === "live_review") && product ? (
             <>
               <Button variant="outline" onClick={() => void save("draft")} disabled={busy}>
                 {saving === "draft" ? <Loader2Icon className="animate-spin" /> : <UndoIcon />} {t("marketplace.editor.toDraft")}
@@ -376,13 +455,23 @@ function Editor({ product }: { product: CatalogProduct | null }) {
                 {saving === "active" && <Loader2Icon className="animate-spin" />} {t("marketplace.common.save")}
               </Button>
             </>
+          ) : state === "in_review" ? (
+            <>
+              <Button variant="outline" onClick={() => void save("draft")} disabled={busy}>
+                {saving === "draft" ? <Loader2Icon className="animate-spin" /> : <UndoIcon />} {t("marketplace.editor.withdraw")}
+              </Button>
+              <Button onClick={() => void save("keep")} disabled={busy}>
+                {saving === "keep" ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} {t("marketplace.editor.saveChanges")}
+              </Button>
+            </>
           ) : (
             <>
               <Button variant="outline" onClick={() => void save("draft")} disabled={busy}>
                 {saving === "draft" && <Loader2Icon className="animate-spin" />} {t("marketplace.editor.saveDraft")}
               </Button>
-              <Button onClick={() => void save("active")} disabled={busy}>
-                {saving === "active" ? <Loader2Icon className="animate-spin" /> : <SendIcon />} {t("marketplace.editor.submit")}
+              <Button onClick={() => void save("active")} disabled={busy} data-testid="submit-product">
+                {saving === "active" ? <Loader2Icon className="animate-spin" /> : <SendIcon />}{" "}
+                {t(autoApprove ? "marketplace.editor.submit" : state === "changes" ? "marketplace.editor.resubmit" : "marketplace.editor.submitReview")}
               </Button>
             </>
           )}
@@ -409,6 +498,119 @@ function Editor({ product }: { product: CatalogProduct | null }) {
         />
       )}
     </Page>
+  );
+}
+
+const BAR_NOTE: Record<ListingState, string> = {
+  live: "marketplace.editor.liveNote",
+  live_review: "marketplace.editor.liveNote",
+  in_review: "marketplace.editor.reviewNote",
+  changes: "marketplace.editor.changesNote",
+  draft: "marketplace.editor.draftNote",
+  archived: "marketplace.editor.draftNote",
+};
+
+/** Stock per variant at the seller's location (shop feature `inventory`): type the count, give a reason, save. */
+function StockSection({ product }: { product: CatalogProduct | null }) {
+  const { t } = useI18n();
+  const stockOn = useFeature("inventory");
+  const q = useMyStock(product ? [product.id] : [], stockOn);
+  if (!stockOn)
+    return (
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        <InfoIcon className="mt-0.5 size-4 shrink-0" /> {t("marketplace.editor.stockOff")}
+      </p>
+    );
+  if (!product)
+    return (
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        <InfoIcon className="mt-0.5 size-4 shrink-0" /> {t("marketplace.editor.stockAfterSave")}
+      </p>
+    );
+  if (q.isError) return <QueryError compact error={q.error} onRetry={() => void q.refetch()} />;
+  if (q.isPending) return <Skeleton className="h-24 w-full rounded-xl" />;
+  return <StockEditor key={q.dataUpdatedAt} items={q.data.items} product={product} />;
+}
+
+function StockEditor({ items, product }: { items: VendorStockItem[]; product: CatalogProduct }) {
+  const { t } = useI18n();
+  const adjust = useAdjustStock();
+  const [counts, setCounts] = React.useState<Record<string, string>>(() => Object.fromEntries(items.map((i) => [i.variantId, String(i.qty)])));
+  const [reason, setReason] = React.useState("");
+  const [tried, setTried] = React.useState(false);
+  const order = new Map(product.variants.map((v) => [v.id, v.position]));
+  const rows = [...items].sort((a, b) => (order.get(a.variantId) ?? 0) - (order.get(b.variantId) ?? 0));
+  const changed = rows.filter((i) => {
+    const n = parseQty(counts[i.variantId] ?? "");
+    return n !== null && n !== i.qty;
+  });
+  const invalid = rows.some((i) => parseQty(counts[i.variantId] ?? "") === null);
+  const reasonError = reason.trim().length < 3 ? t("marketplace.stock.reasonNeeded") : null;
+  const submit = async () => {
+    setTried(true);
+    if (invalid || reasonError || !changed.length) return;
+    try {
+      for (const i of changed) await adjust.mutateAsync({ variantId: i.variantId, mode: "set", qty: parseQty(counts[i.variantId]!)!, reason: reason.trim() });
+      toast.success(t("marketplace.stock.saved", { count: changed.length }));
+      setReason("");
+      setTried(false);
+    } catch (err) {
+      toast.error(describeError(err, t));
+    }
+  };
+  if (!rows.length) return <p className="text-sm text-muted-foreground">{t("marketplace.stock.none")}</p>;
+  return (
+    <div className="grid gap-3" data-testid="stock-editor">
+      <div className="grid gap-2">
+        {rows.map((i) => {
+          const value = counts[i.variantId] ?? "";
+          const bad = parseQty(value) === null;
+          const dirty = !bad && parseQty(value) !== i.qty;
+          return (
+            <motion.div key={i.variantId} layout className={cn("grid items-center gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_auto_8rem]", dirty && "border-primary/50 bg-primary/5", bad && "border-destructive/40")}>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{i.title || t("marketplace.stock.default")}</p>
+                <p className="text-meta text-muted-foreground">{i.sku ?? "—"}</p>
+              </div>
+              <p className={cn("text-meta tabular-nums", i.available <= 0 ? "font-medium text-danger-ink" : "text-muted-foreground")}>
+                {t("marketplace.stock.availableOf", { available: i.available, reserved: i.reserved })}
+              </p>
+              <Field invalid={bad}>
+                <InputGroup size="sm">
+                  <FieldControl>
+                    <InputGroupInput
+                      value={value}
+                      onChange={(e) => setCounts((c) => ({ ...c, [i.variantId]: e.target.value.replace(/[^\d.]/g, "") }))}
+                      inputMode="decimal"
+                      aria-label={t("marketplace.stock.countFor", { name: i.title || product.name })}
+                      data-testid="stock-qty"
+                    />
+                  </FieldControl>
+                  <InputGroupAddon>{i.unit}</InputGroupAddon>
+                </InputGroup>
+              </Field>
+            </motion.div>
+          );
+        })}
+      </div>
+      <AnimatePresence initial={false}>
+        {changed.length > 0 && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid gap-3 overflow-hidden sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+            <Field invalid={tried && !!reasonError}>
+              <FieldLabel>{t("marketplace.stock.reason")}</FieldLabel>
+              <FieldControl>
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder={t("marketplace.stock.reasonPlaceholder")} data-testid="stock-reason" />
+              </FieldControl>
+              <FieldHint>{t("marketplace.stock.reasonHint")}</FieldHint>
+              <FieldError>{tried ? reasonError : null}</FieldError>
+            </Field>
+            <Button type="button" onClick={() => void submit()} disabled={adjust.isPending || invalid} className="sm:mt-6" data-testid="stock-save">
+              {adjust.isPending ? <Loader2Icon className="animate-spin" /> : <BoxesIcon />} {t("marketplace.stock.save", { count: changed.length })}
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

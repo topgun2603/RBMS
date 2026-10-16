@@ -43,8 +43,8 @@ export default async function () {
   const shopperPhone = testPhone(1);
   let vendor, vendorUser, product, ak, akM, order, expected;
 
-  await step("marketplace: owner sets e2e-store settings (mock payouts, 0-day window, KYC required, 10 %)", async () => {
-    const want = { returnWindowDays: 0, payoutProvider: "mock", minPayoutPaise: 0, requireKyc: true, acceptApplications: true, defaultCommissionBps: BPS };
+  await step("marketplace: owner sets e2e-store settings (mock payouts, 0-day window, KYC required, 10 %, products reviewed)", async () => {
+    const want = { returnWindowDays: 0, payoutProvider: "mock", minPayoutPaise: 0, requireKyc: true, acceptApplications: true, defaultCommissionBps: BPS, autoApproveProducts: false };
     const r = ok(await call("PUT", "/v1/settings/marketplace/tenant", want, T), "settings");
     for (const [k, v] of Object.entries(want)) eq(r.values[k], v, `settings.${k}`);
     const back = ok(await call("GET", "/v1/settings/marketplace", undefined, T), "settings get");
@@ -115,6 +115,15 @@ export default async function () {
       "vendor product",
     );
     eq(product.vendorId, vendor.id, "product.vendorId");
+    // Review before going live: the submission stays a draft until the shop approves it.
+    eq(product.status, "draft", "submitted product waits as a draft");
+    fails(await call("GET", `/v1/catalog/public/products/${product.slug}`, undefined, anon), 404, null, "unapproved product public");
+    const queue = ok(await call("GET", "/v1/marketplace/product-reviews?status=pending&limit=100", undefined, T), "review queue");
+    const rv = queue.items.find((r) => r.productId === product.id);
+    expect(rv && rv.vendorId === vendor.id, `not in the review queue: ${JSON.stringify(queue).slice(0, 300)}`);
+    eq(ok(await call("POST", `/v1/marketplace/product-reviews/${rv.id}/approve`, undefined, T), "approve product").status, "approved", "review status");
+    product = ok(await call("GET", `/v1/catalog/products/${product.id}`, undefined, asVendor), "product after approval");
+    eq(product.status, "active", "approved product is active");
     const variant = product.variants[0];
     // Shop owner tops up the seller's stock.
     const s = ok(await call("GET", `/v1/inventory/stock/${variant.id}`, undefined, T), "stock");

@@ -48,15 +48,15 @@ describe("buildGstr1", () => {
     { ...invoice({ id: "7", number: "INV/26-27/0042", date: "2026-10-06" }), status: "cancelled" },
     { ...invoice({ id: "8", number: null, date: "2026-10-06" }), status: "draft" },
     invoice({ id: "9", number: "INV/26-27/0039", date: "2026-09-30" }),
-    invoice({ id: "10", number: "CN/26-27/0001", date: "2026-10-13", docType: "CRN" }),
+    invoice({ id: "10", number: "DN/26-27/0001", date: "2026-10-13", docType: "DBN" }),
   ];
   const { json, warnings, counts } = buildGstr1(invoices, { gstin: SELLER_GSTIN.toLowerCase(), period: "102026" });
 
   it("header", () => {
     expect(json.gstin).toBe(SELLER_GSTIN);
     expect(json.fp).toBe("102026");
-    expect(counts).toEqual({ b2b: 3, b2cl: 1, b2cs: 2, cancelled: 1, skipped: 2 });
-    expect(warnings).toEqual([expect.stringContaining("INV/26-27/0039"), expect.stringContaining("CN/26-27/0001")]);
+    expect(counts).toEqual({ b2b: 3, b2cl: 1, b2cs: 2, cdnr: 0, cdnur: 0, cancelled: 1, skipped: 2 });
+    expect(warnings).toEqual([expect.stringContaining("INV/26-27/0039"), expect.stringContaining("DN/26-27/0001")]);
   });
 
   it("b2b groups invoices by buyer GSTIN with per-rate items", () => {
@@ -151,6 +151,78 @@ describe("buildGstr1", () => {
 
   it("an empty month still yields a valid skeleton", () => {
     const r = buildGstr1([], { gstin: SELLER_GSTIN, period: "112026" });
-    expect(r.json).toEqual({ gstin: SELLER_GSTIN, fp: "112026", b2b: [], b2cl: [], b2cs: [], hsn: { hsn_b2b: [], hsn_b2c: [] }, doc_issue: { doc_det: [] } });
+    expect(r.json).toEqual({
+      gstin: SELLER_GSTIN,
+      fp: "112026",
+      b2b: [],
+      b2cl: [],
+      b2cs: [],
+      cdnr: [],
+      cdnur: [],
+      hsn: { hsn_b2b: [], hsn_b2c: [] },
+      doc_issue: { doc_det: [] },
+    });
+  });
+});
+
+describe("buildGstr1: credit notes", () => {
+  const note = (over: Partial<EInvoiceSource> & { inter?: boolean } = {}): EInvoiceSource => ({
+    ...invoice({ lines: [line("Cotton saree", "5208", 1, "pcs", 125_000, 5, over.inter ?? false)], ...over }),
+    docType: "CRN",
+    precedingDoc: { number: "INV/26-27/0040", date: "2026-10-02", total: 2_00_000 },
+  });
+  const bill = invoice({ id: "b1", number: "INV/26-27/0040", date: "2026-10-02" });
+
+  it("CDNR: a note to a registered buyer, per rate, with the note value", () => {
+    const r = buildGstr1([bill, note({ id: "n1", number: "CN/26-27/0001", date: "2026-10-13" })], { gstin: SELLER_GSTIN, period: "102026" });
+    expect(r.counts).toMatchObject({ b2b: 1, cdnr: 1, cdnur: 0, skipped: 0 });
+    expect(r.json.cdnr).toEqual([
+      {
+        ctin: BUYER_TN_GSTIN,
+        nt: [
+          {
+            ntty: "C",
+            nt_num: "CN/26-27/0001",
+            nt_dt: "13-10-2026",
+            pos: "33",
+            rchrg: "N",
+            inv_typ: "R",
+            val: 1313,
+            itms: [{ num: 1, itm_det: { txval: 1250, rt: 5, camt: 31.25, samt: 31.25, csamt: 0 } }],
+          },
+        ],
+      },
+    ]);
+    // HSN B2B is net of the note: 2 sarees billed (₹2,400 after discount), 1 returned (₹1,250).
+    if (!("hsn_b2b" in r.json.hsn)) throw new Error("layout");
+    expect(r.json.hsn.hsn_b2b.find((h) => h.hsn_sc === "5208")).toMatchObject({ qty: 1, txval: 1150 });
+    expect(r.json.doc_issue.doc_det.map((d) => [d.doc_num, d.doc_typ, d.docs[0]!.totnum])).toEqual([
+      [1, "Invoices for outward supply", 1],
+      [5, "Credit Note", 1],
+    ]);
+  });
+
+  it("CDNUR for a note on a large inter-state B2C bill; small B2C notes are netted into B2CS", () => {
+    const walkIn = (n: EInvoiceSource): EInvoiceSource => ({ ...n, buyer: { ...n.buyer, gstin: null, name: "Walk-in" } });
+    const big = walkIn(note({ id: "n2", number: "CN/26-27/0002", date: "2026-10-14", inter: true }));
+    big.precedingDoc = { number: "INV/26-27/0046", date: "2026-10-12", total: 157_500_00 };
+    const small = walkIn(note({ id: "n3", number: "CN/26-27/0003", date: "2026-10-14" }));
+    small.precedingDoc = { number: "INV/26-27/0044", date: "2026-10-10", total: 3_277_00 };
+    const sale = walkIn(invoice({ id: "b2", number: "INV/26-27/0044", date: "2026-10-10" }));
+    const r = buildGstr1([sale, big, small], { gstin: SELLER_GSTIN, period: "102026" });
+    expect(r.counts).toMatchObject({ cdnur: 1, cdnr: 0, b2cs: 2 });
+    expect(r.json.cdnur).toEqual([
+      {
+        typ: "B2CL",
+        ntty: "C",
+        nt_num: "CN/26-27/0002",
+        nt_dt: "14-10-2026",
+        pos: "29",
+        val: 1313,
+        itms: [{ num: 1, itm_det: { txval: 1250, rt: 5, iamt: 62.5, csamt: 0 } }],
+      },
+    ]);
+    // B2CS intra 5%: the bill's ₹2,400 less the small note's ₹1,250.
+    expect(r.json.b2cs.find((b) => b.sply_ty === "INTRA" && b.rt === 5)).toMatchObject({ txval: 1150, camt: 28.75, samt: 28.75 });
   });
 });

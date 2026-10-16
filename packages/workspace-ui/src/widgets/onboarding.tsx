@@ -58,7 +58,7 @@ export function OnboardingWidget() {
               {next && (
                 <div className="flex min-w-0 flex-1 flex-col gap-2 border-t pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5 xl:flex-row xl:items-center xl:gap-4">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[0.6875rem] font-semibold tracking-wider text-primary uppercase">{t("workspace.onboarding.next")}</p>
+                    <p className="text-xs font-semibold tracking-wider text-primary uppercase">{t("workspace.onboarding.next")}</p>
                     <p className="truncate text-sm font-medium">{stepLabel(t, next)}</p>
                     <p className="truncate text-xs text-muted-foreground">{stepDescription(t, next)}</p>
                   </div>

@@ -108,7 +108,7 @@ export function DaySeparator({ relation, at }: { relation: DayRelation; at: stri
   const label = relation === "today" ? t("inbox.day.today") : relation === "yesterday" ? t("inbox.day.yesterday") : formatDate(at, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   return (
     <div className="sticky top-1 z-[1] my-3 flex justify-center" role="separator" aria-label={label}>
-      <span className="rounded-full border bg-card/90 px-3 py-0.5 text-[0.6875rem] font-medium text-muted-foreground shadow-xs backdrop-blur">{label}</span>
+      <span className="rounded-full border bg-card/90 px-3 py-0.5 text-xs font-medium text-muted-foreground shadow-xs backdrop-blur">{label}</span>
     </div>
   );
 }
@@ -150,7 +150,7 @@ export function Age({ at, className }: { at: string | null | undefined; classNam
   const a = shortAge(at, now);
   const text = a.unit === "now" ? t("inbox.age.now") : a.unit === "date" ? formatDate(at, { day: "numeric", month: "short" }) : t(`inbox.age.${a.unit}`, { n: a.value });
   return (
-    <time dateTime={at} title={formatDate(at, { dateStyle: "medium", timeStyle: "short" })} className={cn("shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground", className)}>
+    <time dateTime={at} title={formatDate(at, { dateStyle: "medium", timeStyle: "short" })} className={cn("shrink-0 text-xs tabular-nums text-muted-foreground", className)}>
       {text}
     </time>
   );
@@ -166,7 +166,7 @@ export function UnreadBadge({ count, className, label }: { count: number; classN
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.6, opacity: 0 }}
-          className={cn("inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] font-semibold text-primary-foreground tabular-nums", className)}
+          className={cn("inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground tabular-nums", className)}
           aria-label={label}
         >
           {count > 99 ? "99+" : count}
@@ -266,7 +266,7 @@ export function useAnnouncer() {
 /** A dot + label used inside list rows (e.g. "Opted out"). */
 export function Dot({ tone, children }: { tone: "success" | "warning" | "danger" | "muted"; children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
       <CircleDotIcon
         className={cn(
           "size-3",

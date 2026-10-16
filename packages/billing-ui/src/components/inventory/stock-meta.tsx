@@ -67,6 +67,8 @@ export const REASON_META: Record<StockReason, { icon: Icon; tone: string }> = {
   adjustment: { icon: SlidersHorizontalIcon, tone: "text-primary" },
   sale: { icon: ReceiptTextIcon, tone: "text-primary" },
   sale_cancel: { icon: Undo2Icon, tone: "text-muted-foreground" },
+  sale_return: { icon: Undo2Icon, tone: "text-success-ink" },
+  sale_return_cancel: { icon: Undo2Icon, tone: "text-muted-foreground" },
   purchase: { icon: TruckIcon, tone: "text-success-ink" },
   purchase_cancel: { icon: Undo2Icon, tone: "text-muted-foreground" },
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SettingsIcon, StoreIcon, WalletIcon } from "lucide-react";
+import { ClipboardCheckIcon, SettingsIcon, StoreIcon, WalletIcon } from "lucide-react";
 import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
 import { marketplaceMessages } from "./lib/messages";
 
@@ -49,6 +49,7 @@ export function marketplaceModule(opts: MarketplaceModuleOptions = {}): WebModul
       ...ADMIN,
       items: [
         { href: "vendors", label: "marketplace.nav.vendors", icon: StoreIcon, exact: false, ...ADMIN },
+        { href: "reviews", label: "marketplace.nav.reviews", icon: ClipboardCheckIcon, ...ADMIN },
         { href: "payouts", label: "marketplace.nav.payouts", icon: WalletIcon, ...ADMIN, feature: [F.marketplace, F.payouts] },
         { href: "settings", label: "marketplace.nav.settings", icon: SettingsIcon, ...ADMIN, roles: ["owner", "admin"] },
       ],
@@ -61,6 +62,7 @@ export function marketplaceModule(opts: MarketplaceModuleOptions = {}): WebModul
     { path: "", component: vendorsPage, ...ADMIN },
     { path: "vendors", component: vendorsPage, ...ADMIN },
     { path: "vendors/:id", component: page(() => import("./admin/vendor-detail")), ...ADMIN },
+    { path: "reviews", component: page(() => import("./admin/reviews")), ...ADMIN },
     { path: "payouts", component: page(() => import("./admin/payouts")), ...ADMIN, feature: [F.marketplace, F.payouts] },
     { path: "settings", component: settingsPage, ...ADMIN, roles: ["owner", "admin"] },
   ];
@@ -76,6 +78,13 @@ export function marketplaceModule(opts: MarketplaceModuleOptions = {}): WebModul
       priority: 35,
       ...ADMIN,
       component: React.lazy(() => adminWidgets().then((m) => ({ default: m.ApplicationsAttentionWidget }))),
+    },
+    {
+      id: "marketplace-reviews",
+      zone: "attention",
+      priority: 34,
+      ...ADMIN,
+      component: React.lazy(() => adminWidgets().then((m) => ({ default: m.ReviewsAttentionWidget }))),
     },
     {
       id: "marketplace-payable",

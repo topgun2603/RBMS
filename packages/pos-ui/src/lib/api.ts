@@ -181,11 +181,13 @@ export interface CreateBillInput {
   notes?: string;
   issue: true;
   loyaltyPoints?: number;
+  /** The till session the bill is made at. */
+  tillSessionId?: string;
 }
 
 export const createBill = (input: CreateBillInput) => posApi.post<Invoice>("/invoices", input);
 
-export const addPayment = (id: string, p: { amount: number; method: PaymentMethod; date: string; reference?: string }) =>
+export const addPayment = (id: string, p: { amount: number; method: PaymentMethod; date: string; reference?: string; tillSessionId?: string }) =>
   posApi.post<Invoice>(`/invoices/${id}/payments`, p);
 
 export const sendBill = (id: string, to?: string) => posApi.post<{ logId: string; url: string }>(`/invoices/${id}/send`, { channel: "whatsapp", ...(to ? { to } : {}) });

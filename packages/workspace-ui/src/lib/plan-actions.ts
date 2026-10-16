@@ -2,13 +2,15 @@
  * What choosing a plan card does (pure; mirrors the lifecycle rules in docs/batch5.md and packages/subscriptions):
  * - `trial`: while trialing, just switches the trial plan (POST /change, no payment).
  * - `start`: nothing paid is live (free, expired, cancelled) → POST /checkout and open the mandate URL.
- * - `upgrade`: applies now (POST /change; may hand back a new mandate URL).
+ * - `upgrade`: waits for payment (POST /change hands back the new mandate URL); applies once paid, with credit for
+ *   the unused days of the current period.
+ * - `awaiting`: the upgrade already waiting for payment (same plan and interval).
  * - `downgrade`: stored as pending, applies at the period end (POST /change).
  * - `current`: the plan and interval the shop already has.
  */
-import { changeKind, isPaidPlan, type BillingInterval, type PlanInfo, type Subscription, type SubscriptionCurrent } from "@srirealtime/web";
+import { changeKind, isAwaitingPayment, isPaidPlan, type BillingInterval, type PlanInfo, type Subscription, type SubscriptionCurrent } from "@srirealtime/web";
 
-export type PlanMode = "current" | "trial" | "start" | "upgrade" | "downgrade";
+export type PlanMode = "current" | "trial" | "start" | "upgrade" | "downgrade" | "awaiting";
 
 const LIVE: ReadonlySet<Subscription["status"]> = new Set(["trialing", "active", "past_due"]);
 
@@ -31,6 +33,7 @@ export function planMode(cur: SubscriptionCurrent, plans: readonly PlanInfo[], t
     return "start";
   }
   if (sub.planId === target.id && (sub.interval === interval || !paidTarget)) return "current";
+  if (isAwaitingPayment(sub) && sub.pendingPlanId === target.id && sub.pendingInterval === interval) return "awaiting";
   // Free during a trial ends the trial at once (the server moves the shop to free now).
   if (sub.status === "trialing") return paidTarget ? "trial" : "downgrade";
   // A free or complimentary (manual) subscription has no mandate: a paid plan starts a trial or a checkout, and

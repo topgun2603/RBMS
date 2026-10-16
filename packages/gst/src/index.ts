@@ -6,3 +6,4 @@ export * from "./gstin";
 export * from "./numbering";
 export * from "./upi";
 export * from "./format";
+export * from "./credit-note";

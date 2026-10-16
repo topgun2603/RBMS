@@ -133,7 +133,7 @@ export function CustomerDialog({
           <DialogDescription>{t("billing.customers.dialogHint")}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+          <form onSubmit={onSubmit} className="grid gap-5" noValidate>
             <FormField
               control={form.control}
               name="name"

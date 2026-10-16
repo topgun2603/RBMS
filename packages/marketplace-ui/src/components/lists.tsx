@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDownIcon, ReceiptTextIcon, WalletIcon } from "lucide-react";
+import { ChevronDownIcon, PackageCheckIcon, ReceiptTextIcon, TruckIcon, WalletIcon } from "lucide-react";
 import {
   AnimatePresence,
   Button,
@@ -12,6 +12,7 @@ import {
   Skeleton,
   Stagger,
   StaggerItem,
+  StatusPill,
   Table,
   TableBody,
   TableCell,
@@ -20,7 +21,7 @@ import {
   TableRow,
 } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
-import { bpsToPercent, money, saleAmountOf, signedMoney, type LedgerRow } from "../lib/logic";
+import { bpsToPercent, fulfilmentStep, money, saleAmountOf, signedMoney, type LedgerRow } from "../lib/logic";
 import type { Payout, VendorOrder } from "../lib/types";
 import { Amount, LedgerTypeTag, OrderStatusPill, PayoutPill, SettlementPill, Thumb } from "./bits";
 
@@ -133,8 +134,21 @@ export function LedgerList({ rows, showVendor, showBalance = true }: { rows: (Om
 
 // ---------------------------------------------------------------- vendor orders
 
-/** Seller orders with expandable lines. `shipBy` is the ship-by hint for open orders (days after placing). */
-export function VendorOrdersList({ items, showVendor, shipByDays }: { items: VendorOrder[]; showVendor?: boolean; shipByDays?: number }) {
+/**
+ * Seller orders with expandable lines. `shipBy` is the ship-by hint for open orders (days after placing); `actions`
+ * renders buttons for an order (the seller's mark packed / shipped).
+ */
+export function VendorOrdersList({
+  items,
+  showVendor,
+  shipByDays,
+  actions,
+}: {
+  items: VendorOrder[];
+  showVendor?: boolean;
+  shipByDays?: number;
+  actions?: (o: VendorOrder) => React.ReactNode;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = React.useState<string | null>(null);
   if (items.length === 0) {
@@ -144,7 +158,7 @@ export function VendorOrdersList({ items, showVendor, shipByDays }: { items: Ven
     <Stagger className="grid gap-2">
       {items.map((o) => (
         <StaggerItem key={o.id}>
-          <OrderCard order={o} showVendor={showVendor} shipByDays={shipByDays} open={open === o.id} onToggle={() => setOpen(open === o.id ? null : o.id)} />
+          <OrderCard order={o} showVendor={showVendor} shipByDays={shipByDays} actions={actions} open={open === o.id} onToggle={() => setOpen(open === o.id ? null : o.id)} />
         </StaggerItem>
       ))}
     </Stagger>
@@ -153,10 +167,27 @@ export function VendorOrdersList({ items, showVendor, shipByDays }: { items: Ven
 
 const OPEN_STATUSES = new Set(["placed", "confirmed", "packed"]);
 
-function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order: VendorOrder; showVendor?: boolean; shipByDays?: number; open: boolean; onToggle: () => void }) {
+function OrderCard({
+  order: o,
+  showVendor,
+  shipByDays,
+  actions,
+  open,
+  onToggle,
+}: {
+  order: VendorOrder;
+  showVendor?: boolean;
+  shipByDays?: number;
+  actions?: (o: VendorOrder) => React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const { t, formatDate } = useI18n();
+  const step = fulfilmentStep(o);
+  // The seller's own mark when the order itself hasn't moved yet (split orders wait for the shop / other sellers).
+  const ownMark = step === "shipped" && o.status !== "shipped" ? "shipped" : step === "to_ship" && o.status !== "packed" ? "packed" : null;
   const shipBy =
-    shipByDays !== undefined && OPEN_STATUSES.has(o.status) ? new Date(new Date(o.placedAt).getTime() + shipByDays * 86_400_000) : null;
+    shipByDays !== undefined && OPEN_STATUSES.has(o.status) && (step === "to_pack" || step === "to_confirm") ? new Date(new Date(o.placedAt).getTime() + shipByDays * 86_400_000) : null;
   const late = shipBy ? shipBy.getTime() < Date.now() : false;
   const items = o.lines.reduce((n, l) => n + l.qty, 0);
   return (
@@ -183,6 +214,11 @@ function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <OrderStatusPill status={o.status} />
+          {ownMark && (
+            <StatusPill tone="brand" icon={ownMark === "shipped" ? TruckIcon : PackageCheckIcon} data-testid={`own-${ownMark}`}>
+              {t(`marketplace.orders.own.${ownMark}`)}
+            </StatusPill>
+          )}
           <SettlementPill status={o.settlementStatus} />
         </div>
         <div className="text-right">
@@ -191,6 +227,7 @@ function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order
         </div>
         <ChevronDownIcon className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2 border-t px-3 py-2 empty:hidden sm:px-4">{actions(o)}</div>}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -222,6 +259,7 @@ function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order
               <Figure label={t("marketplace.orders.commission", { rate: bpsToPercent(o.commissionBps) })} value={`−${money(o.commission)}`} />
               <Figure label={t("marketplace.orders.net")} value={money(o.net)} strong />
               {o.eligibleAt && <Figure label={t("marketplace.orders.payableFrom")} value={formatDate(o.eligibleAt, { day: "numeric", month: "short" })} />}
+              {o.trackingNumber && <Figure label={t("marketplace.orders.tracking")} value={[o.carrier, o.trackingNumber].filter(Boolean).join(" ")} />}
             </dl>
           </motion.div>
         )}

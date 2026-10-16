@@ -64,6 +64,7 @@ export function PlatformInvoices({ planName }: { planName: (id: string) => strin
                   </div>
                   <p className="mt-0.5 truncate text-meta text-muted-foreground">
                     {planName(inv.planId)} · {t("workspace.plan.invoices.period", { from: d(inv.periodStart ?? inv.createdAt), to: d(inv.periodEnd) })}
+                    {inv.creditPaise > 0 && <span className="text-success-ink"> · {t("workspace.plan.invoices.credit", { amount: formatPaise(inv.creditPaise) })}</span>}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

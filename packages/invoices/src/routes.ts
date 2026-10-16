@@ -1,4 +1,7 @@
+import { formatINR } from "@srirealtime/gst";
 import { requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import type { CreditNoteInput, CreditNoteListQuery } from "./credit-notes";
+import type { TillCashInput, TillCloseInput, TillListQuery, TillOpenInput } from "./till";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { FEATURES } from "./features";
@@ -28,7 +31,10 @@ const tokenParam = z.object({ token: z.string().min(1).max(128) });
 const cancelBody = z.object({ reason: z.string().max(500).nullish() });
 const issueBody = z.object({ loyaltyPoints: z.number().int().positive().optional() });
 const formatQuery = z.object({ format: z.enum(["json", "csv"]).default("json") });
-const gstCsvQuery = z.object({ section: z.enum(["hsn", "b2b", "b2cl", "b2cs"]).default("hsn") });
+const gstCsvQuery = z.object({ section: z.enum(["hsn", "b2b", "b2cl", "b2cs", "cdnr", "cdnur"]).default("hsn") });
+const registerQuery = z.object({ register: z.string().trim().min(1).max(40) });
+/** Display name of the cashier (the session user has no name on the request context). */
+const actorName = (b: Record<string, unknown>) => (typeof b.actorName === "string" && b.actorName.trim() ? b.actorName.trim().slice(0, 80) : null);
 const body = (req: { body: unknown }) => (req.body ?? {}) as Record<string, unknown>;
 const query = (req: { query: unknown }) => (req.query ?? {}) as Record<string, string | undefined>;
 const wantsCsv = (req: { query: unknown }) => formatQuery.parse(query(req)).format === "csv";
@@ -46,6 +52,7 @@ const WHATSAPP = feature(FEATURES.whatsapp);
 const CREDIT_BOOK = feature(FEATURES.creditBook);
 const REPORTS = feature(FEATURES.reports);
 const GST_REPORTS = feature(FEATURES.gstReports);
+const audited = (key: string, audit: { action: string; entity: string; idParam?: string }) => ({ config: { feature: key, audit } });
 
 /**
  * Routes under /v1/invoices. Everything except the /public/* pages needs an owner, admin or staff member
@@ -177,6 +184,82 @@ export function invoicesRoutes(service: InvoicesService) {
         const q = query(req);
         const result = await service.topCustomers(requireTenant(req.ctx).id, q as unknown as TopQuery);
         return wantsCsv(req) ? sendCsv(reply, csvBuilders.topCustomers(result.items), "top-customers", q.from, q.to) : result;
+      });
+
+      // credit notes (GST returns and value corrections against issued bills)
+      staff.get("/credit-notes", BASE, async (req, reply) => {
+        const q = query(req);
+        const csv = wantsCsv(req);
+        const result = await service.creditNotes.list(requireTenant(req.ctx).id, (csv ? { ...q, limit: "200" } : q) as CreditNoteListQuery);
+        if (!csv) return result;
+        return sendCsv(reply, csvBuilders.creditNotes(result.items), "credit-notes", q.from, q.to);
+      });
+      staff.get("/credit-notes/:id", BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.creditNotes.get(requireTenant(req.ctx).id, id);
+      });
+      staff.post("/credit-notes/:id/cancel", audited(FEATURES.base, { action: "invoices.credit_note.cancel", entity: "credit_note" }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const { reason } = cancelBody.parse(req.body ?? {});
+        const user = requireUser(req.ctx);
+        const res = await service.creditNotes.cancel(requireTenant(req.ctx).id, id, reason, user.id);
+        req.auditSummary = `Credit note ${res.creditNote.number} cancelled`;
+        return res;
+      });
+      staff.get(`${BILL_ID}/returnable`, BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.creditNotes.returnable(requireTenant(req.ctx).id, id);
+      });
+      staff.post(`${BILL_ID}/credit-notes`, audited(FEATURES.base, { action: "invoices.credit_note.issue", entity: "invoice" }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const user = requireUser(req.ctx);
+        const res = await service.creditNotes.create(requireTenant(req.ctx).id, id, body(req) as CreditNoteInput, user.id);
+        const cn = res.creditNote;
+        req.auditSummary = `Credit note ${cn.number} for ${cn.invoiceNumber}: ${formatINR(cn.total)} (${cn.reason}, refund ${cn.refundMode}${cn.refundAmount ? ` ${formatINR(cn.refundAmount)}` : ""})`;
+        return res;
+      });
+
+      // POS till sessions
+      staff.get("/till/current", BASE, async (req) => {
+        const { register } = registerQuery.parse(query(req));
+        return { session: await service.till.current(requireTenant(req.ctx).id, { register, branchId: req.ctx.branch?.id ?? null }) };
+      });
+      staff.get("/till/sessions", REPORTS, async (req) => service.till.list(requireTenant(req.ctx).id, query(req) as TillListQuery));
+      staff.post("/till/open", audited(FEATURES.base, { action: "invoices.till.open", entity: "till_session" }), async (req) => {
+        const user = requireUser(req.ctx);
+        const b = body(req);
+        const session = await service.till.open(requireTenant(req.ctx).id, b as TillOpenInput, {
+          branchId: req.ctx.branch?.id ?? null,
+          actor: { id: user.id, name: actorName(b) },
+        });
+        req.auditSummary = `Till ${session.register} opened with ${formatINR(session.openingCash)}`;
+        req.auditDetail = { entityId: session.id };
+        return session;
+      });
+      staff.get("/till/:id", BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.till.get(requireTenant(req.ctx).id, id);
+      });
+      staff.get("/till/:id/x", BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.till.report(requireTenant(req.ctx).id, id);
+      });
+      staff.post("/till/:id/cash", audited(FEATURES.base, { action: "invoices.till.cash", entity: "till_session" }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const user = requireUser(req.ctx);
+        const b = body(req);
+        const session = await service.till.cash(requireTenant(req.ctx).id, id, b as TillCashInput, { id: user.id, name: actorName(b) });
+        const e = session.cashEntries.at(-1);
+        if (e) req.auditSummary = `Cash ${e.amount > 0 ? "in" : "out"} ${formatINR(Math.abs(e.amount))}${e.reason ? `: ${e.reason}` : ""}`;
+        return session;
+      });
+      staff.post("/till/:id/close", audited(FEATURES.base, { action: "invoices.till.close", entity: "till_session" }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const user = requireUser(req.ctx);
+        const b = body(req);
+        const res = await service.till.close(requireTenant(req.ctx).id, id, b as TillCloseInput, { id: user.id, name: actorName(b) });
+        req.auditSummary = `Till ${res.session.register} closed: expected ${formatINR(res.session.expectedCash ?? 0)}, counted ${formatINR(res.session.countedCash ?? 0)}`;
+        return res;
       });
 
       // invoices

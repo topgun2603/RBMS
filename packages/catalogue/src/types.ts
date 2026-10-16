@@ -104,6 +104,18 @@ export interface VendorProductItem {
   priceMax: number;
 }
 
+/** A variant of a seller's product (`vendorVariants()`, marketplace seller stock). */
+export interface VendorVariantItem {
+  variantId: string;
+  productId: string;
+  productName: string;
+  /** "" for the default variant of a simple product. */
+  title: string;
+  sku: string | null;
+  unit: string;
+  status: ProductStatus;
+}
+
 /** Payload of the `product.created` / `product.updated` events. Prices in paise. */
 export interface ProductEventData {
   id: string;

@@ -83,7 +83,8 @@ describe("messages", () => {
   it("defines every pos.* key the code uses (literal and built)", () => {
     const used = new Set<string>();
     for (const f of sources(__dirname)) {
-      if (f.endsWith("messages.ts")) continue;
+      // messages.ts defines them; access.ts holds permission keys (e.g. "pos.till"), not messages.
+      if (f.endsWith("messages.ts") || f.endsWith("access.ts")) continue;
       for (const m of readFileSync(f, "utf8").matchAll(/["'`](pos\.[a-zA-Z0-9_.]+)["'`]/g)) used.add(m[1]!);
     }
     const built = [

@@ -155,6 +155,72 @@ export interface PurchaseDocData {
   updatedAt?: Date | string | null;
 }
 
+/** A GST credit note against an invoice (invoices' `CreditNote` is assignable to it). */
+export interface CreditNoteDocData {
+  id?: string;
+  number: string;
+  status: "issued" | "cancelled" | (string & {});
+  date: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  customer: DocParty;
+  seller: DocSeller;
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  total: number;
+  amountInWords?: string | null;
+  /** "return" | "price_correction" | "discount" | "other". */
+  reason: string;
+  note: string | null;
+  /** "cash" | "upi" | "card" | "credit_book" | "none". */
+  refundMode: string;
+  refundAmount: number;
+  cancelReason?: string | null;
+  updatedAt?: Date | string | null;
+  /** IRN of the credit note (document type CRN), when generated. */
+  einvoice?: InvoiceEinvoice | null;
+}
+
+export interface TillDocMethodRow {
+  method: string;
+  amount: number;
+  count: number;
+}
+
+/** A POS till session for the Z report (invoices' `TillSession` + its report + the shop). */
+export interface TillDocData {
+  id?: string;
+  register: string;
+  branchName?: string | null;
+  status: "open" | "closed" | (string & {});
+  date: string;
+  openedAt: Date | string;
+  openedByName: string | null;
+  closedAt: Date | string | null;
+  closedByName: string | null;
+  openingCash: number;
+  cashEntries: { amount: number; reason: string; byName?: string | null; at: string }[];
+  closingCount: Record<string, number> | null;
+  expectedCash: number | null;
+  countedCash: number | null;
+  difference: number | null;
+  note: string | null;
+  report: {
+    bills: { count: number; total: number; cancelled: number };
+    payments: TillDocMethodRow[];
+    refunds: TillDocMethodRow[];
+    creditNotes: { count: number; total: number };
+    onCredit: number;
+    collected: number;
+    refunded: number;
+    cash: { opening: number; sales: number; refunds: number; cashIn: number; cashOut: number; expected: number };
+  };
+  seller: DocSeller;
+  updatedAt?: Date | string | null;
+}
+
 export interface Branding {
   appName: string | null;
   logoUrl: string | null;
@@ -185,6 +251,14 @@ export interface StatementDocPort {
 
 export interface OrderDocPort {
   order(tenantId: string, id: string): Promise<OrderDocData | null>;
+}
+
+export interface CreditNoteDocPort {
+  creditNote(tenantId: string, id: string): Promise<CreditNoteDocData | null>;
+}
+
+export interface TillDocPort {
+  session(tenantId: string, id: string): Promise<TillDocData | null>;
 }
 
 export interface PurchaseDocPort {

@@ -110,7 +110,6 @@ function DataTable<T>({
                 key={c.id}
                 style={c.width ? { width: c.width } : undefined}
                 className={cn(
-                  "first:pl-4 last:pr-4",
                   alignClass[c.align ?? "left"],
                   c.hideBelow && hideClass[c.hideBelow],
                   c.headerClassName,
@@ -126,7 +125,7 @@ function DataTable<T>({
             Array.from({ length: skeletonRows }, (_, r) => (
               <TableRow key={`sk-${r}`} className="hover:bg-transparent">
                 {columns.map((c, ci) => (
-                  <TableCell key={c.id} className={cn("py-3 first:pl-4 last:pr-4", colCell(c))}>
+                  <TableCell key={c.id} className={colCell(c)}>
                     <Skeleton className={cn("h-4", ci === 0 ? "w-36" : "w-20", c.align === "right" && "ml-auto")} />
                   </TableCell>
                 ))}
@@ -146,7 +145,7 @@ function DataTable<T>({
                 className={cn("animate-in fade-in-0 duration-200", onRowClick && "cursor-pointer")}
               >
                 {columns.map((c) => (
-                  <TableCell key={c.id} className={cn("py-2.5 first:pl-4 last:pr-4", colCell(c))}>
+                  <TableCell key={c.id} className={colCell(c)}>
                     {c.cell(row, i)}
                   </TableCell>
                 ))}

@@ -10,10 +10,12 @@ import { createKit } from "../kit";
  *
  *   pnpm --filter @srirealtime/api cleanup:e2e-data            (or -- --dry-run to only count)
  *   pnpm --filter @srirealtime/api cleanup:e2e-data -- raja    (only some shops)
+ *   pnpm --filter @srirealtime/api cleanup:e2e-data -- --prefix=smoke-   (only the throwaway shops with that prefix)
  */
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const slugs = args.filter((a) => !a.startsWith("--"));
+const prefixes = args.filter((a) => a.startsWith("--prefix=")).map((a) => a.slice("--prefix=".length));
 const SHOPS = slugs.length ? slugs : ["raja", "kumar", "anbu"];
 
 const log = pino({ level: "warn" });
@@ -21,7 +23,7 @@ const kit = createKit({ ...env, REDIS_URL: "memory" }, log);
 
 try {
   let problems = 0;
-  for (const slug of SHOPS) {
+  for (const slug of prefixes.length ? [] : SHOPS) {
     const tenant = await kit.tenancy.service.getBySlug(slug);
     if (!tenant) {
       console.log(`${slug}: no such shop`);
@@ -35,10 +37,10 @@ try {
     for (const p of job.problems) console.log(`  !  ${p}`);
     problems += job.problems.length;
   }
-  // Batch 5: the throwaway shops the sign-up e2e steps create (e2e-su… slugs) are deleted outright.
+  // Batch 5: the throwaway shops the sign-up e2e steps and smoke runs create (e2e-su…, smoke-…) are deleted outright.
   if (!slugs.length) {
-    const r = await removeSignupShops(kit, { dryRun });
-    console.log(`\ne2e sign-up shops${dryRun ? " (dry run)" : ""}: ${r.shops.length ? r.shops.join(", ") : "none"}`);
+    const r = await removeSignupShops(kit, { dryRun, prefixes: prefixes.length ? prefixes : undefined });
+    console.log(`\nthrowaway shops${dryRun ? " (dry run)" : ""}: ${r.shops.length ? r.shops.join(", ") : "none"}`);
     for (const [what, n] of Object.entries(r.summary)) console.log(`  ${String(n).padStart(4)}  ${what}`);
     for (const p of r.problems) console.log(`  !  ${p}`);
     problems += r.problems.length;

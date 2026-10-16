@@ -84,7 +84,7 @@ export function CancelReasonDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4">
+        <div className="grid gap-5">
           <Field invalid={touched && !reason}>
             <FieldLabel>{t("billing.einvoice.cancel.reason")}</FieldLabel>
             <Select value={reason ? String(reason) : ""} onValueChange={(v) => setReason(Number(v) as CancelReasonCode)}>

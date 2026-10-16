@@ -134,7 +134,7 @@ export function RoleEditor({ draft, onClose, takenKeys }: { draft: RoleDraft | n
                     <li key={p} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pr-1 pl-2.5 text-xs">
                       <SparklesIcon className="size-3 text-primary" />
                       <span className="font-medium">{patternLabel(t, p)}</span>
-                      <code className="text-[0.6875rem] text-muted-foreground">{p}</code>
+                      <code className="text-xs text-muted-foreground">{p}</code>
                       <button
                         type="button"
                         onClick={() => toggle(p, false)}

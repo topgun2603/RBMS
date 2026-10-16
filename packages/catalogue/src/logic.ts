@@ -1,4 +1,4 @@
-import type { ProductOption } from "./schema";
+import type { ProductOption, ProductStatus } from "./schema";
 import type {
   Category,
   CategoryNode,
@@ -306,3 +306,80 @@ export function wouldCycle(categories: readonly { id: string; parentId: string |
 export const todayIST = (now = new Date()) => new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
 
 export const paiseToRupees = (p: number | null | undefined) => (p === null || p === undefined ? null : (p / 100).toFixed(2));
+
+// ------------------------------------------------------------------ marketplace listing review
+
+/** What a write did to a seller product's listing (marketplace's `ListingReviewPort.onListing`). */
+/** "changed": a live seller product's customer-facing content changed (the marketplace may re-review it). */
+export type ListingEventType = "submitted" | "published" | "withdrawn" | "changed";
+
+export interface ListingPlan {
+  /** Status to store (undefined = leave as is). */
+  status: ProductStatus | undefined;
+  /** What to tell the listing review port after the write, if anything. */
+  event: ListingEventType | null;
+}
+
+/**
+ * How a write treats a marketplace seller's product (`vendorId` set). The catalogue stays generic: a product waiting for
+ * review is simply kept as a `draft` (so the store, search, sitemap and collections never show it) and the
+ * marketplace module keeps the review record.
+ * - The seller's own write (`byVendor`) asking for `active` on a product that isn't active yet: with `needsReview` it
+ *   stays a draft and is `submitted`; without it goes live (`published`). Saving an active product keeps it active.
+ * - Moving it to draft/archived (or deleting it) is `withdrawn` (cancels a pending review).
+ * - Staff making a seller product active `published` it (staff need no review). Shop products never raise events.
+ */
+export function planListing(input: {
+  vendorId: string | null;
+  byVendor: boolean;
+  requested: ProductStatus | undefined;
+  /** Current status; null when the product is being created. */
+  current: ProductStatus | null;
+  needsReview: boolean;
+}): ListingPlan {
+  const { vendorId, byVendor, requested, current, needsReview } = input;
+  if (!vendorId || requested === undefined) return { status: requested, event: null };
+  if (requested === "active") {
+    if (current === "active") return { status: "active", event: null };
+    if (byVendor && needsReview) return { status: "draft", event: "submitted" };
+    return { status: "active", event: "published" };
+  }
+  return { status: requested, event: "withdrawn" };
+}
+
+/** Customer-facing parts of a product a re-review lists (`contentChanges`, variant writes). */
+export type ContentField = "name" | "description" | "images" | "price" | "variants" | "gst";
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/**
+ * Which customer-facing parts a product patch really changes (values equal to the current ones don't count, so a
+ * "save" that resends everything is not a change). Stock, SKU, slug, tags and channels never count.
+ */
+export function contentChanges(
+  current: { name: string; description: string | null; images: unknown; gstRate: number; hsn: string | null; taxInclusive: boolean; options: unknown },
+  patch: { name?: string; description?: string | null; images?: unknown; gstRate?: number; hsn?: string | null; taxInclusive?: boolean; options?: unknown },
+): ContentField[] {
+  const out = new Set<ContentField>();
+  if (patch.name !== undefined && patch.name !== current.name) out.add("name");
+  if (patch.description !== undefined && (patch.description ?? null) !== (current.description ?? null)) out.add("description");
+  if (patch.images !== undefined && !same(patch.images, current.images)) out.add("images");
+  if (patch.gstRate !== undefined && patch.gstRate !== current.gstRate) out.add("gst");
+  if (patch.hsn !== undefined && (patch.hsn ?? null) !== (current.hsn ?? null)) out.add("gst");
+  if (patch.taxInclusive !== undefined && patch.taxInclusive !== current.taxInclusive) out.add("gst");
+  if (patch.options !== undefined && !same(patch.options, current.options)) out.add("variants");
+  return [...out];
+}
+
+/** The customer-facing parts a variant patch changes: price/MRP, or the option values / title. */
+export function variantChanges(
+  current: { price: number; mrp: number | null; title: string; optionValues: unknown },
+  set: { price?: number; mrp?: number | null; title?: string; optionValues?: unknown },
+): ContentField[] {
+  const out = new Set<ContentField>();
+  if (set.price !== undefined && set.price !== current.price) out.add("price");
+  if (set.mrp !== undefined && (set.mrp ?? null) !== (current.mrp ?? null)) out.add("price");
+  if (set.title !== undefined && set.title !== current.title) out.add("variants");
+  if (set.optionValues !== undefined && !same(set.optionValues, current.optionValues)) out.add("variants");
+  return [...out];
+}

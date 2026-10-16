@@ -77,7 +77,7 @@ export function KanbanBoard({
               <StatusDot status={status} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{t(`orders.status.${status}`)}</p>
-                <p className="text-[0.6875rem] text-muted-foreground tabular-nums">{money(total)}</p>
+                <p className="text-xs text-muted-foreground tabular-nums">{money(total)}</p>
               </div>
               <span className="rounded-full bg-card px-2 text-xs font-medium tabular-nums ring-1 ring-border">{items.length}</span>
             </header>
@@ -115,9 +115,9 @@ export function KanbanBoard({
                         <p className="mt-0.5 truncate text-meta text-muted-foreground">{o.customerName}</p>
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-sm font-semibold tabular-nums">{money(o.total)}</span>
-                          <span className="text-[0.6875rem] text-muted-foreground">{formatDate(o.placedAt, { day: "numeric", month: "short" })}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(o.placedAt, { day: "numeric", month: "short" })}</span>
                         </div>
-                        <PaymentPill status={o.paymentStatus} className="h-5 px-1.5 text-[0.6875rem]" />
+                        <PaymentPill status={o.paymentStatus} className="h-5 px-1.5 text-xs" />
                       </Card>
                     </motion.div>
                   ))}

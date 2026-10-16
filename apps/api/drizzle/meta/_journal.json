@@ -85,6 +85,20 @@
       "when": 1792112616662,
       "tag": "0011_audit_platform_events",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792184921578,
+      "tag": "0012_wave_c",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792184937066,
+      "tag": "0013_wave_c_data",
+      "breakpoints": true
     }
   ]
 }

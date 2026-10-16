@@ -28,6 +28,7 @@ import type {
   OrderStatus,
   PayoutAccountStatus,
   PayoutStatus,
+  ProductReviewStatus,
   SettlementStatus,
   VendorKycStatus,
   VendorStatus,
@@ -156,6 +157,24 @@ export function OrderStatusPill({ status, ...p }: { status: OrderStatus } & Pill
   return (
     <StatusPill tone={tone} icon={icon} {...p}>
       {t(`marketplace.orderStatus.${status}`)}
+    </StatusPill>
+  );
+}
+
+const REVIEW: Record<ProductReviewStatus, [StatusTone, Icon]> = {
+  pending: ["warning", ClockIcon],
+  approved: ["success", CheckCircle2Icon],
+  rejected: ["danger", AlertCircleIcon],
+  withdrawn: ["neutral", CircleDashedIcon],
+};
+
+/** A seller product's review: waiting, approved, changes asked, withdrawn. */
+export function ReviewPill({ status, ...p }: { status: ProductReviewStatus } & PillProps) {
+  const { t } = useI18n();
+  const [tone, icon] = REVIEW[status];
+  return (
+    <StatusPill tone={tone} icon={icon} {...p}>
+      {t(`marketplace.review.status.${status}`)}
     </StatusPill>
   );
 }

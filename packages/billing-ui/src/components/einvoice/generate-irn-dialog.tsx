@@ -163,7 +163,7 @@ function IssueList({ tone, title, issues, footer }: { tone: "error" | "warning";
             className="text-sm"
           >
             <p>{i.message}</p>
-            <p className="font-mono text-[0.6875rem] text-muted-foreground">{i.path}</p>
+            <p className="font-mono text-xs text-muted-foreground">{i.path}</p>
           </motion.li>
         ))}
       </ul>

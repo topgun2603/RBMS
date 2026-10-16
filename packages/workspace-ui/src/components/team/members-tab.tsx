@@ -120,8 +120,8 @@ export function MembersTab() {
                     <div className="min-w-0 flex-1">
                       <p className="flex flex-wrap items-center gap-2">
                         <span className={cn("truncate font-medium", !m.active && "text-muted-foreground")}>{m.name || contact[0] || t("workspace.team.unnamed")}</span>
-                        {m.userId === me && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground">{t("workspace.team.you")}</span>}
-                        {!m.active && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground">{t("workspace.team.inactive")}</span>}
+                        {m.userId === me && <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t("workspace.team.you")}</span>}
+                        {!m.active && <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t("workspace.team.inactive")}</span>}
                       </p>
                       <p className="flex flex-wrap items-center gap-x-3 text-meta text-muted-foreground">
                         {m.phone && (

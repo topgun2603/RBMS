@@ -39,6 +39,7 @@ interface Draft {
   requireKyc: boolean;
   payoutProvider: PayoutProvider;
   acceptApplications: boolean;
+  autoApproveProducts: boolean;
 }
 
 const toDraft = (s: MarketplaceSettings): Draft => ({
@@ -48,6 +49,7 @@ const toDraft = (s: MarketplaceSettings): Draft => ({
   requireKyc: s.requireKyc,
   payoutProvider: s.payoutProvider,
   acceptApplications: s.acceptApplications,
+  autoApproveProducts: s.autoApproveProducts,
 });
 
 /** Marketplace settings (namespace `marketplace`): default commission, return window, minimum payout, KYC, provider, applications. */
@@ -102,6 +104,7 @@ function SettingsForm({ initial }: { initial: MarketplaceSettings }) {
         requireKyc: d.requireKyc,
         payoutProvider: d.payoutProvider,
         acceptApplications: d.acceptApplications,
+        autoApproveProducts: d.autoApproveProducts,
       });
       toast.success(t("marketplace.common.saved"));
     } catch (err) {
@@ -180,6 +183,12 @@ function SettingsForm({ initial }: { initial: MarketplaceSettings }) {
             hint={t("marketplace.settings.acceptApplicationsHint")}
             checked={d.acceptApplications}
             onChange={(v) => set({ acceptApplications: v })}
+          />
+          <SwitchRow
+            label={t("marketplace.settings.autoApprove")}
+            hint={t(d.autoApproveProducts ? "marketplace.settings.autoApproveOnHint" : "marketplace.settings.autoApproveHint")}
+            checked={d.autoApproveProducts}
+            onChange={(v) => set({ autoApproveProducts: v })}
           />
           <SwitchRow label={t("marketplace.settings.requireKyc")} hint={t("marketplace.settings.requireKycHint")} checked={d.requireKyc} onChange={(v) => set({ requireKyc: v })} />
           {d.requireKyc && !kycOn && (

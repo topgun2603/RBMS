@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ModuleLink, Page, PageHeading, QueryError, useDebounced, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
-import { FileTextIcon, Loader2Icon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { FileTextIcon, Loader2Icon, PlusIcon, SearchIcon, Undo2Icon, XIcon } from "lucide-react";
 import { Button, Card, ChipGroup, cn, EmptyState, Input, Stagger, StaggerItem } from "@srirealtime/ui";
 import { BillsIllustration } from "../components/illustrations";
 import { InvoiceRow, InvoiceRowSkeleton } from "../components/invoice-row";
@@ -58,11 +58,18 @@ function InvoicesList() {
         title={t("billing.invoices.title")}
         description={total !== undefined ? t("billing.invoices.count", { count: total }) : undefined}
         actions={
-          <Button asChild size="lg" className="hidden sm:inline-flex">
-            <ModuleLink to="invoices/new">
-              <PlusIcon /> {t("billing.nav.newBill")}
-            </ModuleLink>
-          </Button>
+          <>
+            <Button asChild variant="outline" size="lg">
+              <ModuleLink to="credit-notes">
+                <Undo2Icon /> {t("billing.nav.creditNotes")}
+              </ModuleLink>
+            </Button>
+            <Button asChild size="lg" className="hidden sm:inline-flex">
+              <ModuleLink to="invoices/new">
+                <PlusIcon /> {t("billing.nav.newBill")}
+              </ModuleLink>
+            </Button>
+          </>
         }
       />
 

@@ -1,6 +1,6 @@
 import { AppError, badRequest, conflict, notFound, sha256 } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, asc, count, desc, eq, ilike, inArray, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
 import {
   addDays,
   addInterval,
@@ -10,15 +10,23 @@ import {
   financialYearLong,
   GRACE_DAYS,
   gstSplit,
+  invoiceAmounts,
+  isAwaitingPayment,
   isPaid,
   istDate,
   lifecycleAction,
   monthlyValue,
+  pendingExpiresAt,
+  platformInvoiceLines,
+  prorationCredit,
+  upgradeQuote,
   PLATFORM_GST_RATE,
   PLATFORM_SAC,
   planPrice,
   platformInvoiceNumber,
   TRIAL_DAYS,
+  type GstSplit,
+  type InvoiceLine,
   type LifecycleAction,
 } from "./logic";
 import {
@@ -83,8 +91,53 @@ export interface SubscriptionView {
   checkoutInterval: BillingInterval | null;
   pendingPlanId: string | null;
   pendingInterval: BillingInterval | null;
+  /** `downgrade` (at the period end) or `awaiting_payment` (an upgrade applied once paid); null without a pending plan. */
+  pendingReason: "downgrade" | "awaiting_payment" | null;
+  pendingSince: Date | null;
+  /** An unpaid upgrade lapses at this time (48 h after it was asked for). */
+  pendingExpiresAt: Date | null;
+  /** The upgrade's mandate: authorise at `pendingAuthUrl` (the current plan's mandate keeps running meanwhile). */
+  pendingProviderSubscriptionId: string | null;
+  pendingAuthUrl: string | null;
+  /** End of the upgrade's first period once it applies. */
+  pendingPeriodEnd: Date | null;
+  /** Proration credit (taxable paise) taken off the upgrade's first charge. */
+  pendingCreditPaise: number;
+  /** What the upgrade charges now, GST included. */
+  pendingChargePaise: number;
+  /** Credit (taxable paise) owed to the shop: a discount line on the next platform invoice. */
+  creditBalancePaise: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** `POST /change/preview` answer: what choosing a plan does, before confirming. Money in paise. */
+export interface ChangePreview {
+  planId: string;
+  interval: BillingInterval;
+  /** upgrade / downgrade / same, or `trial` (a trial switch or a new trial), `start` (pay from free), `free`. */
+  kind: "upgrade" | "downgrade" | "same" | "trial" | "start" | "free";
+  /** `now` (no payment), `period_end` (a downgrade), `after_payment` (applies once the mandate/charge succeeds), `none`. */
+  applies: "now" | "period_end" | "after_payment" | "none";
+  /** True when `/change` won't do it and `/checkout` is needed (free plan, no trial left). */
+  requiresCheckout: boolean;
+  /** New plan price for one period (taxable). */
+  planPricePaise: number;
+  /** Proration credit (taxable) for the unused days of the current paid period, plus any credit balance. */
+  creditPaise: number;
+  unusedDays: number;
+  periodDays: number;
+  /** Credit the first charge can't absorb (kept for the next invoice). */
+  carryoverPaise: number;
+  /** Taxable value charged now (after the credit). */
+  taxablePaise: number;
+  /** Amount due now, GST included. */
+  chargeTodayPaise: number;
+  gst: GstSplit & { ratePercent: number };
+  /** When the new plan starts (now, the period end, or once paid). */
+  startsAt: Date | null;
+  /** The next recurring charge after today's. */
+  nextChargeAt: Date | null;
 }
 
 export const toView = (s: SubscriptionRow): SubscriptionView => ({
@@ -106,9 +159,37 @@ export const toView = (s: SubscriptionRow): SubscriptionView => ({
   checkoutInterval: s.checkoutInterval,
   pendingPlanId: s.pendingPlanId,
   pendingInterval: s.pendingInterval,
+  pendingReason: s.pendingPlanId ? (s.pendingReason ?? "downgrade") : null,
+  pendingSince: s.pendingSince,
+  pendingExpiresAt: pendingExpiresAt(s),
+  pendingProviderSubscriptionId: s.pendingProviderSubscriptionId,
+  pendingAuthUrl: s.pendingAuthUrl,
+  pendingPeriodEnd: s.pendingPeriodEnd,
+  pendingCreditPaise: s.pendingCreditPaise,
+  pendingChargePaise: s.pendingChargePaise,
+  creditBalancePaise: s.creditBalancePaise,
   createdAt: s.createdAt,
   updatedAt: s.updatedAt,
 });
+
+/** A platform invoice as the API returns it: the row plus its plan and credit lines. */
+export type PlatformInvoiceView = PlatformInvoiceRow & { lines: InvoiceLine[] };
+
+/** Clears any pending plan change (a downgrade or an upgrade waiting for payment). */
+const NO_PENDING = {
+  pendingPlanId: null,
+  pendingInterval: null,
+  pendingReason: null,
+  pendingSince: null,
+  pendingProviderSubscriptionId: null,
+  pendingProviderPlanId: null,
+  pendingAuthUrl: null,
+  pendingPeriodEnd: null,
+  pendingCreditPaise: 0,
+  pendingCarryoverPaise: 0,
+  pendingChargePaise: 0,
+  pendingCreditLabel: null,
+} satisfies Partial<typeof subscriptions.$inferInsert>;
 
 /** A Razorpay-shaped webhook event (the mock builds the same shape). */
 export interface ProviderEvent {
@@ -168,9 +249,19 @@ export class SubscriptionsService {
     return row ?? null;
   }
 
+  /** The subscription a provider subscription id belongs to: its current mandate, or a pending upgrade's. */
   private async getByProviderId(providerSubscriptionId: string): Promise<SubscriptionRow | null> {
-    const [row] = await this.db.select().from(subscriptions).where(eq(subscriptions.providerSubscriptionId, providerSubscriptionId)).limit(1);
+    const [row] = await this.db
+      .select()
+      .from(subscriptions)
+      .where(or(eq(subscriptions.providerSubscriptionId, providerSubscriptionId), eq(subscriptions.pendingProviderSubscriptionId, providerSubscriptionId)))
+      .limit(1);
     return row ?? null;
+  }
+
+  /** True when `providerSubscriptionId` is the mandate of `sub`'s pending upgrade (not its current one). */
+  private isPendingMandate(sub: SubscriptionRow, providerSubscriptionId: string | null) {
+    return !!providerSubscriptionId && sub.pendingProviderSubscriptionId === providerSubscriptionId && sub.providerSubscriptionId !== providerSubscriptionId;
   }
 
   private async plan(id: string): Promise<PlanInfo> {
@@ -203,7 +294,7 @@ export class SubscriptionsService {
       const paid = isPaid(await this.deps.plans.getPlan(tenantPlan));
       const [row] = await this.db
         .update(subscriptions)
-        .set({ planId: tenantPlan, provider: paid ? "manual" : null, pendingPlanId: null, pendingInterval: null })
+        .set({ planId: tenantPlan, provider: paid ? "manual" : null, ...NO_PENDING })
         .where(and(eq(subscriptions.id, sub.id), eq(subscriptions.planId, sub.planId)))
         .returning();
       if (row) sub = row;
@@ -278,7 +369,7 @@ export class SubscriptionsService {
     if (!target.isPublic && target.id !== sub.planId) throw badRequest("That plan isn't available");
     const now = this.now();
     const current = await this.deps.plans.getPlan(sub.planId);
-    const result = (applied: "now" | "period_end" | "none", s: SubscriptionRow, extra: { authUrl?: string | null; requiresCheckout?: boolean } = {}) => ({
+    const result = (applied: "now" | "period_end" | "after_payment" | "none", s: SubscriptionRow, extra: { authUrl?: string | null; requiresCheckout?: boolean } = {}) => ({
       subscription: toView(s),
       applied,
       authUrl: extra.authUrl ?? null,
@@ -288,10 +379,11 @@ export class SubscriptionsService {
     // ---- to the free plan
     if (!isPaid(target)) {
       if (sub.planId === target.id && sub.status === "active" && !sub.pendingPlanId) return result("none", sub);
+      if (isAwaitingPayment(sub)) sub = await this.dropPendingUpgrade(sub, actor, "Upgrade replaced by a move to the free plan");
       if (sub.status === "active" && CHARGING(sub.provider) && !sub.authUrl && sub.currentPeriodEnd && sub.currentPeriodEnd > now) {
         // Paid until the period end: the free plan starts then.
         await this.providerCall(() => this.deps.provider.cancel(sub.providerSubscriptionId!, true));
-        sub = await this.update(sub, { pendingPlanId: target.id, pendingInterval: input.interval }, actor, "subscription.downgrade", `Moves to ${target.id} at the period end`);
+        sub = await this.update(sub, { pendingPlanId: target.id, pendingInterval: input.interval, pendingReason: "downgrade" }, actor, "subscription.downgrade", `Moves to ${target.id} at the period end`);
         return result("period_end", sub);
       }
       await this.cancelProviderNow(sub);
@@ -307,8 +399,7 @@ export class SubscriptionsService {
           authUrl: null,
           checkoutPlanId: null,
           checkoutInterval: null,
-          pendingPlanId: null,
-          pendingInterval: null,
+          ...NO_PENDING,
           cancelAtPeriodEnd: false,
           graceEndsAt: null,
           trialEndsAt: sub.status === "trialing" ? now : sub.trialEndsAt,
@@ -338,23 +429,29 @@ export class SubscriptionsService {
     if ((sub.status === "active" || sub.status === "past_due") && CHARGING(sub.provider) && current && isPaid(current)) {
       const kind = changeKind(current, sub.interval, target, input.interval);
       if (kind === "same") {
+        // Back to the current plan: drops an upgrade waiting for payment, or undoes a scheduled downgrade/cancel.
+        if (isAwaitingPayment(sub)) {
+          sub = await this.dropPendingUpgrade(sub, actor, "Upgrade cancelled; staying on the current plan");
+          return result("none", sub);
+        }
         if (!sub.pendingPlanId && !sub.cancelAtPeriodEnd) return result("none", sub);
-        // Undo a scheduled downgrade/cancel: same as resume.
         const r = await this.resume(tenantId, actor);
         return result("now", (await this.get(tenantId))!, { authUrl: r.authUrl });
       }
       if (kind === "downgrade" && sub.status === "active") {
+        if (isAwaitingPayment(sub)) sub = await this.dropPendingUpgrade(sub, actor, "Upgrade replaced by a downgrade");
         const providerPlanId = await this.ensureProviderPlan(target, input.interval);
         const id = sub.providerSubscriptionId;
         const change = this.deps.provider.changePlan;
         if (id && change) await this.providerCall(() => change.call(this.deps.provider, id, providerPlanId));
-        sub = await this.update(sub, { pendingPlanId: target.id, pendingInterval: input.interval }, actor, "subscription.downgrade", `Moves to ${target.id} at the period end`);
+        sub = await this.update(sub, { pendingPlanId: target.id, pendingInterval: input.interval, pendingReason: "downgrade" }, actor, "subscription.downgrade", `Moves to ${target.id} at the period end`);
         return result("period_end", sub);
       }
-      // Upgrade (or any change while past due): a new mandate starting now; the plan applies at once. Prorated credit
-      // for the unused part of the old period is out of scope.
-      const { authUrl } = await this.startCheckout(sub, target, input.interval, now, actor, { applyNow: true });
-      return result("now", (await this.get(tenantId))!, { authUrl });
+      // Upgrade (or any change while past due): pending until the new mandate is authorised / its first charge
+      // succeeds. The current plan and its mandate carry on meanwhile; the unused part of the paid period is credited
+      // against the first charge.
+      const { authUrl } = await this.startUpgrade(sub, target, input.interval, actor);
+      return result("after_payment", (await this.get(tenantId))!, { authUrl });
     }
 
     // Free, manual, cancelled or expired: a trial if this owner never had one, otherwise payment first.
@@ -379,6 +476,182 @@ export class SubscriptionsService {
       return result("now", sub);
     }
     return result("none", sub, { requiresCheckout: true });
+  }
+
+  /** `POST /change/preview`: what `/change` (or the checkout it leads to) would do and charge, without changing anything. */
+  async preview(tenantId: string, input: { planId: string; interval: BillingInterval }, actor: Actor = SYSTEM): Promise<ChangePreview> {
+    const sub = await this.ensure(tenantId);
+    const target = await this.plan(input.planId);
+    if (!target.isPublic && target.id !== sub.planId) throw badRequest("That plan isn't available");
+    const now = this.now();
+    const current = await this.deps.plans.getPlan(sub.planId);
+    const price = planPrice(target, input.interval);
+    const buyerState = (await this.deps.shop.buyer(tenantId)).stateCode;
+    const sellerState = this.deps.config.seller.stateCode;
+    const gstOf = (chargePaise: number) => ({ ...gstSplit(chargePaise, sellerState, buyerState), ratePercent: PLATFORM_GST_RATE });
+    const out = (p: Partial<ChangePreview> & Pick<ChangePreview, "kind" | "applies">): ChangePreview => ({
+      planId: target.id,
+      interval: input.interval,
+      requiresCheckout: false,
+      planPricePaise: price,
+      creditPaise: 0,
+      unusedDays: 0,
+      periodDays: 0,
+      carryoverPaise: 0,
+      taxablePaise: 0,
+      chargeTodayPaise: 0,
+      gst: gstOf(0),
+      startsAt: null,
+      nextChargeAt: null,
+      ...p,
+    });
+    const paidNow = (start: Date | null): Partial<ChangePreview> => ({
+      taxablePaise: price,
+      chargeTodayPaise: chargeAmount(price),
+      gst: gstOf(chargeAmount(price)),
+      startsAt: start,
+      nextChargeAt: addInterval(now, input.interval),
+    });
+
+    if (!isPaid(target)) {
+      if (sub.planId === target.id && sub.status === "active" && !sub.pendingPlanId) return out({ kind: "same", applies: "none" });
+      if (sub.status === "active" && CHARGING(sub.provider) && !sub.authUrl && sub.currentPeriodEnd && sub.currentPeriodEnd > now) {
+        return out({ kind: "free", applies: "period_end", startsAt: sub.currentPeriodEnd });
+      }
+      return out({ kind: "free", applies: "now", startsAt: now });
+    }
+    if (sub.status === "trialing") {
+      return out({ kind: "trial", applies: "now", startsAt: now, nextChargeAt: hasMandateRow(sub) ? sub.trialEndsAt : null });
+    }
+    if ((sub.status === "active" || sub.status === "past_due") && CHARGING(sub.provider) && current && isPaid(current)) {
+      const kind = changeKind(current, sub.interval, target, input.interval);
+      if (kind === "same") return out({ kind, applies: "none", nextChargeAt: sub.currentPeriodEnd });
+      if (kind === "downgrade" && sub.status === "active") return out({ kind, applies: "period_end", startsAt: sub.currentPeriodEnd, nextChargeAt: sub.currentPeriodEnd });
+      const q = await this.quoteUpgrade(sub, target, input.interval, now);
+      return out({
+        kind,
+        applies: "after_payment",
+        creditPaise: q.quote.creditPaise,
+        unusedDays: q.unusedDays,
+        periodDays: q.periodDays,
+        carryoverPaise: q.quote.carryoverPaise,
+        taxablePaise: q.quote.taxablePaise,
+        chargeTodayPaise: q.quote.chargeTodayPaise,
+        gst: { ...q.quote.gst, ratePercent: PLATFORM_GST_RATE },
+        startsAt: null,
+        nextChargeAt: addInterval(now, input.interval),
+      });
+    }
+    if (sub.status === "active" && !CHARGING(sub.provider) && !sub.trialStartedAt && (await this.canTrial(sub.ownerUserId ?? actor.userId, tenantId))) {
+      return out({ kind: "trial", applies: "now", startsAt: now, nextChargeAt: addDays(now, this.trialDays) });
+    }
+    return out({ kind: "start", applies: "after_payment", requiresCheckout: true, ...paidNow(null) });
+  }
+
+  /** The paid invoice covering `now` in the current period (what a proration credit is based on). */
+  private async paidInvoiceNow(sub: SubscriptionRow, now: Date): Promise<PlatformInvoiceRow | null> {
+    const rows = await this.db
+      .select()
+      .from(platformInvoices)
+      .where(and(eq(platformInvoices.subscriptionId, sub.id), eq(platformInvoices.status, "paid")))
+      .orderBy(desc(platformInvoices.createdAt))
+      .limit(5);
+    return rows.find((r) => r.periodStart && r.periodEnd && r.periodStart <= now && r.periodEnd > now) ?? null;
+  }
+
+  /**
+   * The upgrade's money: credit for the unused IST days of the paid period (from the invoice that paid it, taxable
+   * value) plus any credit balance, taken off the new plan's first period.
+   */
+  private async quoteUpgrade(sub: SubscriptionRow, target: PlanInfo, interval: BillingInterval, now: Date) {
+    const paid = sub.status === "active" ? await this.paidInvoiceNow(sub, now) : null;
+    const pro = paid ? prorationCredit({ periodStart: paid.periodStart!, periodEnd: paid.periodEnd!, now, paidTaxablePaise: paid.subtotalPaise }) : { creditPaise: 0, unusedDays: 0, periodDays: 0 };
+    const buyerState = (await this.deps.shop.buyer(sub.tenantId)).stateCode;
+    const quote = upgradeQuote({
+      planPricePaise: planPrice(target, interval),
+      creditPaise: pro.creditPaise + Math.max(0, sub.creditBalancePaise),
+      sellerState: this.deps.config.seller.stateCode,
+      buyerState,
+      upfront: !!this.deps.provider.supportsUpfront,
+    });
+    const from = paid ? ((await this.deps.plans.getPlan(paid.planId))?.name ?? paid.planId) : null;
+    const parts: string[] = [];
+    if (pro.creditPaise > 0 && from) parts.push(`${pro.unusedDays} unused of ${pro.periodDays} days of ${from} (${paid!.interval})`);
+    if (sub.creditBalancePaise > 0) parts.push("earlier credit");
+    const label = parts.length ? `Credit: ${parts.join(" and ")}` : null;
+    return { quote, label, unusedDays: pro.unusedDays, periodDays: pro.periodDays };
+  }
+
+  /**
+   * An upgrade of a running paid plan: a new mandate whose authorisation collects the first period minus the credit
+   * (Razorpay `addons`; its own charges start one period later). Stored as pending `awaiting_payment`; the current
+   * plan stays until the mandate is authorised or charged, and the upgrade lapses after 48 h.
+   */
+  private async startUpgrade(sub: SubscriptionRow, target: PlanInfo, interval: BillingInterval, actor: Actor) {
+    if (planPrice(target, interval) <= 0) throw badRequest(`${target.name} has no ${interval} price`);
+    const now = this.now();
+    const { quote, label } = await this.quoteUpgrade(sub, target, interval, now);
+    const providerPlanId = await this.ensureProviderPlan(target, interval);
+    const upfront = !!this.deps.provider.supportsUpfront;
+    const periodEnd = addInterval(now, interval);
+    const created = await this.providerCall(() =>
+      this.deps.provider.createSubscription({
+        providerPlanId,
+        interval,
+        startAt: upfront ? periodEnd : now,
+        notes: { tenantId: sub.tenantId, planId: target.id, interval, kind: "upgrade" },
+        upfront: upfront && quote.chargeTodayPaise > 0 ? { amountPaise: quote.chargeTodayPaise, name: `${target.name} (${interval}), first period${quote.appliedCreditPaise ? " less credit" : ""}` } : null,
+      }),
+    );
+    // A previous unpaid upgrade is replaced; a scheduled downgrade of the current mandate is undone.
+    if (sub.pendingProviderSubscriptionId && sub.pendingProviderSubscriptionId !== created.id) await this.cancelProviderId(sub, sub.pendingProviderSubscriptionId);
+    if (sub.pendingPlanId && !isAwaitingPayment(sub)) await this.revertScheduledChange(sub);
+    const row = await this.update(
+      sub,
+      {
+        pendingPlanId: target.id,
+        pendingInterval: interval,
+        pendingReason: "awaiting_payment",
+        pendingSince: now,
+        pendingProviderSubscriptionId: created.id,
+        pendingProviderPlanId: providerPlanId,
+        pendingAuthUrl: created.shortUrl,
+        pendingPeriodEnd: upfront ? periodEnd : null,
+        pendingCreditPaise: quote.appliedCreditPaise,
+        pendingCarryoverPaise: quote.carryoverPaise,
+        pendingChargePaise: quote.chargeTodayPaise,
+        pendingCreditLabel: label,
+      },
+      actor,
+      "subscription.upgrade_pending",
+      `Upgrade to ${target.id} (${interval}) waits for payment of ${rupees(quote.chargeTodayPaise)}${quote.creditPaise ? ` (credit ${rupees(quote.creditPaise)})` : ""}`,
+    );
+    return { authUrl: created.shortUrl, providerSubscriptionId: created.id, subscription: row };
+  }
+
+  /** `POST /change/cancel`: drops an upgrade that is waiting for payment (the current plan carries on). */
+  async cancelUpgrade(tenantId: string, actor: Actor = SYSTEM) {
+    const sub = await this.ensure(tenantId);
+    if (!isAwaitingPayment(sub)) throw badRequest("No upgrade is waiting for payment");
+    const row = await this.dropPendingUpgrade(sub, actor, "Upgrade cancelled");
+    return { subscription: toView(row) };
+  }
+
+  /** Cancels the pending upgrade's mandate and clears it (no-op without one). */
+  private async dropPendingUpgrade(sub: SubscriptionRow, actor: Actor, summary: string): Promise<SubscriptionRow> {
+    if (!isAwaitingPayment(sub)) return sub;
+    if (sub.pendingProviderSubscriptionId) await this.cancelProviderId(sub, sub.pendingProviderSubscriptionId);
+    return this.update(sub, { ...NO_PENDING }, actor, "subscription.upgrade_cancelled", summary);
+  }
+
+  /** Undoes a downgrade scheduled on the provider (back to the current plan at the next cycle). */
+  private async revertScheduledChange(sub: SubscriptionRow) {
+    const change = this.deps.provider.changePlan;
+    if (!change || !sub.providerSubscriptionId || !CHARGING(sub.provider)) return;
+    const plan = await this.deps.plans.getPlan(sub.planId);
+    if (!plan || !isPaid(plan)) return;
+    const providerPlanId = await this.ensureProviderPlan(plan, sub.interval);
+    await this.providerCall(() => change.call(this.deps.provider, sub.providerSubscriptionId!, providerPlanId));
   }
 
   /** `POST /checkout`: creates the provider subscription (from the trial end while trialing) and returns its mandate URL. */
@@ -415,8 +688,10 @@ export class SubscriptionsService {
         notes: { tenantId: sub.tenantId, planId: target.id, interval },
       }),
     );
-    // The old mandate stops once the new one exists (upgrades, a re-checkout, a past-due shop paying again).
+    // The old mandate stops once the new one exists (a re-checkout, a past-due shop paying again), and so does an
+    // unpaid upgrade's.
     if (sub.providerSubscriptionId && CHARGING(sub.provider)) await this.cancelProviderNow(sub);
+    if (sub.pendingProviderSubscriptionId) await this.cancelProviderId(sub, sub.pendingProviderSubscriptionId);
     const patch: Partial<typeof subscriptions.$inferInsert> = {
       provider: this.deps.provider.name,
       providerSubscriptionId: created.id,
@@ -424,16 +699,10 @@ export class SubscriptionsService {
       authUrl: created.shortUrl,
       checkoutPlanId: target.id,
       checkoutInterval: interval,
-      pendingPlanId: null,
-      pendingInterval: null,
+      ...NO_PENDING,
       cancelAtPeriodEnd: false,
     };
     if (opts.applyNow) Object.assign(patch, { planId: target.id, interval });
-    // An upgrade of a running paid plan starts a new period now (no prorated credit for the old one).
-    if (opts.applyNow && sub.status !== "trialing") {
-      const now = this.now();
-      Object.assign(patch, { currentPeriodStart: now, currentPeriodEnd: addInterval(now, interval) });
-    }
     await this.update(sub, patch, actor, "subscription.checkout", `Mandate for ${target.id} (${interval}) created`);
     return { authUrl: created.shortUrl, providerSubscriptionId: created.id };
   }
@@ -445,6 +714,7 @@ export class SubscriptionsService {
     if (sub.status === "cancelled" || sub.status === "expired" || (sub.status === "active" && sub.planId === this.freePlanId)) {
       throw badRequest("There is no paid plan to cancel");
     }
+    if (isAwaitingPayment(sub)) sub = await this.dropPendingUpgrade(sub, actor, "Upgrade dropped by a cancellation");
     if (sub.cancelAtPeriodEnd) return { subscription: toView(sub) };
     if (sub.status === "trialing") {
       if (sub.providerSubscriptionId) await this.cancelProviderNow(sub);
@@ -470,7 +740,8 @@ export class SubscriptionsService {
    */
   async resume(tenantId: string, actor: Actor = SYSTEM) {
     let sub = await this.ensure(tenantId);
-    if (!sub.cancelAtPeriodEnd && !sub.pendingPlanId) throw badRequest("Nothing to resume");
+    const downgrade = !!sub.pendingPlanId && !isAwaitingPayment(sub);
+    if (!sub.cancelAtPeriodEnd && !downgrade) throw badRequest("Nothing to resume");
     let authUrl: string | null = null;
     const wasCancelled = sub.cancelAtPeriodEnd;
     if (sub.status === "active" && CHARGING(sub.provider) && wasCancelled && sub.providerSubscriptionId) {
@@ -479,26 +750,36 @@ export class SubscriptionsService {
       const r = await this.startCheckout(sub, plan, sub.interval, startAt, actor, { applyNow: false });
       authUrl = r.authUrl;
       sub = (await this.get(tenantId))!;
-    } else if (sub.pendingPlanId && sub.providerSubscriptionId && CHARGING(sub.provider)) {
-      const plan = await this.plan(sub.planId);
-      const providerPlanId = await this.ensureProviderPlan(plan, sub.interval);
-      const change = this.deps.provider.changePlan;
-      if (change) await this.providerCall(() => change.call(this.deps.provider, sub.providerSubscriptionId!, providerPlanId));
+    } else if (downgrade && sub.providerSubscriptionId && CHARGING(sub.provider)) {
+      await this.revertScheduledChange(sub);
     }
-    sub = await this.update(sub, { cancelAtPeriodEnd: false, pendingPlanId: null, pendingInterval: null }, actor, "subscription.resume", "Resumed");
+    sub = await this.update(sub, downgrade ? { cancelAtPeriodEnd: false, ...NO_PENDING } : { cancelAtPeriodEnd: false }, actor, "subscription.resume", "Resumed");
     return { subscription: toView(sub), authUrl };
   }
 
   // ================================================================ invoices
 
   async listInvoices(tenantId: string) {
-    const items = await this.db
+    const rows = await this.db
       .select()
       .from(platformInvoices)
       .where(eq(platformInvoices.tenantId, tenantId))
       .orderBy(desc(platformInvoices.createdAt))
       .limit(200);
-    return { items };
+    const names = new Map((await this.deps.plans.listPlans()).map((p) => [p.id, p.name]));
+    return { items: rows.map((r) => this.invoiceView(r, names.get(r.planId))) };
+  }
+
+  /** The row with its lines (plan at full value, then the credit as a negative line). */
+  invoiceView(row: PlatformInvoiceRow, planName?: string): PlatformInvoiceView {
+    return {
+      ...row,
+      lines: platformInvoiceLines({
+        ...row,
+        description: `${planName ?? row.planId} plan (${row.interval})`,
+        sellerState: row.seller?.stateCode ?? this.deps.config.seller.stateCode,
+      }),
+    };
   }
 
   async getInvoice(id: string, tenantId?: string): Promise<PlatformInvoiceRow> {
@@ -513,7 +794,8 @@ export class SubscriptionsService {
     const invoice = await this.getInvoice(id, tenantId);
     if (!this.deps.documents) throw new AppError(503, "not_configured", "PDFs are not available");
     const plan = await this.deps.plans.getPlan(invoice.planId);
-    return this.deps.documents.platformInvoicePdf({ invoice, planName: plan?.name ?? invoice.planId, sac: PLATFORM_SAC });
+    const planName = plan?.name ?? invoice.planId;
+    return this.deps.documents.platformInvoicePdf({ invoice, planName, sac: PLATFORM_SAC, lines: this.invoiceView(invoice, planName).lines });
   }
 
   /** Next "SR/2026-27/00001" number (atomic per financial year). */
@@ -531,17 +813,37 @@ export class SubscriptionsService {
   /** A paid platform invoice for a charge (idempotent per provider payment id). */
   private async createInvoice(
     sub: SubscriptionRow,
-    input: { amountPaise: number; paymentId: string; periodStart: Date; periodEnd: Date; planId: string; interval: BillingInterval },
-  ): Promise<{ invoice: PlatformInvoiceRow; created: boolean }> {
+    input: {
+      amountPaise: number;
+      paymentId: string;
+      periodStart: Date;
+      periodEnd: Date;
+      planId: string;
+      interval: BillingInterval;
+      /** A credit the provider already took off `amountPaise` (an upgrade's upfront charge). */
+      creditInChargePaise?: number;
+      /** Credit balance still owed: taken off this invoice (what the provider charged above it is a refund due). */
+      balancePaise?: number;
+      creditLabel?: string | null;
+    },
+  ): Promise<{ invoice: PlatformInvoiceRow; created: boolean; balanceUsedPaise: number }> {
     const [existing] = await this.db
       .select()
       .from(platformInvoices)
       .where(and(eq(platformInvoices.provider, sub.provider ?? "manual"), eq(platformInvoices.providerPaymentId, input.paymentId)))
       .limit(1);
-    if (existing) return { invoice: existing, created: false };
+    if (existing) return { invoice: existing, created: false, balanceUsedPaise: 0 };
     const seller = this.deps.config.seller;
     const buyer = await this.deps.shop.buyer(sub.tenantId);
-    const split = gstSplit(input.amountPaise, seller.stateCode, buyer.stateCode);
+    const amounts = invoiceAmounts({
+      chargedPaise: input.amountPaise,
+      creditInChargePaise: input.creditInChargePaise,
+      balancePaise: input.balancePaise,
+      sellerState: seller.stateCode,
+      buyerState: buyer.stateCode,
+    });
+    const split = amounts.split;
+    const creditLabel = amounts.creditPaise ? (input.creditLabel ?? (amounts.balanceUsedPaise ? "Credit carried over from a plan change" : null)) : null;
     const date = istDate(this.now());
     const invoice = await this.db.transaction(async (tx) => {
       const n = await this.nextNumber(tx, date);
@@ -565,6 +867,9 @@ export class SubscriptionsService {
           sgstPaise: split.sgstPaise,
           igstPaise: split.igstPaise,
           totalPaise: split.totalPaise,
+          creditPaise: amounts.creditPaise,
+          creditLabel,
+          refundDuePaise: amounts.refundDuePaise,
           status: "paid",
           provider: sub.provider ?? "manual",
           providerPaymentId: input.paymentId,
@@ -581,9 +886,12 @@ export class SubscriptionsService {
         .from(platformInvoices)
         .where(and(eq(platformInvoices.provider, sub.provider ?? "manual"), eq(platformInvoices.providerPaymentId, input.paymentId)))
         .limit(1);
-      return { invoice: again!, created: false };
+      return { invoice: again!, created: false, balanceUsedPaise: 0 };
     }
-    return { invoice, created: true };
+    if (amounts.refundDuePaise > 0) {
+      this.log.warn({ tenantId: sub.tenantId, invoice: invoice.number, refundDuePaise: amounts.refundDuePaise }, "subscriptions: credit applied after the charge; refund due");
+    }
+    return { invoice, created: true, balanceUsedPaise: amounts.balanceUsedPaise };
   }
 
   // ================================================================ webhooks
@@ -616,7 +924,11 @@ export class SubscriptionsService {
     if (!rec) return { ok: true, duplicate: true, outcome: "duplicate" };
     let outcome: string;
     try {
-      outcome = sub ? await this.applyEvent(sub, event, subEntity, payEntity) : "ignored: unknown subscription";
+      outcome = !sub
+        ? "ignored: unknown subscription"
+        : this.isPendingMandate(sub, providerSubId)
+          ? await this.applyPendingEvent(sub, providerSubId!, event, payEntity)
+          : await this.applyEvent(sub, event, subEntity, payEntity);
     } catch (err) {
       outcome = `error: ${(err as Error).message}`.slice(0, 500);
       this.log.error({ err, eventId, type: event.event, outcome }, "subscriptions: webhook handling failed");
@@ -626,6 +938,100 @@ export class SubscriptionsService {
     }
     await this.db.update(subscriptionEvents).set({ outcome, processedAt: new Date() }).where(eq(subscriptionEvents.id, rec.id));
     return { ok: true, duplicate: false, outcome };
+  }
+
+  /**
+   * Events of a pending upgrade's mandate. Authorised (`subscription.authenticated` / `activated`) or charged — in
+   * either order — applies the upgrade once: the new plan and period start, the old mandate is cancelled, and the
+   * upfront payment gets its invoice (with the credit line). Failures leave it pending (it lapses after 48 h); a
+   * cancelled mandate drops it.
+   */
+  private async applyPendingEvent(sub: SubscriptionRow, providerSubId: string, event: ProviderEvent, payEntity: Record<string, unknown>): Promise<string> {
+    switch (event.event) {
+      case "subscription.authenticated":
+      case "subscription.activated":
+      case "subscription.charged":
+        return this.applyUpgrade(sub, providerSubId, event, payEntity);
+      case "payment.failed":
+      case "subscription.pending":
+      case "subscription.halted":
+        return "ignored: upgrade payment failed (still pending)";
+      case "subscription.cancelled":
+      case "subscription.completed": {
+        const [row] = await this.db
+          .update(subscriptions)
+          .set({ ...NO_PENDING })
+          .where(and(eq(subscriptions.id, sub.id), eq(subscriptions.pendingProviderSubscriptionId, providerSubId)))
+          .returning();
+        if (row) await this.audit(row, SYSTEM, "subscription.upgrade_cancelled", `Upgrade mandate ${event.event}`, sub);
+        return "applied: pending upgrade dropped";
+      }
+      default:
+        return `ignored: ${event.event}`;
+    }
+  }
+
+  private async applyUpgrade(sub: SubscriptionRow, providerSubId: string, event: ProviderEvent, payEntity: Record<string, unknown>): Promise<string> {
+    const now = this.now();
+    const planId = sub.pendingPlanId!;
+    const interval = sub.pendingInterval ?? sub.interval;
+    const upfront = !!this.deps.provider.supportsUpfront;
+    const start = sub.pendingSince ?? now;
+    const end = sub.pendingPeriodEnd ?? addInterval(now, interval);
+    // Upfront providers collect the first period with the authorisation: the authorised event is the payment.
+    // Otherwise the first charge comes as `subscription.charged` and is invoiced by the normal path below.
+    const paymentId = str(payEntity.id);
+    const charged = event.event === "subscription.charged" || (upfront && sub.pendingChargePaise > 0);
+    const [row] = await this.db
+      .update(subscriptions)
+      .set({
+        status: "active",
+        planId,
+        interval,
+        provider: this.deps.provider.name,
+        providerSubscriptionId: providerSubId,
+        providerPlanId: sub.pendingProviderPlanId,
+        authUrl: null,
+        checkoutPlanId: null,
+        checkoutInterval: null,
+        graceEndsAt: null,
+        cancelAtPeriodEnd: false,
+        endedAt: null,
+        currentPeriodStart: upfront ? start : now,
+        currentPeriodEnd: upfront ? end : addInterval(now, interval),
+        convertedAt: sub.convertedAt ?? now,
+        creditBalancePaise: sub.pendingCarryoverPaise,
+        ...NO_PENDING,
+      })
+      .where(and(eq(subscriptions.id, sub.id), eq(subscriptions.pendingProviderSubscriptionId, providerSubId)))
+      .returning();
+    if (!row) return "ignored: upgrade already applied";
+    // The old plan's mandate stops now that the new one is paid.
+    if (sub.providerSubscriptionId && sub.providerSubscriptionId !== providerSubId && CHARGING(sub.provider)) await this.cancelProviderId(sub, sub.providerSubscriptionId);
+    await this.audit(row, SYSTEM, "subscription.upgraded", `Upgrade to ${planId} (${interval}) paid (${event.event})`, sub);
+    await this.syncTenantPlan(row);
+    let outcome = "applied: upgraded";
+    if (charged) {
+      const amount = typeof payEntity.amount === "number" ? payEntity.amount : upfront ? sub.pendingChargePaise : chargeAmount(planPrice(await this.plan(planId), interval));
+      if (amount > 0) {
+        const r = await this.createInvoice(row, {
+          amountPaise: amount,
+          paymentId: paymentId ?? `upfront_${providerSubId}`,
+          periodStart: row.currentPeriodStart ?? now,
+          periodEnd: row.currentPeriodEnd ?? end,
+          planId,
+          interval,
+          creditInChargePaise: upfront ? sub.pendingCreditPaise : 0,
+          balancePaise: upfront ? 0 : row.creditBalancePaise,
+          creditLabel: sub.pendingCreditLabel,
+        });
+        if (r.balanceUsedPaise > 0) await this.db.update(subscriptions).set({ creditBalancePaise: sql`greatest(${subscriptions.creditBalancePaise} - ${r.balanceUsedPaise}, 0)` }).where(eq(subscriptions.id, row.id));
+        if (r.created) await this.sendInvoice(row, r.invoice);
+        outcome = `applied: upgraded, invoice ${r.invoice.number}`;
+      }
+    }
+    await this.notifyOwners(row, "subscription.activated");
+    return outcome;
   }
 
   private async applyEvent(sub: SubscriptionRow, event: ProviderEvent, subEntity: Record<string, unknown>, payEntity: Record<string, unknown>): Promise<string> {
@@ -673,7 +1079,22 @@ export class SubscriptionsService {
         const interval = sub.checkoutInterval ?? sub.interval;
         const start = fromUnix(subEntity.current_start) ?? now;
         const end = fromUnix(subEntity.current_end) ?? addInterval(start, interval);
-        const { invoice, created } = await this.createInvoice(sub, { amountPaise: amount, paymentId, periodStart: start, periodEnd: end, planId, interval });
+        // An upgrade's upfront payment was invoiced when it applied (under a placeholder id when the provider's event
+        // carried none); the same payment delivered again as a charge isn't a second invoice.
+        if (paymentId && (await this.adoptUpfrontInvoice(sub, paymentId, amount, now))) return "ignored: upfront payment already invoiced";
+        const { invoice, created, balanceUsedPaise } = await this.createInvoice(sub, {
+          amountPaise: amount,
+          paymentId,
+          periodStart: start,
+          periodEnd: end,
+          planId,
+          interval,
+          balancePaise: sub.creditBalancePaise,
+        });
+        if (!created) return `ignored: payment already invoiced (${invoice.number})`;
+        if (balanceUsedPaise > 0) {
+          await this.db.update(subscriptions).set({ creditBalancePaise: sql`greatest(${subscriptions.creditBalancePaise} - ${balanceUsedPaise}, 0)` }).where(eq(subscriptions.id, sub.id));
+        }
         const updated = await this.transition(
           sub,
           ["trialing", "active", "past_due", "cancelled", "expired"],
@@ -729,6 +1150,25 @@ export class SubscriptionsService {
     }
   }
 
+  /** Renames a placeholder `upfront_<sub>` invoice to the real payment id when the same amount arrives within days of it. */
+  private async adoptUpfrontInvoice(sub: SubscriptionRow, paymentId: string, amount: number, now: Date): Promise<boolean> {
+    if (!sub.providerSubscriptionId) return false;
+    const placeholder = `upfront_${sub.providerSubscriptionId}`;
+    const [row] = await this.db
+      .update(platformInvoices)
+      .set({ providerPaymentId: paymentId })
+      .where(
+        and(
+          eq(platformInvoices.subscriptionId, sub.id),
+          eq(platformInvoices.providerPaymentId, placeholder),
+          eq(platformInvoices.totalPaise, amount),
+          gt(platformInvoices.periodStart, addDays(now, -3)),
+        ),
+      )
+      .returning({ id: platformInvoices.id });
+    return !!row;
+  }
+
   // ================================================================ mock provider (development only)
 
   private assertMock() {
@@ -744,29 +1184,37 @@ export class SubscriptionsService {
 
   private mockEventId = (kind: string) => `evt_mock_${kind}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-  /** The customer authorised the mandate (`subscription.authenticated`). */
+  /**
+   * The customer authorised the mandate (`subscription.authenticated`). For an upgrade's mandate the upfront amount
+   * is collected with it, as Razorpay does with `addons`: the event carries that payment.
+   */
   async mockAuthorize(providerSubscriptionId: string) {
     const sub = await this.mockSub(providerSubscriptionId);
-    const r = await this.processEvent("mock", this.mockEventId("auth"), {
-      event: "subscription.authenticated",
-      payload: { subscription: { entity: { id: providerSubscriptionId, status: "authenticated", notes: { tenantId: sub.tenantId } } } },
-    });
-    return { ...r, subscription: toView((await this.get(sub.tenantId))!) };
+    const upfront = this.isPendingMandate(sub, providerSubscriptionId) ? sub.pendingChargePaise : 0;
+    const payload: ProviderEvent["payload"] = { subscription: { entity: { id: providerSubscriptionId, status: "authenticated", notes: { tenantId: sub.tenantId } } } };
+    if (upfront > 0) payload.payment = { entity: { id: `pay_mock_up_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`, amount: upfront, currency: "INR", status: "captured", method: "upi" } };
+    const r = await this.processEvent("mock", this.mockEventId("auth"), { event: "subscription.authenticated", payload });
+    const [invoice] = payload.payment ? await this.db.select().from(platformInvoices).where(eq(platformInvoices.providerPaymentId, String(payload.payment.entity!.id))).limit(1) : [];
+    return { ...r, invoice: invoice ? this.invoiceView(invoice) : null, subscription: toView((await this.get(sub.tenantId))!) };
   }
 
   /** A successful cycle charge (`subscription.charged`) for the current period (the next one once it was invoiced). */
   async mockCharge(providerSubscriptionId: string, opts: { amountPaise?: number } = {}) {
     const sub = await this.mockSub(providerSubscriptionId);
+    if (this.isPendingMandate(sub, providerSubscriptionId)) return this.mockChargePending(sub, providerSubscriptionId, opts);
     const planId = sub.checkoutPlanId ?? sub.planId;
     const interval = sub.checkoutInterval ?? sub.interval;
     const plan = await this.plan(planId);
+    // Continue from this mandate's last charge (its events), else its current period: invoices can't tell mandates
+    // on the same subscription row apart.
     const [last] = await this.db
-      .select({ periodEnd: platformInvoices.periodEnd })
-      .from(platformInvoices)
-      .where(and(eq(platformInvoices.subscriptionId, sub.id), eq(platformInvoices.planId, planId)))
-      .orderBy(desc(platformInvoices.createdAt))
+      .select({ payload: subscriptionEvents.payload })
+      .from(subscriptionEvents)
+      .where(and(eq(subscriptionEvents.providerSubscriptionId, providerSubscriptionId), eq(subscriptionEvents.type, "subscription.charged"), sql`${subscriptionEvents.outcome} like 'applied%'`))
+      .orderBy(desc(subscriptionEvents.createdAt))
       .limit(1);
-    const start = last?.periodEnd ?? sub.currentPeriodStart ?? this.now();
+    const lastEnd = fromUnix((last?.payload as ProviderEvent | undefined)?.payload?.subscription?.entity?.current_end);
+    const start = lastEnd ?? sub.currentPeriodStart ?? this.now();
     const end = addInterval(start, interval);
     const amount = opts.amountPaise ?? chargeAmount(planPrice(plan, interval));
     const paymentId = `pay_mock_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -778,7 +1226,25 @@ export class SubscriptionsService {
       },
     });
     const [invoice] = await this.db.select().from(platformInvoices).where(eq(platformInvoices.providerPaymentId, paymentId)).limit(1);
-    return { ...r, invoice: invoice ?? null, subscription: toView((await this.get(sub.tenantId))!) };
+    return { ...r, invoice: invoice ? this.invoiceView(invoice) : null, subscription: toView((await this.get(sub.tenantId))!) };
+  }
+
+  /** A pending upgrade's first charge arriving before (or without) the authorised event. */
+  private async mockChargePending(sub: SubscriptionRow, providerSubscriptionId: string, opts: { amountPaise?: number }) {
+    const interval = sub.pendingInterval ?? sub.interval;
+    const start = sub.pendingSince ?? this.now();
+    const end = sub.pendingPeriodEnd ?? addInterval(start, interval);
+    const amount = opts.amountPaise ?? (sub.pendingChargePaise || chargeAmount(planPrice(await this.plan(sub.pendingPlanId!), interval)));
+    const paymentId = `pay_mock_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const r = await this.processEvent("mock", this.mockEventId("charge"), {
+      event: "subscription.charged",
+      payload: {
+        subscription: { entity: { id: providerSubscriptionId, status: "active", current_start: Math.floor(start.getTime() / 1000), current_end: Math.floor(end.getTime() / 1000) } },
+        payment: { entity: { id: paymentId, amount, currency: "INR", status: "captured", method: "upi" } },
+      },
+    });
+    const [invoice] = await this.db.select().from(platformInvoices).where(eq(platformInvoices.providerPaymentId, paymentId)).limit(1);
+    return { ...r, invoice: invoice ? this.invoiceView(invoice) : null, subscription: toView((await this.get(sub.tenantId))!) };
   }
 
   /** A failed renewal (`subscription.pending`). */
@@ -877,13 +1343,24 @@ export class SubscriptionsService {
           sub,
           ["active"],
           toFree
-            ? { planId: target?.id ?? this.freePlanId, interval, pendingPlanId: null, pendingInterval: null, provider: null, providerSubscriptionId: null, providerPlanId: null, currentPeriodStart: now, currentPeriodEnd: null }
-            : { planId: target.id, interval, pendingPlanId: null, pendingInterval: null, currentPeriodStart: start, currentPeriodEnd: addInterval(start, interval) },
+            ? { planId: target?.id ?? this.freePlanId, interval, ...NO_PENDING, provider: null, providerSubscriptionId: null, providerPlanId: null, currentPeriodStart: now, currentPeriodEnd: null }
+            : { planId: target.id, interval, ...NO_PENDING, currentPeriodStart: start, currentPeriodEnd: addInterval(start, interval) },
           SYSTEM,
           "subscription.downgraded",
           `Moved to ${target?.id ?? this.freePlanId} at the period end`,
         );
         return Boolean(row);
+      }
+      case "pending_expired": {
+        if (sub.pendingProviderSubscriptionId) await this.cancelProviderId(sub, sub.pendingProviderSubscriptionId);
+        const [row] = await this.db
+          .update(subscriptions)
+          .set({ ...NO_PENDING })
+          .where(and(eq(subscriptions.id, sub.id), eq(subscriptions.pendingReason, "awaiting_payment"), eq(subscriptions.pendingSince, sub.pendingSince!)))
+          .returning();
+        if (!row) return false;
+        await this.audit(row, SYSTEM, "subscription.upgrade_expired", `Upgrade to ${sub.pendingPlanId} not paid within 48 hours`, sub);
+        return true;
       }
       case "overdue": {
         const row = await this.transition(sub, ["active"], { status: "past_due", graceEndsAt: addDays(now, this.graceDays) }, SYSTEM, "subscription.past_due", "Renewal payment overdue");
@@ -1014,6 +1491,7 @@ export class SubscriptionsService {
     const now = this.now();
     if (input.until && input.until <= now) throw badRequest("The end date must be in the future");
     await this.cancelProviderNow(sub);
+    if (sub.pendingProviderSubscriptionId) await this.cancelProviderId(sub, sub.pendingProviderSubscriptionId);
     sub = (await this.transition(
       sub,
       [sub.status],
@@ -1026,8 +1504,7 @@ export class SubscriptionsService {
         authUrl: null,
         checkoutPlanId: null,
         checkoutInterval: null,
-        pendingPlanId: null,
-        pendingInterval: null,
+        ...NO_PENDING,
         cancelAtPeriodEnd: false,
         graceEndsAt: null,
         endedAt: null,
@@ -1061,7 +1538,7 @@ export class SubscriptionsService {
     return {
       items: rows.map((r) => {
         const t = tenants.get(r.tenantId);
-        return { ...r, tenant: t ? { id: t.id, slug: t.slug, name: t.name } : null };
+        return { ...this.invoiceView(r), tenant: t ? { id: t.id, slug: t.slug, name: t.name } : null };
       }),
       total: totals[0]?.n ?? 0,
     };
@@ -1117,10 +1594,15 @@ export class SubscriptionsService {
   /** Stops the provider subscription right away (best effort: a failure is logged, the local change proceeds). */
   private async cancelProviderNow(sub: SubscriptionRow) {
     if (!sub.providerSubscriptionId || !CHARGING(sub.provider)) return;
+    await this.cancelProviderId(sub, sub.providerSubscriptionId);
+  }
+
+  /** Best-effort immediate cancel of one provider subscription (a current or a pending upgrade's mandate). */
+  private async cancelProviderId(sub: SubscriptionRow, providerSubscriptionId: string) {
     try {
-      await this.deps.provider.cancel(sub.providerSubscriptionId, false);
+      await this.deps.provider.cancel(providerSubscriptionId, false);
     } catch (err) {
-      this.log.warn({ err, tenantId: sub.tenantId, providerSubscriptionId: sub.providerSubscriptionId }, "subscriptions: provider cancel failed");
+      this.log.warn({ err, tenantId: sub.tenantId, providerSubscriptionId }, "subscriptions: provider cancel failed");
     }
   }
 
@@ -1161,7 +1643,16 @@ export class SubscriptionsService {
   }
 
   private async audit(row: SubscriptionRow, actor: Actor, action: string, summary: string, before?: SubscriptionRow) {
-    const pick = (s: SubscriptionRow) => ({ status: s.status, planId: s.planId, interval: s.interval, provider: s.provider, cancelAtPeriodEnd: s.cancelAtPeriodEnd, pendingPlanId: s.pendingPlanId });
+    const pick = (s: SubscriptionRow) => ({
+      status: s.status,
+      planId: s.planId,
+      interval: s.interval,
+      provider: s.provider,
+      cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+      pendingPlanId: s.pendingPlanId,
+      pendingReason: s.pendingReason,
+      creditBalancePaise: s.creditBalancePaise,
+    });
     await this.deps.audit?.record({
       tenantId: row.tenantId,
       actorUserId: actor.userId,
@@ -1208,7 +1699,8 @@ export class SubscriptionsService {
     if (this.deps.documents) {
       try {
         const plan = await this.deps.plans.getPlan(invoice.planId);
-        const doc = await this.deps.documents.platformInvoicePdf({ invoice, planName: plan?.name ?? invoice.planId, sac: PLATFORM_SAC });
+        const planName = plan?.name ?? invoice.planId;
+        const doc = await this.deps.documents.platformInvoicePdf({ invoice, planName, sac: PLATFORM_SAC, lines: this.invoiceView(invoice, planName).lines });
         attachments = [{ filename: doc.filename, contentType: "application/pdf", content: doc.pdf.toString("base64") }];
       } catch (err) {
         this.log.warn({ err, invoice: invoice.number }, "subscriptions: invoice PDF failed; sending without it");
@@ -1227,3 +1719,6 @@ export function parseUntil(v: string | null | undefined): Date | null {
 }
 
 export const isTerminal = (s: SubscriptionStatus) => s === "cancelled" || s === "expired";
+
+/** A mandate that is authorised (not waiting at its URL). */
+const hasMandateRow = (s: SubscriptionRow) => !!s.providerSubscriptionId && !s.authUrl && CHARGING(s.provider);

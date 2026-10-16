@@ -140,3 +140,43 @@ ref_type, ref_id, ref_number, unit_cost, note, created_by, created_at; index (te
 - `GET /reports/top-items?limit=10` → `{ items: { itemId, description, qty, unit, taxable }[] }`
 - `GET /reports/top-customers?limit=10` → `{ items: { customerId, name, invoices, total }[] }`
 - `GET /summary` gains `trend` (last 14 days `{ date, invoiced }[]`) and `prevMonth: { invoiced, collected, count }` for deltas.
+
+## 4. Credit notes (`/v1/invoices`, permission `invoices.credit-note`)
+
+GST credit notes against issued bills: full or partial returns and value corrections. Maths in `@srirealtime/gst`
+(`computeCreditNote`, `creditState`): each line takes its share of the original line's taxable value, CGST, SGST and IGST
+(same rate, same split, original place of supply); the last return of a line takes exactly what is left; the total is
+rounded to the rupee and the note that clears the bill gets `invoice total − earlier notes`.
+
+- `GET /:id/returnable` → `{ invoiceId, number, status, total, paid, credited, balance, creditable, interState, hasCustomer,
+  blocked /*reason or null*/, lines: { line, description, unit, itemId, gstRate, qty, returnedQty, remainingQty, credited, remaining }[], creditNotes }`
+- `POST /:id/credit-notes` `{ date?, reason: "return"|"price_correction"|"discount"|"other", note?, refundMode: "cash"|"upi"|"card"|"credit_book"|"none",
+  refundReference?, lines: { line, qty? | taxable? /*GST-exclusive paise, not for returns*/, restock? }[], tillSessionId? }` → `{ creditNote, invoice }`.
+  The part of the note up to the bill's open balance reduces what is owed; the rest was paid and is refunded (an invoice
+  payment with a negative amount, `source: "refund"`) or, with `credit_book`, stays as credit in the customer's ledger;
+  `none` is refused when money was paid. 409 `credit_note_blocked` for drafts, cancelled or fully credited bills;
+  400 `credit_note_qty` / `credit_note_line` / `credit_note_amount` / `credit_note_refund`.
+  Numbers: own series per (branch, FY), prefix `CN` or `CN` + the bill's prefix (`CNEB/26-27/0001`, 16-char GST rule).
+- `GET /credit-notes?q=&status=&from=&to=&customerId=&invoiceId=&branchId=` (csv) · `GET /credit-notes/:id`
+- `POST /credit-notes/:id/cancel` `{ reason? }` — same IST day and nothing refunded (409 `credit_note_locked`).
+- Effects: `Invoice.credited` (balance = total − paid − credited; a fully credited bill is `paid`), stock back through
+  `StockPort.applyReturn` (reason `sale_return`, where the sale took it), loyalty points earned on the value taken back
+  (`LoyaltyRedeemPort.creditNote`), webhooks `credit_note.issued` / `credit_note.cancelled`, audit entries. A bill with
+  credit notes can't be cancelled and its payments can't be deleted.
+- Ledger entries `credit_note` (credit) and `refund` (debit); sales register rows `type: "credit_note"` with negative
+  amounts; GST summary `cdnr` / `cdnur` rows and B2CS / HSN / rate / 3B net of notes (`format=csv&section=cdnr|cdnur`).
+- PDFs: `/v1/documents/credit-note/:id.pdf` (A4) and `/credit-note-thermal/:id.pdf` (80 mm). E-invoice: the einvoice
+  routes accept a credit note id (document type CRN with the bill as preceding document); GSTR-1 export has cdnr / cdnur.
+
+## 5. POS till sessions (`/v1/invoices/till`)
+
+One open session per register (device name) and branch. Bills (`tillSessionId` on create), payments and credit note
+refunds carry the session id; the X report sums them.
+
+- `GET /till/current?register=` → `{ session | null }` · `GET /till/:id` · `GET /till/:id/x` → `{ session, report }`
+- `POST /till/open` `{ register, openingCash? | openingCount? /*{ "500": 2 }*/, actorName? }` (permission `pos.till`; 409 `till_open`)
+- `POST /till/:id/cash` `{ amount /*signed paise*/, reason }` · `POST /till/:id/close` `{ count? | countedCash?, note? }` (`pos.till`)
+- `GET /till/sessions?register=&status=&from=&to=` (other registers: feature `invoices.reports`, permission `reports.view`)
+- Report: bills, payments and refunds by method, credit notes, on credit, cash `{ opening, sales, refunds, cashIn, cashOut,
+  expected = opening + sales − refunds + in − out }`; close stores expected / counted / difference and freezes it (Z report,
+  `/v1/documents/till-z/:id.pdf`, 80 mm).

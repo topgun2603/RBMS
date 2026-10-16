@@ -76,7 +76,7 @@ export function AdjustDialog({ open, onOpenChange, member }: { open: boolean; on
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent closeLabel={t("growth.common.close")}>
-        <form onSubmit={submit} className="grid gap-4">
+        <form onSubmit={submit} className="grid gap-5">
           <DialogHeader>
             <DialogTitle>{t("growth.loyalty.adjustTitle")}</DialogTitle>
             <DialogDescription>{t("growth.loyalty.adjustBody", { balance: num(member.pointsBalance) })}</DialogDescription>

@@ -552,7 +552,7 @@ function PreviewPanel({ draft, server, dirty }: { draft: Draft; server: Collecti
           </ul>
         )}
         {rows.length > 8 && <p className="text-center text-meta text-muted-foreground">{t("commerce.collections.andMore", { count: rows.length - 8 })}</p>}
-        <p className="px-1 text-[0.6875rem] text-muted-foreground">
+        <p className="px-1 text-meta text-muted-foreground">
           {exact && publicQ.isSuccess ? t("commerce.collections.previewExact") : approximate ? t("commerce.collections.previewApprox") : t("commerce.collections.previewLive")}
         </p>
       </div>

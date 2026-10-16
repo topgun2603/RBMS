@@ -37,7 +37,8 @@ import type { DayRecord } from "../lib/storage";
 import { usePos } from "./pos-context";
 
 export interface TopBarProps {
-  day: DayRecord | null;
+  /** The open till session of this register (as a day). */
+  day: Pick<DayRecord, "date" | "openedAt" | "closedAt"> | null;
   holds: number;
   onHolds: () => void;
   onReturns: () => void;

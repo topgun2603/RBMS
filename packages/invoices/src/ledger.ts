@@ -28,8 +28,8 @@ export function dateText(date: string | null | undefined): string {
 // ------------------------------------------------------------------ balances
 
 /** Customer ledger balance: opening + issued bills − payments entered on bills − receipts. + = they owe the shop. */
-export function ledgerBalance(p: { opening: number; billed: number; paid: number; received: number }): number {
-  return p.opening + p.billed - p.paid - p.received;
+export function ledgerBalance(p: { opening: number; billed: number; paid: number; received: number; credited?: number }): number {
+  return p.opening + p.billed - p.paid - p.received - (p.credited ?? 0);
 }
 
 /** True when the customer has a credit limit and the balance (after the bill) goes above it. */
@@ -46,6 +46,8 @@ export interface OpenBill {
   status: InvoiceStatus;
   total: number;
   paid: number;
+  /** Credit notes on the bill (paise). */
+  credited?: number | null;
   /** Tie-break for bills of the same date (the FY sequence). */
   seq?: number | null;
 }
@@ -62,7 +64,7 @@ export interface Allocation {
  */
 export function allocateFifo(amount: number, bills: readonly OpenBill[]): { allocations: Allocation[]; advance: number } {
   const open = bills
-    .filter((b) => OPEN_STATUSES.includes(b.status) && b.total - b.paid > 0)
+    .filter((b) => OPEN_STATUSES.includes(b.status) && b.total - b.paid - (b.credited ?? 0) > 0)
     .sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
@@ -73,7 +75,7 @@ export function allocateFifo(amount: number, bills: readonly OpenBill[]): { allo
   const allocations: Allocation[] = [];
   for (const b of open) {
     if (left <= 0) break;
-    const take = Math.min(left, b.total - b.paid);
+    const take = Math.min(left, b.total - b.paid - (b.credited ?? 0));
     allocations.push({ invoiceId: b.id, number: b.number, amount: take });
     left -= take;
   }
@@ -82,11 +84,11 @@ export function allocateFifo(amount: number, bills: readonly OpenBill[]): { allo
 
 /** New paid amount and status of a bill after adding (+) or removing (−) money. Paid never drops below 0. */
 export function applyPaidDelta(
-  inv: { status: InvoiceStatus; total: number; paid: number },
+  inv: { status: InvoiceStatus; total: number; paid: number; credited?: number | null },
   delta: number,
 ): { paid: number; status: InvoiceStatus } {
   const paid = Math.max(inv.paid + delta, 0);
-  return { paid, status: deriveStatus(inv.status, inv.total, paid) };
+  return { paid, status: deriveStatus(inv.status, inv.total, paid, inv.credited ?? 0) };
 }
 
 /**
@@ -94,7 +96,7 @@ export function applyPaidDelta(
  * (several allocations to one bill are combined).
  */
 export function reverseAllocations(
-  bills: readonly { id: string; status: InvoiceStatus; total: number; paid: number }[],
+  bills: readonly { id: string; status: InvoiceStatus; total: number; paid: number; credited?: number | null }[],
   allocations: readonly { invoiceId: string; amount: number }[],
 ): { id: string; paid: number; status: InvoiceStatus }[] {
   const byId = new Map(bills.map((b) => [b.id, { ...b }]));
@@ -113,7 +115,7 @@ export function reverseAllocations(
 
 // ------------------------------------------------------------------ ledger (statement)
 
-export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel";
+export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel" | "credit_note" | "refund";
 
 export interface LedgerEntry {
   date: string;
@@ -165,6 +167,15 @@ export interface LedgerSource {
     note?: string | null;
     at: number;
   }[];
+  /** Issued (not cancelled) credit notes: each one is a credit to the customer. */
+  creditNotes?: readonly {
+    id: string;
+    number: string;
+    invoiceNumber: string | null;
+    date: string;
+    total: number;
+    at: number;
+  }[];
 }
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -205,6 +216,22 @@ export function ledgerEvents(src: LedgerSource): LedgerEvent[] {
     }
   }
   for (const p of src.payments) {
+    if (p.amount < 0) {
+      // A refund given back with a credit note: money out to the customer.
+      out.push({
+        date: p.date,
+        at: p.at,
+        type: "refund",
+        refId: p.id,
+        number: p.invoiceNumber,
+        description: [`Refund (${METHOD_LABEL[p.method]})`, p.invoiceNumber ? `for ${p.invoiceNumber}` : null, p.reference ? `ref ${p.reference}` : null]
+          .filter(Boolean)
+          .join(" "),
+        debit: -p.amount,
+        credit: 0,
+      });
+      continue;
+    }
     const how = p.online ? "Online payment" : `Payment (${METHOD_LABEL[p.method]})`;
     out.push({
       date: p.date,
@@ -231,6 +258,18 @@ export function ledgerEvents(src: LedgerSource): LedgerEvent[] {
         .join(" · "),
       debit: 0,
       credit: r.amount,
+    });
+  }
+  for (const c of src.creditNotes ?? []) {
+    out.push({
+      date: c.date,
+      at: c.at,
+      type: "credit_note",
+      refId: c.id,
+      number: c.number,
+      description: [`Credit note ${c.number}`, c.invoiceNumber ? `against ${c.invoiceNumber}` : null].filter(Boolean).join(" "),
+      debit: 0,
+      credit: c.total,
     });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at);

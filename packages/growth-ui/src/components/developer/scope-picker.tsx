@@ -97,7 +97,7 @@ export function ScopePicker({
                         <span className="grid min-w-0 gap-0.5">
                           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium">
                             {s.label}
-                            <code className="font-mono text-[11px] font-normal text-muted-foreground">{s.key}</code>
+                            <code className="font-mono text-xs font-normal text-muted-foreground">{s.key}</code>
                           </span>
                           <span className="text-xs text-muted-foreground">{s.description}</span>
                           {!allowed && <span className="text-xs text-warning-ink">{t("growth.developer.scopes.notHeld")}</span>}

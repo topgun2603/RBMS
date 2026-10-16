@@ -11,9 +11,10 @@ export type LedgerType = (typeof LEDGER_TYPES)[number];
 
 /**
  * What a ledger entry points at. `invoice` (counter bill), `order` (online order), `manual` (staff adjustment, ref id
- * generated), `lot` (an expiry: ref id = the ledger id of the lot that expired).
+ * generated), `lot` (an expiry: ref id = the ledger id of the lot that expired), `credit_note` (points taken back for a
+ * credit note, ref id = "<invoice id>:<credit note id>"; a cancelled note gives them back with an `earn` entry).
  */
-export const REF_TYPES = ["invoice", "order", "manual", "lot"] as const;
+export const REF_TYPES = ["invoice", "order", "manual", "lot", "credit_note"] as const;
 export type RefType = (typeof REF_TYPES)[number];
 
 export const loyaltyMembers = pgTable(

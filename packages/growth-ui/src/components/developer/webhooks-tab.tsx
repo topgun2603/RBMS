@@ -291,7 +291,7 @@ function EndpointCard({
         ) : (
           <>
             {ep.events.slice(0, MAX_CHIPS).map((e) => (
-              <Badge key={e} variant="outline" className="font-mono text-[11px] font-normal" title={labels.get(e)}>
+              <Badge key={e} variant="outline" className="font-mono text-xs font-normal" title={labels.get(e)}>
                 {e}
               </Badge>
             ))}

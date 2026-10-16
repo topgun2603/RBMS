@@ -58,9 +58,24 @@ export interface Subscription {
   /** The plan/interval a pending checkout (mandate) is for. */
   checkoutPlanId?: string | null;
   checkoutInterval?: BillingInterval | null;
-  /** A downgrade waiting for the period end. */
+  /** A downgrade waiting for the period end, or an upgrade waiting for payment (`pendingReason`). */
   pendingPlanId: string | null;
   pendingInterval: BillingInterval | null;
+  /** `awaiting_payment`: an upgrade that applies once its mandate is authorised; `downgrade`: at the period end. */
+  pendingReason?: "downgrade" | "awaiting_payment" | null;
+  pendingSince?: string | null;
+  /** An unpaid upgrade lapses at this time (48 h after it was asked for). */
+  pendingExpiresAt?: string | null;
+  pendingProviderSubscriptionId?: string | null;
+  /** Where the pending upgrade is paid (UPI Autopay / card mandate). */
+  pendingAuthUrl?: string | null;
+  pendingPeriodEnd?: string | null;
+  /** Proration credit (taxable paise) taken off the upgrade's first charge. */
+  pendingCreditPaise?: number;
+  /** Due now for the upgrade, GST included. */
+  pendingChargePaise?: number;
+  /** Credit owed to the shop: a discount line on the next invoice. */
+  creditBalancePaise?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -81,10 +96,35 @@ export interface SubscriptionCurrent {
 /** POST /change answer. `requiresCheckout`: nothing changed, the plan needs a payment first (POST /checkout). */
 export interface ChangeResult {
   subscription?: Subscription;
-  applied?: "now" | "period_end" | "none";
+  /** `after_payment`: an upgrade waiting for its payment (open `authUrl`). */
+  applied?: "now" | "period_end" | "after_payment" | "none";
   authUrl?: string | null;
   requiresCheckout?: boolean;
 }
+
+/** POST /v1/subscriptions/change/preview: what a plan change would do and charge. Money in paise, dates ISO. */
+export interface ChangePreview {
+  planId: string;
+  interval: BillingInterval;
+  kind: "upgrade" | "downgrade" | "same" | "trial" | "start" | "free";
+  applies: "now" | "period_end" | "after_payment" | "none";
+  requiresCheckout: boolean;
+  planPricePaise: number;
+  /** Credit (taxable) for the unused days of the current paid period, plus any earlier credit. */
+  creditPaise: number;
+  unusedDays: number;
+  periodDays: number;
+  carryoverPaise: number;
+  taxablePaise: number;
+  chargeTodayPaise: number;
+  gst: { subtotalPaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number; totalPaise: number; interState: boolean; ratePercent: number };
+  startsAt: string | null;
+  nextChargeAt: string | null;
+}
+
+/** An upgrade waiting for its payment (the current plan is still on). */
+export const isAwaitingPayment = (sub: Pick<Subscription, "pendingPlanId" | "pendingReason"> | null | undefined) =>
+  !!sub?.pendingPlanId && sub.pendingReason === "awaiting_payment";
 
 export interface PlatformInvoice {
   id: string;
@@ -98,6 +138,8 @@ export interface PlatformInvoice {
   sgstPaise: number;
   igstPaise: number;
   totalPaise: number;
+  /** Proration credit (taxable paise), shown as its own line. */
+  creditPaise: number;
   status: "paid" | "void";
   createdAt: string;
 }
@@ -141,6 +183,7 @@ export function normalizeInvoice(raw: Record<string, unknown>): PlatformInvoice 
     sgstPaise: num(raw.sgstPaise ?? raw.sgst),
     igstPaise: num(raw.igstPaise ?? raw.igst),
     totalPaise: num(raw.totalPaise),
+    creditPaise: num(raw.creditPaise),
     status: raw.status === "void" ? "void" : "paid",
     createdAt: String(raw.createdAt ?? raw.periodStart ?? ""),
   };

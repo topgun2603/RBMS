@@ -37,6 +37,22 @@ export interface PlatformInvoiceDocData {
   providerPaymentId?: string | null;
   voidReason?: string | null;
   updatedAt?: Date | string | null;
+  /**
+   * The invoice's lines when there is more than the plan: the plan at its full value and a negative credit line (a
+   * proration credit reduces the taxable value). They add up to the totals above; without them, one plan line.
+   */
+  lines?: PlatformInvoiceLine[] | null;
+}
+
+/** A line of a platform invoice (paise; a credit line is negative). */
+export interface PlatformInvoiceLine {
+  kind: "plan" | "credit";
+  description: string;
+  taxablePaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
+  igstPaise: number;
+  totalPaise: number;
 }
 
 const day = (v: Date | string | null | undefined) => {
@@ -52,21 +68,26 @@ export function platformInvoiceDoc(p: PlatformInvoiceDocData): InvoiceDocData {
   const from = day(p.periodStart);
   const to = day(p.periodEnd);
   const description = from && to ? `${p.description}: ${from} to ${to}` : p.description;
-  const line = {
-    description,
+  const toLine = (l: Omit<PlatformInvoiceLine, "kind" | "description">, text: string, unit: string) => ({
+    description: text,
     hsn: p.sac,
     qty: 1,
-    unit: "plan",
-    rate: p.subtotalPaise,
+    unit,
+    rate: l.taxablePaise,
     gstRate,
-    amount: p.subtotalPaise,
+    amount: l.taxablePaise,
     discount: 0,
-    taxable: p.subtotalPaise,
-    cgst: p.cgstPaise,
-    sgst: p.sgstPaise,
-    igst: p.igstPaise,
-    total: p.totalPaise,
-  };
+    taxable: l.taxablePaise,
+    cgst: l.cgstPaise,
+    sgst: l.sgstPaise,
+    igst: l.igstPaise,
+    total: l.totalPaise,
+  });
+  const totalsLine = { taxablePaise: p.subtotalPaise, cgstPaise: p.cgstPaise, sgstPaise: p.sgstPaise, igstPaise: p.igstPaise, totalPaise: p.totalPaise };
+  const lines =
+    p.lines && p.lines.length > 1
+      ? p.lines.map((l) => (l.kind === "plan" ? toLine(l, from && to ? `${l.description}: ${from} to ${to}` : l.description, "plan") : toLine(l, l.description, "credit")))
+      : [toLine(totalsLine, description, "plan")];
   const paid = p.status === "paid";
   return {
     id: p.id,
@@ -88,8 +109,9 @@ export function platformInvoiceDoc(p: PlatformInvoiceDocData): InvoiceDocData {
     },
     placeOfSupply: p.placeOfSupply,
     interState,
-    lines: [line],
+    lines,
     totals: {
+      // The lines (a credit line is negative) add up to the taxable value; GST is on the net.
       subtotal: p.subtotalPaise,
       discount: 0,
       taxable: p.subtotalPaise,

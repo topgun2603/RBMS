@@ -30,7 +30,7 @@ export interface PosEnv {
     reports: boolean;
     branches: boolean;
   };
-  can: { discount: boolean; price: boolean; cancel: boolean };
+  can: { discount: boolean; price: boolean; cancel: boolean; creditNote: boolean; till: boolean };
 }
 
 const PosContext = React.createContext<PosEnv | null>(null);
@@ -60,6 +60,8 @@ export function PosProvider({ children }: { children: React.ReactNode }) {
     discount: usePermission(POS_PERMISSIONS.discount),
     price: usePermission(POS_PERMISSIONS.price),
     cancel: usePermission(POS_PERMISSIONS.cancel),
+    creditNote: usePermission(POS_PERMISSIONS.creditNote),
+    till: usePermission(POS_PERMISSIONS.till),
   };
   const branchesQuery = useMyBranches(has.branches);
   const [storedBranch, setStoredBranch] = useLocalState<string | null>(storageKey("branch", tenant, me.user.id), null);

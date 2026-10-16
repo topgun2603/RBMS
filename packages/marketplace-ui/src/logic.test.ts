@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  availableByProduct,
+  fulfilmentStep,
+  listingState,
+  parseQty,
   bpsToPercent,
   bpsToPercentInput,
   canCancelPayout,
@@ -300,5 +304,45 @@ describe("variant builder", () => {
       { Size: "M", Colour: "Red" },
     ]);
     expect(cartesian([{ name: "Size", values: [] }])).toEqual([]);
+  });
+});
+
+describe("seller portal: listing state, fulfilment step, stock", () => {
+  it("shows a draft waiting for review as in review, a rejected one as changes needed", () => {
+    expect(listingState("active", null)).toBe("live");
+    expect(listingState("active", { status: "pending" })).toBe("live_review");
+    expect(listingState("active", { status: "approved" })).toBe("live");
+    expect(listingState("draft", { status: "pending" })).toBe("in_review");
+    expect(listingState("draft", { status: "rejected" })).toBe("changes");
+    expect(listingState("draft", { status: "withdrawn" })).toBe("draft");
+    expect(listingState("draft", { status: "approved" })).toBe("draft");
+    expect(listingState("draft", null)).toBe("draft");
+    expect(listingState("archived", { status: "pending" })).toBe("archived");
+  });
+  it("puts the seller's own marks ahead of the order status", () => {
+    expect(fulfilmentStep({ status: "placed", packedAt: null, shippedAt: null })).toBe("to_confirm");
+    expect(fulfilmentStep({ status: "confirmed", packedAt: null, shippedAt: null })).toBe("to_pack");
+    expect(fulfilmentStep({ status: "confirmed", packedAt: "2026-10-15T00:00:00Z", shippedAt: null })).toBe("to_ship");
+    expect(fulfilmentStep({ status: "packed" })).toBe("to_ship");
+    expect(fulfilmentStep({ status: "placed", packedAt: "x", shippedAt: "y" })).toBe("shipped");
+    expect(fulfilmentStep({ status: "delivered" })).toBe("done");
+    expect(fulfilmentStep({ status: "cancelled", packedAt: "x" })).toBe("closed");
+  });
+  it("sums available stock per product and parses typed counts", () => {
+    const m = availableByProduct([
+      { productId: "a", available: 3 },
+      { productId: "a", available: 2 },
+      { productId: "b", available: 0 },
+    ]);
+    expect([...m]).toEqual([["a", 5], ["b", 0]]);
+    expect(parseQty("12")).toBe(12);
+    expect(parseQty(" 2.5 ")).toBe(2.5);
+    expect(parseQty("")).toBeNull();
+    expect(parseQty("-1")).toBeNull();
+    expect(parseQty("1.2345")).toBeNull();
+  });
+  it("auto-approve defaults off when the server sends nothing", () => {
+    expect(resolveSettings({}).autoApproveProducts).toBe(false);
+    expect(resolveSettings({ autoApproveProducts: true }).autoApproveProducts).toBe(true);
   });
 });

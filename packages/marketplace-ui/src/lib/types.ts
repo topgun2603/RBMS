@@ -28,6 +28,9 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export type VendorUserRole = "owner" | "staff";
 
+export const PRODUCT_REVIEW_STATUSES = ["pending", "approved", "rejected", "withdrawn"] as const;
+export type ProductReviewStatus = (typeof PRODUCT_REVIEW_STATUSES)[number];
+
 export interface ListResult<T> {
   items: T[];
   total: number;
@@ -79,6 +82,8 @@ export interface Vendor {
   payoutAccount: MaskedPayoutAccount | null;
   payoutAccountStatus: PayoutAccountStatus;
   notes?: string | null;
+  /** The seller's own stock location; null = the shop's default. */
+  stockLocationId?: string | null;
   approvedAt: ISODate | null;
   suspendedAt: ISODate | null;
   createdAt: ISODate;
@@ -138,6 +143,53 @@ export interface VendorOrder {
   eligibleAt: ISODate | null;
   settledAt: ISODate | null;
   payoutId: string | null;
+  /** The seller's own packed / shipped marks (on split orders the order status may still lag). */
+  packedAt?: ISODate | null;
+  shippedAt?: ISODate | null;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+}
+
+/** A seller product's review before it goes live (`/product-reviews`, `/vendor/product-reviews`). */
+export interface ProductReview {
+  id: string;
+  vendorId: string;
+  vendorName?: string;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  status: ProductReviewStatus;
+  reason: string | null;
+  /** Re-review of a live product the seller changed after approval (it stays live meanwhile). */
+  changedAfterApproval?: boolean;
+  /** What changed: name, description, images, price, variants, gst. */
+  changedFields?: string[];
+  submittedAt: ISODate;
+  reviewedAt: ISODate | null;
+}
+
+export interface ProductReviewList extends ListResult<ProductReview> {
+  counts: Record<ProductReviewStatus, number>;
+}
+
+/** One variant of the seller's product with its stock at the seller's location (`/vendor/stock`). */
+export interface VendorStockItem {
+  variantId: string;
+  productId: string;
+  productName: string;
+  title: string;
+  sku: string | null;
+  unit: string;
+  status: string;
+  qty: number;
+  reserved: number;
+  available: number;
+  track: boolean;
+  stockStatus: string;
+}
+
+export interface VendorStockList extends ListResult<VendorStockItem> {
+  locationId: string;
 }
 
 export interface LedgerEntry {
@@ -214,6 +266,8 @@ export interface MarketplaceSettings {
   requireKyc: boolean;
   payoutProvider: PayoutProvider;
   acceptApplications: boolean;
+  /** Seller products go live without the shop's review. */
+  autoApproveProducts: boolean;
 }
 
 export const MARKETPLACE_SETTINGS_DEFAULTS: MarketplaceSettings = {
@@ -223,6 +277,7 @@ export const MARKETPLACE_SETTINGS_DEFAULTS: MarketplaceSettings = {
   requireKyc: true,
   payoutProvider: "manual",
   acceptApplications: true,
+  autoApproveProducts: false,
 };
 
 // ---------------------------------------------------------------- kyc
@@ -323,6 +378,7 @@ export interface CatalogProductSummary {
   priceMin: number;
   priceMax: number;
   variantCount: number;
+  vendorId?: string | null;
   updatedAt: ISODate;
 }
 

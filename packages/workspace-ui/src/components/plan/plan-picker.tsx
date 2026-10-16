@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowDownIcon, ArrowUpIcon, CalendarClockIcon, CheckIcon, CrownIcon, LayersIcon, Loader2Icon, SparklesIcon, ZapIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CalendarClockIcon, CheckIcon, CreditCardIcon, CrownIcon, HourglassIcon, LayersIcon, Loader2Icon, SparklesIcon, ZapIcon } from "lucide-react";
 import {
   AnimatePresence,
   Badge,
@@ -15,6 +15,7 @@ import {
   DialogTitle,
   EmptyState,
   motion,
+  Skeleton,
   StatusPill,
   toast,
   useReducedMotionSafe,
@@ -30,12 +31,13 @@ import {
   useI18n,
   yearlySavingPercent,
   type BillingInterval,
+  type ChangePreview,
   type PlanInfo,
   type SubscriptionCurrent,
   type Translator,
 } from "@srirealtime/web";
 import { CARD_LIMITS, currentPlanOf, periodEndOf, planMode, type PlanMode } from "../../lib/plan-actions";
-import { openAuthUrl, useChangePlan, useCheckout } from "../../lib/subscriptions";
+import { openAuthUrl, useChangePlan, useChangePreview, useCheckout } from "../../lib/subscriptions";
 import { SectionCard } from "./section-card";
 import { useLimitValue } from "./usage-meters";
 
@@ -89,7 +91,7 @@ function IntervalToggle({ value, onChange, saving }: { value: BillingInterval; o
 interface Pending {
   plan: PlanInfo;
   interval: BillingInterval;
-  mode: Exclude<PlanMode, "current">;
+  mode: Exclude<PlanMode, "current" | "awaiting">;
 }
 
 /** Plan cards with the interval toggle; choosing one opens a confirm dialog that says when the change applies. */
@@ -196,7 +198,12 @@ export function PlanPicker({ cur, plans, readOnly }: { cur: SubscriptionCurrent;
                   plan={p}
                   canTrial={cur.canTrial}
                   disabled={readOnly}
-                  onClick={() => mode !== "current" && setPending({ plan: p, interval, mode })}
+                  onClick={() => {
+                    // The upgrade already waiting for payment: open its payment page again.
+                    if (mode === "awaiting") {
+                      if (sub?.pendingAuthUrl && openAuthUrl(sub.pendingAuthUrl) === "new") toast.info(t("workspace.plan.newTab"));
+                    } else if (mode !== "current") setPending({ plan: p, interval, mode });
+                  }}
                 />
               </motion.div>
             );
@@ -214,6 +221,13 @@ function PlanButton({ mode, plan, canTrial, disabled, onClick }: { mode: PlanMod
     return (
       <Button variant="secondary" disabled className="w-full">
         <CheckIcon /> {t("workspace.plan.plans.isCurrent")}
+      </Button>
+    );
+  }
+  if (mode === "awaiting") {
+    return (
+      <Button variant="secondary" className="w-full" disabled={disabled} onClick={onClick}>
+        <HourglassIcon /> {t("workspace.plan.upgradePending.badge")}
       </Button>
     );
   }
@@ -235,6 +249,91 @@ function PlanButton({ mode, plan, canTrial, disabled, onClick }: { mode: PlanMod
   );
 }
 
+/**
+ * The money of a change before confirming: the new plan's price, the credit for the unused days, the taxable value,
+ * CGST + SGST (or IGST), the amount due now and when the new plan starts. Shown when something is charged.
+ */
+function PreviewBreakdown({
+  preview,
+  loading,
+  failed,
+  current,
+  formatDate,
+}: {
+  preview: ChangePreview | undefined;
+  loading: boolean;
+  failed: boolean;
+  current: PlanInfo | null;
+  formatDate: (d: string, o?: Intl.DateTimeFormatOptions) => string;
+}) {
+  const { t } = useI18n();
+  const reduced = useReducedMotionSafe();
+  const date = (iso: string | null | undefined) => (iso ? formatDate(iso, { day: "numeric", month: "short", year: "numeric" }) : "");
+  if (loading) {
+    return (
+      <div className="grid gap-2 rounded-xl border p-3" aria-busy="true" aria-label={t("workspace.plan.preview.loading")}>
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-5 w-3/4" />
+      </div>
+    );
+  }
+  if (failed) return <p className="text-meta text-muted-foreground">{t("workspace.plan.preview.unavailable")}</p>;
+  if (!preview || preview.applies !== "after_payment") return null;
+  const applied = preview.creditPaise - preview.carryoverPaise;
+  const g = preview.gst;
+  const half = g.ratePercent / 2;
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="grid gap-2"
+    >
+      <dl className="rounded-xl border py-1 text-sm" aria-label={t("workspace.plan.preview.title")}>
+        <MoneyRow label={t("workspace.plan.preview.planPrice")} value={formatPaise(preview.planPricePaise)} />
+        {applied > 0 && (
+          <MoneyRow
+            credit
+            label={
+              preview.unusedDays > 0 && current
+                ? t("workspace.plan.preview.credit", { days: preview.unusedDays, total: preview.periodDays, plan: current.name })
+                : t("workspace.plan.preview.creditBalance")
+            }
+            value={"\u2212 " + formatPaise(applied)}
+          />
+        )}
+        {applied > 0 && <MoneyRow label={t("workspace.plan.preview.taxable")} value={formatPaise(preview.taxablePaise)} />}
+        {g.interState ? (
+          <MoneyRow label={t("workspace.plan.preview.igst", { rate: g.ratePercent })} value={formatPaise(g.igstPaise)} />
+        ) : (
+          <>
+            <MoneyRow label={t("workspace.plan.preview.cgst", { rate: half })} value={formatPaise(g.cgstPaise)} />
+            <MoneyRow label={t("workspace.plan.preview.sgst", { rate: half })} value={formatPaise(g.sgstPaise)} />
+          </>
+        )}
+        <MoneyRow strong label={t("workspace.plan.preview.dueNow")} value={formatPaise(preview.chargeTodayPaise)} />
+      </dl>
+      {preview.carryoverPaise > 0 && <p className="text-meta text-success-ink">{t("workspace.plan.preview.carryover", { amount: formatPaise(preview.carryoverPaise) })}</p>}
+      <p className="flex items-start gap-1.5 text-meta text-muted-foreground">
+        <CalendarClockIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        {preview.nextChargeAt
+          ? t("workspace.plan.preview.startsAfterPayment", { date: date(preview.nextChargeAt), price: formatPaise(preview.planPricePaise) })
+          : t("workspace.plan.preview.startsAfterPaymentOnly")}
+      </p>
+    </motion.div>
+  );
+}
+
+function MoneyRow({ label, value, strong, credit }: { label: string; value: string; strong?: boolean; credit?: boolean }) {
+  return (
+    <div className={cn("flex items-baseline justify-between gap-3 px-3 py-1.5", strong && "mt-1 border-t py-2.5")}>
+      <dt className={cn(strong ? "font-semibold" : "text-muted-foreground")}>{label}</dt>
+      <dd className={cn("shrink-0 tabular-nums", strong && "font-heading text-lg font-bold", credit && "text-success-ink")}>{value}</dd>
+    </div>
+  );
+}
+
 function ChangeDialog({
   pending,
   cur,
@@ -252,6 +351,7 @@ function ChangeDialog({
   const change = useChangePlan();
   const checkout = useCheckout();
   const [shown, setShown] = React.useState<Pending | null>(pending);
+  const preview = useChangePreview(pending ? { planId: pending.plan.id, interval: pending.interval } : null, !!pending);
   React.useEffect(() => {
     if (pending) {
       setShown(pending);
@@ -286,12 +386,18 @@ function ChangeDialog({
           ? t("workspace.plan.confirm.startTrialBody", vars)
           : t("workspace.plan.confirm.startBody", vars)
         : p.mode === "upgrade"
-          ? t("workspace.plan.confirm.upgradeBody", vars)
+          ? t(sub?.status === "past_due" ? "workspace.plan.confirm.upgradePastDueBody" : "workspace.plan.confirm.upgradeBody", vars)
           : end
             ? t("workspace.plan.confirm.downgradeBody", vars)
             : t("workspace.plan.confirm.downgradeNow", vars);
   const when =
-    p.mode === "trial" || trialStart ? t("workspace.plan.confirm.when.trial") : p.mode === "downgrade" && end ? t("workspace.plan.confirm.when.periodEnd", { date: vars.date }) : t("workspace.plan.confirm.when.now");
+    p.mode === "trial" || trialStart
+      ? t("workspace.plan.confirm.when.trial")
+      : p.mode === "downgrade" && end
+        ? t("workspace.plan.confirm.when.periodEnd", { date: vars.date })
+        : p.mode === "upgrade" || p.mode === "start"
+          ? t("workspace.plan.confirm.when.afterPayment")
+          : t("workspace.plan.confirm.when.now");
 
   const go = async () => {
     const body = { planId: p.plan.id, interval: p.interval };
@@ -342,10 +448,15 @@ function ChangeDialog({
               </p>
             )}
           </div>
-          <StatusPill tone={p.mode === "downgrade" ? "info" : p.mode === "trial" ? "success" : "brand"} icon={p.mode === "downgrade" ? CalendarClockIcon : ZapIcon} className="shrink-0">
+          <StatusPill
+            tone={p.mode === "downgrade" ? "info" : p.mode === "trial" || trialStart ? "success" : "brand"}
+            icon={p.mode === "downgrade" ? CalendarClockIcon : p.mode === "upgrade" || (p.mode === "start" && !trialStart) ? CreditCardIcon : ZapIcon}
+            className="shrink-0"
+          >
             {when}
           </StatusPill>
         </div>
+        <PreviewBreakdown preview={preview.data} loading={preview.isPending && !!pending} failed={preview.isError} current={current} formatDate={formatDate} />
         <AnimatePresence initial={false}>
           {error && (
             <motion.p

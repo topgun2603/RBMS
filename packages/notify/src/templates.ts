@@ -85,6 +85,8 @@ function orderTemplates(): TemplateContent[] {
 // Vars:
 //   marketplace.vendor_approved: vendorName; marketplace.vendor_order: vendorName, orderNumber, amount;
 //   marketplace.payout_paid: vendorName, amount, reference
+//   marketplace.product_approved: vendorName, productName; marketplace.product_rejected: vendorName, productName, reason
+//   marketplace.vendor_order_packed / _shipped (to the shop): vendorName, orderNumber, tracking
 //   support.*: shop, number, subject, message, link, status, priority, customer
 //     (created/reply go to the customer; new/assigned/customer_reply/overdue go to staff)
 //   chat.message: shop, sender, preview, title, link (also push: subject = title)
@@ -119,6 +121,46 @@ const BATCH3: Record<string, { en: Copy; ta: Copy; push?: { en: string; ta: stri
     ta: {
       body: "{{app}}: {{vendorName}}, உங்கள் {{amount}} தொகை அனுப்பப்பட்டது. குறிப்பு எண்: {{reference}}",
       subject: "{{amount}} தொகை அனுப்பப்பட்டது - {{app}}",
+    },
+  },
+  "marketplace.product_approved": {
+    en: {
+      body: "{{app}}: {{vendorName}}, your product {{productName}} is approved and now live in the store.",
+      subject: "{{productName}} is live - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{vendorName}}, உங்கள் பொருள் {{productName}} அங்கீகரிக்கப்பட்டு இப்போது கடையில் விற்பனையில் உள்ளது.",
+      subject: "{{productName}} விற்பனையில் உள்ளது - {{app}}",
+    },
+  },
+  "marketplace.product_rejected": {
+    en: {
+      body: "{{app}}: {{vendorName}}, your product {{productName}} needs changes before it can go live: {{reason}}. Edit it and submit again.",
+      subject: "Changes needed for {{productName}} - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{vendorName}}, உங்கள் பொருள் {{productName}} விற்பனைக்கு வர சில மாற்றங்கள் தேவை: {{reason}}. திருத்தி மீண்டும் சமர்ப்பிக்கவும்.",
+      subject: "{{productName}} பொருளில் மாற்றங்கள் தேவை - {{app}}",
+    },
+  },
+  "marketplace.vendor_order_packed": {
+    en: {
+      body: "{{app}}: Seller {{vendorName}} has packed their items for order {{orderNumber}}.",
+      subject: "{{vendorName}} packed order {{orderNumber}}",
+    },
+    ta: {
+      body: "{{app}}: விற்பனையாளர் {{vendorName}} ஆர்டர் {{orderNumber}} பொருட்களைப் பேக் செய்துவிட்டார்.",
+      subject: "{{vendorName}} ஆர்டர் {{orderNumber}} பேக் செய்தார்",
+    },
+  },
+  "marketplace.vendor_order_shipped": {
+    en: {
+      body: "{{app}}: Seller {{vendorName}} has shipped their items for order {{orderNumber}}. Tracking: {{tracking}}",
+      subject: "{{vendorName}} shipped order {{orderNumber}}",
+    },
+    ta: {
+      body: "{{app}}: விற்பனையாளர் {{vendorName}} ஆர்டர் {{orderNumber}} பொருட்களை அனுப்பிவிட்டார். கண்காணிப்பு எண்: {{tracking}}",
+      subject: "{{vendorName}} ஆர்டர் {{orderNumber}} அனுப்பினார்",
     },
   },
   "support.created": {

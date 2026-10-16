@@ -127,7 +127,7 @@ export function BranchSwitcher({ className }: { className?: string }) {
           const active = b.id === current.id;
           return (
             <DropdownMenuItem key={b.id} className="min-h-11 gap-2.5" onSelect={() => choose(b)} aria-current={active ? "true" : undefined}>
-              <span className={cn("icon-chip size-8 shrink-0 rounded-lg text-[0.6875rem] font-semibold", active ? "text-primary" : "text-muted-foreground")}>
+              <span className={cn("icon-chip size-8 shrink-0 rounded-lg text-xs font-semibold", active ? "text-primary" : "text-muted-foreground")}>
                 {b.code.slice(0, 4)}
               </span>
               <span className="min-w-0 flex-1 leading-tight">

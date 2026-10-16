@@ -99,7 +99,7 @@ export default function SuppliersPage() {
                     {s.payable > 0 ? (
                       <>
                         <p className="font-semibold text-warning-ink tabular-nums">{money(s.payable)}</p>
-                        <p className="text-[0.6875rem] text-muted-foreground">{t("billing.suppliers.payable")}</p>
+                        <p className="text-xs text-muted-foreground">{t("billing.suppliers.payable")}</p>
                       </>
                     ) : (
                       <p className="text-meta text-muted-foreground">{t("billing.suppliers.nothingDue")}</p>

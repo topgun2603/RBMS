@@ -1,13 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRightIcon, CalendarClockIcon, ClipboardCheckIcon, HourglassIcon, IndianRupeeIcon, PackagePlusIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CalendarClockIcon,
+  ClipboardCheckIcon,
+  HourglassIcon,
+  IndianRupeeIcon,
+  MessageSquareWarningIcon,
+  PackageCheckIcon,
+  PackagePlusIcon,
+  ScaleIcon,
+  TrendingUpIcon,
+  TruckIcon,
+  WalletIcon,
+} from "lucide-react";
 import { AnimatedNumber, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Progress, Skeleton, StatCard, Stagger, StaggerItem } from "@srirealtime/ui";
 import { ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
 import { OrderStatusPill, Thumb } from "../components/bits";
-import { istDateOf, istEndOfDay, istMonthStartOf, money, nextPayoutEstimate, onboardingSteps, pendingSettlement, salesSummary } from "../lib/logic";
+import { fulfilmentStep, istDateOf, istEndOfDay, istMonthStartOf, money, nextPayoutEstimate, onboardingSteps, pendingSettlement, salesSummary } from "../lib/logic";
 import { useKycSubject, useMarketplaceSettings } from "../lib/queries";
-import { useMyOrders, useVendor } from "../lib/vendor";
+import { useMyOrders, useMyReviewCounts, useVendor } from "../lib/vendor";
 import { MARKETPLACE_SETTINGS_DEFAULTS } from "../lib/types";
 
 /** Seller home: today / this month, money waiting for the return window, next payout estimate, recent orders. */
@@ -18,13 +31,26 @@ export default function SellerDashboard() {
   const month = useMyOrders({ from: istMonthStartOf(now), to: istDateOf(now), limit: 500 });
   const pending = useMyOrders({ settlementStatus: "pending", limit: 500 });
   const recent = useMyOrders({ limit: 6 });
-  // Sellers only get the namespace's public keys (if any): fall back to the defaults.
+  // Sellers get the namespace's public keys: minimum payout, return window, auto-approve.
   const settings = useMarketplaceSettings();
+  const open = useMyOrders({ limit: 100 });
+  const reviewCounts = useMyReviewCounts();
   const kycOn = useFeature("kyc");
   const kyc = useKycSubject(vendorId, kycOn);
   if (!self) return null;
 
   const minPayout = settings.data?.minPayoutPaise ?? MARKETPLACE_SETTINGS_DEFAULTS.minPayoutPaise;
+  const windowDays = settings.data?.returnWindowDays ?? MARKETPLACE_SETTINGS_DEFAULTS.returnWindowDays;
+  const toPack = open.data?.items.filter((o) => fulfilmentStep(o) === "to_pack").length ?? 0;
+  const toShip = open.data?.items.filter((o) => fulfilmentStep(o) === "to_ship").length ?? 0;
+  const changes = reviewCounts.data?.rejected ?? 0;
+  const inReview = reviewCounts.data?.pending ?? 0;
+  const todos = [
+    toPack > 0 && { key: "pack", icon: PackageCheckIcon, label: t("marketplace.dash.todoPack", { count: toPack }), to: "orders", tone: "text-primary" },
+    toShip > 0 && { key: "ship", icon: TruckIcon, label: t("marketplace.dash.todoShip", { count: toShip }), to: "orders", tone: "text-primary" },
+    changes > 0 && { key: "changes", icon: MessageSquareWarningIcon, label: t("marketplace.dash.todoChanges", { count: changes }), to: "products", tone: "text-danger-ink" },
+    inReview > 0 && { key: "review", icon: HourglassIcon, label: t("marketplace.dash.todoReview", { count: inReview }), to: "products", tone: "text-muted-foreground" },
+  ].filter((x): x is { key: string; icon: typeof HourglassIcon; label: string; to: string; tone: string } => !!x);
   const sales = month.data ? salesSummary(month.data.items, now) : null;
   const weekAhead = istEndOfDay(istDateOf(new Date(now.getTime() + 7 * 86_400_000)));
   const waiting = pending.data ? pendingSettlement(pending.data.items, weekAhead) : null;
@@ -56,6 +82,21 @@ export default function SellerDashboard() {
             </ModuleLink>
           </Button>
         </Card>
+      )}
+
+      {todos.length > 0 && (
+        <Stagger className="mb-4 flex flex-wrap gap-2" data-testid="seller-todos">
+          {todos.map((x) => (
+            <StaggerItem key={x.key}>
+              <ModuleLink
+                to={x.to}
+                className="inline-flex h-9 items-center gap-2 rounded-full border bg-card px-3.5 text-sm font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <x.icon className={`size-4 ${x.tone}`} /> {x.label}
+              </ModuleLink>
+            </StaggerItem>
+          ))}
+        </Stagger>
       )}
 
       {month.isError ? (
@@ -90,7 +131,9 @@ export default function SellerDashboard() {
               description={
                 waiting?.nextAt
                   ? t("marketplace.dash.pendingNext", { date: formatDate(waiting.nextAt, { day: "numeric", month: "short" }) })
-                  : t("marketplace.dash.pendingHint")
+                  : windowDays > 0
+                    ? t("marketplace.dash.pendingHintDays", { days: windowDays })
+                    : t("marketplace.dash.pendingHintNow")
               }
             />
           </StaggerItem>
@@ -110,6 +153,11 @@ export default function SellerDashboard() {
           </StaggerItem>
         </Stagger>
       )}
+
+      <p className="mt-3 flex items-center gap-2 text-meta text-muted-foreground" data-testid="payout-terms">
+        <ScaleIcon className="size-3.5 shrink-0" />
+        {settings.isPending ? "…" : t(windowDays > 0 ? "marketplace.dash.terms" : "marketplace.dash.termsNow", { min: money(minPayout), days: windowDays })}
+      </p>
 
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between">

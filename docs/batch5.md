@@ -97,7 +97,9 @@ strings, money integer paise (plan prices GST-exclusive; provider charges and in
 **Subscription object** (`subscription` below): `{ id, tenantId, planId, interval, status, trialStartedAt,
 trialEndsAt, currentPeriodStart, currentPeriodEnd, cancelAtPeriodEnd, graceEndsAt, provider ("razorpay" | "mock" |
 "manual" | null for free), providerSubscriptionId, authUrl, checkoutPlanId, checkoutInterval, pendingPlanId,
-pendingInterval, createdAt, updatedAt }`. `authUrl` is set while a mandate waits for authorisation and cleared once
+pendingInterval, pendingReason ("downgrade" | "awaiting_payment" | null), pendingSince, pendingExpiresAt,
+pendingProviderSubscriptionId, pendingAuthUrl, pendingPeriodEnd, pendingCreditPaise, pendingChargePaise,
+creditBalancePaise, createdAt, updatedAt }`. `authUrl` is set while a mandate waits for authorisation and cleared once
 authorised (so "has a mandate" = `providerSubscriptionId && !authUrl`). Errors are the usual
 `{ error: { code, message, details } }`.
 
@@ -106,13 +108,32 @@ has it; no `config.feature`, so the page works on every plan and app):
 - `GET /current` → `{ subscription, plan, pendingPlan, trialDaysLeft (trialing only, else null), graceDaysLeft
   (past_due only, else null), usage: [{ key, period, limit, used, remaining }], canTrial }`. Shops without a row
   (older shops) get one on first call: their plan as `active` `manual` (paid) or free.
-- `POST /change { planId, interval }` → `{ subscription, applied: "now" | "period_end" | "none", authUrl,
-  requiresCheckout }`.
+- `POST /change { planId, interval }` → `{ subscription, applied: "now" | "period_end" | "after_payment" | "none",
+  authUrl, requiresCheckout }`.
   - Trialing: switches the trial plan now (any unauthorised mandate is dropped).
-  - Active paid (razorpay/mock): an upgrade creates a new mandate starting now, applies the plan now, starts a new
-    period, and returns `authUrl`. Prorated credit for the old period is out of scope. A downgrade (or a move to
-    free) is stored as `pendingPlanId` and applied at the period end. Same plan monthly → yearly is an upgrade;
-    yearly → monthly is a downgrade.
+  - Active paid (razorpay/mock), or past due: an upgrade is **pending until paid** (`applied: "after_payment"`,
+    `pendingReason: "awaiting_payment"`). The current plan and its mandate keep running; a new mandate is created
+    and its `authUrl` returned (also `subscription.pendingAuthUrl`). It applies on the new mandate's
+    `subscription.authenticated` / `activated` or `subscription.charged` webhook, whichever comes first (the other is
+    then ignored): new plan, period `[pendingSince, pendingPeriodEnd]`, the old mandate cancelled, an invoice for
+    the upfront payment. Unpaid, the daily job drops it 48 h after `pendingSince` and cancels its mandate. Choosing a
+    new upgrade replaces it; choosing the current plan, a downgrade, free, `/checkout`, `/cancel` or a comp drops it.
+  - Proration: credit = unused IST days ÷ period IST days × the taxable value of the paid invoice covering today
+    (today counts as unused, the end day doesn't; half-up to the paisa), plus any `creditBalancePaise`. Razorpay
+    offers must be made in the Dashboard and add-ons can't be negative, so the upgrade's mandate uses an **upfront
+    add-on** (`addons`, collected with the authorisation) of `chargeAmount(newPrice − credit)` and `start_at` one new
+    period later; the mock does the same (`/mock/authorize` reports that payment). Credit above the new price is
+    kept as `creditBalancePaise`. A provider without `supportsUpfront` starts the mandate now at full price and the
+    whole credit becomes the balance. A balance comes off the next charge's invoice as a credit line; what the
+    provider charged above that invoice's total is recorded as `refundDuePaise` (and logged).
+  - A downgrade (or a move to free) is stored as `pendingPlanId` (`pendingReason: "downgrade"`) and applied at the
+    period end. Same plan monthly → yearly is an upgrade; yearly → monthly is a downgrade.
+- `POST /change/preview { planId, interval }` → `{ planId, interval, kind ("upgrade" | "downgrade" | "same" | "trial"
+  | "start" | "free"), applies ("now" | "period_end" | "after_payment" | "none"), requiresCheckout, planPricePaise,
+  creditPaise, unusedDays, periodDays, carryoverPaise, taxablePaise, chargeTodayPaise, gst { subtotalPaise,
+  cgstPaise, sgstPaise, igstPaise, totalPaise, interState, ratePercent }, startsAt, nextChargeAt }`. Changes
+  nothing.
+- `POST /change/cancel` → `{ subscription }`: drops an upgrade waiting for payment (400 when there is none).
   - Free, manual or ended: if this owner never had a trial, a 14-day trial of the plan starts (`applied: "now"`).
     Otherwise `requiresCheckout: true` and nothing changes; call `/checkout`.
 - `POST /checkout { planId, interval }` → `{ authUrl, providerSubscriptionId, provider, subscription }`. While
@@ -131,7 +152,11 @@ has it; no `config.feature`, so the page works on every plan and app):
 - `PlatformInvoice`: `{ id, number ("SR/2026-27/00001"), fy, seq, tenantId, subscriptionId, planId, interval,
   periodStart, periodEnd, date (IST YYYY-MM-DD), placeOfSupply, gstRate, subtotalPaise, cgstPaise, sgstPaise,
   igstPaise, totalPaise, status ("paid" | "void"), provider, providerPaymentId, buyer { legalName, gstin, stateCode,
-  address }, seller {…}, voidedAt, voidReason, createdAt, updatedAt }`.
+  address }, seller {…}, creditPaise, creditLabel, refundDuePaise, lines: [{ kind: "plan" | "credit", description,
+  taxablePaise, cgstPaise, sgstPaise, igstPaise, totalPaise }], voidedAt, voidReason, createdAt, updatedAt }`.
+  `subtotalPaise` is the taxable value after any credit; the plan line is at full value with 18% GST, the credit line
+  is negative and carries the rest, so the lines add up to the totals (CGST + SGST or IGST as the invoice). The PDF
+  prints both lines.
 
 Lifecycle details beyond the contract:
 - Mandate authorised while trialing → `active` at once, with the period starting at the trial end (the first charge

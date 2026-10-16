@@ -186,7 +186,7 @@ function KeyList({ items, onRevoke, onRename }: { items: ApiKey[]; onRevoke: (k:
                       {k.scopes.map((s) => (
                         <li key={s} className="grid rounded-md px-2 py-1 text-sm">
                           <span>{scopeLabel.get(s) ?? s}</span>
-                          <code className="font-mono text-[11px] text-muted-foreground">{s}</code>
+                          <code className="font-mono text-xs text-muted-foreground">{s}</code>
                         </li>
                       ))}
                     </ul>
@@ -281,7 +281,7 @@ function RenameKeyDialog({ apiKey, onClose }: { apiKey: ApiKey | null; onClose: 
         <DialogHeader>
           <DialogTitle>{t("growth.developer.keys.renameTitle")}</DialogTitle>
         </DialogHeader>
-        <form id="rename-api-key" onSubmit={submit} className="grid gap-4" noValidate>
+        <form id="rename-api-key" onSubmit={submit} className="grid gap-5" noValidate>
           <Field invalid={rename.isError}>
             <FieldLabel>{t("growth.developer.keys.name")}</FieldLabel>
             <FieldControl>

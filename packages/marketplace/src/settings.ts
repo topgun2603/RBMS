@@ -23,6 +23,8 @@ export const MARKETPLACE_SETTINGS_SCHEMA = z.object({
   payoutProvider: z.enum(PAYOUT_PROVIDERS),
   /** Signed-in users may apply to become sellers (`POST /public/vendors/apply`). */
   acceptApplications: z.boolean(),
+  /** Seller products go live as soon as the seller submits them; off = the shop reviews each one first. */
+  autoApproveProducts: z.boolean(),
 });
 export type MarketplaceSettings = z.infer<typeof MARKETPLACE_SETTINGS_SCHEMA>;
 
@@ -33,7 +35,11 @@ export const MARKETPLACE_SETTINGS_DEFAULTS: MarketplaceSettings = {
   requireKyc: true,
   payoutProvider: "manual",
   acceptApplications: true,
+  autoApproveProducts: false,
 };
+
+/** Keys sellers (and anyone without a shop role) may read: `GET /v1/settings/marketplace` returns only these to them. */
+export const MARKETPLACE_SETTINGS_PUBLIC_KEYS: (keyof MarketplaceSettings)[] = ["returnWindowDays", "minPayoutPaise", "autoApproveProducts"];
 
 /** A stored (possibly partial or stale) settings value with defaults filled in for anything missing or invalid. */
 export function resolveSettings(raw: Partial<Record<keyof MarketplaceSettings, unknown>> | null | undefined): MarketplaceSettings {

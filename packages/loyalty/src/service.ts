@@ -5,6 +5,7 @@ import { z } from "zod";
 import { membersCsv } from "./csv";
 import {
   checkRedeem,
+  creditNoteShare,
   consumeFifo,
   earnPoints,
   expiresAtFor,
@@ -772,6 +773,132 @@ export class LoyaltyService {
         shortfall: plan.shortfall,
         balance: Math.max(0, member.pointsBalance + plan.points),
       };
+    });
+  }
+
+  /**
+   * A credit note took `amount` (paise) off a bill that earned points: takes back the same share of the earned points
+   * (FIFO from the member's open lots; what was already used is not taken, the balance never goes negative) and lowers
+   * lifetime spend. One `reverse` entry with ref `credit_note` / "<invoiceId>:<creditNoteId>". Idempotent; a bill that
+   * earned nothing (not paid yet, or bought without a phone) has nothing to take back.
+   */
+  async reverseCreditNote(tenantId: string, input: { invoiceId: string; creditNoteId: string; amount: number }): Promise<ReverseResult> {
+    const invoiceId = refId.parse(input.invoiceId);
+    const ref = `${invoiceId}:${refId.parse(input.creditNoteId)}`;
+    const amount = money.parse(Math.round(input.amount));
+    const settings = await this.getSettings(tenantId);
+    const now = this.now();
+    const none = (alreadyReversed = false): ReverseResult => ({
+      reversed: false,
+      ...(alreadyReversed ? { alreadyReversed } : {}),
+      entryId: null,
+      points: 0,
+      earnReversed: 0,
+      restored: 0,
+      shortfall: 0,
+      balance: null,
+    });
+    const [earn] = (await this.refEntries(this.db, tenantId, "invoice", invoiceId)).filter((e) => e.type === "earn");
+    if (!earn) return none();
+    return this.db.transaction(async (tx) => {
+      const [member] = await lockMemberByIdStatement(tx, tenantId, earn.memberId);
+      if (!member) return none();
+      const mine = await this.refEntries(tx, tenantId, "credit_note", ref);
+      if (mine.some((e) => e.type === "reverse")) return none(true);
+      // Points already taken back by this bill's other notes (net of notes cancelled since).
+      const others = await tx
+        .select({ points: loyaltyLedger.points })
+        .from(loyaltyLedger)
+        .where(and(eq(loyaltyLedger.tenantId, tenantId), eq(loyaltyLedger.refType, "credit_note"), sql`${loyaltyLedger.refId} like ${`${invoiceId}:%`}`));
+      const alreadyTaken = -others.reduce((s, e) => s + e.points, 0);
+      const want = creditNoteShare({ points: earn.points, amountPaise: earn.amountPaise }, amount, alreadyTaken);
+      await this.expireMemberTx(tx, member, now);
+      const lots = await openLotsStatement(tx, tenantId, member.id);
+      const { takes, shortfall } = consumeFifo(lots, want, now);
+      await this.applyTakes(tx, takes);
+      const taken = want - shortfall;
+      const [entry] = await tx
+        .insert(loyaltyLedger)
+        .values({
+          tenantId,
+          memberId: member.id,
+          type: "reverse",
+          points: -taken,
+          amountPaise: amount,
+          refType: "credit_note",
+          refId: ref,
+          note: shortfall > 0 ? `Credit note: took back ${taken} of ${want} points; ${shortfall} were already used` : "Credit note",
+          createdAt: now,
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (!entry) return none(true);
+      const spend = Math.max(0, member.lifetimeSpend - amount);
+      await tx
+        .update(loyaltyMembers)
+        .set({
+          pointsBalance: sql`greatest(${loyaltyMembers.pointsBalance} - ${taken}, 0)`,
+          lifetimeSpend: spend,
+          tier: tierFor(spend, settings.tiers).name,
+          lastActivityAt: now,
+          updatedAt: now,
+        })
+        .where(eq(loyaltyMembers.id, member.id));
+      this.log.info({ tenantId, memberId: member.id, invoiceId, ref, points: taken, shortfall }, "loyalty points taken back for a credit note");
+      return {
+        reversed: true,
+        entryId: entry.id,
+        points: -taken,
+        earnReversed: taken,
+        restored: 0,
+        shortfall,
+        balance: Math.max(0, member.pointsBalance - taken),
+      };
+    });
+  }
+
+  /** A cancelled credit note: gives back the points `reverseCreditNote` took (a fresh lot) and the lifetime spend. Idempotent. */
+  async restoreCreditNote(tenantId: string, input: { invoiceId: string; creditNoteId: string }): Promise<{ restored: boolean; points: number }> {
+    const ref = `${refId.parse(input.invoiceId)}:${refId.parse(input.creditNoteId)}`;
+    const settings = await this.getSettings(tenantId);
+    const now = this.now();
+    const first = await this.refEntries(this.db, tenantId, "credit_note", ref);
+    const rev = first.find((e) => e.type === "reverse");
+    if (!rev || first.some((e) => e.type === "earn")) return { restored: false, points: 0 };
+    return this.db.transaction(async (tx) => {
+      const [member] = await lockMemberByIdStatement(tx, tenantId, rev.memberId);
+      if (!member) return { restored: false, points: 0 };
+      const points = -rev.points;
+      const [entry] = await tx
+        .insert(loyaltyLedger)
+        .values({
+          tenantId,
+          memberId: member.id,
+          type: "earn",
+          points,
+          amountPaise: rev.amountPaise,
+          remaining: points,
+          refType: "credit_note",
+          refId: ref,
+          expiresAt: points > 0 ? expiresAtFor(now, settings.expiryMonths) : null,
+          note: "Credit note cancelled",
+          createdAt: now,
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (!entry) return { restored: false, points: 0 };
+      const spend = member.lifetimeSpend + rev.amountPaise;
+      await tx
+        .update(loyaltyMembers)
+        .set({
+          pointsBalance: sql`${loyaltyMembers.pointsBalance} + ${points}`,
+          lifetimeSpend: spend,
+          tier: tierFor(spend, settings.tiers).name,
+          lastActivityAt: now,
+          updatedAt: now,
+        })
+        .where(eq(loyaltyMembers.id, member.id));
+      return { restored: true, points };
     });
   }
 

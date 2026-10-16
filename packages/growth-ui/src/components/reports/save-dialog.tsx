@@ -90,7 +90,7 @@ export function SaveReportDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !save.isPending && onOpenChange(o)}>
       <DialogContent closeLabel={t("growth.common.close")} className="sm:max-w-lg">
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <DialogHeader>
             <DialogTitle>{t(mode === "update" ? "growth.reports.save.updateTitle" : existing ? "growth.reports.save.asNewTitle" : "growth.reports.save.title")}</DialogTitle>
             <DialogDescription>{t("growth.reports.save.description")}</DialogDescription>

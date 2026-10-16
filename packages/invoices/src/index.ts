@@ -4,12 +4,15 @@ import { invoicesRoutes } from "./routes";
 import {
   billingCustomers,
   billingItems,
+  creditNotes,
+  creditNoteSeries,
   customerReceipts,
   invoiceMessages,
   invoicePayments,
   invoiceReminders,
   invoices,
   invoiceSeries,
+  tillSessions,
 } from "./schema";
 import { InvoicesService, type InvoicesDeps } from "./service";
 
@@ -21,6 +24,10 @@ export * from "./ledger";
 export * from "./reports";
 export * from "./service";
 export * from "./features";
+export * from "./credit-notes-calc";
+export * from "./credit-notes";
+export * from "./till-calc";
+export * from "./till";
 export { invoicesRoutes } from "./routes";
 
 /**
@@ -31,7 +38,19 @@ export function createInvoices(deps: InvoicesDeps) {
   const service = new InvoicesService(deps);
   const module = defineModule({
     id: "invoices",
-    tables: { billingCustomers, billingItems, invoices, invoicePayments, invoiceSeries, customerReceipts, invoiceReminders, invoiceMessages },
+    tables: {
+      billingCustomers,
+      billingItems,
+      invoices,
+      invoicePayments,
+      invoiceSeries,
+      customerReceipts,
+      invoiceReminders,
+      invoiceMessages,
+      creditNotes,
+      creditNoteSeries,
+      tillSessions,
+    },
     routes: invoicesRoutes(service),
     features: INVOICE_FEATURES,
   });

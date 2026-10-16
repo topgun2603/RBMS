@@ -287,7 +287,7 @@ function CreateShipmentDialog({ order, open, onOpenChange }: { order: Order; ope
           </DialogTitle>
           <DialogDescription>{t(`orders.ship.providerHint.${provider}`)}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           {providers.length > 1 && (
             <ChipGroup<CarrierProvider>
               aria-label={t("orders.ship.providerLabel")}
@@ -384,7 +384,7 @@ function FulfillmentDialog({ order, open, onOpenChange }: { order: Order; open: 
           </DialogTitle>
           <DialogDescription>{t("orders.ship.cardHintManual")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field label={t("orders.ship.courier")} htmlFor="ff-courier">
               <Input id="ff-courier" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />

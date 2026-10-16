@@ -88,29 +88,29 @@ export function SummaryTab() {
                     <caption className="sr-only">{t(`growth.branches.metric.${metric}`)}</caption>
                     <thead>
                       <tr className="border-b text-left text-xs text-muted-foreground">
-                        <th className="py-2 pr-2 font-medium">{t("growth.branches.branch")}</th>
-                        <th className="py-2 pr-2 text-right font-medium">{t("growth.branches.sales")}</th>
-                        <th className="py-2 pr-2 text-right font-medium">{t("growth.branches.bills")}</th>
-                        <th className="py-2 text-right font-medium">{t("growth.branches.stockValue")}</th>
+                        <th className="h-11 pr-3 font-medium">{t("growth.branches.branch")}</th>
+                        <th className="h-11 pr-3 text-right font-medium">{t("growth.branches.sales")}</th>
+                        <th className="h-11 pr-3 text-right font-medium">{t("growth.branches.bills")}</th>
+                        <th className="h-11 text-right font-medium">{t("growth.branches.stockValue")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((r) => (
                         <tr key={r.branchId} className="border-b border-border/60 last:border-0">
-                          <td className="py-2 pr-2">
+                          <td className="h-12 py-2 pr-3">
                             {r.name} <span className="font-mono text-xs text-muted-foreground">{r.code}</span>
                           </td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{money(r.sales)}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{num(r.bills)}</td>
-                          <td className="py-2 text-right tabular-nums">{r.stockValue === null ? "—" : money(r.stockValue)}</td>
+                          <td className="h-12 py-2 pr-3 text-right tabular-nums">{money(r.sales)}</td>
+                          <td className="h-12 py-2 pr-3 text-right tabular-nums">{num(r.bills)}</td>
+                          <td className="h-12 py-2 text-right tabular-nums">{r.stockValue === null ? "—" : money(r.stockValue)}</td>
                         </tr>
                       ))}
                       {c && (
                         <tr className="font-semibold">
-                          <td className="py-2 pr-2">{t("growth.common.total")}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{money(c.sales)}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{num(c.bills)}</td>
-                          <td className="py-2 text-right tabular-nums">{money(c.stockValue)}</td>
+                          <td className="h-12 py-2 pr-3">{t("growth.common.total")}</td>
+                          <td className="h-12 py-2 pr-3 text-right tabular-nums">{money(c.sales)}</td>
+                          <td className="h-12 py-2 pr-3 text-right tabular-nums">{num(c.bills)}</td>
+                          <td className="h-12 py-2 text-right tabular-nums">{money(c.stockValue)}</td>
                         </tr>
                       )}
                     </tbody>

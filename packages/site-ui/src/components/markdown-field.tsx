@@ -117,7 +117,7 @@ export function MarkdownField({
           </div>
         )}
       </div>
-      {!error && mode === "write" && <p className="text-[0.6875rem] text-muted-foreground">{t("site.markdown.hint")}</p>}
+      {!error && mode === "write" && <p className="text-meta text-muted-foreground">{t("site.markdown.hint")}</p>}
       <FieldError code={error} />
     </div>
   );

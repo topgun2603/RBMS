@@ -30,7 +30,7 @@ export function UserMenu({ user }: { user: User }) {
         <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label={t("admin.user.menu")}>
           <Avatar className="size-7">
             {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
-            <AvatarFallback className="bg-primary/10 text-[0.6875rem] text-primary">{initials(user.name ?? name)}</AvatarFallback>
+            <AvatarFallback className="bg-primary/10 text-xs text-primary">{initials(user.name ?? name)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

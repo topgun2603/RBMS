@@ -75,6 +75,8 @@ export const en: Messages = {
   "billing.creditBook.ledger.types.payment": "Payment",
   "billing.creditBook.ledger.types.receipt": "Receipt",
   "billing.creditBook.ledger.types.cancel": "Bill cancelled",
+  "billing.creditBook.ledger.types.credit_note": "Credit note",
+  "billing.creditBook.ledger.types.refund": "Refund",
   "billing.creditBook.ledger.csvName": "ledger.csv",
 
   // receive dialog
@@ -202,6 +204,8 @@ export const ta: Messages = {
   "billing.creditBook.ledger.types.payment": "பணம் செலுத்தல்",
   "billing.creditBook.ledger.types.receipt": "ரசீது",
   "billing.creditBook.ledger.types.cancel": "பில் ரத்து",
+  "billing.creditBook.ledger.types.credit_note": "வரவுக் குறிப்பு",
+  "billing.creditBook.ledger.types.refund": "திருப்பித் தந்தது",
   "billing.creditBook.ledger.csvName": "ledger.csv",
 
   // receive dialog

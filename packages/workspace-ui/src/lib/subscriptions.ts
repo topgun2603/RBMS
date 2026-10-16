@@ -10,6 +10,7 @@ import {
   subscriptionKeys,
   useSubscriptionCurrent,
   type BillingInterval,
+  type ChangePreview,
   type ChangeResult,
   type PlanInfo,
   type PlatformInvoice,
@@ -77,6 +78,26 @@ export function useChangePlan() {
     mutationFn: (body: { planId: string; interval: BillingInterval }) => api.post<ChangeResult>("/subscriptions/change", body),
     onSuccess: invalidate,
   });
+}
+
+/**
+ * What choosing `planId`/`interval` would do and cost (credit for the unused days, due now with GST, when it starts):
+ * POST /subscriptions/change/preview. Off while `enabled` is false (the confirm dialog is closed).
+ */
+export function useChangePreview(target: { planId: string; interval: BillingInterval } | null, enabled = true) {
+  return useQuery<ChangePreview>({
+    queryKey: [...subscriptionKeys.all, "preview", target?.planId ?? "", target?.interval ?? ""],
+    queryFn: ({ signal }) => api.post<ChangePreview>("/subscriptions/change/preview", target, { signal }),
+    enabled: enabled && !!target,
+    staleTime: 30_000,
+    retry: (n, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && n < 1,
+  });
+}
+
+/** Drops an upgrade that is waiting for payment (POST /subscriptions/change/cancel). */
+export function useCancelUpgrade() {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: () => api.post("/subscriptions/change/cancel"), onSuccess: invalidate });
 }
 
 export function useCheckout() {

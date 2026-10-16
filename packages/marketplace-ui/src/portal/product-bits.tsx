@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ArchiveIcon, ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, ImagePlusIcon, Loader2Icon, PencilLineIcon, XIcon } from "lucide-react";
+import { AlertCircleIcon, ArchiveIcon, ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, HourglassIcon, ImagePlusIcon, Loader2Icon, PencilLineIcon, XIcon } from "lucide-react";
 import { AnimatePresence, Button, cn, motion, Progress, StatusPill, toast, type StatusTone } from "@srirealtime/ui";
 import { absoluteUrl, describeError, useI18n } from "@srirealtime/web";
 import { uploadImage } from "../lib/queries";
+import type { ListingState } from "../lib/logic";
 import type { ProductImage, ProductStatus } from "../lib/types";
 
 const STATUS: Record<ProductStatus, [StatusTone, React.ComponentType<{ className?: string }>]> = {
@@ -19,6 +20,26 @@ export function ProductStatusPill({ status, className }: { status: ProductStatus
   return (
     <StatusPill tone={tone} icon={icon} className={className}>
       {t(`marketplace.products.status.${status}`)}
+    </StatusPill>
+  );
+}
+
+const LISTING: Record<ListingState, [StatusTone, React.ComponentType<{ className?: string }>]> = {
+  live: ["success", CheckCircle2Icon],
+  live_review: ["info", HourglassIcon],
+  in_review: ["info", HourglassIcon],
+  changes: ["danger", AlertCircleIcon],
+  draft: ["warning", PencilLineIcon],
+  archived: ["neutral", ArchiveIcon],
+};
+
+/** What the seller sees: live, in review, changes needed, draft or archived (`listingState`). */
+export function ListingPill({ state, className }: { state: ListingState; className?: string }) {
+  const { t } = useI18n();
+  const [tone, icon] = LISTING[state];
+  return (
+    <StatusPill tone={tone} icon={icon} className={className} data-testid={`listing-${state}`}>
+      {t(`marketplace.listing.${state}`)}
     </StatusPill>
   );
 }

@@ -1,19 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { animate, motion, useReducedMotion, type HTMLMotionProps, type Transition, type Variants } from "motion/react";
+import { animate, motion, type HTMLMotionProps, type Transition, type Variants } from "motion/react";
 
 /** Shared timings: subtle and quick. */
 export const MOTION_DURATION = 0.2;
 export const MOTION_EASE: Transition["ease"] = [0.16, 1, 0.3, 1]; // ease-out (expo-ish)
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const reducedMotionQuery = () => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia(REDUCED_MOTION_QUERY) : null);
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = reducedMotionQuery();
+  mq?.addEventListener("change", onChange);
+  return () => mq?.removeEventListener("change", onChange);
+}
+const reducedMotionSnapshot = () => reducedMotionQuery()?.matches ?? false;
+const reducedMotionServerSnapshot = () => false;
+
 /**
- * True when the user asked the OS for reduced motion. Returns false during SSR / before it is
- * known, so server and first client render match; components then switch to instant transitions
- * (same DOM, zero-duration) rather than swapping elements, which avoids hydration mismatches.
+ * True when the user asked the OS for reduced motion (Windows: "Animation effects" off). It is false on the server
+ * *and during hydration* (useSyncExternalStore's server snapshot), then switches after mount, so components may
+ * render different markup for it without a hydration mismatch. motion's own `useReducedMotion()` reads the media
+ * query on the first client render, which differs from the server whenever reduced motion is on (React #418).
  */
 export function useReducedMotionSafe(): boolean {
-  return useReducedMotion() ?? false;
+  return React.useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, reducedMotionServerSnapshot);
 }
 
 function useTransition(duration: number, delay: number): Transition {

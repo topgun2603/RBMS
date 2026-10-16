@@ -97,7 +97,7 @@ export function DataTableView({ table, caption, className }: { table: ChartTable
         <thead className="sticky top-0 bg-card">
           <tr className="border-b text-left text-xs text-muted-foreground">
             {table.columns.map((c, i) => (
-              <th key={i} scope="col" className={cn("px-2 py-2 font-medium", c.numeric && "text-right")}>
+              <th key={i} scope="col" className={cn("h-11 px-3 font-medium", c.numeric && "text-right")}>
                 {c.label}
               </th>
             ))}
@@ -107,7 +107,7 @@ export function DataTableView({ table, caption, className }: { table: ChartTable
           {table.rows.map((r, i) => (
             <tr key={i} className="border-b border-border/60 last:border-0">
               {r.map((cell, j) => (
-                <td key={j} className={cn("px-2 py-1.5", table.columns[j]?.numeric && "text-right tabular-nums")}>
+                <td key={j} className={cn("h-11 px-3 py-2", table.columns[j]?.numeric && "text-right tabular-nums")}>
                   {cell}
                 </td>
               ))}

@@ -7,8 +7,8 @@ import { PlansService, type PlansDeps } from "./service";
 export * from "./schema";
 export * from "./entitlements";
 export { seedPlans } from "./seed";
-export { PlansService, consumeStatement, overridePatchSchema, planInputSchema } from "./service";
-export type { OverridePatch, PlanInput, PlansDeps, UsageItem } from "./service";
+export { PlansService, consumeStatement, overridePatchSchema, planInputSchema, reconcileStatement } from "./service";
+export type { OverridePatch, PlanInput, PlansDeps, UsageItem, UsageSource } from "./service";
 export { plansRoutes } from "./routes";
 
 export function createPlans(deps: PlansDeps) {

@@ -26,6 +26,8 @@ const ENTRY_LABEL: Record<string, LabelKey> = {
   payment: "entryPayment",
   receipt: "entryReceipt",
   cancel: "entryCancel",
+  credit_note: "entryCreditNote",
+  refund: "entryRefund",
 };
 
 /** Customer statement of account (credit book ledger), A4. Positive balance = the customer owes the shop. */

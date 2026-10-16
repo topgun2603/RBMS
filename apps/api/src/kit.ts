@@ -62,7 +62,7 @@ import { createKitOps } from "./kit-ops";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
-import type { Invoice } from "@srirealtime/invoices";
+import type { CreditNote, Invoice } from "@srirealtime/invoices";
 import { and, eq } from "@srirealtime/db";
 
 /**
@@ -75,6 +75,7 @@ export function createKit(env: Env, log: Logger) {
   // Error reporter, metrics and readiness probes (docs/ops.md); the job observer reports final job failures.
   const kitOps = createKitOps(env, log, db);
   const jobs = createJobs({ redisUrl: env.REDIS_URL, log, observer: kitOps.observer, workers: env.JOBS_WORKERS });
+  const PLANS_RECONCILE_JOB = "plans.reconcile-usage";
   /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @srirealtime/api job <name>`). */
   const jobHandlers = new Map<string, () => Promise<void>>();
   const defineJob = (name: string, handler: () => Promise<void>) => {
@@ -97,7 +98,16 @@ export function createKit(env: Env, log: Logger) {
   const audit = createAudit({ db, log });
 
   // plans before tenancy so tenancy can invalidate cached entitlements when a plan changes.
-  const plans = createPlans({ db });
+  // `staff` usage is the real seat count (tenancy is created next; the source runs per request, long after).
+  const plans = createPlans({
+    db,
+    usageSources: {
+      staff: {
+        count: async (tenantId) => (await tenancy.service.seatCounts(tenantId)).get(tenantId) ?? 0,
+        countAll: () => tenancy.service.seatCounts(),
+      },
+    },
+  });
 
   // Auth is created after tenancy but tenancy needs auth to invite by phone/email: late-bound.
   let resolveTarget: ((target: string) => Promise<string>) | undefined;
@@ -210,6 +220,11 @@ export function createKit(env: Env, log: Logger) {
     ratings: { ratings: (tenantId, productIds) => reviewsRef!.ratingsPort.ratings(tenantId, productIds) },
     // Marketplace sellers manage their own products through the catalogue routes.
     vendorScope: { vendorFor: (tenantId, userId, header) => b3!.vendorFor(tenantId, userId, header) },
+    // Seller products wait (as drafts) for the shop's review unless marketplace.autoApproveProducts is on.
+    listingReview: {
+      needsReview: (tenantId, vendorId) => b3!.marketplace.service.needsProductReview(tenantId, vendorId),
+      onListing: (tenantId, e) => b3!.marketplace.service.onListing(tenantId, e),
+    },
     events,
     log,
   });
@@ -260,14 +275,26 @@ export function createKit(env: Env, log: Logger) {
         return { points: r.points, discount: r.discount };
       },
       reverse: (tenantId, invoiceId) => b3!.loyalty.service.reverse(tenantId, "invoice", invoiceId),
+      // Credit notes take back the points earned on the credited value (a cancelled note gives them back).
+      creditNote: (tenantId, e) => b3!.loyalty.service.reverseCreditNote(tenantId, e),
+      creditNoteCancelled: (tenantId, e) => b3!.loyalty.service.restoreCreditNote(tenantId, e),
     },
     events: {
       issued: (tenantId, inv) => emit(tenantId, "invoice.issued", invoiceEvent(inv)),
+      creditNoteIssued: (tenantId, cn) => emit(tenantId, "credit_note.issued", creditNoteEvent(cn)),
+      creditNoteCancelled: (tenantId, cn) =>
+        emit(tenantId, "credit_note.cancelled", { ...creditNoteEvent(cn), reason: cn.cancelReason, cancelledAt: cn.cancelledAt }),
       paid: async (tenantId, inv) => {
         await emit(tenantId, "invoice.paid", invoiceEvent(inv));
         // Bills made from store orders don't earn points: the order earns its own.
         if (await isOrderInvoice(tenantId, inv.id)) return;
-        await b3?.loyalty.hooks.invoicePaid(tenantId, { id: inv.id, amount: inv.total, customerPhone: inv.customer.phone, customerName: inv.customer.name });
+        // Points on what the customer kept: credit notes (returns) already issued are left out.
+        await b3?.loyalty.hooks.invoicePaid(tenantId, {
+          id: inv.id,
+          amount: Math.max(inv.total - (inv.credited ?? 0), 0),
+          customerPhone: inv.customer.phone,
+          customerName: inv.customer.name,
+        });
       },
       cancelled: async (tenantId, inv) => {
         await emit(tenantId, "invoice.cancelled", invoiceEvent(inv));
@@ -290,6 +317,10 @@ export function createKit(env: Env, log: Logger) {
       applySale: async (tenantId, sale) =>
         (await features.service.isEnabled(tenantId, "inventory")) ? inventoryRef!.service.applySale(tenantId, sale) : null,
       reverseSale: (tenantId, refId) => inventoryRef!.service.reverseSale(tenantId, refId),
+      // Credit notes put returned goods back (only for shops with stock on); taking them out again stays unconditional.
+      applyReturn: async (tenantId, ret) =>
+        (await features.service.isEnabled(tenantId, "inventory")) ? inventoryRef!.service.applyReturn(tenantId, ret) : null,
+      reverseReturn: (tenantId, refId) => inventoryRef!.service.reverseReturn(tenantId, refId),
     },
     notifier: {
       send: async ({ tenantId, channel, to, template, vars, locale }) => ({
@@ -538,6 +569,8 @@ export function createKit(env: Env, log: Logger) {
       const b = await branding.service.get(tenantId);
       return { appName: b.appName, logoUrl: b.logoUrl, css: b.css, primary: b.tokens.colors?.primary ?? null };
     },
+    till: invoices.service.till,
+    branchName: async (tenantId, branchId) => (b3 ? ((await b3.branches.service.get(tenantId, branchId).catch(() => null))?.name ?? null) : null),
     // E-invoiced bills print the IRN, Ack no/date and the signed QR (TEST label for the mock provider).
     einvoice: async (tenantId, invoiceId) =>
       b3 && (await features.service.isEnabled(tenantId, "gst-einvoice")) ? b3.einvoice.service.irnFor(tenantId, invoiceId) : null,
@@ -762,6 +795,11 @@ export function createKit(env: Env, log: Logger) {
     const r = await tenancy.service.verifyPending();
     if (r.checked) log.info(r, "custom domains checked");
   });
+  // Counter-backed limits with a real source (staff seats): settle drift from rows added or removed outside the API.
+  defineJob(PLANS_RECONCILE_JOB, async () => {
+    const r = await plans.service.reconcileUsage();
+    if (r.fixed) log.info(r, "plan usage reconciled");
+  });
 
   // ================================================================ batch 3 (docs/batch3.md)
   const batch3 = createBatch3({
@@ -940,6 +978,8 @@ export function createKit(env: Env, log: Logger) {
     onResponse: [audit.onResponse],
     async start() {
       for (const m of modules) await m.start?.();
+      // Once per boot, in every process (idempotent; guarded against in-flight reservations).
+      await jobHandlers.get(PLANS_RECONCILE_JOB)!().catch((err) => log.error({ err }, "plans: usage reconcile failed"));
       // Cron schedules are registered by the process that runs the workers (JOBS_WORKERS, default true).
       if (!env.JOBS_WORKERS) return;
       await jobs.service.schedule(MARKETPLACE_SETTLE_JOB, "30 1 * * *");
@@ -958,6 +998,7 @@ export function createKit(env: Env, log: Logger) {
       await jobs.service.schedule(ANALYTICS_JOBS.rollup, "5 * * * *");
       await jobs.service.schedule(ANALYTICS_JOBS.purge, "20 4 * * *");
       await jobs.service.schedule(TENANCY_JOBS.verifyDomains, "*/30 * * * *");
+      await jobs.service.schedule(PLANS_RECONCILE_JOB, "40 * * * *");
       await batch5.schedule();
     },
     async stop() {
@@ -999,6 +1040,29 @@ function invoiceEvent(inv: Invoice) {
     total: inv.total,
     paid: inv.paid,
     balance: inv.balance,
+  };
+}
+
+/** Webhook payload of a credit note (money in paise). */
+function creditNoteEvent(cn: CreditNote) {
+  return {
+    id: cn.id,
+    number: cn.number,
+    date: cn.date,
+    status: cn.status,
+    branchId: cn.branchId ?? null,
+    invoice: { id: cn.invoiceId, number: cn.invoiceNumber, date: cn.invoiceDate },
+    customer: { id: cn.customerId, name: cn.customer.name, phone: cn.customer.phone, gstin: cn.customer.gstin },
+    reason: cn.reason,
+    refundMode: cn.refundMode,
+    refundAmount: cn.refundAmount,
+    taxable: cn.totals.taxable,
+    cgst: cn.totals.cgst,
+    sgst: cn.totals.sgst,
+    igst: cn.totals.igst,
+    total: cn.total,
+    lines: cn.lines.map((l) => ({ description: l.description, hsn: l.hsn ?? null, qty: l.qty, taxable: l.taxable, total: l.total, restock: l.restock })),
+    issuedAt: cn.issuedAt,
   };
 }
 

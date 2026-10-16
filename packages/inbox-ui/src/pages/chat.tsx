@@ -497,7 +497,7 @@ function Thread({
       <div ref={scroll.ref} onScroll={scroll.onScroll} className="relative min-h-0 flex-1 overflow-y-auto px-3 py-2 sm:px-5" aria-label={t("inbox.chat.messages")}>
         <div ref={sentinel} className="h-1" />
         {msgs.isFetchingNextPage && <Loader2Icon className="mx-auto my-2 size-4 animate-spin text-muted-foreground" aria-label={t("inbox.common.loading")} />}
-        {!msgs.hasNextPage && msgs.isSuccess && loaded.length > 0 && <p className="py-3 text-center text-[0.6875rem] text-muted-foreground">{t("inbox.chat.start")}</p>}
+        {!msgs.hasNextPage && msgs.isSuccess && loaded.length > 0 && <p className="py-3 text-center text-xs text-muted-foreground">{t("inbox.chat.start")}</p>}
         {msgs.isError ? (
           <QueryError compact error={msgs.error} onRetry={() => void msgs.refetch()} />
         ) : msgs.isPending ? (
@@ -517,7 +517,7 @@ function Thread({
                 <div key={it.key} className={cn("mb-2 flex gap-2", it.mine && "flex-row-reverse")}>
                   {!it.mine && <InitialsAvatar name={c?.participants.find((p) => p.userId === it.senderId)?.name ?? "?"} size="sm" className="mt-auto size-7 text-[0.625rem]" />}
                   <div className={cn("flex min-w-0 max-w-[85%] flex-col gap-0.5 sm:max-w-[70%]", it.mine ? "items-end" : "items-start")}>
-                    {!it.mine && showNames && <span className="px-2 text-[0.6875rem] font-medium text-muted-foreground">{c?.participants.find((p) => p.userId === it.senderId)?.name ?? t("inbox.chat.someone")}</span>}
+                    {!it.mine && showNames && <span className="px-2 text-xs font-medium text-muted-foreground">{c?.participants.find((p) => p.userId === it.senderId)?.name ?? t("inbox.chat.someone")}</span>}
                     {it.messages.map((m) => (
                       <Bubble
                         key={m.id}

@@ -107,7 +107,7 @@ export function ScheduleDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !save.isPending && onOpenChange(o)}>
       <DialogContent closeLabel={t("growth.common.close")} className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <DialogHeader>
             <DialogTitle>{t(schedule ? "growth.reports.schedule.editTitle" : "growth.reports.schedule.newTitle")}</DialogTitle>
             <DialogDescription>{reportName ? t("growth.reports.schedule.descriptionNamed", { name: reportName }) : t("growth.reports.schedule.description")}</DialogDescription>

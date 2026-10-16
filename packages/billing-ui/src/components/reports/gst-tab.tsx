@@ -30,6 +30,8 @@ type B2B = GstSummaryResponse["b2b"][number];
 type B2CL = GstSummaryResponse["b2cl"][number];
 type B2CS = GstSummaryResponse["b2cs"][number];
 type HSN = GstSummaryResponse["hsn"][number];
+type CDNR = NonNullable<GstSummaryResponse["cdnr"]>[number];
+type CDNUR = NonNullable<GstSummaryResponse["cdnur"]>[number];
 
 export function GstTab({ from, to }: RangeProps) {
   const { t } = useI18n();
@@ -248,7 +250,7 @@ function Gstr3b({
 function Gstr1({ data, from, to }: { data: GstSummaryResponse; from: string; to: string }) {
   const { t } = useI18n();
   const rate = (r: number) => rateText(t, Number(r));
-  const csv = (section: "b2b" | "b2cs" | "hsn") => (
+  const csv = (section: "b2b" | "b2cs" | "hsn" | "cdnr" | "cdnur") => (
     <DownloadCsvButton
       size="sm"
       path={REPORT_PATHS.gstSummary}
@@ -303,6 +305,29 @@ function Gstr1({ data, from, to }: { data: GstSummaryResponse; from: string; to:
     { key: "total", label: t("billing.reports.cols.total"), numeric: true, cell: (r) => <span className="font-semibold">{m(r.total)}</span>, footer: m(sum(data.hsn, (r) => r.total)) },
   ];
 
+  const cdnr = data.cdnr ?? [];
+  const cdnur = data.cdnur ?? [];
+  const note = (r: { noteNumber: string; invoiceNumber: string }) => (
+    <span className="grid">
+      <span className="font-medium tabular-nums">{r.noteNumber}</span>
+      <span className="text-xs text-muted-foreground">{t("billing.cn.against", { number: r.invoiceNumber })}</span>
+    </span>
+  );
+  const cdnrCols: Column<CDNR>[] = [
+    { key: "gstin", label: t("billing.reports.cols.gstin"), cell: (r) => <span className="font-mono text-xs">{r.gstin}</span>, footer: t("billing.reports.total") },
+    { key: "note", label: t("billing.reports.cols.number"), cell: note },
+    { key: "rate", label: t("billing.reports.cols.rate"), cell: (r) => rate(r.rate) },
+    { key: "taxable", label: t("billing.reports.cols.taxable"), numeric: true, cell: (r) => m(r.taxable), footer: m(sum(cdnr, (r) => r.taxable)) },
+    { key: "tax", label: t("billing.reports.cols.tax"), numeric: true, cell: (r) => m(r.cgst + r.sgst + r.igst), footer: m(sum(cdnr, (r) => r.cgst + r.sgst + r.igst)) },
+  ];
+  const cdnurCols: Column<CDNUR>[] = [
+    { key: "note", label: t("billing.reports.cols.number"), cell: note, footer: t("billing.reports.total") },
+    { key: "pos", label: t("billing.reports.cols.placeOfSupply"), cell: (r) => stateLabel(r.placeOfSupply) },
+    { key: "rate", label: t("billing.reports.cols.rate"), cell: (r) => rate(r.rate) },
+    { key: "taxable", label: t("billing.reports.cols.taxable"), numeric: true, cell: (r) => m(r.taxable), footer: m(sum(cdnur, (r) => r.taxable)) },
+    { key: "igst", label: t("billing.reports.cols.igst"), numeric: true, cell: (r) => m(r.igst), footer: m(sum(cdnur, (r) => r.igst)) },
+  ];
+
   return (
     <section className="grid gap-3" aria-labelledby="gstr1-title">
       <div className="flex items-center gap-3 px-1">
@@ -325,6 +350,14 @@ function Gstr1({ data, from, to }: { data: GstSummaryResponse; from: string; to:
       <CollapsibleCard title={t("billing.reports.gst.b2cs")} description={t("billing.reports.gst.b2csHint")} badge={badge(data.b2cs.length)} actions={csv("b2cs")}>
         <ReportTable columns={b2csCols} rows={data.b2cs} rowKey={(r, i) => `${r.placeOfSupply}-${r.rate}-${i}`} caption={t("billing.reports.gst.b2cs")} />
       </CollapsibleCard>
+      <CollapsibleCard title={t("billing.reports.gst.cdnr")} description={t("billing.reports.gst.cdnrHint")} badge={badge(cdnr.length)} actions={csv("cdnr")}>
+        <ReportTable columns={cdnrCols} rows={cdnr} rowKey={(r, i) => `${r.noteNumber}-${r.rate}-${i}`} caption={t("billing.reports.gst.cdnr")} />
+      </CollapsibleCard>
+      {cdnur.length > 0 && (
+        <CollapsibleCard title={t("billing.reports.gst.cdnur")} description={t("billing.reports.gst.cdnurHint")} badge={badge(cdnur.length)} actions={csv("cdnur")}>
+          <ReportTable columns={cdnurCols} rows={cdnur} rowKey={(r, i) => `${r.noteNumber}-${r.rate}-${i}`} caption={t("billing.reports.gst.cdnur")} />
+        </CollapsibleCard>
+      )}
       <CollapsibleCard title={t("billing.reports.gst.hsn")} description={t("billing.reports.gst.hsnHint")} badge={badge(data.hsn.length)} actions={csv("hsn")}>
         <ReportTable columns={hsnCols} rows={data.hsn} rowKey={(r, i) => `${r.hsn}-${i}`} caption={t("billing.reports.gst.hsn")} />
       </CollapsibleCard>

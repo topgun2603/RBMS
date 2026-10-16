@@ -13,9 +13,12 @@ import type {
   Payout,
   PayoutAccountStatus,
   PayoutSkipReason,
+  ProductReview,
+  ProductStatus,
   Vendor,
   VendorOrder,
   VendorStatus,
+  VendorStockItem,
 } from "./types";
 import { MARKETPLACE_SETTINGS_DEFAULTS, PAYOUT_PROVIDERS } from "./types";
 
@@ -290,7 +293,51 @@ export function resolveSettings(raw: Partial<Record<keyof MarketplaceSettings, u
     requireKyc: typeof r.requireKyc === "boolean" ? r.requireKyc : d.requireKyc,
     payoutProvider: (PAYOUT_PROVIDERS as readonly unknown[]).includes(r.payoutProvider) ? (r.payoutProvider as MarketplaceSettings["payoutProvider"]) : d.payoutProvider,
     acceptApplications: typeof r.acceptApplications === "boolean" ? r.acceptApplications : d.acceptApplications,
+    autoApproveProducts: typeof r.autoApproveProducts === "boolean" ? r.autoApproveProducts : d.autoApproveProducts,
   };
+}
+
+// ---------------------------------------------------------------- product review + seller fulfilment
+
+/**
+ * What the seller should see for a product: the catalogue keeps a product waiting for review as a draft, so the
+ * review row decides between "in review", "changes needed" and a plain draft.
+ */
+export type ListingState = "live" | "live_review" | "in_review" | "changes" | "draft" | "archived";
+
+export function listingState(status: ProductStatus, review: Pick<ProductReview, "status"> | null | undefined): ListingState {
+  // Live, with the seller's later changes waiting for the shop's re-review.
+  if (status === "active") return review?.status === "pending" ? "live_review" : "live";
+  if (status === "archived") return "archived";
+  if (review?.status === "pending") return "in_review";
+  if (review?.status === "rejected") return "changes";
+  return "draft";
+}
+
+/** Where the seller's part of an order stands, from the order status and their own packed/shipped marks. */
+export type FulfilmentStep = "to_confirm" | "to_pack" | "to_ship" | "shipped" | "done" | "closed";
+
+export function fulfilmentStep(o: Pick<VendorOrder, "status" | "packedAt" | "shippedAt">): FulfilmentStep {
+  if (o.status === "cancelled" || o.status === "returned") return "closed";
+  if (o.status === "delivered") return "done";
+  if (o.shippedAt || o.status === "shipped") return "shipped";
+  if (o.packedAt || o.status === "packed") return "to_ship";
+  // The shop confirms first; the seller can pack only after that.
+  return o.status === "placed" ? "to_confirm" : "to_pack";
+}
+
+/** Stock shown on a product card: available summed over its variants (null = no stock rows to show). */
+export function availableByProduct(items: readonly Pick<VendorStockItem, "productId" | "available">[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const i of items) out.set(i.productId, (out.get(i.productId) ?? 0) + i.available);
+  return out;
+}
+
+/** Parses a stock quantity typed by a seller (whole or decimal, ≥ 0); null when invalid. */
+export function parseQty(s: string): number | null {
+  const t = s.trim();
+  if (!/^\d{1,7}(\.\d{1,3})?$/.test(t)) return null;
+  return Number(t);
 }
 
 // ---------------------------------------------------------------- payout accounts and identifiers

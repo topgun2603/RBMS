@@ -45,20 +45,8 @@ import { e164, money, timeShort, todayIST } from "../lib/format";
 import { reportNetwork } from "../lib/online";
 import { fromBillingItem, fromLookup, looksLikeCode } from "../lib/products";
 import type { ShortcutAction } from "../lib/shortcuts";
-import {
-  closeDay,
-  dropHold,
-  holdBill,
-  openDay,
-  pushRecent,
-  readJson,
-  recordSale,
-  storageKey,
-  toggleFavourite,
-  useLocalState,
-  type DayRecord,
-  type HeldBill,
-} from "../lib/storage";
+import { dropHold, holdBill, pushRecent, storageKey, toggleFavourite, useLocalState, type HeldBill } from "../lib/storage";
+import { migrateLocalDay, useRegisterName, useTillActions, useTillSession } from "../lib/till";
 import { fitPayments, paymentsFor } from "../lib/tender";
 import { customerPhone, NO_CUSTOMER, type BillingItem, type Paged, type PosCustomer } from "../lib/types";
 import { useCounterKeys, useFinePointer, useMediaQuery } from "../lib/use-keys";
@@ -108,7 +96,6 @@ function Counter() {
 
   const [cart, setCart] = useLocalState<CartState>(storageKey("cart", env.tenant, env.userId), EMPTY_CART);
   const [holds, setHolds] = useLocalState<HeldBill[]>(storageKey("holds", env.tenant, env.userId), []);
-  const [day, setDay] = useLocalState<DayRecord | null>(storageKey("day", env.tenant, env.branch?.code ?? null), null);
   const [recent, setRecent] = useLocalState<CartProduct[]>(storageKey("recent", env.tenant), []);
   const [favourites, setFavourites] = useLocalState<CartProduct[]>(storageKey("favourites", env.tenant), []);
 
@@ -141,8 +128,14 @@ function Counter() {
     env.has.inventory,
   );
 
-  const today = todayIST();
-  const dayOpen = !!day && day.date === today && !day.closedAt;
+  // The till session of this register (server-side; the last one seen is cached for offline display).
+  const branchReady = !env.has.branches || !!env.branch;
+  const [register, setRegister] = useRegisterName(env.tenant);
+  const tillQuery = useTillSession(env.tenant, register, env.branch?.id ?? null, branchReady && !env.sellerLoading);
+  const till = tillQuery.data ?? null;
+  const tillActions = useTillActions(register, env.branch?.id ?? null);
+  const dayOpen = !!till && till.status === "open";
+  const refreshTill = React.useCallback(() => void qc.invalidateQueries({ queryKey: ["pos", "till"] }), [qc]);
 
   // ---------------------------------------------------------------- cart updates
 
@@ -272,7 +265,8 @@ function Counter() {
 
   const complete = async (r: PaymentResult): Promise<boolean> => {
     const date = todayIST();
-    const input: CreateBillInput = { date, lines: lines.map(toLineInput), issue: true };
+    const tillSessionId = dayOpen ? till!.id : undefined;
+    const input: CreateBillInput = { date, lines: lines.map(toLineInput), issue: true, ...(tillSessionId ? { tillSessionId } : {}) };
     if (customer.kind === "saved") input.customerId = customer.customer.id;
     else if (customer.kind === "walkin") input.customer = { name: customer.name.trim() || t("pos.customer.walkInName"), ...(phone ? { phone } : {}) };
     if (r.points > 0) input.loyaltyPoints = r.points;
@@ -293,7 +287,7 @@ function Counter() {
     const failed: { method: string; amount: number }[] = [];
     for (const p of planned) {
       try {
-        inv = await addPayment(inv.id, { ...p, date });
+        inv = await addPayment(inv.id, { ...p, date, ...(tillSessionId ? { tillSessionId } : {}) });
       } catch (err) {
         if (isNetworkError(err)) reportNetwork(false);
         failed.push({ method: p.method, amount: p.amount });
@@ -304,17 +298,6 @@ function Counter() {
     const failedSum = failed.reduce((s, f) => s + f.amount, 0);
     const credit = Math.max(inv.balance - failedSum, 0);
 
-    setDay((d) =>
-      recordSale(d && d.date === date ? d : null, {
-        id: inv.id,
-        number: inv.number,
-        total: inv.total,
-        at: new Date().toISOString(),
-        payments: planned.filter((p) => !failed.some((f) => f.method === p.method)).map((p) => ({ method: p.method, amount: p.amount })),
-        credit,
-        customer: inv.customerName,
-      }) ?? d,
-    );
     setCart(EMPTY_CART);
     setSelected(null);
     setDialog(null);
@@ -322,6 +305,7 @@ function Counter() {
     void qc.invalidateQueries({ queryKey: ["pos", "payments"] });
     void qc.invalidateQueries({ queryKey: ["invoices"] });
     void qc.invalidateQueries({ queryKey: ["pos", "stock"] });
+    refreshTill();
     return true;
   };
 
@@ -385,17 +369,36 @@ function Counter() {
     if (!overlayOpen) focusSearch();
   }, [overlayOpen, focusSearch]);
 
-  // First visit of the day: offer to open the day (once per session).
+  // First load: carry a device-only day (before till sessions moved to the server) over, or drop it with a notice;
+  // then offer to open the till when this register has no open session (once per visit).
   const asked = React.useRef(false);
-  const dayKey = storageKey("day", env.tenant, env.branch?.code ?? null);
-  const branchReady = !env.has.branches || !!env.branch;
   React.useEffect(() => {
-    if (asked.current || env.sellerLoading || !branchReady) return;
+    if (asked.current || env.sellerLoading || !branchReady || !tillQuery.isSuccess || !env.online.online) return;
     asked.current = true;
-    // Read storage directly: the day state may not have loaded into React yet on this first pass.
-    const stored = readJson<DayRecord | null>(dayKey, null);
-    if (!stored || stored.date !== todayIST()) setDialog((d) => d ?? "day");
-  }, [env.sellerLoading, branchReady, dayKey]);
+    void (async () => {
+      let opened = dayOpen;
+      try {
+        const r = await migrateLocalDay({
+          tenant: env.tenant,
+          branchCode: env.branch?.code ?? null,
+          register,
+          today: todayIST(),
+          actorName: env.cashier,
+          hasServerSession: dayOpen,
+          open: (b) => tillActions.open.mutateAsync(b),
+          cash: (b) => tillActions.cash.mutateAsync(b),
+        });
+        if (r === "migrated") {
+          opened = true;
+          toast.success(t("pos.till.migrated"));
+        } else if (r === "dropped") toast.info(t("pos.till.dropped"));
+      } catch (err) {
+        toast.error(describeError(err, t));
+      }
+      if (!opened && env.can.till) setDialog((d) => d ?? "day");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the till state is known
+  }, [env.sellerLoading, branchReady, tillQuery.isSuccess, env.online.online]);
 
   const exit = () => {
     appNavigate("/");
@@ -435,7 +438,7 @@ function Counter() {
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-background text-foreground" data-pos-root="">
       <TopBar
-        day={day}
+        day={dayOpen ? { date: todayIST(), openedAt: till!.openedAt } : null}
         holds={holds.length}
         onHolds={() => setDialog("holds")}
         onReturns={() => setDialog("returns")}
@@ -591,26 +594,21 @@ function Counter() {
       <ReturnsDialog
         open={dialog === "returns"}
         onClose={() => setDialog(null)}
-        onRefund={(amount, number) =>
-          setDay((d) => (d && d.date === todayIST() && !d.closedAt ? { ...d, cashMoves: [...d.cashMoves, { at: new Date().toISOString(), amount: -amount, note: t("pos.returns.refundNote", { number }) }] } : d))
-        }
+        tillSessionId={dayOpen ? till!.id : null}
+        onDone={() => {
+          refreshTill();
+          void qc.invalidateQueries({ queryKey: ["pos", "stock"] });
+          void qc.invalidateQueries({ queryKey: ["pos", "payments"] });
+        }}
       />
       <DayDialog
         open={dialog === "day"}
-        day={day}
         onClose={() => setDialog(null)}
-        onOpenDay={(cash) => {
-          setDay(openDay(todayIST(), cash, env.cashier));
-          setDialog(null);
-          toast.success(t("pos.day.opened"));
-        }}
-        onCloseDay={(counts, note) => {
-          setDay((d) => (d ? closeDay(d, counts, note) : d));
-          toast.success(t("pos.day.closed"));
-        }}
-        onCashMove={(amount, note) =>
-          setDay((d) => (d ? { ...d, cashMoves: [...d.cashMoves, { at: new Date().toISOString(), amount, note }] } : d))
-        }
+        session={dayOpen ? till : null}
+        loading={tillQuery.isPending}
+        register={register}
+        onRegister={setRegister}
+        canTill={env.can.till}
       />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
       <ConfirmDialog

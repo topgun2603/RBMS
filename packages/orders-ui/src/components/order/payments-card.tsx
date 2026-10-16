@@ -132,7 +132,7 @@ function PaymentDialog({ order, open, onOpenChange }: { order: Order; open: bool
           <DialogTitle>{t("orders.payments.record")}</DialogTitle>
           <DialogDescription>{t("orders.payments.recordHint", { balance: money(order.balance) })}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <Field label={t("orders.payments.amount")} htmlFor="pay-amount" error={error}>
             <MoneyInput id="pay-amount" autoFocus className="text-lg" value={amount} onChange={(e) => (setAmount(e.target.value), setError(null))} />
           </Field>
@@ -209,7 +209,7 @@ function RefundDialog({ order, open, onOpenChange }: { order: Order; open: boole
           <DialogTitle>{t("orders.payments.recordRefund")}</DialogTitle>
           <DialogDescription>{t("orders.payments.refundHint")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <Field label={t("orders.payments.amount")} htmlFor="refund-amount" error={error} hint={t("orders.payments.refundMax", { max: money(max) })}>
             <MoneyInput id="refund-amount" autoFocus className="text-lg" value={amount} onChange={(e) => (setAmount(e.target.value), setError(null))} />
           </Field>

@@ -1,6 +1,15 @@
 import { AppError } from "@srirealtime/core";
 import type { createCatalogue, Product } from "@srirealtime/catalogue";
-import type { BrandingPort, DocSeller, InvoiceDocPort, OrderDocPort, PurchaseDocPort, StatementDocPort } from "@srirealtime/documents";
+import type {
+  BrandingPort,
+  CreditNoteDocPort,
+  DocSeller,
+  InvoiceDocPort,
+  OrderDocPort,
+  PurchaseDocPort,
+  StatementDocPort,
+  TillDocPort,
+} from "@srirealtime/documents";
 import {
   customersExporter,
   customersImporter,
@@ -73,6 +82,10 @@ export interface DocumentPortDeps {
   branding: BrandingPort["get"];
   /** IRN, Ack no/date and signed QR of an e-invoiced bill (null when none or e-invoicing is off). */
   einvoice?: (tenantId: string, invoiceId: string) => Promise<EInvoiceDocInfo | null>;
+  /** POS till sessions (Z report). */
+  till?: Invoices["till"];
+  /** Branch name for the Z report. */
+  branchName?: (tenantId: string, branchId: string) => Promise<string | null>;
 }
 
 export interface EInvoiceDocInfo {
@@ -156,6 +169,28 @@ export function documentPorts(d: DocumentPortDeps) {
     },
   };
 
+  const creditNotes: CreditNoteDocPort = {
+    // The IRN of a credit note is stored under the note's id (document type CRN).
+    creditNote: async (tenantId, id) => withIrn(tenantId, await d.invoices.creditNotes.get(tenantId, id).catch(nullOn404)),
+  };
+
+  const till: TillDocPort | undefined = d.till
+    ? {
+        session: async (tenantId, id) => {
+          const r = await d.till!.report(tenantId, id).catch(nullOn404);
+          if (!r) return null;
+          const s = r.session;
+          return {
+            ...s,
+            branchName: s.branchId && d.branchName ? await d.branchName(tenantId, s.branchId).catch(() => null) : null,
+            report: r.report,
+            seller: await d.seller(tenantId),
+            updatedAt: s.closedAt ?? null,
+          };
+        },
+      }
+    : undefined;
+
   const purchases: PurchaseDocPort = {
     purchase: async (tenantId, id) => {
       const p = await d.inventory.getPurchase(tenantId, id).catch(nullOn404);
@@ -163,7 +198,7 @@ export function documentPorts(d: DocumentPortDeps) {
     },
   };
 
-  return { invoices, statements, orders, purchases, branding: { get: d.branding } satisfies BrandingPort };
+  return { invoices, statements, orders, purchases, creditNotes, till, branding: { get: d.branding } satisfies BrandingPort };
 }
 
 // ================================================================ import / export

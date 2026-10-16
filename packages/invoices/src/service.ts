@@ -95,10 +95,13 @@ import {
   type StockPort,
 } from "./ports";
 import { FEATURES, PAYMENTS_FEATURE } from "./features";
-import { gstSummary, rangeProblem, trendRange, zeroFillTrend, type GstSummary, type TrendPoint } from "./reports";
+import { gstSummary, rangeProblem, trendRange, zeroFillTrend, type GstCreditNote, type GstSummary, type TrendPoint } from "./reports";
+import { CreditNotesService, type CreditNoteSummary } from "./credit-notes";
+import { TillService } from "./till";
 import {
   billingCustomers,
   billingItems,
+  creditNotes,
   customerReceipts,
   INVOICE_STATUSES,
   invoiceMessages,
@@ -227,7 +230,10 @@ export interface InvoiceSummary {
   dueDate: string | null;
   customerName: string;
   total: number;
+  /** Net money received (refunds taken off). */
   paid: number;
+  /** Total of the bill's issued credit notes. */
+  credited: number;
   balance: number;
   isOverdue: boolean;
 }
@@ -238,8 +244,10 @@ export interface InvoicePayment {
   method: PaymentMethod;
   date: string;
   reference: string | null;
-  /** "manual" (entered on the bill), "receipt" (allocated from a customer receipt) or "online". */
+  /** "manual" (entered on the bill), "receipt" (allocated from a customer receipt), "online" or "refund" (credit note, negative). */
   source: PaymentSource;
+  /** Credit note of a refund. */
+  creditNoteId: string | null;
   createdAt: Date;
 }
 
@@ -270,6 +278,10 @@ export interface Invoice extends InvoiceSummary {
   warnings: string[];
   /** Last 10 WhatsApp/SMS messages about this bill, newest first. */
   messages: InvoiceMessage[];
+  /** Credit notes against the bill (issued and cancelled), oldest first. */
+  creditNotes: CreditNoteSummary[];
+  /** POS till session the bill was made at. */
+  tillSessionId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -354,6 +366,10 @@ export interface PaymentTarget {
 
 export interface SalesRegisterRow {
   id: string;
+  /** "invoice", or "credit_note" (amounts negative). */
+  type: "invoice" | "credit_note";
+  /** For credit notes: the original bill's number. */
+  against: string | null;
   number: string | null;
   date: string;
   customer: string;
@@ -365,12 +381,12 @@ export interface SalesRegisterRow {
   igst: number;
   total: number;
   paid: number;
-  status: InvoiceStatus;
+  status: InvoiceStatus | "credit_note";
 }
 
 export interface SalesRegister {
   items: SalesRegisterRow[];
-  totals: { count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number; paid: number };
+  totals: { count: number; creditNotes: number; taxable: number; cgst: number; sgst: number; igst: number; total: number; paid: number };
 }
 
 export interface PaymentsReportRow {
@@ -380,7 +396,7 @@ export interface PaymentsReportRow {
   method: PaymentMethod;
   amount: number;
   reference: string | null;
-  source: "bill" | "receipt" | "online";
+  source: "bill" | "receipt" | "online" | "refund";
 }
 
 export interface PaymentsReport {
@@ -552,8 +568,10 @@ export const invoiceInputSchema = z.object({
   issue: z.boolean().optional(),
   /** Loyalty points to use on the bill; only together with `issue: true`. */
   loyaltyPoints: loyaltyPointsSchema.optional(),
+  /** POS till session the bill is made at (create only). */
+  tillSessionId: opt(z.string().uuid()),
 });
-export const invoicePatchSchema = invoiceInputSchema.partial();
+export const invoicePatchSchema = invoiceInputSchema.omit({ tillSessionId: true }).partial();
 export type InvoiceInput = z.input<typeof invoiceInputSchema>;
 
 export const paymentInputSchema = z.object({
@@ -561,10 +579,12 @@ export const paymentInputSchema = z.object({
   method: z.enum(PAYMENT_METHODS),
   date: dateStr,
   reference: opt(z.string().trim().max(100)),
+  /** POS till session the money went into. */
+  tillSessionId: opt(z.string().uuid()),
 });
 export type PaymentInput = z.input<typeof paymentInputSchema>;
 
-export const receiptInputSchema = paymentInputSchema.extend({
+export const receiptInputSchema = paymentInputSchema.omit({ tillSessionId: true }).extend({
   note: opt(z.string().trim().max(500)),
 });
 export type ReceiptInput = z.input<typeof receiptInputSchema>;
@@ -693,6 +713,7 @@ function snapshotOf(c: {
 /** Per-customer sums from the aggregate subqueries (strings from Postgres, null when no rows). */
 interface CustomerAggregates {
   billed?: unknown;
+  credited?: unknown;
   paid?: unknown;
   received?: unknown;
   advance?: unknown;
@@ -710,7 +731,13 @@ const toCustomer = (c: BillingCustomer, agg: CustomerAggregates = {}): Customer 
   stateCode: c.stateCode,
   openingBalance: c.openingBalance,
   creditLimit: c.creditLimit,
-  outstanding: ledgerBalance({ opening: c.openingBalance, billed: num(agg.billed), paid: num(agg.paid), received: num(agg.received) }),
+  outstanding: ledgerBalance({
+    opening: c.openingBalance,
+    billed: num(agg.billed),
+    credited: num(agg.credited),
+    paid: num(agg.paid),
+    received: num(agg.received),
+  }),
   advance: num(agg.advance),
   createdAt: c.createdAt,
 });
@@ -732,6 +759,7 @@ const toPayment = (p: InvoicePaymentRow): InvoicePayment => ({
   date: p.date,
   reference: p.reference,
   source: p.source,
+  creditNoteId: p.creditNoteId ?? null,
   createdAt: p.createdAt,
 });
 
@@ -813,6 +841,10 @@ export class InvoicesService {
   private readonly events?: InvoiceEventsPort;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
+  /** Credit notes (returns and value corrections) against issued bills. */
+  readonly creditNotes: CreditNotesService;
+  /** POS till sessions (cash drawer open / close, X and Z reports). */
+  readonly till: TillService;
 
   constructor(deps: InvoicesDeps) {
     this.db = deps.db;
@@ -830,6 +862,15 @@ export class InvoicesService {
     this.events = deps.events;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
+    this.creditNotes = new CreditNotesService(
+      { db: deps.db, stock: deps.stock, loyalty: deps.loyalty, events: deps.events, log: this.log, now: this.now },
+      {
+        getInvoice: (tenantId, id) => this.get(tenantId, id),
+        stockLocation: async (tenantId, branchId) =>
+          branchId && this.branches ? ((await this.branches.seller(tenantId, branchId).catch(() => null))?.stockLocationId ?? null) : null,
+      },
+    );
+    this.till = new TillService({ db: deps.db, log: this.log, now: this.now });
   }
 
   /** Whether a feature is on for the shop (always true without a gate). Gate failures count as off. */
@@ -901,7 +942,8 @@ export class InvoicesService {
       .select({
         customerId: invoices.customerId,
         billed: sql<string>`coalesce(sum(${invoices.total}) filter (where ${invoices.status} <> 'cancelled'), 0)`.as("cq_billed"),
-        overdue: sql<string>`coalesce(sum(greatest(${invoices.total} - ${invoices.paid}, 0)) filter (where ${invoices.status} in ('issued', 'partially_paid') and ${invoices.dueDate} < ${today}), 0)`.as(
+        credited: sql<string>`coalesce(sum(${invoices.credited}) filter (where ${invoices.status} <> 'cancelled'), 0)`.as("cq_credited"),
+        overdue: sql<string>`coalesce(sum(greatest(${invoices.total} - ${invoices.paid} - ${invoices.credited}, 0)) filter (where ${invoices.status} in ('issued', 'partially_paid') and ${invoices.dueDate} < ${today}), 0)`.as(
           "cq_overdue",
         ),
         lastInvoice: sql<string | null>`max(${invoices.date})::text`.as("cq_last_invoice"),
@@ -933,10 +975,11 @@ export class InvoicesService {
       .groupBy(customerReceipts.customerId)
       .as("agg_rcp");
 
-    const balance = sql<string>`(${billingCustomers.openingBalance} + coalesce(${inv.billed}, 0) - coalesce(${pay.paid}, 0) - coalesce(${rcp.received}, 0))`;
+    const balance = sql<string>`(${billingCustomers.openingBalance} + coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0) - coalesce(${pay.paid}, 0) - coalesce(${rcp.received}, 0))`;
     const fields = {
       c: billingCustomers,
       billed: inv.billed,
+      credited: inv.credited,
       paid: pay.paid,
       received: rcp.received,
       advance: rcp.advance,
@@ -1115,6 +1158,7 @@ export class InvoicesService {
           status: invoices.status,
           total: invoices.total,
           paid: invoices.paid,
+          credited: invoices.credited,
           seq: invoices.seq,
         })
         .from(invoices)
@@ -1194,7 +1238,7 @@ export class InvoicesService {
       if (allocated.length > 0) {
         // Lock bills before the receipt rows (same order as cancel) to avoid deadlocks.
         const bills = await tx
-          .select({ id: invoices.id, status: invoices.status, total: invoices.total, paid: invoices.paid })
+          .select({ id: invoices.id, status: invoices.status, total: invoices.total, paid: invoices.paid, credited: invoices.credited })
           .from(invoices)
           .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.id, [...new Set(allocated.map((a) => a.invoiceId))])))
           .for("update");
@@ -1222,7 +1266,7 @@ export class InvoicesService {
     c: { id: string; openingBalance: number; createdAt: Date },
     range: { from?: string | null; to?: string | null },
   ): Promise<Ledger> {
-    const [bills, payments, receipts] = await Promise.all([
+    const [bills, payments, receipts, notes] = await Promise.all([
       this.db
         .select({
           id: invoices.id,
@@ -1254,6 +1298,20 @@ export class InvoicesService {
         .select()
         .from(customerReceipts)
         .where(and(eq(customerReceipts.tenantId, tenantId), eq(customerReceipts.customerId, c.id))),
+      this.db
+        .select({
+          id: creditNotes.id,
+          number: creditNotes.number,
+          invoiceNumber: creditNotes.invoiceNumber,
+          date: creditNotes.date,
+          total: creditNotes.total,
+          createdAt: creditNotes.createdAt,
+        })
+        .from(creditNotes)
+        .innerJoin(invoices, and(eq(invoices.id, creditNotes.invoiceId), eq(invoices.tenantId, tenantId)))
+        .where(
+          and(eq(creditNotes.tenantId, tenantId), eq(creditNotes.status, "issued"), eq(invoices.customerId, c.id), ne(invoices.status, "cancelled")),
+        ),
     ]);
     const events = ledgerEvents({
       invoices: bills.map((i) => ({
@@ -1284,6 +1342,15 @@ export class InvoicesService {
         reference: r.reference,
         note: r.note,
         at: r.createdAt.getTime(),
+      })),
+      creditNotes: notes.map((n) => ({
+        id: n.id,
+        number: n.number,
+        invoiceNumber: n.invoiceNumber,
+        date: n.date,
+        total: n.total,
+        // Same transaction as its refund (same created_at): the note comes first.
+        at: n.createdAt.getTime() - 1,
       })),
     });
     return buildLedger(c.openingBalance, events, { from: range.from, to: range.to, openingDate: todayIST(c.createdAt) });
@@ -1427,7 +1494,7 @@ export class InvoicesService {
   // ================================================================ invoices: reads
 
   private toSummary(
-    r: Pick<InvoiceRow, "id" | "number" | "status" | "date" | "dueDate" | "total" | "paid"> & { branchId?: string | null },
+    r: Pick<InvoiceRow, "id" | "number" | "status" | "date" | "dueDate" | "total" | "paid"> & { branchId?: string | null; credited?: number | null },
     customerName: string,
     today: string,
   ): InvoiceSummary {
@@ -1441,6 +1508,7 @@ export class InvoicesService {
       customerName,
       total: r.total,
       paid: r.paid,
+      credited: r.credited ?? 0,
       balance: balanceOf(r),
       isOverdue: isOverdue(r, today),
     };
@@ -1450,11 +1518,12 @@ export class InvoicesService {
     row: InvoiceRow,
     payments: InvoicePaymentRow[],
     liveSeller?: SellerProfile,
-    extra: { warnings?: string[]; messages?: InvoiceMessage[] } = {},
+    extra: { warnings?: string[]; messages?: InvoiceMessage[]; creditNotes?: CreditNoteSummary[] } = {},
   ): Promise<Invoice> {
-    const [seller, messages] = await Promise.all([
+    const [seller, messages, notes] = await Promise.all([
       row.seller ?? liveSeller ?? this.sellerFor(row.tenantId, row.branchId).then((x) => x.seller),
       extra.messages ?? (row.status === "draft" ? [] : this.messagesFor(row.tenantId, row.id)),
+      extra.creditNotes ?? (row.status === "draft" ? [] : this.creditNotes.forInvoice(row.tenantId, row.id)),
     ]);
     return {
       ...this.toSummary(row, row.customer.name, this.today()),
@@ -1473,6 +1542,8 @@ export class InvoicesService {
       cancelReason: row.cancelReason,
       warnings: extra.warnings ?? [],
       messages,
+      creditNotes: notes,
+      tillSessionId: row.tillSessionId ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -1552,6 +1623,7 @@ export class InvoicesService {
           dueDate: invoices.dueDate,
           total: invoices.total,
           paid: invoices.paid,
+          credited: invoices.credited,
           customerName: sql<string>`${invoices.customer}->>'name'`,
         })
         .from(invoices)
@@ -1644,7 +1716,7 @@ export class InvoicesService {
       this.periodTotals(tenantId, prev.from, addDaysISO(prev.to, -1)),
       this.db
         .select({
-          outstanding: sql<string>`coalesce(sum(${invoices.total} - ${invoices.paid}), 0)`,
+          outstanding: sql<string>`coalesce(sum(${invoices.total} - ${invoices.paid} - ${invoices.credited}), 0)`,
           overdue: sql<string>`count(*) filter (where ${invoices.dueDate} < ${today})`,
         })
         .from(invoices)
@@ -1756,12 +1828,13 @@ export class InvoicesService {
     const branchId = issueOptionsSchema.shape.branchId.parse(opts.branchId) ?? null;
     const { seller, branch } = await this.sellerFor(tenant.id, branchId);
     const values = await this.buildDraft(tenant.id, this.fromInput(b), seller);
+    const tillSessionId = b.tillSessionId ? await this.till.assertOpen(tenant.id, b.tillSessionId) : null;
     if (!b.issue) {
       const [row] = await this.db
         .insert(invoices)
-        .values({ tenantId: tenant.id, status: "draft", branchId, ...values })
+        .values({ tenantId: tenant.id, status: "draft", branchId, tillSessionId, ...values })
         .returning();
-      return this.toInvoice(row!, [], seller, { warnings: await this.warningsFor(row!), messages: [] });
+      return this.toInvoice(row!, [], seller, { warnings: await this.warningsFor(row!), messages: [], creditNotes: [] });
     }
     const loyalty = b.loyaltyPoints ? this.loyaltyFor(b.loyaltyPoints, values.customer) : null;
     // The id exists before the insert so a points redemption can reference the bill.
@@ -1770,7 +1843,7 @@ export class InvoicesService {
     const issued = await this.issueWith(tenant, id, seller, branch, check, loyalty, async (tx) => {
       const [row] = await tx
         .insert(invoices)
-        .values({ id, tenantId: tenant.id, status: "draft", branchId, ...values })
+        .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, ...values })
         .returning();
       return row!;
     });
@@ -1803,7 +1876,7 @@ export class InvoicesService {
       .returning();
     if (!updated) throw conflict("This invoice was issued or removed meanwhile; reload and try again");
     if (b.issue) return this.issue(tenant, id, b.loyaltyPoints ? { loyaltyPoints: b.loyaltyPoints } : {});
-    return this.toInvoice(updated, [], seller, { warnings: await this.warningsFor(updated), messages: [] });
+    return this.toInvoice(updated, [], seller, { warnings: await this.warningsFor(updated), messages: [], creditNotes: [] });
   }
 
   async deleteDraft(tenantId: string, id: string): Promise<void> {
@@ -1845,7 +1918,7 @@ export class InvoicesService {
   private async afterIssue(issued: InvoiceRow, branch?: IssueBranch): Promise<Invoice> {
     await this.stockSale(issued, branch);
     // Payments need an issued bill, so a just-issued one has none.
-    const invoice = await this.toInvoice(issued, [], undefined, { warnings: await this.warningsFor(issued), messages: [] });
+    const invoice = await this.toInvoice(issued, [], undefined, { warnings: await this.warningsFor(issued), messages: [], creditNotes: [] });
     await this.emit("issued", issued.tenantId, (h) => h(issued.tenantId, invoice));
     return invoice;
   }
@@ -2024,7 +2097,7 @@ export class InvoicesService {
     const [updated] = await tx
       .update(invoices)
       .set({
-        status: deriveStatus("issued", totals.total, draft.paid),
+        status: deriveStatus("issued", totals.total, draft.paid, draft.credited),
         number: formatInvoiceNumber(prefix, fy, seq),
         fy,
         seq,
@@ -2056,6 +2129,13 @@ export class InvoicesService {
     const row = await this.db.transaction(async (tx) => {
       const before = await this.row(tx, tenantId, id, true);
       previousStatus = before.status;
+      if (before.credited > 0) {
+        throw new AppError(
+          409,
+          "invoice_has_credit_notes",
+          "This bill has credit notes; cancel them first (same day only), or make a credit note for what is left instead",
+        );
+      }
       const [cancelled] = await tx
         .update(invoices)
         .set({ status: "cancelled", cancelledAt: this.now(), cancelReason: why })
@@ -2104,6 +2184,7 @@ export class InvoicesService {
       before = inv.status;
       const problem = paymentProblem(inv, b.amount);
       if (problem) throw badRequest(problem);
+      const tillSessionId = b.tillSessionId ? await this.till.assertOpen(tenantId, b.tillSessionId, tx) : null;
       await tx.insert(invoicePayments).values({
         tenantId,
         invoiceId: id,
@@ -2112,12 +2193,13 @@ export class InvoicesService {
         date: b.date,
         reference: b.reference ?? null,
         source: "manual",
+        tillSessionId,
         createdBy: userId,
       });
       const paid = inv.paid + b.amount;
       const [updated] = await tx
         .update(invoices)
-        .set({ paid, status: deriveStatus(inv.status, inv.total, paid) })
+        .set({ paid, status: deriveStatus(inv.status, inv.total, paid, inv.credited) })
         .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, id)))
         .returning();
       return updated!;
@@ -2133,12 +2215,14 @@ export class InvoicesService {
       const inv = await this.row(tx, tenantId, id, true);
       if (inv.status === "cancelled") throw badRequest("Payments on a cancelled invoice can't be changed");
       const [payment] = await tx
-        .select({ receiptId: invoicePayments.receiptId })
+        .select({ receiptId: invoicePayments.receiptId, source: invoicePayments.source })
         .from(invoicePayments)
         .where(and(eq(invoicePayments.tenantId, tenantId), eq(invoicePayments.invoiceId, id), eq(invoicePayments.id, paymentId)))
         .limit(1);
       if (!payment) throw notFound("Payment");
       if (payment.receiptId) throw badRequest("This payment comes from a customer receipt; delete the receipt in the credit book instead");
+      if (payment.source === "refund") throw badRequest("This is a credit note refund; it can't be deleted");
+      if (inv.credited > 0) throw badRequest("This bill has credit notes; its payments can't be changed any more");
       const [removed] = await tx
         .delete(invoicePayments)
         .where(
@@ -2149,7 +2233,7 @@ export class InvoicesService {
       const paid = Math.max(inv.paid - removed.amount, 0);
       const [updated] = await tx
         .update(invoices)
-        .set({ paid, status: deriveStatus(inv.status, inv.total, paid) })
+        .set({ paid, status: deriveStatus(inv.status, inv.total, paid, inv.credited) })
         .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, id)))
         .returning();
       return updated!;
@@ -2335,6 +2419,7 @@ export class InvoicesService {
         dueDate: invoices.dueDate,
         total: invoices.total,
         paid: invoices.paid,
+        credited: invoices.credited,
         customerId: invoices.customerId,
         customer: invoices.customer,
         seller: invoices.seller,
@@ -2352,7 +2437,7 @@ export class InvoicesService {
           isNotNull(invoices.dueDate),
           gte(invoices.dueDate, addDaysISO(today, -365)),
           lte(invoices.dueDate, today),
-          gt(sql`${invoices.total} - ${invoices.paid}`, 0),
+          gt(sql`${invoices.total} - ${invoices.paid} - ${invoices.credited}`, 0),
           notExists(
             this.db
               .select({ one: sql`1` })
@@ -2605,8 +2690,10 @@ export class InvoicesService {
       .from(invoices)
       .where(this.billedIn(tenantId, from, to, branchId))
       .orderBy(asc(invoices.date), asc(invoices.fy), asc(invoices.seq));
-    const items: SalesRegisterRow[] = rows.map((r) => ({
+    const bills: SalesRegisterRow[] = rows.map((r) => ({
       id: r.id,
+      type: "invoice",
+      against: null,
       number: r.number,
       date: r.date,
       customer: r.customer.name,
@@ -2620,7 +2707,26 @@ export class InvoicesService {
       paid: r.paid,
       status: r.status,
     }));
-    const totals = { count: items.length, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0, paid: 0 };
+    // Credit notes dated in the period are negative rows (a bill's `paid` is already net of its refunds).
+    const notes: SalesRegisterRow[] = (await this.creditNotesIn(tenantId, from, to, branchId)).map((n) => ({
+      id: n.id,
+      type: "credit_note",
+      against: n.invoiceNumber,
+      number: n.number,
+      date: n.date,
+      customer: n.customer.name,
+      gstin: n.customer.gstin,
+      placeOfSupply: n.placeOfSupply,
+      taxable: -n.totals.taxable,
+      cgst: -n.totals.cgst,
+      sgst: -n.totals.sgst,
+      igst: -n.totals.igst,
+      total: -n.total,
+      paid: 0,
+      status: "credit_note",
+    }));
+    const items = [...bills, ...notes].sort((a, b) => a.date.localeCompare(b.date) || (a.type === b.type ? 0 : a.type === "invoice" ? -1 : 1));
+    const totals = { count: bills.length, creditNotes: notes.length, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0, paid: 0 };
     for (const i of items) {
       totals.taxable += i.taxable;
       totals.cgst += i.cgst;
@@ -2646,6 +2752,32 @@ export class InvoicesService {
       })
       .from(invoices)
       .where(this.billedIn(tenantId, from, to, branchId));
+    const notes = await this.creditNotesIn(tenantId, from, to, branchId);
+    // The original bill's total decides B2CL vs B2CS for notes to unregistered buyers.
+    const originals = new Map(
+      notes.length
+        ? (
+            await this.db
+              .select({ id: invoices.id, total: invoices.total })
+              .from(invoices)
+              .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.id, [...new Set(notes.map((n) => n.invoiceId))])))
+          ).map((r) => [r.id, r.total])
+        : [],
+    );
+    const gstNotes: GstCreditNote[] = notes.map((n) => ({
+      id: n.id,
+      number: n.number,
+      date: n.date,
+      invoiceNumber: n.invoiceNumber,
+      invoiceDate: n.invoiceDate,
+      customerName: n.customer.name,
+      customerGstin: n.customer.gstin,
+      placeOfSupply: n.placeOfSupply,
+      interState: n.interState,
+      invoiceTotal: originals.get(n.invoiceId) ?? n.total,
+      total: n.total,
+      lines: n.lines,
+    }));
     return gstSummary(
       rows.map((r) => ({
         id: r.id,
@@ -2657,7 +2789,25 @@ export class InvoicesService {
         total: r.total,
         lines: r.lines,
       })),
+      gstNotes,
     );
+  }
+
+  /** Issued credit notes dated from..to inclusive (optionally of one branch), oldest first. */
+  private async creditNotesIn(tenantId: string, from: string, to: string, branchId?: string | null) {
+    return this.db
+      .select()
+      .from(creditNotes)
+      .where(
+        and(
+          eq(creditNotes.tenantId, tenantId),
+          eq(creditNotes.status, "issued"),
+          gte(creditNotes.date, from),
+          lte(creditNotes.date, to),
+          branchId ? eq(creditNotes.branchId, branchId) : undefined,
+        ),
+      )
+      .orderBy(asc(creditNotes.date), asc(creditNotes.fy), asc(creditNotes.seq));
   }
 
   /** Money received in the period: payments on (non-cancelled) bills, online payments and customer receipts. */
@@ -2712,7 +2862,14 @@ export class InvoicesService {
           method: p.method,
           amount: p.amount,
           reference: p.reference,
-          source: p.source === "online" ? ("online" as const) : p.source === "receipt" ? ("receipt" as const) : ("bill" as const),
+          source:
+            p.source === "online"
+              ? ("online" as const)
+              : p.source === "receipt"
+                ? ("receipt" as const)
+                : p.source === "refund"
+                  ? ("refund" as const)
+                  : ("bill" as const),
         },
       })),
       ...receipts.map((r) => ({
@@ -2746,7 +2903,8 @@ export class InvoicesService {
   async ageing(tenantId: string, query: { asOf?: string; branchId?: string } = {}): Promise<AgeingResult> {
     const q = ageingQuerySchema.parse(query);
     const asOf = q.asOf ?? this.today();
-    const paidAsOf = sql<string>`coalesce((select sum(p.amount) from ${invoicePayments} p where p.tenant_id = ${invoices.tenantId} and p.invoice_id = ${invoices.id} and p.date <= ${asOf}), 0)`;
+    const paidAsOf = sql<string>`coalesce((select sum(p.amount) from ${invoicePayments} p where p.tenant_id = ${invoices.tenantId} and p.invoice_id = ${invoices.id} and p.date <= ${asOf}), 0)
+      + coalesce((select sum(cn.total) from ${creditNotes} cn where cn.tenant_id = ${invoices.tenantId} and cn.invoice_id = ${invoices.id} and cn.status = 'issued' and cn.date <= ${asOf}), 0)`;
     const rows = await this.db
       .select({
         customerId: invoices.customerId,
@@ -2766,6 +2924,7 @@ export class InvoicesService {
           or(
             inArray(invoices.status, [...OPEN_STATUSES]),
             sql`exists (select 1 from ${invoicePayments} p where p.tenant_id = ${invoices.tenantId} and p.invoice_id = ${invoices.id} and p.date > ${asOf})`,
+            sql`exists (select 1 from ${creditNotes} cn where cn.tenant_id = ${invoices.tenantId} and cn.invoice_id = ${invoices.id} and cn.status = 'issued' and cn.date > ${asOf})`,
           ),
         ),
       );

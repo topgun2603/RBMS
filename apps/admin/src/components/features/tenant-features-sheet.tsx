@@ -93,7 +93,7 @@ function TenantFeatures({ tenant }: { tenant: Tenant }) {
                 <li key={f.key} className="flex items-start justify-between gap-3 px-3 py-2.5">
                   <div className="min-w-0">
                     <div className="text-sm font-medium">{featureLabel(t, f)}</div>
-                    <code className="font-mono text-[11px] text-muted-foreground">{f.key}</code>
+                    <code className="font-mono text-xs text-muted-foreground">{f.key}</code>
                   </div>
                   <FeatureOnOffBadges feature={f} all={data.features} />
                 </li>

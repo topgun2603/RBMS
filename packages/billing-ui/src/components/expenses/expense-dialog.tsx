@@ -171,7 +171,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
             <DialogDescription>{readOnly ? t("billing.expenses.cancelledHint") : t("billing.expenses.dialogHint")}</DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+            <form onSubmit={onSubmit} className="grid gap-5" noValidate>
               <fieldset disabled={readOnly} className="grid gap-4">
                 <div className="grid items-start gap-4 sm:grid-cols-2">
                   <FormField

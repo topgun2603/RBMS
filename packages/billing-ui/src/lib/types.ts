@@ -113,7 +113,10 @@ export interface InvoiceSummary {
   dueDate: string | null;
   customerName: string;
   total: number;
+  /** Net money received (credit note refunds taken off). */
   paid: number;
+  /** Total of the bill's issued credit notes (returns, price corrections). */
+  credited?: number;
   balance: number;
   isOverdue: boolean;
 }
@@ -134,8 +137,9 @@ export interface Payment {
   date: string;
   reference: string | null;
   createdAt: ISODate;
-  /** Not in the v2 contract; read defensively when the API adds it. */
-  source?: "bill" | "receipt" | "online";
+  /** "manual" | "receipt" | "online" | "refund" (a credit note refund: negative amount). */
+  source?: "bill" | "manual" | "receipt" | "online" | "refund";
+  creditNoteId?: string | null;
   provider?: "razorpay" | "mock" | null;
 }
 
@@ -160,6 +164,99 @@ export interface Invoice extends InvoiceSummary {
   warnings?: string[];
   /** v2: last 10 WhatsApp/SMS messages for this bill. */
   messages?: InvoiceMessage[];
+  /** Credit notes against the bill (issued and cancelled), oldest first. */
+  creditNotes?: CreditNoteSummary[];
+}
+
+// ---------------------------------------------------------------- credit notes
+
+export type CreditNoteReason = "return" | "price_correction" | "discount" | "other";
+export const CREDIT_NOTE_REASONS: CreditNoteReason[] = ["return", "price_correction", "discount", "other"];
+export type RefundMode = "cash" | "upi" | "card" | "credit_book" | "none";
+export const REFUND_MODES: RefundMode[] = ["cash", "upi", "card", "credit_book", "none"];
+export type CreditNoteStatus = "issued" | "cancelled";
+
+export interface CreditNoteSummary {
+  id: string;
+  number: string;
+  date: string;
+  status: CreditNoteStatus;
+  invoiceId: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  branchId: string | null;
+  customerId: string | null;
+  customerName: string;
+  reason: CreditNoteReason;
+  refundMode: RefundMode;
+  refundAmount: number;
+  total: number;
+  createdAt: ISODate;
+}
+
+export type CreditNoteLine = LineTotals & { line: number; kind: "qty" | "value"; restock: boolean };
+
+export interface CreditNote extends CreditNoteSummary {
+  customer: InvoiceParty;
+  seller: Partial<SellerProfile>;
+  note: string | null;
+  placeOfSupply: string;
+  interState: boolean;
+  lines: CreditNoteLine[];
+  totals: Omit<InvoiceTotals, "lines">;
+  amountInWords: string;
+  tillSessionId: string | null;
+  issuedAt: ISODate;
+  cancelledAt: ISODate | null;
+  cancelReason: string | null;
+  canCancel: boolean;
+  updatedAt: ISODate;
+}
+
+export interface ReturnableLine {
+  line: number;
+  description: string;
+  unit: string | null;
+  itemId: string | null;
+  gstRate: GstRate;
+  rate: number;
+  qty: number;
+  returnedQty: number;
+  remainingQty: number;
+  total: number;
+  credited: { taxable: number; cgst: number; sgst: number; igst: number; total: number };
+  remaining: { taxable: number; cgst: number; sgst: number; igst: number; total: number };
+}
+
+export interface Returnable {
+  invoiceId: string;
+  number: string | null;
+  status: InvoiceStatus;
+  total: number;
+  paid: number;
+  credited: number;
+  balance: number;
+  creditable: number;
+  interState: boolean;
+  hasCustomer: boolean;
+  blocked: string | null;
+  lines: ReturnableLine[];
+  creditNotes: CreditNoteSummary[];
+}
+
+export interface CreditNoteInput {
+  date?: string;
+  reason: CreditNoteReason;
+  note?: string;
+  refundMode: RefundMode;
+  refundReference?: string;
+  lines: { line: number; qty?: number; taxable?: number; restock?: boolean }[];
+  tillSessionId?: string;
+}
+
+export interface CreditNoteResult {
+  creditNote: CreditNote;
+  invoice: Invoice;
 }
 
 export interface InvoiceMessage {
@@ -266,7 +363,7 @@ export interface ReceiptResult {
   advance: number;
 }
 
-export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel";
+export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel" | "credit_note" | "refund";
 
 export interface LedgerEntry {
   date: string;
@@ -352,7 +449,7 @@ export interface StockSummary {
   lowItems: StockRow[];
 }
 
-export type StockReason = "opening" | "adjustment" | "sale" | "sale_cancel" | "purchase" | "purchase_cancel";
+export type StockReason = "opening" | "adjustment" | "sale" | "sale_cancel" | "sale_return" | "sale_return_cancel" | "purchase" | "purchase_cancel";
 
 export interface StockMovement {
   id: string;
@@ -454,6 +551,10 @@ export interface SalesTrendPoint {
 
 export interface SalesRegisterRow {
   id: string;
+  /** "credit_note" rows have negative amounts (status "credit_note"). */
+  type?: "invoice" | "credit_note";
+  /** Credit notes: the original bill's number. */
+  against?: string | null;
   number: string | null;
   date: string;
   customer: string;
@@ -465,7 +566,7 @@ export interface SalesRegisterRow {
   igst: number;
   total: number;
   paid: number;
-  status: InvoiceStatus;
+  status: InvoiceStatus | "credit_note";
 }
 
 export interface SalesRegisterResponse {
@@ -480,7 +581,26 @@ export interface GstSummaryResponse {
   hsn: { hsn: string; description: string; unit: string; qty: number; taxable: number; cgst: number; sgst: number; igst: number; total: number }[];
   byRate: TaxBreakupRow[];
   gstr3b: { outwardTaxable: number; igst: number; cgst: number; sgst: number; nilRated: number };
-  totals?: Partial<Record<"taxable" | "cgst" | "sgst" | "igst" | "total", number>>;
+  totals?: Partial<Record<"taxable" | "cgst" | "sgst" | "igst" | "total" | "creditNotes", number>>;
+  /** Credit notes to registered buyers (GSTR-1 Table 9B). */
+  cdnr?: {
+    gstin: string;
+    name: string;
+    noteNumber: string;
+    noteDate: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    placeOfSupply: string;
+    rate: number;
+    taxable: number;
+    cgst: number;
+    sgst: number;
+    igst: number;
+    noteValue: number;
+  }[];
+  /** Credit notes to unregistered buyers on B2CL bills. */
+  cdnur?: { noteNumber: string; noteDate: string; invoiceNumber: string; placeOfSupply: string; rate: number; taxable: number; igst: number; noteValue: number }[];
+  creditNoteTotals?: { count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
 }
 
 export type PaymentSource = "bill" | "receipt" | "online";

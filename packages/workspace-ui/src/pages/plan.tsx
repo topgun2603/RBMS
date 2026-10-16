@@ -15,10 +15,12 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   WalletIcon,
+  XIcon,
 } from "lucide-react";
 import {
   Alert,
   AlertDescription,
+  AnimatePresence,
   Button,
   cn,
   motion,
@@ -33,6 +35,7 @@ import {
   daysUntil,
   describeError,
   formatPaise,
+  isAwaitingPayment,
   isPaidPlan,
   Page,
   PageHeading,
@@ -44,6 +47,7 @@ import {
   useI18n,
   usePublicPlans,
   type PlanInfo,
+  type Subscription,
   type SubscriptionCurrent,
   type SubscriptionStatus,
 } from "@srirealtime/web";
@@ -55,7 +59,7 @@ import { SectionCard } from "../components/plan/section-card";
 import { UsageMeters } from "../components/plan/usage-meters";
 import { useHasPermission } from "../lib/access";
 import { canCancel, currentPlanOf, hasMandate, isLive, periodEndOf } from "../lib/plan-actions";
-import { openAuthUrl, useCancelSubscription, useChangePlan, useCheckout, usePlanState, useResumeSubscription } from "../lib/subscriptions";
+import { openAuthUrl, useCancelSubscription, useCancelUpgrade, useChangePlan, useCheckout, usePlanState, useResumeSubscription } from "../lib/subscriptions";
 
 export default function PlanBillingPage() {
   return (
@@ -149,6 +153,7 @@ function CurrentPlan({ cur, plans, readOnly }: { cur: SubscriptionCurrent; plans
   const interval = sub?.interval ?? "monthly";
   const end = periodEndOf(sub);
   const pendingPlan = sub?.pendingPlanId ? (plans.find((p) => p.id === sub.pendingPlanId)?.name ?? sub.pendingPlanId) : null;
+  const awaiting = live && isAwaitingPayment(sub);
   const trialDays = cur.trialDaysLeft ?? daysUntil(sub?.trialEndsAt);
   const progress = trialProgress(sub ?? null);
   const S = STATUS[status];
@@ -312,7 +317,11 @@ function CurrentPlan({ cur, plans, readOnly }: { cur: SubscriptionCurrent; plans
         </p>
       )}
 
-      {live && pendingPlan && end && (
+      <AnimatePresence initial={false}>
+        {awaiting && pendingPlan && <PendingUpgrade key="pending-upgrade" sub={sub} planName={pendingPlan} currentName={plan?.name ?? ""} readOnly={readOnly} />}
+      </AnimatePresence>
+
+      {live && !awaiting && pendingPlan && end && (
         <div className="relative mt-3 flex flex-col gap-2 rounded-xl border border-dashed px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span className="flex items-start gap-2">
             <CalendarClockIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
@@ -329,6 +338,76 @@ function CurrentPlan({ cur, plans, readOnly }: { cur: SubscriptionCurrent; plans
         </p>
       )}
     </motion.section>
+  );
+}
+
+/**
+ * An upgrade that waits for its payment: the new plan, what is due (with the credit for the unused days), until when
+ * it can be paid, a Pay button (the mandate page) and Cancel upgrade. The current plan stays on meanwhile.
+ */
+function PendingUpgrade({ sub, planName, currentName, readOnly }: { sub: Subscription; planName: string; currentName: string; readOnly: boolean }) {
+  const { t, formatDate } = useI18n();
+  const reduced = useReducedMotionSafe();
+  const cancelUpgrade = useCancelUpgrade();
+  const [confirm, setConfirm] = React.useState(false);
+  const amount = formatPaise(sub.pendingChargePaise ?? 0);
+  const interval = t(`workspace.plan.plans.${sub.pendingInterval ?? sub.interval}`).toLowerCase();
+  const until = sub.pendingExpiresAt ? formatDate(sub.pendingExpiresAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "";
+  const pay = () => {
+    if (sub.pendingAuthUrl && openAuthUrl(sub.pendingAuthUrl) === "new") toast.info(t("workspace.plan.newTab"));
+  };
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="relative overflow-hidden"
+    >
+      <div className="mt-4 grid gap-3 rounded-xl border border-warning/40 bg-warning/8 p-3 sm:p-4" role="status" aria-live="polite">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill tone="warning" icon={HourglassIcon}>
+            {t("workspace.plan.upgradePending.badge")}
+          </StatusPill>
+          <span className="text-sm font-semibold">{t("workspace.plan.upgradePending.title", { plan: planName, interval })}</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {(sub.pendingChargePaise ?? 0) > 0
+            ? t("workspace.plan.upgradePending.body", { plan: planName, amount, current: currentName })
+            : t("workspace.plan.upgradePending.bodyNoCharge", { plan: planName, current: currentName })}
+          {(sub.pendingCreditPaise ?? 0) > 0 && <> {t("workspace.plan.upgradePending.credit", { amount: formatPaise(sub.pendingCreditPaise ?? 0) })}</>}
+        </p>
+        {until && (
+          <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
+            <CalendarClockIcon className="size-3.5 shrink-0" aria-hidden /> {t("workspace.plan.upgradePending.expires", { date: until })}
+          </p>
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button disabled={readOnly || !sub.pendingAuthUrl} onClick={pay}>
+            <CreditCardIcon /> {(sub.pendingChargePaise ?? 0) > 0 ? t("workspace.plan.upgradePending.pay", { amount }) : t("workspace.plan.upgradePending.authorise")}
+          </Button>
+          <Button variant="outline" disabled={readOnly || cancelUpgrade.isPending} onClick={() => setConfirm(true)}>
+            {cancelUpgrade.isPending ? <Loader2Icon className="animate-spin" /> : <XIcon />} {t("workspace.plan.upgradePending.cancel")}
+          </Button>
+        </div>
+      </div>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={t("workspace.plan.upgradePending.cancelTitle", { plan: planName })}
+        description={t("workspace.plan.upgradePending.cancelBody", { current: currentName })}
+        confirmLabel={t("workspace.plan.upgradePending.cancel")}
+        onConfirm={async () => {
+          try {
+            await cancelUpgrade.mutateAsync();
+            toast.success(t("workspace.plan.upgradePending.cancelled", { current: currentName }));
+          } catch (err) {
+            toast.error(describeError(err, t));
+            throw err;
+          }
+        }}
+      />
+    </motion.div>
   );
 }
 

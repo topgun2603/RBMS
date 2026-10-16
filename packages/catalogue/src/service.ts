@@ -29,6 +29,7 @@ import {
   MAX_VARIANTS,
   mergeOptions,
   pickDefault,
+  planListing,
   planVariants,
   priceRange,
   productEventData,
@@ -39,6 +40,10 @@ import {
   toSummary,
   uniqueSlug,
   variantTitle,
+  contentChanges,
+  variantChanges,
+  type ContentField,
+  type ListingEventType,
 } from "./logic";
 import {
   catalogCategories,
@@ -52,7 +57,9 @@ import {
   type Channel,
   type ProductOption,
   type CollectionRow,
+  type ProductImage,
   type ProductRow,
+  type ProductStatus,
   type VariantRow,
 } from "./schema";
 import {
@@ -95,6 +102,7 @@ import type {
   Variant,
   VariantLookup,
   VendorProductItem,
+  VendorVariantItem,
 } from "./types";
 
 export interface LoggerPort {
@@ -112,6 +120,30 @@ export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
  */
 export interface VendorScopePort {
   vendorFor(tenantId: string, userId: string, header: string | null): Promise<string | null>;
+}
+
+/** A seller product's listing changed (`planListing`). */
+export interface ListingEvent {
+  type: ListingEventType;
+  productId: string;
+  vendorId: string;
+  name: string;
+  image: string | null;
+  /** Who wrote: the seller (vendor-scoped call) or shop staff. */
+  by: "vendor" | "staff";
+  /** "changed" only: the customer-facing parts that changed (`ContentField`). */
+  fields?: ContentField[];
+}
+
+/**
+ * Review before seller products go live (implemented with the marketplace module in kit). The catalogue keeps a
+ * product waiting for review as a `draft`, so every public query (store, search, sitemap, collections) skips it.
+ */
+export interface ListingReviewPort {
+  /** Before a seller's own write makes their product active: true = keep it a draft until the shop approves it. */
+  needsReview(tenantId: string, vendorId: string): Promise<boolean>;
+  /** After the write commits. Best effort: errors are logged, never thrown. */
+  onListing(tenantId: string, event: ListingEvent): Promise<void>;
 }
 
 /**
@@ -139,6 +171,8 @@ export interface CatalogueDeps {
    * (`CATALOGUE_VENDOR_ROUTES`) on their own products. Without it they get 403 as before.
    */
   vendorScope?: VendorScopePort;
+  /** Review of seller products before they go live. Without it sellers publish directly (as before). */
+  listingReview?: ListingReviewPort;
   /** Webhook events (`product.created`, `product.updated`). Without it nothing is emitted. */
   events?: EventsPort;
   /** Clock override for tests. */
@@ -295,6 +329,8 @@ const q = z.string().trim().max(100).optional();
 export const productListQuerySchema = z.object({
   q,
   categoryId: uuid.optional(),
+  /** Staff: one seller's products (any status). Vendor-scoped calls are limited to their own seller anyway. */
+  vendorId: uuid.optional(),
   status: z.enum(PRODUCT_STATUSES).optional(),
   channel: z.enum(CHANNELS).optional(),
   tag: z.string().trim().toLowerCase().max(40).optional(),
@@ -663,6 +699,7 @@ export class CatalogueService {
       eq(catalogProducts.tenantId, tenantId),
       isNull(catalogProducts.deletedAt),
       scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined,
+      query.vendorId ? eq(catalogProducts.vendorId, query.vendorId) : undefined,
       query.status ? eq(catalogProducts.status, query.status) : undefined,
       query.categoryId ? eq(catalogProducts.categoryId, query.categoryId) : undefined,
       query.channel ? sql`${catalogProducts.channels} @> array[${query.channel}]::text[]` : undefined,
@@ -835,6 +872,8 @@ export class CatalogueService {
   async createProduct(tenantId: string, input: ProductInput, scope?: ProductScope): Promise<Product> {
     const b = productInputSchema.parse(input);
     const vendorId = scope ? scope.vendorId : (b.vendorId ?? null);
+    const listing = await this.listingPlan(tenantId, vendorId, Boolean(scope), b.status, null);
+    const status = listing.status ?? b.status;
     const variantInputs: ParsedVariant[] = b.variants ?? [
       {
         price: b.price!,
@@ -874,7 +913,7 @@ export class CatalogueService {
               gstRate: b.gstRate,
               unit: b.unit,
               taxInclusive: b.taxInclusive,
-              status: b.status,
+              status,
               channels: b.channels,
               tags: b.tags,
               attributes: b.attributes,
@@ -889,6 +928,7 @@ export class CatalogueService {
           return this.assemble(tenantId, row!, tx);
         });
         await this.emitProduct(tenantId, "product.created", created);
+        await this.emitListing(tenantId, listing.event, created, Boolean(scope));
         return created;
       } catch (err) {
         // Two products with the same name created at once: pick the next free slug.
@@ -919,7 +959,11 @@ export class CatalogueService {
     if (b.gstRate !== undefined) set.gstRate = b.gstRate;
     if (b.unit !== undefined) set.unit = b.unit;
     if (b.taxInclusive !== undefined) set.taxInclusive = b.taxInclusive;
-    if (b.status !== undefined) set.status = b.status;
+    const listing = await this.listingPlan(tenantId, current.vendorId ?? null, Boolean(scope), b.status, current.status);
+    if (listing.status !== undefined) set.status = listing.status;
+    // A seller editing their live product: what customers would see differently (marketplace may re-review it).
+    const stillLive = current.status === "active" && (listing.status === undefined || listing.status === "active");
+    const changed = scope && stillLive ? contentChanges(current, { ...b, images: b.images?.map((i) => ({ url: i.url, alt: i.alt ?? null })) }) : [];
     if (b.channels !== undefined) set.channels = b.channels;
     if (b.tags !== undefined) set.tags = b.tags;
     if (b.attributes !== undefined) set.attributes = b.attributes;
@@ -944,12 +988,60 @@ export class CatalogueService {
       mapUniqueError(err);
     }
     await this.emitProduct(tenantId, "product.updated", updated);
+    await this.emitListing(tenantId, listing.event, updated, Boolean(scope));
+    if (changed.length) await this.emitListing(tenantId, "changed", updated, true, changed);
     return updated;
+  }
+
+  /** `planListing` for this write (asks the review port only when it matters). */
+  private async listingPlan(
+    tenantId: string,
+    vendorId: string | null,
+    byVendor: boolean,
+    requested: ProductStatus | undefined,
+    current: ProductStatus | null,
+  ) {
+    const port = this.deps.listingReview;
+    const asks = Boolean(port && vendorId && byVendor && requested === "active" && current !== "active");
+    const needsReview = asks ? await port!.needsReview(tenantId, vendorId!) : false;
+    return port ? planListing({ vendorId, byVendor, requested, current, needsReview }) : { status: requested, event: null };
+  }
+
+  /** Tells the listing review port about a seller product's listing change. Never throws. */
+  private async emitListing(
+    tenantId: string,
+    type: ListingEventType | null,
+    p: Pick<Product, "id" | "name" | "vendorId" | "images">,
+    byVendor: boolean,
+    fields?: ContentField[],
+  ) {
+    const port = this.deps.listingReview;
+    if (!port || !type || !p.vendorId) return;
+    try {
+      await port.onListing(tenantId, {
+        type,
+        productId: p.id,
+        vendorId: p.vendorId,
+        name: p.name,
+        image: p.images[0]?.url ?? null,
+        by: byVendor ? "vendor" : "staff",
+        ...(fields ? { fields } : {}),
+      });
+    } catch (err) {
+      this.log.error({ err, tenantId, productId: p.id, type }, "catalogue: listing review hook failed");
+    }
+  }
+
+  /** A seller's variant write on their live product: report the customer-facing change (no-op otherwise). */
+  private async variantChanged(tenantId: string, p: ProductRow, fields: ContentField[], scope?: ProductScope) {
+    if (!scope || p.status !== "active" || !p.vendorId || !fields.length) return;
+    await this.emitListing(tenantId, "changed", { id: p.id, name: p.name, vendorId: p.vendorId, images: p.images ?? [] }, true, fields);
   }
 
   /** Soft delete: the product is archived and hidden; its variant ids stay valid on old bills and stock. */
   async deleteProduct(tenantId: string, id: string, scope?: ProductScope): Promise<void> {
     const at = this.now();
+    let deleted: { id: string; name: string; vendorId: string | null; images: ProductImage[] | null } | undefined;
     await this.db.transaction(async (tx) => {
       const rows = await tx
         .update(catalogProducts)
@@ -962,13 +1054,15 @@ export class CatalogueService {
             scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined,
           ),
         )
-        .returning({ id: catalogProducts.id });
+        .returning({ id: catalogProducts.id, name: catalogProducts.name, vendorId: catalogProducts.vendorId, images: catalogProducts.images });
       if (rows.length === 0) throw notFound("Product");
+      deleted = rows[0]!;
       await tx
         .update(catalogVariants)
         .set({ deletedAt: at })
         .where(and(eq(catalogVariants.tenantId, tenantId), eq(catalogVariants.productId, id), isNull(catalogVariants.deletedAt)));
     });
+    if (deleted) await this.emitListing(tenantId, "withdrawn", { ...deleted, images: deleted.images ?? [] }, Boolean(scope));
   }
 
   // ================================================================ variants
@@ -1004,9 +1098,11 @@ export class CatalogueService {
   async addVariant(tenantId: string, productId: string, input: VariantInput, scope?: ProductScope): Promise<Variant> {
     const b = variantInputSchema.parse(input);
     let added: Variant;
+    let parent: ProductRow | undefined;
     try {
       added = await this.db.transaction(async (tx) => {
         const product = await this.productRow(tenantId, productId, tx, scope);
+        parent = product;
         const siblings = (await this.variantsOf(tenantId, [productId], tx)).get(productId) ?? [];
         if (siblings.length >= MAX_VARIANTS) throw conflict(`A product can have at most ${MAX_VARIANTS} variants`);
         this.assertUniqueCombo(siblings, b.optionValues);
@@ -1045,17 +1141,21 @@ export class CatalogueService {
       mapUniqueError(err);
     }
     await this.emitProductById(tenantId, productId);
+    if (parent) await this.variantChanged(tenantId, parent, ["variants"], scope);
     return added;
   }
 
   async updateVariant(tenantId: string, id: string, input: Partial<VariantInput>, scope?: ProductScope): Promise<Variant> {
     const b = variantPatchSchema.parse(input);
     let updated: Variant;
+    let parent: ProductRow | undefined;
+    let fields: ContentField[] = [];
     try {
       updated = await this.db.transaction(async (tx) => {
         const found = await this.variantWithProduct(tenantId, id, tx, scope);
         if (!found) throw notFound("Variant");
         const { v, p } = found;
+        parent = p;
         if (b.isDefault === false && v.isDefault) throw badRequest("Make another variant the default instead");
         const set: Partial<VariantRow> = {};
         if (b.sku !== undefined) set.sku = b.sku;
@@ -1079,6 +1179,7 @@ export class CatalogueService {
         if (b.cost !== undefined) set.cost = b.cost;
         if (b.weightGrams !== undefined) set.weightGrams = b.weightGrams;
         if (b.position !== undefined) set.position = b.position;
+        fields = variantChanges(v, set);
         let row = v;
         if (Object.keys(set).length > 0) {
           const [updated] = await tx
@@ -1099,20 +1200,22 @@ export class CatalogueService {
       mapUniqueError(err);
     }
     await this.emitProductById(tenantId, updated.productId);
+    if (parent) await this.variantChanged(tenantId, parent, fields, scope);
     return updated;
   }
 
   /** Soft-deletes a variant; the last one can't go (delete the product instead). The default moves on if needed. */
   async deleteVariant(tenantId: string, id: string, scope?: ProductScope): Promise<void> {
-    const productId = await this.db.transaction(async (tx) => {
+    const product = await this.db.transaction(async (tx) => {
       const found = await this.variantWithProduct(tenantId, id, tx, scope);
       if (!found) throw notFound("Variant");
       const siblings = (await this.variantsOf(tenantId, [found.p.id], tx)).get(found.p.id) ?? [];
       if (siblings.length <= 1) throw conflict("A product needs at least one variant; delete the product instead");
       await this.softDeleteVariant(tx, tenantId, found.v, siblings);
-      return found.p.id;
+      return found.p;
     });
-    await this.emitProductById(tenantId, productId);
+    await this.emitProductById(tenantId, product.id);
+    await this.variantChanged(tenantId, product, ["variants"], scope);
   }
 
   private async softDeleteVariant(tx: DbOrTx, tenantId: string, v: VariantRow, siblings: VariantRow[]) {
@@ -1131,9 +1234,11 @@ export class CatalogueService {
   async generateVariants(tenantId: string, productId: string, input: GenerateVariantsInput, scope?: ProductScope): Promise<Product> {
     const b = generateVariantsSchema.parse(input);
     let generated: Product;
+    let parent: ProductRow | undefined;
     try {
       generated = await this.db.transaction(async (tx) => {
         const product = await this.productRow(tenantId, productId, tx, scope);
+        parent = product;
         const existing = (await this.variantsOf(tenantId, [productId], tx)).get(productId) ?? [];
         const plan = planVariants(
           existing.map((v) => ({ id: v.id, optionValues: v.optionValues ?? {} })),
@@ -1178,6 +1283,7 @@ export class CatalogueService {
       mapUniqueError(err);
     }
     await this.emitProduct(tenantId, "product.updated", generated);
+    if (parent) await this.variantChanged(tenantId, parent, ["variants"], scope);
     return generated;
   }
 
@@ -2030,6 +2136,42 @@ export class CatalogueService {
     if (!uuid.safeParse(vendorId).success) return 0;
     const [counted] = await this.db.select({ total: count() }).from(catalogProducts).where(this.vendorWhere(tenantId, vendorId, opts));
     return counted?.total ?? 0;
+  }
+
+  /**
+   * Live variants of a seller's products (marketplace seller stock), optionally only these products or variants.
+   * Other sellers' and the shop's own variants are left out, so callers can use it as an ownership check.
+   */
+  async vendorVariants(
+    tenantId: string,
+    vendorId: string,
+    opts: { productIds?: string[]; variantIds?: string[] } = {},
+  ): Promise<VendorVariantItem[]> {
+    const ok = (l: string[] | undefined) => [...new Set(l ?? [])].filter((id) => uuid.safeParse(id).success).slice(0, 500);
+    if (!uuid.safeParse(vendorId).success) return [];
+    const productIds = ok(opts.productIds);
+    const variantIds = ok(opts.variantIds);
+    if ((opts.productIds && !productIds.length) || (opts.variantIds && !variantIds.length)) return [];
+    const rows = await this.variantJoin()
+      .where(
+        this.live(
+          tenantId,
+          eq(catalogProducts.vendorId, vendorId),
+          productIds.length ? inArray(catalogProducts.id, productIds) : undefined,
+          variantIds.length ? inArray(catalogVariants.id, variantIds) : undefined,
+        ),
+      )
+      .orderBy(asc(catalogProducts.name), asc(catalogVariants.position), asc(catalogVariants.id))
+      .limit(1000);
+    return rows.map((r) => ({
+      variantId: r.v.id,
+      productId: r.p.id,
+      productName: r.p.name,
+      title: r.v.title,
+      sku: r.v.sku,
+      unit: r.p.unit,
+      status: r.p.status,
+    }));
   }
 
   /**

@@ -22,6 +22,23 @@ export interface PlansDeps {
   defaultPlanId?: string | null;
   /** Entitlements cache TTL, default 60s. */
   cacheTtlMs?: number;
+  /**
+   * Lifetime keys whose usage is the count of real rows elsewhere (e.g. `staff` = active non-owner memberships).
+   * For these the counter is only a reservation ledger: usage and limit checks use the larger of the counter and the
+   * real count, and `reconcileUsage` resets the counter to the real count. Rows created outside `consume` (seeds,
+   * imports, direct membership routes) are counted that way.
+   */
+  usageSources?: Record<string, UsageSource>;
+  /** A counter touched within this window may hold an in-flight reservation; reconcile leaves it alone. Default 60 s. */
+  reconcileSettleMs?: number;
+}
+
+/** The real usage of a lifetime key. */
+export interface UsageSource {
+  /** Current usage of one tenant. */
+  count(tenantId: string): Promise<number>;
+  /** Usage of every tenant that has any (absent tenants count as 0); used by `reconcileUsage()` without a tenant. */
+  countAll(): Promise<Map<string, number>>;
 }
 
 /** A module id ("invoices") or a feature key ("invoices.credit-book"). */
@@ -79,16 +96,42 @@ interface CacheEntry {
  */
 export function consumeStatement(
   db: Db,
-  args: { tenantId: string; key: string; period: string; amount: number; limit: number },
+  args: {
+    tenantId: string;
+    key: string;
+    period: string;
+    amount: number;
+    limit: number;
+    /** The real usage (keys with a UsageSource): the counter never counts up from below it. */
+    floor?: number;
+  },
 ) {
-  const current = sql`${sql.identifier("usage_counters")}.${sql.identifier("value")}`;
+  const stored = sql`${sql.identifier("usage_counters")}.${sql.identifier("value")}`;
+  const current = args.floor === undefined ? stored : sql`greatest(${stored}, ${args.floor})`;
   return db
     .insert(usageCounters)
-    .values({ tenantId: args.tenantId, key: args.key, period: args.period, value: args.amount })
+    .values({ tenantId: args.tenantId, key: args.key, period: args.period, value: (args.floor ?? 0) + args.amount })
     .onConflictDoUpdate({
       target: [usageCounters.tenantId, usageCounters.key, usageCounters.period],
       set: { value: sql`${current} + ${args.amount}`, updatedAt: sql`now()` },
       ...(isUnlimited(args.limit) ? {} : { setWhere: sql`${current} + ${args.amount} <= ${args.limit}` }),
+    })
+    .returning({ value: usageCounters.value });
+}
+
+/**
+ * Sets a lifetime counter to the real usage, unless it already matches or was written within `settleMs` (it may hold
+ * a reservation whose row isn't inserted yet). Idempotent. Returns a row only when it wrote something.
+ */
+export function reconcileStatement(db: Db, args: { tenantId: string; key: string; value: number; settleMs: number }) {
+  const t = sql.identifier("usage_counters");
+  return db
+    .insert(usageCounters)
+    .values({ tenantId: args.tenantId, key: args.key, period: LIFETIME, value: args.value })
+    .onConflictDoUpdate({
+      target: [usageCounters.tenantId, usageCounters.key, usageCounters.period],
+      set: { value: args.value, updatedAt: sql`now()` },
+      setWhere: sql`${t}.${sql.identifier("value")} <> ${args.value} and ${t}.${sql.identifier("updated_at")} < now() - make_interval(secs => ${args.settleMs / 1000})`,
     })
     .returning({ value: usageCounters.value });
 }
@@ -99,9 +142,16 @@ export class PlansService {
   private readonly defaultPlanId: string | null;
   private readonly ttl: number;
   private readonly cache = new Map<string, CacheEntry>();
+  private readonly sources: Record<string, UsageSource>;
+  private readonly settleMs: number;
 
   constructor(deps: PlansDeps) {
     this.db = deps.db;
+    this.sources = deps.usageSources ?? {};
+    for (const key of Object.keys(this.sources)) {
+      if (periodFor(key) !== LIFETIME) throw new Error(`plans: usage source "${key}" must be a lifetime key`);
+    }
+    this.settleMs = deps.reconcileSettleMs ?? 60_000;
     this.core = deps.corePlanModules ?? CORE_MODULES;
     this.defaultPlanId = deps.defaultPlanId === undefined ? "free" : deps.defaultPlanId;
     this.ttl = deps.cacheTtlMs ?? 60_000;
@@ -201,13 +251,19 @@ export class PlansService {
 
   // ---------------------------------------------------------------- usage
 
+  /** Current usage; for keys with a usage source, the larger of the counter and the real count. */
   async usage(tenant: TenantRef, key: string, now = new Date()): Promise<number> {
+    const [stored, real] = await Promise.all([this.storedUsage(tenant.id, key, now), this.sources[key]?.count(tenant.id)]);
+    return Math.max(stored, real ?? 0);
+  }
+
+  private async storedUsage(tenantId: string, key: string, now: Date): Promise<number> {
     const [row] = await this.db
       .select({ value: usageCounters.value })
       .from(usageCounters)
       .where(
         and(
-          eq(usageCounters.tenantId, tenant.id),
+          eq(usageCounters.tenantId, tenantId),
           eq(usageCounters.key, key),
           eq(usageCounters.period, periodFor(key, now)),
         ),
@@ -230,9 +286,47 @@ export class PlansService {
     };
     if (!isUnlimited(limit) && amount > limit) throw await exceeded();
 
-    const rows = await consumeStatement(this.db, { tenantId: tenant.id, key, period: periodFor(key, now), amount, limit });
+    const source = this.sources[key];
+    const attempt = async () => {
+      const floor = source ? await source.count(tenant.id) : undefined;
+      // The insert branch of the upsert has no limit check, so a real count already at the limit stops here.
+      if (!isUnlimited(limit) && (floor ?? 0) + amount > limit) return [];
+      return consumeStatement(this.db, { tenantId: tenant.id, key, period: periodFor(key, now), amount, limit, floor });
+    };
+    let rows = await attempt();
+    // The counter may be stale-high (rows removed without `release`): settle it to the real count and try once more.
+    if (rows.length === 0 && source && (await this.reconcileUsage(key, tenant.id)).fixed > 0) rows = await attempt();
     if (rows.length === 0) throw await exceeded();
     return rows[0]!.value;
+  }
+
+  /**
+   * Resets the counters of keys with a usage source to the real count, for one tenant or for every tenant (startup and
+   * the `plans.reconcile-usage` job). Idempotent; counters written in the last `reconcileSettleMs` are left alone.
+   */
+  async reconcileUsage(key?: string, tenantId?: string): Promise<{ checked: number; fixed: number }> {
+    const keys = key ? (this.sources[key] ? [key] : []) : Object.keys(this.sources);
+    let checked = 0;
+    let fixed = 0;
+    for (const k of keys) {
+      const source = this.sources[k]!;
+      let real: Map<string, number>;
+      if (tenantId) real = new Map([[tenantId, await source.count(tenantId)]]);
+      else {
+        real = await source.countAll();
+        // Counters of tenants that have no rows any more go back to 0.
+        const stored = await this.db
+          .select({ tenantId: usageCounters.tenantId })
+          .from(usageCounters)
+          .where(and(eq(usageCounters.key, k), eq(usageCounters.period, LIFETIME)));
+        for (const r of stored) if (!real.has(r.tenantId)) real.set(r.tenantId, 0);
+      }
+      for (const [t, value] of real) {
+        checked++;
+        fixed += (await reconcileStatement(this.db, { tenantId: t, key: k, value, settleMs: this.settleMs })).length;
+      }
+    }
+    return { checked, fixed };
   }
 
   /** Gives back usage (e.g. a staff member was removed). Never goes below 0. */
@@ -266,9 +360,15 @@ export class PlansService {
           inArray(usageCounters.period, [LIFETIME, periodFor("x_per_month", now)]),
         ),
       );
+    const real = new Map(
+      await Promise.all(
+        keys.filter((k) => this.sources[k]).map(async (k) => [k, await this.sources[k]!.count(tenant.id)] as const),
+      ),
+    );
     return keys.map((key) => {
       const period = periodFor(key, now);
-      const used = rows.find((r) => r.key === key && r.period === period)?.value ?? 0;
+      const stored = rows.find((r) => r.key === key && r.period === period)?.value ?? 0;
+      const used = Math.max(stored, real.get(key) ?? 0);
       const limit = limitIn(ent, key);
       return { key, period, limit, used, remaining: isUnlimited(limit) ? null : Math.max(limit - used, 0) };
     });

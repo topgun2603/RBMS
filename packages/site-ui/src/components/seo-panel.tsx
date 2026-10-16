@@ -78,7 +78,7 @@ export function SeoPanel({
   return (
     <Section id={`${idPrefix}-seo`} icon={SearchIcon} tone="text-info-ink" title={t("site.seo.title")} description={t("site.seo.subtitle")}>
       <figure className="grid gap-1 rounded-xl border bg-background p-4" aria-label={t("site.seo.previewLabel")}>
-        <figcaption className="mb-1 text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">{t("site.seo.preview")}</figcaption>
+        <figcaption className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("site.seo.preview")}</figcaption>
         <p className="truncate text-xs text-[#4d5156] dark:text-[#bdc1c6]">{host}</p>
         <p className="text-lg leading-snug text-[#1a0dab] dark:text-[#8ab4f8]">{cut(title || t("site.seo.untitled"), SNIPPET_TITLE)}</p>
         <p className={cn("text-sm text-[#4d5156] dark:text-[#bdc1c6]", !description && "italic")}>

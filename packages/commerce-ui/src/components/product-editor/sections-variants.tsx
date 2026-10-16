@@ -213,7 +213,7 @@ export function VariantsSection({
                 {busy ? <Loader2Icon className="animate-spin" /> : <WandSparklesIcon />}
                 {t("commerce.variants.generate")}
                 {combos.length > 0 && (
-                  <span className="rounded-full bg-primary-foreground/20 px-1.5 text-[0.6875rem] tabular-nums">
+                  <span className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
                     {newCount > 0 ? t("commerce.variants.newCount", { count: newCount }) : combos.length}
                   </span>
                 )}
@@ -331,7 +331,7 @@ export function VariantsSection({
 function Cell({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={cn("grid content-start gap-1", className)}>
-      <span className="text-[0.6875rem] font-medium text-muted-foreground lg:sr-only">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground lg:sr-only">{label}</span>
       {children}
     </div>
   );

@@ -57,7 +57,7 @@ export function EInvoiceTimeline({ events }: { events: TimelineEvent[] }) {
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-medium">{title(e)}</p>
                   {s && <p className={cn("text-xs break-words", e.kind === "failed" ? "text-danger-ink" : "text-muted-foreground")}>{s}</p>}
-                  <time dateTime={e.at} className="text-[0.6875rem] text-muted-foreground tabular-nums">
+                  <time dateTime={e.at} className="text-xs text-muted-foreground tabular-nums">
                     {formatDate(e.at, { dateStyle: "medium", timeStyle: "short" })}
                   </time>
                 </div>

@@ -1,4 +1,4 @@
-import { computeInvoice, normalizeStateCode } from "@srirealtime/gst";
+import { computeInvoice, normalizeStateCode, taxableOfInclusive } from "@srirealtime/gst";
 import type { BillingInterval, SubscriptionRow } from "./schema";
 
 /** Pure subscription rules (no database). Money is integer paise; dates are Date objects (UTC instants). */
@@ -12,6 +12,9 @@ export const PLATFORM_SAC = "998314";
 /** Trial reminders N days before the end; renewal reminder for yearly plans. */
 export const TRIAL_REMINDER_DAYS = [3, 1] as const;
 export const RENEWAL_REMINDER_DAYS = 3;
+/** An upgrade waiting for its payment is dropped after this long. */
+export const PENDING_UPGRADE_HOURS = 48;
+const IST_OFFSET_MS = 330 * 60_000;
 
 export const addDays = (d: Date, n: number) => new Date(d.getTime() + n * DAY_MS);
 
@@ -114,6 +117,155 @@ export function gstSplit(chargedPaise: number, sellerState: string, buyerState: 
   return { subtotalPaise: t.taxable, cgstPaise: t.cgst, sgstPaise: t.sgst, igstPaise: t.igst, totalPaise: t.total, interState: seller !== pos };
 }
 
+// ---------------------------------------------------------------- proration
+
+/** Days since the epoch on the IST calendar (a date's IST day number). */
+export const istDayNumber = (d: Date) => Math.floor((d.getTime() + IST_OFFSET_MS) / DAY_MS);
+
+export interface ProrationCredit {
+  /** Taxable paise credited for the unused part of the period. */
+  creditPaise: number;
+  unusedDays: number;
+  periodDays: number;
+}
+
+/**
+ * Credit for the unused part of a paid period: unused IST days / period IST days x the taxable value paid, to the
+ * paisa (half up). Today counts as unused (the new plan is charged from today), so an upgrade on the day a period
+ * started credits all of it; the period's end day is the next period's first day and is not counted.
+ */
+export function prorationCredit(input: { periodStart: Date; periodEnd: Date; now: Date; paidTaxablePaise: number }): ProrationCredit {
+  const start = istDayNumber(input.periodStart);
+  const end = istDayNumber(input.periodEnd);
+  const periodDays = Math.max(1, end - start);
+  const unusedDays = Math.min(periodDays, Math.max(0, end - istDayNumber(input.now)));
+  const paid = Math.max(0, Math.round(input.paidTaxablePaise));
+  const creditPaise = unusedDays === 0 || paid === 0 ? 0 : Math.round((paid * unusedDays) / periodDays);
+  return { creditPaise, unusedDays, periodDays };
+}
+
+export interface UpgradeQuote {
+  /** New plan price for its first period (taxable). */
+  planPricePaise: number;
+  /** All the proration credit (taxable). */
+  creditPaise: number;
+  /** The part of the credit taken off the first charge. */
+  appliedCreditPaise: number;
+  /** What the first charge can't absorb: kept as a balance for the next invoice. */
+  carryoverPaise: number;
+  /** Taxable value charged now (plan price - applied credit). */
+  taxablePaise: number;
+  /** GST-inclusive amount due now, with its CGST + SGST or IGST split. */
+  chargeTodayPaise: number;
+  gst: GstSplit;
+}
+
+/**
+ * What an upgrade charges now. The credit reduces the taxable value, so GST is on the net amount (CGST + SGST inside
+ * the platform's state, else IGST). A provider that can't take an amount off the first charge (`upfront: false`)
+ * charges the full price and the whole credit becomes a balance.
+ */
+export function upgradeQuote(input: { planPricePaise: number; creditPaise: number; sellerState: string; buyerState: string | null | undefined; upfront: boolean }): UpgradeQuote {
+  const price = Math.max(0, input.planPricePaise);
+  const credit = Math.max(0, input.creditPaise);
+  const applied = input.upfront ? Math.min(credit, price) : 0;
+  const taxable = price - applied;
+  const charge = chargeAmount(taxable);
+  return {
+    planPricePaise: price,
+    creditPaise: credit,
+    appliedCreditPaise: applied,
+    carryoverPaise: credit - applied,
+    taxablePaise: taxable,
+    chargeTodayPaise: charge,
+    gst: gstSplit(charge, input.sellerState, input.buyerState),
+  };
+}
+
+export interface InvoiceAmounts {
+  split: GstSplit;
+  /** Credit line (taxable paise). */
+  creditPaise: number;
+  /** Of `creditPaise`, how much came from the subscription's balance. */
+  balanceUsedPaise: number;
+  /** Provider charge above the invoice total (balance credit the provider couldn't take off). */
+  refundDuePaise: number;
+}
+
+/**
+ * Amounts of a platform invoice for a provider charge (GST included). `creditInChargePaise` is a credit the provider
+ * already took off the charge (an upgrade's upfront amount): the charge is the net, the credit only shows as a line.
+ * `balancePaise` is credit still owed: it comes off this invoice's taxable value (never below zero), GST is on the
+ * net, and what the provider charged above the new total is a refund due.
+ */
+export function invoiceAmounts(input: { chargedPaise: number; creditInChargePaise?: number; balancePaise?: number; sellerState: string; buyerState: string | null | undefined }): InvoiceAmounts {
+  const inCharge = Math.max(0, input.creditInChargePaise ?? 0);
+  const balance = Math.max(0, input.balancePaise ?? 0);
+  if (balance === 0) {
+    return { split: gstSplit(input.chargedPaise, input.sellerState, input.buyerState), creditPaise: inCharge, balanceUsedPaise: 0, refundDuePaise: 0 };
+  }
+  const taxable = taxableOfInclusive(input.chargedPaise, PLATFORM_GST_RATE);
+  const used = Math.min(balance, taxable);
+  const total = chargeAmount(taxable - used);
+  return {
+    split: gstSplit(total, input.sellerState, input.buyerState),
+    creditPaise: inCharge + used,
+    balanceUsedPaise: used,
+    refundDuePaise: input.chargedPaise - total,
+  };
+}
+
+export interface InvoiceLine {
+  kind: "plan" | "credit";
+  description: string;
+  taxablePaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
+  igstPaise: number;
+  totalPaise: number;
+}
+
+/**
+ * The lines of a platform invoice: the plan at its full taxable value and, when there is a credit, a negative credit
+ * line. The plan line's GST is 18% of its value (split like the invoice: IGST when the place of supply is another
+ * state); the credit line carries the difference, so the lines add up to the stored totals exactly.
+ */
+export function platformInvoiceLines(inv: {
+  subtotalPaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
+  igstPaise: number;
+  totalPaise: number;
+  creditPaise?: number | null;
+  creditLabel?: string | null;
+  placeOfSupply?: string | null;
+  sellerState?: string | null;
+  description: string;
+}): InvoiceLine[] {
+  const credit = Math.max(0, inv.creditPaise ?? 0);
+  const totals = { taxablePaise: inv.subtotalPaise, cgstPaise: inv.cgstPaise, sgstPaise: inv.sgstPaise, igstPaise: inv.igstPaise, totalPaise: inv.totalPaise };
+  if (!credit) return [{ kind: "plan", description: inv.description, ...totals }];
+  const gross = inv.subtotalPaise + credit;
+  const tax = chargeAmount(gross) - gross;
+  const inter =
+    inv.igstPaise > 0 ||
+    (inv.cgstPaise === 0 && inv.sgstPaise === 0 && !!inv.placeOfSupply && !!inv.sellerState && normalizeStateCode(inv.placeOfSupply) !== normalizeStateCode(inv.sellerState));
+  const cgst = inter ? 0 : Math.round(tax / 2);
+  const sgst = inter ? 0 : tax - cgst;
+  const igst = inter ? tax : 0;
+  const plan: InvoiceLine = { kind: "plan", description: inv.description, taxablePaise: gross, cgstPaise: cgst, sgstPaise: sgst, igstPaise: igst, totalPaise: gross + tax };
+  const creditLine: InvoiceLine = {
+    kind: "credit",
+    description: inv.creditLabel || "Credit for the unused part of the previous plan",
+    taxablePaise: -credit,
+    cgstPaise: inv.cgstPaise - cgst,
+    sgstPaise: inv.sgstPaise - sgst,
+    igstPaise: inv.igstPaise - igst,
+    totalPaise: inv.totalPaise - plan.totalPaise,
+  };
+  return [plan, creditLine];
+}
+
 // ---------------------------------------------------------------- lifecycle
 
 export type LifecycleAction =
@@ -122,6 +274,7 @@ export type LifecycleAction =
   | { kind: "grace_expired" }
   | { kind: "period_end_cancel" }
   | { kind: "apply_pending" }
+  | { kind: "pending_expired" }
   | { kind: "comp_ended" }
   | { kind: "overdue" };
 
@@ -137,7 +290,17 @@ type LifecycleRow = Pick<
   | "graceEndsAt"
   | "pendingPlanId"
   | "reminders"
->;
+> &
+  Partial<Pick<SubscriptionRow, "pendingReason" | "pendingSince">>;
+
+/** An upgrade waiting for its payment (not a scheduled downgrade). */
+export const isAwaitingPayment = (sub: Partial<Pick<SubscriptionRow, "pendingReason" | "pendingPlanId">>) => !!sub.pendingPlanId && sub.pendingReason === "awaiting_payment";
+
+/** When a pending upgrade lapses unpaid (null when there is none). */
+export function pendingExpiresAt(sub: Partial<Pick<SubscriptionRow, "pendingReason" | "pendingPlanId" | "pendingSince">>): Date | null {
+  if (!isAwaitingPayment(sub) || !sub.pendingSince) return null;
+  return new Date(sub.pendingSince.getTime() + PENDING_UPGRADE_HOURS * 3_600_000);
+}
 
 /**
  * What the daily job should do for one subscription at `now` (at most one state change; reminders only when nothing
@@ -162,21 +325,27 @@ export function lifecycleAction(sub: LifecycleRow, now: Date, opts: { freePlanId
       }
       return null;
     }
-    case "past_due":
+    case "past_due": {
+      const lapse = pendingExpiresAt(sub);
+      if (lapse && t >= lapse.getTime()) return { kind: "pending_expired" };
       if (sub.graceEndsAt && t >= sub.graceEndsAt.getTime()) return { kind: "grace_expired" };
       return null;
+    }
     case "active": {
+      // An unpaid upgrade lapses first; the current plan carries on as it was.
+      const lapse = pendingExpiresAt(sub);
+      if (lapse && t >= lapse.getTime()) return { kind: "pending_expired" };
       const end = sub.currentPeriodEnd;
       if (!end) return null;
       if (t >= end.getTime()) {
         if (sub.cancelAtPeriodEnd) return { kind: "period_end_cancel" };
-        if (sub.pendingPlanId) return { kind: "apply_pending" };
+        if (sub.pendingPlanId && !isAwaitingPayment(sub)) return { kind: "apply_pending" };
         if (sub.provider === "manual" && sub.planId !== free) return { kind: "comp_ended" };
         // A paid period ended a day ago without a renewal charge: payment overdue.
         if ((sub.provider === "razorpay" || sub.provider === "mock") && t >= end.getTime() + DAY_MS) return { kind: "overdue" };
         return null;
       }
-      if (sub.interval === "yearly" && (sub.provider === "razorpay" || sub.provider === "mock") && !sub.cancelAtPeriodEnd && !sub.pendingPlanId) {
+      if (sub.interval === "yearly" && (sub.provider === "razorpay" || sub.provider === "mock") && !sub.cancelAtPeriodEnd && (!sub.pendingPlanId || isAwaitingPayment(sub))) {
         const left = (end.getTime() - t) / DAY_MS;
         const key = `renewal:${end.toISOString()}`;
         if (left <= RENEWAL_REMINDER_DAYS && !sent.has(key)) return { kind: "remind", template: "subscription.renewal_reminder", key, days: RENEWAL_REMINDER_DAYS };

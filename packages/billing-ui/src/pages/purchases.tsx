@@ -170,7 +170,7 @@ function Purchases() {
 function Summary({ label, value, title, tone }: { label: string; value: string; title?: string; tone?: string }) {
   return (
     <div className="min-w-0 text-center sm:text-left" title={title}>
-      <p className="truncate text-[0.6875rem] text-muted-foreground sm:text-meta">{label}</p>
+      <p className="truncate text-xs text-muted-foreground sm:text-meta">{label}</p>
       <p className={cn("truncate font-heading text-lg font-bold tabular-nums", tone)}>{value}</p>
       {title && <span className="sr-only">{title}</span>}
     </div>

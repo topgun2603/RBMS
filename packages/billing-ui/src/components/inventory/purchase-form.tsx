@@ -304,7 +304,7 @@ export function PurchaseForm() {
             <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-success/14 px-3 py-2.5">
               <div>
                 <p className="text-sm font-medium text-success-ink">{t("billing.purchases.itc")}</p>
-                <p className="text-[0.6875rem] text-muted-foreground">{t("billing.purchaseForm.itcHint")}</p>
+                <p className="text-meta text-muted-foreground">{t("billing.purchaseForm.itcHint")}</p>
               </div>
               <AnimatedNumber value={itc} format={(n) => money(Math.round(n))} className="font-semibold text-success-ink tabular-nums" />
             </div>
@@ -334,7 +334,7 @@ export function PurchaseForm() {
       >
         <div className="mx-auto flex max-w-3xl items-center gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[0.6875rem] text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               {t("billing.totals.grandTotal")} · {t("billing.purchases.itcShort")} {money(itc)}
             </p>
             <AnimatedNumber value={totals.total} format={(n) => money(Math.round(n))} className="block truncate font-heading text-lg font-bold tabular-nums" />
@@ -376,7 +376,7 @@ function Row({ label, value }: { label: string; value: string }) {
 function FieldError({ msg }: { msg?: string }) {
   const { t } = useI18n();
   if (!msg) return null;
-  return <p className="text-[0.6875rem] text-destructive">{t(msg)}</p>;
+  return <p className="text-meta text-destructive">{t(msg)}</p>;
 }
 
 function LineRow({
@@ -441,7 +441,7 @@ function LineRow({
           />
           <FieldError msg={errors.description} />
           {!!line.description.trim() && (
-            <p className={cn("mt-1 flex items-center gap-1 text-[0.6875rem]", line.itemId ? "text-success-ink" : "text-muted-foreground")}>
+            <p className={cn("mt-1 flex items-center gap-1 text-xs", line.itemId ? "text-success-ink" : "text-muted-foreground")}>
               {line.itemId ? <Link2Icon className="size-3" aria-hidden /> : <UnlinkIcon className="size-3" aria-hidden />}
               {line.itemId ? t("billing.purchaseForm.linked") : t("billing.purchaseForm.notLinked")}
             </p>

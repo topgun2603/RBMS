@@ -8,6 +8,10 @@ export const MOVEMENT_REASONS = [
   "adjustment",
   "sale",
   "sale_cancel",
+  /** Goods back from a credit note (sales return). */
+  "sale_return",
+  /** A cancelled credit note's goods taken out again. */
+  "sale_return_cancel",
   "purchase",
   "purchase_cancel",
   "transfer_out",
@@ -16,7 +20,7 @@ export const MOVEMENT_REASONS = [
 export type MovementReason = (typeof MOVEMENT_REASONS)[number];
 
 /** Known movement ref types; reservations may commit with their own ref type (e.g. "order"). */
-export const REF_TYPES = ["invoice", "purchase", "order", "transfer"] as const;
+export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note"] as const;
 export type RefType = (typeof REF_TYPES)[number] | (string & {});
 
 export const LOCATION_TYPES = ["store", "warehouse"] as const;

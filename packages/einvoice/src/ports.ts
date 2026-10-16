@@ -1,6 +1,6 @@
 export type { FeatureGatePort } from "@srirealtime/core";
 
-/** Document types of the NIC schema. Only tax invoices (`INV`) come from the invoices module today. */
+/** Document types of the NIC schema: tax invoices (`INV`) and credit notes (`CRN`) come from the invoices module. */
 export const DOC_TYPES = ["INV", "CRN", "DBN"] as const;
 export type DocType = (typeof DOC_TYPES)[number];
 
@@ -73,8 +73,8 @@ export interface EInvoiceSource {
   };
   /** Paise of invoice-level other charges (freight etc.) already inside `totals.total`. Default 0. */
   otherCharges?: number;
-  /** For credit / debit notes: the original invoice. */
-  precedingDoc?: { number: string; date: string } | null;
+  /** For credit / debit notes: the original invoice (its grand total decides CDNUR B2CL vs B2CS). */
+  precedingDoc?: { number: string; date: string; total?: number } | null;
 }
 
 /**

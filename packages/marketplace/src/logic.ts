@@ -500,3 +500,75 @@ export function pickVendor(memberships: readonly VendorMembership[], header?: st
 /** Effective commission for a seller: their own rate, or the shop default. */
 export const effectiveCommissionBps = (vendorBps: number | null | undefined, defaultBps: number) =>
   vendorBps === null || vendorBps === undefined ? defaultBps : vendorBps;
+
+// ------------------------------------------------------------------ product review
+
+/** A seller product's review: waiting, approved (live), rejected (with a reason) or withdrawn by the seller. */
+export const PRODUCT_REVIEW_STATUSES = ["pending", "approved", "rejected", "withdrawn"] as const;
+export type ProductReviewStatus = (typeof PRODUCT_REVIEW_STATUSES)[number];
+
+/** Catalogue listing events (catalogue `planListing`; "changed" = a live product's customer-facing content changed). */
+export type ListingEventType = "submitted" | "published" | "withdrawn" | "changed";
+
+/**
+ * The review row after a catalogue listing event (null = leave it as is, or create nothing when there is no row):
+ * submitted → pending (from anything: a resubmission clears the rejection); published → approved (staff publishing,
+ * or a seller when the shop auto-approves); withdrawn → only a pending review becomes withdrawn.
+ */
+export function reviewAfterEvent(current: ProductReviewStatus | null, event: ListingEventType): ProductReviewStatus | null {
+  if (event === "submitted") return "pending";
+  // A live product edited after approval (or live from before reviews existed) goes back to the queue, staying live.
+  if (event === "changed") return current === null || current === "approved" || current === "pending" ? "pending" : null;
+  if (event === "published") return current === "approved" ? null : "approved";
+  return current === "pending" ? "withdrawn" : null;
+}
+
+/** Staff decisions are only for reviews that are waiting. */
+export const canDecideReview = (current: ProductReviewStatus): boolean => current === "pending";
+
+// ------------------------------------------------------------------ seller fulfilment
+
+export type FulfilmentAction = "packed" | "shipped";
+
+export interface FulfilmentState {
+  status: OrderStatus;
+  packedAt: Date | null;
+  shippedAt: Date | null;
+}
+
+export type FulfilmentPlan =
+  | { ok: true; set: { packedAt: Date; shippedAt: Date | null } }
+  | { ok: false; code: "order_closed" | "already_done" | "not_confirmed"; message: string };
+
+const FLOW: readonly OrderStatus[] = ["placed", "confirmed", "packed", "shipped", "delivered"];
+const flowIndex = (s: OrderStatus) => FLOW.indexOf(s);
+
+/**
+ * A seller marking their part of an order packed or shipped (shipping packs too). Only once the shop has confirmed the
+ * order, and only while it is still open for that step: cancelled/returned/delivered orders, or parts already at that step (by the seller or because the
+ * shop moved the whole order), are refused.
+ */
+export function planFulfilment(vo: FulfilmentState, action: FulfilmentAction, now: Date): FulfilmentPlan {
+  if (vo.status === "cancelled" || vo.status === "returned" || vo.status === "delivered") {
+    return { ok: false, code: "order_closed", message: `This order is ${vo.status}` };
+  }
+  // Sellers never confirm orders: the shop confirms first (placed → confirmed), then the seller packs and ships.
+  if (vo.status === "placed") return { ok: false, code: "not_confirmed", message: "The shop hasn't confirmed this order yet" };
+  const reached = action === "packed" ? vo.packedAt !== null || flowIndex(vo.status) >= flowIndex("packed") : vo.shippedAt !== null || vo.status === "shipped";
+  if (reached) return { ok: false, code: "already_done", message: `This order is already ${action}` };
+  return { ok: true, set: { packedAt: vo.packedAt ?? now, shippedAt: action === "shipped" ? now : vo.shippedAt } };
+}
+
+/**
+ * Where the whole order can move after a seller's step: only when every line belongs to a seller (no shop lines) and
+ * every seller's part has reached the step; never backwards. Null = the order stays (the shop moves it).
+ */
+export function orderAdvanceTarget(
+  orderStatus: OrderStatus,
+  parts: readonly Pick<FulfilmentState, "packedAt" | "shippedAt">[],
+  hasShopLines: boolean,
+): "packed" | "shipped" | null {
+  if (hasShopLines || parts.length === 0 || flowIndex(orderStatus) < 0) return null;
+  const target = parts.every((p) => p.shippedAt) ? "shipped" : parts.every((p) => p.packedAt || p.shippedAt) ? "packed" : null;
+  return target && flowIndex(orderStatus) < flowIndex(target) ? target : null;
+}

@@ -280,8 +280,8 @@ describe("routes", () => {
     expect(csv.statusCode).toBe(200);
     expect(csv.headers["content-type"]).toBe("text/csv; charset=utf-8");
     expect(csv.headers["content-disposition"]).toBe('attachment; filename="sales-register-2026-10-01-2026-10-31.csv"');
-    expect(csv.body.startsWith("﻿Date,Invoice,Customer")).toBe(true);
-    expect(csv.body).toContain('2026-10-01,INV/26-27/0001,"Ravi, Sons",,33,100.00,2.50,2.50,0.00,105.00,0.00,issued\r\n');
+    expect(csv.body.startsWith("﻿Date,Type,Number,Against,Customer")).toBe(true);
+    expect(csv.body).toContain('2026-10-01,Invoice,INV/26-27/0001,,"Ravi, Sons",,33,100.00,2.50,2.50,0.00,105.00,0.00,issued\r\n');
 
     const gst = await app.inject({ url: "/v1/invoices/reports/gst-summary?from=2026-10-01&to=2026-10-31&format=csv&section=b2b" });
     expect(gst.headers["content-disposition"]).toContain("gst-b2b-2026-10-01-2026-10-31.csv");
@@ -334,12 +334,15 @@ describe("createInvoices", () => {
       [
         "billingCustomers",
         "billingItems",
+        "creditNotes",
+        "creditNoteSeries",
         "customerReceipts",
         "invoiceMessages",
         "invoicePayments",
         "invoiceReminders",
         "invoiceSeries",
         "invoices",
+        "tillSessions",
       ].sort(),
     );
     expect(service).toBeDefined();

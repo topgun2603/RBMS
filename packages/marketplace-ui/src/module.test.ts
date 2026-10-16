@@ -11,6 +11,7 @@ import {
   PAYOUT_ACCOUNT_STATUSES,
   PAYOUT_PROVIDERS,
   PAYOUT_STATUSES,
+  PRODUCT_REVIEW_STATUSES,
   SETTLEMENT_STATUSES,
   VENDOR_KYC_STATUSES,
   VENDOR_STATUSES,
@@ -84,6 +85,11 @@ describe("admin module", () => {
     expect(checkGate(settings, m, ctx({ roles: ["admin"], full: true })).ok).toBe(true);
   });
 
+  it("has a Products to review page and a Needs attention row, gated like the rest", () => {
+    expect(m.routes.find((r) => r.path === "reviews")).toMatchObject({ feature: "marketplace", permission: MARKETPLACE_MANAGE });
+    expect(m.widgets?.find((w) => w.id === "marketplace-reviews")).toMatchObject({ zone: "attention", feature: "marketplace", permission: MARKETPLACE_MANAGE });
+  });
+
   it("matches vendors/:id and the module root", () => {
     const app = { modules: [m] } as Parameters<typeof matchRoute>[0];
     const id = "0b6f5f36-0000-4000-8000-000000000000";
@@ -96,7 +102,7 @@ describe("admin module", () => {
     const app = createWebApp({ appId: "EC", tenant: { from: "hostname" }, modules: [marketplaceModule()] });
     const nav = buildNavModel(app, () => true, []);
     const hrefs = nav.sections.flatMap((s) => s.items.map((i) => i.href));
-    expect(hrefs).toEqual(["/marketplace/vendors", "/marketplace/payouts", "/marketplace/settings"]);
+    expect(hrefs).toEqual(["/marketplace/vendors", "/marketplace/reviews", "/marketplace/payouts", "/marketplace/settings"]);
   });
 });
 
@@ -166,6 +172,11 @@ describe("messages", () => {
       ["marketplace.settings.providerHint.", PAYOUT_PROVIDERS],
       ["marketplace.payouts.skip.", ["nothing_due", "below_minimum", "vendor_not_active", "kyc_not_verified", "no_payout_account", "account_not_supported"]],
       ["marketplace.products.status.", ["draft", "active", "archived"]],
+      ["marketplace.review.status.", PRODUCT_REVIEW_STATUSES],
+      ["marketplace.reviews.tab.", ["pending", "rejected", "approved"]],
+      ["marketplace.listing.", ["live", "live_review", "in_review", "changes", "draft", "archived"]],
+      ["marketplace.reviews.field.", ["name", "description", "images", "price", "variants", "gst"]],
+      ["marketplace.orders.own.", ["packed", "shipped"]],
       ["marketplace.role.", ["owner", "staff"]],
       ["marketplace.onboarding.state.", ["done", "waiting", "failed", "todo"]],
       ["marketplace.onboarding.approval.", VENDOR_STATUSES],

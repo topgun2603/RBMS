@@ -31,7 +31,10 @@ export interface UserDirectoryPort {
   findOrCreateByTarget(target: string): Promise<{ id: string }>;
 }
 
-/** Plan usage limits (wire to plans.service). Key "staff" counts active non-owner members added through this API. */
+/**
+ * Plan usage limits (wire to plans.service). Key "staff" is one seat per active non-owner member; plans checks it
+ * against the real membership count (tenancy `seatCounts`), so consume/release here are reservations around the add.
+ */
 export interface QuotaPort {
   consume(tenant: TenantRef, key: string, amount?: number): Promise<unknown>;
   release(tenant: TenantRef, key: string, amount?: number): Promise<void>;

@@ -49,9 +49,9 @@ export function OrderProgress({ order }: { order: Order }) {
             >
               {done && !isCurrent ? <CheckIcon className="size-4" /> : <Icon className="size-4" />}
             </span>
-            <span className={cn("text-[0.6875rem] leading-tight font-medium sm:text-xs", done ? "text-foreground" : "text-muted-foreground")}>{t(`orders.status.${s}`)}</span>
+            <span className={cn("text-xs leading-tight font-medium", done ? "text-foreground" : "text-muted-foreground")}>{t(`orders.status.${s}`)}</span>
             {d && done && (
-              <span className="hidden text-[0.6875rem] text-muted-foreground tabular-nums sm:block">{formatDate(d, { day: "numeric", month: "short" })}</span>
+              <span className="hidden text-xs text-muted-foreground tabular-nums sm:block">{formatDate(d, { day: "numeric", month: "short" })}</span>
             )}
           </li>
         );

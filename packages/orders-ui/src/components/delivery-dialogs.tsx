@@ -75,7 +75,7 @@ export function ZoneDialog({ open, onOpenChange, zone, nextSort }: { open: boole
           </DialogTitle>
           <DialogDescription>{t("orders.delivery.zoneHint")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <Field label={t("orders.delivery.zoneName")} htmlFor="z-name" error={error}>
             <Input id="z-name" autoFocus value={name} onChange={(e) => (setName(e.target.value), setError(null))} placeholder={t("orders.delivery.zoneNamePlaceholder")} />
           </Field>
@@ -225,7 +225,7 @@ export function RateDialog({ open, onOpenChange, zone, rate }: { open: boolean; 
           </DialogTitle>
           <DialogDescription>{t("orders.delivery.rateFor", { zone: zone?.name ?? "" })}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <Field label={t("orders.delivery.rateName")} htmlFor="r-name" error={errors.name} hint={t("orders.delivery.rateNameHint")}>
             <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} />
           </Field>

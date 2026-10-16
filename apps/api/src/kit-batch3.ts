@@ -7,7 +7,7 @@ import { createChat, MemoryNonceStore, MemoryPubSub, type ChatNotification } fro
 import { createDeveloper, createRouteCollector } from "@srirealtime/developer";
 import { createEInvoice, type EInvoiceSource, type PartySource } from "@srirealtime/einvoice";
 import type { createInventory } from "@srirealtime/inventory";
-import type { createInvoices, Invoice } from "@srirealtime/invoices";
+import type { createInvoices, CreditNote, Invoice } from "@srirealtime/invoices";
 import { createRedisNonceStore, createRedisPubSub, type JobsService } from "@srirealtime/jobs";
 import { createKyc, toVendorKycStatus } from "@srirealtime/kyc";
 import { createLoyalty, toIndianE164 } from "@srirealtime/loyalty";
@@ -69,6 +69,15 @@ export interface Batch3Deps {
 }
 
 const is404 = (e: unknown) => e instanceof AppError && e.status === 404;
+/** inventory's StockLevelRow → marketplace's StockLevel. */
+const stockLevel = (r: { itemId: string; qty: number; reserved: number; available: number; track: boolean; status: string }) => ({
+  itemId: r.itemId,
+  qty: r.qty,
+  reserved: r.reserved,
+  available: r.available,
+  track: r.track,
+  status: r.status,
+});
 const nullOn404 = (e: unknown): null => {
   if (is404(e)) return null;
   throw e;
@@ -130,6 +139,34 @@ export function createBatch3(d: Batch3Deps) {
       count: (tenantId, vendorId, opts) => d.catalogue.vendorProductCount(tenantId, vendorId, opts),
       list: (tenantId, vendorId, opts) => d.catalogue.vendorProducts(tenantId, vendorId, opts),
       productVendors: (tenantId, productIds) => d.catalogue.productVendors(tenantId, productIds),
+      variants: (tenantId, vendorId, opts) => d.catalogue.vendorVariants(tenantId, vendorId, opts),
+    },
+    // Approving a reviewed seller product: staff write, so the catalogue publishes without asking for review again.
+    listings: {
+      publish: async (tenantId, productId) => {
+        await d.catalogue.updateProduct(tenantId, productId, { status: "active" });
+      },
+      // A rejected re-review of a live product: back to draft until the seller fixes it.
+      unpublish: async (tenantId, productId) => {
+        await d.catalogue.updateProduct(tenantId, productId, { status: "draft" });
+      },
+    },
+    // Seller stock: inventory at the seller's location (default: the shop's default location).
+    stock: {
+      defaultLocationId: async (tenantId) => (await d.inventory.ensureDefaultLocation(tenantId)).id,
+      levels: (tenantId, itemIds, locationId) => Promise.all(itemIds.map(async (id) => stockLevel(await d.inventory.getStock(tenantId, id, { locationId })))),
+      adjust: async (tenantId, itemId, input, userId) =>
+        stockLevel(await d.inventory.adjust(tenantId, itemId, { mode: input.mode, qty: input.qty, note: input.note, locationId: input.locationId }, userId)),
+    },
+    // A seller's packed/shipped step moves the whole order only through the orders state machine.
+    orderActions: {
+      advance: async (tenantId, orderId, to, o) => {
+        const fulfillment = o.trackingNumber ? { carrier: o.carrier ?? undefined, trackingNumber: o.trackingNumber } : undefined;
+        await d.orders.updateStatus(tenantId, orderId, { status: to, note: o.note, ...(fulfillment ? { fulfillment } : {}) }, o.actorUserId);
+      },
+    },
+    shopContacts: {
+      owners: async (tenantId) => (await auth.getUsers(await ownerIds(tenantId))).map((u) => ({ phone: u.phone, email: u.email })),
     },
     transfers: razorpayRouteTransferPort((tenantId) => d.payments.credentials(tenantId)),
     kyc: { status: async (tenantId, subjectType, subjectId) => (await kycRef!.service.status(tenantId, subjectType, subjectId)).status },
@@ -384,7 +421,12 @@ export function createBatch3(d: Batch3Deps) {
     invoices: {
       getInvoice: async (tenantId, invoiceId) => {
         const inv = await d.invoices.get(tenantId, invoiceId).catch(nullOn404);
-        return inv ? toEInvoiceSource(inv) : null;
+        if (inv) return toEInvoiceSource(inv);
+        // A credit note id: e-invoiced as document type CRN referencing its bill.
+        const cn = await d.invoices.creditNotes.get(tenantId, invoiceId).catch(nullOn404);
+        if (!cn) return null;
+        const original = await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404);
+        return creditNoteSource(cn, original?.total ?? null);
       },
       listForPeriod: async (tenantId, range) => {
         const out: EInvoiceSource[] = [];
@@ -394,6 +436,16 @@ export function createBatch3(d: Batch3Deps) {
             if (s.status === "draft" || !s.number) continue;
             const inv = await d.invoices.get(tenantId, s.id).catch(nullOn404);
             if (inv) out.push(toEInvoiceSource(inv));
+          }
+          if (page.items.length < 200) break;
+        }
+        // Credit notes of the period (CDNR / CDNUR; cancelled ones only count in doc_issue).
+        for (let offset = 0; ; offset += 200) {
+          const page = await d.invoices.creditNotes.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
+          for (const s of page.items) {
+            const cn = await d.invoices.creditNotes.get(tenantId, s.id).catch(nullOn404);
+            const original = cn ? await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404) : null;
+            if (cn) out.push(creditNoteSource(cn, original?.total ?? null));
           }
           if (page.items.length < 200) break;
         }
@@ -602,6 +654,28 @@ export function addressParts(address: string | null | undefined): { city: string
     .map((p) => p.replace(PINCODE_RE, "").replace(/[-–]\s*$/, "").trim())
     .filter((p) => p && !/^\d+$/.test(p));
   return { city: parts.length > 1 ? parts[parts.length - 1]! : null, pincode };
+}
+
+/** A credit note as the NIC builder needs it: document type CRN with the original bill as the preceding document. */
+export function creditNoteSource(cn: CreditNote, invoiceTotal: number | null): EInvoiceSource {
+  const base = toEInvoiceSource({
+    id: cn.id,
+    number: cn.number,
+    status: cn.status === "cancelled" ? "cancelled" : "issued",
+    date: cn.date,
+    seller: cn.seller,
+    customer: cn.customer,
+    placeOfSupply: cn.placeOfSupply,
+    interState: cn.interState,
+    lines: cn.lines,
+    totals: { ...cn.totals, loyalty: undefined },
+    total: cn.total,
+  } as unknown as Invoice);
+  return {
+    ...base,
+    docType: "CRN",
+    precedingDoc: { number: cn.invoiceNumber, date: cn.invoiceDate, ...(invoiceTotal !== null ? { total: invoiceTotal } : {}) },
+  };
 }
 
 function toEInvoiceSource(inv: Invoice): EInvoiceSource {

@@ -12,6 +12,12 @@ export const BILLING_INTERVALS = ["monthly", "yearly"] as const;
 export type BillingInterval = (typeof BILLING_INTERVALS)[number];
 export const SUBSCRIPTION_PROVIDERS = ["razorpay", "mock", "manual"] as const;
 export type SubscriptionProviderName = (typeof SUBSCRIPTION_PROVIDERS)[number];
+/**
+ * Why `pendingPlanId` is set: `downgrade` (applies at the period end; a null reason on older rows means the same) or
+ * `awaiting_payment` (an upgrade that applies once its new mandate is authorised / first charge succeeds).
+ */
+export const PENDING_REASONS = ["downgrade", "awaiting_payment"] as const;
+export type PendingReason = (typeof PENDING_REASONS)[number];
 
 /** One current row per tenant. */
 export const subscriptions = pgTable(
@@ -40,9 +46,28 @@ export const subscriptions = pgTable(
     /** The plan/interval a checkout (mandate) is for, applied when the mandate is authorised. */
     checkoutPlanId: text("checkout_plan_id"),
     checkoutInterval: text("checkout_interval", { enum: BILLING_INTERVALS }),
-    /** A downgrade that applies at the period end. */
+    /** A downgrade that applies at the period end, or an upgrade waiting for its payment (`pendingReason`). */
     pendingPlanId: text("pending_plan_id"),
     pendingInterval: text("pending_interval", { enum: BILLING_INTERVALS }),
+    pendingReason: text("pending_reason", { enum: PENDING_REASONS }),
+    /** When the pending upgrade was asked for (it expires 48 h later if unpaid). */
+    pendingSince: timestamp("pending_since", { withTimezone: true }),
+    /** The upgrade's new mandate, kept apart while the current plan's mandate keeps running. */
+    pendingProviderSubscriptionId: text("pending_provider_subscription_id"),
+    pendingProviderPlanId: text("pending_provider_plan_id"),
+    pendingAuthUrl: text("pending_auth_url"),
+    /** End of the upgrade's first period (its mandate's first recurring charge). */
+    pendingPeriodEnd: timestamp("pending_period_end", { withTimezone: true }),
+    /** Proration credit (taxable paise) taken off the upgrade's first charge. */
+    pendingCreditPaise: integer("pending_credit_paise").notNull().default(0),
+    /** Credit (taxable paise) the first charge could not absorb; moves to `creditBalancePaise` when the upgrade applies. */
+    pendingCarryoverPaise: integer("pending_carryover_paise").notNull().default(0),
+    /** The credit line's text for the upgrade's first invoice. */
+    pendingCreditLabel: text("pending_credit_label"),
+    /** What the upgrade charges up front (GST included): new plan price − credit, + 18% GST. */
+    pendingChargePaise: integer("pending_charge_paise").notNull().default(0),
+    /** Unused proration credit (taxable paise), a discount line on the next platform invoice. */
+    creditBalancePaise: integer("credit_balance_paise").notNull().default(0),
     /** First move from a trial to a paid, authorised subscription (trial conversion). */
     convertedAt: timestamp("converted_at", { withTimezone: true }),
     /** When the subscription last became cancelled or expired (churn). */
@@ -55,6 +80,7 @@ export const subscriptions = pgTable(
     unique("subscriptions_tenant_uq").on(t.tenantId),
     index("subscriptions_status_idx").on(t.status),
     index("subscriptions_provider_sub_idx").on(t.providerSubscriptionId),
+    index("subscriptions_pending_provider_sub_idx").on(t.pendingProviderSubscriptionId),
     index("subscriptions_owner_idx").on(t.ownerUserId),
   ],
 );
@@ -105,7 +131,14 @@ export const platformInvoices = pgTable(
     date: text("date").notNull(),
     placeOfSupply: text("place_of_supply").notNull(),
     gstRate: integer("gst_rate").notNull().default(18),
+    /** Taxable value (after any proration credit). */
     subtotalPaise: integer("subtotal_paise").notNull(),
+    /** Proration credit (taxable paise) shown as its own line; the plan line is `subtotalPaise + creditPaise`. */
+    creditPaise: integer("credit_paise").notNull().default(0),
+    /** The credit line's text, e.g. "Credit for 12 unused days of Starter (monthly)". */
+    creditLabel: text("credit_label"),
+    /** Charged by the provider above this invoice's total (a balance credit it could not take off): to refund. */
+    refundDuePaise: integer("refund_due_paise").notNull().default(0),
     cgstPaise: integer("cgst_paise").notNull().default(0),
     sgstPaise: integer("sgst_paise").notNull().default(0),
     igstPaise: integer("igst_paise").notNull().default(0),

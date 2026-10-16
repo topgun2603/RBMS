@@ -1,11 +1,12 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
 import { sql } from "drizzle-orm";
-import { index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type {
   LedgerType,
   MaskedPayoutAccount,
   PayoutAccountStatus,
   PayoutStatus,
+  ProductReviewStatus,
   SettlementStatus,
   VendorKycStatus,
   VendorOrderLine,
@@ -51,6 +52,8 @@ export const vendors = pgTable(
     payoutAccountStatus: text("payout_account_status").$type<PayoutAccountStatus>().notNull().default("none"),
     /** Staff-only note. */
     notes: text("notes"),
+    /** The seller's own stock location (inventory `stock_locations.id`); null = the shop's default location. */
+    stockLocationId: uuid("stock_location_id"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     ...timestamps(),
@@ -101,6 +104,11 @@ export const vendorOrders = pgTable(
     eligibleAt: timestamp("eligible_at", { withTimezone: true }),
     settledAt: timestamp("settled_at", { withTimezone: true }),
     payoutId: uuid("payout_id"),
+    /** The seller packed / shipped their lines (split orders: the order itself may still wait for other sellers). */
+    packedAt: timestamp("packed_at", { withTimezone: true }),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    carrier: text("carrier"),
+    trackingNumber: text("tracking_number"),
     ...timestamps(),
   },
   (t) => [
@@ -161,7 +169,44 @@ export const vendorPayouts = pgTable(
   (t) => [index("vendor_payouts_tenant_vendor_idx").on(t.tenantId, t.vendorId, t.createdAt), index("vendor_payouts_tenant_status_idx").on(t.tenantId, t.status)],
 );
 
+/**
+ * Review of a seller's product before it goes live (one row per product; the latest submission). The catalogue keeps
+ * the product a draft while this is `pending`; approving makes it active.
+ */
+export const vendorProductReviews = pgTable(
+  "vendor_product_reviews",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    vendorId: uuid("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "cascade" }),
+    /** catalogue `catalog_products.id`. */
+    productId: uuid("product_id").notNull(),
+    status: text("status").$type<ProductReviewStatus>().notNull().default("pending"),
+    /** Snapshot at submission, for the review queue. */
+    productName: text("product_name").notNull(),
+    productImage: text("product_image"),
+    /** Why the shop rejected it (shown to the seller). */
+    reason: text("reason"),
+    /** A re-review: the product was live and approved, then the seller changed what customers see (it stays live). */
+    changedAfterApproval: boolean("changed_after_approval").notNull().default(false),
+    /** What changed since approval: name, description, images, price, variants, gst. */
+    changedFields: text("changed_fields").array().$type<string[]>().notNull().default(sql`'{}'::text[]`),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: uuid("reviewed_by"),
+    ...timestamps(),
+  },
+  (t) => [
+    unique("vendor_product_reviews_product_uq").on(t.tenantId, t.productId),
+    index("vendor_product_reviews_status_idx").on(t.tenantId, t.status, t.submittedAt),
+    index("vendor_product_reviews_vendor_idx").on(t.tenantId, t.vendorId),
+  ],
+);
+
 export type VendorRow = typeof vendors.$inferSelect;
+export type VendorProductReviewRow = typeof vendorProductReviews.$inferSelect;
 export type VendorUserRow = typeof vendorUsers.$inferSelect;
 export type VendorOrderRow = typeof vendorOrders.$inferSelect;
 export type VendorLedgerRow = typeof vendorLedger.$inferSelect;

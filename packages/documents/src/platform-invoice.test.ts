@@ -46,3 +46,27 @@ describe("platform invoice", () => {
     expect(html).toContain("998314");
   });
 });
+
+describe("platform invoice with a proration credit", () => {
+  it("shows the plan at full value and the credit as its own negative line, adding up to the totals", () => {
+    const d = platformInvoiceDoc({
+      ...base,
+      subtotalPaise: 116_097,
+      cgstPaise: 10_449,
+      sgstPaise: 10_449,
+      totalPaise: 136_995,
+      lines: [
+        { kind: "plan", description: "Pro plan (monthly)", taxablePaise: 149_900, cgstPaise: 13_491, sgstPaise: 13_491, igstPaise: 0, totalPaise: 176_882 },
+        { kind: "credit", description: "Credit: 21 unused of 31 days of Starter (monthly)", taxablePaise: -33_803, cgstPaise: -3_042, sgstPaise: -3_042, igstPaise: 0, totalPaise: -39_887 },
+      ],
+    });
+    expect(d.lines).toHaveLength(2);
+    expect(d.lines[0]).toMatchObject({ taxable: 149_900, unit: "plan" });
+    expect(d.lines[0]!.description).toContain("2026-10-16 to 2026-11-16");
+    expect(d.lines[1]).toMatchObject({ taxable: -33_803, cgst: -3_042, unit: "credit" });
+    expect(d.lines.reduce((s, l) => s + l.taxable, 0)).toBe(d.totals.taxable);
+    expect(d.lines.reduce((s, l) => s + l.total, 0)).toBe(d.totals.total);
+    const html = renderPlatformInvoice({ ...base, lines: null }, { locale: "en", branding: { ...DEFAULT_BRANDING, appName: "Srirealtime" } });
+    expect(html).toContain("998314");
+  });
+});

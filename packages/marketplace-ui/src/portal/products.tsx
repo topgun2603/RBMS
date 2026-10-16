@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ChevronRightIcon, PackageIcon, PlusIcon } from "lucide-react";
+import { BoxesIcon, ChevronRightIcon, PackageIcon, PlusIcon } from "lucide-react";
 import { Button, Card, ChipGroup, cn, EmptyState, Stagger, StaggerItem } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useI18n } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useFeature, useI18n } from "@srirealtime/web";
 import { Thumb } from "../components/bits";
 import { Pager, RowsSkeleton } from "../components/lists";
-import { ProductStatusPill } from "./product-bits";
-import { money } from "../lib/logic";
-import { useMyProducts } from "../lib/vendor";
+import { ListingPill } from "./product-bits";
+import { availableByProduct, listingState, money } from "../lib/logic";
+import { useMyProducts, useMyReviews, useMyStock } from "../lib/vendor";
 import type { ProductStatus } from "../lib/types";
 
 type Filter = "all" | ProductStatus;
@@ -25,6 +25,12 @@ export default function MyProductsPage() {
   const list = useMyProducts({ q: debounced || undefined, status: filter === "all" ? undefined : filter, offset, limit: PAGE });
   const items = list.data?.items ?? [];
   const filtered = !!debounced || filter !== "all";
+  const ids = items.map((p) => p.id);
+  const reviews = useMyReviews(ids);
+  const stockOn = useFeature("inventory");
+  const stock = useMyStock(ids, stockOn);
+  const reviewOf = new Map((reviews.data?.items ?? []).map((r) => [r.productId, r]));
+  const available = stock.data ? availableByProduct(stock.data.items) : null;
 
   const add = (
     <Button asChild size="lg">
@@ -75,7 +81,19 @@ export default function MyProductsPage() {
                       <p className="truncate font-medium">{p.name}</p>
                       <p className="text-sm font-semibold tabular-nums">{p.priceMin === p.priceMax ? money(p.priceMin) : `${money(p.priceMin)} – ${money(p.priceMax)}`}</p>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <ProductStatusPill status={p.status} />
+                        <ListingPill state={listingState(p.status, reviewOf.get(p.id))} />
+                        {stockOn && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 text-xs tabular-nums",
+                              available && (available.get(p.id) ?? 0) <= 0 ? "font-medium text-danger-ink" : "text-muted-foreground",
+                            )}
+                            data-testid="product-stock"
+                          >
+                            <BoxesIcon className="size-3.5" />
+                            {available ? t("marketplace.products.inStock", { qty: available.get(p.id) ?? 0 }) : "…"}
+                          </span>
+                        )}
                         {p.variantCount > 1 && <span className="text-xs text-muted-foreground">{t("marketplace.products.variants", { count: p.variantCount })}</span>}
                         <span className="text-xs text-muted-foreground">{formatDate(p.updatedAt, { day: "numeric", month: "short" })}</span>
                       </div>

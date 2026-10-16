@@ -300,7 +300,7 @@ function IrnPanel({
           <QrImage value={record.signedQrCode} size={148} className="justify-self-center" alt={t("billing.einvoice.qrAlt", { number: record.docNo })} />
           {qr ? (
             <dl className="grid content-start gap-1 text-xs">
-              <p className="mb-0.5 text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">{t("billing.einvoice.qrTitle")}</p>
+              <p className="mb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("billing.einvoice.qrTitle")}</p>
               <QrRow label={t("billing.einvoice.qrSeller")} value={qr.SellerGstin} mono />
               <QrRow label={t("billing.einvoice.qrBuyer")} value={qr.BuyerGstin} mono />
               <QrRow label={t("billing.einvoice.qrDocNo")} value={qr.DocNo} />

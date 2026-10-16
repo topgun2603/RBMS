@@ -30,7 +30,7 @@ function RunningBalance({ value, className }: { value: number; className?: strin
     <span className={cn("tabular-nums", balanceInk(value), className)}>
       {money(Math.abs(value))}
       {value !== 0 && (
-        <span className="ml-1 text-[0.6875rem] font-normal opacity-80">
+        <span className="ml-1 text-xs font-normal opacity-80">
           {value > 0 ? t("billing.creditBook.ledger.balDue") : t("billing.creditBook.ledger.balAdvance")}
         </span>
       )}
@@ -66,8 +66,8 @@ function Particulars({ e, linkInvoices }: { e: LedgerEntry; linkInvoices: boolea
   );
   return (
     <div className="min-w-0">
-      {linkInvoices && e.type === "invoice" && e.refId ? (
-        <ModuleLink to={`invoices/${e.refId}`} className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+      {linkInvoices && (e.type === "invoice" || e.type === "credit_note") && e.refId ? (
+        <ModuleLink to={e.type === "credit_note" ? `credit-notes/${e.refId}` : `invoices/${e.refId}`} className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
           {label}
         </ModuleLink>
       ) : (

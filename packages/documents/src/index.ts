@@ -4,7 +4,17 @@ import { PuppeteerPdfDriver, type PdfDriver, type PuppeteerDriverOptions } from 
 import { DocumentRegistry } from "./registry";
 import { documentsRoutes } from "./routes";
 import { DocumentsService } from "./service";
-import { noopLogger, type BrandingPort, type InvoiceDocPort, type LoggerPort, type OrderDocPort, type PurchaseDocPort, type StatementDocPort } from "./types";
+import {
+  noopLogger,
+  type BrandingPort,
+  type CreditNoteDocPort,
+  type InvoiceDocPort,
+  type LoggerPort,
+  type OrderDocPort,
+  type PurchaseDocPort,
+  type StatementDocPort,
+  type TillDocPort,
+} from "./types";
 
 export interface DocumentsConfig extends Omit<PuppeteerDriverOptions, "log"> {}
 
@@ -16,6 +26,8 @@ export interface DocumentsDeps {
   statements?: StatementDocPort;
   orders?: OrderDocPort;
   purchases?: PurchaseDocPort;
+  creditNotes?: CreditNoteDocPort;
+  till?: TillDocPort;
   branding?: BrandingPort;
   log?: LoggerPort;
 }
@@ -62,6 +74,8 @@ export { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 export { renderStatement } from "./renderers/statement";
 export { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 export { renderPurchase } from "./renderers/purchase";
+export { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
+export { renderTillReport } from "./renderers/till";
 export { platformInvoiceDoc, renderPlatformInvoice, type PlatformInvoiceDocData, type PlatformInvoiceParty } from "./renderers/platform-invoice";
 export { esc, page, qrSvg, money, fmtDate, fmtDateTime, stateLabel, type QrErrorCorrection } from "./html";
 export { fontFaceCss, FONT_STACK } from "./fonts";

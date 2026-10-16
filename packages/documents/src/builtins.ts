@@ -3,7 +3,22 @@ import { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 import { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 import { renderPurchase } from "./renderers/purchase";
 import { renderStatement } from "./renderers/statement";
-import type { InvoiceDocData, InvoiceDocPort, OrderDocData, OrderDocPort, PurchaseDocData, PurchaseDocPort, StatementDocData, StatementDocPort } from "./types";
+import { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
+import { renderTillReport } from "./renderers/till";
+import type {
+  CreditNoteDocData,
+  CreditNoteDocPort,
+  InvoiceDocData,
+  InvoiceDocPort,
+  OrderDocData,
+  OrderDocPort,
+  PurchaseDocData,
+  PurchaseDocPort,
+  StatementDocData,
+  StatementDocPort,
+  TillDocData,
+  TillDocPort,
+} from "./types";
 
 /** Feature each built-in type's staff route belongs to (docs/commerce-batch1.md §6). */
 export const DOCUMENT_TYPE_FEATURES = {
@@ -13,6 +28,9 @@ export const DOCUMENT_TYPE_FEATURES = {
   "packing-slip": "orders",
   "shipping-label": "orders",
   purchase: "inventory.purchases",
+  "credit-note": "invoices",
+  "credit-note-thermal": "invoices",
+  "till-z": "invoices",
 } as const;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -26,7 +44,11 @@ export interface BuiltinPorts {
   statements?: StatementDocPort;
   orders?: OrderDocPort;
   purchases?: PurchaseDocPort;
+  creditNotes?: CreditNoteDocPort;
+  till?: TillDocPort;
 }
+
+export const creditNoteFilename = (d: CreditNoteDocData) => safeFilename(`Credit-note-${d.number}`);
 
 /** Registers the built-in types whose data port is present. */
 export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): void {
@@ -85,6 +107,40 @@ export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): vo
       load: (tenantId, id) => ord.order(tenantId, id),
       render: renderShippingLabel,
       filename: (d) => safeFilename(`Label-${d.number}`),
+      version,
+    });
+  }
+  const cn = ports.creditNotes;
+  if (cn) {
+    reg.register<CreditNoteDocData>({
+      key: "credit-note",
+      paper: "A4",
+      feature: DOCUMENT_TYPE_FEATURES["credit-note"],
+      load: (tenantId, id) => cn.creditNote(tenantId, id),
+      render: renderCreditNote,
+      filename: creditNoteFilename,
+      version,
+    });
+    reg.register<CreditNoteDocData>({
+      key: "credit-note-thermal",
+      paper: "80mm",
+      feature: DOCUMENT_TYPE_FEATURES["credit-note-thermal"],
+      load: (tenantId, id) => cn.creditNote(tenantId, id),
+      render: renderCreditNoteThermal,
+      filename: creditNoteFilename,
+      version,
+    });
+  }
+  const till = ports.till;
+  if (till) {
+    reg.register<TillDocData>({
+      key: "till-z",
+      paper: "80mm",
+      feature: DOCUMENT_TYPE_FEATURES["till-z"],
+      permission: "pos.till",
+      load: (tenantId, id) => till.session(tenantId, id),
+      render: renderTillReport,
+      filename: (d) => safeFilename(`${d.status === "closed" ? "Z" : "X"}-report-${d.register}-${d.date}`),
       version,
     });
   }

@@ -47,7 +47,8 @@ function sendPdf(reply: FastifyReply, doc: { pdf: Buffer; filename: string }) {
 
 /**
  * Routes under /v1/subscriptions (docs/batch5.md):
- * - shop (tenant + `subscriptions.manage`, owners/admins): GET /current, POST /change, /checkout, /cancel, /resume,
+ * - shop (tenant + `subscriptions.manage`, owners/admins): GET /current, POST /change, /change/preview,
+ *   /change/cancel, /checkout, /cancel, /resume,
  *   GET /invoices, GET /invoices/:id.pdf
  * - public: POST /webhooks/razorpay (raw body, HMAC, dedup); non-production: POST /mock/authorize, /mock/charge,
  *   /mock/fail, /mock/lifecycle
@@ -65,6 +66,10 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
       const tenantOf = (ctx: RequestContext) => requireTenant(ctx).id;
       shop.get("/current", async (req) => service.current(tenantOf(req.ctx), req.ctx.user?.id));
       shop.post("/change", SELF_AUDITED, async (req) => service.change(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
+      // What a change would do and charge (credit for the unused days, amount due now with GST, when it starts).
+      shop.post("/change/preview", { config: { audit: false as const } }, async (req) => service.preview(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
+      // Drops an upgrade that is waiting for payment.
+      shop.post("/change/cancel", SELF_AUDITED, async (req) => service.cancelUpgrade(tenantOf(req.ctx), actorOf(req.ctx)));
       shop.post("/checkout", SELF_AUDITED, async (req) => service.checkout(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
       shop.post("/cancel", SELF_AUDITED, async (req) => service.cancel(tenantOf(req.ctx), actorOf(req.ctx)));
       shop.post("/resume", SELF_AUDITED, async (req) => service.resume(tenantOf(req.ctx), actorOf(req.ctx)));

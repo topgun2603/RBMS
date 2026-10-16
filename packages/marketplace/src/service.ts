@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";
 import { MARKETPLACE_FEATURE, PAYOUTS_FEATURE } from "./features";
 import {
+  canDecideReview,
   canSetVendorStatus,
   effectiveCommissionBps,
   istDateOf,
@@ -13,13 +14,17 @@ import {
   LEDGER_TYPES,
   ledgerBalance,
   maskPayoutAccount,
+  orderAdvanceTarget,
   PAYOUT_ACCOUNT_STATUSES,
   PAYOUT_STATUSES,
   payoutAccountSchema,
   pickVendor,
+  planFulfilment,
   planPayouts,
   planVendorOrderUpdate,
+  PRODUCT_REVIEW_STATUSES,
   reversalEntries,
+  reviewAfterEvent,
   saleEntries,
   SETTLEMENT_STATUSES,
   SLUG_RE,
@@ -29,7 +34,9 @@ import {
   VENDOR_KYC_STATUSES,
   VENDOR_STATUSES,
   VENDOR_USER_ROLES,
+  type FulfilmentAction,
   type LedgerBalance,
+  type ListingEventType,
   type LedgerDraft,
   type LedgerType,
   type MaskedPayoutAccount,
@@ -38,6 +45,7 @@ import {
   type PayoutCandidate,
   type PayoutSkipReason,
   type PayoutStatus,
+  type ProductReviewStatus,
   type SettlementStatus,
   type VendorKycStatus,
   type VendorMembership,
@@ -50,25 +58,33 @@ import {
   noopLogger,
   ORDER_STATUSES,
   type KycStatusPort,
+  type ListingPort,
   type LoggerPort,
   type MarketplaceSettingsPort,
   type NotifierPort,
+  type OrderActionsPort,
   type OrderSourcePort,
   type OrderStatus,
+  type ShopContactsPort,
+  type StockLevel,
+  type StockPort,
   type TransferPort,
   type VendorProduct,
   type VendorProductsPort,
+  type VendorVariant,
 } from "./ports";
 import {
   vendorLedger,
   vendorOrders,
   vendorPayouts,
+  vendorProductReviews,
   vendors,
   vendorUsers,
   type VendorAddress,
   type VendorLedgerRow,
   type VendorOrderRow,
   type VendorPayoutRow,
+  type VendorProductReviewRow,
   type VendorRow,
 } from "./schema";
 import { resolveSettings, type MarketplaceSettings, type PayoutProvider } from "./settings";
@@ -93,6 +109,14 @@ export interface MarketplaceDeps {
   /** Seller KYC from the kyc module; without it the vendor row's `kycStatus` (set by staff) is used. */
   kyc?: KycStatusPort;
   notifier?: NotifierPort;
+  /** Publishes approved seller products (catalogue). Needed to approve product reviews. */
+  listings?: ListingPort;
+  /** Inventory for the seller stock routes (with `products.variants`). */
+  stock?: StockPort;
+  /** Moves the whole order when every seller part is packed/shipped (orders). Without it only the seller part moves. */
+  orderActions?: OrderActionsPort;
+  /** Shop owners/admins to tell when a seller packs or ships. */
+  shopContacts?: ShopContactsPort;
   /** Checks `marketplace` / `marketplace.payouts` outside the request pipeline (order hooks, jobs). Absent = on. */
   featureGate?: FeatureGatePort;
   log?: LoggerPort;
@@ -127,6 +151,8 @@ export interface Vendor {
   payoutAccount: MaskedPayoutAccount | null;
   payoutAccountStatus: PayoutAccountStatus;
   notes: string | null;
+  /** The seller's own stock location; null = the shop's default location. */
+  stockLocationId: string | null;
   approvedAt: Date | null;
   suspendedAt: Date | null;
   createdAt: Date;
@@ -169,6 +195,37 @@ export interface VendorOrder {
   eligibleAt: Date | null;
   settledAt: Date | null;
   payoutId: string | null;
+  /** The seller's own packed / shipped marks (the order status may lag on split orders). */
+  packedAt: Date | null;
+  shippedAt: Date | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+}
+
+export interface ProductReview {
+  id: string;
+  vendorId: string;
+  vendorName?: string;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  status: ProductReviewStatus;
+  reason: string | null;
+  /** Re-review of a live product the seller changed after approval (it stays live meanwhile). */
+  changedAfterApproval: boolean;
+  /** What changed: name, description, images, price, variants, gst. */
+  changedFields: string[];
+  submittedAt: Date;
+  reviewedAt: Date | null;
+}
+
+/** One variant of a seller's product with its stock at the seller's location. */
+export interface VendorStockItem extends VendorVariant {
+  qty: number;
+  reserved: number;
+  available: number;
+  track: boolean;
+  stockStatus: string;
 }
 
 export interface LedgerEntry {
@@ -303,6 +360,7 @@ export const vendorPatchSchema = z
     kycStatus: z.enum(VENDOR_KYC_STATUSES),
     payoutAccountStatus: z.enum(PAYOUT_ACCOUNT_STATUSES),
     notes: opt(z.string().trim().max(2000)),
+    stockLocationId: z.string().uuid().nullable(),
   })
   .partial();
 export type VendorPatch = z.input<typeof vendorPatchSchema>;
@@ -367,7 +425,37 @@ export const runPayoutsSchema = z.object({
   vendorId: z.string().uuid().optional(),
 });
 
+const idList = z
+  .union([z.string(), z.array(z.string())])
+  .transform((v) => (Array.isArray(v) ? v : [v]).flatMap((x) => x.split(",")).map((x) => x.trim()).filter(Boolean))
+  .pipe(z.array(z.string().uuid()).max(200));
+
+export const reviewListQuery = z.object({
+  status: z.enum(PRODUCT_REVIEW_STATUSES).optional(),
+  vendorId: z.string().uuid().optional(),
+  productIds: idList.optional(),
+  ...page,
+});
+export const rejectReviewSchema = z.object({ reason: z.string().trim().min(3, "Tell the seller what to change").max(500) });
+export const stockQuery = z.object({ productIds: idList.optional() });
+export const stockAdjustSchema = z
+  .object({
+    mode: z.enum(["set", "add", "remove"]),
+    qty: z.number().min(0).max(10_000_000),
+    reason: z.string().trim().min(3, "Give a reason").max(200),
+  })
+  .superRefine((b, ctx) => {
+    if (b.mode !== "set" && b.qty <= 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["qty"], message: "Quantity must be more than 0" });
+  });
+export const shipSchema = z.object({
+  carrier: opt(z.string().trim().max(60)),
+  trackingNumber: z.string().trim().min(3, "Enter the tracking number").max(80),
+});
+
 export type VendorListQuery = z.input<typeof vendorListQuery>;
+export type ReviewListQuery = z.input<typeof reviewListQuery>;
+export type StockAdjustInput = z.input<typeof stockAdjustSchema>;
+export type ShipInput = z.input<typeof shipSchema>;
 export type VendorOrderListQuery = z.input<typeof vendorOrderListQuery>;
 export type LedgerListQuery = z.input<typeof ledgerListQuery>;
 export type PayoutListQuery = z.input<typeof payoutListQuery>;
@@ -405,6 +493,25 @@ const toVendorOrder = (r: VendorOrderRow, vendorName?: string): VendorOrder => (
   eligibleAt: r.eligibleAt,
   settledAt: r.settledAt,
   payoutId: r.payoutId,
+  packedAt: r.packedAt ?? null,
+  shippedAt: r.shippedAt ?? null,
+  carrier: r.carrier ?? null,
+  trackingNumber: r.trackingNumber ?? null,
+});
+
+const toReview = (r: VendorProductReviewRow, vendorName?: string): ProductReview => ({
+  id: r.id,
+  vendorId: r.vendorId,
+  ...(vendorName !== undefined ? { vendorName } : {}),
+  productId: r.productId,
+  productName: r.productName,
+  productImage: r.productImage,
+  status: r.status,
+  reason: r.reason,
+  changedAfterApproval: r.changedAfterApproval ?? false,
+  changedFields: r.changedFields ?? [],
+  submittedAt: r.submittedAt,
+  reviewedAt: r.reviewedAt,
 });
 
 const toLedgerEntry = (r: VendorLedgerRow, vendorName?: string): LedgerEntry => ({
@@ -437,6 +544,15 @@ const toPayout = (r: VendorPayoutRow, vendorName?: string): Payout => ({
 
 export const moneyText = (paise: number) =>
   `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const withLevel = (v: VendorVariant, l: StockLevel | undefined): VendorStockItem => ({
+  ...v,
+  qty: l?.qty ?? 0,
+  reserved: l?.reserved ?? 0,
+  available: l?.available ?? 0,
+  track: l?.track ?? true,
+  stockStatus: l?.status ?? "out",
+});
 
 const isUniqueViolation = (err: unknown) => (err as { code?: string } | null)?.code === "23505";
 
@@ -496,6 +612,7 @@ export class MarketplaceService {
       payoutAccount: r.payoutAccountMasked ?? null,
       payoutAccountStatus: r.payoutAccountStatus,
       notes: r.notes,
+      stockLocationId: r.stockLocationId ?? null,
       approvedAt: r.approvedAt,
       suspendedAt: r.suspendedAt,
       createdAt: r.createdAt,
@@ -624,7 +741,7 @@ export class MarketplaceService {
     if (b.payoutAccountStatus && b.payoutAccountStatus !== "none" && !row.payoutAccountEnc)
       throw badRequest("The seller has no payout account yet");
     const set: Partial<typeof vendors.$inferInsert> = {};
-    for (const k of ["name", "description", "logoUrl", "contactName", "contactPhone", "contactEmail", "gstin", "address", "notes", "kycStatus", "payoutAccountStatus"] as const) {
+    for (const k of ["name", "description", "logoUrl", "contactName", "contactPhone", "contactEmail", "gstin", "address", "notes", "kycStatus", "payoutAccountStatus", "stockLocationId"] as const) {
       if (b[k] !== undefined) (set as Record<string, unknown>)[k] = b[k];
     }
     if (b.commissionBps !== undefined) set.commissionBps = b.commissionBps;
@@ -1369,6 +1486,284 @@ export class MarketplaceService {
       .values({ tenantId, vendorId, type: "adjustment", amount: b.amount, refType: LEDGER_REF.manual, refId: null, note: b.note, createdBy: actorUserId })
       .returning();
     return toLedgerEntry(row!, vendor.name);
+  }
+
+  // ---------------------------------------------------------------- product review (catalogue ListingReviewPort)
+
+  /** Catalogue asks before a seller's write makes their product active: review unless the shop auto-approves. */
+  async needsProductReview(tenantId: string, _vendorId: string): Promise<boolean> {
+    return !(await this.settings(tenantId)).autoApproveProducts;
+  }
+
+  /** Catalogue listing events → the product's review row (see `reviewAfterEvent`). */
+  async onListing(
+    tenantId: string,
+    e: { type: ListingEventType; productId: string; vendorId: string; name: string; image: string | null; by: "vendor" | "staff"; fields?: string[] },
+  ): Promise<void> {
+    // Edits to live products are re-reviewed only when the shop reviews seller products at all.
+    if (e.type === "changed" && (!e.fields?.length || !(await this.needsProductReview(tenantId, e.vendorId)))) return;
+    const [cur] = await this.db
+      .select()
+      .from(vendorProductReviews)
+      .where(and(eq(vendorProductReviews.tenantId, tenantId), eq(vendorProductReviews.productId, e.productId)))
+      .limit(1);
+    const next = reviewAfterEvent(cur?.status ?? null, e.type);
+    if (!next) return;
+    const now = this.now();
+    const snapshot = { vendorId: e.vendorId, productName: e.name, productImage: e.image };
+    const changedFields =
+      e.type === "changed" ? [...new Set([...(cur?.status === "pending" && cur.changedAfterApproval ? cur.changedFields : []), ...(e.fields ?? [])])].sort() : [];
+    const set =
+      e.type === "changed"
+        ? { status: next, ...snapshot, reason: null, submittedAt: now, reviewedAt: null, reviewedBy: null, changedAfterApproval: true, changedFields }
+        : next === "pending"
+          ? { status: next, ...snapshot, reason: null, submittedAt: now, reviewedAt: null, reviewedBy: null, changedAfterApproval: false, changedFields: [] }
+          : next === "approved"
+            ? { status: next, ...snapshot, reason: null, reviewedAt: now, changedAfterApproval: false, changedFields: [] }
+            : { status: next };
+    await this.db
+      .insert(vendorProductReviews)
+      .values({ tenantId, productId: e.productId, ...snapshot, submittedAt: now, ...set })
+      .onConflictDoUpdate({ target: [vendorProductReviews.tenantId, vendorProductReviews.productId], set: { ...set, updatedAt: now } });
+  }
+
+  private async reviewRow(tenantId: string, id: string): Promise<VendorProductReviewRow> {
+    const [row] = await this.db
+      .select()
+      .from(vendorProductReviews)
+      .where(and(eq(vendorProductReviews.tenantId, tenantId), eq(vendorProductReviews.id, id)))
+      .limit(1);
+    if (!row) throw notFound("Product review");
+    return row;
+  }
+
+  /** Review queue (staff) or a seller's own reviews (`vendorId`). Waiting ones oldest first, others newest first. */
+  async listProductReviews(
+    tenantId: string,
+    query: ReviewListQuery = {},
+  ): Promise<ListResult<ProductReview> & { counts: Record<ProductReviewStatus, number> }> {
+    const q = reviewListQuery.parse(query);
+    const base: SQL[] = [eq(vendorProductReviews.tenantId, tenantId)];
+    if (q.vendorId) base.push(eq(vendorProductReviews.vendorId, q.vendorId));
+    if (q.productIds?.length) base.push(inArray(vendorProductReviews.productId, q.productIds));
+    const where = q.status ? and(...base, eq(vendorProductReviews.status, q.status)) : and(...base);
+    const [rows, [t], countRows] = await Promise.all([
+      this.db
+        .select({ r: vendorProductReviews, vendorName: vendors.name })
+        .from(vendorProductReviews)
+        .innerJoin(vendors, eq(vendors.id, vendorProductReviews.vendorId))
+        .where(where)
+        .orderBy(q.status === "pending" ? asc(vendorProductReviews.submittedAt) : desc(vendorProductReviews.submittedAt), asc(vendorProductReviews.id))
+        .limit(q.limit)
+        .offset(q.offset),
+      this.db.select({ n: count() }).from(vendorProductReviews).where(where),
+      this.db
+        .select({ status: vendorProductReviews.status, n: count() })
+        .from(vendorProductReviews)
+        .where(and(...base))
+        .groupBy(vendorProductReviews.status),
+    ]);
+    const counts = Object.fromEntries(PRODUCT_REVIEW_STATUSES.map((st) => [st, 0])) as Record<ProductReviewStatus, number>;
+    for (const c of countRows) counts[c.status] = Number(c.n);
+    return { items: rows.map((r) => toReview(r.r, r.vendorName)), total: Number(t?.n ?? 0), counts };
+  }
+
+  /** Approve a waiting product: the catalogue makes it active (live in the store) and the seller is told. */
+  async approveProductReview(tenantId: string, id: string, actorUserId: string | null): Promise<ProductReview> {
+    const row = await this.reviewRow(tenantId, id);
+    if (!canDecideReview(row.status)) throw conflict(`This product is already ${row.status}`);
+    if (!this.deps.listings) throw badRequest("Product approval isn't available on this server");
+    try {
+      await this.deps.listings.publish(tenantId, row.productId);
+    } catch (err) {
+      if (err instanceof AppError && err.status === 404) {
+        await this.db
+          .update(vendorProductReviews)
+          .set({ status: "withdrawn" })
+          .where(and(eq(vendorProductReviews.tenantId, tenantId), eq(vendorProductReviews.id, row.id)));
+        throw conflict("The seller deleted this product");
+      }
+      throw err;
+    }
+    const [u] = await this.db
+      .update(vendorProductReviews)
+      .set({ status: "approved", reason: null, reviewedAt: this.now(), reviewedBy: actorUserId, changedAfterApproval: false, changedFields: [] })
+      .where(and(eq(vendorProductReviews.tenantId, tenantId), eq(vendorProductReviews.id, id)))
+      .returning();
+    const vendor = await this.vendorRow(this.db, tenantId, row.vendorId);
+    await this.notifyVendor(tenantId, vendor, "marketplace.product_approved", { vendorName: vendor.name, productName: row.productName });
+    return toReview(u ?? row, vendor.name);
+  }
+
+  /**
+   * Reject a waiting product with a reason; it stays (or, for a re-review of a live product, goes back to) a draft the
+   * seller can fix and submit again.
+   */
+  async rejectProductReview(tenantId: string, id: string, input: { reason?: string }, actorUserId: string | null): Promise<ProductReview> {
+    const { reason } = rejectReviewSchema.parse(input ?? {});
+    const row = await this.reviewRow(tenantId, id);
+    if (!canDecideReview(row.status)) throw conflict(`This product is already ${row.status}`);
+    if (row.changedAfterApproval) {
+      if (!this.deps.listings?.unpublish) throw badRequest("Product review isn't available on this server");
+      try {
+        // The catalogue reports this as a withdrawal; the row is set to rejected right after.
+        await this.deps.listings.unpublish(tenantId, row.productId);
+      } catch (err) {
+        if (!(err instanceof AppError && err.status === 404)) throw err;
+      }
+    }
+    const [u] = await this.db
+      .update(vendorProductReviews)
+      .set({ status: "rejected", reason, reviewedAt: this.now(), reviewedBy: actorUserId })
+      .where(
+        and(
+          eq(vendorProductReviews.tenantId, tenantId),
+          eq(vendorProductReviews.id, id),
+          row.changedAfterApproval ? undefined : eq(vendorProductReviews.status, "pending"),
+        ),
+      )
+      .returning();
+    if (!u) throw conflict("This review was decided meanwhile; reload and try again");
+    const vendor = await this.vendorRow(this.db, tenantId, row.vendorId);
+    await this.notifyVendor(tenantId, vendor, "marketplace.product_rejected", { vendorName: vendor.name, productName: row.productName, reason });
+    return toReview(u, vendor.name);
+  }
+
+  // ---------------------------------------------------------------- seller stock
+
+  private stockDeps(): { stock: StockPort; variants: NonNullable<VendorProductsPort["variants"]> } {
+    const products = this.deps.products;
+    if (!this.deps.stock || !products?.variants) throw badRequest("Seller stock isn't available on this server");
+    return { stock: this.deps.stock, variants: products.variants.bind(products) };
+  }
+
+  /** Where a seller's stock lives: their own location, else the shop's default. */
+  async stockLocationOf(tenantId: string, vendor: Pick<VendorRow, "stockLocationId">): Promise<string> {
+    return vendor.stockLocationId ?? (await this.stockDeps().stock.defaultLocationId(tenantId));
+  }
+
+  /** Stock of the seller's own variants (optionally only these products) at the seller's location. */
+  async vendorStock(
+    tenantId: string,
+    vendor: VendorRow,
+    query: { productIds?: string | string[] } = {},
+  ): Promise<ListResult<VendorStockItem> & { locationId: string }> {
+    const { stock, variants } = this.stockDeps();
+    const q = stockQuery.parse(query ?? {});
+    const list = await variants(tenantId, vendor.id, q.productIds ? { productIds: q.productIds } : {});
+    const locationId = await this.stockLocationOf(tenantId, vendor);
+    const levels = list.length ? await stock.levels(tenantId, list.map((v) => v.variantId), locationId) : [];
+    const byId = new Map(levels.map((l) => [l.itemId, l]));
+    const items = list.map((v) => withLevel(v, byId.get(v.variantId)));
+    return { items, total: items.length, locationId };
+  }
+
+  /** Seller sets or changes the stock of one of their own variants (others 404), with a reason on the movement. */
+  async adjustVendorStock(
+    tenantId: string,
+    vendor: VendorRow,
+    variantId: string,
+    input: StockAdjustInput,
+    userId: string | null,
+  ): Promise<{ item: VendorStockItem; before: number; locationId: string }> {
+    if (vendor.status === "suspended") throw forbidden("This seller account is suspended");
+    const b = stockAdjustSchema.parse(input ?? {});
+    const { stock, variants } = this.stockDeps();
+    const [v] = await variants(tenantId, vendor.id, { variantIds: [variantId] });
+    if (!v) throw notFound("Product");
+    const locationId = await this.stockLocationOf(tenantId, vendor);
+    const [before] = await stock.levels(tenantId, [v.variantId], locationId);
+    const after = await stock.adjust(tenantId, v.variantId, { mode: b.mode, qty: b.qty, note: `Seller ${vendor.name}: ${b.reason}`, locationId }, userId);
+    return { item: withLevel(v, after), before: before?.qty ?? 0, locationId };
+  }
+
+  // ---------------------------------------------------------------- seller fulfilment
+
+  /**
+   * The seller marks their part of an order packed or shipped (`planFulfilment`). When every line of the order belongs
+   * to sellers and all their parts reached the step, the whole order moves through the orders module (its own state
+   * machine, events and customer messages); otherwise the shop moves it. The shop is told either way.
+   */
+  async markFulfilment(
+    tenantId: string,
+    vendor: VendorRow,
+    vendorOrderId: string,
+    action: FulfilmentAction,
+    input: Partial<ShipInput> = {},
+    actorUserId: string | null = null,
+  ): Promise<VendorOrder> {
+    if (vendor.status === "suspended") throw forbidden("This seller account is suspended");
+    const ship = action === "shipped" ? shipSchema.parse(input ?? {}) : null;
+    const load = async () => {
+      const [row] = await this.db
+        .select()
+        .from(vendorOrders)
+        .where(and(eq(vendorOrders.tenantId, tenantId), eq(vendorOrders.id, vendorOrderId), eq(vendorOrders.vendorId, vendor.id)))
+        .limit(1);
+      if (!row) throw notFound("Order");
+      return row;
+    };
+    const first = await load();
+    // The mirrored order status may lag (a failed hook): follow the order first.
+    await this.syncOrder(tenantId, first.orderId);
+    const vo = await load();
+    const plan = planFulfilment(vo, action, this.now());
+    if (!plan.ok) throw new AppError(409, plan.code, plan.message);
+    const [u] = await this.db
+      .update(vendorOrders)
+      .set({ ...plan.set, ...(ship ? { carrier: ship.carrier ?? null, trackingNumber: ship.trackingNumber } : {}) })
+      .where(
+        and(
+          eq(vendorOrders.tenantId, tenantId),
+          eq(vendorOrders.id, vo.id),
+          action === "packed" ? sql`${vendorOrders.packedAt} is null` : sql`${vendorOrders.shippedAt} is null`,
+        ),
+      )
+      .returning();
+    if (!u) throw conflict("This order was changed meanwhile; reload and try again");
+
+    if (this.deps.orderActions && this.deps.orders) {
+      try {
+        const order = await this.deps.orders.getOrder(tenantId, vo.orderId);
+        const parts = await this.db
+          .select()
+          .from(vendorOrders)
+          .where(and(eq(vendorOrders.tenantId, tenantId), eq(vendorOrders.orderId, vo.orderId)));
+        const sellers = new Set(parts.map((p) => p.vendorId));
+        const hasShopLines = !order || order.lines.some((l) => !l.vendorId || !sellers.has(l.vendorId));
+        const target = order ? orderAdvanceTarget(order.status, parts, hasShopLines) : null;
+        if (target) {
+          await this.deps.orderActions.advance(tenantId, vo.orderId, target, {
+            note: `${target === "packed" ? "Packed" : "Shipped"} by seller ${vendor.name}`,
+            actorUserId,
+            ...(target === "shipped" && parts.length === 1 ? { carrier: u.carrier, trackingNumber: u.trackingNumber } : {}),
+          });
+        }
+      } catch (err) {
+        this.log.warn({ err, tenantId, orderId: vo.orderId, action }, "marketplace: order not moved after the seller's step");
+      }
+    }
+    await this.notifyShop(tenantId, action === "packed" ? "marketplace.vendor_order_packed" : "marketplace.vendor_order_shipped", {
+      vendorName: vendor.name,
+      orderNumber: vo.orderNumber,
+      tracking: [u.carrier, u.trackingNumber].filter(Boolean).join(" ") || "-",
+    });
+    return toVendorOrder(await load(), vendor.name);
+  }
+
+  /** Best effort, to every owner/admin: WhatsApp to an Indian mobile, else email. */
+  private async notifyShop(tenantId: string, template: string, vars: Record<string, string>) {
+    if (!this.deps.notifier || !this.deps.shopContacts) return;
+    try {
+      for (const c of await this.deps.shopContacts.owners(tenantId)) {
+        const phone = c.phone && /^\+91[6-9]\d{9}$/.test(c.phone) ? c.phone : null;
+        const to = phone ?? c.email;
+        if (!to) continue;
+        await this.deps.notifier.send({ tenantId, channel: phone ? "whatsapp" : "email", to, template, vars, ...(c.locale ? { locale: c.locale } : {}) });
+      }
+    } catch (err) {
+      this.log.warn({ err, tenantId, template }, "marketplace: shop notification failed");
+    }
   }
 
   // ---------------------------------------------------------------- notifications

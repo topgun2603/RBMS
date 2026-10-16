@@ -12,6 +12,13 @@ import type { FastifyInstance, FastifyRequest, RouteOptions } from "fastify";
 export const INVOICE_PERMISSIONS: PermissionDef[] = [
   { key: "invoices.create", module: "invoices", label: "Create bills", description: "Create, edit, issue and share bills." },
   { key: "invoices.cancel", module: "invoices", label: "Cancel bills", description: "Cancel issued bills (stock goes back)." },
+  {
+    key: "invoices.credit-note",
+    module: "invoices",
+    label: "Credit notes and returns",
+    description: "Issue credit notes against bills (full or partial returns, price corrections) with refunds, and cancel them the same day.",
+  },
+  { key: "pos.till", module: "invoices", label: "Open and close the till", description: "Open and close the POS cash drawer, record cash in / out and print the Z report." },
   { key: "invoices.discount", module: "invoices", label: "Give discounts", description: "Add discounts to bill lines." },
   {
     key: "invoices.credit-book",
@@ -51,6 +58,14 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   [`POST ${BILL}/send`]: "invoices.create",
   [`POST ${BILL}/cancel`]: "invoices.cancel",
   [`POST ${BILL}/payments`]: "payments.receive",
+  // ---- invoices: credit notes and POS till sessions
+  [`POST ${BILL}/credit-notes`]: "invoices.credit-note",
+  "POST /v1/invoices/credit-notes/:id/cancel": "invoices.credit-note",
+  "POST /v1/invoices/till/open": "pos.till",
+  "POST /v1/invoices/till/:id/cash": "pos.till",
+  "POST /v1/invoices/till/:id/close": "pos.till",
+  // Other registers' sessions.
+  "GET /v1/invoices/till/sessions": "reports.view",
   [`DELETE ${BILL}/payments/:paymentId`]: "payments.receive",
   // ---- invoices: customers and credit book
   "POST /v1/invoices/customers": "customers.create",

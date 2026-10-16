@@ -598,6 +598,26 @@ export class TenancyService {
     return row?.n ?? 0;
   }
 
+  /**
+   * Staff seats per tenant, the plan's `staff` usage: active memberships that are not owners (admins, staff and
+   * members). Inactive members free their seat; there are no pending invites (an invite adds an active membership).
+   * One tenant when `tenantId` is given, else every tenant with at least one seat.
+   */
+  async seatCounts(tenantId?: string): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({ tenantId: tenantMemberships.tenantId, n: count() })
+      .from(tenantMemberships)
+      .where(
+        and(
+          tenantId ? eq(tenantMemberships.tenantId, tenantId) : undefined,
+          eq(tenantMemberships.status, "active"),
+          sql`not (${tenantMemberships.roles} @> array['owner']::text[])`,
+        ),
+      )
+      .groupBy(tenantMemberships.tenantId);
+    return new Map(rows.map((r) => [r.tenantId, r.n]));
+  }
+
   async listMembers(tenantId: string): Promise<TenantMembership[]> {
     return this.db
       .select()

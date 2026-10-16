@@ -105,8 +105,31 @@ export function invoiceUpi(inv: InvoiceDocData, brandName: string, noteLabel: st
   });
 }
 
-/** GST tax invoice on A4: same content as billing-ui's printable InvoiceDocument. */
-export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext): string {
+/** Extra content when an invoice layout prints a credit note. */
+export interface CreditNoteVariant {
+  invoiceNumber: string;
+  invoiceDate: string;
+  reason: string;
+  refundMode: string;
+  refundAmount: number;
+}
+
+/** "return" → "Goods returned" etc. */
+export function reasonLabel(reason: string, t: Labels): string {
+  const map: Record<string, string> = { return: t.reasonReturn, price_correction: t.reasonPriceCorrection, discount: t.reasonDiscount, other: t.reasonOther };
+  return map[reason] ?? reason;
+}
+
+function refundLine(cn: CreditNoteVariant, t: Labels): [string, string] | null {
+  const how: Record<string, string> = { cash: t.refundCash, upi: t.refundUpi, card: t.refundCard };
+  if (cn.refundAmount > 0) return [`${t.refunded} (${how[cn.refundMode] ?? cn.refundMode})`, money(cn.refundAmount)];
+  if (cn.refundMode === "credit_book") return [t.creditedToAccount, ""];
+  return null;
+}
+
+/** GST tax invoice on A4: same content as billing-ui's printable InvoiceDocument. With `variant.creditNote`, a credit note. */
+export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext, variant: { creditNote?: CreditNoteVariant } = {}): string {
+  const cn = variant.creditNote ?? null;
   const t = labels(ctx.locale);
   const L = (k: keyof typeof t) => esc(t[k]);
   const seller = inv.seller;
@@ -116,10 +139,11 @@ export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext): string {
   const cancelled = inv.status === "cancelled";
   const brandName = ctx.branding.appName || seller.legalName || "";
   const logo = safeImageUrl(ctx.branding.logoUrl);
-  const upi = invoiceUpi(inv, brandName, "Invoice");
+  const upi = cn ? null : invoiceUpi(inv, brandName, "Invoice");
   const words = inv.amountInWords || amountInWordsINR(totals.total);
   const d = (v: string | null | undefined) => fmtDate(v, ctx.locale);
-  const title = seller.gstin ? t.taxInvoice : t.billOfSupply;
+  const title = cn ? t.creditNote : seller.gstin ? t.taxInvoice : t.billOfSupply;
+  const refund = cn ? refundLine(cn, t) : null;
   const taxCols = inter ? `<th class="r">IGST</th>` : `<th class="r">CGST</th><th class="r">SGST</th>`;
   const totRow = (label: string, value: string) => `<div class="tot"><dt>${esc(label)}</dt><dd class="num">${esc(value)}</dd></div>`;
 
@@ -169,7 +193,8 @@ ${totals.taxBreakup
     inter ? totRow("IGST", money(totals.igst)) : totRow("CGST", money(totals.cgst)) + totRow("SGST", money(totals.sgst)),
     totals.roundOff !== 0 ? totRow(t.roundOff, `${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`) : "",
     `<div class="tot grand"><dt>${L("grandTotal")}</dt><dd class="num">${esc(money(totals.total))}</dd></div>`,
-    inv.paid > 0 ? totRow(t.paid, money(inv.paid)) + `<div class="tot b"><dt>${L("balance")}</dt><dd class="num">${esc(money(inv.balance))}</dd></div>` : "",
+    !cn && inv.paid > 0 ? totRow(t.paid, money(inv.paid)) + `<div class="tot b"><dt>${L("balance")}</dt><dd class="num">${esc(money(inv.balance))}</dd></div>` : "",
+    refund ? totRow(refund[0], refund[1]) : "",
   ].join("");
 
   const bank =
@@ -191,9 +216,15 @@ ${cancelled ? `<div class="stamp" aria-hidden="true">${L("cancelled")}</div>` : 
   <div class="title">
     <h1>${esc(title)}</h1>
     <dl class="meta">
-      <dt>${L("number")}</dt><dd class="num">${esc(inv.number ?? t.draft)}</dd>
+      <dt>${cn ? L("creditNoteNo") : L("number")}</dt><dd class="num">${esc(inv.number ?? t.draft)}</dd>
       <dt>${L("date")}</dt><dd class="num">${esc(d(inv.date))}</dd>
-      ${inv.dueDate ? `<dt>${L("dueDate")}</dt><dd class="num">${esc(d(inv.dueDate))}</dd>` : ""}
+      ${
+        cn
+          ? `<dt>${L("againstInvoice")}</dt><dd class="num">${esc(cn.invoiceNumber)}</dd><dt>${L("invoiceDate")}</dt><dd class="num">${esc(d(cn.invoiceDate))}</dd>`
+          : inv.dueDate
+            ? `<dt>${L("dueDate")}</dt><dd class="num">${esc(d(inv.dueDate))}</dd>`
+            : ""
+      }
       <dt>${L("placeOfSupply")}</dt><dd>${esc(stateLabel(inv.placeOfSupply))}</dd>
     </dl>
   </div>
@@ -226,9 +257,9 @@ ${lines}
 </section>
 <section class="foot avoid">
   <div class="left">
-    ${bank}
+    ${cn ? `<div><p class="label">${L("reason")}</p><p>${esc(reasonLabel(cn.reason, t))}</p></div>` : bank}
     ${inv.notes ? `<div><p class="label">${L("notes")}</p><p>${escLines(inv.notes)}</p></div>` : ""}
-    ${seller.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(seller.terms)}</p></div>` : ""}
+    ${!cn && seller.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(seller.terms)}</p></div>` : ""}
     ${cancelled && inv.cancelReason ? `<p class="cancel">${L("cancelReason")}: ${esc(inv.cancelReason)}</p>` : ""}
   </div>
   <div>
@@ -242,21 +273,23 @@ ${lines}
     <div class="sign"><p class="muted">${esc(t.forName.replace("{name}", seller.legalName || brandName))}</p><div class="line">${L("signatory")}</div></div>
   </div>
 </section>
-<p class="cg">${L("computerGenerated")}</p>
+<p class="cg">${cn ? L("computerGeneratedNote") : L("computerGenerated")}</p>
 </article>`;
 
-  return page({ title: `${t.invoice} ${inv.number ?? ""}`.trim(), paper: "A4", locale: ctx.locale, branding: ctx.branding, css: CSS, body });
+  return page({ title: `${cn ? t.creditNote : t.invoice} ${inv.number ?? ""}`.trim(), paper: "A4", locale: ctx.locale, branding: ctx.branding, css: CSS, body });
 }
 
-/** 80 mm thermal receipt. */
-export function renderInvoiceThermal(inv: InvoiceDocData, ctx: RenderContext): string {
+/** 80 mm thermal receipt. With `variant.creditNote`, a credit note slip. */
+export function renderInvoiceThermal(inv: InvoiceDocData, ctx: RenderContext, variant: { creditNote?: CreditNoteVariant } = {}): string {
+  const cn = variant.creditNote ?? null;
   const t = labels(ctx.locale);
   const L = (k: keyof typeof t) => esc(t[k]);
   const s = inv.seller;
   const totals = inv.totals;
   const cancelled = inv.status === "cancelled";
   const brandName = ctx.branding.appName || s.legalName || "";
-  const upi = invoiceUpi(inv, brandName, "Invoice");
+  const upi = cn ? null : invoiceUpi(inv, brandName, "Invoice");
+  const refund = cn ? refundLine(cn, t) : null;
   const row = (label: string, value: string, cls = "") => `<tr class="${cls}"><td>${esc(label)}</td><td class="r num">${esc(value)}</td></tr>`;
 
   const css = `
@@ -293,13 +326,14 @@ ${qr ? `<div class="c">${qr}</div>` : ""}`;
   ${s.city || s.pincode ? `<p class="small">${esc([s.city, s.pincode].filter(Boolean).join(" – "))}</p>` : ""}
   ${s.phone ? `<p class="small">${esc(s.phone)}</p>` : ""}
   ${s.gstin ? `<p class="small b">GSTIN: ${esc(s.gstin)}</p>` : ""}
-  <p class="b" style="margin-top:3px">${esc(s.gstin ? t.taxInvoice : t.billOfSupply)}</p>
+  <p class="b" style="margin-top:3px">${esc(cn ? t.creditNote : s.gstin ? t.taxInvoice : t.billOfSupply)}</p>
 </div>
 ${cancelled ? `<div class="stamp c">${L("cancelled")}</div>` : ""}
 <hr>
 <table>
-  ${row(t.number, inv.number ?? t.draft)}
+  ${row(cn ? t.creditNoteNo : t.number, inv.number ?? t.draft)}
   ${row(t.date, fmtDate(inv.date, ctx.locale))}
+  ${cn ? row(t.againstInvoice, cn.invoiceNumber) + row(t.invoiceDate, fmtDate(cn.invoiceDate, ctx.locale)) + row(t.reason, reasonLabel(cn.reason, t)) : ""}
   ${inv.customer.name ? row(t.customer, inv.customer.name) : ""}
   ${inv.customer.gstin ? row("GSTIN", inv.customer.gstin) : ""}
 </table>
@@ -319,7 +353,8 @@ ${inv.lines
   ${inv.interState ? row("IGST", money(totals.igst)) : row("CGST", money(totals.cgst)) + row("SGST", money(totals.sgst))}
   ${totals.roundOff !== 0 ? row(t.roundOff, `${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`) : ""}
   ${row(t.grandTotal, money(totals.total), "grand")}
-  ${inv.paid > 0 ? row(t.paid, money(inv.paid)) + row(t.balance, money(inv.balance), "b") : ""}
+  ${!cn && inv.paid > 0 ? row(t.paid, money(inv.paid)) + row(t.balance, money(inv.balance), "b") : ""}
+  ${refund ? row(refund[0], refund[1], "b") : ""}
 </table>
 <p class="xs" style="margin-top:3px">${esc(inv.amountInWords || amountInWordsINR(totals.total))}</p>${einv}
 ${
@@ -328,6 +363,6 @@ ${
     : ""
 }
 <hr>
-<p class="c">${L("thankYou")}</p>`;
-  return page({ title: `${t.receipt} ${inv.number ?? ""}`.trim(), paper: "80mm", locale: ctx.locale, branding: ctx.branding, css, body });
+<p class="c">${cn ? L("computerGeneratedNote") : L("thankYou")}</p>`;
+  return page({ title: `${cn ? t.creditNote : t.receipt} ${inv.number ?? ""}`.trim(), paper: "80mm", locale: ctx.locale, branding: ctx.branding, css, body });
 }

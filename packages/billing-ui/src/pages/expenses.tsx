@@ -108,7 +108,7 @@ function Expenses() {
       cell: (e) => (
         <span className="grid max-w-56">
           <span className="truncate">{e.vendorName || "—"}</span>
-          {e.vendorGstin && <span className="truncate font-mono text-[0.6875rem] text-muted-foreground">{e.vendorGstin}</span>}
+          {e.vendorGstin && <span className="truncate font-mono text-xs text-muted-foreground">{e.vendorGstin}</span>}
         </span>
       ),
     },
@@ -127,7 +127,7 @@ function Expenses() {
         e.gstAmount ? (
           <span className="grid">
             <span>{money(e.gstAmount)}</span>
-            <span className={cn("text-[0.6875rem]", e.itc ? "text-success-ink" : "text-muted-foreground")}>{e.itc ? t("billing.expenses.itcShort", { amount: money(e.itc) }) : t("billing.expenses.noItc")}</span>
+            <span className={cn("text-xs", e.itc ? "text-success-ink" : "text-muted-foreground")}>{e.itc ? t("billing.expenses.itcShort", { amount: money(e.itc) }) : t("billing.expenses.noItc")}</span>
           </span>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -277,7 +277,7 @@ function Expenses() {
                       {e.status === "cancelled" ? (
                         <StatusPill tone="neutral">{t("billing.expenses.cancelledBadge")}</StatusPill>
                       ) : e.itc ? (
-                        <span className="text-[0.6875rem] text-success-ink">{t("billing.expenses.itcShort", { amount: money(e.itc) })}</span>
+                        <span className="text-xs text-success-ink">{t("billing.expenses.itcShort", { amount: money(e.itc) })}</span>
                       ) : null}
                     </span>
                   </button>

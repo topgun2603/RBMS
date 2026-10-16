@@ -102,7 +102,7 @@ export function TicketsWidget() {
                 {d.items.map((tk) => (
                   <li key={tk.id}>
                     <ModuleLink to={`support/${tk.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring">
-                      <span className="font-mono text-[0.6875rem] text-muted-foreground">{tk.number}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{tk.number}</span>
                       <span className="min-w-0 flex-1 truncate">{tk.subject}</span>
                       <SlaBadge ticket={tk} hideOnTrack hideDone />
                     </ModuleLink>

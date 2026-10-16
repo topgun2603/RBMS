@@ -390,12 +390,12 @@ export default function ProductsPage() {
                       <p className="truncate font-medium">{p.name}</p>
                       <p className="font-semibold tabular-nums">{priceRange(p.priceMin, p.priceMax)}</p>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <ProductStatusPill status={p.status} className="h-5 px-1.5 text-[0.6875rem]" />
+                        <ProductStatusPill status={p.status} className="h-5 px-1.5 text-xs" />
                         {stock.enabled && stock.byProduct?.get(p.id) && (
-                          <StockPill {...stock.byProduct.get(p.id)!} className="h-5 px-1.5 text-[0.6875rem]" />
+                          <StockPill {...stock.byProduct.get(p.id)!} className="h-5 px-1.5 text-xs" />
                         )}
                         {p.variantCount > 1 && (
-                          <span className="text-[0.6875rem] text-muted-foreground">{t("commerce.products.variantCount", { count: p.variantCount })}</span>
+                          <span className="text-xs text-muted-foreground">{t("commerce.products.variantCount", { count: p.variantCount })}</span>
                         )}
                       </div>
                     </div>

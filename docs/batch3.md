@@ -35,6 +35,30 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
   commission per vendor, `GET /vendor-orders`, payouts list + `POST /payouts/run`, ledger adjustments. Public:
   `GET /public/vendors/:slug` (storefront seller page). Vendor onboarding: `POST /public/vendors/apply` (signed-in).
 - Features: `marketplace` (base), `marketplace.payouts` (dependsOn marketplace). Permission `marketplace.manage`.
+- **Product review.** A seller's write that makes their product `active` is held: the catalogue keeps it a `draft`
+  (so store, search, sitemap, collections and the seller page never show it) and tells marketplace through its
+  `ListingReviewPort` (`needsReview` / `onListing`: submitted, published, withdrawn). Marketplace keeps one
+  `vendor_product_reviews` row per product (`pending|approved|rejected|withdrawn`, reason). Staff:
+  `GET /product-reviews`, `POST /product-reviews/:id/approve` (catalogue publishes it as staff) and `/reject`
+  `{ reason }`; the seller gets `marketplace.product_approved|product_rejected` and resubmits by asking for `active`
+  again. Approved products stay live when the seller saves them. Setting `autoApproveProducts` (default false) restores
+  direct publishing. When the seller changes a live product's customer-facing content (name, description, photos,
+  price/MRP, variants, GST/HSN; stock and same-value saves don't count) it stays live but its review goes back to
+  `pending` with `changedAfterApproval` and `changedFields` (a re-review); approving clears them, rejecting takes the
+  product back to draft with the reason. No re-reviews while `autoApproveProducts` is on.
+  Seller: `GET /vendor/product-reviews?productIds=&status=`. Staff list a seller's products with
+  `GET /v1/catalog/products?vendorId=` (any status).
+- **Seller stock** (features `marketplace` + `inventory`): `GET /vendor/stock?productIds=` and
+  `POST /vendor/stock/:variantId/adjust { mode: set|add|remove, qty, reason }`, only the seller's own variants (others
+  404), at the seller's `vendors.stock_location_id` or the shop's default location; the movement note carries the seller
+  and reason, and the request is audited (`marketplace.vendor_stock.adjust`, before/after qty).
+- **Seller fulfilment** (only after the shop confirmed the order; a placed order answers 409 `not_confirmed`):
+  `POST /vendor/orders/:id/packed` and `/shipped { carrier?, trackingNumber }` mark the seller's
+  vendor order (`packed_at`, `shipped_at`, tracking). When every line of the order is a seller's and every seller part
+  reached the step, the whole order moves through `orders.updateStatus` (its state machine, events and customer
+  messages; tracking passed on single-seller orders); otherwise the shop moves it. The shop gets
+  `marketplace.vendor_order_packed|shipped`.
+- Public settings keys (sellers may read): `minPayoutPaise`, `returnWindowDays`, `autoApproveProducts`.
 
 ## A2. `@srirealtime/chat` (`/v1/chat`) — real-time messages
 

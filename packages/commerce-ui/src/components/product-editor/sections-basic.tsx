@@ -420,7 +420,7 @@ export function SeoSection({ isNew }: Ctx) {
   return (
     <Section id="seo" icon={SearchIcon} title={t("commerce.editor.seo")} description={t("commerce.editor.seoHint")}>
       <div className="rounded-xl border bg-card p-4 shadow-xs" aria-label={t("commerce.editor.seoPreview")}>
-        <p className="mb-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">{t("commerce.editor.seoPreview")}</p>
+        <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("commerce.editor.seoPreview")}</p>
         <div className="flex items-center gap-2">
           <span className="inline-flex size-7 items-center justify-center rounded-full bg-muted text-xs font-bold text-primary">{host.slice(0, 1).toUpperCase() || "S"}</span>
           <div className="min-w-0 leading-tight">

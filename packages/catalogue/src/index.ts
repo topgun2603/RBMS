@@ -54,6 +54,8 @@ export function createCatalogue(deps: CatalogueDeps) {
       count: (tenantId: string, vendorId: string, opts?: { publicOnly?: boolean }) => service.vendorProductCount(tenantId, vendorId, opts),
       list: (tenantId: string, vendorId: string, opts: { limit: number; offset: number; publicOnly?: boolean; q?: string }) =>
         service.vendorProducts(tenantId, vendorId, opts),
+      variants: (tenantId: string, vendorId: string, opts: { productIds?: string[]; variantIds?: string[] }) =>
+        service.vendorVariants(tenantId, vendorId, opts),
     },
   };
 }

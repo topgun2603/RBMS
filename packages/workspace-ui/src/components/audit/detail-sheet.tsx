@@ -88,7 +88,7 @@ export function AuditDetailSheet({ event, actor, onClose }: { event: AuditEvent 
                           <code className="text-xs font-medium">{r.path}</code>
                           <span
                             className={cn(
-                              "rounded-full px-1.5 py-px text-[0.6875rem]",
+                              "rounded-full px-1.5 py-px text-xs",
                               r.kind === "added" ? "bg-success/14 text-success-ink" : r.kind === "removed" ? "bg-destructive/12 text-danger-ink" : "bg-info/14 text-info-ink",
                             )}
                           >

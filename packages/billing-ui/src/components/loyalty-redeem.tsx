@@ -258,7 +258,7 @@ export function LoyaltySummaryRows({ state: s, total }: { state: LoyaltyRedeemSt
             <span className="font-medium">{t("billing.loyalty.aboutTotal")}</span>
             <span className="font-semibold tabular-nums">≈ {money(estimatedTotal(total, s.discount))}</span>
           </div>
-          <p className="text-[0.6875rem] leading-snug text-muted-foreground">{t("billing.loyalty.aboutHint")}</p>
+          <p className="text-meta leading-snug text-muted-foreground">{t("billing.loyalty.aboutHint")}</p>
         </motion.div>
       )}
     </AnimatePresence>

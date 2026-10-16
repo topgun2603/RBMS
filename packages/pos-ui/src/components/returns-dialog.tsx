@@ -1,14 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeftIcon, InfoIcon, Loader2Icon, LockIcon, SearchIcon, Undo2Icon } from "lucide-react";
+import { ArrowLeftIcon, InfoIcon, Loader2Icon, LockIcon, MinusIcon, PlusIcon, PrinterIcon, SearchIcon, Undo2Icon } from "lucide-react";
+import { computeCreditNote, CreditNoteError, type CreditNoteCalc, type LineTotals } from "@srirealtime/gst";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  AnimatedNumber,
+  AnimatePresence,
   Badge,
   Button,
   Checkbox,
+  ChipGroup,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,40 +27,48 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Label,
+  motion,
   SuccessCheck,
+  Switch,
   Textarea,
   toast,
+  useReducedMotionSafe,
 } from "@srirealtime/ui";
 import { describeError, useI18n } from "@srirealtime/web";
-import { cancelBill, findBills, getBill, isNetworkError } from "../lib/api";
+import { cancelBill, fetchPdf, findBills, getBill, isNetworkError } from "../lib/api";
 import { formatQty, money } from "../lib/format";
 import { reportNetwork } from "../lib/online";
+import { printPdfBlob } from "../lib/print";
+import { createCreditNote, creditNoteSlipPath, getReturnable, type PosCreditNote, type Returnable } from "../lib/till";
 import type { Invoice, InvoiceSummary } from "../lib/types";
 import { usePos } from "./pos-context";
 
-type Step = { kind: "find" } | { kind: "lines"; bill: Invoice } | { kind: "done"; bill: Invoice; refunded: number };
+type Mode = "cash" | "upi" | "card" | "credit_book" | "none";
+type Step =
+  | { kind: "find" }
+  | { kind: "lines"; bill: Invoice; returnable: Returnable }
+  | { kind: "done"; number: string; note: PosCreditNote | null; refunded: number; mode: Mode | "cancel" };
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 /**
- * Returns. The API has no credit notes yet, so a full return cancels the bill (stock goes back, `invoices.cancel`);
- * a partial return is not faked: it shows that credit notes are coming.
+ * Returns at the counter. Picking what comes back (all or part of a bill) issues a GST credit note: GST comes from the
+ * original bill, returned items go back in stock, and a cash / UPI / card refund is recorded in this till session. A
+ * whole bill can still be cancelled instead (same as before) when nothing was credited on it yet.
  */
-export function ReturnsDialog({ open, onClose, onRefund }: { open: boolean; onClose: () => void; onRefund: (amount: number, number: string) => void }) {
+export function ReturnsDialog({ open, onClose, tillSessionId, onDone }: { open: boolean; onClose: () => void; tillSessionId: string | null; onDone?: () => void }) {
   const { t } = useI18n();
-  const { can, online } = usePos();
+  const { online } = usePos();
   const [step, setStep] = React.useState<Step>({ kind: "find" });
   const [q, setQ] = React.useState("");
   const [results, setResults] = React.useState<InvoiceSummary[] | null>(null);
   const [busy, setBusy] = React.useState(false);
-  const [picked, setPicked] = React.useState<Set<number>>(new Set());
-  const [reason, setReason] = React.useState("");
-  const [cashRefund, setCashRefund] = React.useState(true);
 
   React.useEffect(() => {
     if (open) {
       setStep({ kind: "find" });
       setQ("");
       setResults(null);
-      setReason("");
     }
   }, [open]);
 
@@ -64,42 +77,27 @@ export function ReturnsDialog({ open, onClose, onRefund }: { open: boolean; onCl
     toast.error(describeError(err, t));
   };
 
+  const open1 = async (id: string) => {
+    setBusy(true);
+    try {
+      const [bill, returnable] = await Promise.all([getBill(id), getReturnable(id)]);
+      setStep({ kind: "lines", bill, returnable });
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const search = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!q.trim()) return;
     setBusy(true);
     try {
       const r = await findBills(q.trim());
-      setResults(r.items.filter((b) => b.status !== "draft"));
-      if (r.items.length === 1 && r.items[0]!.status !== "draft") await open1(r.items[0]!.id);
-    } catch (err) {
-      fail(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const open1 = async (id: string) => {
-    setBusy(true);
-    try {
-      const bill = await getBill(id);
-      setPicked(new Set(bill.lines.map((_, i) => i)));
-      setCashRefund(bill.payments.some((p) => p.method === "cash"));
-      setStep({ kind: "lines", bill });
-    } catch (err) {
-      fail(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const cancel = async (bill: Invoice) => {
-    setBusy(true);
-    try {
-      const done = await cancelBill(bill.id, reason.trim() || t("pos.returns.defaultReason"));
-      const refunded = done.payments.reduce((s, p) => s + p.amount, 0);
-      if (cashRefund && refunded > 0) onRefund(refunded, done.number ?? "");
-      setStep({ kind: "done", bill: done, refunded });
+      const found = r.items.filter((b) => b.status !== "draft");
+      setResults(found);
+      if (found.length === 1) await open1(found[0]!.id);
     } catch (err) {
       fail(err);
     } finally {
@@ -134,7 +132,7 @@ export function ReturnsDialog({ open, onClose, onRefund }: { open: boolean; onCl
               </Button>
             </form>
             {results && results.length === 0 && <p className="text-sm text-muted-foreground">{t("pos.returns.none")}</p>}
-            {results && results.length > 0 && (
+            {results && results.length > 1 && (
               <ul className="grid max-h-72 gap-1.5 overflow-y-auto">
                 {results.map((b) => (
                   <li key={b.id}>
@@ -163,34 +161,22 @@ export function ReturnsDialog({ open, onClose, onRefund }: { open: boolean; onCl
 
         {step.kind === "lines" && (
           <LinesStep
+            key={step.bill.id}
             bill={step.bill}
-            picked={picked}
-            onPicked={setPicked}
-            reason={reason}
-            onReason={setReason}
-            cashRefund={cashRefund}
-            onCashRefund={setCashRefund}
+            returnable={step.returnable}
+            tillSessionId={tillSessionId}
             busy={busy}
-            canCancel={can.cancel}
-            online={online.online}
+            setBusy={setBusy}
             onBack={() => setStep({ kind: "find" })}
-            onCancelBill={() => void cancel(step.bill)}
+            onDone={(d) => {
+              setStep({ kind: "done", ...d });
+              onDone?.();
+            }}
+            fail={fail}
           />
         )}
 
-        {step.kind === "done" && (
-          <div className="grid justify-items-center gap-3 py-2 text-center">
-            <SuccessCheck size={64} />
-            <p className="font-semibold">{t("pos.returns.doneTitle", { number: step.bill.number ?? "" })}</p>
-            <p className="text-sm text-muted-foreground">{t("pos.returns.doneBody")}</p>
-            {step.refunded > 0 && (
-              <p className="rounded-xl bg-warning/15 px-3 py-2 text-base font-semibold tabular-nums">{t("pos.returns.refund", { amount: money(step.refunded) })}</p>
-            )}
-            <Button type="button" size="lg" onClick={onClose}>
-              {t("pos.common.done")}
-            </Button>
-          </div>
-        )}
+        {step.kind === "done" && <Done step={step} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   );
@@ -198,28 +184,83 @@ export function ReturnsDialog({ open, onClose, onRefund }: { open: boolean; onCl
 
 function LinesStep(p: {
   bill: Invoice;
-  picked: Set<number>;
-  onPicked: (s: Set<number>) => void;
-  reason: string;
-  onReason: (v: string) => void;
-  cashRefund: boolean;
-  onCashRefund: (v: boolean) => void;
+  returnable: Returnable;
+  tillSessionId: string | null;
   busy: boolean;
-  canCancel: boolean;
-  online: boolean;
+  setBusy: (b: boolean) => void;
   onBack: () => void;
-  onCancelBill: () => void;
+  onDone: (d: { number: string; note: PosCreditNote | null; refunded: number; mode: Mode | "cancel" }) => void;
+  fail: (err: unknown) => void;
 }) {
   const { t } = useI18n();
-  const { bill } = p;
-  const all = bill.lines.length > 0 && p.picked.size === bill.lines.length;
-  const none = p.picked.size === 0;
-  const paid = bill.payments.reduce((s, x) => s + x.amount, 0);
-  const toggle = (i: number, on: boolean) => {
-    const next = new Set(p.picked);
-    if (on) next.add(i);
-    else next.delete(i);
-    p.onPicked(next);
+  const reduced = useReducedMotionSafe();
+  const { can, online } = usePos();
+  const { bill, returnable: r } = p;
+  const [qty, setQty] = React.useState<number[]>(() => r.lines.map(() => 0));
+  const [restock, setRestock] = React.useState(true);
+  const [note, setNote] = React.useState("");
+  const [mode, setMode] = React.useState<Mode>(r.paid > 0 ? "cash" : "none");
+
+  const requests = qty.map((q, i) => ({ line: i, qty: round3(q) })).filter((x) => x.qty > 0);
+  const allPicked = r.lines.every((l, i) => (qty[i] ?? 0) >= l.remainingQty);
+  let calc: CreditNoteCalc | null = null;
+  let problem: string | null = null;
+  if (requests.length) {
+    try {
+      calc = computeCreditNote({
+        invoiceLines: bill.lines as LineTotals[],
+        invoiceTotal: r.total,
+        interState: r.interState,
+        priorCreditedTotal: r.credited,
+        prior: r.lines
+          .filter((l) => l.returnedQty > 0 || l.credited.total > 0)
+          .map((l) => ({ line: l.line, kind: "qty" as const, qty: l.returnedQty, taxable: l.credited.taxable, cgst: l.credited.cgst, sgst: l.credited.sgst, igst: l.credited.igst })),
+        requests,
+        allowValue: false,
+        restockByDefault: true,
+      });
+    } catch (err) {
+      problem = err instanceof CreditNoteError ? err.message : String(err);
+    }
+  }
+  const total = calc?.total ?? 0;
+  const open = Math.max(r.total - r.paid - r.credited, 0);
+  const excess = Math.max(total - open, 0);
+  const refund = mode === "cash" || mode === "upi" || mode === "card" ? excess : 0;
+  const blockedMode = (mode === "none" && excess > 0) || (mode === "credit_book" && !r.hasCustomer && excess > 0);
+  const modes: Mode[] = ["cash", "upi", "card", ...(r.hasCustomer ? (["credit_book"] as Mode[]) : []), ...(excess === 0 ? (["none"] as Mode[]) : [])];
+  const fullCancelPossible = allPicked && r.credited === 0 && can.cancel && bill.status !== "cancelled";
+
+  const submit = async () => {
+    if (!calc || problem || blockedMode) return;
+    p.setBusy(true);
+    try {
+      const res = await createCreditNote(bill.id, {
+        reason: "return",
+        refundMode: mode,
+        lines: requests.map((x) => ({ ...x, restock })),
+        ...(note.trim() ? { note: note.trim() } : {}),
+        ...(p.tillSessionId ? { tillSessionId: p.tillSessionId } : {}),
+      });
+      reportNetwork(true);
+      p.onDone({ number: res.creditNote.number, note: res.creditNote, refunded: res.creditNote.refundAmount, mode });
+    } catch (err) {
+      p.fail(err);
+    } finally {
+      p.setBusy(false);
+    }
+  };
+
+  const cancelWhole = async () => {
+    p.setBusy(true);
+    try {
+      const done = await cancelBill(bill.id, note.trim() || t("pos.returns.defaultReason"));
+      p.onDone({ number: done.number ?? "", note: null, refunded: done.payments.reduce((s, x) => s + x.amount, 0), mode: "cancel" });
+    } catch (err) {
+      p.fail(err);
+    } finally {
+      p.setBusy(false);
+    }
   };
 
   return (
@@ -233,74 +274,143 @@ function LinesStep(p: {
         </span>
       </div>
 
-      {bill.status === "cancelled" ? (
+      {r.blocked ? (
         <Alert>
           <InfoIcon />
-          <AlertTitle>{t("pos.returns.alreadyTitle")}</AlertTitle>
-          <AlertDescription>{t("pos.returns.alreadyBody")}</AlertDescription>
+          <AlertTitle>{bill.status === "cancelled" ? t("pos.returns.alreadyTitle") : t("pos.returns.nothingLeftTitle")}</AlertTitle>
+          <AlertDescription>{bill.status === "cancelled" ? t("pos.returns.alreadyBody") : r.blocked}</AlertDescription>
+        </Alert>
+      ) : !can.creditNote ? (
+        <Alert variant="warning">
+          <LockIcon />
+          <AlertTitle>{t("pos.returns.noPermTitle")}</AlertTitle>
+          <AlertDescription>{t("pos.returns.noPermBody")}</AlertDescription>
         </Alert>
       ) : (
         <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">{t("pos.returns.whatComesBack")}</span>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setQty(r.lines.map((l) => l.remainingQty))}>
+              {t("pos.returns.selectAll")}
+            </Button>
+          </div>
           <ul className="grid max-h-64 gap-1.5 overflow-y-auto">
-            {bill.lines.map((l, i) => (
-              <li key={i} className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2">
-                <Checkbox id={`ret-${i}`} checked={p.picked.has(i)} onCheckedChange={(v) => toggle(i, v === true)} className="size-5" />
-                <Label htmlFor={`ret-${i}`} className="min-w-0 flex-1 cursor-pointer font-normal">
-                  <span className="block truncate">{l.description}</span>
-                  <span className="block text-xs text-muted-foreground tabular-nums">
-                    {formatQty(l.qty)} {l.unit ?? ""}
-                  </span>
-                </Label>
-                <span className="font-medium tabular-nums">{money(l.total)}</span>
-              </li>
-            ))}
-          </ul>
-
-          {!all && !none && (
-            <Alert variant="warning">
-              <InfoIcon />
-              <AlertTitle>{t("pos.returns.partialTitle")}</AlertTitle>
-              <AlertDescription>{t("pos.returns.partialBody")}</AlertDescription>
-            </Alert>
-          )}
-
-          {all && (
-            <>
-              {!p.canCancel ? (
-                <Alert variant="warning">
-                  <LockIcon />
-                  <AlertTitle>{t("pos.returns.noPermTitle")}</AlertTitle>
-                  <AlertDescription>{t("pos.returns.noPermBody")}</AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  <Field>
-                    <FieldLabel optional={t("pos.common.optional")}>{t("pos.returns.reason")}</FieldLabel>
-                    <FieldControl>
-                      <Textarea rows={2} value={p.reason} onChange={(e) => p.onReason(e.target.value.slice(0, 500))} placeholder={t("pos.returns.reasonPlaceholder")} />
-                    </FieldControl>
-                  </Field>
-                  {paid > 0 && (
-                    <div className="flex items-start gap-2">
-                      <Checkbox id="ret-cash" checked={p.cashRefund} onCheckedChange={(v) => p.onCashRefund(v === true)} className="mt-0.5 size-5" />
-                      <Label htmlFor="ret-cash" className="grid gap-0.5 font-normal">
-                        <span>{t("pos.returns.cashRefund", { amount: money(paid) })}</span>
-                        <span className="text-xs text-muted-foreground">{t("pos.returns.cashRefundHint")}</span>
-                      </Label>
+            {r.lines.map((l, i) => {
+              const q = qty[i] ?? 0;
+              const done = l.remainingQty <= 0;
+              const set = (n: number) => setQty((qs) => qs.map((x, j) => (j === i ? Math.min(Math.max(round3(n), 0), l.remainingQty) : x)));
+              return (
+                <li key={i} className={cn("flex items-center gap-3 rounded-xl border bg-card px-3 py-2", q > 0 && "border-primary/50", done && "opacity-60")}>
+                  <Checkbox id={`ret-${i}`} checked={q > 0} disabled={done} onCheckedChange={(v) => set(v === true ? l.remainingQty : 0)} className="size-5" />
+                  <Label htmlFor={`ret-${i}`} className="min-w-0 flex-1 cursor-pointer font-normal">
+                    <span className="block truncate">{l.description}</span>
+                    <span className="block text-xs text-muted-foreground tabular-nums">
+                      {done ? t("pos.returns.allBack") : t("pos.returns.left", { left: formatQty(l.remainingQty), qty: formatQty(l.qty), unit: l.unit ?? "" })}
+                    </span>
+                  </Label>
+                  {!done && (
+                    <div className="flex items-center rounded-lg border">
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={t("pos.returns.less")} onClick={() => set(q - 1)} disabled={q <= 0}>
+                        <MinusIcon />
+                      </Button>
+                      <span className="w-10 text-center text-sm font-semibold tabular-nums">{formatQty(q)}</span>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={t("pos.returns.more")} onClick={() => set(q + 1)} disabled={q + 1 > l.remainingQty}>
+                        <PlusIcon />
+                      </Button>
                     </div>
                   )}
-                </>
-              )}
-            </>
-          )}
+                </li>
+              );
+            })}
+          </ul>
+          {problem && <p className="text-sm text-destructive">{problem}</p>}
 
-          <DialogFooter>
-            <Button type="button" size="lg" variant="destructive" disabled={!all || !p.canCancel || p.busy || !p.online} onClick={p.onCancelBill}>
-              {p.busy ? <Loader2Icon className="animate-spin" /> : <Undo2Icon />} {t("pos.returns.returnAll")}
+          <AnimatePresence initial={false}>
+            {calc && (
+              <motion.div key="money" initial={reduced ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid gap-3 overflow-hidden">
+                <div className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2">
+                  <span className="text-sm">{t("pos.returns.creditTotal")}</span>
+                  <AnimatedNumber value={total} format={money} className="text-xl font-bold tabular-nums" />
+                </div>
+                <Field>
+                  <FieldLabel htmlFor={null}>{t("pos.returns.refundMode")}</FieldLabel>
+                  <ChipGroup aria-label={t("pos.returns.refundMode")} value={mode} onChange={setMode} options={modes.map((m) => ({ value: m, label: t(`pos.returns.mode.${m}`) }))} />
+                </Field>
+                {refund > 0 && <p className="rounded-xl bg-warning/15 px-3 py-2 text-base font-semibold tabular-nums">{t("pos.returns.refund", { amount: money(refund) })}</p>}
+                {excess === 0 && <p className="text-sm text-muted-foreground">{t("pos.returns.reducesBalance", { amount: money(total) })}</p>}
+                {blockedMode && <p className="text-sm text-destructive">{t("pos.returns.pickRefund")}</p>}
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="ret-restock" className="font-normal">
+                    {t("pos.returns.restock")}
+                  </Label>
+                  <Switch id="ret-restock" checked={restock} onCheckedChange={setRestock} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <Field>
+            <FieldLabel optional={t("pos.common.optional")}>{t("pos.returns.reason")}</FieldLabel>
+            <FieldControl>
+              <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} placeholder={t("pos.returns.reasonPlaceholder")} />
+            </FieldControl>
+          </Field>
+
+          <DialogFooter className="gap-2">
+            {fullCancelPossible && (
+              <Button type="button" variant="ghost" size="lg" disabled={p.busy || !online.online} onClick={() => void cancelWhole()}>
+                {t("pos.returns.cancelInstead")}
+              </Button>
+            )}
+            <Button type="button" size="lg" disabled={!calc || !!problem || blockedMode || p.busy || !online.online} onClick={() => void submit()}>
+              {p.busy ? <Loader2Icon className="animate-spin" /> : <Undo2Icon />} {t("pos.returns.issue")}
             </Button>
           </DialogFooter>
         </>
       )}
+    </div>
+  );
+}
+
+function Done({ step, onClose }: { step: Extract<Step, { kind: "done" }>; onClose: () => void }) {
+  const { t, locale } = useI18n();
+  const [printing, setPrinting] = React.useState(false);
+  const print = async () => {
+    if (!step.note) return;
+    setPrinting(true);
+    try {
+      const blob = await fetchPdf(creditNoteSlipPath(step.note.id), { locale: locale === "ta" ? "ta" : undefined });
+      try {
+        await printPdfBlob(blob);
+      } catch {
+        window.open(URL.createObjectURL(blob), "_blank");
+      }
+    } catch (err) {
+      toast.error(describeError(err, t));
+    } finally {
+      setPrinting(false);
+    }
+  };
+  return (
+    <div className="grid justify-items-center gap-3 py-2 text-center">
+      <SuccessCheck size={64} />
+      <p className="font-semibold">{step.mode === "cancel" ? t("pos.returns.doneTitle", { number: step.number }) : t("pos.returns.noteDone", { number: step.number })}</p>
+      <p className="text-sm text-muted-foreground">{step.mode === "cancel" ? t("pos.returns.doneBody") : t("pos.returns.noteBody")}</p>
+      {step.refunded > 0 && (
+        <p className="rounded-xl bg-warning/15 px-3 py-2 text-base font-semibold tabular-nums">
+          {step.mode === "cancel" || step.mode === "cash" ? t("pos.returns.refund", { amount: money(step.refunded) }) : t("pos.returns.refundBy", { amount: money(step.refunded), mode: t(`pos.returns.mode.${step.mode}`) })}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-center gap-2">
+        {step.note && (
+          <Button type="button" variant="outline" size="lg" onClick={() => void print()} disabled={printing}>
+            {printing ? <Loader2Icon className="animate-spin" /> : <PrinterIcon />} {t("pos.returns.printSlip")}
+          </Button>
+        )}
+        <Button type="button" size="lg" onClick={onClose}>
+          {t("pos.common.done")}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -227,7 +227,7 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
               {n.type === "url" ? (
                 <>
                   <Input id={`mi-${n.key}-target`} value={n.href} placeholder="/products" disabled={!canEdit} aria-invalid={!!errs.href} aria-describedby={`mi-${n.key}-target-help`} onChange={(e) => setNodes((x) => updateNode(x, n.key, { href: e.target.value }))} />
-                  {errs.href ? <FieldError code={errs.href} id={`mi-${n.key}-target-help`} /> : <p id={`mi-${n.key}-target-help`} className="text-[0.6875rem] text-muted-foreground">{t("site.common.linkHint")}</p>}
+                  {errs.href ? <FieldError code={errs.href} id={`mi-${n.key}-target-help`} /> : <p id={`mi-${n.key}-target-help`} className="text-meta text-muted-foreground">{t("site.common.linkHint")}</p>}
                 </>
               ) : (
                 <>
@@ -325,7 +325,7 @@ function MenuStrip({ nodes, footer }: { nodes: MenuNode[]; footer: boolean }) {
   if (!nodes.length) return null;
   return (
     <div className="rounded-xl border bg-muted/30 p-3" aria-label={t("site.menus.previewLabel")}>
-      <p className="mb-2 text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">{t("site.menus.previewLabel")}</p>
+      <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("site.menus.previewLabel")}</p>
       {footer ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {nodes.map((n) => (

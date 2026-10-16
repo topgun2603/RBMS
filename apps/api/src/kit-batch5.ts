@@ -187,12 +187,14 @@ export function createBatch5(d: Batch5Deps) {
       },
     },
     documents: {
-      platformInvoicePdf: async ({ invoice, planName, sac }) => {
+      platformInvoicePdf: async ({ invoice, planName, sac, lines }) => {
         const html = renderPlatformInvoice(
           {
             ...invoice,
             description: `${planName} plan (${invoice.interval})`,
             sac,
+            // The plan line and, after an upgrade, the proration credit as its own negative line.
+            lines,
           },
           { locale: "en", branding: { ...DEFAULT_BRANDING, appName: env.APP_NAME } },
         );

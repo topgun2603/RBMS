@@ -190,7 +190,7 @@ function BottomTabs({ pathname, sections, primary }: { pathname: string; section
 
   const tabClass = (active: boolean) =>
     cn(
-      "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
       active ? "text-primary" : "text-muted-foreground",
     );
 
@@ -245,7 +245,7 @@ function BottomTabs({ pathname, sections, primary }: { pathname: string; section
           <div className="grid gap-4 overflow-y-auto px-4">
             {sections.map((s) => (
               <div key={s.id} className="grid gap-2">
-                <p className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>
+                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {s.items.map((item) => {
                     const Icon = item.icon ?? SettingsIcon;

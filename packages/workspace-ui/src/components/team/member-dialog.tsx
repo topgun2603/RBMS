@@ -139,7 +139,7 @@ export function MemberDialog({
         )}
 
         <Form {...form}>
-          <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+          <form onSubmit={onSubmit} className="grid gap-5" noValidate>
             {!member && (
               <FormField
                 control={form.control}

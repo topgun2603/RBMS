@@ -82,7 +82,7 @@ export function CreateKeyDialog({ open, onOpenChange, onCreated }: { open: boole
           </DialogTitle>
           <DialogDescription>{t("growth.developer.keys.createBody")}</DialogDescription>
         </DialogHeader>
-        <form id="create-api-key" onSubmit={submit} className="-mx-1 grid min-h-0 content-start gap-4 overflow-y-auto px-1" noValidate>
+        <form id="create-api-key" onSubmit={submit} className="-mx-1 grid min-h-0 content-start gap-5 overflow-y-auto px-1" noValidate>
           <FieldRow cols={2}>
             <Field invalid={!!nameError}>
               <FieldLabel>{t("growth.developer.keys.name")}</FieldLabel>

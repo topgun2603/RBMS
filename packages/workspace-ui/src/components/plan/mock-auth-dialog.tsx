@@ -44,8 +44,10 @@ export function MockAuthDialog({ cur, plans }: { cur: SubscriptionCurrent | unde
   React.useEffect(() => setClosing(false), [id]);
 
   const sub = cur?.subscription;
-  const planId = sub?.checkoutPlanId ?? sub?.planId;
-  const interval = sub?.checkoutInterval ?? sub?.interval ?? "monthly";
+  // An upgrade's mandate collects its first period (less the credit) on authorisation.
+  const upgrade = !!id && sub?.pendingProviderSubscriptionId === id;
+  const planId = upgrade ? sub?.pendingPlanId : (sub?.checkoutPlanId ?? sub?.planId);
+  const interval = (upgrade ? sub?.pendingInterval : sub?.checkoutInterval) ?? sub?.interval ?? "monthly";
   const plan = plans.find((p) => p.id === planId) ?? (cur?.plan?.id === planId ? cur?.plan : null);
 
   const clear = () => {
@@ -89,6 +91,12 @@ export function MockAuthDialog({ cur, plans }: { cur: SubscriptionCurrent | unde
               <dd className="font-medium">
                 {plan.name} · {t(`workspace.plan.plans.${interval}`)}
               </dd>
+            </div>
+          )}
+          {upgrade && (
+            <div className="flex justify-between gap-3 px-3 py-2">
+              <dt className="text-muted-foreground">{t("workspace.plan.mock.dueNow")}</dt>
+              <dd className="font-medium tabular-nums">{formatPaise(sub?.pendingChargePaise ?? 0)}</dd>
             </div>
           )}
           {plan && (

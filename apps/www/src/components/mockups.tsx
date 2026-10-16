@@ -34,12 +34,12 @@ export function InvoiceMockup({ className }: { className?: string }) {
           <p className="truncate text-xs text-muted-foreground">{t("mock.invoice.city")} · GSTIN 33ABCDE1234F1Z5</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[11px] font-semibold tracking-wide text-primary uppercase">{t("mock.invoice.title")}</p>
+          <p className="text-xs font-semibold tracking-wide text-primary uppercase">{t("mock.invoice.title")}</p>
           <p className="text-xs text-muted-foreground tabular-nums">A-0142</p>
         </div>
       </div>
       <div className="px-5 py-3">
-        <div className="flex justify-between pb-1 text-[11px] font-medium text-muted-foreground">
+        <div className="flex justify-between pb-1 text-xs font-medium text-muted-foreground">
           <span>{t("mock.invoice.qty")}</span>
           <span>{t("mock.invoice.amount")}</span>
         </div>
@@ -83,7 +83,7 @@ export function InvoiceMockup({ className }: { className?: string }) {
           </Badge>
         </motion.span>
         <p className="text-right">
-          <span className="block text-[11px] text-muted-foreground">{t("mock.invoice.total")}</span>
+          <span className="block text-xs text-muted-foreground">{t("mock.invoice.total")}</span>
           <span className="font-display text-xl font-bold tabular-nums">
             {inView ? <AnimatedNumber value={total} from={0} duration={1.1} format={(n) => inr2(Math.round(n * 100) / 100)} /> : inr2(total)}
           </span>
@@ -178,9 +178,9 @@ export function PhoneStoreMockup({ className }: { className?: string }) {
                   <TileArt hue={p.hue} />
                 </div>
                 <div className="space-y-1 p-2">
-                  <p className="truncate text-[11px] leading-tight font-medium">{t(p.key)}</p>
+                  <p className="truncate text-xs leading-tight font-medium">{t(p.key)}</p>
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[11px] font-bold tabular-nums">{inr(p.price)}</span>
+                    <span className="text-xs font-bold tabular-nums">{inr(p.price)}</span>
                     <motion.span layout className={cn("flex h-5 items-center gap-0.5 rounded-full px-2 text-[9px] font-semibold", on ? "bg-success/15 text-success" : "bg-primary text-primary-foreground")}>
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.span key={on ? "y" : "n"} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="flex items-center gap-0.5">
@@ -272,7 +272,7 @@ export function NotifyChip({ kind, detail, className, delay = 0 }: { kind: ChipK
         </span>
         <span className="leading-tight">
           <span className="block text-xs font-semibold whitespace-nowrap">{t(`hero.chip.${kind}`)}</span>
-          {detail && <span className="block text-[11px] text-muted-foreground tabular-nums">{detail}</span>}
+          {detail && <span className="block text-xs text-muted-foreground tabular-nums">{detail}</span>}
         </span>
       </motion.div>
     </motion.div>

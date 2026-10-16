@@ -46,7 +46,7 @@ function ChipGroup<T extends string>({ value, onChange, options, className, size
           >
             {o.label}
             {o.meta !== undefined && o.meta !== null && (
-              <span className={cn("rounded-full px-1.5 text-[0.6875rem] tabular-nums", on ? "bg-primary-foreground/20" : "bg-muted")}>
+              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", on ? "bg-primary-foreground/20" : "bg-muted")}>
                 {o.meta}
               </span>
             )}

@@ -59,7 +59,7 @@ export function EventPicker({
           <span className="flex items-center gap-2 text-sm font-medium">
             <SparklesIcon className="size-3.5 text-primary" />
             {t("growth.developer.events.all")}
-            <code className="font-mono text-[11px] font-normal text-muted-foreground">*</code>
+            <code className="font-mono text-xs font-normal text-muted-foreground">*</code>
           </span>
           <span className="text-xs text-muted-foreground">{t("growth.developer.events.allHint")}</span>
         </span>
@@ -104,7 +104,7 @@ export function EventPicker({
                           <label htmlFor={cid} className="grid min-w-0 flex-1 cursor-pointer gap-0.5">
                             <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium">
                               {e.label}
-                              <code className="font-mono text-[11px] font-normal text-muted-foreground">{e.type}</code>
+                              <code className="font-mono text-xs font-normal text-muted-foreground">{e.type}</code>
                             </span>
                             <span className="text-xs text-muted-foreground">{e.description}</span>
                           </label>

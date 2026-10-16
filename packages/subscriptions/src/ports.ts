@@ -1,4 +1,5 @@
 import type { AuditPort } from "@srirealtime/core";
+import type { InvoiceLine } from "./logic";
 import type { BillingInterval, InvoiceParty, PlatformInvoiceRow } from "./schema";
 
 /** Ports the API host (apps/api kit) implements; this package never imports another feature package. */
@@ -68,6 +69,8 @@ export interface PlatformInvoiceDoc {
   invoice: PlatformInvoiceRow;
   planName: string;
   sac: string;
+  /** The plan line and, after a plan change, the credit line (negative); they add up to the invoice totals. */
+  lines?: InvoiceLine[];
 }
 
 /** PDF of a platform invoice (the documents module). */

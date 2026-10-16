@@ -233,7 +233,7 @@ function Branch({
                 <p className="flex items-center gap-2 truncate font-medium">
                   {n.name}
                   {!n.active && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] font-normal text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
                       <EyeOffIcon className="size-3" /> {t("commerce.categories.hidden")}
                     </span>
                   )}

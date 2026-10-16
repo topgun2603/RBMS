@@ -116,7 +116,7 @@ export function ItemDialog({
           <DialogDescription>{t("billing.items.dialogHint")}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+          <form onSubmit={onSubmit} className="grid gap-5" noValidate>
             <FormField
               control={form.control}
               name="name"

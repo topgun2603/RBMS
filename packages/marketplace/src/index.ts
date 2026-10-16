@@ -1,7 +1,7 @@
 import { defineModule } from "@srirealtime/core";
 import { MARKETPLACE_FEATURES, MARKETPLACE_PERMISSIONS } from "./features";
 import { marketplaceRoutes } from "./routes";
-import { vendorLedger, vendorOrders, vendorPayouts, vendors, vendorUsers } from "./schema";
+import { vendorLedger, vendorOrders, vendorPayouts, vendorProductReviews, vendors, vendorUsers } from "./schema";
 import { MarketplaceService, type MarketplaceDeps } from "./service";
 
 export * from "./schema";
@@ -27,7 +27,7 @@ export function createMarketplace(deps: MarketplaceDeps) {
   const service = new MarketplaceService(deps);
   const module = defineModule({
     id: "marketplace",
-    tables: { vendors, vendorUsers, vendorOrders, vendorLedger, vendorPayouts },
+    tables: { vendors, vendorUsers, vendorOrders, vendorLedger, vendorPayouts, vendorProductReviews },
     routes: marketplaceRoutes(service),
     features: MARKETPLACE_FEATURES,
     permissions: MARKETPLACE_PERMISSIONS,

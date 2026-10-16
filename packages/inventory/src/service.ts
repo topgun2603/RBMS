@@ -376,6 +376,16 @@ export const saleInputSchema = z.object({
   lines: z.array(z.object({ itemId: uuid, qty: positiveQty })).max(500),
 });
 
+/** Goods of a credit note coming back (`saleRefId` = the invoice whose sale took them). */
+export const returnInputSchema = z.object({
+  refId: z.string().trim().min(1).max(100),
+  saleRefId: z.string().trim().min(1).max(100),
+  refNumber: opt(z.string().trim().max(50)),
+  locationId: locationIdParam,
+  lines: z.array(z.object({ itemId: uuid, qty: positiveQty })).max(500),
+});
+export type ReturnInput = z.input<typeof returnInputSchema>;
+
 export const supplierInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   phone: opt(phone),
@@ -1514,6 +1524,104 @@ export class InventoryService {
       this.log.info({ tenantId, refId: ref, items: net.length }, "inventory: sale reversed");
       return { reversed: true, items: net.length };
     });
+  }
+
+  /**
+   * Puts the goods of a credit note (sales return) back in stock, at the location the bill's sale took them from
+   * (`saleRefId`), else `locationId`, else the default location. Idempotent per refId (the credit note id); untracked
+   * items are skipped. Movements: reason `sale_return`, ref type `credit_note`.
+   */
+  async applyReturn(tenantId: string, input: ReturnInput): Promise<{ applied: boolean; items: number }> {
+    const b = returnInputSchema.parse(input);
+    const lines = mergeQtyLines(b.lines);
+    if (lines.length === 0) return { applied: false, items: 0 };
+    const def = await this.defaultLocationRow(tenantId);
+    const fallback = b.locationId ? (await this.resolveLocation(tenantId, b.locationId).catch(() => def)).id : def.id;
+    return this.db.transaction(async (tx) => {
+      await lockRef(tx, tenantId, "credit_note", b.refId);
+      const [existing] = await tx
+        .select({ id: stockMovements.id })
+        .from(stockMovements)
+        .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.refType, "credit_note"), eq(stockMovements.refId, b.refId)))
+        .limit(1);
+      if (existing) return { applied: false, items: 0 };
+      const sold = await tx
+        .select({ itemId: stockMovements.itemId, locationId: stockMovements.locationId })
+        .from(stockMovements)
+        .where(
+          and(
+            eq(stockMovements.tenantId, tenantId),
+            eq(stockMovements.refType, "invoice"),
+            eq(stockMovements.refId, b.saleRefId),
+            eq(stockMovements.reason, "sale"),
+          ),
+        );
+      const soldAt = new Map(sold.map((m) => [m.itemId, m.locationId ?? def.id]));
+      const untracked = await this.untrackedOf(
+        tx,
+        tenantId,
+        lines.map((l) => l.itemId),
+      );
+      let items = 0;
+      for (const l of lines) {
+        if (untracked.has(l.itemId)) continue;
+        await this.change(tx, {
+          tenantId,
+          locationId: soldAt.get(l.itemId) ?? fallback,
+          itemId: l.itemId,
+          deltaMilli: l.milli,
+          reason: "sale_return",
+          refType: "credit_note",
+          refId: b.refId,
+          refNumber: b.refNumber ?? null,
+        });
+        items++;
+      }
+      this.log.info({ tenantId, refId: b.refId, items }, "inventory: sales return restocked");
+      return { applied: items > 0, items };
+    });
+  }
+
+  /** Takes a cancelled credit note's returned goods out of stock again (where they were put back). Idempotent. */
+  async reverseReturn(tenantId: string, refId: string): Promise<{ reversed: boolean; items: number }> {
+    const ref = z.string().trim().min(1).max(100).parse(refId);
+    const def = await this.defaultLocationRow(tenantId);
+    const drops = this.dropSink();
+    const result = await this.db.transaction(async (tx) => {
+      await lockRef(tx, tenantId, "credit_note", ref);
+      const moves = await tx
+        .select({
+          locationId: stockMovements.locationId,
+          itemId: stockMovements.itemId,
+          delta: stockMovements.delta,
+          reason: stockMovements.reason,
+          refNumber: stockMovements.refNumber,
+        })
+        .from(stockMovements)
+        .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.refType, "credit_note"), eq(stockMovements.refId, ref)));
+      const returns = moves.filter((m) => m.reason === "sale_return");
+      if (returns.length === 0 || moves.some((m) => m.reason === "sale_return_cancel")) return { reversed: false, items: 0 };
+      const net = netByLocationItem(returns, def.id);
+      for (const n of net) {
+        await this.change(
+          tx,
+          {
+            tenantId,
+            locationId: n.locationId,
+            itemId: n.itemId,
+            deltaMilli: -n.milli,
+            reason: "sale_return_cancel",
+            refType: "credit_note",
+            refId: ref,
+            refNumber: returns[0]?.refNumber ?? null,
+          },
+          drops,
+        );
+      }
+      return { reversed: true, items: net.length };
+    });
+    await this.emitLowStock(tenantId, drops);
+    return result;
   }
 
   // ================================================================ transfers

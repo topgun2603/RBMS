@@ -162,13 +162,13 @@ export function FeatureMatrix({ defs, value, onChange, disabled, columns = 1, cl
                       </label>
                       {f.description && <p className="text-xs leading-relaxed text-muted-foreground">{f.description}</p>}
                       <div className="flex flex-wrap items-center gap-1">
-                        <code className="mr-1 font-mono text-[11px] text-muted-foreground/80">{f.key}</code>
+                        <code className="mr-1 font-mono text-xs text-muted-foreground/80">{f.key}</code>
                         {deps.map((d) => (
                           <Badge
                             key={d}
                             variant="outline"
                             className={cn(
-                              "h-5 gap-1 px-1.5 text-[11px] font-normal transition-colors",
+                              "h-5 gap-1 px-1.5 text-xs font-normal transition-colors",
                               on && !value.has(d) ? "border-destructive/50 text-destructive" : "text-muted-foreground",
                             )}
                           >

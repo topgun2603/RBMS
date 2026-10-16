@@ -4,9 +4,10 @@ import type { EInvoiceSource } from "./ports";
 import { toUqc } from "./units";
 
 /**
- * GSTR-1 JSON in the GSTN offline-tool / API layout: `gstin`, `fp` (MMYYYY) and the sections b2b, b2cl, b2cs, hsn and
- * doc_issue. Amounts are rupees with 2 decimals (summed in paise first). Credit / debit notes (cdnr, cdnur), exports,
- * nil-rated (Table 8) and advances are not produced.
+ * GSTR-1 JSON in the GSTN offline-tool / API layout: `gstin`, `fp` (MMYYYY) and the sections b2b, b2cl, b2cs, cdnr,
+ * cdnur, hsn and doc_issue. Amounts are rupees with 2 decimals (summed in paise first). Credit notes (document type CRN)
+ * go to cdnr (registered buyers) or cdnur (B2CL bills); notes on B2CS bills are netted into b2cs, and every note is
+ * taken off the HSN summary. Debit notes, exports, nil-rated (Table 8) and advances are not produced.
  */
 
 /** B2CL: inter-state supply to an unregistered buyer above ₹1,00,000 (from Aug 2024; was ₹2,50,000). */
@@ -66,6 +67,33 @@ export interface Gstr1HsnRow {
   samt: number;
   csamt: number;
 }
+/** A credit / debit note (Table 9B). */
+export interface Gstr1Note {
+  /** "C" credit note, "D" debit note. */
+  ntty: "C" | "D";
+  nt_num: string;
+  /** "DD-MM-YYYY". */
+  nt_dt: string;
+  pos: string;
+  rchrg: "N" | "Y";
+  inv_typ: "R" | "SEWP" | "SEWOP" | "DE" | "CBW";
+  val: number;
+  itms: Gstr1Item[];
+}
+export interface Gstr1Cdnr {
+  ctin: string;
+  nt: Gstr1Note[];
+}
+export interface Gstr1Cdnur {
+  /** Supply type of the original bill. */
+  typ: "B2CL" | "EXPWP" | "EXPWOP";
+  ntty: "C" | "D";
+  nt_num: string;
+  nt_dt: string;
+  pos: string;
+  val: number;
+  itms: Gstr1Item[];
+}
 export interface Gstr1DocIssue {
   doc_det: {
     doc_num: number;
@@ -81,6 +109,8 @@ export interface Gstr1Json {
   b2b: Gstr1B2b[];
   b2cl: Gstr1B2cl[];
   b2cs: Gstr1B2cs[];
+  cdnr: Gstr1Cdnr[];
+  cdnur: Gstr1Cdnur[];
   /** Table 12; split into B2B / B2C tabs since 2025 (`legacy` layout: `{ data }`). */
   hsn: { hsn_b2b: Gstr1HsnRow[]; hsn_b2c: Gstr1HsnRow[] } | { data: Gstr1HsnRow[] };
   doc_issue: Gstr1DocIssue;
@@ -99,7 +129,7 @@ export interface Gstr1Options {
 export interface Gstr1Result {
   json: Gstr1Json;
   warnings: string[];
-  counts: { b2b: number; b2cl: number; b2cs: number; cancelled: number; skipped: number };
+  counts: { b2b: number; b2cl: number; b2cs: number; cdnr: number; cdnur: number; cancelled: number; skipped: number };
 }
 
 /** "102026" → { from: "2026-10-01", to: "2026-10-31" }; null when malformed. */
@@ -159,6 +189,18 @@ export function splitDocNumber(no: string): { series: string; seq: number | null
   return m ? { series: m[1]!, seq: Number(m[2]) } : { series: no, seq: null };
 }
 
+/**
+ * GSTR-1 section of a credit note: registered buyer → CDNR; unregistered buyer of a B2CL bill (inter-state, original
+ * bill above the threshold) → CDNUR; otherwise it is netted into B2CS.
+ */
+export function noteSection(n: Pick<EInvoiceSource, "buyer" | "seller" | "interState" | "totals" | "precedingDoc">): "cdnr" | "cdnur" | "b2cs" {
+  const g = n.buyer.gstin;
+  if (g && isValidGstin(g) && normalizeGstin(g) !== normalizeGstin(n.seller.gstin ?? "")) return "cdnr";
+  const original = n.precedingDoc?.total ?? n.totals.total;
+  if (n.interState && original > B2CL_THRESHOLD_PAISE) return "cdnur";
+  return "b2cs";
+}
+
 type HsnAcc = Gstr1HsnRow & { p: Amounts };
 function mergeHsn(a: Map<string, HsnAcc>, b: Map<string, HsnAcc>): Map<string, HsnAcc> {
   const out = new Map<string, HsnAcc>();
@@ -179,20 +221,24 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
   if (!range) throw new RangeError(`Invalid return period: ${opts.period} (use MMYYYY)`);
   const gstin = normalizeGstin(opts.gstin);
   const warnings: string[] = [];
-  const counts = { b2b: 0, b2cl: 0, b2cs: 0, cancelled: 0, skipped: 0 };
+  const counts = { b2b: 0, b2cl: 0, b2cs: 0, cdnr: 0, cdnur: 0, cancelled: 0, skipped: 0 };
 
   const b2b = new Map<string, Gstr1B2bInvoice[]>();
   const b2cl = new Map<string, Gstr1B2cl["inv"]>();
   const b2cs = new Map<string, { sply: "INTRA" | "INTER"; pos: string; rt: number; a: Amounts }>();
   const hsn = { b2b: new Map<string, Gstr1HsnRow & { p: Amounts }>(), b2c: new Map<string, Gstr1HsnRow & { p: Amounts }>() };
   const docs = new Map<string, { numbers: string[]; seqs: number[]; cancelled: number }>();
+  const noteDocs = new Map<string, { numbers: string[]; seqs: number[]; cancelled: number }>();
+  const cdnr = new Map<string, Gstr1Note[]>();
+  const cdnur: Gstr1Cdnur[] = [];
 
   const sorted = [...invoices].sort((a, b) => a.date.localeCompare(b.date) || (a.number ?? "").localeCompare(b.number ?? ""));
   for (const inv of sorted) {
     const no = (inv.number ?? "").trim();
     if (!no || inv.status === "draft") continue;
-    if (inv.docType && inv.docType !== "INV") {
-      warnings.push(`${no}: credit / debit notes are not exported (CDNR) yet`);
+    const isNote = inv.docType === "CRN";
+    if (inv.docType && inv.docType !== "INV" && !isNote) {
+      warnings.push(`${no}: debit notes are not exported yet`);
       counts.skipped += 1;
       continue;
     }
@@ -207,12 +253,13 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       continue;
     }
 
-    // doc_issue counts every numbered bill, cancelled ones included.
+    // doc_issue counts every numbered bill (and credit note), cancelled ones included.
     const { series, seq } = splitDocNumber(no);
-    const d = docs.get(series) ?? { numbers: [], seqs: [], cancelled: 0 };
+    const docMap = isNote ? noteDocs : docs;
+    const d = docMap.get(series) ?? { numbers: [], seqs: [], cancelled: 0 };
     d.numbers.push(no);
     if (seq !== null) d.seqs.push(seq);
-    docs.set(series, d);
+    docMap.set(series, d);
     if (inv.status === "cancelled") {
       d.cancelled += 1;
       counts.cancelled += 1;
@@ -223,6 +270,58 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
     const sellerState = stateFromGstin(gstin);
     const inter = sellerState ? sellerState !== pos : inv.interState;
     if (inter !== inv.interState) warnings.push(`${no}: inter-state flag does not match the place of supply; using ${inter ? "IGST" : "CGST/SGST"}`);
+
+    if (isNote) {
+      const ns = noteSection(inv);
+      const rates = byRate(inv);
+      const note = { ntty: "C" as const, nt_num: no, nt_dt: toGstr1Date(inv.date), pos, val: rupees(inv.totals.total) };
+      if (ns === "cdnr") {
+        counts.cdnr += 1;
+        const ctin = normalizeGstin(inv.buyer.gstin!);
+        const list = cdnr.get(ctin) ?? [];
+        list.push({ ...note, rchrg: "N", inv_typ: "R", itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, inter) })) });
+        cdnr.set(ctin, list);
+      } else if (ns === "cdnur") {
+        counts.cdnur += 1;
+        cdnur.push({ typ: "B2CL", ...note, itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, true, true) })) });
+      } else {
+        // Notes on small B2C bills reduce the B2CS figures of the period.
+        counts.b2cs += 1;
+        for (const [rt, a] of rates) {
+          const sply = inter ? "INTER" : "INTRA";
+          const key = `${sply}|${pos}|${rt}`;
+          const row = b2cs.get(key) ?? { sply, pos, rt, a: zero() };
+          add(row.a, { taxable: -a.taxable, igst: -a.igst, cgst: -a.cgst, sgst: -a.sgst });
+          b2cs.set(key, row);
+        }
+      }
+      const tab = ns === "cdnr" ? hsn.b2b : hsn.b2c;
+      for (const l of inv.lines) {
+        const code = (l.hsn ?? "").replace(/\s+/g, "");
+        const service = isServiceHsn(code);
+        const uqc = service ? "NA" : toUqc(l.unit);
+        const key = `${code}|${uqc}|${l.gstRate}`;
+        const row = tab.get(key) ?? {
+          num: 0,
+          hsn_sc: code,
+          desc: l.description.replace(/\s+/g, " ").trim().slice(0, 30),
+          uqc,
+          qty: 0,
+          rt: l.gstRate,
+          txval: 0,
+          iamt: 0,
+          camt: 0,
+          samt: 0,
+          csamt: 0,
+          p: zero(),
+        };
+        if (!service) row.qty = roundTo(row.qty - l.qty, 3);
+        add(row.p, { taxable: -l.taxable, igst: -l.igst, cgst: -l.cgst, sgst: -l.sgst });
+        tab.set(key, row);
+      }
+      continue;
+    }
+
     const section = gstr1Section(inv);
     counts[section] += 1;
     const rates = byRate(inv);
@@ -288,7 +387,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       .sort((a, b) => a.hsn_sc.localeCompare(b.hsn_sc) || a.uqc.localeCompare(b.uqc) || a.rt - b.rt)
       .map(({ p, ...r }, i) => ({ ...r, num: i + 1, txval: rupees(p.taxable), iamt: rupees(p.igst), camt: rupees(p.cgst), samt: rupees(p.sgst) }));
 
-  const docRows = [...docs.entries()]
+  const docRowsOf = (m: typeof docs) => [...m.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([series, d], i) => {
       let from: string;
@@ -305,6 +404,8 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       const totnum = d.numbers.length;
       return { num: i + 1, from, to, totnum, cancel: d.cancelled, net_issue: totnum - d.cancelled };
     });
+  const docRows = docRowsOf(docs);
+  const noteRows = docRowsOf(noteDocs);
 
   const json: Gstr1Json = {
     gstin,
@@ -323,11 +424,18 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
         ...(r.sply === "INTER" ? { iamt: rupees(r.a.igst) } : { camt: rupees(r.a.cgst), samt: rupees(r.a.sgst) }),
         csamt: 0,
       })),
+    cdnr: [...cdnr.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([ctin, nt]) => ({ ctin, nt })),
+    cdnur,
     hsn:
       opts.hsnLayout === "legacy"
         ? { data: hsnRows(mergeHsn(hsn.b2b, hsn.b2c)) }
         : { hsn_b2b: hsnRows(hsn.b2b), hsn_b2c: hsnRows(hsn.b2c) },
-    doc_issue: { doc_det: docRows.length ? [{ doc_num: 1, doc_typ: "Invoices for outward supply", docs: docRows }] : [] },
+    doc_issue: {
+      doc_det: [
+        ...(docRows.length ? [{ doc_num: 1, doc_typ: "Invoices for outward supply", docs: docRows }] : []),
+        ...(noteRows.length ? [{ doc_num: 5, doc_typ: "Credit Note", docs: noteRows }] : []),
+      ],
+    },
   };
   return { json, warnings, counts };
 }

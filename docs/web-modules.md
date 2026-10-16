@@ -152,7 +152,7 @@ interface WebModule { id; basePath?; features?; messages; nav; routes; publicRou
 | orders-ui | orders today (20) | to confirm, to pack, to ship | recent orders (20) | — | — |
 | site-ui | store visitors · 7 days + conversion (30) | reviews to approve | — | — | your store (10) |
 | inbox-ui | — | tickets past due, tickets needing reply, unread chats, unread WhatsApp | — | — | — |
-| marketplace-ui | — | seller applications | — | — | payable to sellers (30) |
+| marketplace-ui | — | seller applications, seller products to review | — | — | payable to sellers (30) |
 | commerce-ui | — | — | — | — | catalogue (20) |
 | growth-ui | — | — | — | — | loyalty (40), scheduled reports (50) |
 | workspace-ui | setup: "Get set up" strip | | | | |

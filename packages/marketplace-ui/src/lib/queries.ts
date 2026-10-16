@@ -4,6 +4,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { absoluteUrl, api, apiDownload, ApiError, type QueryParams } from "@srirealtime/web";
 import { istEndOfDay, istDateOf, resolveSettings } from "./logic";
 import type {
+  CatalogProduct,
+  CatalogProductSummary,
   KycCheckResponse,
   KycCheckType,
   KycSubject,
@@ -15,6 +17,10 @@ import type {
   PayoutAccountInput,
   PayoutRunResult,
   PayoutStatus,
+  ProductReview,
+  ProductReviewList,
+  ProductReviewStatus,
+  ProductStatus,
   PublicVendor,
   UploadedFile,
   UploadSignResponse,
@@ -37,6 +43,9 @@ export const mk = {
   settings: ["settings", "marketplace"] as const,
   kyc: (vendorId: string) => ["kyc", "vendor", vendorId] as const,
   publicVendor: (slug: string) => ["marketplace", "public-vendor", slug] as const,
+  reviews: (q: QueryParams) => ["marketplace", "reviews", q] as const,
+  sellerProducts: (vendorId: string, q: QueryParams) => ["marketplace", "seller-products", vendorId, q] as const,
+  catalogProduct: (id: string) => ["marketplace", "catalog-product", id] as const,
 };
 
 // ---------------------------------------------------------------- settings (namespace `marketplace`)
@@ -194,6 +203,55 @@ export function usePayoutPreviewData(until: string, enabled = true) {
 }
 
 export const todayIST = () => istDateOf(new Date());
+
+// ---------------------------------------------------------------- product review (staff)
+
+export const REVIEW_PAGE = 20;
+
+export function useProductReviews(q: { status?: ProductReviewStatus; vendorId?: string; productIds?: string[]; offset?: number; limit?: number }, enabled = true) {
+  const key: QueryParams = {
+    limit: q.limit ?? REVIEW_PAGE,
+    offset: q.offset ?? 0,
+    ...(q.status ? { status: q.status } : {}),
+    ...(q.vendorId ? { vendorId: q.vendorId } : {}),
+    ...(q.productIds?.length ? { productIds: q.productIds.join(",") } : {}),
+  };
+  return useQuery({
+    queryKey: mk.reviews(key),
+    enabled,
+    queryFn: ({ signal }) => api.get<ProductReviewList>(`${MP}/product-reviews`, key, { signal }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useReviewDecision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision, reason }: { id: string; decision: "approve" | "reject"; reason?: string }) =>
+      api.post<ProductReview>(`${MP}/product-reviews/${id}/${decision}`, decision === "reject" ? { reason } : undefined),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: mk.all }),
+  });
+}
+
+/** A catalogue product as staff see it (review details). */
+export function useCatalogProduct(id: string | null) {
+  return useQuery({
+    queryKey: mk.catalogProduct(id ?? ""),
+    enabled: !!id,
+    queryFn: ({ signal }) => api.get<CatalogProduct>(`/catalog/products/${id}`, undefined, { signal }),
+    staleTime: 30_000,
+  });
+}
+
+/** A seller's products in every status (catalogue staff list with `vendorId`). */
+export function useSellerProducts(vendorId: string, q: { status?: ProductStatus; offset: number; limit: number }) {
+  const key: QueryParams = { vendorId, limit: q.limit, offset: q.offset, ...(q.status ? { status: q.status } : {}) };
+  return useQuery({
+    queryKey: mk.sellerProducts(vendorId, key),
+    queryFn: ({ signal }) => api.get<ListResult<CatalogProductSummary>>(`/catalog/products`, key, { signal }),
+    placeholderData: keepPreviousData,
+  });
+}
 
 // ---------------------------------------------------------------- public seller page (products of active sellers)
 

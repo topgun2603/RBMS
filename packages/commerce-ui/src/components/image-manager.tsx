@@ -191,7 +191,7 @@ export function ImageManager({
                   {/* eslint-disable-next-line @next/next/no-img-element -- UI modules don't use next/image */}
                   <img src={absoluteUrl(img.url)} alt={img.alt || ""} className="pointer-events-none size-full object-cover" draggable={false} />
                   {i === 0 && (
-                    <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.6875rem] font-semibold text-primary-foreground shadow-sm">
+                    <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground shadow-sm">
                       <StarIcon className="size-3 fill-current" /> {t("commerce.media.main")}
                     </span>
                   )}

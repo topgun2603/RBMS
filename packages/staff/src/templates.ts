@@ -27,7 +27,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     description:
       "Applies to staff members without a custom role: view everything, create bills (with discounts), receive payments, add customers and use the credit book.",
     // Everything staff could do before roles existed, except cancelling bills and managing stock, catalogue or settings.
-    permissions: ["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book"],
+    permissions: ["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book", "pos.till"],
   },
   {
     key: "manager",
@@ -56,14 +56,17 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "loyalty.*",
       "whatsapp.*",
       "reports.manage",
+      // Counter: open/close the till, cash in/out (credit notes come with invoices.*).
+      "pos.*",
     ],
   },
   {
     key: "cashier",
     name: "Cashier",
-    description: "Creates bills, receives payments and adds customers.",
-    // loyalty.redeem: use a customer's points on the bill (quotes need only a staff role).
-    permissions: ["invoices.create", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem"],
+    description: "Creates bills, takes returns, receives payments, adds customers and runs the counter till.",
+    // loyalty.redeem: use a customer's points on the bill (quotes need only a staff role). invoices.credit-note: counter
+    // returns; pos.till: open/close the till and record cash in/out.
+    permissions: ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till"],
   },
   {
     key: "accountant",
@@ -94,7 +97,11 @@ export const BUILTIN_ROLE_KEYS: readonly string[] = BUILTIN_ROLES.map((r) => r.k
  */
 export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (readonly string[])[]>> = {
   // Batch 2 (before batch 3 added support/chat/loyalty/whatsapp/reports.manage to the manager and loyalty.redeem to the cashier).
-  cashier: [["invoices.create", "payments.receive", "customers.create", "catalogue.view"]],
+  cashier: [
+    ["invoices.create", "payments.receive", "customers.create", "catalogue.view"],
+    // Batch 3 to 5, before credit notes and the server till.
+    ["invoices.create", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem"],
+  ],
   // Batch 1 (60011aa, 9ed3d7b): before the online store added cms.* and reviews.*.
   manager: [
     [
@@ -130,7 +137,32 @@ export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (rea
       "importexport.*",
       "audit.view",
     ],
+    // Batch 3 to 5: before the counter till added pos.*.
+    [
+      "*.view",
+      "catalogue.*",
+      "orders.*",
+      "coupons.*",
+      "inventory.*",
+      "invoices.*",
+      "payments.*",
+      "customers.*",
+      "reports.*",
+      "expenses.*",
+      "cms.*",
+      "reviews.*",
+      "documents.*",
+      "importexport.*",
+      "audit.view",
+      "support.*",
+      "chat.*",
+      "loyalty.*",
+      "whatsapp.*",
+      "reports.manage",
+    ],
   ],
+  // Before the counter till added pos.till.
+  default: [["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book"]],
 };
 
 /** Order-independent hash of a permission list (sorted, de-duplicated), 16 hex chars. */

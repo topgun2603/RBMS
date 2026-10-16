@@ -9,6 +9,7 @@ import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";
 import { TrendChart } from "../charts/trend-chart";
 import { StatusBadge } from "../status-badge";
+import { CreditNoteStatusPill } from "../credit-notes/credit-note-ui";
 import { compactINR, eachDay, formatQty, money } from "../../lib/format";
 import { REPORT_PATHS, useSalesRegister, useTopCustomers, useTopItems } from "../../lib/queries-v2";
 import type { SalesRegisterRow } from "../../lib/types";
@@ -38,10 +39,11 @@ export function SalesTab({ from, to }: RangeProps) {
     () => (reg.data?.items ?? []).filter((r) => r.status !== "cancelled" && r.status !== "draft"),
     [reg.data],
   );
+  // Credit notes come as negative rows: totals are net of them; "bills" counts invoices only.
   const total = sum(rows, (r) => r.total);
   const tax = sum(rows, (r) => r.cgst + r.sgst + r.igst);
   const taxable = sum(rows, (r) => r.taxable);
-  const count = rows.length;
+  const count = rows.filter((r) => r.type !== "credit_note").length;
 
   const trend = React.useMemo(() => {
     const byDay = new Map<string, number>();
@@ -58,11 +60,19 @@ export function SalesTab({ from, to }: RangeProps) {
     {
       key: "number",
       label: t("billing.reports.cols.number"),
-      cell: (r) => (
-        <ModuleLink to={`invoices/${r.id}`} className="font-medium text-primary underline-offset-4 hover:underline">
-          {r.number ?? "—"}
-        </ModuleLink>
-      ),
+      cell: (r) =>
+        r.type === "credit_note" ? (
+          <span className="grid">
+            <ModuleLink to={`credit-notes/${r.id}`} className="font-medium text-primary underline-offset-4 hover:underline">
+              {r.number ?? "—"}
+            </ModuleLink>
+            {r.against && <span className="text-xs text-muted-foreground">{t("billing.cn.against", { number: r.against })}</span>}
+          </span>
+        ) : (
+          <ModuleLink to={`invoices/${r.id}`} className="font-medium text-primary underline-offset-4 hover:underline">
+            {r.number ?? "—"}
+          </ModuleLink>
+        ),
       footer: t("billing.reports.total"),
     },
     { key: "date", label: t("billing.reports.cols.date"), cell: (r) => <span className="tabular-nums">{dLong(r.date)}</span> },
@@ -81,7 +91,11 @@ export function SalesTab({ from, to }: RangeProps) {
       cell: (r) => <span className="font-semibold">{money(r.total)}</span>,
       footer: money(total),
     },
-    { key: "status", label: t("billing.reports.cols.status"), cell: (r) => <StatusBadge status={r.status} /> },
+    {
+      key: "status",
+      label: t("billing.reports.cols.status"),
+      cell: (r) => (r.status === "credit_note" ? <CreditNoteStatusPill status="issued" /> : <StatusBadge status={r.status} />),
+    },
   ];
 
   return (

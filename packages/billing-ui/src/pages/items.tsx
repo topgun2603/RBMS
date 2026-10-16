@@ -125,7 +125,7 @@ export default function ItemsPage() {
                             <span className={cn("font-medium tabular-nums", s.track !== false && "text-foreground")}>
                               {t("billing.itemsStock.inStock", { qty: formatQty(s.qty), unit: it.unit || "pcs" })}
                             </span>
-                            <StockStatusPill row={s} className="h-5 px-1.5 text-[0.6875rem]" />
+                            <StockStatusPill row={s} className="h-5 px-1.5 text-xs" />
                           </span>
                         )}
                       </p>

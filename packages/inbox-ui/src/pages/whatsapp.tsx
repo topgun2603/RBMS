@@ -527,7 +527,7 @@ function NoteBubble({ contactId, n }: { contactId: string; n: WaNote }) {
       animate={{ opacity: 1, y: 0 }}
       className="group/note w-full max-w-lg rounded-xl border border-dashed border-warning/50 bg-warning/10 px-3 py-2 text-sm"
     >
-      <p className="mb-0.5 flex items-center gap-1.5 text-[0.6875rem] font-medium text-warning-ink">
+      <p className="mb-0.5 flex items-center gap-1.5 text-xs font-medium text-warning-ink">
         <StickyNoteIcon className="size-3.5" aria-hidden /> {t("inbox.wa.noteBy", { name: staffName(n.authorId) })}
         <time dateTime={n.createdAt} className="ml-auto font-normal text-muted-foreground">
           {istTime(n.createdAt)}
@@ -653,7 +653,7 @@ function WaComposer({ c, windowOpen, onTemplate, onSent }: { c: WaConversationDe
               {busy ? <Loader2Icon className="animate-spin" /> : mode === "note" ? <StickyNoteIcon /> : <SendIcon />}
             </Button>
           </form>
-          {mode === "note" && <p className="mt-1 text-[0.6875rem] text-warning-ink">{t("inbox.wa.noteHint")}</p>}
+          {mode === "note" && <p className="mt-1 text-meta text-warning-ink">{t("inbox.wa.noteHint")}</p>}
         </>
       )}
     </div>

@@ -11,25 +11,28 @@ import {
 import { DEFAULT_REMINDER_DAYS, SELLER_FIELDS, type SellerProfile } from "./ports";
 import type { InvoiceStatus } from "./schema";
 
-/** Status after a payment change. Drafts and cancelled invoices keep their status. */
-export function deriveStatus(current: InvoiceStatus, total: number, paid: number): InvoiceStatus {
+/**
+ * Status after a payment or credit note change. Drafts and cancelled invoices keep their status. `credited` (credit
+ * notes) settles the bill like money does: a fully returned bill is "paid" (nothing is owed).
+ */
+export function deriveStatus(current: InvoiceStatus, total: number, paid: number, credited = 0): InvoiceStatus {
   if (current === "draft" || current === "cancelled") return current;
-  if (paid >= total) return "paid";
-  if (paid > 0) return "partially_paid";
+  if (paid + credited >= total) return "paid";
+  if (paid + credited > 0) return "partially_paid";
   return "issued";
 }
 
-/** Amount still owed. Cancelled invoices owe nothing. */
-export function balanceOf(inv: { status: InvoiceStatus; total: number; paid: number }): number {
+/** Amount still owed: total − paid − credited. Cancelled invoices owe nothing. */
+export function balanceOf(inv: { status: InvoiceStatus; total: number; paid: number; credited?: number | null }): number {
   if (inv.status === "cancelled") return 0;
-  return Math.max(inv.total - inv.paid, 0);
+  return Math.max(inv.total - inv.paid - (inv.credited ?? 0), 0);
 }
 
 /** Statuses that count towards a customer's outstanding amount. */
 export const OPEN_STATUSES: readonly InvoiceStatus[] = ["issued", "partially_paid"];
 
 export function isOverdue(
-  inv: { status: InvoiceStatus; total: number; paid: number; dueDate: string | null },
+  inv: { status: InvoiceStatus; total: number; paid: number; credited?: number | null; dueDate: string | null },
   today: string,
 ): boolean {
   if (inv.status === "draft" || inv.status === "cancelled") return false;
@@ -38,12 +41,15 @@ export function isOverdue(
 }
 
 /** Sum of balances of issued / partially paid invoices. */
-export function outstandingOf(list: { status: InvoiceStatus; total: number; paid: number }[]): number {
+export function outstandingOf(list: { status: InvoiceStatus; total: number; paid: number; credited?: number | null }[]): number {
   return list.reduce((s, inv) => (OPEN_STATUSES.includes(inv.status) ? s + balanceOf(inv) : s), 0);
 }
 
 /** Whether a payment of `amount` may be recorded. Returns an error message, or null when allowed. */
-export function paymentProblem(inv: { status: InvoiceStatus; total: number; paid: number }, amount: number): string | null {
+export function paymentProblem(
+  inv: { status: InvoiceStatus; total: number; paid: number; credited?: number | null },
+  amount: number,
+): string | null {
   if (!OPEN_STATUSES.includes(inv.status)) {
     if (inv.status === "paid") return "This invoice is already fully paid";
     if (inv.status === "cancelled") return "Payments can't be recorded on a cancelled invoice";

@@ -1,7 +1,7 @@
 import { createDb } from "@srirealtime/db";
 import { afterAll, describe, expect, it } from "vitest";
 import { seedPlans } from "./seed";
-import { consumeStatement, planInputSchema } from "./service";
+import { consumeStatement, planInputSchema, PlansService, reconcileStatement } from "./service";
 
 // postgres-js connects lazily, so building SQL with toSQL() never touches a database.
 const { db, close } = createDb("postgres://user:pass@127.0.0.1:1/none", { max: 1 });
@@ -19,10 +19,34 @@ describe("consumeStatement", () => {
     expect(params).toContain(3);
   });
 
+  it("counts up from the real usage when a floor is given", () => {
+    const { sql, params } = consumeStatement(db, { tenantId: "t1", key: "staff", period: "lifetime", amount: 1, limit: 25, floor: 4 }).toSQL();
+    expect(sql).toMatch(/set "value" = greatest\("usage_counters"\."value", \$\d+\) \+ \$\d+/);
+    expect(sql).toMatch(/where greatest\("usage_counters"\."value", \$\d+\) \+ \$\d+ <= \$\d+/);
+    // A fresh counter starts at floor + amount.
+    expect(params.slice(0, 5)).toEqual(expect.arrayContaining([5]));
+  });
+
   it("skips the limit check when unlimited", () => {
     const { sql } = consumeStatement(db, { tenantId: "t1", key: "staff", period: "lifetime", amount: 1, limit: -1 }).toSQL();
     expect(sql).toContain("do update set");
     expect(sql).not.toContain("<=");
+  });
+});
+
+describe("reconcileStatement", () => {
+  it("sets a lifetime counter only when it differs and has settled", () => {
+    const { sql, params } = reconcileStatement(db, { tenantId: "t1", key: "staff", value: 3, settleMs: 60_000 }).toSQL();
+    expect(sql).toMatch(/^insert into "usage_counters"/);
+    expect(sql).toMatch(/where "usage_counters"\."value" <> \$\d+ and "usage_counters"\."updated_at" < now\(\) - make_interval\(secs => \$\d+\)/);
+    expect(params).toEqual(expect.arrayContaining(["t1", "staff", "lifetime", 3, 60]));
+  });
+});
+
+describe("PlansService usage sources", () => {
+  it("rejects a source for a monthly key", () => {
+    const source = { count: async () => 0, countAll: async () => new Map() };
+    expect(() => new PlansService({ db, usageSources: { sms_per_month: source } })).toThrow(/lifetime/);
   });
 });
 

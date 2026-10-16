@@ -1,7 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, ModuleLink, Page, QueryError, useFeature, useI18n, useModuleNavigate, useQueryParams, useRouteParams, useShop } from "@srirealtime/web";
+import {
+  ConfirmDialog,
+  describeError,
+  ModuleLink,
+  Page,
+  QueryError,
+  useFeature,
+  useI18n,
+  useModuleNavigate,
+  usePermission,
+  useQueryParams,
+  useRouteParams,
+  useShop,
+} from "@srirealtime/web";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
@@ -20,6 +33,7 @@ import {
   SendIcon,
   Share2Icon,
   Trash2Icon,
+  Undo2Icon,
   WalletIcon,
   XIcon,
 } from "lucide-react";
@@ -50,6 +64,8 @@ import {
   useReducedMotionSafe,
 } from "@srirealtime/ui";
 import { EINVOICE_FEATURE, EInvoiceCard } from "../components/einvoice/einvoice-card";
+import { CreditNoteDialog } from "../components/credit-notes/credit-note-dialog";
+import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui";
 import { InvoiceDocument } from "../components/invoice-document";
 import { CancelDialog, PaymentDialog, ShareDialog } from "../components/invoice-dialogs";
 import { isOnlinePayment, MessagesTimeline, SendInvoiceButton } from "../components/payments/send-invoice";
@@ -114,7 +130,7 @@ function DetailSkeleton() {
   );
 }
 
-type DialogKind = null | "pay" | "cancel" | "share" | "issue" | "delete";
+type DialogKind = null | "pay" | "cancel" | "share" | "issue" | "delete" | "creditNote";
 
 /** Reads ?issued=1 / ?warning=… once, then strips them from the URL. */
 function useArrivalFlags() {
@@ -168,7 +184,12 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   const open = inv.status === "issued" || inv.status === "partially_paid";
   const cancelled = inv.status === "cancelled";
   const sendable = !draft && !cancelled;
-  const paidPct = inv.total > 0 ? Math.min(100, Math.round((inv.paid / inv.total) * 100)) : 0;
+  const credited = inv.credited ?? 0;
+  const settled = inv.paid + credited;
+  const paidPct = inv.total > 0 ? Math.min(100, Math.max(0, Math.round((settled / inv.total) * 100))) : 0;
+  const canCreditNote = usePermission("invoices.credit-note");
+  const creditable = !draft && !cancelled && inv.total - credited > 0 && canCreditNote;
+  const notes = inv.creditNotes ?? [];
 
   const print = () => {
     const prev = document.title;
@@ -275,6 +296,11 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
               <IndianRupeeIcon /> {t("billing.detail.recordPayment")}
             </Button>
           )}
+          {creditable && (
+            <Button variant="outline" size="lg" className="hidden h-11 sm:inline-flex" onClick={() => setDialog("creditNote")}>
+              <Undo2Icon /> {t("billing.cn.create")}
+            </Button>
+          )}
           <Button variant="outline" size="lg" className="h-11" onClick={print}>
             <PrinterIcon /> <span className="hidden sm:inline">{t("billing.detail.print")}</span>
             <span className="sr-only sm:hidden">{t("billing.detail.print")}</span>
@@ -315,9 +341,18 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                     <Trash2Icon /> {t("billing.detail.delete")}
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem variant="destructive" className="h-10" onSelect={() => setDialog("cancel")}>
-                    <BanIcon /> {t("billing.detail.cancel")}
-                  </DropdownMenuItem>
+                  <>
+                    {creditable && (
+                      <DropdownMenuItem className="h-10" onSelect={() => setDialog("creditNote")}>
+                        <Undo2Icon /> {t("billing.cn.createLong")}
+                      </DropdownMenuItem>
+                    )}
+                    {credited === 0 && (
+                      <DropdownMenuItem variant="destructive" className="h-10" onSelect={() => setDialog("cancel")}>
+                        <BanIcon /> {t("billing.detail.cancel")}
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -349,6 +384,12 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                     <span className="text-xs text-muted-foreground tabular-nums"> / {money(inv.total)}</span>
                   </span>
                 </div>
+                {credited > 0 && (
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">{t("billing.cn.bill.credited")}</span>
+                    <span className="font-semibold tabular-nums">−{money(credited)}</span>
+                  </div>
+                )}
                 <Progress
                   value={paidPct}
                   className="h-2.5"
@@ -367,15 +408,22 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                   )}
                 </div>
                 {inv.status === "paid" && (
-                  <StatusPill tone="success" icon={CheckCircle2Icon} size="md">
-                    {t("billing.detail.fullyPaid")}
-                  </StatusPill>
+                  credited >= inv.total ? (
+                    <StatusPill tone="brand" icon={Undo2Icon} size="md">
+                      {t("billing.cn.bill.fullyReturned")}
+                    </StatusPill>
+                  ) : (
+                    <StatusPill tone="success" icon={CheckCircle2Icon} size="md">
+                      {t("billing.detail.fullyPaid")}
+                    </StatusPill>
+                  )
                 )}
                 {inv.payments.length > 0 && (
                   <ul className="grid gap-1 border-t pt-2">
                     <AnimatePresence initial={false}>
                       {inv.payments.map((p, i) => {
                         const online = isOnlinePayment(p);
+                        const refund = p.source === "refund" || p.amount < 0;
                         return (
                           <motion.li
                             key={p.id ?? `${p.date}-${i}`}
@@ -388,6 +436,11 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                             <div className="min-w-0 flex-1">
                               <p className="flex flex-wrap items-center gap-1.5">
                                 <span className="font-semibold tabular-nums">{money(p.amount)}</span>
+                                {refund && (
+                                  <StatusPill tone="warning" icon={Undo2Icon}>
+                                    {t("billing.cn.bill.refund")}
+                                  </StatusPill>
+                                )}
                                 {online && (
                                   <StatusPill tone="brand" icon={GlobeIcon}>
                                     {t("billing.billDetail.online")}
@@ -399,7 +452,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                                 {p.reference ? ` · ${p.reference}` : ""}
                               </p>
                             </div>
-                            {p.id && !cancelled && !online && (
+                            {p.id && !cancelled && !online && !refund && credited === 0 && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -419,6 +472,51 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                 {open && (
                   <Button className="h-11" onClick={() => setDialog("pay")}>
                     <IndianRupeeIcon /> {t("billing.detail.recordPayment")}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {notes.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <span className="icon-chip size-8 text-primary">
+                    <Undo2Icon className="size-4" />
+                  </span>
+                  {t("billing.cn.bill.cardTitle")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="relative grid gap-1 before:absolute before:top-2 before:bottom-2 before:left-[0.4375rem] before:w-px before:bg-border">
+                  <AnimatePresence initial={false}>
+                    {notes.map((n) => (
+                      <motion.li
+                        key={n.id}
+                        layout={!reduced}
+                        initial={reduced ? false : { opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="relative flex items-start gap-3 py-1.5 pl-5"
+                      >
+                        <span aria-hidden className={n.status === "cancelled" ? "absolute top-3 left-0.5 size-2.5 rounded-full bg-muted-foreground/40" : "absolute top-3 left-0.5 size-2.5 rounded-full bg-primary"} />
+                        <ModuleLink to={`credit-notes/${n.id}`} className="min-w-0 flex-1 rounded-md outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+                          <span className="block font-medium tabular-nums">{n.number}</span>
+                          <span className="block text-meta text-muted-foreground">
+                            {formatDate(n.date)} · {t(`billing.cn.reasons.${n.reason}`)}
+                          </span>
+                        </ModuleLink>
+                        <span className="flex flex-col items-end gap-1">
+                          <span className={n.status === "cancelled" ? "text-sm text-muted-foreground line-through tabular-nums" : "text-sm font-semibold tabular-nums"}>−{money(n.total)}</span>
+                          {n.status === "cancelled" && <CreditNoteStatusPill status={n.status} />}
+                        </span>
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ol>
+                {creditable && (
+                  <Button variant="outline" className="mt-3 h-10 w-full" onClick={() => setDialog("creditNote")}>
+                    <Undo2Icon /> {t("billing.cn.createLong")}
                   </Button>
                 )}
               </CardContent>
@@ -477,6 +575,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
       </div>
 
       <PaymentDialog invoice={inv} open={dialog === "pay"} onOpenChange={setDialogOpen("pay")} />
+      {creditable && <CreditNoteDialog invoice={inv} open={dialog === "creditNote"} onOpenChange={setDialogOpen("creditNote")} />}
       <CancelDialog invoice={inv} open={dialog === "cancel"} onOpenChange={setDialogOpen("cancel")} />
       <ShareDialog invoice={inv} shopName={shopName} open={dialog === "share"} onOpenChange={setDialogOpen("share")} />
       <ConfirmDialog

@@ -87,7 +87,7 @@ export default function CollectionsPage() {
                     <p className="flex items-center gap-2 font-medium group-hover:text-primary">
                       <span className="truncate">{c.name}</span>
                       {!c.active && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] font-normal text-muted-foreground">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
                           <EyeOffIcon className="size-3" /> {t("commerce.collections.hidden")}
                         </span>
                       )}
@@ -95,7 +95,7 @@ export default function CollectionsPage() {
                     <p className="mt-0.5 truncate text-meta text-muted-foreground">
                       {c.type === "manual" ? t("commerce.collections.productCount", { count: c.productIds.length }) : ruleSummary(c)}
                     </p>
-                    <p className="truncate font-mono text-[0.6875rem] text-muted-foreground/80">/collections/{c.slug}</p>
+                    <p className="truncate font-mono text-xs text-muted-foreground/80">/collections/{c.slug}</p>
                   </div>
                 </Card>
               </ModuleLink>

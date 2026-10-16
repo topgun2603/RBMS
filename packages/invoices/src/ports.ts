@@ -1,6 +1,7 @@
 import type { TenantRef } from "@srirealtime/core";
 import type { InvoiceStatus } from "./schema";
 import type { Customer, Invoice } from "./service";
+import type { CreditNote } from "./credit-notes";
 
 /** The shop's own details, read from the `billing` settings namespace (apps/api wires it). */
 export interface SellerProfile {
@@ -88,6 +89,16 @@ export interface StockPort {
     },
   ): Promise<unknown>;
   reverseSale(tenantId: string, refId: string): Promise<unknown>;
+  /**
+   * Puts returned goods of a credit note back in stock (where the bill's sale took them, else `locationId`, else the
+   * default location). Idempotent per `refId` (the credit note id).
+   */
+  applyReturn?(
+    tenantId: string,
+    ret: { refId: string; saleRefId: string; refNumber?: string | null; lines: { itemId: string; qty: number }[]; locationId?: string | null },
+  ): Promise<unknown>;
+  /** Takes a cancelled credit note's returned goods out of stock again. Idempotent. */
+  reverseReturn?(tenantId: string, refId: string): Promise<unknown>;
 }
 
 /** A saved item as an item source returns it (`rate` = GST-exclusive paise per unit). */
@@ -175,6 +186,13 @@ export interface LoyaltyRedeemPort {
   ): Promise<{ points: number; discount: number }>;
   /** Gives the points back (failed issue). */
   reverse(tenantId: string, invoiceId: string): Promise<unknown>;
+  /**
+   * A credit note took `amount` (paise) off a bill that already earned points: takes back the points earned on that
+   * value. Idempotent per credit note.
+   */
+  creditNote?(tenantId: string, e: { invoiceId: string; creditNoteId: string; amount: number }): Promise<unknown>;
+  /** A credit note was cancelled: gives back the points `creditNote` took. Idempotent. */
+  creditNoteCancelled?(tenantId: string, e: { invoiceId: string; creditNoteId: string }): Promise<unknown>;
 }
 
 /**
@@ -191,6 +209,8 @@ export interface InvoiceEventsPort {
     e: { invoice: Invoice; amount: number; method: string; source: "manual" | "receipt" | "online" },
   ): Promise<void> | void;
   customerCreated?(tenantId: string, customer: Customer): Promise<void> | void;
+  creditNoteIssued?(tenantId: string, note: CreditNote, invoice: Invoice): Promise<void> | void;
+  creditNoteCancelled?(tenantId: string, note: CreditNote, invoice: Invoice): Promise<void> | void;
 }
 
 export interface LoggerPort {

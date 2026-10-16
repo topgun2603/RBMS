@@ -95,7 +95,7 @@ export function StockAdjustDialog({
           <DialogTitle>{t("billing.adjust.title")}</DialogTitle>
           <DialogDescription>{row?.name}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <ChipGroup value={mode} onChange={setMode} options={modes} aria-label={t("billing.adjust.modeLabel")} />
 
           {/* Live preview */}

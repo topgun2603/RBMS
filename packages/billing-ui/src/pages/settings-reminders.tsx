@@ -323,10 +323,10 @@ function MessagePreview({ state }: { state: State }) {
                   exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
                   className="max-w-[90%] justify-self-start"
                 >
-                  <p className="mb-1 text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">{b.label}</p>
+                  <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{b.label}</p>
                   <div className="relative rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5 text-sm whitespace-pre-line shadow-raised ring-1 ring-card-ring">
                     {b.text}
-                    <span className="mt-1 flex items-center justify-end gap-1 text-[0.6875rem] text-muted-foreground">
+                    <span className="mt-1 flex items-center justify-end gap-1 text-xs text-muted-foreground">
                       10:00 <CheckCheckIcon className="size-3.5 text-info-ink" aria-hidden />
                     </span>
                   </div>

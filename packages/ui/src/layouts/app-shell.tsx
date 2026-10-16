@@ -220,7 +220,7 @@ function SidebarNav({
             (collapsed ? (
               si > 0 && <div className="mx-2 mb-1 h-px bg-sidebar-border" />
             ) : (
-              <div className="px-2.5 pb-2 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+              <div className="px-2.5 pb-2 text-xs font-semibold tracking-wider text-muted-foreground/80 uppercase">
                 {section.title}
               </div>
             ))}

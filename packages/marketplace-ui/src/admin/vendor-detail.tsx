@@ -25,6 +25,8 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  ChipGroup,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -63,6 +65,7 @@ import {
   ConfirmDialog,
   DetailRow,
   describeError,
+  ModuleLink,
   Page,
   PageHeading,
   QueryError,
@@ -71,7 +74,7 @@ import {
   useModuleNavigate,
   useRouteParams,
 } from "@srirealtime/web";
-import { AccountPill, KycPill, Thumb, VendorLogo, VendorStatusPill } from "../components/bits";
+import { AccountPill, KycPill, ReviewPill, Thumb, VendorLogo, VendorStatusPill } from "../components/bits";
 import { AccountFields, accountErrors, emptyAccount, KycTimeline, SubmitButton, toAccountInput, type AccountDraft } from "../components/account";
 import { LedgerList, PayoutsList, Pager, RowsSkeleton, VendorOrdersList } from "../components/lists";
 import { PayoutActions } from "./payout-actions";
@@ -93,7 +96,8 @@ import {
   useDeleteVendor,
   useKycSubject,
   useMarketplaceSettings,
-  usePublicVendor,
+  useProductReviews,
+  useSellerProducts,
   useSetCommission,
   useSetVendorStatus,
   useStaffLedger,
@@ -103,7 +107,8 @@ import {
   useUpdateVendor,
   useVendorDetail,
 } from "../lib/queries";
-import type { VendorDetail } from "../lib/types";
+import type { ProductStatus, VendorDetail } from "../lib/types";
+import { ProductStatusPill } from "../portal/product-bits";
 import { ProfileFields, profileErrors, profileFromVendor, profilePatch, type ProfileDraft } from "../components/profile";
 
 const PAGE = 25;
@@ -814,38 +819,69 @@ function PayoutsTab({ vendorId }: { vendorId: string }) {
   );
 }
 
+type ProductFilter = "all" | ProductStatus;
+
+/** Every product of the seller (drafts and items waiting for review too), from the catalogue's staff list. */
 function ProductsTab({ vendor: v }: { vendor: VendorDetail }) {
-  const { t } = useI18n();
-  const q = usePublicVendor(v.slug, v.status === "active");
+  const { t, formatDate } = useI18n();
+  const [filter, setFilter] = React.useState<ProductFilter>("all");
+  const [offset, setOffset] = React.useState(0);
+  React.useEffect(() => setOffset(0), [filter]);
+  const q = useSellerProducts(v.id, { status: filter === "all" ? undefined : filter, offset, limit: PAGE });
+  const items = q.data?.items ?? [];
+  const reviews = useProductReviews({ vendorId: v.id, productIds: items.map((p) => p.id), limit: PAGE }, items.length > 0);
+  const byProduct = new Map((reviews.data?.items ?? []).map((r) => [r.productId, r]));
+  const waiting = reviews.data?.counts.pending ?? 0;
   return (
     <div className="grid gap-3">
-      <p className="text-sm text-muted-foreground">
-        {v.productCount === null ? t("marketplace.vendor.productsUnknown") : t("marketplace.vendor.productCount", { count: v.productCount })}
-        {" · "}
-        {t("marketplace.vendor.productsPublicNote")}
-      </p>
-      {v.status !== "active" ? (
-        <EmptyState icon={PackageIcon} title={t("marketplace.vendor.productsInactive")} />
-      ) : q.isError ? (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ChipGroup<ProductFilter>
+          value={filter}
+          onChange={setFilter}
+          size="sm"
+          aria-label={t("marketplace.products.filter")}
+          options={[
+            { value: "all", label: t("marketplace.vendors.tabAll"), meta: filter === "all" ? q.data?.total : undefined },
+            { value: "active", label: t("marketplace.products.status.active") },
+            { value: "draft", label: t("marketplace.products.status.draft") },
+            { value: "archived", label: t("marketplace.products.status.archived") },
+          ]}
+        />
+        {waiting > 0 && (
+          <Button asChild variant="outline" size="sm">
+            <ModuleLink to="reviews">{t("marketplace.vendor.reviewWaiting", { count: waiting })}</ModuleLink>
+          </Button>
+        )}
+      </div>
+      {q.isError ? (
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : q.isPending ? (
         <RowsSkeleton rows={4} />
-      ) : q.data.products.items.length === 0 ? (
-        <EmptyState icon={PackageIcon} title={t("marketplace.products.emptyTitle")} />
+      ) : items.length === 0 ? (
+        <EmptyState icon={PackageIcon} title={filter === "all" ? t("marketplace.products.emptyTitle") : t("marketplace.products.noMatch")} />
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {q.data.products.items.map((p) => (
-            <Card key={p.id} className="flex-row items-center gap-3 p-3">
-              <Thumb src={p.image} className="size-12" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{p.name}</p>
-                <p className="text-meta text-muted-foreground tabular-nums">{p.priceMin === p.priceMax ? money(p.priceMin) : `${money(p.priceMin)} – ${money(p.priceMax)}`}</p>
-              </div>
-            </Card>
-          ))}
+        <div className={cn("grid gap-2 transition-opacity sm:grid-cols-2 lg:grid-cols-3", q.isPlaceholderData && "opacity-60")} data-testid="seller-products">
+          {items.map((p) => {
+            const r = byProduct.get(p.id);
+            return (
+              <Card key={p.id} className="flex-row items-center gap-3 p-3">
+                <Thumb src={p.image} className="size-12" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="truncate text-sm font-medium">{p.name}</p>
+                  <p className="text-meta text-muted-foreground tabular-nums">
+                    {p.priceMin === p.priceMax ? money(p.priceMin) : `${money(p.priceMin)} – ${money(p.priceMax)}`} · {formatDate(p.updatedAt, { day: "numeric", month: "short" })}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <ProductStatusPill status={p.status} />
+                    {r && p.status !== "active" && (r.status === "pending" || r.status === "rejected") && <ReviewPill status={r.status} />}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
+      {q.data && <Pager offset={offset} limit={PAGE} total={q.data.total} onChange={setOffset} />}
     </div>
   );
 }
-

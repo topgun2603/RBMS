@@ -34,12 +34,13 @@ export function registerDatasets(reports: ReportsService, db: Db, _isEnabled: (t
   const add = (definition: DatasetDefinition, from: SQL, where: (tenantId: string) => SQL, columns: Parameters<typeof datasetFromSql>[0]["columns"]) =>
     reports.registerDataset(datasetFromSql({ definition, execute, from, where, columns }));
 
-  // ---- invoices: every line of every issued bill
+  // ---- invoices: every line of every issued bill, and every credit note line as a negative row (net sales, like the
+  // sales register)
   add(
     {
       id: "invoices.sales-lines",
       label: "Sales lines",
-      description: "Every item sold on a bill: quantity, taxable value and GST.",
+      description: "Every item sold on a bill: quantity, taxable value and GST. Credit notes (returns) are negative rows.",
       module: "invoices",
       feature: "invoices.reports",
       dateColumn: "date",
@@ -48,7 +49,13 @@ export function registerDatasets(reports: ReportsService, db: Db, _isEnabled: (t
         { key: "date", label: "Bill date", type: "date", groupable: true },
         { key: "invoiceNumber", label: "Bill no.", type: "text" },
         { key: "customerName", label: "Customer", type: "text", groupable: true },
-        { key: "status", label: "Payment status", type: "enum", options: BILL_STATUS.slice(0, 3), groupable: true },
+        {
+          key: "status",
+          label: "Payment status",
+          type: "enum",
+          options: [...BILL_STATUS.slice(0, 3), { value: "credit_note", label: "Credit note" }],
+          groupable: true,
+        },
         { key: "item", label: "Item", type: "text", groupable: true },
         { key: "hsn", label: "HSN/SAC", type: "text", groupable: true, default: false },
         { key: "gstRate", label: "GST rate", type: "enum", options: GST_RATE_OPTIONS, groupable: true },
@@ -60,22 +67,30 @@ export function registerDatasets(reports: ReportsService, db: Db, _isEnabled: (t
         { key: "branchId", label: "Branch", type: "text", groupable: true, default: false },
       ],
     },
-    sql`invoices i CROSS JOIN LATERAL jsonb_array_elements(i.lines) AS l(line)`,
-    (tenantId) => sql`i.tenant_id = ${tenantId} AND i.status NOT IN ('draft', 'cancelled')`,
+    sql`(
+      SELECT i.tenant_id, i.date, i.number, i.customer, i.status, i.branch_id, l.line, 1 AS sign
+        FROM invoices i CROSS JOIN LATERAL jsonb_array_elements(i.lines) AS l(line)
+        WHERE i.status NOT IN ('draft', 'cancelled')
+      UNION ALL
+      SELECT cn.tenant_id, cn.date, cn.number, cn.customer, 'credit_note', cn.branch_id, l.line, -1
+        FROM credit_notes cn CROSS JOIN LATERAL jsonb_array_elements(cn.lines) AS l(line)
+        WHERE cn.status = 'issued'
+    ) s`,
+    (tenantId) => sql`s.tenant_id = ${tenantId}`,
     {
-      date: sql`i.date`,
-      invoiceNumber: sql`i.number`,
-      customerName: sql`i.customer->>'name'`,
-      status: sql`i.status`,
-      item: sql`l.line->>'description'`,
-      hsn: sql`l.line->>'hsn'`,
-      gstRate: sql`((l.line->>'gstRate')::numeric)::text`,
-      qty: sql`(l.line->>'qty')::numeric`,
-      rate: sql`(l.line->>'rate')::bigint`,
-      taxable: sql`(l.line->>'taxable')::bigint`,
-      gst: sql`((l.line->>'cgst')::bigint + (l.line->>'sgst')::bigint + (l.line->>'igst')::bigint)`,
-      total: sql`(l.line->>'total')::bigint`,
-      branchId: sql`i.branch_id::text`,
+      date: sql`s.date`,
+      invoiceNumber: sql`s.number`,
+      customerName: sql`s.customer->>'name'`,
+      status: sql`s.status`,
+      item: sql`s.line->>'description'`,
+      hsn: sql`s.line->>'hsn'`,
+      gstRate: sql`((s.line->>'gstRate')::numeric)::text`,
+      qty: sql`s.sign * (s.line->>'qty')::numeric`,
+      rate: sql`(s.line->>'rate')::bigint`,
+      taxable: sql`s.sign * (s.line->>'taxable')::bigint`,
+      gst: sql`s.sign * ((s.line->>'cgst')::bigint + (s.line->>'sgst')::bigint + (s.line->>'igst')::bigint)`,
+      total: sql`s.sign * (s.line->>'total')::bigint`,
+      branchId: sql`s.branch_id::text`,
     },
   );
 
@@ -117,7 +132,7 @@ export function registerDatasets(reports: ReportsService, db: Db, _isEnabled: (t
       gst: sql`((i.totals->>'cgst')::bigint + (i.totals->>'sgst')::bigint + (i.totals->>'igst')::bigint)`,
       total: sql`i.total`,
       paid: sql`i.paid`,
-      balance: sql`CASE WHEN i.status = 'cancelled' THEN 0 ELSE greatest(i.total - i.paid, 0) END`,
+      balance: sql`CASE WHEN i.status = 'cancelled' THEN 0 ELSE greatest(i.total - i.paid - i.credited, 0) END`,
       branchId: sql`i.branch_id::text`,
     },
   );
@@ -146,6 +161,7 @@ export function registerDatasets(reports: ReportsService, db: Db, _isEnabled: (t
             { value: "manual", label: "On the bill" },
             { value: "receipt", label: "Receipt" },
             { value: "online", label: "Online payment" },
+            { value: "refund", label: "Refund (credit note)" },
           ],
         },
         { key: "amount", label: "Amount", type: "money", aggregatable: true },

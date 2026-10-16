@@ -14,6 +14,9 @@ import type {
   Payout,
   PayoutListQuery,
   ProfilePatch,
+  ReviewListQuery,
+  ShipInput,
+  StockAdjustInput,
   VendorInput,
   VendorListQuery,
   VendorOrder,
@@ -26,6 +29,7 @@ export const VENDOR_HEADER = "x-vendor";
 
 const ID = ":id([0-9a-fA-F-]{36})";
 const idParam = z.object({ id: z.string().uuid() });
+const variantParam = z.object({ variantId: z.string().uuid() });
 const userParam = z.object({ id: z.string().uuid(), userId: z.string().uuid() });
 const slugParam = z.object({ slug: z.string().min(1).max(80) });
 const commissionBody = z.object({ commissionBps: z.number().int().min(0).max(10_000).nullable() });
@@ -41,7 +45,13 @@ const tenantOf = (req: { ctx: RequestContext }) => requireTenant(req.ctx).id;
 const userOf = (req: { ctx: RequestContext }) => requireUser(req.ctx).id;
 const isCsv = (req: { query: unknown }) => query(req).format === "csv";
 
-const feature = (key: string) => ({ config: { feature: key } });
+const feature = (key: string | string[]) => ({ config: { feature: key } });
+/** Seller writes the host's audit hook records with an explicit action (sellers hold no shop role). */
+const sellerWrite = (key: string | string[], action: string, entity: string, idParam: string) => ({
+  config: { feature: key, audit: { action, entity, idParam } },
+});
+/** Seller stock needs the shop's inventory feature too. */
+const STOCK_FEATURES = [MARKETPLACE_FEATURE, "inventory"];
 const MANAGE = MARKETPLACE_PERMISSIONS_KEYS.manage;
 const staffRoute = (key: string = MARKETPLACE_FEATURE) => ({ config: { feature: key, permission: MANAGE } });
 
@@ -103,9 +113,12 @@ const sendCsv = (reply: FastifyReply, name: string, csv: string) =>
  *   `POST /public/vendors/apply` (signed-in user).
  * - Seller (signed-in member of a seller; `x-vendor` when several, else 403): `GET /vendor/mine`, `GET /vendor/me`,
  *   `PATCH /vendor/profile`, `PUT /vendor/payout-account` (owner), `GET /vendor/orders|ledger|products`,
- *   `GET /vendor/payouts` (`marketplace.payouts`).
+ *   `GET /vendor/payouts` (`marketplace.payouts`), `GET /vendor/product-reviews`, `GET /vendor/stock` +
+ *   `POST /vendor/stock/:variantId/adjust` (feature `inventory` too), `POST /vendor/orders/:id/packed|shipped`.
+ *   Everything is limited to the seller's own products, variants and orders (others 404).
  * - Staff (owner/admin/staff with `marketplace.manage`): vendors CRUD, approve/suspend, commission, payout account,
- *   seller users, `GET /vendor-orders`, `GET /ledger`, adjustments, payouts (`marketplace.payouts`).
+ *   seller users, `GET /vendor-orders`, `GET /ledger`, adjustments, payouts (`marketplace.payouts`), product review
+ *   queue (`GET /product-reviews`, `POST /product-reviews/:id/approve|reject`).
  * Lists accept `format=csv` where noted.
  */
 export function marketplaceRoutes(service: MarketplaceService) {
@@ -182,6 +195,47 @@ export function marketplaceRoutes(service: MarketplaceService) {
         const { vendor } = scope(req);
         return service.vendorProducts(tenantOf(req), vendor.id, pageQuery.parse(req.query ?? {}));
       });
+      // Review status of the seller's own products (`?productIds=a,b`, `?status=`).
+      seller.get("/vendor/product-reviews", feature(MARKETPLACE_FEATURE), async (req) => {
+        const { vendor } = scope(req);
+        return service.listProductReviews(tenantOf(req), { ...(query(req) as ReviewListQuery), vendorId: vendor.id });
+      });
+      // Stock of the seller's own variants (`?productIds=`) at their location.
+      seller.get("/vendor/stock", feature(STOCK_FEATURES), async (req) => {
+        const { vendor } = scope(req);
+        return service.vendorStock(tenantOf(req), vendor, query(req) as { productIds?: string });
+      });
+      seller.post(
+        "/vendor/stock/:variantId/adjust",
+        sellerWrite(STOCK_FEATURES, "marketplace.vendor_stock.adjust", "stock_item", "variantId"),
+        async (req) => {
+          const { vendor } = scope(req);
+          const { variantId } = variantParam.parse(req.params);
+          const b = body(req) as StockAdjustInput;
+          const r = await service.adjustVendorStock(tenantOf(req), vendor, variantId, b, userOf(req));
+          req.auditSummary = `Seller ${vendor.name}: ${b.mode} ${b.qty} (${String(b.reason ?? "").slice(0, 80)})`;
+          req.auditDetail = { before: { qty: r.before, locationId: r.locationId }, after: { qty: r.item.qty, vendorId: vendor.id } };
+          return r;
+        },
+      );
+      seller.post(
+        `/vendor/orders/${ID}/packed`,
+        sellerWrite(MARKETPLACE_FEATURE, "marketplace.vendor_order.packed", "vendor_order", "id"),
+        async (req) => {
+          const { vendor } = scope(req);
+          const { id } = idParam.parse(req.params);
+          return service.markFulfilment(tenantOf(req), vendor, id, "packed", {}, userOf(req));
+        },
+      );
+      seller.post(
+        `/vendor/orders/${ID}/shipped`,
+        sellerWrite(MARKETPLACE_FEATURE, "marketplace.vendor_order.shipped", "vendor_order", "id"),
+        async (req) => {
+          const { vendor } = scope(req);
+          const { id } = idParam.parse(req.params);
+          return service.markFulfilment(tenantOf(req), vendor, id, "shipped", body(req) as ShipInput, userOf(req));
+        },
+      );
     });
 
     // ---- staff
@@ -237,6 +291,17 @@ export function marketplaceRoutes(service: MarketplaceService) {
       staff.post(`/vendors/${ID}/adjustments`, staffRoute(), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.adjust(tenantOf(req), id, body(req) as AdjustmentInput, userOf(req));
+      });
+
+      // Products to review (seller products waiting to go live).
+      staff.get("/product-reviews", staffRoute(), async (req) => service.listProductReviews(tenantOf(req), query(req) as ReviewListQuery));
+      staff.post(`/product-reviews/${ID}/approve`, staffRoute(), async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.approveProductReview(tenantOf(req), id, userOf(req));
+      });
+      staff.post(`/product-reviews/${ID}/reject`, staffRoute(), async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.rejectProductReview(tenantOf(req), id, body(req) as { reason?: string }, userOf(req));
       });
 
       staff.get("/vendor-orders", staffRoute(), async (req, reply) => {

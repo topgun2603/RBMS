@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { StoreIcon, WalletIcon } from "lucide-react";
+import { ClipboardCheckIcon, StoreIcon, WalletIcon } from "lucide-react";
 import { AnimatedNumber } from "@srirealtime/ui";
 import { AttentionItem, InsightCard, QueryError, useI18n } from "@srirealtime/web";
 import { money, previewPayouts } from "../lib/logic";
-import { todayIST, useMarketplaceSettings, usePayoutPreviewData, useVendorList } from "../lib/queries";
+import { todayIST, useMarketplaceSettings, usePayoutPreviewData, useProductReviews, useVendorList } from "../lib/queries";
 
 /** Needs-attention row: seller applications waiting for approval. */
 export function ApplicationsAttentionWidget() {
@@ -18,6 +18,23 @@ export function ApplicationsAttentionWidget() {
       tone="info"
       icon={StoreIcon}
       to="vendors?status=pending"
+      loading={q.isPending}
+      error={q.isError}
+    />
+  );
+}
+
+/** Needs-attention row: seller products waiting for review before they go live. */
+export function ReviewsAttentionWidget() {
+  const { t } = useI18n();
+  const q = useProductReviews({ status: "pending", offset: 0, limit: 1 });
+  return (
+    <AttentionItem
+      label={t("marketplace.widget.attnReviews")}
+      count={q.data?.counts.pending}
+      tone="warning"
+      icon={ClipboardCheckIcon}
+      to="reviews"
       loading={q.isPending}
       error={q.isError}
     />

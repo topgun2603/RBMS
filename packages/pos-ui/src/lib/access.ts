@@ -23,6 +23,10 @@ export const POS_PERMISSIONS = {
   discount: "invoices.discount",
   /** Changing a line's price is a discount in effect: same key. */
   price: "invoices.discount",
-  /** Returns (cancel a bill). */
+  /** Cancel a whole bill (a return before anything was credited). */
   cancel: "invoices.cancel",
+  /** Returns as credit notes (partial or full) with refunds. */
+  creditNote: "invoices.credit-note",
+  /** Open / close the till, cash in / out. */
+  till: "pos.till",
 } as const;

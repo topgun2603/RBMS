@@ -59,12 +59,19 @@ function stubService(role: "owner" | "staff" = "owner") {
     markPayoutPaid: vi.fn(async () => ({ id: ID, status: "paid" })),
     cancelPayout: vi.fn(async () => ({ id: ID, status: "cancelled" })),
     refreshPayouts: vi.fn(async () => []),
+    listProductReviews: vi.fn(async () => ({ items: [], total: 0, counts: {} })),
+    approveProductReview: vi.fn(async () => ({ id: ID, status: "approved" })),
+    rejectProductReview: vi.fn(async () => ({ id: ID, status: "rejected" })),
+    vendorStock: vi.fn(async () => ({ items: [], total: 0, locationId: OTHER })),
+    adjustVendorStock: vi.fn(async () => ({ item: { qty: 7 }, before: 2, locationId: OTHER })),
+    markFulfilment: vi.fn(async () => ({ id: ID })),
   };
 }
 type Stub = ReturnType<typeof stubService>;
 
-async function build(service: Stub, ctx: Partial<RequestContext> = {}) {
+async function build(service: Stub, ctx: Partial<RequestContext> = {}, onResponse?: (req: import("fastify").FastifyRequest) => void) {
   const app = Fastify();
+  if (onResponse) app.addHook("onResponse", async (req) => onResponse(req));
   const configs: Record<string, unknown> = {};
   app.addHook("onRoute", (r) => {
     configs[`${r.method} ${r.url}`] = r.config;
@@ -182,6 +189,71 @@ describe("seller routes", () => {
   });
 });
 
+describe("seller reviews, stock and fulfilment", () => {
+  it("review status and stock are scoped to the seller whatever the query says", async () => {
+    const service = stubService();
+    const { app } = await build(service, as("u1", ["member"]));
+    await app.inject({ method: "GET", url: `${M}/vendor/product-reviews?vendorId=${OTHER}&productIds=${ID}` });
+    expect(service.listProductReviews).toHaveBeenCalledWith(TENANT, { productIds: ID, vendorId: VENDOR.id });
+    await app.inject({ method: "GET", url: `${M}/vendor/stock?productIds=${ID}` });
+    expect(service.vendorStock).toHaveBeenCalledWith(TENANT, VENDOR, { productIds: ID });
+  });
+
+  it("stock adjust passes the seller, variant and user, and records an audit before/after", async () => {
+    const service = stubService();
+    let detail: unknown;
+    const { app, configs } = await build(service, as("u1", ["member"]), (req) => {
+      detail = req.auditDetail;
+    });
+    const body = { mode: "set", qty: 7, reason: "Counted shelf" };
+    const res = await app.inject({ method: "POST", url: `${M}/vendor/stock/${ID}/adjust`, payload: body });
+    expect(res.statusCode).toBe(200);
+    expect(service.adjustVendorStock).toHaveBeenCalledWith(TENANT, VENDOR, ID, body, "u1");
+    expect(detail).toEqual({ before: { qty: 2, locationId: OTHER }, after: { qty: 7, vendorId: VENDOR.id } });
+    expect(configs[`POST ${M}/vendor/stock/:variantId/adjust`]).toMatchObject({ audit: { action: "marketplace.vendor_stock.adjust", idParam: "variantId" } });
+    expect((await app.inject({ method: "POST", url: `${M}/vendor/stock/not-a-uuid/adjust`, payload: body })).statusCode).toBe(400);
+  });
+
+  it("packed / shipped go to the seller's own vendor order", async () => {
+    const service = stubService();
+    const { app } = await build(service, as("u1", ["member"]));
+    await app.inject({ method: "POST", url: `${M}/vendor/orders/${ID}/packed` });
+    expect(service.markFulfilment).toHaveBeenLastCalledWith(TENANT, VENDOR, ID, "packed", {}, "u1");
+    await app.inject({ method: "POST", url: `${M}/vendor/orders/${ID}/shipped`, payload: { trackingNumber: "DTDC123" } });
+    expect(service.markFulfilment).toHaveBeenLastCalledWith(TENANT, VENDOR, ID, "shipped", { trackingNumber: "DTDC123" }, "u1");
+  });
+
+  it("non-sellers and other sellers are refused before the service runs", async () => {
+    const service = stubService();
+    const { app } = await build(service, as("stranger", ["member"]));
+    for (const [method, url] of [
+      ["GET", `${M}/vendor/stock`],
+      ["POST", `${M}/vendor/stock/${ID}/adjust`],
+      ["POST", `${M}/vendor/orders/${ID}/packed`],
+      ["GET", `${M}/vendor/product-reviews`],
+    ] as const) {
+      expect((await app.inject({ method, url, payload: method === "POST" ? {} : undefined })).statusCode, url).toBe(403);
+    }
+    const { app: member } = await build(service, as("u1", ["member"]));
+    expect((await member.inject({ method: "POST", url: `${M}/vendor/orders/${ID}/packed`, headers: { "x-vendor": "someone-else" } })).statusCode).toBe(403);
+    expect(service.adjustVendorStock).not.toHaveBeenCalled();
+    expect(service.markFulfilment).not.toHaveBeenCalled();
+  });
+
+  it("the review queue is staff only (marketplace.manage)", async () => {
+    const service = stubService();
+    const { app: seller } = await build(service, as("u1", ["member"]));
+    expect((await seller.inject({ method: "POST", url: `${M}/product-reviews/${ID}/approve` })).statusCode).toBe(403);
+    const { app } = await build(service, as("owner1", ["owner"]));
+    await app.inject({ method: "GET", url: `${M}/product-reviews?status=pending` });
+    expect(service.listProductReviews).toHaveBeenCalledWith(TENANT, { status: "pending" });
+    await app.inject({ method: "POST", url: `${M}/product-reviews/${ID}/approve` });
+    expect(service.approveProductReview).toHaveBeenCalledWith(TENANT, ID, "owner1");
+    await app.inject({ method: "POST", url: `${M}/product-reviews/${ID}/reject`, payload: { reason: "Blurry photo" } });
+    expect(service.rejectProductReview).toHaveBeenCalledWith(TENANT, ID, { reason: "Blurry photo" }, "owner1");
+  });
+});
+
 describe("staff routes", () => {
   it("need a staff member with marketplace.manage", async () => {
     const { app: member } = await build(stubService(), as("u1", ["member"]));
@@ -237,8 +309,9 @@ describe("staff routes", () => {
     const entries = Object.entries(configs).filter(([k]) => !k.startsWith("HEAD"));
     expect(entries.length).toBeGreaterThan(25);
     for (const [key, cfg] of entries) {
-      const c = cfg as { feature?: string; permission?: string };
-      expect(c.feature, key).toMatch(/^marketplace(\.payouts)?$/);
+      const c = cfg as { feature?: string | string[]; permission?: string };
+      if (key.includes("/vendor/stock")) expect(c.feature, key).toEqual(["marketplace", "inventory"]);
+      else expect(c.feature, key).toMatch(/^marketplace(\.payouts)?$/);
       const isStaff = !key.includes("/public/") && !key.includes("/vendor/");
       if (isStaff) expect(c.permission, key).toBe("marketplace.manage");
       else expect(c.permission, key).toBeUndefined();

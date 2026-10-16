@@ -6,12 +6,11 @@ import { countTotal, type DenominationCounts } from "./tender";
 import type { PosCustomer } from "./types";
 
 /**
- * Device-local counter state (localStorage), namespaced by shop and cashier: held bills, the day's till session
- * (opening cash, sales made on this counter, closing count), recent and favourite items, the chosen branch.
- * Nothing here is shared between devices. The API has no till/session endpoints yet; when it gets them
- * (e.g. `POST /v1/pos/days` open, `PATCH /v1/pos/days/:id` close with the count, `GET /v1/pos/days?date=`), the
- * `DayRecord` shape maps 1:1 and `openDay` / `closeDay` / cash moves become calls, with this store as the cache.
- * Held bills stay device-local by design (a parked cart at one till).
+ * Device-local counter state (localStorage), namespaced by shop and cashier: held bills, recent and favourite items,
+ * the chosen branch, this device's register name and a cache of its till session. Till sessions themselves (opening
+ * cash, cash in / out, closing count, X / Z reports) live on the server (`/v1/invoices/till`, see lib/till.ts); the old
+ * device-only `DayRecord` is only read once to carry today's day over (`migrateLocalDay`). Held bills stay
+ * device-local by design (a parked cart at one till).
  */
 
 const PREFIX = "sr_pos";
@@ -91,7 +90,7 @@ export function holdBill(holds: readonly HeldBill[], bill: Omit<HeldBill, "id" |
 
 export const dropHold = (holds: readonly HeldBill[], id: string) => holds.filter((h) => h.id !== id);
 
-// ---------------------------------------------------------------- day (till session)
+// ---------------------------------------------------------------- day (legacy device-only till, migrated to the server)
 
 export interface LocalSale {
   id: string;

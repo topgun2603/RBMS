@@ -144,7 +144,7 @@ function CancelDialog({ move, onClose, onConfirm }: { move: PendingMove | null; 
           </DialogTitle>
           <DialogDescription>{t("orders.cancel.body")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <ChipGroup
             size="sm"
             className="flex-wrap"
@@ -216,7 +216,7 @@ function ReturnDialog({ move, onClose, onConfirm }: { move: PendingMove | null; 
           </DialogTitle>
           <DialogDescription>{t("orders.return.body")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <Field label={t("orders.return.note")} htmlFor="return-note" optional>
             <Textarea id="return-note" rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("orders.return.notePlaceholder")} />
           </Field>
@@ -292,7 +292,7 @@ function ShipDialog({
           </DialogTitle>
           <DialogDescription>{delivery ? t("orders.ship.bodyDelivery") : t("orders.ship.body")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid gap-5" noValidate>
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field label={t("orders.ship.courier")} htmlFor="ship-courier" optional>
               <Input id="ship-courier" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={t("orders.ship.courierPlaceholder")} />

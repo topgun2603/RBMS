@@ -2,20 +2,27 @@ import type { Kit } from "./kit";
 
 /**
  * Shops end-to-end sign-ups create: every `e2e-…` slug except the seeded e2e shops (e2e-bill, e2e-store, e2e-lite),
- * e.g. the API's batch-5 script (`e2e-su…`) and the landing site's browser tests. They are throwaway:
+ * e.g. the API's batch-5 script (`e2e-su…`) and the landing site's browser tests, plus `smoke-…` shops from deploy
+ * smoke runs against a local stack. They are throwaway:
  * `cleanup:e2e-data` deletes them with every row that references them (any table with a `tenant_id` column), then
  * the tenant.
  */
 export const E2E_SIGNUP_SLUG_PREFIX = "e2e-";
+/** Every slug prefix whose shops are throwaway (minus the seeded e2e shops). */
+export const THROWAWAY_SLUG_PREFIXES = [E2E_SIGNUP_SLUG_PREFIX, "smoke-"] as const;
 export const SEEDED_E2E_SHOPS = new Set(["e2e-bill", "e2e-store", "e2e-lite"]);
 const KEEP = SEEDED_E2E_SHOPS;
 
 type Client = { unsafe(text: string, params?: unknown[]): Promise<Record<string, unknown>[]> };
 const clientOf = (kit: Kit) => (kit.db as unknown as { $client: Client }).$client;
 
-export async function removeSignupShops(kit: Kit, opts: { dryRun?: boolean } = {}) {
+/** `prefixes` narrows the sweep to some of THROWAWAY_SLUG_PREFIXES (default all of them). */
+export async function removeSignupShops(kit: Kit, opts: { dryRun?: boolean; prefixes?: readonly string[] } = {}) {
   const db = clientOf(kit);
-  const shops = (await db.unsafe(`SELECT id, slug FROM tenants WHERE slug LIKE $1 ORDER BY created_at`, [`${E2E_SIGNUP_SLUG_PREFIX}%`])).filter(
+  const prefixes = (opts.prefixes ?? THROWAWAY_SLUG_PREFIXES).filter((p) => (THROWAWAY_SLUG_PREFIXES as readonly string[]).includes(p));
+  if (prefixes.length === 0) return { shops: [] as string[], summary: {} as Record<string, number>, problems: [] as string[] };
+  const patterns = prefixes.map((p) => `${p}%`);
+  const shops = (await db.unsafe(`SELECT id, slug FROM tenants WHERE slug LIKE ANY($1::text[]) ORDER BY created_at`, [patterns])).filter(
     (r) => !KEEP.has(String(r.slug)),
   ) as { id: string; slug: string }[];
   const summary: Record<string, number> = {};

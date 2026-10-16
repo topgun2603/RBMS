@@ -126,7 +126,7 @@ export function MovementsSheet({
                         {up ? "+" : m.delta < 0 ? "−" : ""}
                         {formatQty(Math.abs(m.delta))}
                       </p>
-                      <p className="text-[0.6875rem] text-muted-foreground tabular-nums">
+                      <p className="text-xs text-muted-foreground tabular-nums">
                         {t("billing.movements.after", { qty: formatQty(m.qtyAfter) })}
                       </p>
                     </div>

@@ -381,3 +381,13 @@ export function planAdjust(points: number, lots: readonly Lot[], now: Date): { t
   const r = consumeFifo(lots, -points, now);
   return r.shortfall > 0 ? null : { takes: r.takes };
 }
+
+/**
+ * Points to take back when a credit note takes `amount` (paise) off a bill that earned `earn.points` on
+ * `earn.amountPaise`: the same share of the points (rounded half up), never more than what is left after earlier notes.
+ */
+export function creditNoteShare(earn: { points: number; amountPaise: number }, amount: number, alreadyTaken: number): number {
+  if (!(earn.points > 0) || !(earn.amountPaise > 0) || !(amount > 0)) return 0;
+  const share = Math.round((earn.points * Math.min(amount, earn.amountPaise)) / earn.amountPaise);
+  return Math.max(0, Math.min(share, earn.points - Math.max(alreadyTaken, 0)));
+}

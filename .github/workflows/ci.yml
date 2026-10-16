@@ -26,7 +26,8 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
   # The full parallel run runs out of memory: cap turbo's parallelism and each Node process's heap.
   TURBO_CONCURRENCY: "2"
-  NODE_OPTIONS: --max-old-space-size=3072
+  # The shop app bundles every UI module; its Next build needs more than the default heap (2 tasks x 5 GB fits the 16 GB runner).
+  NODE_OPTIONS: --max-old-space-size=5120
 
 jobs:
   check:

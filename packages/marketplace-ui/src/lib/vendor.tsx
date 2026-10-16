@@ -11,10 +11,13 @@ import type {
   ListResult,
   Payout,
   PayoutAccountInput,
+  ProductReviewList,
   ProductStatus,
   VendorMembership,
   VendorOrder,
   VendorSelf,
+  VendorStockItem,
+  VendorStockList,
 } from "./types";
 
 /** Header naming the seller when a user belongs to several (the API's VENDOR_HEADER). */
@@ -50,6 +53,8 @@ export const vk = {
   payouts: (v: string, q: QueryParams) => ["marketplace", "self", v, "payouts", q] as const,
   products: (v: string, q: QueryParams) => ["marketplace", "self", v, "products", q] as const,
   product: (v: string, id: string) => ["marketplace", "self", v, "product", id] as const,
+  reviews: (v: string, ids: string) => ["marketplace", "self", v, "reviews", ids] as const,
+  stock: (v: string, ids: string) => ["marketplace", "self", v, "stock", ids] as const,
 };
 
 // ---------------------------------------------------------------- context
@@ -140,6 +145,51 @@ function useSelfMutation<TVars, TOut>(fn: (vendorId: string, vars: TVars) => Pro
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["marketplace", "self", vendorId] }),
   });
 }
+
+/** Review state of these products (the seller's own; others are left out by the API). */
+export function useMyReviews(productIds: string[]) {
+  const { vendorId } = useVendor();
+  const ids = [...productIds].sort().join(",");
+  return useQuery({
+    queryKey: vk.reviews(vendorId, ids),
+    enabled: ids.length > 0,
+    queryFn: ({ signal }) => api.get<ProductReviewList>(`${MP}/vendor/product-reviews`, { productIds: ids, limit: 200 }, vendorOpts(vendorId, { signal })),
+    staleTime: 15_000,
+  });
+}
+
+/** Counts of the seller's reviews per status (dashboard to-dos). */
+export function useMyReviewCounts() {
+  const { vendorId } = useVendor();
+  return useQuery({
+    queryKey: vk.reviews(vendorId, "counts"),
+    queryFn: ({ signal }) => api.get<ProductReviewList>(`${MP}/vendor/product-reviews`, { limit: 1 }, vendorOpts(vendorId, { signal })).then((r) => r.counts),
+    staleTime: 30_000,
+  });
+}
+
+/** Stock of the seller's variants of these products at their location (shop feature `inventory`). */
+export function useMyStock(productIds: string[], enabled = true) {
+  const { vendorId } = useVendor();
+  const ids = [...productIds].sort().join(",");
+  return useQuery({
+    queryKey: vk.stock(vendorId, ids),
+    enabled: enabled && ids.length > 0,
+    queryFn: ({ signal }) => api.get<VendorStockList>(`${MP}/vendor/stock`, { productIds: ids }, vendorOpts(vendorId, { signal })),
+    staleTime: 15_000,
+  });
+}
+
+export const useAdjustStock = () =>
+  useSelfMutation((v, { variantId, mode, qty, reason }: { variantId: string; mode: "set" | "add" | "remove"; qty: number; reason: string }) =>
+    api.post<{ item: VendorStockItem; before: number; locationId: string }>(`${MP}/vendor/stock/${variantId}/adjust`, { mode, qty, reason }, vendorOpts(v)),
+  );
+
+export const useMarkPacked = () => useSelfMutation((v, id: string) => api.post<VendorOrder>(`${MP}/vendor/orders/${id}/packed`, undefined, vendorOpts(v)));
+export const useMarkShipped = () =>
+  useSelfMutation((v, { id, carrier, trackingNumber }: { id: string; carrier?: string | null; trackingNumber: string }) =>
+    api.post<VendorOrder>(`${MP}/vendor/orders/${id}/shipped`, { carrier: carrier || null, trackingNumber }, vendorOpts(v)),
+  );
 
 export const useUpdateProfile = () =>
   useSelfMutation((v, patch: Record<string, unknown>) => api.patch<VendorSelf>(`${MP}/vendor/profile`, patch, vendorOpts(v)));

@@ -80,6 +80,72 @@ export interface VendorProductsPort {
    * "Sold by" lookup by product answers only for seller ids.
    */
   productVendors?(tenantId: string, productIds: string[]): Promise<Record<string, string | null>>;
+  /**
+   * Live variants of the seller's own products (optionally only these products / variants); others are left out, so
+   * this doubles as the ownership check for seller stock. Needed for the seller stock routes.
+   */
+  variants?(tenantId: string, vendorId: string, opts: { productIds?: string[]; variantIds?: string[] }): Promise<VendorVariant[]>;
+}
+
+export interface VendorVariant {
+  variantId: string;
+  productId: string;
+  productName: string;
+  title: string;
+  sku: string | null;
+  unit: string;
+  status: string;
+}
+
+/** Makes a reviewed seller product live, or takes it back to draft (catalogue, as staff). Throws 404 for unknown products. */
+export interface ListingPort {
+  publish(tenantId: string, productId: string): Promise<void>;
+  /** A rejected re-review: the live product goes back to draft. */
+  unpublish?(tenantId: string, productId: string): Promise<void>;
+}
+
+/** Stock of one variant at one location (inventory). Quantities in the item's unit (may be fractional). */
+export interface StockLevel {
+  itemId: string;
+  qty: number;
+  reserved: number;
+  /** qty − reserved. */
+  available: number;
+  track: boolean;
+  status: string;
+}
+
+/** Inventory for seller stock (implemented with the inventory service in kit). */
+export interface StockPort {
+  /** The shop's default stock location id. */
+  defaultLocationId(tenantId: string): Promise<string>;
+  /** Levels at the location, in the order asked (items without stock rows get zeros). */
+  levels(tenantId: string, itemIds: string[], locationId: string): Promise<StockLevel[]>;
+  /** A manual adjustment (recorded as a stock movement with the note and user). Returns the new level. */
+  adjust(
+    tenantId: string,
+    itemId: string,
+    input: { mode: "set" | "add" | "remove"; qty: number; note: string; locationId: string },
+    userId: string | null,
+  ): Promise<StockLevel>;
+}
+
+/**
+ * Moves a whole order along the orders module's own state machine (`updateStatus`, with its events and side effects).
+ * Throws the orders module's errors (409 invalid_transition, …).
+ */
+export interface OrderActionsPort {
+  advance(
+    tenantId: string,
+    orderId: string,
+    to: "packed" | "shipped",
+    opts: { note: string; actorUserId: string | null; carrier?: string | null; trackingNumber?: string | null },
+  ): Promise<void>;
+}
+
+/** The shop's owners/admins to notify (seller packed/shipped). */
+export interface ShopContactsPort {
+  owners(tenantId: string): Promise<{ phone?: string | null; email?: string | null; locale?: string | null }[]>;
 }
 
 /** Razorpay Route transfer statuses (`created` is treated like `pending`). */

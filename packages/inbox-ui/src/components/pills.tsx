@@ -137,7 +137,7 @@ export function CountBars({ counts, compact }: { counts: CampaignCounts; compact
         const v = counts[r.key];
         const pctv = Math.round((v / total) * 100);
         return (
-          <div key={r.key} className="grid grid-cols-[4.75rem_minmax(0,1fr)_2.5rem] items-center gap-2 text-[0.6875rem]">
+          <div key={r.key} className="grid grid-cols-[4.75rem_minmax(0,1fr)_2.5rem] items-center gap-2 text-xs">
             <span className="flex items-center gap-1 text-muted-foreground">
               <r.icon className="size-3" aria-hidden />
               {t(`inbox.campaign.count.${r.key}`)}
