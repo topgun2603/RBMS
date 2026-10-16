@@ -227,7 +227,8 @@ await step("drafts and cancelled bills can't get credit notes", async () => {
 });
 
 await step("list, get, bill timeline", async () => {
-  const list = ok(await call("GET", `/v1/invoices/credit-notes?q=${encodeURIComponent(billA.number)}`), "list");
+  // Filter by the bill id: a number search is a substring match (bill …/0001 also matches …/0010 on a fresh database).
+  const list = ok(await call("GET", `/v1/invoices/credit-notes?invoiceId=${billA.id}`), "list");
   eq(list.items.length, 3, "notes of bill A");
   const one = ok(await call("GET", `/v1/invoices/credit-notes/${cn3.id}`), "get");
   eq(one.lines.length, 2, "lines");
