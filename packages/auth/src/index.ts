@@ -5,7 +5,7 @@ import * as schema from "./schema";
 import { AuthService, type AuthDeps } from "./service";
 
 /**
- * Phone/email OTP and Google sign-in, sessions and platform roles.
+ * Phone/email OTP, Firebase phone and Google sign-in, sessions and platform roles.
  * Register `contextHook` AFTER the tenancy hook (it reads `req.ctx.tenant` to resolve tenant roles).
  */
 export function createAuth(deps: AuthDeps) {
@@ -20,8 +20,18 @@ export function createAuth(deps: AuthDeps) {
 }
 
 export { AuthService, createGoogleVerifier, HANDOFF_TTL_SECONDS, toAuthUser } from "./service";
-export type { AuthConfig, AuthDeps, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
+export type { AuthClientConfig, AuthConfig, AuthDeps, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
 export { signGuestToken, verifyGuestTokenWith } from "./guest-token";
+export {
+  cachedKeySource,
+  createFirebaseVerifier,
+  FIREBASE_KEYS_URL,
+  FirebaseTokenError,
+  googleSecureTokenKeys,
+  maxAgeFrom,
+} from "./firebase";
+export type { FirebaseKeySource, FirebasePhoneClaims, FirebaseTokenErrorCode, FirebaseTokenVerifier, FirebaseVerifierOptions } from "./firebase";
+export { FIREBASE_SIGNINS_PER_WINDOW, FIREBASE_WINDOW_MS, SlidingWindow } from "./routes";
 export type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 export {
   detectTarget,

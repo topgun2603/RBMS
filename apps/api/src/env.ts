@@ -35,6 +35,12 @@ export const envSchema = z.object({
   TEST_OTP_CODE: optionalString(),
   TEST_OTP_TARGETS: optionalString(),
   GOOGLE_CLIENT_ID: optionalString(),
+  /**
+   * Firebase project id for phone sign-in (docs/firebase-auth.md): `POST /v1/auth/firebase` accepts its Phone
+   * Authentication ID tokens and `GET /v1/auth/config` tells clients to verify phones with Firebase. Only the id is
+   * needed (no service account). Unset = phones use the OTP flow.
+   */
+  FIREBASE_PROJECT_ID: optionalString(),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default(".uploads"),
   S3_ENDPOINT: optionalString(),
@@ -122,6 +128,9 @@ export const envSchema = z.object({
       ctx.addIssue({ code: "custom", path: ["PLATFORM_GSTIN"], message: "Invalid GSTIN" });
     } else if (e.PLATFORM_GSTIN && e.PLATFORM_GSTIN.slice(0, 2) !== e.PLATFORM_STATE_CODE) {
       ctx.addIssue({ code: "custom", path: ["PLATFORM_GSTIN"], message: "GSTIN state differs from PLATFORM_STATE_CODE" });
+    }
+    if (e.FIREBASE_PROJECT_ID && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(e.FIREBASE_PROJECT_ID)) {
+      ctx.addIssue({ code: "custom", path: ["FIREBASE_PROJECT_ID"], message: "Use the Firebase project id (e.g. srikit-prod), not the name or number" });
     }
     if (e.METRICS_TOKEN && e.METRICS_TOKEN.length < 16) {
       ctx.addIssue({ code: "custom", path: ["METRICS_TOKEN"], message: "Use a random token of 16+ characters" });

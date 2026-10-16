@@ -30,9 +30,27 @@ import { normalizeTarget } from "../lib/format";
 import { describeError, useI18n } from "../lib/i18n";
 import { setToken, useHydrated, useToken } from "../lib/session";
 import type { OtpRequestResponse, SignInResponse } from "../lib/types";
+import {
+  firebasePhoneMessage,
+  isFirebaseAuthHost,
+  isFirebaseError,
+  phoneSignInRedirectUrl,
+  resolvePhoneMethod,
+  sendFirebasePhoneCode,
+  type AuthClientConfig,
+  type FirebasePhoneCode,
+} from "../lib/firebase-phone";
 
 const OTP_LENGTH = 6;
 type Channel = "sms" | "whatsapp" | "email";
+
+/** The landing site: phone sign-in for hosts Firebase doesn't authorize (per-shop subdomains) happens on its /login. */
+const WWW_URL = (process.env.NEXT_PUBLIC_WWW_URL || "http://localhost:3005").replace(/\/+$/, "");
+
+const fetchAuthConfig = () => api.get<AuthClientConfig>("/auth/config", undefined, { anonymous: true, tenant: null });
+
+/** "+919876543210" → "+91******3210" (display only, like the API's masked target). */
+const maskPhone = (p: string) => (p.length <= 4 ? p : `${p.slice(0, 3)}${"*".repeat(Math.max(0, p.length - 7))}${p.slice(-4)}`);
 
 /** The `?handoff=` code of this page load (client only). */
 function handoffCodeFromUrl(): string | null {
@@ -53,7 +71,7 @@ function stripHandoffFromUrl() {
  * returns a masked target for display. `home` is where to go once signed in.
  */
 export function LoginScreen({ home = "/" }: { home?: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { shopName } = useShop();
   const router = useRouter();
   const qc = useQueryClient();
@@ -74,6 +92,8 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
   const [codeError, setCodeError] = React.useState<string | null>(null);
   const [resendAt, setResendAt] = React.useState(0);
   const [now, setNow] = React.useState(() => Date.now());
+  /** Set while the code was sent by Firebase (phone + SMS); verify then exchanges its ID token. */
+  const firebaseCode = React.useRef<FirebasePhoneCode | null>(null);
 
   const parsed = normalizeTarget(raw);
   const channel: Channel = parsed.kind === "email" ? "email" : phoneChannel;
@@ -120,11 +140,26 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
   const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
   const request = useMutation({
-    mutationFn: async (target: string) => {
+    mutationFn: async (target: string): Promise<{ res: OtpRequestResponse; target: string } | null> => {
+      const kind = normalizeTarget(target).kind;
+      const method = await resolvePhoneMethod({ kind, target, channel }, fetchAuthConfig);
+      firebaseCode.current = null;
+      if (method === "firebase") {
+        if (!isFirebaseAuthHost(window.location.hostname)) {
+          // Firebase can't run on this host (shop subdomains aren't authorized domains): verify on the landing site,
+          // which hands the session back to this page with a `?handoff=` code.
+          window.location.assign(phoneSignInRedirectUrl(WWW_URL, target, `${window.location.origin}${window.location.pathname}`));
+          return null;
+        }
+        firebaseCode.current = await sendFirebasePhoneCode(target, { locale });
+        return { res: { target: maskPhone(target), channel: "sms", expiresInSeconds: 300, resendInSeconds: 30 }, target };
+      }
       const res = await api.post<OtpRequestResponse>("/auth/otp/request", { target, channel });
       return { res, target };
     },
-    onSuccess: ({ res, target }) => {
+    onSuccess: (r) => {
+      if (!r) return; // navigating to the landing site
+      const { res, target } = r;
       setSentTo(target);
       setSent(res);
       setCode("");
@@ -133,12 +168,14 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
       setNow(Date.now());
       setStep("verify");
     },
-    onError: (err) => toast.error(describeError(err, t)),
+    onError: (err) => toast.error(isFirebaseError(err) ? firebasePhoneMessage(err, locale) : describeError(err, t)),
   });
 
   const verify = useMutation({
-    mutationFn: (otp: string) => {
+    mutationFn: async (otp: string) => {
       if (!sentTo) throw new Error(t("web.login.restart"));
+      const fb = firebaseCode.current;
+      if (fb) return api.post<SignInResponse>("/auth/firebase", { idToken: await fb.confirm(otp) }, { anonymous: true });
       return api.post<SignInResponse>("/auth/otp/verify", { target: sentTo, code: otp });
     },
     onSuccess: (res) => {
@@ -149,6 +186,7 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
     },
     onError: (err) => {
       setCode("");
+      if (isFirebaseError(err)) return setCodeError(firebasePhoneMessage(err, locale));
       setCodeError(err instanceof ApiError && err.status < 500 ? t("web.login.invalidCode") : describeError(err, t));
     },
   });
@@ -296,6 +334,7 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
                     setStep("identify");
                     setSent(null);
                     setSentTo(null);
+                    firebaseCode.current = null;
                   }}
                 >
                   <ArrowLeftIcon /> {t("web.login.change")}

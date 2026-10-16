@@ -348,6 +348,9 @@ export const en: Messages = {
   "login.app.BL": "Billing",
   "login.app.EC": "Online Store",
   "login.loadError": "We couldn't load your shops.",
+  "login.verifyTitle": "Verify your mobile number",
+  "login.verifySub": "Then we'll take you back to {host}, signed in.",
+  "login.returning": "Taking you back…",
 
   "app.BL": "Billing",
   "app.EC": "Online Store",
@@ -757,6 +760,9 @@ export const ta: Messages = {
   "login.app.BL": "பில்லிங்",
   "login.app.EC": "ஆன்லைன் ஸ்டோர்",
   "login.loadError": "உங்கள் கடைகளை ஏற்ற முடியவில்லை.",
+  "login.verifyTitle": "உங்கள் மொபைல் எண்ணைச் சரிபாருங்கள்",
+  "login.verifySub": "பிறகு உள்நுழைந்த நிலையில் {host}-க்குத் திரும்ப அழைத்துச் செல்வோம்.",
+  "login.returning": "திரும்ப அழைத்துச் செல்கிறோம்…",
 
   "app.BL": "பில்லிங்",
   "app.EC": "ஆன்லைன் ஸ்டோர்",

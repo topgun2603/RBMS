@@ -8,17 +8,31 @@ import { Button } from "@srirealtime/ui/components/button";
 import { Card } from "@srirealtime/ui/components/card";
 import { Skeleton } from "@srirealtime/ui/components/skeleton";
 import { AnimatePresence, motion, Stagger, StaggerItem } from "@srirealtime/ui/motion";
-import { api, errorMessage, getToken, handoffUrl, type Shop, type User } from "@/lib/api";
-import { appUrlFor } from "@/lib/site";
+import { safeReturnUrl } from "@srirealtime/web/firebase-phone";
+import { api, errorMessage, getToken, handoffUrl, normalizeTarget, type Shop, type User } from "@/lib/api";
+import { appUrlFor, PHONE_RETURN_ORIGINS } from "@/lib/site";
 import { useSite } from "./site-context";
 import { OtpSignIn } from "./otp-sign-in";
 
 type ShopRow = { tenant: Shop; roles: string[] };
 
+/**
+ * `?return=<app login URL>&phone=<number>`: a shop app whose host Firebase doesn't authorize (per-shop subdomains)
+ * sends phone sign-in here. After signing in, a single-use handoff code goes back to that (validated) URL.
+ */
+function returnTripFromUrl(): { returnUrl: string; phone: string } | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const returnUrl = safeReturnUrl(q.get("return"), PHONE_RETURN_ORIGINS);
+  if (!returnUrl) return null;
+  return { returnUrl, phone: normalizeTarget(q.get("phone") ?? "") ?? "" };
+}
+
 /** OTP sign-in, then the user's shops with "Open" (single-use handoff code → the shop app's /login). */
 export function LoginView() {
   const { t } = useSite();
-  const [phase, setPhase] = React.useState<"loading" | "signin" | "shops">("loading");
+  const [trip] = React.useState(returnTripFromUrl);
+  const [phase, setPhase] = React.useState<"loading" | "signin" | "shops" | "returning">("loading");
   const [user, setUser] = React.useState<User | null>(null);
   const [shops, setShops] = React.useState<ShopRow[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -41,10 +55,35 @@ export function LoginView() {
     }
   }, [t]);
 
+  /** Back to the app that sent us here, signed in there with a single-use handoff code. */
+  const goBack = React.useCallback(
+    async (returnUrl: string) => {
+      setPhase("returning");
+      setError(null);
+      try {
+        const h = await api.handoff();
+        window.location.assign(handoffUrl(returnUrl, h.code));
+      } catch (err) {
+        setError(errorMessage(err, t));
+        setPhase("signin");
+      }
+    },
+    [t],
+  );
+
   React.useEffect(() => {
+    if (trip) {
+      // Reuse this site's session only when it is the number the app asked about; otherwise verify it now.
+      if (!getToken() || !trip.phone) return setPhase("signin");
+      api
+        .me()
+        .then((me) => (me.user.phone === trip.phone ? goBack(trip.returnUrl) : setPhase("signin")))
+        .catch(() => setPhase("signin"));
+      return;
+    }
     if (getToken()) void load();
     else setPhase("signin");
-  }, [load]);
+  }, [load, trip, goBack]);
 
   const open = async (s: Shop) => {
     setOpening(s.id);
@@ -75,13 +114,27 @@ export function LoginView() {
             <Skeleton className="h-16 w-full rounded-xl" />
           </motion.div>
         )}
+        {phase === "returning" && (
+          <motion.div key="returning" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid justify-items-center gap-3 p-10 text-center" role="status" aria-live="polite">
+            <Loader2Icon className="size-8 animate-spin text-primary" />
+            <p className="font-semibold">{t("login.returning")}</p>
+          </motion.div>
+        )}
         {phase === "signin" && (
           <motion.div key="signin" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-6 p-6 sm:p-8">
             <div className="space-y-1.5">
-              <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("login.title")}</h1>
-              <p className="text-muted-foreground">{t("login.sub")}</p>
+              <h1 className="font-display text-2xl font-bold sm:text-3xl">{trip ? t("login.verifyTitle") : t("login.title")}</h1>
+              <p className="text-muted-foreground">{trip ? t("login.verifySub", { host: new URL(trip.returnUrl).host }) : t("login.sub")}</p>
             </div>
-            <OtpSignIn onSignedIn={() => void load()} />
+            {error && trip && (
+              <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <OtpSignIn
+              initialTarget={trip?.phone.replace(/^\+91/, "") ?? ""}
+              onSignedIn={() => (trip ? void goBack(trip.returnUrl) : void load())}
+            />
           </motion.div>
         )}
         {phase === "shops" && (

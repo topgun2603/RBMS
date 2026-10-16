@@ -7,14 +7,36 @@ import { Field, FieldControl, FieldError, FieldHint, FieldLabel } from "@srireal
 import { Input } from "@srirealtime/ui/components/input";
 import { OtpInput } from "@srirealtime/ui/components/otp-input";
 import { AnimatePresence, motion } from "@srirealtime/ui/motion";
+import {
+  firebasePhoneMessage,
+  isFirebaseError,
+  resolvePhoneMethod,
+  sendFirebasePhoneCode,
+  type FirebasePhoneCode,
+} from "@srirealtime/web/firebase-phone";
 import { api, ApiError, errorMessage, normalizeTarget, type SignInResult } from "@/lib/api";
 import { useSite } from "./site-context";
 
-/** Phone / email → 6-digit OTP → signed in. */
-export function OtpSignIn({ onSignedIn, askName = false }: { onSignedIn: (r: SignInResult) => void; askName?: boolean }) {
-  const { t } = useSite();
+const maskPhone = (p: string) => (p.length <= 4 ? p : `${p.slice(0, 3)}${"*".repeat(Math.max(0, p.length - 7))}${p.slice(-4)}`);
+
+/**
+ * Phone / email → 6-digit code → signed in. Phones are verified by Firebase when it is configured (Google sends the
+ * SMS); email, test numbers and setups without Firebase use the API's OTP. Same screens either way.
+ */
+export function OtpSignIn({
+  onSignedIn,
+  askName = false,
+  initialTarget = "",
+}: {
+  onSignedIn: (r: SignInResult) => void;
+  askName?: boolean;
+  /** Prefills the number (the round trip from a shop app's login). */
+  initialTarget?: string;
+}) {
+  const { t, locale } = useSite();
   const [stage, setStage] = React.useState<"target" | "code">("target");
-  const [raw, setRaw] = React.useState("");
+  const [raw, setRaw] = React.useState(initialTarget);
+  const firebaseCode = React.useRef<FirebasePhoneCode | null>(null);
   const [name, setName] = React.useState("");
   const [target, setTarget] = React.useState("");
   const [masked, setMasked] = React.useState("");
@@ -37,14 +59,26 @@ export function OtpSignIn({ onSignedIn, askName = false }: { onSignedIn: (r: Sig
     setBusy(true);
     setError(null);
     try {
-      const r = await api.requestOtp(norm);
+      firebaseCode.current = null;
+      const kind = norm.includes("@") ? "email" : "phone";
+      const method = await resolvePhoneMethod({ kind, target: norm }, api.authConfig);
+      let shown = norm;
+      let resend = 30;
+      if (method === "firebase") {
+        firebaseCode.current = await sendFirebasePhoneCode(norm, { locale });
+        shown = maskPhone(norm);
+      } else {
+        const r = await api.requestOtp(norm);
+        shown = r.target || norm;
+        resend = r.resendInSeconds || 0;
+      }
       setTarget(norm);
-      setMasked(r.target || norm);
-      setResendAt(Date.now() + Math.max(r.resendInSeconds || 0, 30) * 1000);
+      setMasked(shown);
+      setResendAt(Date.now() + Math.max(resend, 30) * 1000);
       setCode("");
       setStage("code");
     } catch (err) {
-      setError(errorMessage(err, t));
+      setError(isFirebaseError(err) ? firebasePhoneMessage(err, locale) : errorMessage(err, t));
     } finally {
       setBusy(false);
     }
@@ -55,10 +89,14 @@ export function OtpSignIn({ onSignedIn, askName = false }: { onSignedIn: (r: Sig
     setBusy(true);
     setError(null);
     try {
-      const r = await api.verifyOtp(target, value, name.trim() || undefined);
+      const fb = firebaseCode.current;
+      const r = fb
+        ? await api.firebaseSignIn(await fb.confirm(value), name.trim() || undefined)
+        : await api.verifyOtp(target, value, name.trim() || undefined);
       onSignedIn(r);
     } catch (err) {
-      setError(err instanceof ApiError && err.status >= 400 && err.status < 500 ? t("otp.wrong") : errorMessage(err, t));
+      if (isFirebaseError(err)) setError(firebasePhoneMessage(err, locale));
+      else setError(err instanceof ApiError && err.status >= 400 && err.status < 500 ? t("otp.wrong") : errorMessage(err, t));
       setCode("");
     } finally {
       setBusy(false);

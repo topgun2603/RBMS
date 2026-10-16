@@ -37,6 +37,19 @@ export function parseApp(v: string | null | undefined): AppId | null {
 }
 export const appParam = (a: AppId) => (a === "BL" ? "billing" : "store");
 
+/**
+ * Where /login may send a sign-in back after a phone check for another app (`?return=`, docs/firebase-auth.md):
+ * comma-separated origins, `*` = one subdomain label (same format as the API's CORS_ORIGINS). Only the shop apps and
+ * admin; never the storefronts, which run shop-supplied content.
+ */
+export const PHONE_RETURN_ORIGINS = (
+  process.env.NEXT_PUBLIC_PHONE_RETURN_ORIGINS ||
+  "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3004,http://*.localhost:3004"
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 export const CONTACT_WHATSAPP = process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "";
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@srirealtime.com";
 

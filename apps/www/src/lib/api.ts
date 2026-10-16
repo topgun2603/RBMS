@@ -5,6 +5,7 @@
  * login handoff code.
  */
 import type { Interval, Plan } from "./plans";
+import type { AuthClientConfig } from "@srirealtime/web/firebase-phone";
 import type { AppId } from "./site";
 
 const BASE = "/api/v1";
@@ -130,6 +131,14 @@ export const api = {
     setToken(r.token);
     return r;
   },
+  /** Sign in with a Firebase phone ID token (the number was verified by Firebase). */
+  firebaseSignIn: async (idToken: string, name?: string) => {
+    const r = await call<SignInResult>("POST", "/auth/firebase", { idToken, ...(name ? { name } : {}) });
+    setToken(r.token);
+    return r;
+  },
+  /** Which phone method the API uses (firebase | otp). */
+  authConfig: () => call<AuthClientConfig>("GET", "/auth/config"),
   me: () => call<{ user: User; tenantRoles: string[]; permissions: string[] }>("GET", "/auth/me"),
   logout: async () => {
     await call("POST", "/auth/logout").catch(() => undefined);

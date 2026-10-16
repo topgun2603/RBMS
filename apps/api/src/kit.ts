@@ -33,7 +33,7 @@ import { createUploads, LocalStorage, S3Storage, type StorageAdapter } from "@sr
 import type { FastifyRequest } from "fastify";
 import type { Logger } from "pino";
 import type { Env } from "./env";
-import { testOtpConfig } from "./test-otp";
+import { phoneAuthConfig, testOtpConfig } from "./test-otp";
 import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
 import {
@@ -153,6 +153,9 @@ export function createKit(env: Env, log: Logger) {
   // Fixed OTP for test identities (e2e scripts); never in production (testOtpConfig drops it there).
   const { testOtp, note: testOtpNote } = testOtpConfig(env);
   if (testOtpNote) log.warn({ targets: testOtp?.targets ?? [] }, `auth: ${testOtpNote}`);
+  // Firebase phone sign-in (docs/firebase-auth.md); in production it replaces SMS codes unless MSG91 is set up.
+  const phoneAuth = phoneAuthConfig(env);
+  if (phoneAuth.note) log.info(`auth: ${phoneAuth.note}`);
   const auth = createAuth({
     db,
     config: {
@@ -160,6 +163,8 @@ export function createKit(env: Env, log: Logger) {
       otpTtlMinutes: env.OTP_TTL_MINUTES,
       googleClientIds: env.GOOGLE_CLIENT_ID ? [env.GOOGLE_CLIENT_ID] : [],
       testOtp,
+      firebaseProjectId: phoneAuth.firebaseProjectId,
+      smsOtpDisabled: phoneAuth.smsOtpDisabled,
       // Guests verify a phone by OTP (no account) for support tickets: a short-lived signed token.
       guestTokenSecret: createHash("sha256").update(`guest-token:${env.APP_SECRET}`).digest("hex"),
       guestTokenTtlMinutes: 60,

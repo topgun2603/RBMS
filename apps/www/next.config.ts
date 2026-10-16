@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/tenancy"],
+    transpilePackages: ["@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/tenancy", "@srirealtime/web"],
     poweredByHeader: false,
     // The marketing site lives on the bare root host (localhost:3005 in dev, the apex domain in production).
     allowedDevOrigins: ["localhost", "127.0.0.1"],

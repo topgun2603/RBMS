@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const PASS_REQUEST = ["accept", "accept-language", "authorization", "content-type", "user-agent", "referer"];
 const PASS_RESPONSE = ["content-type", "cache-control", "retry-after"];
-const ALLOWED = /^\/v1\/(plans|auth\/(otp\/(request|verify)|me|logout|handoff)|tenancy\/(slug-available|mine)|signup)(\/|$)/;
+const ALLOWED = /^\/v1\/(plans|auth\/(otp\/(request|verify)|firebase|config|me|logout|handoff)|tenancy\/(slug-available|mine)|signup)(\/|$)/;
 
 /** Pure: may the browser reach this API path through the proxy? */
 function allowed(path: string, method: string): boolean {

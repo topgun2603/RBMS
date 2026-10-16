@@ -1,4 +1,4 @@
-import { AppError, badRequest, notFound, requireSuperAdmin, requireUser, type AuditEvent, type AuditPort } from "@srirealtime/core";
+import { AppError, badRequest, notFound, requireSuperAdmin, requireUser, tooMany, type AuditEvent, type AuditPort } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
@@ -18,6 +18,38 @@ const guestVerifyBody = z.object({
   code: z.string().min(4).max(10),
 });
 const googleBody = z.object({ idToken: z.string().min(10).max(8192) });
+const firebaseBody = z.object({
+  idToken: z.string().min(10).max(8192),
+  name: z.string().trim().min(1).max(120).optional(),
+});
+
+/** Firebase sign-ins per client IP per window (Firebase limits the SMS itself; this caps token exchanges). */
+export const FIREBASE_SIGNINS_PER_WINDOW = 20;
+export const FIREBASE_WINDOW_MS = 10 * 60_000;
+
+/** In-memory sliding window per key (per process). `hit` is false once `limit` hits fall inside `windowMs`. */
+export class SlidingWindow {
+  private readonly hits = new Map<string, number[]>();
+  private calls = 0;
+  constructor(
+    readonly limit: number,
+    readonly windowMs: number,
+    private readonly now: () => number = Date.now,
+  ) {}
+  hit(key: string): boolean {
+    const t = this.now();
+    const from = t - this.windowMs;
+    const recent = (this.hits.get(key) ?? []).filter((x) => x > from);
+    if (++this.calls % 500 === 0) for (const [k, v] of this.hits) if (!v.some((x) => x > from)) this.hits.delete(k);
+    if (recent.length >= this.limit) {
+      this.hits.set(key, recent);
+      return false;
+    }
+    recent.push(t);
+    this.hits.set(key, recent);
+    return true;
+  }
+}
 const handoffBody = z.object({ code: z.string().trim().min(1).max(200) });
 const handoffCreateBody = z.object({ tenantId: z.string().uuid().optional() });
 
@@ -48,11 +80,12 @@ const isHttps = (req: FastifyRequest) => req.protocol === "https";
 const SELF_AUDITED = { config: { audit: false as const } };
 
 /**
- * Routes under /v1/auth. With an AuditPort: `auth.login` (otp | google), `auth.handoff.create`, `auth.handoff.redeem`,
+ * Routes under /v1/auth. With an AuditPort: `auth.login` (otp | google | firebase), `auth.handoff.create`, `auth.handoff.redeem`,
  * `auth.user.status` and `auth.user.platform_roles` (tenant null unless the request has a shop). Never codes, tokens or
  * phone numbers / emails.
  */
-export function authRoutes(service: AuthService, audit?: AuditPort) {
+export function authRoutes(service: AuthService, audit?: AuditPort, opts: { firebaseLimiter?: SlidingWindow } = {}) {
+  const firebaseLimiter = opts.firebaseLimiter ?? new SlidingWindow(FIREBASE_SIGNINS_PER_WINDOW, FIREBASE_WINDOW_MS);
   const record = async (req: FastifyRequest, e: Omit<AuditEvent, "ip" | "userAgent">) => {
     if (!audit) return;
     await audit.record({ ...e, ip: req.ctx.ip, userAgent: req.ctx.userAgent }).catch(() => undefined);
@@ -79,6 +112,9 @@ export function authRoutes(service: AuthService, audit?: AuditPort) {
   };
 
   return (app: FastifyInstance) => {
+    // Public: which phone method to use (firebase | otp), so clients only load the Firebase SDK when it will work.
+    app.get("/config", async () => service.clientConfig());
+
     app.post("/otp/request", async (req) => {
       const body = otpRequestBody.parse(req.body);
       return service.requestOtp({
@@ -110,6 +146,15 @@ export function authRoutes(service: AuthService, audit?: AuditPort) {
       const body = googleBody.parse(req.body);
       const r = await service.signInWithGoogle({ idToken: body.idToken, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
       await login(req, r, "google");
+      return signedIn(req, reply, r);
+    });
+
+    // Firebase Phone Authentication: the client verifies the number with Firebase and sends the ID token here.
+    app.post("/firebase", SELF_AUDITED, async (req, reply) => {
+      const body = firebaseBody.parse(req.body);
+      if (!firebaseLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many sign-in attempts. Please wait a few minutes and try again");
+      const r = await service.signInWithFirebase({ ...body, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      await login(req, r, "firebase");
       return signedIn(req, reply, r);
     });
 

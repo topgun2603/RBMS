@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Shared client kit for srikit front ends: API client, session, OTP login, i18n, branding, features, app shell and the UI module system.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./firebase-phone": "./src/lib/firebase-phone.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
@@ -16,6 +17,7 @@
     "@srirealtime/tenancy": "workspace:*",
     "@srirealtime/ui": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
+    "firebase": "^12.19.0",
     "lucide-react": "^0.525.0",
     "next-themes": "^0.4.6",
     "react-hook-form": "^7.60.0"

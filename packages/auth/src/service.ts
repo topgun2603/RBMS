@@ -15,8 +15,9 @@ import {
 import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createFirebaseVerifier, FirebaseTokenError, type FirebaseTokenVerifier } from "./firebase";
 import { signGuestToken, verifyGuestTokenWith } from "./guest-token";
-import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, otpHash, otpRetryAfter, type Target } from "./helpers";
+import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, normalizePhone, otpHash, otpRetryAfter, type Target } from "./helpers";
 import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
 import { authHandoffs, authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
 
@@ -51,6 +52,27 @@ export interface AuthConfig {
   guestTokenSecret?: string;
   /** Lifetime of a guest phone token. Default 60 minutes. */
   guestTokenTtlMinutes?: number;
+  /**
+   * Firebase project whose Phone Authentication ID tokens `POST /firebase` accepts (docs/firebase-auth.md). Unset =
+   * Firebase sign-in is off (503 not_configured) and clients use the OTP flow for phones.
+   */
+  firebaseProjectId?: string;
+  /**
+   * Refuse to send phone codes by SMS from `requestOtp` (400 `sms_via_firebase`). The host sets this in production when
+   * Firebase sends the SMS and no real SMS provider is configured (the console driver would silently drop the code).
+   * WhatsApp, email and test identities are unaffected.
+   */
+  smsOtpDisabled?: boolean;
+}
+
+/** What clients need to pick a sign-in method (`GET /config`). */
+export interface AuthClientConfig {
+  /** How phone numbers are verified: Firebase Phone Authentication, or our own OTP (`/otp/request`). */
+  phone: { method: "firebase" | "otp"; firebaseProjectId: string | null; smsOtp: boolean };
+  /** Google sign-in is configured. */
+  google: boolean;
+  /** Development/test only: the test-identity patterns that always use the OTP flow (absent when test OTPs are off). */
+  testTargets?: string[];
 }
 
 export interface GuestVerifyResult {
@@ -71,6 +93,8 @@ export interface AuthDeps {
   log?: LoggerPort;
   /** Override Google ID token verification (tests). */
   verifyGoogleToken?: GoogleTokenVerifier;
+  /** Override Firebase ID token verification (tests). Default: `createFirebaseVerifier` for `config.firebaseProjectId`. */
+  verifyFirebaseToken?: FirebaseTokenVerifier;
   /** The app URL of a shop the user belongs to (null when not a member), for `POST /handoff { tenantId }`. */
   handoffTargets?: { appUrl(userId: string, tenantId: string): Promise<string | null> };
   /** Records sign-ins, handoffs and super-admin user changes (the host audit hook can't: no user yet, or no shop). */
@@ -159,12 +183,14 @@ const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export class AuthService {
   private readonly db: Db;
-  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp" | "guestTokenSecret">> & {
+  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp" | "guestTokenSecret" | "firebaseProjectId">> & {
     googleClientIds: string[];
     guestTokenSecret: string | null;
+    firebaseProjectId: string | null;
   };
   private readonly testOtp: { code: string; targets: string[] } | null;
   private readonly verifyGoogle: GoogleTokenVerifier;
+  private readonly verifyFirebase: FirebaseTokenVerifier | null;
 
   constructor(private readonly deps: AuthDeps) {
     this.db = deps.db;
@@ -180,11 +206,25 @@ export class AuthService {
       cookieName: c.cookieName ?? "sr_session",
       guestTokenSecret: c.guestTokenSecret || null,
       guestTokenTtlMinutes: c.guestTokenTtlMinutes && c.guestTokenTtlMinutes > 0 ? c.guestTokenTtlMinutes : 60,
+      firebaseProjectId: c.firebaseProjectId?.trim() || null,
+      smsOtpDisabled: c.smsOtpDisabled ?? false,
     };
     const t = c.testOtp;
     const targets = (t?.targets ?? []).map((s) => s.trim()).filter(Boolean);
     this.testOtp = t && /^\d{4,10}$/.test(t.code) && targets.length ? { code: t.code, targets } : null;
     this.verifyGoogle = deps.verifyGoogleToken ?? createGoogleVerifier();
+    const projectId = this.cfg.firebaseProjectId;
+    this.verifyFirebase = projectId ? (deps.verifyFirebaseToken ?? createFirebaseVerifier({ projectId })) : null;
+  }
+
+  /** Which sign-in methods clients should offer (`GET /config`). */
+  clientConfig(): AuthClientConfig {
+    const firebase = !!this.verifyFirebase;
+    return {
+      phone: { method: firebase ? "firebase" : "otp", firebaseProjectId: this.cfg.firebaseProjectId, smsOtp: !this.cfg.smsOtpDisabled },
+      google: this.cfg.googleClientIds.length > 0,
+      ...(this.testOtp ? { testTargets: [...this.testOtp.targets] } : {}),
+    };
   }
 
   get cookieName() {
@@ -218,6 +258,10 @@ export class AuthService {
         expiresInSeconds: this.cfg.otpTtlMinutes * 60,
         resendInSeconds: 0,
       };
+    }
+
+    if (target.kind === "phone" && channel === "sms" && this.cfg.smsOtpDisabled) {
+      throw new AppError(400, "sms_via_firebase", "SMS codes are sent through Firebase phone sign-in. Please update or reload the app.");
     }
 
     const now = new Date();
@@ -424,6 +468,32 @@ export class AuthService {
       }
     }
     return this.completeSignIn(userId, isNewUser, input);
+  }
+
+  // ---------------------------------------------------------------- Firebase phone
+
+  /**
+   * Signs in with a Firebase Phone Authentication ID token: the verified `phone_number` goes through the same path as a
+   * verified phone OTP (find-or-create by phone, status check, session). 503 not_configured without a project id;
+   * 400 with a `firebase_*` code when the token is rejected (503 `firebase_keys_unavailable` when Google's keys can't
+   * be fetched).
+   */
+  async signInWithFirebase(input: { idToken: string; name?: string | null; ip?: string | null; userAgent?: string | null }): Promise<SignInResult> {
+    if (!this.verifyFirebase) throw new AppError(503, "not_configured", "Firebase phone sign-in is not configured");
+    let phone: string;
+    try {
+      ({ phone } = await this.verifyFirebase(input.idToken));
+    } catch (err) {
+      if (err instanceof FirebaseTokenError) {
+        this.deps.log?.warn({ code: err.code }, "auth: Firebase token rejected");
+        throw new AppError(err.code === "firebase_keys_unavailable" ? 503 : 400, err.code, err.message);
+      }
+      this.deps.log?.warn({ err }, "auth: Firebase token check failed");
+      throw new AppError(400, "firebase_token_invalid", "This phone sign-in could not be checked. Please try again.");
+    }
+    const normalized = normalizePhone(phone);
+    if (!normalized) throw new AppError(400, "firebase_no_phone", "This phone number can't be used to sign in.");
+    return this.signInTarget(normalized, input);
   }
 
   // ---------------------------------------------------------------- Cross-origin handoff

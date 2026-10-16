@@ -29,9 +29,20 @@ import { normalizeTarget } from "@/lib/format";
 import { describeError, useI18n } from "@/lib/i18n";
 import { getTenantSlug, setTenantSlug, setToken, useHydrated, useToken } from "@/lib/session";
 import type { MyTenant, OtpRequestResponse, SignInResponse } from "@/lib/types";
+import {
+  firebasePhoneMessage,
+  isFirebaseError,
+  resolvePhoneMethod,
+  sendFirebasePhoneCode,
+  type AuthClientConfig,
+  type FirebasePhoneCode,
+} from "@srirealtime/web/firebase-phone";
 
 const OTP_LENGTH = 6;
 type Channel = "sms" | "whatsapp" | "email";
+
+const fetchAuthConfig = () => api.get<AuthClientConfig>("/auth/config", undefined, { tenant: null });
+const maskPhone = (p: string) => (p.length <= 4 ? p : `${p.slice(0, 3)}${"*".repeat(Math.max(0, p.length - 7))}${p.slice(-4)}`);
 
 /** Where to go after signing in: last workspace if still a member, the only workspace, or the picker. */
 async function nextRoute(isSuperAdmin: boolean): Promise<string> {
@@ -51,7 +62,7 @@ async function nextRoute(isSuperAdmin: boolean): Promise<string> {
 }
 
 export default function LoginPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const qc = useQueryClient();
   const hydrated = useHydrated();
@@ -66,6 +77,8 @@ export default function LoginPage() {
   const [codeError, setCodeError] = React.useState<string | null>(null);
   const [resendAt, setResendAt] = React.useState(0);
   const [now, setNow] = React.useState(() => Date.now());
+  /** Set while the code was sent by Firebase (phone + SMS); verify then exchanges its ID token. */
+  const firebaseCode = React.useRef<FirebasePhoneCode | null>(null);
 
   const parsed = normalizeTarget(raw);
   const channel: Channel = parsed.kind === "email" ? "email" : phoneChannel;
@@ -95,6 +108,13 @@ export default function LoginPage() {
   const request = useMutation({
     mutationFn: async () => {
       const target = parsed.target;
+      firebaseCode.current = null;
+      // The admin runs on one fixed host (localhost:3000 / admin.<domain>), which is a Firebase authorized domain.
+      if ((await resolvePhoneMethod({ kind: parsed.kind, target, channel }, fetchAuthConfig)) === "firebase") {
+        firebaseCode.current = await sendFirebasePhoneCode(target, { locale });
+        const res: OtpRequestResponse = { target: maskPhone(target), channel: "sms", expiresInSeconds: 300, resendInSeconds: 30 };
+        return { res, target };
+      }
       const res = await api.post<OtpRequestResponse>("/auth/otp/request", { target, channel }, { tenant: null });
       return { res, target };
     },
@@ -107,15 +127,19 @@ export default function LoginPage() {
       setNow(Date.now());
       setStep("verify");
     },
-    onError: (err) => toast.error(describeError(err, t)),
+    onError: (err) => toast.error(isFirebaseError(err) ? firebasePhoneMessage(err, locale) : describeError(err, t)),
   });
 
   const verify = useMutation({
-    mutationFn: (otp: string) =>
-      api.post<SignInResponse>("/auth/otp/verify", { target: sentTo ?? parsed.target, code: otp }, { tenant: null }),
+    mutationFn: async (otp: string) => {
+      const fb = firebaseCode.current;
+      if (fb) return api.post<SignInResponse>("/auth/firebase", { idToken: await fb.confirm(otp) }, { tenant: null });
+      return api.post<SignInResponse>("/auth/otp/verify", { target: sentTo ?? parsed.target, code: otp }, { tenant: null });
+    },
     onSuccess: finish,
     onError: (err) => {
       setCode("");
+      if (isFirebaseError(err)) return setCodeError(firebasePhoneMessage(err, locale));
       setCodeError(err instanceof ApiError && err.status < 500 ? t("admin.login.invalidCode") : describeError(err, t));
     },
   });
@@ -265,6 +289,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setStep("identify");
                     setSent(null);
+                    firebaseCode.current = null;
                   }}
                 >
                   <ArrowLeftIcon /> {t("admin.login.change")}
