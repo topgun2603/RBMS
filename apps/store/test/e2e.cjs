@@ -18,7 +18,11 @@ const BASE = (process.env.STORE_URL || "http://e2e-store.localhost:3003").replac
 const API = (process.env.API_URL || "http://localhost:4000").replace(/\/$/, "");
 const OTP = process.env.TEST_OTP_CODE || "123456";
 const PRODUCT = process.env.PRODUCT || "anarkali-kurti";
-const CHROME = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// CHROME_PATH wins; otherwise the usual Google Chrome location for this OS (CI sets CHROME_PATH=/usr/bin/google-chrome).
+const CHROME =
+  process.env.CHROME_PATH ||
+  { win32: "C:/Program Files/Google/Chrome/Application/chrome.exe", darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" }[process.platform] ||
+  "/usr/bin/google-chrome";
 const OUT = process.env.SHOTS_DIR || path.join(os.tmpdir(), "srikit-store-e2e");
 const HOST = new URL(BASE).hostname;
 // +91 99990 xxxxx: a test identity (TEST_OTP_TARGETS "+9199990*"), fresh per run.
