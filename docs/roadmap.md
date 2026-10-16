@@ -16,7 +16,7 @@ larger UI module) that any app mounts. Nothing app-specific.
 | 3 | marketplace + payouts, chat, support, whatsapp inbox + campaigns, kyc, loyalty, gst-einvoice, multi-branch, api + webhooks, advanced reports (back end) — contract docs/batch3.md | done (e2e `batch3.mjs`) |
 | 4 | Wave B UIs: POS counter, vendor dashboard, chat, inbox, support desk, KYC flows, loyalty, e-invoice, branches, API keys, report builder — contract docs/batch4.md | admin UIs done (pos-ui, marketplace-ui + apps/seller :3004, inbox-ui, growth-ui, e-invoice/loyalty in billing-ui, admin KYC queue) + storefront chat widget, help centre, seller pages, loyalty — done (store e2e 16/16) |
 | 5 | sign-up + onboarding, plan subscriptions (Razorpay Subscriptions / UPI Autopay), landing + pricing — contract docs/batch5.md | done (e2e `batch5.mjs`, `apps/www/test/e2e.cjs`) |
-| 6 | safety net: e2e tests in repo + CI, backups + restore drill, monitoring | |
+| 6 | safety net: e2e tests in repo + CI, backups + restore drill, monitoring — docs/ops.md | done (GitHub Actions CI green on main) |
 | 7 | AWS: RDS, ElastiCache, S3, ECS/App Runner, wildcard domain + SSL, CI/CD | |
 
 ## Batch 2a + 2b status (2026-10-15)
