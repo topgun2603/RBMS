@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { AppRoot } from "./app-root";
 
 /* UI face + Tamil fallback. They feed --font-sans/--font-heading through these variables (see @srirealtime/ui styles);
  * tenant branding CSS that sets --font-sans still wins. */
@@ -23,11 +24,14 @@ export const viewport: Viewport = {
   ],
 };
 
-/** Providers live in <WebAppRouter> (client); this layout only sets fonts, metadata and global CSS. */
+/** Fonts, metadata, global CSS and the module router (<AppRoot>), mounted here so it persists across navigation. */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${jakarta.variable} ${notoTamil.variable}`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <AppRoot />
+        {children}
+      </body>
     </html>
   );
 }
