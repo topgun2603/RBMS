@@ -1,0 +1,187 @@
+# CI: typecheck + unit tests, Next builds, and the end-to-end suite (API scripts + storefront and www browser tests)
+# against Postgres/Redis service containers with mock providers. See docs/ops.md "CI".
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Explicit bash = -eo pipefail, so `cmd | tee log` fails when cmd fails.
+    shell: bash
+
+env:
+  NODE_VERSION: "24"
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # The full parallel run runs out of memory: cap turbo's parallelism and each Node process's heap.
+  TURBO_CONCURRENCY: "2"
+  NODE_OPTIONS: --max-old-space-size=3072
+
+jobs:
+  check:
+    name: Typecheck + unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-check-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-check-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck + unit tests
+        run: pnpm turbo run typecheck test --concurrency=${{ env.TURBO_CONCURRENCY }}
+      - name: Ops script tests
+        run: pnpm test:ops
+
+  build:
+    name: Build Next apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-build-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Build admin, billing, shop, store, seller, www
+        run: pnpm turbo run build --filter="./apps/*" --concurrency=${{ env.TURBO_CONCURRENCY }}
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      # Same images as docker-compose.yml.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: srikit
+          POSTGRES_PASSWORD: srikit
+          POSTGRES_DB: srikit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U srikit" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # API (apps/api/src/env.ts): NODE_ENV is left unset so the API defaults to development (mock payment/KYC/
+      # WhatsApp/e-invoice/subscription providers, console notification drivers, the fixed test OTP for the e2e
+      # identities) while `next build` / `next start` keep their own production NODE_ENV. No real secrets needed.
+      DATABASE_URL: postgres://srikit:srikit@localhost:5432/srikit
+      REDIS_URL: redis://localhost:6379
+      ROOT_DOMAIN: localhost
+      TEST_OTP_CODE: "123456"
+      TEST_OTP_TARGETS: "+9199990*,e2e-*@example.com"
+      # Browser tests (apps/store, apps/www) and the API's PDF renderer.
+      CHROME_PATH: /usr/bin/google-chrome
+      API_URL: http://localhost:4000
+      STORE_URL: http://e2e-store.localhost:3003
+      WWW_URL: http://localhost:3005
+      E2E_REQUIRE_BROWSER: "1"
+      E2E_LOGS: ${{ github.workspace }}/e2e-artifacts/logs
+      SHOTS_DIR: ${{ github.workspace }}/e2e-artifacts/shots
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-e2e-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-e2e-${{ runner.os }}-
+            turbo-build-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate throwaway secrets
+        run: |
+          for name in APP_SECRET CHAT_STREAM_SECRET WHATSAPP_SECRET_KEY; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - name: Resolve shop subdomains (*.localhost) for Node fetch
+        run: |
+          echo "127.0.0.1 e2e-store.localhost e2e-bill.localhost e2e-lite.localhost" | sudo tee -a /etc/hosts
+          getent hosts e2e-store.localhost
+      - name: Chrome
+        run: |
+          test -x "$CHROME_PATH" || { echo "no Chrome at $CHROME_PATH"; exit 1; }
+          "$CHROME_PATH" --version
+          mkdir -p "$E2E_LOGS" "$SHOTS_DIR"
+
+      - name: Build store + www
+        run: pnpm turbo run build --filter=@srirealtime/store --filter=@srirealtime/www --concurrency=${{ env.TURBO_CONCURRENCY }}
+
+      - name: Migrate + seed
+        run: |
+          pnpm --filter @srirealtime/api db:migrate
+          # PIN codes the tests look up, so they don't depend on api.postalpincode.in from the runner.
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/test/e2e/fixtures/pincode-cache.sql
+          pnpm --filter @srirealtime/api seed
+          pnpm --filter @srirealtime/api seed:e2e
+
+      - name: Start API, store and www
+        run: |
+          nohup pnpm --filter @srirealtime/api start > "$E2E_LOGS/api.log" 2>&1 &
+          nohup pnpm --filter @srirealtime/store start > "$E2E_LOGS/store.log" 2>&1 &
+          nohup pnpm --filter @srirealtime/www start > "$E2E_LOGS/www.log" 2>&1 &
+          wait_for() {
+            for i in $(seq 1 120); do
+              if curl -fsS -o /dev/null "$1"; then echo "up: $1"; return 0; fi
+              sleep 1
+            done
+            echo "timed out waiting for $1"; return 1
+          }
+          wait_for "$API_URL/health"
+          wait_for "$STORE_URL/"
+          wait_for "$WWW_URL/"
+
+      - name: API e2e scripts + storefront browser test
+        run: pnpm --filter @srirealtime/api test:e2e:all 2>&1 | tee "$E2E_LOGS/test-e2e-all.log"
+      - name: www browser test
+        if: ${{ !cancelled() }}
+        run: pnpm --filter @srirealtime/www test:e2e 2>&1 | tee "$E2E_LOGS/www-e2e.log"
+
+      - name: Upload screenshots and logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: e2e-artifacts
+          retention-days: 7
+          if-no-files-found: ignore

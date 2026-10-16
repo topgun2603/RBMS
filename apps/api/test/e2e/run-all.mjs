@@ -44,7 +44,8 @@ for (const script of SCRIPTS) {
 }
 
 // The storefront browser test (apps/store/test/e2e.cjs) also needs the store app on :3003; it exits 2 when the api or
-// store server isn't up, which is reported as skipped rather than failed.
+// store server isn't up, which is reported as skipped rather than failed (unless E2E_REQUIRE_BROWSER=1, as in CI).
+const requireBrowser = process.env.E2E_REQUIRE_BROWSER === "1";
 {
   const started = Date.now();
   const storeDir = join(apiDir, "..", "store");
@@ -55,8 +56,8 @@ for (const script of SCRIPTS) {
     script: "store e2e",
     passed: m ? Number(m[1]) : 0,
     total: m ? Number(m[2]) : 0,
-    ok: r.status === 0 || r.status === 2,
-    skipped: r.status === 2,
+    ok: r.status === 0 || (r.status === 2 && !requireBrowser),
+    skipped: r.status === 2 && !requireBrowser,
     seconds: (Date.now() - started) / 1000,
   });
 }

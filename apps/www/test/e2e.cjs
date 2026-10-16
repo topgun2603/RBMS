@@ -18,7 +18,11 @@ const BASE = (process.env.WWW_URL || "http://localhost:3005").replace(/\/$/, "")
 const API = (process.env.API_URL || "http://localhost:4000").replace(/\/$/, "");
 const OTP = process.env.TEST_OTP_CODE || "123456";
 const TAKEN = process.env.TAKEN_SLUG || "e2e-store";
-const CHROME = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// CHROME_PATH wins; otherwise the usual Google Chrome location for this OS (CI sets CHROME_PATH=/usr/bin/google-chrome).
+const CHROME =
+  process.env.CHROME_PATH ||
+  { win32: "C:/Program Files/Google/Chrome/Application/chrome.exe", darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" }[process.platform] ||
+  "/usr/bin/google-chrome";
 const OUT = process.env.SHOTS_DIR || path.join(os.tmpdir(), "srikit-www-e2e");
 const stamp = Date.now().toString(36).slice(-6);
 const phone = `99990${String(Date.now()).slice(-5)}`;
