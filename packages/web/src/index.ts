@@ -1,7 +1,20 @@
 // @srirealtime/web: the shared client kit and the UI module system (docs/web-modules.md).
 
 // API client, session, tenancy
-export { api, apiDownload, apiUrl, absoluteUrl, ApiError, API_URL, configureApi, isPublicPath, type ApiOptions, type QueryParams } from "./lib/api";
+export {
+  api,
+  apiDownload,
+  apiUrl,
+  absoluteUrl,
+  ApiError,
+  API_URL,
+  configureApi,
+  isPublicPath,
+  onApiError,
+  type ApiErrorEvent,
+  type ApiOptions,
+  type QueryParams,
+} from "./lib/api";
 export {
   getToken,
   setToken,
@@ -21,6 +34,8 @@ export {
   currentTenantSlug,
   getTenantStrategy,
   isValidShopSlug,
+  RESERVED_SLUGS,
+  validateSlug,
   rootDomain,
   rootUrl,
   shopUrl,
@@ -43,7 +58,9 @@ export {
 } from "./lib/auth";
 export * from "./lib/types";
 export { permissionMatches, permissionsAllow, permissionAllows, explicitlyGranted, type PermissionReq, type PermissionHolder } from "./lib/permissions";
-export { normalizeTarget, humanizeKey } from "./lib/format";
+export { normalizeTarget, humanizeKey, formatPaise } from "./lib/format";
+export * from "./lib/subscriptions";
+export { useSubscriptionCurrent, usePublicPlans, subscriptionKeys } from "./lib/subscription-queries";
 export {
   getStoredBranch,
   setStoredBranch,
@@ -96,6 +113,8 @@ export { LocaleSwitcher } from "./components/locale-switcher";
 export { BrandMark } from "./components/brand-mark";
 export { Splash } from "./components/splash";
 export { SettingsNav } from "./components/settings-nav";
+export { PlanBanner } from "./components/plan-banner";
+export { UpgradeDialog, UpgradeDialogHost, limitName } from "./components/upgrade-dialog";
 export {
   BranchSwitcher,
   useMyBranches,

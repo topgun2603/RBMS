@@ -9,6 +9,7 @@ import {
   BellIcon,
   Building2Icon,
   CircleUserIcon,
+  CreditCardIcon,
   FileLockIcon,
   FolderOpenIcon,
   GaugeIcon,
@@ -40,6 +41,7 @@ import { isSuperAdmin, useMe } from "@/lib/auth";
 import { useFeatures } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import { kycNavLabel } from "@/lib/kyc-messages";
+import { subsNavLabel } from "@/lib/subscriptions-messages";
 import { readStored, SIDEBAR_KEY, useHydrated, useTenantSlug, useToken, writeStored } from "@/lib/session";
 
 const NextLink: AppShellLinkComponent = ({ href, children, ...props }) => (
@@ -50,7 +52,9 @@ const NextLink: AppShellLinkComponent = ({ href, children, ...props }) => (
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
-  const kycNav = kycNavLabel(useI18n().locale);
+  const { locale } = useI18n();
+  const kycNav = kycNavLabel(locale);
+  const subsNav = subsNavLabel(locale);
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const hydrated = useHydrated();
@@ -108,6 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/tenants", label: t("admin.nav.tenants"), icon: Building2Icon },
           { href: "/platform/users", label: t("admin.nav.users"), icon: UsersRoundIcon },
           { href: "/platform/plans", label: t("admin.nav.platformPlans"), icon: LayersIcon },
+          { href: "/platform/subscriptions", label: subsNav, icon: CreditCardIcon },
           { href: "/platform/apps", label: t("admin.nav.platformApps"), icon: AppWindowIcon },
           { href: "/platform/privacy-requests", label: t("admin.nav.privacyRequests"), icon: FileLockIcon },
           { href: "/platform/kyc", label: kycNav, icon: BadgeCheckIcon },
@@ -115,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
     }
     return s;
-  }, [t, kycNav, tenant, superadmin, isModuleOff]);
+  }, [t, kycNav, subsNav, tenant, superadmin, isModuleOff]);
 
   if (hydrated && token && me.isError) {
     return (

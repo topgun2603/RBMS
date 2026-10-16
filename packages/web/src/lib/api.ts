@@ -135,9 +135,39 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     if (res.status === 401 && !anonymous) handleUnauthorized();
     // A closed branch or a removed assignment: forget it so the next call uses the server's choice.
     if (branch && isBranchError(e?.code)) setStoredBranch(null, slug);
-    throw new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Request failed", e?.details);
+    const error = new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Request failed", e?.details);
+    emitApiError({ error, method: (init.method ?? "GET").toUpperCase(), path });
+    throw error;
   }
   return data as T;
+}
+
+/** A failed api() call, as seen by `onApiError` listeners (the error is still thrown to the caller). */
+export interface ApiErrorEvent {
+  error: ApiError;
+  method: string;
+  path: string;
+}
+
+const errorListeners = new Set<(e: ApiErrorEvent) => void>();
+
+/**
+ * Observe every failed api() call app-wide (the shell's upgrade dialog listens for 402 plan limits). Listeners run
+ * synchronously before the error reaches the caller and must not throw. Returns the unsubscribe function.
+ */
+export function onApiError(listener: (e: ApiErrorEvent) => void): () => void {
+  errorListeners.add(listener);
+  return () => void errorListeners.delete(listener);
+}
+
+function emitApiError(e: ApiErrorEvent) {
+  for (const l of errorListeners) {
+    try {
+      l(e);
+    } catch {
+      // a listener must never change what the caller sees
+    }
+  }
 }
 
 /**

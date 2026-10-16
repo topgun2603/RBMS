@@ -62,6 +62,7 @@
     "@srirealtime/settings": "workspace:*",
     "@srirealtime/staff": "workspace:*",
     "@srirealtime/storefront": "workspace:*",
+    "@srirealtime/subscriptions": "workspace:*",
     "@srirealtime/support": "workspace:*",
     "@srirealtime/tenancy": "workspace:*",
     "@srirealtime/uploads": "workspace:*",

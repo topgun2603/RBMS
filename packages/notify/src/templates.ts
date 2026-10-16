@@ -204,6 +204,101 @@ const BATCH3: Record<string, { en: Copy; ta: Copy; push?: { en: string; ta: stri
   },
 };
 
+// Batch 5: the platform's plan subscriptions (packages/subscriptions), sent to the shop's owners/admins.
+// Vars: shop, plan, interval, amount (GST included, "Rs.1,234.00"), date (trial end / period end / renewal, IST
+// YYYY-MM-DD), days, grace (last day of the grace period), number (platform invoice), link (Plan & billing page).
+const BATCH5: Record<string, { en: Copy; ta: Copy }> = {
+  "subscription.trial_ending": {
+    en: {
+      body: "{{app}}: {{shop}}, your free trial of {{plan}} ends in {{days}} day(s) on {{date}}. Add UPI Autopay or a card to keep it: {{link}}",
+      subject: "Your {{plan}} trial ends in {{days}} day(s) - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் {{plan}} இலவச சோதனைக் காலம் {{days}} நாளில் ({{date}}) முடிகிறது. தொடர UPI Autopay அல்லது கார்டைச் சேர்க்கவும்: {{link}}",
+      subject: "உங்கள் {{plan}} சோதனைக் காலம் {{days}} நாளில் முடிகிறது - {{app}}",
+    },
+  },
+  "subscription.trial_ended": {
+    en: {
+      body: "{{app}}: {{shop}}, your {{plan}} trial has ended and the shop is now on the Free plan. Your data is safe. Choose a plan to continue: {{link}}",
+      subject: "Your {{plan}} trial has ended - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் {{plan}} சோதனைக் காலம் முடிந்தது; கடை இப்போது Free திட்டத்தில் உள்ளது. உங்கள் தரவு பாதுகாப்பாக உள்ளது. தொடர ஒரு திட்டத்தைத் தேர்ந்தெடுக்கவும்: {{link}}",
+      subject: "உங்கள் {{plan}} சோதனைக் காலம் முடிந்தது - {{app}}",
+    },
+  },
+  "subscription.activated": {
+    en: {
+      body: "{{app}}: {{shop}}, your {{plan}} plan ({{interval}}) is active. {{amount}} will be charged automatically each cycle. Manage: {{link}}",
+      subject: "Your {{plan}} plan is active - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் {{plan}} திட்டம் ({{interval}}) செயல்பாட்டில் உள்ளது. ஒவ்வொரு சுழற்சியிலும் {{amount}} தானாகக் கழிக்கப்படும். நிர்வகிக்க: {{link}}",
+      subject: "உங்கள் {{plan}} திட்டம் செயல்பாட்டில் உள்ளது - {{app}}",
+    },
+  },
+  "subscription.charged": {
+    en: {
+      body: "{{app}}: {{shop}}, we received {{amount}} for {{plan}}. Tax invoice {{number}} is attached. Valid till {{date}}. Invoices: {{link}}",
+      subject: "Payment received - invoice {{number}} - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, {{plan}} திட்டத்திற்கு {{amount}} பெற்றுக்கொண்டோம். வரி விலைப்பட்டியல் {{number}} இணைக்கப்பட்டுள்ளது. {{date}} வரை செல்லுபடியாகும். விலைப்பட்டியல்கள்: {{link}}",
+      subject: "பணம் பெறப்பட்டது - விலைப்பட்டியல் {{number}} - {{app}}",
+    },
+  },
+  "subscription.payment_failed": {
+    en: {
+      body: "{{app}}: {{shop}}, we could not collect {{amount}} for {{plan}}. Please update your payment method by {{grace}} to keep your plan: {{link}}",
+      subject: "Payment failed for your {{plan}} plan - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, {{plan}} திட்டத்திற்கான {{amount}} வசூலிக்க முடியவில்லை. திட்டத்தைத் தொடர {{grace}}-க்குள் கட்டண முறையைப் புதுப்பிக்கவும்: {{link}}",
+      subject: "உங்கள் {{plan}} திட்டத்தின் கட்டணம் தோல்வியடைந்தது - {{app}}",
+    },
+  },
+  "subscription.expired": {
+    en: {
+      body: "{{app}}: {{shop}}, your {{plan}} plan has expired and the shop is now on the Free plan. Your data is safe. Pay to restore it: {{link}}",
+      subject: "Your {{plan}} plan has expired - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் {{plan}} திட்டம் காலாவதியானது; கடை இப்போது Free திட்டத்தில் உள்ளது. உங்கள் தரவு பாதுகாப்பாக உள்ளது. மீண்டும் பெற கட்டணம் செலுத்தவும்: {{link}}",
+      subject: "உங்கள் {{plan}} திட்டம் காலாவதியானது - {{app}}",
+    },
+  },
+  "subscription.cancelled": {
+    en: {
+      body: "{{app}}: {{shop}}, your {{plan}} plan is cancelled and the shop is now on the Free plan. Your data is safe. Restart any time: {{link}}",
+      subject: "Your {{plan}} plan is cancelled - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் {{plan}} திட்டம் ரத்து செய்யப்பட்டது; கடை இப்போது Free திட்டத்தில் உள்ளது. உங்கள் தரவு பாதுகாப்பாக உள்ளது. எப்போது வேண்டுமானாலும் மீண்டும் தொடங்கலாம்: {{link}}",
+      subject: "உங்கள் {{plan}} திட்டம் ரத்து செய்யப்பட்டது - {{app}}",
+    },
+  },
+  "subscription.renewal_reminder": {
+    en: {
+      body: "{{app}}: {{shop}}, your yearly {{plan}} plan renews on {{date}}. {{amount}} will be charged automatically. Manage: {{link}}",
+      subject: "Your {{plan}} plan renews on {{date}} - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் ஆண்டு {{plan}} திட்டம் {{date}} அன்று புதுப்பிக்கப்படும். {{amount}} தானாகக் கழிக்கப்படும். நிர்வகிக்க: {{link}}",
+      subject: "உங்கள் {{plan}} திட்டம் {{date}} அன்று புதுப்பிக்கப்படும் - {{app}}",
+    },
+  },
+};
+
+/** Template keys of the batch 5 plan subscription messages. */
+export const BATCH5_TEMPLATE_KEYS: readonly string[] = Object.keys(BATCH5);
+
+function batch5Templates(): TemplateContent[] {
+  return Object.entries(BATCH5).flatMap(([key, t]) =>
+    (["en", "ta"] as const).flatMap((locale) => builtin(key, ["sms", "whatsapp", "email"], locale, t[locale].body, t[locale].subject)),
+  );
+}
+
 function batch3Templates(): TemplateContent[] {
   return Object.entries(BATCH3).flatMap(([key, t]) =>
     (["en", "ta"] as const).flatMap((locale) => {
@@ -241,6 +336,7 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...builtin("payment.received", ["sms", "whatsapp"], "ta", PAYMENT_RECEIVED_TA, null),
   ...orderTemplates(),
   ...batch3Templates(),
+  ...batch5Templates(),
 ];
 
 /**

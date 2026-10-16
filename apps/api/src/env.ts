@@ -18,7 +18,7 @@ export const envSchema = z.object({
   CORS_ORIGINS: z
     .string()
     .default(
-      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004",
+      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004,http://localhost:3005",
     ),
   /** Billing app URL for invoice share links; {slug} is replaced with the shop's subdomain. */
   BILLING_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/billing"),
@@ -67,6 +67,23 @@ export const envSchema = z.object({
   EINVOICE_GSP_SANDBOX_URL: optionalString(),
   EINVOICE_GSP_CLIENT_ID: optionalString(),
   EINVOICE_GSP_CLIENT_SECRET: optionalString(),
+  // ---- Batch 5: plan subscriptions (docs/batch5.md)
+  /** The platform's own Razorpay account for plan subscriptions. All three unset = the mock provider (development only). */
+  PLATFORM_RAZORPAY_KEY_ID: optionalString(),
+  PLATFORM_RAZORPAY_KEY_SECRET: optionalString(),
+  PLATFORM_RAZORPAY_WEBHOOK_SECRET: optionalString(),
+  /** The platform as the seller on its plan invoices (18% GST). */
+  PLATFORM_LEGAL_NAME: z.string().default("Srirealtime"),
+  PLATFORM_GSTIN: optionalString(),
+  /** 2-digit GST state code of the platform: CGST+SGST for shops in this state, IGST otherwise. Default 33 (Tamil Nadu). */
+  PLATFORM_STATE_CODE: z.string().regex(/^\d{2}$/, "2-digit GST state code").default("33"),
+  PLATFORM_ADDRESS: optionalString(),
+  /** Platform invoice number prefix: SR/2026-27/00001. */
+  PLATFORM_INVOICE_PREFIX: z.string().regex(/^[A-Z]{1,4}$/, "1–4 capital letters").default("SR"),
+  /** The public landing site (sign-up, pricing). */
+  WWW_PUBLIC_URL: z.string().url().default("http://localhost:3005"),
+  /** Where each app opens a shop ({slug} = shop subdomain): sign-up's `appUrl` and handoff links. APP=template pairs. */
+  APP_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002"),
 })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production" && (e.APP_SECRET.length < 32 || e.APP_SECRET.startsWith("dev-only"))) {
@@ -77,6 +94,15 @@ export const envSchema = z.object({
     }
     if (e.TEST_OTP_CODE && !/^\d{4,10}$/.test(e.TEST_OTP_CODE)) {
       ctx.addIssue({ code: "custom", path: ["TEST_OTP_CODE"], message: "Use 4–10 digits" });
+    }
+    const rzp = [e.PLATFORM_RAZORPAY_KEY_ID, e.PLATFORM_RAZORPAY_KEY_SECRET, e.PLATFORM_RAZORPAY_WEBHOOK_SECRET].filter(Boolean).length;
+    if (rzp > 0 && rzp < 3) {
+      ctx.addIssue({ code: "custom", path: ["PLATFORM_RAZORPAY_KEY_ID"], message: "Set all three PLATFORM_RAZORPAY_* variables, or none (mock)" });
+    }
+    if (e.PLATFORM_GSTIN && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(e.PLATFORM_GSTIN)) {
+      ctx.addIssue({ code: "custom", path: ["PLATFORM_GSTIN"], message: "Invalid GSTIN" });
+    } else if (e.PLATFORM_GSTIN && e.PLATFORM_GSTIN.slice(0, 2) !== e.PLATFORM_STATE_CODE) {
+      ctx.addIssue({ code: "custom", path: ["PLATFORM_GSTIN"], message: "GSTIN state differs from PLATFORM_STATE_CODE" });
     }
     if (e.STORAGE_DRIVER === "s3" && !e.S3_BUCKET) {
       ctx.addIssue({ code: "custom", path: ["S3_BUCKET"], message: "Required when STORAGE_DRIVER=s3" });

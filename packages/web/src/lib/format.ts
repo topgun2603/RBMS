@@ -18,3 +18,8 @@ export function humanizeKey(key: string): string {
   const s = key.replace(/[._-]+/g, " ").trim();
   return s ? s[0]!.toUpperCase() + s.slice(1) : key;
 }
+
+const rupees = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2, minimumFractionDigits: 0 });
+
+/** Integer paise → "₹1,499" / "₹1,499.50" (en-IN grouping in every locale). */
+export const formatPaise = (paise: number | null | undefined) => rupees.format(Math.round(paise ?? 0) / 100);

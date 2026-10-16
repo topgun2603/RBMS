@@ -47,6 +47,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       // Batch 3: counter help desk, loyalty points, WhatsApp inbox + campaigns, GST e-invoice / e-way bill, branches,
       // API keys + webhooks and the report builder.
       ...BATCH3_BL,
+      // Batch 5: Plan & billing (every app and plan).
+      "subscriptions",
     ],
   },
   {
@@ -79,6 +81,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "custom-domain",
       // Batch 3: sellers (marketplace + KYC), chat, help desk + FAQ, loyalty, WhatsApp, e-invoice, API keys, reports.
       ...BATCH3_EC,
+      // Batch 5: Plan & billing (every app and plan).
+      "subscriptions",
     ],
   },
 ];
@@ -87,11 +91,12 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
 const STORE_FREE = ["onboarding", "storefront", "delivery", "cms", "seo"];
 const STORE_STARTER = [...STORE_FREE, "reviews", "analytics", "expenses", "storefront.wishlist", "cms.blog"];
 const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo", "reviews.*", "analytics.*", "expenses.*", "custom-domain"];
+// `subscriptions` (Plan & billing) is also a core module of the plans package, so plans made later grant it too.
 const PLAN_ADDITIONS: Record<string, string[]> = {
-  free: ["catalogue", "orders", "documents", ...STORE_FREE],
-  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit", ...STORE_STARTER, "support", "chat", "loyalty"],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL],
+  free: ["catalogue", "orders", "documents", ...STORE_FREE, "subscriptions"],
+  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit", ...STORE_STARTER, "support", "chat", "loyalty", "subscriptions"],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, "subscriptions"],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, "subscriptions"],
 };
 const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   ...plan,
@@ -135,6 +140,9 @@ export async function ensureShop(kit: Kit, shop: ShopSpec, ownerUserId: string) 
   }
   if (tenant.appId !== shop.appId) tenant = await kit.tenancy.service.setApp(tenant.id, shop.appId);
   if (tenant.planId !== shop.planId) tenant = await kit.tenancy.service.setPlan(tenant.id, shop.planId);
+  // Batch 5: the shop's subscription, `active` on its plan (provider `manual`, no period end) so it never expires;
+  // an existing free/manual subscription follows the plan set above. Trials and paid subscriptions are left alone.
+  await kit.subscriptions.service.ensure(tenant.id);
   return { tenant, created };
 }
 

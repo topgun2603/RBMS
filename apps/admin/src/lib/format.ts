@@ -122,3 +122,18 @@ export function normalizeTarget(raw: string): { target: string; kind: "phone" | 
   if (/^\+\d{8,15}$/.test(digits)) return { target: digits, kind: "phone" };
   return { target: v, kind: "invalid" };
 }
+
+/**
+ * Where a shop's own app lives, by app profile: NEXT_PUBLIC_APP_URLS = "BL=https://{slug}.srikit.in,EC=…"
+ * (dev default: billing on :3001, the store admin on :3002). Unknown profiles fall back to the billing app.
+ */
+const APP_URLS = (process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002")
+  .split(",")
+  .map((p) => p.split("=").map((s) => s.trim()) as [string, string | undefined])
+  .filter(([k, v]) => k && v);
+
+export function shopAppUrl(slug: string, appId: string | null | undefined): string {
+  const map = new Map(APP_URLS as [string, string][]);
+  const tpl = (appId && map.get(appId)) || map.get("BL") || "http://{slug}.localhost:3001";
+  return tpl.replace("{slug}", encodeURIComponent(slug));
+}

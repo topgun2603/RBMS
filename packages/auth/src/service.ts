@@ -12,12 +12,15 @@ import {
   tooMany,
 } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, otpHash, otpRetryAfter, type Target } from "./helpers";
 import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
-import { authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
+import { authHandoffs, authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
+
+/** Lifetime of a cross-origin sign-in handoff code. */
+export const HANDOFF_TTL_SECONDS = 60;
 
 export interface AuthConfig {
   sessionTtlDays: number;
@@ -67,6 +70,8 @@ export interface AuthDeps {
   log?: LoggerPort;
   /** Override Google ID token verification (tests). */
   verifyGoogleToken?: GoogleTokenVerifier;
+  /** The app URL of a shop the user belongs to (null when not a member), for `POST /handoff { tenantId }`. */
+  handoffTargets?: { appUrl(userId: string, tenantId: string): Promise<string | null> };
 }
 
 /** Public user shape. Safe to return from the API. */
@@ -416,6 +421,48 @@ export class AuthService {
       }
     }
     return this.completeSignIn(userId, isNewUser, input);
+  }
+
+  // ---------------------------------------------------------------- Cross-origin handoff
+
+  /**
+   * A one-time code that signs the same user in on another origin (the landing site hands a new shop owner over to the
+   * shop's app): single use, valid for `HANDOFF_TTL_SECONDS`, only its hash is stored.
+   */
+  async createHandoff(userId: string, meta: SessionMeta = {}): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number }> {
+    const now = new Date();
+    const code = randomToken(24);
+    const expiresAt = new Date(now.getTime() + HANDOFF_TTL_SECONDS * 1000);
+    await this.db.insert(authHandoffs).values({ codeHash: sha256(code), userId, expiresAt, ip: meta.ip ?? null });
+    // Housekeeping: codes are worthless a minute later.
+    await this.db.delete(authHandoffs).where(lt(authHandoffs.expiresAt, new Date(now.getTime() - 86_400_000)));
+    return { code, expiresAt, expiresInSeconds: HANDOFF_TTL_SECONDS };
+  }
+
+  /** Where a handoff for one of the user's shops is redeemed (the shop's app), or 404 when not a member. */
+  async handoffAppUrl(userId: string, tenantId: string): Promise<string> {
+    const port = this.deps.handoffTargets;
+    if (!port) throw badRequest("Handoff targets are not configured");
+    const url = await port.appUrl(userId, tenantId);
+    if (!url) throw notFound("Shop");
+    return url;
+  }
+
+  /** Redeems a handoff code once (atomic) and starts a new session for its user. 400 `invalid_handoff` otherwise. */
+  async redeemHandoff(code: string, meta: SessionMeta = {}): Promise<SignInResult> {
+    const invalid = () => new AppError(400, "invalid_handoff", "This sign-in link has expired or was already used. Please sign in again.");
+    if (typeof code !== "string" || code.length < 16 || code.length > 128) throw invalid();
+    const now = new Date();
+    const [row] = await this.db
+      .update(authHandoffs)
+      .set({ consumedAt: now })
+      .where(and(eq(authHandoffs.codeHash, sha256(code)), isNull(authHandoffs.consumedAt), gt(authHandoffs.expiresAt, now)))
+      .returning({ userId: authHandoffs.userId });
+    if (!row) throw invalid();
+    const user = await this.getUser(row.userId);
+    if (!user) throw invalid();
+    this.assertCanSignIn(user);
+    return this.completeSignIn(user.id, false, meta);
   }
 
   // ---------------------------------------------------------------- Sessions

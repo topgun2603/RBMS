@@ -57,6 +57,7 @@ import {
   routePermissions,
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
+import { createBatch5, type Batch5 } from "./kit-batch5";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
@@ -80,6 +81,8 @@ export function createKit(env: Env, log: Logger) {
 
   // Batch 3 (kit-batch3.ts) is created after the modules it builds on; the hooks below reach it lazily.
   let b3: Batch3 | undefined;
+  // Batch 5 (kit-batch5.ts): subscriptions, sign-up and the on-tenant-created hooks; also late-bound.
+  let b5: Batch5 | undefined;
   /** Developer webhooks (EventsPort). Never throws; a no-op until batch 3 exists. */
   const emit = (tenantId: string, type: string, data: unknown) => (b3 ? b3.events.emit(tenantId, type, data) : Promise.resolve());
   const events = { emit };
@@ -103,6 +106,8 @@ export function createKit(env: Env, log: Logger) {
     resolveMemberTarget: (target) => resolveTarget!(target),
     domainVerifier: dnsDomainVerifier(env.CNAME_TARGET),
     cnameTarget: env.CNAME_TARGET,
+    // On-tenant-created hooks (kit-batch5.ts): a failing hook is logged; the shop stays created.
+    onHookError: (err, hook, tenant) => log.error({ err, hook, tenantId: tenant.id, slug: tenant.slug }, "tenancy: on-tenant-created hook failed"),
   });
 
   // Feature switches: registry = every mounted module's features (read lazily, `modules` is built below).
@@ -147,6 +152,8 @@ export function createKit(env: Env, log: Logger) {
     memberships: tenancy.service,
     // Resolved per request; staff is created below.
     permissions: { permissionsFor: (tenantId, roles) => staff.resolver.permissionsFor(tenantId, roles) },
+    // Where `POST /v1/auth/handoff { tenantId }` sends the user (batch 5 is created below).
+    handoffTargets: { appUrl: (userId, tenantId) => b5!.handoffTargets.appUrl(userId, tenantId) },
     log,
   });
   resolveTarget = async (target) => (await auth.service.findOrCreateByTarget(target)).user.id;
@@ -797,6 +804,24 @@ export function createKit(env: Env, log: Logger) {
   inventory.module.permissions = INVENTORY_PERMISSION_DEFS;
   batch3.loyalty.module.permissions = [...(batch3.loyalty.module.permissions ?? []), ...LOYALTY_HOST_PERMISSIONS];
 
+  // ================================================================ batch 5 (docs/batch5.md)
+  const batch5 = createBatch5({
+    env,
+    log,
+    db,
+    jobs: jobs.service,
+    settings: settings.service,
+    tenancy: tenancy.service,
+    auth: auth.service,
+    notify: notify.service,
+    plans: plans.service,
+    branding: branding.service,
+    documents: documents.service,
+    audit: audit.service,
+    defineJob,
+  });
+  b5 = batch5;
+
   defineJob("audit.purge", async () => {
     await audit.service.purge();
   });
@@ -839,6 +864,7 @@ export function createKit(env: Env, log: Logger) {
     analytics.module,
     expenses.module,
     ...batch3.modules,
+    ...batch5.modules,
   ];
 
   return {
@@ -872,6 +898,7 @@ export function createKit(env: Env, log: Logger) {
     analytics,
     expenses,
     ...batch3Parts(batch3),
+    subscriptions: batch5.subscriptions,
     modules,
     /** Runs a job defined in the kit once, in this process (scripts, e2e). */
     async runJob(name: string) {
@@ -917,6 +944,7 @@ export function createKit(env: Env, log: Logger) {
       await jobs.service.schedule(ANALYTICS_JOBS.rollup, "5 * * * *");
       await jobs.service.schedule(ANALYTICS_JOBS.purge, "20 4 * * *");
       await jobs.service.schedule(TENANCY_JOBS.verifyDomains, "*/30 * * * *");
+      await batch5.schedule();
     },
     async stop() {
       for (const m of [...modules].reverse()) await m.stop?.();

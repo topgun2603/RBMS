@@ -122,6 +122,13 @@ try {
         shop.slug,
       );
     }
+    // Batch 5: whatever plan & billing tests did to the shop, it is back on its plan as an active, open-ended,
+    // no-charge (manual) subscription, so the scripts' feature and plan checks hold.
+    const s = await kit.subscriptions.service.get(tenant.id);
+    if (!s || s.status !== "active" || s.provider !== "manual" || s.planId !== shop.planId || s.cancelAtPeriodEnd || s.pendingPlanId || s.currentPeriodEnd) {
+      await kit.subscriptions.service.comp(tenant.id, { planId: shop.planId, until: null }, { userId: null });
+      log.info({ slug: shop.slug, plan: shop.planId, was: s ? `${s.status} ${s.planId} ${s.provider}` : "none" }, "e2e shop subscription reset");
+    }
     const pruned = await new E2eCleanup(kit, tenant.id, log).productsOnly();
     log.info({ slug: shop.slug, plan: tenant.planId, app: tenant.appId, created, pruned }, "e2e shop ready");
   }

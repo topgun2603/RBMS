@@ -66,7 +66,7 @@ export type {
 } from "./service";
 export { render, maskTarget, escapeHtml, placeholders } from "./render";
 export { composeMessage } from "./compose";
-export { BUILTIN_TEMPLATES, BATCH3_TEMPLATE_KEYS, pickTemplate, baseLocale, type TemplateContent, type TemplateSource } from "./templates";
+export { BUILTIN_TEMPLATES, BATCH3_TEMPLATE_KEYS, BATCH5_TEMPLATE_KEYS, pickTemplate, baseLocale, type TemplateContent, type TemplateSource } from "./templates";
 export { notifyRoutes } from "./routes";
 export { ConsoleDriver } from "./drivers/console";
 export { FcmDriver, isUnregisteredTokenError } from "./drivers/fcm";

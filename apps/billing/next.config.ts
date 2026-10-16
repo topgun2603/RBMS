@@ -8,7 +8,7 @@ export default function config(phase: string): NextConfig {
     // doesn't delete the files the dev server is serving.
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst"],
+    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/tenancy"],
     poweredByHeader: false,
     // Each shop opens the app on its own subdomain (raja.localhost:3001) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],

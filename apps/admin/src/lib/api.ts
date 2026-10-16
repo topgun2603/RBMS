@@ -114,3 +114,40 @@ api.post = <T = unknown>(path: string, body?: unknown, opts?: ApiOptions) => api
 api.put = <T = unknown>(path: string, body?: unknown, opts?: ApiOptions) => api<T>(path, { ...opts, method: "PUT", body });
 api.patch = <T = unknown>(path: string, body?: unknown, opts?: ApiOptions) => api<T>(path, { ...opts, method: "PATCH", body });
 api.delete = <T = unknown>(path: string, body?: unknown, opts?: ApiOptions) => api<T>(path, { ...opts, method: "DELETE", body });
+
+/**
+ * Downloads a file the API streams back (PDF, CSV) with the same auth headers as `api`, saved under the server's
+ * Content-Disposition filename or `fallbackName`. `tenant: null` omits x-tenant (platform routes).
+ */
+export async function apiDownload(path: string, fallbackName: string, opts: { query?: QueryParams; tenant?: string | null } = {}): Promise<void> {
+  const headers = new Headers({ accept: "application/pdf, text/csv, */*" });
+  const token = getToken();
+  if (token) headers.set("authorization", `Bearer ${token}`);
+  const slug = opts.tenant === undefined ? getTenantSlug() : opts.tenant;
+  if (slug) headers.set("x-tenant", slug);
+  let res: Response;
+  try {
+    res = await fetch(apiUrl(path, opts.query), { headers, credentials: "include" });
+  } catch (err) {
+    throw new ApiError(0, "network_error", err instanceof Error ? err.message : "Network error");
+  }
+  if (!res.ok) {
+    type ErrBody = { code?: string; message?: string; details?: unknown };
+    const e: ErrBody | null = await res
+      .json()
+      .then((j: { error?: ErrBody }) => j.error ?? null)
+      .catch(() => null);
+    if (res.status === 401) handleUnauthorized();
+    throw new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Download failed", e?.details);
+  }
+  const blob = await res.blob();
+  const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get("content-disposition") ?? "");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = m?.[1] ? decodeURIComponent(m[1]) : fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

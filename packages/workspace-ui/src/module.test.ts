@@ -1,12 +1,23 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { featureChecker, normalizeBase, visibleFor, type FeatureState, type MountedModule, type RouteDef } from "@srirealtime/web";
+import {
+  featureChecker,
+  normalizeBase,
+  visibleFor,
+  type FeatureState,
+  type MountedModule,
+  type PlanInfo,
+  type RouteDef,
+  type Subscription,
+  type SubscriptionCurrent,
+} from "@srirealtime/web";
 import { AUDIT_MODULES, describeAction, ENTITY_TYPES, KNOWN_ACTION_IDS, normalizeAction } from "./lib/audit-actions";
 import { errorRowsCsv, toCsv } from "./lib/csv";
 import { diffJson } from "./lib/diff";
 import { workspaceMessages } from "./lib/messages";
 import { BUILTIN_ROLE_NAMES, coveringPattern, permissionMatches, roleKeyFrom, ROLE_KEY_RE } from "./lib/permissions";
+import { canCancel, hasMandate, periodEndOf, planMode } from "./lib/plan-actions";
 import { resolveStepHref } from "./lib/step-href";
 import { workspaceModule } from "./module";
 
@@ -20,12 +31,13 @@ function sources(dir: string): string[] {
 const { en, ta } = workspaceMessages;
 
 describe("workspaceModule", () => {
-  it("puts everything under Settings, each page and widget with a feature", () => {
+  it("puts everything under Settings, each page and widget with a feature (Plan & billing is the platform's)", () => {
     const m = workspaceModule();
     expect(m.id).toBe("workspace");
     expect(m.nav).toEqual([]);
-    expect((m.settings ?? []).map((p) => p.path)).toEqual(["setup", "team", "audit", "import"]);
-    for (const p of m.settings ?? []) expect(p.feature, p.path).toBeTruthy();
+    expect((m.settings ?? []).map((p) => p.path)).toEqual(["setup", "team", "audit", "import", "plan"]);
+    for (const p of m.settings ?? []) if (p.path !== "plan") expect(p.feature, p.path).toBeTruthy();
+    expect(workspaceModule({ planBilling: false }).settings?.map((p) => p.path)).not.toContain("plan");
     for (const w of m.widgets ?? []) expect(w.feature, w.id).toBeTruthy();
     for (const p of m.settings ?? []) expect(p.label in en, p.label).toBe(true);
   });
@@ -57,7 +69,7 @@ describe("workspaceModule", () => {
       features: [state("onboarding", true), state("importexport", true), state("staff", false), state("audit", false)],
     });
     const m = workspaceModule();
-    expect((m.settings ?? []).filter((p) => check(p.feature).ok).map((p) => p.path)).toEqual(["setup", "import"]);
+    expect((m.settings ?? []).filter((p) => check(p.feature).ok).map((p) => p.path)).toEqual(["setup", "import", "plan"]);
   });
 });
 
@@ -200,6 +212,14 @@ describe("permission gating (Gated.permission)", () => {
     expect(by("team")).toMatchObject({ permission: "staff.manage" });
     expect(by("audit")).toMatchObject({ permission: "audit.view", permissionExplicit: true });
     expect(by("import")).toMatchObject({ permission: "importexport.run" });
+    expect(by("plan")).toMatchObject({ permission: "subscriptions.manage" });
+  });
+
+  it("shows Plan & billing to owners/admins and an explicit grant, not to staff defaults", () => {
+    expect(visible(["*.view"])(by("plan"))).toBe(false);
+    expect(visible(["subscriptions.manage"])(by("plan"))).toBe(true);
+    const owner = visibleFor({ roles: ["owner"], access: { fullAccess: true, permissions: ["*"] }, checkFeature: featureChecker(undefined).check });
+    expect(owner(by("plan"))).toBe(true);
   });
 
   it("hides the audit log from the staff default `*.view` but shows it to an explicit grant", () => {
@@ -208,5 +228,84 @@ describe("permission gating (Gated.permission)", () => {
     expect(visible(["audit.*"])(by("audit"))).toBe(true);
     expect(visible(["staff.manage"])(by("team"))).toBe(true);
     expect(visible(["reports.view"])(by("team"))).toBe(false);
+  });
+});
+
+describe("plan actions", () => {
+  const plan = (id: string, monthly: number, sort: number): PlanInfo => ({
+    id,
+    name: id,
+    description: null,
+    priceMonthlyPaise: monthly,
+    priceYearlyPaise: monthly * 10,
+    modules: [],
+    limits: {},
+    features: {},
+    sort,
+  });
+  const plans = [plan("free", 0, 0), plan("starter", 49_900, 1), plan("pro", 149_900, 2)];
+  const [free, starter, pro] = plans as [PlanInfo, PlanInfo, PlanInfo];
+  const sub = (s: Partial<Subscription>): Subscription => ({
+    id: "s",
+    tenantId: "t",
+    planId: "starter",
+    interval: "monthly",
+    status: "active",
+    trialEndsAt: null,
+    currentPeriodStart: null,
+    currentPeriodEnd: "2026-11-16T00:00:00.000Z",
+    cancelAtPeriodEnd: false,
+    graceEndsAt: null,
+    provider: "mock",
+    authUrl: null,
+    pendingPlanId: null,
+    pendingInterval: null,
+    ...s,
+  });
+  const cur = (s: Partial<Subscription> | null, p: PlanInfo | null = starter): SubscriptionCurrent => ({
+    subscription: s ? sub(s) : null,
+    plan: p,
+    trialDaysLeft: null,
+    usage: [],
+    canTrial: false,
+  });
+
+  it("switches the trial plan without payment", () => {
+    const c = cur({ status: "trialing", trialEndsAt: "2026-10-30T00:00:00.000Z" });
+    expect(planMode(c, plans, pro, "monthly")).toBe("trial");
+    expect(planMode(c, plans, starter, "yearly")).toBe("trial");
+    expect(planMode(c, plans, starter, "monthly")).toBe("current");
+    expect(planMode(c, plans, free, "monthly")).toBe("downgrade");
+    expect(periodEndOf(c.subscription)).toBe("2026-10-30T00:00:00.000Z");
+  });
+
+  it("upgrades now and downgrades at period end while active", () => {
+    const c = cur({ status: "active" });
+    expect(planMode(c, plans, pro, "monthly")).toBe("upgrade");
+    expect(planMode(c, plans, free, "monthly")).toBe("downgrade");
+    expect(planMode(c, plans, starter, "monthly")).toBe("current");
+    expect(planMode(cur({ status: "past_due" }), plans, pro, "monthly")).toBe("upgrade");
+  });
+
+  it("starts a checkout from free, expired or cancelled", () => {
+    expect(planMode(cur(null, free), plans, pro, "yearly")).toBe("start");
+    expect(planMode(cur(null, free), plans, free, "monthly")).toBe("current");
+    expect(planMode(cur({ status: "expired" }, free), plans, starter, "monthly")).toBe("start");
+    expect(planMode(cur({ status: "active", planId: "free", provider: null }, free), plans, starter, "monthly")).toBe("start");
+    // Complimentary Pro: a paid plan goes through trial/checkout, Free applies now (no period end).
+    const comped = cur({ status: "active", planId: "pro", provider: "manual", currentPeriodEnd: null }, pro);
+    expect(planMode(comped, plans, starter, "monthly")).toBe("start");
+    expect(planMode(comped, plans, free, "monthly")).toBe("downgrade");
+    expect(periodEndOf(comped.subscription)).toBeNull();
+  });
+
+  it("knows what can be cancelled and when a trial mandate exists", () => {
+    expect(canCancel(cur({ status: "active" }))).toBe(true);
+    expect(canCancel(cur({ status: "active", cancelAtPeriodEnd: true }))).toBe(false);
+    expect(canCancel(cur({ status: "active", provider: "manual" }))).toBe(false);
+    expect(canCancel(cur({ status: "active", planId: "free" }, free))).toBe(false);
+    expect(canCancel(cur({ status: "expired" }))).toBe(false);
+    expect(hasMandate(sub({ providerSubscriptionId: "sub_1" }))).toBe(true);
+    expect(hasMandate(sub({ providerSubscriptionId: "sub_1", authUrl: "https://x" }))).toBe(false);
   });
 });

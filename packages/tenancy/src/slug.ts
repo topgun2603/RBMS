@@ -1,34 +1,112 @@
-/** Subdomains that can never be tenant slugs. */
+/**
+ * Shop address (subdomain) rules, shared by the API (`@srirealtime/tenancy`) and the web apps
+ * (`@srirealtime/tenancy/slug`, browser-safe: this file imports nothing).
+ */
+
+/** Subdomains that can never be shop slugs: platform hosts, app names and sign-up/marketing paths. */
 export const RESERVED_SLUGS: readonly string[] = [
   "www",
   "api",
   "admin",
   "app",
+  "apps",
   "mail",
+  "email",
+  "smtp",
+  "ftp",
   "static",
   "cdn",
   "assets",
+  "media",
+  "files",
+  "uploads",
   "dashboard",
   "help",
   "support",
   "status",
   "blog",
   "docs",
+  "billing",
+  "store",
+  "stores",
+  "shop",
+  "seller",
+  "sellers",
+  "signup",
+  "login",
+  "logout",
+  "account",
+  "accounts",
+  "auth",
+  "pricing",
+  "about",
+  "contact",
+  "terms",
+  "privacy",
+  "refunds",
+  "legal",
+  "root",
+  "system",
+  "platform",
+  "srikit",
+  "srirealtime",
 ];
 
-export type SlugCheck = { ok: true } | { ok: false; reason: string };
+export const SLUG_MIN_LENGTH = 3;
+export const SLUG_MAX_LENGTH = 40;
+
+export type SlugCheck = { ok: true } | { ok: false; reason: string; code: "length" | "format" | "reserved" };
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
+export const isReservedSlug = (slug: string) => RESERVED_SLUGS.includes(slug);
+
 /** 3–40 chars, lowercase a-z, 0-9 and hyphens, no leading/trailing hyphen, not reserved. */
 export function validateSlug(slug: string): SlugCheck {
-  if (typeof slug !== "string") return { ok: false, reason: "Slug must be a string" };
-  if (slug.length < 3 || slug.length > 40) return { ok: false, reason: "Slug must be 3 to 40 characters" };
-  if (!SLUG_RE.test(slug)) {
-    return { ok: false, reason: "Slug may only contain lowercase letters, digits and hyphens, and cannot start or end with a hyphen" };
+  if (typeof slug !== "string") return { ok: false, code: "format", reason: "Slug must be a string" };
+  if (slug.length < SLUG_MIN_LENGTH || slug.length > SLUG_MAX_LENGTH) {
+    return { ok: false, code: "length", reason: `Slug must be ${SLUG_MIN_LENGTH} to ${SLUG_MAX_LENGTH} characters` };
   }
-  if (RESERVED_SLUGS.includes(slug)) return { ok: false, reason: `"${slug}" is reserved` };
+  if (!SLUG_RE.test(slug)) {
+    return {
+      ok: false,
+      code: "format",
+      reason: "Slug may only contain lowercase letters, digits and hyphens, and cannot start or end with a hyphen",
+    };
+  }
+  if (isReservedSlug(slug)) return { ok: false, code: "reserved", reason: `"${slug}" is reserved` };
   return { ok: true };
+}
+
+/** "Sri Murugan Stores!" → "sri-murugan-stores" (ASCII only; non-Latin names give ""). Max 40 chars. */
+export function slugify(text: string): string {
+  return (text ?? "")
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, SLUG_MAX_LENGTH)
+    .replace(/-+$/g, "");
+}
+
+/**
+ * Candidate addresses when `slug` is taken or invalid: with the city/area, a "-shop"/"-stores" ending, then numbers.
+ * Only valid slugs are returned (the caller removes taken ones).
+ */
+export function slugCandidates(slug: string, opts: { city?: string | null; count?: number } = {}): string[] {
+  const base = slugify(slug).slice(0, SLUG_MAX_LENGTH - 4).replace(/-+$/g, "") || "shop";
+  const city = opts.city ? slugify(opts.city) : "";
+  const fit = (s: string) => s.slice(0, SLUG_MAX_LENGTH).replace(/-+$/g, "");
+  const out = [
+    ...(city ? [fit(`${base}-${city}`), fit(`${city}-${base}`)] : []),
+    fit(`${base}-shop`),
+    fit(`${base}-stores`),
+    fit(`my-${base}`),
+    ...Array.from({ length: Math.max(opts.count ?? 9, 1) }, (_, i) => fit(`${base}${i + 1}`)),
+  ];
+  return [...new Set(out)].filter((s) => s !== slug && validateSlug(s).ok);
 }
 
 /** Lowercases, strips the port and any trailing dot. Returns "" for bracketed IPv6 hosts. */

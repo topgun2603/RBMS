@@ -7,6 +7,7 @@ import {
   requireSuperAdmin,
   requireTenant,
   requireUser,
+  tooMany,
   type RequestContext,
 } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
@@ -47,6 +48,11 @@ const statusBody = z.object({ status: z.enum(TENANT_STATUSES) });
 const appBody = z.object({ appId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,32}$/, "Invalid app id").nullable() });
 const planBody = z.object({ planId: z.string().min(1).max(64).nullable() });
 const domainBody = z.object({ domain: z.string().trim().min(4).max(253) });
+const slugQuery = z.object({
+  slug: z.string().max(80).default(""),
+  city: z.string().trim().max(60).optional(),
+  area: z.string().trim().max(60).optional(),
+});
 /** Super-admins may pass `force: true` to mark a domain verified without the DNS check. */
 const verifyBody = z.object({ force: z.boolean().optional() });
 
@@ -65,7 +71,26 @@ export function tenancyRoutes(
   service: TenancyService,
   opts: { resolveMemberTarget?: (target: string) => Promise<string> } = {},
 ) {
+  // Public slug check: 60 a minute per IP (in-memory, per instance).
+  const slugHits = new Map<string, number[]>();
+  const slugLimited = (ip: string | null) => {
+    const key = ip ?? "unknown";
+    const now = Date.now();
+    const recent = (slugHits.get(key) ?? []).filter((t) => now - t < 60_000);
+    recent.push(now);
+    slugHits.set(key, recent);
+    if (slugHits.size > 20_000) slugHits.clear();
+    return recent.length > 60;
+  };
+
   return async (app: FastifyInstance) => {
+    // ---- public: sign-up's live address check
+    app.get("/slug-available", async (req) => {
+      if (slugLimited(req.ctx.ip)) throw tooMany("Too many checks, please wait a minute");
+      const q = slugQuery.parse(req.query ?? {});
+      return service.slugAvailable(q.slug, { city: q.city ?? q.area ?? null });
+    });
+
     // ---- tenants
     app.post("/tenants", async (req) => {
       const user = requireUser(req.ctx);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { validateSlug } from "@srirealtime/tenancy/slug";
 import { getStoredTenant, useStored, TENANT_KEY } from "./session";
 
 /**
@@ -28,9 +29,8 @@ export function rootDomain(): string {
     : ENV_ROOT;
 }
 
-const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-/** Subdomains that never name a shop. */
-const RESERVED = new Set(["www", "app", "api", "admin"]);
+/** Shop address rules (3–40 chars, a-z 0-9 -, `RESERVED_SLUGS`): one source shared with the API. */
+const isShopSlug = (s: string) => validateSlug(s).ok;
 
 /**
  * "raja.localhost:3001" → "raja"; "raja.srikit.in" → "raja" (root srikit.in);
@@ -45,8 +45,7 @@ export function tenantFromHost(host: string | null | undefined, root: string = r
   const sub = h.slice(0, -suffix.length);
   // Only the label right before the root names the shop ("x.raja.localhost" → "raja").
   const slug = sub.split(".").pop() ?? "";
-  if (!SLUG_RE.test(slug) || RESERVED.has(slug)) return null;
-  return slug;
+  return isShopSlug(slug) ? slug : null;
 }
 
 /** Shop slug for this page (client only; null on the server or when there is none). */
@@ -88,4 +87,5 @@ export function rootUrl(): string {
   return `${protocol}//${rootDomain()}${port ? `:${port}` : ""}/`;
 }
 
-export const isValidShopSlug = (s: string) => SLUG_RE.test(s) && !RESERVED.has(s);
+export const isValidShopSlug = (s: string) => isShopSlug(s);
+export { RESERVED_SLUGS, validateSlug } from "@srirealtime/tenancy/slug";

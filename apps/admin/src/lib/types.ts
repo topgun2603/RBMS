@@ -277,3 +277,82 @@ export interface Paged<T> {
   items: T[];
   total?: number;
 }
+
+// ---------------------------------------------------------------- plan subscriptions (super-admin, docs/batch5.md)
+// Mirrors packages/subscriptions (service.ts adminList / adminStats / adminInvoices). The shop-side shapes live in
+// @srirealtime/web (lib/subscriptions.ts); the admin panel doesn't depend on the web kit, so these are its own.
+
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled" | "expired";
+export type BillingInterval = "monthly" | "yearly";
+
+/** One row of GET /v1/subscriptions/admin/subscriptions. */
+export interface AdminSubscription {
+  id: string;
+  tenantId: string;
+  planId: string;
+  interval: BillingInterval;
+  status: SubscriptionStatus;
+  trialStartedAt: ISODate | null;
+  trialEndsAt: ISODate | null;
+  currentPeriodStart: ISODate | null;
+  currentPeriodEnd: ISODate | null;
+  cancelAtPeriodEnd: boolean;
+  graceEndsAt: ISODate | null;
+  provider: "razorpay" | "mock" | "manual" | null;
+  providerSubscriptionId: string | null;
+  authUrl: string | null;
+  pendingPlanId: string | null;
+  pendingInterval: BillingInterval | null;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+  tenant: { id: string; slug: string; name: string; appId: string | null; status: TenantStatus } | null;
+  plan: { id: string; name: string };
+  /** MRR contribution (GST-exclusive paise); 0 unless paying. */
+  mrrPaise: number;
+}
+
+/** GET /v1/subscriptions/admin/stats. */
+export interface SubscriptionStats {
+  mrrPaise: number;
+  arrPaise: number;
+  active: number;
+  trialing: number;
+  pastDue: number;
+  cancelled: number;
+  expired: number;
+  free: number;
+  comp: number;
+  /** Paying shops that ended (cancelled/expired) in the last 30 days. */
+  churned30d: number;
+  trialsEnded: number;
+  trialsConverted: number;
+  /** 0–1; null before any trial ended. */
+  trialConversion: number | null;
+  total: number;
+}
+
+/** One row of GET /v1/subscriptions/admin/invoices. */
+export interface AdminPlatformInvoice {
+  id: string;
+  number: string;
+  tenantId: string;
+  planId: string;
+  interval: BillingInterval;
+  periodStart: ISODate | null;
+  periodEnd: ISODate | null;
+  date: string;
+  placeOfSupply: string;
+  subtotalPaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
+  igstPaise: number;
+  totalPaise: number;
+  status: "paid" | "void";
+  provider: string | null;
+  providerPaymentId: string | null;
+  buyer: { legalName: string; gstin: string | null; stateCode: string | null; address: string | null };
+  voidedAt: ISODate | null;
+  voidReason: string | null;
+  createdAt: ISODate;
+  tenant: { id: string; slug: string; name: string } | null;
+}

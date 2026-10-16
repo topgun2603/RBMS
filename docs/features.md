@@ -108,8 +108,9 @@ Seed (apps/api `pnpm seed`):
 End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent; development databases only):
 - `e2e-bill` (BL, pro), `e2e-store` (EC, pro: the demo store catalogue, WELCOME10, delivery zones, published home, about
   page, menus, store settings) and `e2e-lite` (BL, starter, for plan checks). The e2e scripts in `apps/api/test/e2e` only
-  write to these shops; `test:e2e:all` seeds them and runs `batch1.mjs`, `batch2.mjs`, `billing.mjs` and `batch3.mjs` (sections in
-  `test/e2e/b3/`, docs/batch3.md "Integration") in sequence, then
+  write to these shops; `test:e2e:all` seeds them (and puts each back on its plan as an active `manual` subscription) and
+  runs `batch1.mjs`, `batch2.mjs`, `billing.mjs`, `batch3.mjs` (sections in `test/e2e/b3/`, docs/batch3.md "Integration") and
+  `batch5.mjs` (sign-up and plan subscriptions on throwaway `e2e-su…` shops, docs/batch5.md) in sequence, then
   the storefront browser test when the dev servers are up.
 - Storefront browser test: `pnpm --filter @srirealtime/store test:e2e` (`apps/store/test/e2e.cjs`). Needs the api (:4000,
   test OTP on) and store (:3003) dev servers and Chrome (`CHROME_PATH`, default the Windows install path; puppeteer-core
@@ -126,7 +127,9 @@ End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent
 - `pnpm --filter @srirealtime/api cleanup:e2e-data` (`-- --dry-run` to only count) removes what earlier e2e runs left in
   the demo shops (raja, kumar, anbu), found by the scripts' markers ("E2E " names, test phones, the billing smoke's fixed
   customers/supplier, "Test Shopper" storefront accounts of the old browser test with their orders, carts, addresses,
-  reviews and review votes); issued bills and orders are cancelled, not deleted. See `apps/api/src/e2e-cleanup.ts`.
+  reviews and review votes); issued bills and orders are cancelled, not deleted. See `apps/api/src/e2e-cleanup.ts`. It also
+  deletes the throwaway shops e2e sign-ups create (every `e2e-…` slug except e2e-bill, e2e-store and e2e-lite) with all their
+  rows (`apps/api/src/e2e-signup-cleanup.ts`).
 
 ## Front end
 

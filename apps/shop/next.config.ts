@@ -18,6 +18,8 @@ export default function config(phase: string): NextConfig {
       "@srirealtime/ui",
       "@srirealtime/i18n",
       "@srirealtime/gst",
+      // Only its browser-safe `@srirealtime/tenancy/slug` (shop address rules) is imported, by the web kit.
+      "@srirealtime/tenancy",
     ],
     poweredByHeader: false,
     // Each shop opens the store admin on its own subdomain (anbu.localhost:3002) in dev.

@@ -1,5 +1,6 @@
 import { pino } from "pino";
 import { E2eCleanup } from "../e2e-cleanup";
+import { removeSignupShops } from "../e2e-signup-cleanup";
 import { env } from "../env";
 import { createKit } from "../kit";
 
@@ -33,6 +34,14 @@ try {
     for (const [what, n] of lines) console.log(`  ${String(n).padStart(4)}  ${what}`);
     for (const p of job.problems) console.log(`  !  ${p}`);
     problems += job.problems.length;
+  }
+  // Batch 5: the throwaway shops the sign-up e2e steps create (e2e-su… slugs) are deleted outright.
+  if (!slugs.length) {
+    const r = await removeSignupShops(kit, { dryRun });
+    console.log(`\ne2e sign-up shops${dryRun ? " (dry run)" : ""}: ${r.shops.length ? r.shops.join(", ") : "none"}`);
+    for (const [what, n] of Object.entries(r.summary)) console.log(`  ${String(n).padStart(4)}  ${what}`);
+    for (const p of r.problems) console.log(`  !  ${p}`);
+    problems += r.problems.length;
   }
   if (problems) process.exitCode = 1;
 } catch (err) {

@@ -487,6 +487,9 @@ export function createBatch3(d: Batch3Deps) {
         "/v1/kyc/review",
         "/v1/staff/",
         "/v1/payments/account",
+        // Batch 5: the shop's own plan and billing, and creating shops.
+        "/v1/subscriptions/",
+        "/v1/signup",
       ],
     },
   );

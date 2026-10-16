@@ -1,0 +1,92 @@
+@import "@srirealtime/ui/styles.css";
+
+/* Scan the app and the design system for Tailwind classes (workspace packages are TS source). */
+@source "../";
+@source "../../../../packages/ui/src";
+
+/*
+ * Marketing-site tokens. The product primary (indigo) comes from @srirealtime/ui; the site adds a warm marigold
+ * accent (kolam / festival colours familiar to Tamil Nadu shops) and a display face.
+ */
+@layer base {
+  :root {
+    --www-font-display: var(--font-display-face), var(--font-noto-tamil, "Noto Sans Tamil"), var(--font-sans);
+    --www-marigold: oklch(0.78 0.16 70);
+    --www-marigold-ink: oklch(0.5 0.13 55);
+    --www-leaf: oklch(0.62 0.14 155);
+    --www-tint: color-mix(in oklch, var(--primary) 6%, var(--background));
+    --www-tint-2: color-mix(in oklch, var(--primary) 12%, var(--background));
+    --www-gradient: linear-gradient(120deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 55%, var(--www-marigold)) 60%, var(--www-marigold) 100%);
+    --www-shadow: 0 1px 2px oklch(0.25 0.02 60 / 0.06), 0 18px 48px -18px oklch(0.3 0.08 272 / 0.35);
+    --www-text-display: clamp(2.2rem, 1.5rem + 3.4vw, 4.25rem);
+    --www-text-h2: clamp(1.6rem, 1.3rem + 1.3vw, 2.5rem);
+    --www-section: clamp(3.5rem, 2.5rem + 4vw, 7rem);
+  }
+  .dark {
+    --www-marigold: oklch(0.8 0.14 72);
+    --www-marigold-ink: oklch(0.82 0.12 72);
+    --www-shadow: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 18px 48px -18px oklch(0 0 0 / 0.8);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--background);
+  }
+  /* Tamil runs longer and needs taller lines; keep headings readable without overflowing on phones. */
+  :lang(ta) .text-display,
+  :lang(ta) .text-h2 {
+    line-height: 1.3;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+  :lang(ta) .text-display {
+    font-size: clamp(1.8rem, 1.3rem + 2.6vw, 3.4rem);
+  }
+}
+
+@theme inline {
+  --font-display: var(--www-font-display);
+  --color-marigold: var(--www-marigold);
+  --color-marigold-ink: var(--www-marigold-ink);
+  --color-leaf: var(--www-leaf);
+  --color-tint: var(--www-tint);
+  --color-tint-2: var(--www-tint-2);
+  --shadow-www: var(--www-shadow);
+}
+
+@utility text-display {
+  font-family: var(--www-font-display);
+  font-size: var(--www-text-display);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+@utility text-h2 {
+  font-family: var(--www-font-display);
+  font-size: var(--www-text-h2);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+@utility text-gradient {
+  background: var(--www-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility section-y {
+  padding-block: var(--www-section);
+}
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+  }
+}

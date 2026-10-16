@@ -10,7 +10,15 @@ export * from "./slug";
 export * from "./roles";
 export * from "./domains";
 export { TenancyService, publicTenant, toTenantRef } from "./service";
-export type { CreateTenantInput, ResolveInput, TenancyDeps, TenantWithRoles } from "./service";
+export type {
+  CreateTenantInput,
+  ResolveInput,
+  SlugAvailability,
+  TenancyDeps,
+  TenantCreatedEvent,
+  TenantCreatedHook,
+  TenantWithRoles,
+} from "./service";
 export { tenancyRoutes } from "./routes";
 
 /** Port shape auth uses to look up a user's roles in a tenant. `service` satisfies it. */

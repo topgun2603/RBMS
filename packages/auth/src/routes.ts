@@ -18,6 +18,16 @@ const guestVerifyBody = z.object({
   code: z.string().min(4).max(10),
 });
 const googleBody = z.object({ idToken: z.string().min(10).max(8192) });
+const handoffBody = z.object({ code: z.string().trim().min(1).max(200) });
+const handoffCreateBody = z.object({ tenantId: z.string().uuid().optional() });
+
+/** "<appUrl>/login?handoff=<code>" (an appUrl with a path, e.g. ".../billing", gets "/login" appended). */
+export function handoffLoginUrl(appUrl: string, code: string): string {
+  const u = new URL(appUrl);
+  u.pathname = `${u.pathname.replace(/\/+$/, "")}/login`;
+  u.searchParams.set("handoff", code);
+  return u.toString();
+}
 const profileBody = z.object({
   name: z.string().trim().max(120).nullable().optional(),
   avatarUrl: z.string().url().max(2048).nullable().optional(),
@@ -77,6 +87,23 @@ export function authRoutes(service: AuthService) {
     app.post("/google", async (req, reply) => {
       const body = googleBody.parse(req.body);
       const r = await service.signInWithGoogle({ idToken: body.idToken, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      return signedIn(req, reply, r);
+    });
+
+    // Cross-origin sign-in (landing site → a shop's app): a single-use 60 s code for the signed-in user ...
+    // With `tenantId` (a shop the user belongs to) the response also names where to redeem it: `appUrl` (the shop's
+    // app) and `url` (its login page with `?handoff=`).
+    app.post("/handoff", async (req) => {
+      const me = requireUser(req.ctx);
+      const { tenantId } = handoffCreateBody.parse(req.body ?? {});
+      const appUrl = tenantId ? await service.handoffAppUrl(me.id, tenantId) : null;
+      const h = await service.createHandoff(me.id, { ip: req.ctx.ip });
+      return appUrl ? { ...h, appUrl, url: handoffLoginUrl(appUrl, h.code) } : h;
+    });
+    // ... which the other origin redeems for its own session.
+    app.post("/handoff/redeem", async (req, reply) => {
+      const { code } = handoffBody.parse(req.body);
+      const r = await service.redeemHandoff(code, { ip: req.ctx.ip, userAgent: req.ctx.userAgent });
       return signedIn(req, reply, r);
     });
 

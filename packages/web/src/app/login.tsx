@@ -34,6 +34,20 @@ import type { OtpRequestResponse, SignInResponse } from "../lib/types";
 const OTP_LENGTH = 6;
 type Channel = "sms" | "whatsapp" | "email";
 
+/** The `?handoff=` code of this page load (client only). */
+function handoffCodeFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const code = new URLSearchParams(window.location.search).get("handoff");
+  return code && /^[A-Za-z0-9_-]{16,128}$/.test(code) ? code : null;
+}
+
+/** Drops `handoff` from the address bar (it is single-use; keeps any other params). */
+function stripHandoffFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("handoff");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 /**
  * OTP sign-in for the current shop. Verifies with the address the user TYPED (normalised): the OTP request only
  * returns a masked target for display. `home` is where to go once signed in.
@@ -64,10 +78,39 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
   const parsed = normalizeTarget(raw);
   const channel: Channel = parsed.kind === "email" ? "email" : phoneChannel;
 
-  // Already signed in → straight in.
+  /**
+   * `?handoff=<code>`: the landing site (sign-up, "Open my shop") hands over a single-use 60 s code, redeemed here for
+   * this origin's own session. Read once on mount; the code is removed from the address bar right away.
+   */
+  const [handoff, setHandoff] = React.useState<"idle" | "redeeming" | "failed">("idle");
+  // Set synchronously in the effect below so the "already signed in" redirect (same commit) waits for the handoff.
+  const handoffPending = React.useRef(false);
+  const redeemStarted = React.useRef(false);
   React.useEffect(() => {
-    if (hydrated && token && step === "identify" && !sent) router.replace(home);
-  }, [hydrated, token, step, sent, router, home]);
+    const code = handoffCodeFromUrl();
+    if (!code || redeemStarted.current) return;
+    redeemStarted.current = true;
+    handoffPending.current = true;
+    setHandoff("redeeming");
+    stripHandoffFromUrl();
+    api
+      .post<SignInResponse>("/auth/handoff/redeem", { code }, { anonymous: true })
+      .then((res) => {
+        setToken(res.token);
+        qc.removeQueries({ queryKey: meQueryKey });
+        router.replace(home);
+      })
+      .catch(() => {
+        handoffPending.current = false;
+        setHandoff("failed");
+      });
+  }, [qc, router, home]);
+
+  // Already signed in → straight in (not while a handoff decides who signs in).
+  React.useEffect(() => {
+    if (handoffPending.current) return;
+    if (hydrated && token && step === "identify" && !sent && handoff !== "redeeming") router.replace(home);
+  }, [hydrated, token, step, sent, router, home, handoff]);
 
   React.useEffect(() => {
     if (step !== "verify") return;
@@ -129,12 +172,25 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
       footer={t("web.login.footer")}
     >
       <AnimatePresence mode="wait" initial={false}>
-        {step === "identify" ? (
+        {handoff === "redeeming" ? (
+          <SlideIn key="handoff" direction="up" distance={12}>
+            <div className="grid justify-items-center gap-3 py-6 text-center" role="status" aria-live="polite">
+              <Loader2Icon className="size-8 animate-spin text-primary" />
+              <h1 className="font-heading text-xl font-semibold tracking-tight">{t("web.login.handoff")}</h1>
+              <p className="text-sm text-muted-foreground">{t("web.login.handoffHint")}</p>
+            </div>
+          </SlideIn>
+        ) : step === "identify" ? (
           <SlideIn key="identify" direction="right" distance={16}>
             <div className="mb-6 space-y-1.5 text-center">
               <h1 className="font-heading text-xl font-semibold tracking-tight">{t("web.login.title", { shop: shopName })}</h1>
               <p className="text-sm text-muted-foreground">{t("web.login.subtitle")}</p>
             </div>
+            {handoff === "failed" && (
+              <p role="alert" className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {t("web.login.handoffExpired")}
+              </p>
+            )}
             <form onSubmit={onIdentify} className="grid gap-4" noValidate>
               <Field id="target">
                 <FieldLabel>{t("web.login.targetLabel")}</FieldLabel>

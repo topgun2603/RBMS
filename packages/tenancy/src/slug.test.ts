@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlatformHost, isValidDomain, normalizeHost, RESERVED_SLUGS, slugFromHost, validateSlug } from "./slug";
+import { isPlatformHost, isValidDomain, normalizeHost, RESERVED_SLUGS, slugCandidates, slugFromHost, slugify, validateSlug } from "./slug";
 
 describe("validateSlug", () => {
   it.each(["acme", "abc", "my-shop", "shop123", "a1b", "x".repeat(40)])("accepts %s", (s) => {
@@ -26,6 +26,29 @@ describe("validateSlug", () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.reason).toContain("reserved");
     }
+  });
+});
+
+describe("slugify and slugCandidates", () => {
+  it("makes an address from a shop name", () => {
+    expect(slugify("Sri Murugan Stores!")).toBe("sri-murugan-stores");
+    expect(slugify("  Café & Bakery  ")).toBe("cafe-and-bakery");
+    expect(slugify("அன்பு")).toBe("");
+    expect(slugify("x".repeat(60)).length).toBe(40);
+  });
+  it("suggests valid alternatives: city first, then endings and numbers", () => {
+    const c = slugCandidates("anbu", { city: "Madurai" });
+    expect(c.slice(0, 3)).toEqual(["anbu-madurai", "madurai-anbu", "anbu-shop"]);
+    expect(c).toContain("anbu1");
+    expect(c).not.toContain("anbu");
+    for (const s of c) expect(validateSlug(s)).toEqual({ ok: true });
+    for (const s of slugCandidates("x".repeat(40))) expect(s.length).toBeLessThanOrEqual(40);
+    expect(slugCandidates("admin").every((s) => validateSlug(s).ok)).toBe(true);
+  });
+  it("reports why a slug is invalid", () => {
+    expect(validateSlug("ab")).toMatchObject({ ok: false, code: "length" });
+    expect(validateSlug("a_b")).toMatchObject({ ok: false, code: "format" });
+    expect(validateSlug("signup")).toMatchObject({ ok: false, code: "reserved" });
   });
 });
 

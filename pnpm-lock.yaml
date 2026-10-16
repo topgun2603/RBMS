@@ -192,6 +192,9 @@ importers:
       '@srirealtime/storefront':
         specifier: workspace:*
         version: link:../../packages/storefront
+      '@srirealtime/subscriptions':
+        specifier: workspace:*
+        version: link:../../packages/subscriptions
       '@srirealtime/support':
         specifier: workspace:*
         version: link:../../packages/support
@@ -409,6 +412,49 @@ importers:
       '@srirealtime/storefront-ui':
         specifier: workspace:*
         version: link:../../packages/storefront-ui
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.3
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+
+  apps/www:
+    dependencies:
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@srirealtime/tenancy':
+        specifier: workspace:*
+        version: link:../../packages/tenancy
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -1590,6 +1636,28 @@ importers:
         specifier: ^19.1.0
         version: 19.3.0(react@19.3.0)
 
+  packages/subscriptions:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
   packages/support:
     dependencies:
       '@srirealtime/core':
@@ -1704,6 +1772,9 @@ importers:
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@srirealtime/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../ui

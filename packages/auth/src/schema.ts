@@ -73,6 +73,26 @@ export const authOtps = pgTable(
   (t) => [index("auth_otps_target_idx").on(t.target)],
 );
 
+/**
+ * One-time sign-in codes that carry a session across origins (the landing site → a shop's app): single use, 60 s.
+ * Only the sha256 of the code is stored.
+ */
+export const authHandoffs = pgTable(
+  "auth_handoffs",
+  {
+    id: pk(),
+    codeHash: text("code_hash").notNull().unique(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_handoffs_user_idx").on(t.userId)],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type SessionRow = typeof authSessions.$inferSelect;
 export type IdentityRow = typeof authIdentities.$inferSelect;

@@ -14,6 +14,8 @@ export const CORE_MODULES: readonly string[] = [
   "settings",
   "jobs",
   "consent",
+  // Plan & billing (docs/batch5.md): every plan, the free one included, must reach the page that upgrades it.
+  "subscriptions",
 ];
 
 export const UNLIMITED = -1;

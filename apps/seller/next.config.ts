@@ -8,7 +8,7 @@ export default function config(phase: string): NextConfig {
     // doesn't delete the files the dev server is serving.
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/web", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/marketplace-ui"],
+    transpilePackages: ["@srirealtime/web", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/marketplace-ui", "@srirealtime/tenancy"],
     poweredByHeader: false,
     // Each shop opens the seller app on its own subdomain (anbu.localhost:3004) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],

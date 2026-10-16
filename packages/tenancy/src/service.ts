@@ -1,6 +1,6 @@
 import { badRequest, conflict, forbidden, notFound, type TenantRef } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, arrayContains, asc, count, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, arrayContains, asc, count, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   tenantDomains,
   tenantMemberships,
@@ -19,7 +19,7 @@ import {
   type DomainVerifier,
 } from "./domains";
 import { normalizeMemberRoles } from "./roles";
-import { isPlatformHost, isValidDomain, normalizeHost, slugFromHost, validateSlug } from "./slug";
+import { isPlatformHost, isValidDomain, normalizeHost, slugCandidates, slugFromHost, validateSlug } from "./slug";
 
 export interface TenancyDeps {
   db: Db;
@@ -45,6 +45,10 @@ export interface TenancyDeps {
   resolveMemberTarget?: (target: string) => Promise<string>;
   /** Cache TTL for resolve(), default 60s. */
   cacheTtlMs?: number;
+  /** Runs after every new tenant (see `onTenantCreated`); more can be added with `service.onTenantCreated`. */
+  onTenantCreated?: TenantCreatedHook[];
+  /** A hook threw: the tenant stays created and the remaining hooks still run. Default: rethrown after all ran. */
+  onHookError?: (err: unknown, hook: string, tenant: Tenant) => void;
 }
 
 export interface CreateTenantInput {
@@ -53,6 +57,30 @@ export interface CreateTenantInput {
   ownerUserId: string;
   planId?: string | null;
   appId?: string | null;
+  /** Extra details for the on-tenant-created hooks (e.g. sign-up's state, GSTIN, plan). */
+  details?: Record<string, unknown>;
+}
+
+/** What the on-tenant-created hooks receive. */
+export interface TenantCreatedEvent {
+  tenant: Tenant;
+  ownerUserId: string;
+  details: Record<string, unknown>;
+}
+
+/** Seeds a new tenant (settings, branding, subscription…). Hooks run in order, after the tenant row is committed. */
+export interface TenantCreatedHook {
+  name: string;
+  run(e: TenantCreatedEvent): Promise<void> | void;
+}
+
+export interface SlugAvailability {
+  slug: string;
+  available: boolean;
+  /** Why not: "taken", or the validation message. */
+  reason?: string;
+  code?: "taken" | "length" | "format" | "reserved";
+  suggestions: string[];
 }
 
 export interface ResolveInput {
@@ -87,9 +115,58 @@ export class TenancyService {
   private readonly cache = new Map<string, CacheEntry>();
   private readonly ttl: number;
 
+  private readonly createdHooks: TenantCreatedHook[];
+
   constructor(private readonly deps: TenancyDeps) {
     this.db = deps.db;
     this.ttl = deps.cacheTtlMs ?? 60_000;
+    this.createdHooks = [...(deps.onTenantCreated ?? [])];
+  }
+
+  /** Adds an on-tenant-created hook (runs after the ones registered before it). */
+  onTenantCreated(hook: TenantCreatedHook) {
+    if (this.createdHooks.some((h) => h.name === hook.name)) throw new Error(`Tenant hook "${hook.name}" is already registered`);
+    this.createdHooks.push(hook);
+  }
+
+  /** Names of the registered on-tenant-created hooks, in run order. */
+  get tenantCreatedHooks(): string[] {
+    return this.createdHooks.map((h) => h.name);
+  }
+
+  private async runCreatedHooks(tenant: Tenant, input: CreateTenantInput) {
+    const event: TenantCreatedEvent = { tenant, ownerUserId: input.ownerUserId, details: input.details ?? {} };
+    const errors: unknown[] = [];
+    for (const hook of this.createdHooks) {
+      try {
+        await hook.run(event);
+      } catch (err) {
+        if (this.deps.onHookError) this.deps.onHookError(err, hook.name, tenant);
+        else errors.push(err);
+      }
+    }
+    if (errors.length) throw errors[0];
+  }
+
+  // ---------------------------------------------------------------- slugs
+
+  /**
+   * Whether a shop address is free (`GET /slug-available`), with up to 4 free suggestions (city/area, "-shop",
+   * numbers) when it is taken or invalid.
+   */
+  async slugAvailable(raw: string, opts: { city?: string | null } = {}): Promise<SlugAvailability> {
+    const slug = (raw ?? "").trim().toLowerCase();
+    const check = validateSlug(slug);
+    const taken = check.ok ? Boolean(await this.getBySlug(slug)) : false;
+    if (check.ok && !taken) return { slug, available: true, suggestions: [] };
+    const candidates = slugCandidates(slug || "shop", { city: opts.city });
+    const used = candidates.length
+      ? new Set((await this.db.select({ slug: tenants.slug }).from(tenants).where(inArray(tenants.slug, candidates))).map((r) => r.slug))
+      : new Set<string>();
+    const suggestions = candidates.filter((c) => !used.has(c)).slice(0, 4);
+    return check.ok
+      ? { slug, available: false, code: "taken", reason: "That address is already taken", suggestions }
+      : { slug, available: false, code: check.code, reason: check.reason, suggestions };
   }
 
   get rootDomain() {
@@ -109,8 +186,9 @@ export class TenancyService {
     if (!name) throw badRequest("Name is required");
     if (await this.getBySlug(input.slug)) throw conflict("That address is already taken");
 
+    let tenant: Tenant;
     try {
-      const tenant = await this.db.transaction(async (tx) => {
+      tenant = await this.db.transaction(async (tx) => {
         const [t] = await tx
           .insert(tenants)
           .values({ slug: input.slug, name, planId: input.planId ?? null, appId: input.appId ?? null })
@@ -118,17 +196,26 @@ export class TenancyService {
         await tx.insert(tenantMemberships).values({ tenantId: t!.id, userId: input.ownerUserId, roles: ["owner"] });
         return t!;
       });
-      this.invalidate();
-      return tenant;
     } catch (err) {
       if (isUniqueViolation(err)) throw conflict("That address is already taken");
       throw err;
     }
+    this.invalidate();
+    // Hooks may change the tenant (plan, metadata): return the row as they left it.
+    await this.runCreatedHooks(tenant, input);
+    return (await this.getById(tenant.id)) ?? tenant;
   }
 
   async getById(id: string): Promise<Tenant | null> {
     const [t] = await this.db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
     return t ?? null;
+  }
+
+  /** Many tenants at once; unknown ids are left out. */
+  async getByIds(ids: string[]): Promise<Tenant[]> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return [];
+    return this.db.select().from(tenants).where(inArray(tenants.id, unique));
   }
 
   async getBySlug(slug: string): Promise<Tenant | null> {

@@ -19,7 +19,7 @@ export function createAuth(deps: AuthDeps) {
   return { service, module, contextHook };
 }
 
-export { AuthService, createGoogleVerifier, toAuthUser } from "./service";
+export { AuthService, createGoogleVerifier, HANDOFF_TTL_SECONDS, toAuthUser } from "./service";
 export type { AuthConfig, AuthDeps, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
 export { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 export type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";

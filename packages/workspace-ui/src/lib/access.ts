@@ -7,6 +7,7 @@ export const PERMISSIONS = {
   staff: "staff.manage",
   audit: "audit.view",
   importexport: "importexport.run",
+  subscriptions: "subscriptions.manage",
 } as const;
 
 /**
