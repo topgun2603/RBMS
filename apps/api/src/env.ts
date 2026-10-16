@@ -96,6 +96,11 @@ export const envSchema = z.object({
   BUILD_TIME: optionalString(),
   /** Per-dependency timeout of GET /ready. */
   READY_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2000),
+  /**
+   * Run the background job workers and register the cron schedules in this process (default true). Set false on the
+   * API service when a separate worker service (same image, JOBS_WORKERS=true) processes the jobs (docs/deploy-aws.md).
+   */
+  JOBS_WORKERS: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   /** Log level (pino). Default debug in development, info otherwise. */
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 })

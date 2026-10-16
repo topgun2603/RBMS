@@ -11,3 +11,10 @@ coverage
 *.tsbuildinfo
 .next-dev
 backups/
+
+# Terraform (infra/terraform): local state, plans, tfvars with account details. Lock files are committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars

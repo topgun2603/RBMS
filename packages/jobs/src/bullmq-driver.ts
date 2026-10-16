@@ -27,11 +27,13 @@ export class BullJobsDriver implements JobsDriver {
     private readonly prefix: string,
     private readonly log: LoggerPort,
     private readonly observer?: JobObserver,
+    /** false = this process only enqueues; another process (the worker) runs the jobs. */
+    private readonly runWorkers = true,
   ) {}
 
   register(def: JobDefinition): void {
     this.defs.set(def.name, def);
-    if (this.started) this.startWorker(def);
+    if (this.started && this.runWorkers) this.startWorker(def);
   }
 
   async enqueue(def: JobDefinition, data: unknown, opts: EnqueueOptions): Promise<void> {
@@ -47,6 +49,11 @@ export class BullJobsDriver implements JobsDriver {
 
   async start(): Promise<void> {
     this.started = true;
+    if (!this.runWorkers) {
+      // Enqueue-only process: open the shared connection now so /ready doesn't fail on a cold "connecting" one.
+      this.redis();
+      return;
+    }
     for (const def of this.defs.values()) this.startWorker(def);
   }
 
@@ -77,7 +84,7 @@ export class BullJobsDriver implements JobsDriver {
   async health(): Promise<JobsHealth> {
     const conn = this.assertConnected();
     await conn.ping();
-    return { driver: "bullmq", started: this.started, workers: this.workers.size, connection: conn.status };
+    return { driver: "bullmq", started: this.started, workers: this.workers.size, connection: conn.status, runsWorkers: this.runWorkers };
   }
 
   /**

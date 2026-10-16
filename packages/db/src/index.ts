@@ -33,3 +33,5 @@ export const timestamps = () => ({
  * doesn't take a direct drizzle-orm dependency. Packages import drizzle-orm themselves.
  */
 export { and, eq, sql, type SQL } from "drizzle-orm";
+
+export { runMigrations } from "./migrate";

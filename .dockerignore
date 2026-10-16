@@ -1,0 +1,34 @@
+# Build context for docker/api.Dockerfile and docker/next.Dockerfile (repo root). Dependencies are installed inside
+# the image from pnpm-lock.yaml, so nothing installed or built on the host is sent.
+**/node_modules
+**/.next
+**/.next-dev
+**/dist
+**/.turbo
+.turbo
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+**/.uploads
+backups
+e2e-artifacts
+
+# Secrets and local config
+**/.env
+**/.env.*
+!.env.example
+
+# Not needed to build or run
+.git
+.github
+.claude
+.vscode
+.idea
+infra
+docs
+**/*.md
+**/test
+**/*.test.ts
+**/*.test.mjs
+docker-compose*.yml
+docker

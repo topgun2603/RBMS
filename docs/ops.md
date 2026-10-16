@@ -272,7 +272,7 @@ jobs run in parallel on `ubuntu-latest`, each with the pnpm store and the Turbor
 | Job | What it does |
 |---|---|
 | **check** | `pnpm install --frozen-lockfile`, then `turbo run typecheck test --concurrency=2` across the repo (vitest unit tests, no database). |
-| **build** | `turbo run build --filter="./apps/*"`: `next build` for admin, billing, shop, store, seller and www. |
+| **build** | `turbo run build --filter="./apps/*"`: `next build` for admin, billing, shop, store, seller and www, and the API's production bundle (`apps/api/build.mjs`, esbuild). |
 | **e2e** | Postgres 17 + Redis 7 service containers (same images as `docker-compose.yml`). `db:migrate`, `seed`, `seed:e2e`, then the API (`pnpm --filter @srirealtime/api start`), store (`next start` :3003) and www (`next start` :3005) in the background; waits for `/health` and both sites, runs `test:e2e:all` (batch1, batch2, billing, batch3, batch5 + the storefront browser test) and the www browser test. On failure it uploads `e2e-artifacts` (server logs, test output, screenshots). |
 
 Parallelism is capped (`--concurrency=2`, `NODE_OPTIONS=--max-old-space-size=3072`): the full parallel run runs out of

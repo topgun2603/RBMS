@@ -12,13 +12,18 @@ export interface JobsDeps {
   log?: LoggerPort;
   /** Sees every finished attempt (metrics, error reporting after the final attempt). */
   observer?: JobObserver;
+  /**
+   * Run the BullMQ workers in this process (default true). false = enqueue only: an API-only process whose jobs are
+   * processed by a separate worker process (JOBS_WORKERS=false in apps/api). Ignored by the memory driver.
+   */
+  workers?: boolean;
 }
 
 export function createJobs(deps: JobsDeps) {
   const log = deps.log ?? noopLogger;
   const driver: JobsDriver =
     deps.redisUrl === "memory" ? new MemoryJobsDriver(log, deps.observer)
-      : new BullJobsDriver(deps.redisUrl, deps.prefix ?? "sr", log, deps.observer);
+      : new BullJobsDriver(deps.redisUrl, deps.prefix ?? "sr", log, deps.observer, deps.workers ?? true);
   const service = new JobsService(driver);
   const module = defineModule({
     id: "jobs",

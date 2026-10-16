@@ -85,6 +85,8 @@ export interface JobsHealth {
   workers: number;
   /** Redis connection status for BullMQ ("ready" when healthy). */
   connection?: string;
+  /** BullMQ: false when this process only enqueues (workers run in a separate process). */
+  runsWorkers?: boolean;
 }
 
 /** Internal driver interface; both Redis (BullMQ) and in-memory implement it. */

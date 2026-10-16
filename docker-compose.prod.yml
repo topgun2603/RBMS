@@ -1,0 +1,131 @@
+# Local smoke test of the production images (docs/deploy-aws.md), against the dev Postgres + Redis from
+# docker-compose.yml (`pnpm infra:up`), reached through host.docker.internal. Host ports are the dev ports + 10000,
+# so it runs next to `pnpm dev`.
+#
+#   docker compose -f docker-compose.prod.yml build                 # all 7 images (srikit-<app>:local)
+#   docker compose -f docker-compose.prod.yml run --rm migrate      # one-off: migrations (no-op on an up-to-date db)
+#   docker compose -f docker-compose.prod.yml up -d                 # api, worker and the six apps
+#   curl localhost:14000/ready ; curl localhost:13005/pricing ; curl -H "Host: e2e-store.localhost" localhost:13003/
+#   docker compose -f docker-compose.prod.yml run --rm backup       # pg_dump into ./backups (no S3)
+#   docker compose -f docker-compose.prod.yml down
+#
+# The API runs with NODE_ENV=production: real providers only, so payments/KYC/e-invoice/subscriptions answer
+# "not configured" and OTPs go to the console log. The secrets below are throwaway values for this file only.
+
+name: srikit-prod-smoke
+
+x-api-env: &api-env
+  NODE_ENV: production
+  DATABASE_URL: postgres://srikit:srikit@host.docker.internal:5432/srikit
+  REDIS_URL: redis://host.docker.internal:6379
+  APP_SECRET: local-smoke-test-only-0123456789abcdef0123456789abcdef
+  CHAT_STREAM_SECRET: local-smoke-test-only-chat-stream-0123456789
+  WHATSAPP_SECRET_KEY: local-smoke-test-only-whatsapp-0123456789abcdef
+  API_PUBLIC_URL: http://localhost:14000
+  ROOT_DOMAIN: localhost
+  CORS_ORIGINS: http://localhost:13000,http://localhost:13001,http://*.localhost:13001,http://localhost:13002,http://*.localhost:13002,http://localhost:13003,http://*.localhost:13003,http://localhost:13004,http://*.localhost:13004,http://localhost:13005
+  WWW_PUBLIC_URL: http://localhost:13005
+  APP_PUBLIC_URL: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002
+  BILLING_PUBLIC_URL: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002/billing
+  STORE_PUBLIC_URL: http://{slug}.localhost:13003
+  STORAGE_DRIVER: local
+  STORAGE_LOCAL_DIR: /app/apps/api/.uploads
+  METRICS_TOKEN: local-smoke-test-metrics-token
+  # Production refuses the mock KYC provider at boot (kit-batch3.ts); an unreachable placeholder lets it start, and
+  # KYC checks then fail until a real provider is configured.
+  KYC_BASE_URL: https://kyc.invalid
+  KYC_TOKEN: placeholder-not-a-real-token
+  LOG_LEVEL: info
+
+x-next-build-args: &next-build-args
+  GIT_SHA: ${GIT_SHA:-local}
+  NEXT_PUBLIC_API_URL: http://localhost:14000
+  NEXT_PUBLIC_ROOT_DOMAIN: localhost
+  NEXT_PUBLIC_SITE_URL: http://localhost:13005
+  NEXT_PUBLIC_APP_URLS: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002
+  NEXT_PUBLIC_STORE_URL: http://{slug}.localhost:13003
+  NEXT_PUBLIC_STORE_DOMAIN: localhost:13003
+  NEXT_PUBLIC_SHOP_DOMAIN: localhost
+
+x-next: &next
+  restart: unless-stopped
+  depends_on: [api]
+  environment:
+    API_URL: http://api:4000
+
+services:
+  api:
+    image: srikit-api:local
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+        BUILD_TIME: ${BUILD_TIME:-}
+    environment:
+      <<: *api-env
+      JOBS_WORKERS: "false"
+    ports: ["14000:4000"]
+    volumes: [uploads:/app/apps/api/.uploads]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    restart: unless-stopped
+
+  worker:
+    image: srikit-api:local
+    environment:
+      <<: *api-env
+      JOBS_WORKERS: "true"
+    volumes: [uploads:/app/apps/api/.uploads]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [api]
+    restart: unless-stopped
+
+  migrate:
+    image: srikit-api:local
+    profiles: [tools]
+    command: ["node", "dist/migrate.mjs"]
+    environment: *api-env
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  backup:
+    image: srikit-api:local
+    profiles: [tools]
+    command: ["node", "/app/scripts/ops/backup-db.mjs", "--local", "--dir", "/app/backups", "--no-prune"]
+    environment:
+      DATABASE_URL: postgres://srikit:srikit@host.docker.internal:5432/srikit
+    volumes: ["./backups:/app/backups"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  admin:
+    <<: *next
+    image: srikit-admin:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: admin } }
+    ports: ["13000:3000"]
+  billing:
+    <<: *next
+    image: srikit-billing:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: billing } }
+    ports: ["13001:3000"]
+  shop:
+    <<: *next
+    image: srikit-shop:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: shop } }
+    ports: ["13002:3000"]
+  store:
+    <<: *next
+    image: srikit-store:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: store } }
+    ports: ["13003:3000"]
+  seller:
+    <<: *next
+    image: srikit-seller:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: seller } }
+    ports: ["13004:3000"]
+  www:
+    <<: *next
+    image: srikit-www:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: www } }
+    ports: ["13005:3000"]
+
+volumes:
+  uploads:

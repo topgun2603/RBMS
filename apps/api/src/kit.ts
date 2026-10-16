@@ -74,7 +74,7 @@ export function createKit(env: Env, log: Logger) {
 
   // Error reporter, metrics and readiness probes (docs/ops.md); the job observer reports final job failures.
   const kitOps = createKitOps(env, log, db);
-  const jobs = createJobs({ redisUrl: env.REDIS_URL, log, observer: kitOps.observer });
+  const jobs = createJobs({ redisUrl: env.REDIS_URL, log, observer: kitOps.observer, workers: env.JOBS_WORKERS });
   /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @srirealtime/api job <name>`). */
   const jobHandlers = new Map<string, () => Promise<void>>();
   const defineJob = (name: string, handler: () => Promise<void>) => {
@@ -940,6 +940,8 @@ export function createKit(env: Env, log: Logger) {
     onResponse: [audit.onResponse],
     async start() {
       for (const m of modules) await m.start?.();
+      // Cron schedules are registered by the process that runs the workers (JOBS_WORKERS, default true).
+      if (!env.JOBS_WORKERS) return;
       await jobs.service.schedule(MARKETPLACE_SETTLE_JOB, "30 1 * * *");
       await jobs.service.schedule(MARKETPLACE_PAYOUT_REFRESH_JOB, "*/30 * * * *");
       await jobs.service.schedule("support.overdue", "*/10 * * * *");

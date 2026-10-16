@@ -1,0 +1,219 @@
+# Deploy to AWS (docs/deploy-aws.md). Manual only, and off until the repository variable AWS_DEPLOY_ENABLED is
+# "true". It never runs on pushes or pull requests.
+#
+#   1. config   assume the GitHub OIDC role, read /<project>/<env>/deploy/config (written by Terraform)
+#   2. build    build the 7 images (api + 6 Next apps, NEXT_PUBLIC_* from the config) and push them as :<sha>
+#   3. migrate  point the api image's :migrate tag at :<sha>, run the migrate task, fail on a non-zero exit
+#   4. deploy   point every image's environment tag (:staging) at :<sha>, force new deployments, wait until stable
+#
+# Rollback: run it with `rollback_to` = an earlier commit sha whose images are still in ECR. That skips 2 and 3 and
+# moves the environment tag back (migrations are not reverted; see the doc).
+#
+# Setup (once): GitHub environment "staging" (add required reviewers), with variables
+#   AWS_DEPLOY_ROLE_ARN  terraform output github_deploy_role_arn
+#   AWS_REGION           ap-south-1
+#   DEPLOY_CONFIG_PARAM  terraform output deploy_config_parameter   (/srikit/staging/deploy/config)
+# and the repository variable AWS_DEPLOY_ENABLED = true.
+name: Deploy (AWS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment / Terraform env
+        type: choice
+        options: [staging]
+        default: staging
+      rollback_to:
+        description: "Rollback: an earlier commit sha to redeploy (skips build and migrations). Empty = deploy this commit."
+        type: string
+        default: ""
+      run_migrations:
+        description: Run the migrate task before updating the services
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write # OIDC token for the AWS role
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SHA: ${{ inputs.rollback_to != '' && inputs.rollback_to || github.sha }}
+
+jobs:
+  config:
+    name: Read deploy config
+    if: ${{ vars.AWS_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 5
+    outputs:
+      config: ${{ steps.read.outputs.config }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+      - id: read
+        name: Deploy config from SSM
+        run: |
+          config="$(aws ssm get-parameter --name "${{ vars.DEPLOY_CONFIG_PARAM }}" --query Parameter.Value --output text)"
+          echo "$config" | jq -e '.cluster and .registry and .services' > /dev/null
+          echo "config=$(echo "$config" | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "$config" | jq '{cluster, services, urls, image_tag}'
+
+  build:
+    name: Build ${{ matrix.app }}
+    needs: config
+    if: ${{ inputs.rollback_to == '' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      max-parallel: 4
+      matrix:
+        app: [api, admin, billing, shop, store, seller, www]
+    env:
+      CONFIG: ${{ needs.config.outputs.config }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+      - id: args
+        name: Image name and build arguments
+        run: |
+          app="${{ matrix.app }}"
+          repo="$(jq -r --arg a "$app" '.repositories[$a]' <<< "$CONFIG")"
+          echo "image=$repo:$SHA" >> "$GITHUB_OUTPUT"
+          echo "platform=$(jq -r '.platform' <<< "$CONFIG")" >> "$GITHUB_OUTPUT"
+          if [ "$app" = api ]; then
+            echo "dockerfile=docker/api.Dockerfile" >> "$GITHUB_OUTPUT"
+          else
+            echo "dockerfile=docker/next.Dockerfile" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "build_args<<EOF"
+            echo "GIT_SHA=$SHA"
+            echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if [ "$app" != api ]; then
+              echo "APP=$app"
+              jq -r --arg a "$app" '.build_args[$a] // {} | to_entries[] | "\(.key)=\(.value)"' <<< "$CONFIG"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.args.outputs.dockerfile }}
+          platforms: ${{ steps.args.outputs.platform }}
+          build-args: ${{ steps.args.outputs.build_args }}
+          tags: ${{ steps.args.outputs.image }}
+          push: true
+          # A single image manifest (no attestation index), so ECR retagging with put-image stays simple.
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+
+  migrate:
+    name: Migrate database
+    needs: [config, build]
+    if: ${{ !cancelled() && needs.config.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 20
+    env:
+      CONFIG: ${{ needs.config.outputs.config }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+      - name: Point api:migrate at this build
+        if: ${{ inputs.rollback_to == '' && inputs.run_migrations }}
+        run: |
+          registry="$(jq -r .registry <<< "$CONFIG")"
+          repo="$(jq -r '.repositories.api' <<< "$CONFIG")"; repo="${repo#"$registry/"}"
+          manifest="$(aws ecr batch-get-image --repository-name "$repo" --image-ids imageTag="$SHA" --query 'images[0].imageManifest' --output text)"
+          [ -n "$manifest" ] && [ "$manifest" != None ] || { echo "no image $repo:$SHA"; exit 1; }
+          aws ecr put-image --repository-name "$repo" --image-tag migrate --image-manifest "$manifest" > /dev/null 2> err.txt \
+            || grep -q ImageAlreadyExistsException err.txt || { cat err.txt; exit 1; }
+      - name: Run the migrate task
+        if: ${{ inputs.rollback_to == '' && inputs.run_migrations }}
+        run: |
+          cluster="$(jq -r .cluster <<< "$CONFIG")"
+          family="$(jq -r .migrate_family <<< "$CONFIG")"
+          subnets="$(jq -r '.subnets | join(",")' <<< "$CONFIG")"
+          sg="$(jq -r .security_group <<< "$CONFIG")"
+          task="$(aws ecs run-task --cluster "$cluster" --task-definition "$family" --launch-type FARGATE --count 1 \
+            --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$sg],assignPublicIp=ENABLED}" \
+            --started-by "gh-${GITHUB_RUN_ID}" --query 'tasks[0].taskArn' --output text)"
+          echo "migrate task: $task"
+          aws ecs wait tasks-stopped --cluster "$cluster" --tasks "$task"
+          aws ecs describe-tasks --cluster "$cluster" --tasks "$task" \
+            --query 'tasks[0].{stopped:stoppedReason,containers:containers[].{name:name,exit:exitCode,reason:reason}}'
+          code="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task" --query 'tasks[0].containers[0].exitCode' --output text)"
+          log_group="$(jq -r .migrate_log <<< "$CONFIG")"
+          aws logs get-log-events --log-group-name "$log_group" --log-stream-name "migrate/migrate/${task##*/}" \
+            --query 'events[].message' --output text || true
+          [ "$code" = 0 ] || { echo "::error::migrations failed (exit $code); services were not updated"; exit 1; }
+
+  deploy:
+    name: Update services
+    needs: [config, migrate]
+    if: ${{ !cancelled() && needs.migrate.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 30
+    env:
+      CONFIG: ${{ needs.config.outputs.config }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+      - name: Move the environment tag to ${{ env.SHA }}
+        run: |
+          registry="$(jq -r .registry <<< "$CONFIG")"
+          tag="$(jq -r .image_tag <<< "$CONFIG")"
+          for url in $(jq -r '.repositories[]' <<< "$CONFIG"); do
+            repo="${url#"$registry/"}"
+            manifest="$(aws ecr batch-get-image --repository-name "$repo" --image-ids imageTag="$SHA" --query 'images[0].imageManifest' --output text)"
+            [ -n "$manifest" ] && [ "$manifest" != None ] || { echo "::error::no image $repo:$SHA"; exit 1; }
+            aws ecr put-image --repository-name "$repo" --image-tag "$tag" --image-manifest "$manifest" > /dev/null 2> err.txt \
+              || grep -q ImageAlreadyExistsException err.txt || { cat err.txt; exit 1; }
+            echo "$repo:$tag -> $SHA"
+          done
+      - name: Force new deployments and wait
+        run: |
+          cluster="$(jq -r .cluster <<< "$CONFIG")"
+          services="$(jq -r '.services | join(" ")' <<< "$CONFIG")"
+          for s in $services; do
+            aws ecs update-service --cluster "$cluster" --service "$s" --force-new-deployment --query 'service.serviceName' --output text
+          done
+          # Up to 10 minutes per check; the circuit breaker rolls a service back if its new tasks never get healthy.
+          aws ecs wait services-stable --cluster "$cluster" --services $services
+          aws ecs describe-services --cluster "$cluster" --services $services \
+            --query 'services[].{service:serviceName,running:runningCount,desired:desiredCount,rollout:deployments[0].rolloutState}' --output table
+      - name: Check the running version
+        run: |
+          api="$(jq -r .urls.api <<< "$CONFIG")"
+          for i in $(seq 1 30); do
+            sha="$(curl -fsS "$api/version" | jq -r .sha || true)"
+            [ "$sha" = "$SHA" ] && { echo "api is on $SHA"; curl -fsS "$api/ready" | jq .status; exit 0; }
+            sleep 10
+          done
+          echo "::warning::api /version reports '$sha', expected $SHA (allowed_cidrs may block the runner)"
