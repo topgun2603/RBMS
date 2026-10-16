@@ -6,130 +6,141 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronDownIcon, SettingsIcon } from "lucide-react";
 import { cn, motion } from "@srirealtime/ui";
 import { BUILT_IN_SETTINGS } from "../app/builtins";
-import { useVisibleSettings } from "../app/session";
+import { useVisibleSettings, type MountedSettingsPage } from "../app/session";
 import { useI18n } from "../lib/i18n";
 
-const FADE = "1.75rem";
+/** True inside <SettingsLayout>: the layout draws the menu, so pages' own <SettingsNav /> render nothing. */
+const SettingsFrameContext = React.createContext(false);
 
-/** CSS mask that fades only the edge(s) with more tabs behind them. */
-function fadeMask(left: boolean, right: boolean): React.CSSProperties | undefined {
-  if (!left && !right) return undefined;
-  const mask = `linear-gradient(to right, ${left ? "transparent" : "#000"}, #000 ${left ? FADE : "0px"}, #000 calc(100% - ${right ? FADE : "0px"}), ${right ? "transparent" : "#000"})`;
-  return { maskImage: mask, WebkitMaskImage: mask };
+/** Whether the current page sits inside the settings layout (Page uses it to drop its own frame). */
+export function useInSettingsFrame() {
+  return React.useContext(SettingsFrameContext);
 }
 
-/** Tracks whether a horizontal scroller has hidden content on either side. */
-function useOverflowEdges(ref: React.RefObject<HTMLElement | null>, deps: unknown[]) {
-  const [edges, setEdges] = React.useState({ left: false, right: false });
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      const left = el.scrollLeft > 1;
-      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-      setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
-    ro?.observe(el);
-    if (el.firstElementChild) ro?.observe(el.firstElementChild);
-    return () => {
-      el.removeEventListener("scroll", update);
-      ro?.disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-measure when the tab list changes
-  }, deps);
-  return edges;
+/** Groups consecutive pages of the same module (kit pages last), so the menu can show a divider between groups. */
+function groupByModule(pages: MountedSettingsPage[]): MountedSettingsPage[][] {
+  const groups: MountedSettingsPage[][] = [];
+  let key: string | null | undefined;
+  for (const p of pages) {
+    const k = p.module?.id ?? null;
+    if (groups.length === 0 || k !== key) groups.push([]);
+    groups[groups.length - 1]!.push(p);
+    key = k;
+  }
+  return groups;
 }
 
-/**
- * Tabs across every settings page the app's modules contribute (plus Settings → Features). From `sm` up: a
- * tab bar that wraps onto more rows when the tabs don't fit (every page stays visible; the narrow settings column is too
- * tight for one scrolling row). On phones: a native select (the OS picker handles a long list better than a cramped row).
- */
-export function SettingsNav({ className }: { className?: string }) {
-  const { t } = useI18n();
-  const router = useRouter();
+function useSettingsMenu() {
   const pathname = (usePathname() ?? "").replace(/\/+$/, "") || "/";
   const pages = useVisibleSettings(BUILT_IN_SETTINGS);
-  const scroller = React.useRef<HTMLUListElement>(null);
-  const activeRef = React.useRef<HTMLAnchorElement>(null);
-  const edges = useOverflowEdges(scroller, [pages.length]);
   const active = pages.find((p) => p.href === pathname) ?? null;
+  return { pages, active };
+}
 
-  // Keep the active tab visible (scroll the bar only: never the page).
-  React.useLayoutEffect(() => {
-    const el = scroller.current;
-    const tab = activeRef.current;
-    if (!el || !tab) return;
-    const pad = 32;
-    const start = tab.offsetLeft; // the list is the offsetParent (relative), so this ignores its scroll
-    const end = start + tab.offsetWidth;
-    if (start - pad < el.scrollLeft) el.scrollLeft = Math.max(0, start - pad);
-    else if (end + pad > el.scrollLeft + el.clientWidth) el.scrollLeft = end + pad - el.clientWidth;
-  }, [active?.href, pages.length]);
-
-  if (pages.length < 2) return null;
+/** Phones and small tablets: a native select (the OS picker handles a long list better than a cramped row). */
+function SettingsSelect({ pages, active, className }: { pages: MountedSettingsPage[]; active: MountedSettingsPage | null; className?: string }) {
+  const { t } = useI18n();
+  const router = useRouter();
   const ActiveIcon = active?.icon ?? SettingsIcon;
-
   return (
-    <nav aria-label={t("web.settings.tabs")} className={cn("mb-5", className)}>
-      {/* Phones: native select */}
-      <div className="relative sm:hidden">
-        <ActiveIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-primary" />
-        <select
-          aria-label={t("web.settings.tabs")}
-          value={active?.href ?? ""}
-          onChange={(e) => router.push(e.target.value)}
-          className="h-11 w-full appearance-none rounded-xl border bg-card pr-10 pl-9 text-base font-medium shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          {!active && <option value="">{t("web.settings.title")}</option>}
-          {pages.map((p) => (
-            <option key={p.href} value={p.href}>
-              {t(p.label)}
-            </option>
-          ))}
-        </select>
-        <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
-      </div>
+    <div className={cn("relative", className)}>
+      <ActiveIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-primary" />
+      <select
+        aria-label={t("web.settings.tabs")}
+        value={active?.href ?? ""}
+        onChange={(e) => router.push(e.target.value)}
+        className="h-11 w-full appearance-none rounded-xl border bg-card pr-10 pl-9 text-base font-medium shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        {!active && <option value="">{t("web.settings.title")}</option>}
+        {pages.map((p) => (
+          <option key={p.href} value={p.href}>
+            {t(p.label)}
+          </option>
+        ))}
+      </select>
+      <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
+    </div>
+  );
+}
 
-      {/* sm and up: wrapping tab bar */}
-      <div className="hidden max-w-full rounded-xl border bg-card p-1 shadow-xs sm:flex sm:w-fit">
-        <ul
-          ref={scroller}
-          className="relative flex min-w-0 flex-wrap gap-1"
-          style={fadeMask(edges.left, edges.right)}
-        >
-          {pages.map((p) => {
+/** Desktop: a vertical tab rail, one row per page, dividers between modules, a sliding highlight on the active page. */
+function SettingsRail({ pages, active }: { pages: MountedSettingsPage[]; active: MountedSettingsPage | null }) {
+  const { t } = useI18n();
+  return (
+    <nav aria-label={t("web.settings.tabs")} className="rounded-2xl border bg-card p-2 shadow-xs">
+      <p className="px-3 pt-2 pb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("web.settings.title")}</p>
+      {groupByModule(pages).map((group, i) => (
+        <ul key={group[0]!.href} className={cn("grid gap-0.5", i > 0 && "mt-1.5 border-t pt-1.5")}>
+          {group.map((p) => {
             const isActive = p.href === active?.href;
             const Icon = p.icon ?? SettingsIcon;
             return (
-              <li key={p.href} className="shrink-0">
+              <li key={p.href}>
                 <Link
-                  ref={isActive ? activeRef : undefined}
                   href={p.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "relative flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                    "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                    isActive ? "text-primary" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                   )}
                 >
                   {isActive && (
                     <motion.span
-                      layoutId="sr-settings-tab"
+                      layoutId="sr-settings-rail"
                       className="absolute inset-0 rounded-lg bg-primary/10"
                       transition={{ type: "spring", stiffness: 500, damping: 40 }}
                     />
                   )}
-                  <Icon className="relative size-4" />
-                  <span className="relative">{t(p.label)}</span>
+                  {isActive && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
+                  <Icon className="relative size-4 shrink-0" />
+                  <span className="relative min-w-0 leading-snug">{t(p.label)}</span>
                 </Link>
               </li>
             );
           })}
         </ul>
-      </div>
+      ))}
     </nav>
+  );
+}
+
+/**
+ * Frame for every settings page: a vertical tab rail on the left (lg and up, sticky while the page scrolls) and the
+ * page on the right; below lg a select above the page. The router wraps settings pages in it, so pages don't draw
+ * their own navigation.
+ */
+export function SettingsLayout({ children }: { children: React.ReactNode }) {
+  const { pages, active } = useSettingsMenu();
+  if (pages.length < 2) return <>{children}</>;
+  return (
+    <SettingsFrameContext.Provider value={true}>
+      <div className="mx-auto w-full max-w-7xl px-page py-page-y">
+        <SettingsSelect pages={pages} active={active} className="mb-section lg:hidden" />
+        <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
+            <SettingsRail pages={pages} active={active} />
+          </aside>
+          <div className="min-w-0">{children}</div>
+        </div>
+      </div>
+    </SettingsFrameContext.Provider>
+  );
+}
+
+/**
+ * Settings navigation for a page rendered outside <SettingsLayout> (a select on small screens, the rail otherwise).
+ * Inside the layout (every page the router mounts under /settings) it renders nothing: the layout already shows it.
+ */
+export function SettingsNav({ className }: { className?: string }) {
+  const inFrame = useInSettingsFrame();
+  const { pages, active } = useSettingsMenu();
+  if (inFrame || pages.length < 2) return null;
+  return (
+    <div className={cn("mb-section", className)}>
+      <SettingsSelect pages={pages} active={active} className="lg:hidden" />
+      <div className="hidden lg:block">
+        <SettingsRail pages={pages} active={active} />
+      </div>
+    </div>
   );
 }

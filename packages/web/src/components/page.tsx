@@ -4,6 +4,7 @@ import * as React from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { cn, controlHeight, type ControlSize } from "@srirealtime/ui";
 import { ModuleLink } from "../app/navigation";
+import { useInSettingsFrame } from "./settings-nav";
 
 /**
  * Page widths. Every page sits in the same centred frame, so the page heading starts at the same x on every screen;
@@ -38,6 +39,9 @@ export function Page({
   /** @deprecated use `width="full"`. */
   wide?: boolean;
 }) {
+  // Inside the settings layout the frame (gutters, padding, max width) comes from the layout; keep only a width cap.
+  const inSettings = useInSettingsFrame();
+  if (inSettings) return <div className={cn("w-full", width === "narrow" && "max-w-3xl", className)}>{children}</div>;
   return (
     <div className={cn("mx-auto w-full px-page py-page-y", PAGE_WIDTH[width ?? (wide ? "full" : "default")], className)}>
       {children}

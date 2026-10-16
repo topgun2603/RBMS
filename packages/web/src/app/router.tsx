@@ -8,6 +8,7 @@ import { BrandMark } from "../components/brand-mark";
 import { Page } from "../components/page";
 import { WebProviders } from "../components/providers";
 import { QueryError } from "../components/query-state";
+import { SettingsLayout } from "../components/settings-nav";
 import { Splash } from "../components/splash";
 import { displayName, hasShopAccess, useMe, useSignOut } from "../lib/auth";
 import { useShop } from "../lib/branding";
@@ -152,7 +153,8 @@ function Screen({ app, path }: { app: WebApp; path: string }) {
         <C />
       </React.Suspense>
     );
-    body = gate(r.page, r.page.module ?? undefined) ?? (r.page.module ? <ModuleScope module={r.page.module}>{content}</ModuleScope> : content);
+    const page = gate(r.page, r.page.module ?? undefined) ?? (r.page.module ? <ModuleScope module={r.page.module}>{content}</ModuleScope> : content);
+    body = <SettingsLayout>{page}</SettingsLayout>;
   } else {
     const { module, route, params } = r.match;
     const C = route.component;
