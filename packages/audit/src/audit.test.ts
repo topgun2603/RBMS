@@ -89,6 +89,25 @@ describe("action derivation", () => {
     expect(deriveAuditEvent(i)).toBeNull();
   });
 
+  it("platform events: super-admin or explicit config without a shop → tenant null", () => {
+    const sa = ctx({ tenant: null, user: user([], [], ["superadmin"]) });
+    expect(deriveAuditEvent(info({ ctx: sa }))).toMatchObject({ tenantId: null, actorUserId: user().id });
+    const explicit = info({ ctx: ctx({ tenant: null }), config: { action: "x.do", entity: "x" } });
+    expect(deriveAuditEvent(explicit)).toMatchObject({ tenantId: null, action: "x.do" });
+  });
+
+  it("auditDetail: tenant override (incl. null) and before/after snapshots", () => {
+    const target = "33333333-3333-4333-8333-333333333333";
+    const sa = ctx({ tenant: null, user: user([], [], ["superadmin"]) });
+    const e = deriveAuditEvent(info({ ctx: sa, detail: { tenantId: target, before: { planId: "a" }, after: { planId: "b" } } }));
+    expect(e).toMatchObject({ tenantId: target, before: { planId: "a" }, after: { planId: "b" } });
+    expect(deriveAuditEvent(info({ detail: { tenantId: null } }))?.tenantId).toBeNull();
+    // A plain request without a shop, config or detail is still skipped (see "skips no tenant").
+    expect(deriveAuditEvent(info({ ctx: ctx({ tenant: null }), detail: { after: { a: 1 } } }))).toMatchObject({ tenantId: null });
+    expect(deriveAuditEvent(info())).not.toHaveProperty("before");
+    expect(deriveAuditEvent(info({ detail: { entityId: "new-1" } }))?.entityId).toBe("new-1");
+  });
+
   it("records PUT/PATCH/DELETE and 201/204", () => {
     for (const method of ["put", "PATCH", "DELETE"]) expect(deriveAuditEvent(info({ method }))).not.toBeNull();
     expect(deriveAuditEvent(info({ statusCode: 204 }))).not.toBeNull();
@@ -218,6 +237,16 @@ describe("onResponse hook", () => {
     expect(r.statusCode).toBe(200);
     await vi.waitFor(() => expect(log.error).toHaveBeenCalled());
     expect(values).toHaveBeenCalledTimes(1);
+  });
+
+  it("record() stores platform events with a null tenant and never throws", async () => {
+    const values = vi.fn(async () => undefined);
+    const db = { insert: vi.fn(() => ({ values })) } as unknown as Db;
+    const { service } = createAudit({ db });
+    await service.record({ tenantId: null, actorUserId: "u1", action: "auth.login", entityType: "user", entityId: "u1" });
+    expect((values.mock.calls[0] as unknown[])[0]).toMatchObject({ tenantId: null, action: "auth.login" });
+    const failing = createAudit({ db: { insert: () => ({ values: async () => Promise.reject(new Error("x")) }) } as unknown as Db });
+    await expect(failing.service.record({ tenantId: null, actorUserId: null, action: "a", entityType: "b" })).resolves.toBeUndefined();
   });
 
   it("declares feature `audit` and permission `audit.view`", () => {

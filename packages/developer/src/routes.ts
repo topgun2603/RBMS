@@ -22,6 +22,9 @@ const tenantOf = (req: { ctx: RequestContext }) => requireTenant(req.ctx).id;
 const manage = { config: { feature: DEVELOPER_FEATURE, permission: DEVELOPER_MANAGE } };
 /** Key management: never reachable with an API key (no privilege escalation). */
 const keyAdmin = { config: { feature: DEVELOPER_FEATURE, permission: DEVELOPER_MANAGE, apiKey: false } };
+/** Key changes, audited as `developer.key.*` (the summary names the key and its prefix, never the secret). */
+const keyAudited = (action: string) => ({ config: { ...keyAdmin.config, audit: { action, entity: "api_key", idParam: "id" } } });
+const keyLabel = (k: { name: string; prefix: string }) => `${k.name} (${k.prefix}…)`;
 
 /**
  * Routes under /v1/developer.
@@ -52,22 +55,29 @@ export function developerRoutes(service: DeveloperService) {
 
       // ---- API keys
       staff.get("/keys", keyAdmin, async (req) => service.listKeys(tenantOf(req)));
-      staff.post("/keys", keyAdmin, async (req) => {
+      staff.post("/keys", keyAudited("developer.key.create"), async (req) => {
         const user = req.ctx.user!;
         const fullAccess = isSuperAdmin(req.ctx) || user.tenantRoles.some((r) => FULL_ACCESS_ROLES.includes(r));
-        return service.createKey(tenantOf(req), body(req) as unknown as CreateKeyInput, {
+        const out = await service.createKey(tenantOf(req), body(req) as unknown as CreateKeyInput, {
           userId: user.id,
           fullAccess,
           permissions: user.permissions ?? [],
         });
+        req.auditSummary = `API key ${keyLabel(out.key)} created`;
+        req.auditDetail = { entityId: out.key.id, after: { name: out.key.name, scopes: out.key.scopes, expiresAt: out.key.expiresAt } };
+        return out;
       });
-      staff.patch(`/keys/${ID}`, keyAdmin, async (req) => {
+      staff.patch(`/keys/${ID}`, keyAudited("developer.key.rename"), async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.renameKey(tenantOf(req), id, body(req) as { name: string });
+        const key = await service.renameKey(tenantOf(req), id, body(req) as { name: string });
+        req.auditSummary = `API key renamed to ${keyLabel(key)}`;
+        return key;
       });
-      staff.post(`/keys/${ID}/revoke`, keyAdmin, async (req) => {
+      staff.post(`/keys/${ID}/revoke`, keyAudited("developer.key.revoke"), async (req) => {
         const { id } = idParam.parse(req.params);
-        return service.revokeKey(tenantOf(req), id);
+        const key = await service.revokeKey(tenantOf(req), id);
+        req.auditSummary = `API key ${keyLabel(key)} revoked`;
+        return key;
       });
 
       // ---- webhook endpoints

@@ -199,3 +199,41 @@ export function createRedisNonceStore(url: string, prefix = "chat:nonce:", opts:
     },
   };
 }
+
+export interface RedisProbe {
+  /** PING with a fail-fast connection; throws when Redis is unreachable. */
+  ping(): Promise<{ status: string }>;
+  close(): Promise<void>;
+}
+
+/**
+ * A dedicated connection for readiness checks: no offline queue and one retry per command, so a PING while Redis is
+ * down fails at once instead of waiting for the reconnect (the long-lived connections queue commands until then).
+ */
+export function createRedisProbe(url: string): RedisProbe {
+  let client: Redis | null = null;
+  const get = () =>
+    (client ??= new Redis(url, {
+      lazyConnect: true,
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
+      connectionName: "srikit:probe",
+      retryStrategy: (times: number) => Math.min(times * 200, 2000),
+    }));
+  return {
+    async ping() {
+      const c = get();
+      // Swallow connection errors here; the PING below reports them.
+      if (c.listenerCount("error") === 0) c.on("error", () => {});
+      if (c.status === "wait") await c.connect();
+      await c.ping();
+      return { status: c.status };
+    },
+    async close() {
+      if (!client) return;
+      await client.quit().catch(() => client?.disconnect());
+      client = null;
+    },
+  };
+}

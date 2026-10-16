@@ -7,6 +7,7 @@ import {
   notFound,
   requireUser,
   tooMany,
+  type AuditPort,
   type RequestContext,
 } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
@@ -80,12 +81,20 @@ export interface KycDeps {
   driver?: KycDriver;
   vendors?: VendorAccessPort;
   onStatusChange?: KycStatusListener;
+  /** Records super-admin review decisions (`kyc.review.approve|reject`) under the check's shop. */
+  audit?: AuditPort;
   log?: LoggerPort;
   fetch?: typeof fetch;
   now?: () => Date;
 }
 
 // ---------------------------------------------------------------- inputs
+
+/** Where a review decision came from (for the audit entry). */
+export interface ReviewMeta {
+  ip?: string | null;
+  userAgent?: string | null;
+}
 
 const name = z.string().trim().min(1).max(200).optional();
 const fileUrl = z.string().trim().min(1).max(2000);
@@ -203,6 +212,7 @@ export class KycService {
   private readonly config: KycConfig;
   private readonly vendors?: VendorAccessPort;
   private readonly onStatusChange?: KycStatusListener;
+  private readonly audit?: AuditPort;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
   readonly threshold: number;
@@ -214,6 +224,7 @@ export class KycService {
     this.store = deps.store ?? new DrizzleKycStore(deps.db!);
     this.vendors = deps.vendors;
     this.onStatusChange = deps.onStatusChange;
+    this.audit = deps.audit;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
     this.threshold = deps.config.nameMatchThreshold ?? NAME_MATCH_THRESHOLD;
@@ -525,16 +536,16 @@ export class KycService {
     return { items: out, total };
   }
 
-  approve(checkId: string, reviewerId: string, reason?: string | null) {
-    return this.decide(checkId, reviewerId, "approved", reason ?? null);
+  approve(checkId: string, reviewerId: string, reason?: string | null, meta: ReviewMeta = {}) {
+    return this.decide(checkId, reviewerId, "approved", reason ?? null, meta);
   }
 
-  async reject(checkId: string, reviewerId: string, reason: string) {
+  async reject(checkId: string, reviewerId: string, reason: string, meta: ReviewMeta = {}) {
     if (!reason?.trim()) throw badRequest("A reason is required to reject a check");
-    return this.decide(checkId, reviewerId, "rejected", reason);
+    return this.decide(checkId, reviewerId, "rejected", reason, meta);
   }
 
-  private async decide(checkId: string, reviewerId: string, decision: "approved" | "rejected", reason: string | null) {
+  private async decide(checkId: string, reviewerId: string, decision: "approved" | "rejected", reason: string | null, meta: ReviewMeta) {
     const check = await this.store.checkById(null, checkId);
     if (!check) throw notFound("Check");
     if (check.status !== "manual_review") throw conflict("Only checks waiting for review can be approved or rejected");
@@ -551,6 +562,21 @@ export class KycService {
     });
     const status = await this.recompute(tenantId, subject);
     this.log.info({ tenantId, checkId, decision, reviewerId }, "kyc review");
+    // Type and outcome only: the reason may quote document details, so it stays on the check.
+    await this.audit
+      ?.record({
+        tenantId,
+        actorUserId: reviewerId,
+        action: decision === "approved" ? "kyc.review.approve" : "kyc.review.reject",
+        entityType: "kyc_check",
+        entityId: check.id,
+        summary: `${subject.subjectType} ${check.type} check ${decision}`,
+        before: { status: "manual_review" },
+        after: { status: updated.status, decision },
+        ip: meta.ip ?? null,
+        userAgent: meta.userAgent ?? null,
+      })
+      .catch(() => undefined);
     return { check: toCheckDto(updated), subject: status };
   }
 }

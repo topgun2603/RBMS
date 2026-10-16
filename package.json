@@ -14,7 +14,11 @@
     "db:migrate": "pnpm --filter @srirealtime/api db:migrate",
     "seed": "pnpm --filter @srirealtime/api seed",
     "infra:up": "docker compose up -d",
-    "infra:down": "docker compose down"
+    "infra:down": "docker compose down",
+    "ops:backup": "node scripts/ops/backup-db.mjs",
+    "ops:restore": "node scripts/ops/restore-db.mjs",
+    "ops:drill": "node scripts/ops/restore-drill.mjs",
+    "test:ops": "vitest run scripts/ops"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

@@ -16,6 +16,7 @@ const approveBody = z.object({ reason: z.string().trim().max(500).optional() });
 const rejectBody = z.object({ reason: z.string().trim().min(1).max(500) });
 
 const feature = { feature: KYC_FEATURE };
+const selfAudited = { config: { ...feature, audit: false as const } };
 const audited = (action: string, entity: string, idParamName?: string) => ({
   config: { ...feature, audit: { action, entity, ...(idParamName ? { idParam: idParamName } : {}) } },
 });
@@ -88,22 +89,19 @@ export function kycRoutes(service: KycService) {
       return service.reviewQueue(reviewQuery.parse(req.query ?? {}));
     });
 
-    app.post("/checks/:id/approve", audited("kyc.review.approve", "kyc_check", "id"), async (req) => {
+    // The service records these (`kyc.review.*`) under the check's shop; the host hook would have no shop.
+    app.post("/checks/:id/approve", selfAudited, async (req) => {
       const admin = requireSuperAdmin(req.ctx);
       const { id } = idParam.parse(req.params);
       const { reason } = approveBody.parse(req.body ?? {});
-      const out = await service.approve(id, admin.id, reason);
-      req.auditSummary = `${out.check.type} check approved`;
-      return out;
+      return service.approve(id, admin.id, reason, { ip: req.ctx.ip, userAgent: req.ctx.userAgent });
     });
 
-    app.post("/checks/:id/reject", audited("kyc.review.reject", "kyc_check", "id"), async (req) => {
+    app.post("/checks/:id/reject", selfAudited, async (req) => {
       const admin = requireSuperAdmin(req.ctx);
       const { id } = idParam.parse(req.params);
       const { reason } = rejectBody.parse(req.body ?? {});
-      const out = await service.reject(id, admin.id, reason);
-      req.auditSummary = `${out.check.type} check rejected`;
-      return out;
+      return service.reject(id, admin.id, reason, { ip: req.ctx.ip, userAgent: req.ctx.userAgent });
     });
   };
 }

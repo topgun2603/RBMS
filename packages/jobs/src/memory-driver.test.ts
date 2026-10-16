@@ -113,4 +113,58 @@ describe("memory jobs driver", () => {
     await new Promise((r) => setTimeout(r, 80));
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it("reports every attempt to the observer: retry, then failed after the final attempt", async () => {
+    const log = makeLog();
+    const events: Array<{ outcome: string; attempt: number; data: unknown }> = [];
+    const driver = new MemoryJobsDriver(log, { onAttempt: (e) => events.push({ outcome: e.outcome, attempt: e.attempt, data: e.data }) });
+    const service = new JobsService(driver);
+    service.define("doomed", async () => {
+      throw new Error("nope");
+    }, { attempts: 2, backoffMs: 1 });
+    service.define("fine", async () => {});
+    await service.enqueue("doomed", { tenantId: "t1" });
+    await service.enqueue("fine", {});
+    await driver.whenIdle();
+    expect(events).toEqual(
+      expect.arrayContaining([
+        { outcome: "retry", attempt: 1, data: { tenantId: "t1" } },
+        { outcome: "failed", attempt: 2, data: { tenantId: "t1" } },
+        { outcome: "completed", attempt: 1, data: {} },
+      ]),
+    );
+    expect(events).toHaveLength(3);
+    const counts = await service.counts();
+    expect(counts.doomed).toMatchObject({ waiting: 0, active: 0, failed: 1, completed: 0 });
+    expect(counts.fine).toMatchObject({ waiting: 0, active: 0, failed: 0, completed: 1 });
+    expect(await service.health()).toEqual({ driver: "memory", started: true, workers: 2 });
+  });
+
+  it("a throwing observer never breaks job processing", async () => {
+    const driver = new MemoryJobsDriver(makeLog(), {
+      onAttempt: () => {
+        throw new Error("observer bug");
+      },
+    });
+    const service = new JobsService(driver);
+    const handler = vi.fn(async () => {});
+    service.define("ok", handler);
+    await service.enqueue("ok", {});
+    await driver.whenIdle();
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts waiting jobs until they run", async () => {
+    vi.useFakeTimers();
+    try {
+      const { service } = setup();
+      service.define("later", async () => {});
+      await service.enqueue("later", {}, { delayMs: 1000 });
+      expect((await service.counts()).later!.waiting).toBe(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect((await service.counts()).later).toMatchObject({ waiting: 0, completed: 1 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

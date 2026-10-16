@@ -13,7 +13,7 @@ export function createAuth(deps: AuthDeps) {
   const module = defineModule({
     id: "auth",
     tables: { ...schema },
-    routes: authRoutes(service),
+    routes: authRoutes(service, deps.audit),
   });
   const contextHook = authContextHook(service, deps.memberships, deps.log, deps.permissions);
   return { service, module, contextHook };

@@ -1,4 +1,13 @@
-import type { DefineOptions, EnqueueOptions, JobDefinition, JobHandler, JobsDriver, ScheduleOptions } from "./types";
+import type {
+  DefineOptions,
+  EnqueueOptions,
+  JobCounts,
+  JobDefinition,
+  JobHandler,
+  JobsDriver,
+  JobsHealth,
+  ScheduleOptions,
+} from "./types";
 
 export class JobsService {
   private readonly defs = new Map<string, JobDefinition>();
@@ -30,6 +39,16 @@ export class JobsService {
   /** Names of all defined jobs. */
   names(): string[] {
     return [...this.defs.keys()];
+  }
+
+  /** Jobs per state for every defined job (metrics: queue depth). Throws when Redis is unreachable. */
+  counts(): Promise<Record<string, JobCounts>> {
+    return this.driver.counts([...this.defs.values()]);
+  }
+
+  /** Readiness probe of the queue backend; throws when it is down. */
+  health(): Promise<JobsHealth> {
+    return this.driver.health();
   }
 
   private get(name: string): JobDefinition {

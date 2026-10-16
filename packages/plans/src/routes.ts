@@ -7,6 +7,9 @@ const idParam = z.object({ id: z.string().min(1).max(40) });
 const tenantParam = z.object({ tenantId: z.string().uuid() });
 const listQuery = z.object({ all: z.enum(["1", "true"]).optional() });
 
+/** Super-admin plan routes: plan definitions are platform events (tenant null); overrides belong to their shop. */
+const audited = (action: string, entity: string, idParam: string) => ({ config: { audit: { action, entity, idParam } } });
+
 /**
  * Routes under /v1/plans. Changing a tenant's plan lives in tenancy
  * (PATCH /v1/tenancy/tenants/:id/plan); apps/api wires tenancy's onPlanChange to service.invalidate.
@@ -35,18 +38,25 @@ export function plansRoutes(service: PlansService) {
       return plan;
     });
 
-    app.put("/:id", async (req) => {
+    app.put("/:id", audited("plans.plan.upsert", "plan", "id"), async (req) => {
       requireSuperAdmin(req.ctx);
       const { id } = idParam.parse(req.params);
       const body = z.record(z.unknown()).parse(req.body ?? {});
+      const before = await service.getPlan(id);
       // upsertPlan validates the full shape with planInputSchema.
-      return service.upsertPlan({ ...body, id } as PlanInput);
+      const plan = await service.upsertPlan({ ...body, id } as PlanInput);
+      req.auditSummary = before ? `Plan ${id} updated` : `Plan ${id} created`;
+      req.auditDetail = { tenantId: null, before, after: plan };
+      return plan;
     });
 
-    app.delete("/:id", async (req) => {
+    app.delete("/:id", audited("plans.plan.delete", "plan", "id"), async (req) => {
       requireSuperAdmin(req.ctx);
       const { id } = idParam.parse(req.params);
+      const before = await service.getPlan(id);
       await service.deletePlan(id);
+      req.auditSummary = `Plan ${id} deleted`;
+      req.auditDetail = { tenantId: null, before, after: null };
       return { ok: true };
     });
 
@@ -56,11 +66,15 @@ export function plansRoutes(service: PlansService) {
       return (await service.getOverride(tenantId)) ?? { tenantId, addModules: [], removeModules: [], limits: {}, features: {} };
     });
 
-    app.put("/overrides/:tenantId", async (req) => {
+    app.put("/overrides/:tenantId", audited("plans.override.set", "plan_override", "tenantId"), async (req) => {
       requireSuperAdmin(req.ctx);
       const { tenantId } = tenantParam.parse(req.params);
+      const before = await service.getOverride(tenantId);
       // setOverride validates with overridePatchSchema.
-      return service.setOverride(tenantId, (req.body ?? {}) as OverridePatch);
+      const after = await service.setOverride(tenantId, (req.body ?? {}) as OverridePatch);
+      req.auditSummary = "Plan override changed";
+      req.auditDetail = { tenantId, before, after };
+      return after;
     });
   };
 }

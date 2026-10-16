@@ -32,6 +32,8 @@ const voidBody = z.object({ reason: z.string().trim().max(300).optional() });
 const WEBHOOK_BODY_LIMIT = 1024 * 1024;
 const header = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+/** The service records these itself (subscription.* with the shop and before/after): skip the host's generic entry. */
+const SELF_AUDITED = { config: { audit: false as const } };
 const actorOf = (ctx: RequestContext): Actor => ({ userId: ctx.user?.id ?? null, ip: ctx.ip, userAgent: ctx.userAgent });
 
 function sendPdf(reply: FastifyReply, doc: { pdf: Buffer; filename: string }) {
@@ -62,10 +64,10 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
       });
       const tenantOf = (ctx: RequestContext) => requireTenant(ctx).id;
       shop.get("/current", async (req) => service.current(tenantOf(req.ctx), req.ctx.user?.id));
-      shop.post("/change", async (req) => service.change(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
-      shop.post("/checkout", async (req) => service.checkout(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
-      shop.post("/cancel", async (req) => service.cancel(tenantOf(req.ctx), actorOf(req.ctx)));
-      shop.post("/resume", async (req) => service.resume(tenantOf(req.ctx), actorOf(req.ctx)));
+      shop.post("/change", SELF_AUDITED, async (req) => service.change(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
+      shop.post("/checkout", SELF_AUDITED, async (req) => service.checkout(tenantOf(req.ctx), planBody.parse(req.body ?? {}), actorOf(req.ctx)));
+      shop.post("/cancel", SELF_AUDITED, async (req) => service.cancel(tenantOf(req.ctx), actorOf(req.ctx)));
+      shop.post("/resume", SELF_AUDITED, async (req) => service.resume(tenantOf(req.ctx), actorOf(req.ctx)));
       shop.get("/invoices", async (req) => service.listInvoices(tenantOf(req.ctx)));
       shop.get("/invoices/:file", async (req, reply) => {
         const { file } = fileParam.parse(req.params);
@@ -92,7 +94,7 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
       });
       app.post("/mock/fail", async (req) => service.mockFail(providerSubBody.parse(req.body ?? {}).subscriptionId));
       // Runs the daily job for one shop with a clock override (tests; super-admin).
-      app.post("/mock/lifecycle", async (req) => {
+      app.post("/mock/lifecycle", SELF_AUDITED, async (req) => {
         requireSuperAdmin(req.ctx);
         const b = lifecycleBody.parse(req.body ?? {});
         return service.runLifecycle({ tenantId: b.tenantId, now: b.now ? new Date(b.now) : undefined });
@@ -106,11 +108,11 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
       });
       admin.get("/admin/subscriptions", async (req) => service.adminList(adminListQuery.parse(req.query ?? {})));
       admin.get("/admin/stats", async () => service.adminStats());
-      admin.post("/admin/:tenantId/extend-trial", async (req) => {
+      admin.post("/admin/:tenantId/extend-trial", SELF_AUDITED, async (req) => {
         const { tenantId } = tenantParam.parse(req.params);
         return service.extendTrial(tenantId, extendBody.parse(req.body ?? {}).days, actorOf(req.ctx));
       });
-      admin.post("/admin/:tenantId/comp", async (req) => {
+      admin.post("/admin/:tenantId/comp", SELF_AUDITED, async (req) => {
         const { tenantId } = tenantParam.parse(req.params);
         const b = compBody.parse(req.body ?? {});
         return service.comp(tenantId, { planId: b.planId, until: parseUntil(b.until) }, actorOf(req.ctx));
@@ -121,7 +123,7 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
         if (!parsed.success) throw notFound("Invoice");
         return sendPdf(reply, await service.invoicePdf(parsed.data.file.slice(0, -4)));
       });
-      admin.post("/admin/invoices/:id/void", async (req) => {
+      admin.post("/admin/invoices/:id/void", SELF_AUDITED, async (req) => {
         const { id } = idParam.parse(req.params);
         return service.voidInvoice(id, voidBody.parse(req.body ?? {}).reason ?? null, actorOf(req.ctx));
       });

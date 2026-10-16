@@ -43,6 +43,7 @@ export function createAudit(deps: AuditDeps) {
         config: req.routeOptions?.config?.audit,
         ctx: req.ctx,
         summary: req.auditSummary,
+        detail: req.auditDetail,
       });
       if (event) await service.record(event);
     } catch (err) {

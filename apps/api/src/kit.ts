@@ -58,6 +58,7 @@ import {
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
+import { createKitOps } from "./kit-ops";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
@@ -71,7 +72,9 @@ import { and, eq } from "@srirealtime/db";
 export function createKit(env: Env, log: Logger) {
   const { db, close: closeDb } = createDb(env.DATABASE_URL);
 
-  const jobs = createJobs({ redisUrl: env.REDIS_URL, log });
+  // Error reporter, metrics and readiness probes (docs/ops.md); the job observer reports final job failures.
+  const kitOps = createKitOps(env, log, db);
+  const jobs = createJobs({ redisUrl: env.REDIS_URL, log, observer: kitOps.observer });
   /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @srirealtime/api job <name>`). */
   const jobHandlers = new Map<string, () => Promise<void>>();
   const defineJob = (name: string, handler: () => Promise<void>) => {
@@ -89,6 +92,9 @@ export function createKit(env: Env, log: Logger) {
 
   const settings = createSettings({ db });
   const i18n = createI18n({ db });
+
+  // Audit first: auth, staff, kyc and subscriptions record into it (it only needs the db).
+  const audit = createAudit({ db, log });
 
   // plans before tenancy so tenancy can invalidate cached entitlements when a plan changes.
   const plans = createPlans({ db });
@@ -154,6 +160,8 @@ export function createKit(env: Env, log: Logger) {
     permissions: { permissionsFor: (tenantId, roles) => staff.resolver.permissionsFor(tenantId, roles) },
     // Where `POST /v1/auth/handoff { tenantId }` sends the user (batch 5 is created below).
     handoffTargets: { appUrl: (userId, tenantId) => b5!.handoffTargets.appUrl(userId, tenantId) },
+    // Sign-ins, handoffs and super-admin user changes (no shop / no user yet for the host hook).
+    audit: audit.service,
     log,
   });
   resolveTarget = async (target) => (await auth.service.findOrCreateByTarget(target)).user.id;
@@ -206,7 +214,6 @@ export function createKit(env: Env, log: Logger) {
     log,
   });
 
-  const audit = createAudit({ db, log });
   const staff = createStaff({
     db,
     registry: () => modules.flatMap((m) => m.permissions ?? []),
@@ -780,6 +787,7 @@ export function createKit(env: Env, log: Logger) {
       return storeBaseUrl((appId) => billingUrlFor(env.STORE_PUBLIC_URL, appId), { slug: tenant?.slug ?? "", appId: tenant?.appId ?? null }, custom);
     },
     permissions: () => modules.flatMap((m) => m.permissions ?? []),
+    audit: audit.service,
   });
   b3 = batch3;
 
@@ -913,6 +921,10 @@ export function createKit(env: Env, log: Logger) {
     }),
     /** Collects every route for the developer module's `GET /v1/developer/openapi.json` (registered after routeRules). */
     routeCollector: batch3.routeCollector,
+    /** Error reporter + metrics registry (docs/ops.md). */
+    monitoring: kitOps.monitoring,
+    /** The server's `/ready`, `/version`, `/metrics` options. */
+    ops: kitOps.serverOps(jobs.service),
     /**
      * Order matters: tenancy resolves the tenant; an API key (`Bearer sk_…`) then sets tenant + key principal; auth loads
      * a session user's roles in the tenant (it ignores API keys); branches picks `ctx.branch` from both.
@@ -949,6 +961,7 @@ export function createKit(env: Env, log: Logger) {
     async stop() {
       for (const m of [...modules].reverse()) await m.stop?.();
       await batch3.stop();
+      await kitOps.stop();
       await closeDb();
     },
   };

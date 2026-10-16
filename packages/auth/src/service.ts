@@ -10,6 +10,7 @@ import {
   safeEqual,
   sha256,
   tooMany,
+  type AuditPort,
 } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
@@ -72,6 +73,8 @@ export interface AuthDeps {
   verifyGoogleToken?: GoogleTokenVerifier;
   /** The app URL of a shop the user belongs to (null when not a member), for `POST /handoff { tenantId }`. */
   handoffTargets?: { appUrl(userId: string, tenantId: string): Promise<string | null> };
+  /** Records sign-ins, handoffs and super-admin user changes (the host audit hook can't: no user yet, or no shop). */
+  audit?: AuditPort;
 }
 
 /** Public user shape. Safe to return from the API. */

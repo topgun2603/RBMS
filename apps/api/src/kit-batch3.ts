@@ -64,6 +64,8 @@ export interface Batch3Deps {
   storeUrl: (tenantId: string) => Promise<string>;
   /** Every module's PermissionDefs (read lazily). */
   permissions: () => import("@srirealtime/core").PermissionDef[];
+  /** Audit log, for events the host hook can't attribute to a shop (KYC review decisions). */
+  audit?: import("@srirealtime/core").AuditPort;
 }
 
 const is404 = (e: unknown) => e instanceof AppError && e.status === 404;
@@ -156,6 +158,7 @@ export function createBatch3(d: Batch3Deps) {
       if (status.subjectType !== "vendor") return;
       await marketplace.service.updateVendor(tenantId, status.subjectId, { kycStatus: toVendorKycStatus(status.status) });
     },
+    audit: d.audit,
     log,
   });
   kycRef = kyc;

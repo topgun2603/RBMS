@@ -162,6 +162,9 @@ importers:
       '@srirealtime/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
+      '@srirealtime/monitoring':
+        specifier: workspace:*
+        version: link:../../packages/monitoring
       '@srirealtime/notify':
         specifier: workspace:*
         version: link:../../packages/notify
@@ -1234,6 +1237,12 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.3.0(react@19.3.0)
+
+  packages/monitoring:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/notify:
     dependencies:

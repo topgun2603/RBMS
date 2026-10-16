@@ -10,7 +10,7 @@ import {
   tooMany,
   type RequestContext,
 } from "@srirealtime/core";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { CUSTOM_DOMAIN_FEATURE, shouldForceVerify } from "./domains";
 import { TENANT_STATUSES } from "./schema";
@@ -60,6 +60,22 @@ const verifyBody = z.object({ force: z.boolean().optional() });
 const DOMAINS = { config: { feature: CUSTOM_DOMAIN_FEATURE } };
 
 const isOwner = (ctx: RequestContext) => isSuperAdmin(ctx) || (ctx.user?.tenantRoles.includes("owner") ?? false);
+
+/** Audit config of the member routes (the host hook records them under the shop). */
+const member = (action: string) => ({ config: { audit: { action, entity: "member", idParam: "userId" } } });
+/** Super-admin tenant routes: recorded under the target shop (`auditDetail.tenantId`), not the caller's. */
+const platform = (action: string) => ({ config: { audit: { action, entity: "tenant", idParam: "id" } } });
+
+const fmtRoles = (roles: readonly string[] | null) => (roles ? `[${roles.join(", ")}]` : "none");
+/** Old → new roles for the audit entry (`entityId` for POST /members, which has no :userId). */
+function rolesChanged(req: FastifyRequest, before: string[] | null, after: string[] | null, entityId?: string) {
+  req.auditSummary = `Roles ${fmtRoles(before)} → ${fmtRoles(after)}`;
+  req.auditDetail = { ...(entityId ? { entityId } : {}), before: before ? { roles: before } : null, after: after ? { roles: after } : null };
+}
+function tenantChanged(req: FastifyRequest, tenantId: string, field: string, before: unknown, after: unknown) {
+  req.auditSummary = `${field}: ${String(before ?? "none")} → ${String(after ?? "none")}`;
+  req.auditDetail = { tenantId, before: { [field]: before ?? null }, after: { [field]: after ?? null } };
+}
 
 /**
  * Routes under /v1/tenancy.
@@ -126,7 +142,7 @@ export function tenancyRoutes(
       return { items: await service.listMembers(tenant.id) };
     });
 
-    app.post("/members", async (req) => {
+    app.post("/members", member("tenancy.member.add"), async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       const body = addMemberBody.parse(req.body);
@@ -138,10 +154,12 @@ export function tenancyRoutes(
       }
       const existing = await service.getMember(tenant.id, userId);
       if (existing?.roles.includes("owner") && !isOwner(req.ctx)) throw forbidden("Only an owner can change an owner");
-      return service.addMember(tenant.id, userId, body.roles);
+      const added = await service.addMember(tenant.id, userId, body.roles);
+      rolesChanged(req, existing?.roles ?? null, added.roles, userId);
+      return added;
     });
 
-    app.patch("/members/:userId", async (req) => {
+    app.patch("/members/:userId", member("tenancy.member.roles"), async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       const { userId } = uuidParam("userId").parse(req.params) as { userId: string };
@@ -150,20 +168,22 @@ export function tenancyRoutes(
       if (!existing) throw notFound("Member");
       const touchesOwner = body.roles.includes("owner") || existing.roles.includes("owner");
       if (touchesOwner && !isOwner(req.ctx)) throw forbidden("Only an owner can grant or change the owner role");
-      return service.updateRoles(tenant.id, userId, body.roles);
+      const updated = await service.updateRoles(tenant.id, userId, body.roles);
+      rolesChanged(req, existing.roles, updated.roles);
+      return updated;
     });
 
-    app.delete("/members/:userId", async (req) => {
+    app.delete("/members/:userId", member("tenancy.member.remove"), async (req) => {
       const user = requireUser(req.ctx);
       const tenant = requireTenant(req.ctx);
       const { userId } = uuidParam("userId").parse(req.params) as { userId: string };
       // Anyone may leave; removing someone else needs owner/admin, and only owners can remove owners.
-      if (userId !== user.id) {
-        requireRole(req.ctx, "owner", "admin");
-        const existing = await service.getMember(tenant.id, userId);
-        if (existing?.roles.includes("owner") && !isOwner(req.ctx)) throw forbidden("Only an owner can remove an owner");
-      }
+      if (userId !== user.id) requireRole(req.ctx, "owner", "admin");
+      const existing = await service.getMember(tenant.id, userId);
+      if (userId !== user.id && existing?.roles.includes("owner") && !isOwner(req.ctx)) throw forbidden("Only an owner can remove an owner");
       await service.removeMember(tenant.id, userId);
+      if (existing) rolesChanged(req, existing.roles, null);
+      if (userId === user.id) req.auditSummary = "Left the shop";
       return { ok: true };
     });
 
@@ -213,26 +233,35 @@ export function tenancyRoutes(
       return service.list(q);
     });
 
-    app.patch("/tenants/:id/status", async (req) => {
+    app.patch("/tenants/:id/status", platform("tenancy.tenant.status"), async (req) => {
       requireSuperAdmin(req.ctx);
       const { id } = uuidParam("id").parse(req.params) as { id: string };
       const { status } = statusBody.parse(req.body);
-      return service.setStatus(id, status);
+      const before = await service.getById(id);
+      const t = await service.setStatus(id, status);
+      tenantChanged(req, id, "status", before?.status ?? null, t.status);
+      return t;
     });
 
-    app.patch("/tenants/:id/plan", async (req) => {
+    app.patch("/tenants/:id/plan", platform("tenancy.tenant.plan"), async (req) => {
       requireSuperAdmin(req.ctx);
       const { id } = uuidParam("id").parse(req.params) as { id: string };
       const { planId } = planBody.parse(req.body);
       if (planId !== null && !/^[a-z0-9][a-z0-9_-]*$/.test(planId)) throw badRequest("Invalid plan id");
-      return service.setPlan(id, planId);
+      const before = await service.getById(id);
+      const t = await service.setPlan(id, planId);
+      tenantChanged(req, id, "planId", before?.planId ?? null, t.planId);
+      return t;
     });
 
-    app.patch("/tenants/:id/app", async (req) => {
+    app.patch("/tenants/:id/app", platform("tenancy.tenant.app"), async (req) => {
       requireSuperAdmin(req.ctx);
       const { id } = uuidParam("id").parse(req.params) as { id: string };
       const { appId } = appBody.parse(req.body);
-      return service.setApp(id, appId);
+      const before = await service.getById(id);
+      const t = await service.setApp(id, appId);
+      tenantChanged(req, id, "appId", before?.appId ?? null, t.appId);
+      return t;
     });
   };
 }

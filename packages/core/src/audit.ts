@@ -2,7 +2,8 @@ import type { RequestContext } from "./context";
 
 /** One entry of the audit trail (see @srirealtime/audit). Never put request bodies or secrets in it. */
 export interface AuditEvent {
-  tenantId: string;
+  /** The shop it concerns; null for platform events (super-admin actions, sign-ins outside a shop). */
+  tenantId: string | null;
   /** Who did it; null for system actions (jobs, webhooks). */
   actorUserId: string | null;
   /** e.g. "invoice.cancel", or the host default `<moduleId>.<method> <routePattern>`. */
@@ -24,10 +25,10 @@ export interface AuditPort {
   record(e: AuditEvent): Promise<void>;
 }
 
-/** The actor fields of an audit event, taken from a request context (tenant must be set). */
+/** The actor fields of an audit event, taken from a request context (tenant null when the request has none). */
 export function auditActor(ctx: RequestContext): Pick<AuditEvent, "tenantId" | "actorUserId" | "ip" | "userAgent"> {
   return {
-    tenantId: ctx.tenant?.id ?? "",
+    tenantId: ctx.tenant?.id ?? null,
     actorUserId: ctx.user?.id ?? null,
     ip: ctx.ip,
     userAgent: ctx.userAgent,

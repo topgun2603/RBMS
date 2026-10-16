@@ -1,12 +1,15 @@
-import { pk, tenantId } from "@srirealtime/db";
+import { pk } from "@srirealtime/db";
 import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-/** Append-only audit trail. Never stores request bodies; `before`/`after` only when a service passes them. */
+/**
+ * Append-only audit trail. Never stores request bodies; `before`/`after` only when a service passes them.
+ * `tenant_id` is null for platform events (super-admin actions, sign-ins outside a shop); tenant lists never show them.
+ */
 export const auditEvents = pgTable(
   "audit_events",
   {
     id: pk(),
-    tenantId: tenantId(),
+    tenantId: uuid("tenant_id"),
     actorUserId: uuid("actor_user_id"),
     /** e.g. "invoice.cancel" or "invoices.post /:id/cancel" */
     action: text("action").notNull(),

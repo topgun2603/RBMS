@@ -84,6 +84,20 @@ export const envSchema = z.object({
   WWW_PUBLIC_URL: z.string().url().default("http://localhost:3005"),
   /** Where each app opens a shop ({slug} = shop subdomain): sign-up's `appUrl` and handoff links. APP=template pairs. */
   APP_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002"),
+  // ---- Batch 6: operational safety net (docs/ops.md)
+  /** Sentry-compatible DSN; set = 5xx errors and final job failures are sent there (otherwise only logged). */
+  SENTRY_DSN: optionalString(),
+  /** Environment tag on error reports. Default NODE_ENV. */
+  SENTRY_ENVIRONMENT: optionalString(),
+  /** Bearer token for GET /metrics (Prometheus). Unset = /metrics is disabled (404). 16+ chars. */
+  METRICS_TOKEN: optionalString(),
+  /** Build info for GET /version and error-report releases, set by the image build (batch 7). */
+  GIT_SHA: optionalString(),
+  BUILD_TIME: optionalString(),
+  /** Per-dependency timeout of GET /ready. */
+  READY_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2000),
+  /** Log level (pino). Default debug in development, info otherwise. */
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production" && (e.APP_SECRET.length < 32 || e.APP_SECRET.startsWith("dev-only"))) {
@@ -103,6 +117,9 @@ export const envSchema = z.object({
       ctx.addIssue({ code: "custom", path: ["PLATFORM_GSTIN"], message: "Invalid GSTIN" });
     } else if (e.PLATFORM_GSTIN && e.PLATFORM_GSTIN.slice(0, 2) !== e.PLATFORM_STATE_CODE) {
       ctx.addIssue({ code: "custom", path: ["PLATFORM_GSTIN"], message: "GSTIN state differs from PLATFORM_STATE_CODE" });
+    }
+    if (e.METRICS_TOKEN && e.METRICS_TOKEN.length < 16) {
+      ctx.addIssue({ code: "custom", path: ["METRICS_TOKEN"], message: "Use a random token of 16+ characters" });
     }
     if (e.STORAGE_DRIVER === "s3" && !e.S3_BUCKET) {
       ctx.addIssue({ code: "custom", path: ["S3_BUCKET"], message: "Required when STORAGE_DRIVER=s3" });

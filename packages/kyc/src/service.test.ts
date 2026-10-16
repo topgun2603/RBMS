@@ -1,4 +1,4 @@
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
+import { AppError, emptyContext, type AuditEvent, type RequestContext } from "@srirealtime/core";
 import { describe, expect, it, vi } from "vitest";
 import { MockKycDriver } from "./drivers/mock";
 import { KycProviderError, type KycDriver } from "./drivers/types";
@@ -14,13 +14,13 @@ const ADMIN = "55555555-5555-4555-8555-555555555555";
 
 const config: KycConfig = { allowMock: true, secret: "s3cret" };
 
-function setup(over: { driver?: KycDriver; vendors?: VendorAccessPort; onStatusChange?: KycStatusListener; config?: Partial<KycConfig> } = {}) {
+function setup(over: { driver?: KycDriver; vendors?: VendorAccessPort; onStatusChange?: KycStatusListener; config?: Partial<KycConfig>; audit?: { record(e: AuditEvent): Promise<void> } } = {}) {
   let clock = new Date("2026-10-15T06:00:00Z").getTime();
   const now = () => new Date((clock += 1000));
   const store = new MemoryKycStore(now);
   const lines: unknown[] = [];
   const log: LoggerPort = { info: (o) => lines.push(o), warn: (o) => lines.push(o), error: (o) => lines.push(o) };
-  const service = new KycService({ store, config: { ...config, ...over.config }, driver: over.driver, vendors: over.vendors, onStatusChange: over.onStatusChange, log, now });
+  const service = new KycService({ store, config: { ...config, ...over.config }, driver: over.driver, vendors: over.vendors, onStatusChange: over.onStatusChange, audit: over.audit, log, now });
   return { service, store, lines };
 }
 
@@ -82,6 +82,30 @@ describe("vendor flow", () => {
     expect(approved.subject).toMatchObject({ status: "verified", verified: true });
     expect((await service.reviewQueue()).total).toBe(0);
     await expect(service.approve(b.check.id, "sa-1")).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("review decisions are audited under the check's shop, without the reason", async () => {
+    const events: AuditEvent[] = [];
+    const { service } = setup({ audit: { record: async (e) => void events.push(e) } });
+    await service.submitCheck(TENANT, ADMIN, vendorCheck("pan", { pan: "ABCDE1234F" }));
+    const b = await service.submitCheck(TENANT, ADMIN, vendorCheck("bank_account", { accountNumber: "123456789999", ifsc: "SBIN0001234" }));
+    await service.approve(b.check.id, ADMIN, "Cheque 123456789999 matches", { ip: "1.2.3.4", userAgent: "UA" });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      tenantId: TENANT,
+      actorUserId: ADMIN,
+      action: "kyc.review.approve",
+      entityType: "kyc_check",
+      entityId: b.check.id,
+      before: { status: "manual_review" },
+      after: { status: "verified", decision: "approved" },
+      ip: "1.2.3.4",
+      userAgent: "UA",
+    });
+    expect(JSON.stringify(events)).not.toContain("123456789999");
+    // A refused decision (not in review any more) records nothing.
+    await expect(service.reject(b.check.id, ADMIN, "x")).rejects.toMatchObject({ status: 409 });
+    expect(events).toHaveLength(1);
   });
 
   it("reject needs a reason and marks the check failed", async () => {

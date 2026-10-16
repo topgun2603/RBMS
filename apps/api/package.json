@@ -52,6 +52,7 @@
     "@srirealtime/kyc": "workspace:*",
     "@srirealtime/loyalty": "workspace:*",
     "@srirealtime/marketplace": "workspace:*",
+    "@srirealtime/monitoring": "workspace:*",
     "@srirealtime/notify": "workspace:*",
     "@srirealtime/onboarding": "workspace:*",
     "@srirealtime/orders": "workspace:*",

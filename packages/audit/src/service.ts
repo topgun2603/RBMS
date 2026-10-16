@@ -42,12 +42,14 @@ export class AuditService implements AuditPort {
     this.db = deps.db;
   }
 
-  /** Appends an event. Never throws: failures are logged so the caller's request is unaffected. */
+  /**
+   * Appends an event (tenant null = platform event, only listed by `listPlatform`). Never throws: failures are logged
+   * so the caller's request is unaffected.
+   */
   async record(e: AuditEvent): Promise<void> {
     try {
-      if (!e.tenantId) throw new Error("audit event without tenantId");
       await this.db.insert(auditEvents).values({
-        tenantId: e.tenantId,
+        tenantId: e.tenantId || null,
         actorUserId: e.actorUserId,
         action: e.action.slice(0, 200),
         entityType: e.entityType.slice(0, 100),
@@ -68,7 +70,7 @@ export class AuditService implements AuditPort {
     return this.query(and(eq(auditEvents.tenantId, tenantId), ...filters(q)), q, maxLimit);
   }
 
-  /** Super-admin: across tenants (optionally one). */
+  /** Super-admin: across tenants incl. platform events (tenant null), or one tenant's. */
   listPlatform(q: AuditQuery & { tenantId?: string } = {}, maxLimit = MAX_LIST) {
     return this.query(and(...(q.tenantId ? [eq(auditEvents.tenantId, q.tenantId)] : []), ...filters(q)), q, maxLimit);
   }

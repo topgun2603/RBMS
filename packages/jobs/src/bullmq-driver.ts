@@ -1,6 +1,18 @@
 import { Queue, Worker, type Job } from "bullmq";
 import { Redis } from "ioredis";
-import type { EnqueueOptions, JobDefinition, JobsDriver, LoggerPort, ScheduleOptions } from "./types";
+import {
+  notifyObserver,
+  type EnqueueOptions,
+  type JobCounts,
+  type JobDefinition,
+  type JobObserver,
+  type JobsDriver,
+  type JobsHealth,
+  type LoggerPort,
+  type ScheduleOptions,
+} from "./types";
+
+const COUNT_STATES = ["waiting", "active", "delayed", "failed", "completed", "paused", "prioritized"] as const;
 
 /** Redis-backed driver: one BullMQ queue (and one worker once started) per job name. */
 export class BullJobsDriver implements JobsDriver {
@@ -14,6 +26,7 @@ export class BullJobsDriver implements JobsDriver {
     private readonly redisUrl: string,
     private readonly prefix: string,
     private readonly log: LoggerPort,
+    private readonly observer?: JobObserver,
   ) {}
 
   register(def: JobDefinition): void {
@@ -49,6 +62,34 @@ export class BullJobsDriver implements JobsDriver {
     }
   }
 
+  async counts(defs: JobDefinition[]): Promise<Record<string, JobCounts>> {
+    this.assertConnected();
+    const entries = await Promise.all(
+      defs.map(async (def) => {
+        const raw = await this.queue(def).getJobCounts(...COUNT_STATES);
+        const counts = Object.fromEntries(COUNT_STATES.map((s) => [s, raw[s] ?? 0])) as unknown as JobCounts;
+        return [def.name, counts] as const;
+      }),
+    );
+    return Object.fromEntries(entries);
+  }
+
+  async health(): Promise<JobsHealth> {
+    const conn = this.assertConnected();
+    await conn.ping();
+    return { driver: "bullmq", started: this.started, workers: this.workers.size, connection: conn.status };
+  }
+
+  /**
+   * The shared connection when it is ready. Commands on a connection that isn't (`maxRetriesPerRequest: null`) would
+   * wait in the offline queue until Redis comes back, so probes fail fast instead.
+   */
+  private assertConnected(): Redis {
+    const conn = this.redis();
+    if (conn.status !== "ready") throw new Error(`redis connection ${conn.status}`);
+    return conn;
+  }
+
   private redis(): Redis {
     // BullMQ requires maxRetriesPerRequest: null for blocking worker connections.
     this.connection ??= new Redis(this.redisUrl, { maxRetriesPerRequest: null });
@@ -81,12 +122,33 @@ export class BullJobsDriver implements JobsDriver {
       async (job: Job) => def.handler(job.data, { attempt: job.attemptsMade + 1, jobId: job.id ?? "" }),
       { connection: this.redis(), prefix: this.prefix, concurrency: def.concurrency },
     );
+    const durationOf = (job: Job | undefined) =>
+      job?.processedOn ? Math.max(0, (job.finishedOn ?? Date.now()) - job.processedOn) : 0;
+    worker.on("completed", (job) => {
+      notifyObserver(this.observer, {
+        name: def.name,
+        jobId: job.id ?? "",
+        attempt: job.attemptsMade + 1,
+        outcome: "completed",
+        durationMs: durationOf(job),
+        data: job.data,
+      });
+    });
     worker.on("failed", (job, err) => {
       const attempt = (job?.attemptsMade ?? 0);
       const final = attempt >= def.attempts;
       const payload = { job: def.name, jobId: job?.id, attempt, err };
       if (final) this.log.error(payload, "jobs: job failed permanently");
       else this.log.warn(payload, "jobs: attempt failed, retrying");
+      notifyObserver(this.observer, {
+        name: def.name,
+        jobId: job?.id ?? "",
+        attempt,
+        outcome: final ? "failed" : "retry",
+        durationMs: durationOf(job),
+        err,
+        data: job?.data,
+      });
     });
     worker.on("error", (err) => this.log.error({ job: def.name, err }, "jobs: worker error"));
     this.workers.set(def.name, worker);

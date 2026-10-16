@@ -10,3 +10,4 @@ coverage
 .uploads
 *.tsbuildinfo
 .next-dev
+backups/

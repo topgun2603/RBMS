@@ -1075,7 +1075,8 @@ export class SubscriptionsService {
       .set({ status: "void", voidedAt: this.now(), voidReason: reason })
       .where(and(eq(platformInvoices.id, id), eq(platformInvoices.status, "paid")))
       .returning();
-    await this.deps.audit?.record({
+    // Only the call that actually voided it is recorded (a concurrent void, or an unpaid invoice, matched no row).
+    if (row) await this.deps.audit?.record({
       tenantId: invoice.tenantId,
       actorUserId: actor.userId,
       action: "subscription.invoice_void",

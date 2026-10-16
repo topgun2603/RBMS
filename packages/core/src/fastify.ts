@@ -8,6 +8,12 @@ declare module "fastify" {
     ctx: RequestContext;
     /** Short note a route may set for the automatic audit entry (never put request bodies here). */
     auditSummary?: string;
+    /**
+     * Extra fields a route may set for the automatic audit entry: `tenantId` overrides the request's shop (super-admin
+     * routes acting on another shop; `null` = a platform event), `entityId` overrides the id param (e.g. a created row),
+     * `before`/`after` are small snapshots (no secrets).
+     */
+    auditDetail?: { tenantId?: string | null; entityId?: string | null; before?: unknown; after?: unknown };
   }
   interface FastifyContextConfig {
     /** Feature key(s) this route belongs to; the API host checks them for requests with a tenant (all required). */
@@ -17,6 +23,7 @@ declare module "fastify" {
     /**
      * How the host's audit hook records successful mutating requests: `{ action, entity, idParam }` overrides the
      * default action (`<moduleId>.<method> <routePattern>`), entity type and id param; `false` skips the route.
+     * Requests without a shop are recorded (tenant null) only for super-admins or routes with an explicit config.
      */
     audit?: RouteAuditConfig;
   }

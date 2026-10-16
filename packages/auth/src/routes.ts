@@ -1,4 +1,4 @@
-import { AppError, badRequest, notFound, requireSuperAdmin, requireUser } from "@srirealtime/core";
+import { AppError, badRequest, notFound, requireSuperAdmin, requireUser, type AuditEvent, type AuditPort } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
@@ -44,7 +44,28 @@ const rolesBody = z.object({ roles: z.array(z.string().trim().min(1).max(50)).ma
 
 const isHttps = (req: FastifyRequest) => req.protocol === "https";
 
-export function authRoutes(service: AuthService) {
+/** These routes record their own audit entries (sign-ins have no user yet; super-admin changes have no shop). */
+const SELF_AUDITED = { config: { audit: false as const } };
+
+/**
+ * Routes under /v1/auth. With an AuditPort: `auth.login` (otp | google), `auth.handoff.create`, `auth.handoff.redeem`,
+ * `auth.user.status` and `auth.user.platform_roles` (tenant null unless the request has a shop). Never codes, tokens or
+ * phone numbers / emails.
+ */
+export function authRoutes(service: AuthService, audit?: AuditPort) {
+  const record = async (req: FastifyRequest, e: Omit<AuditEvent, "ip" | "userAgent">) => {
+    if (!audit) return;
+    await audit.record({ ...e, ip: req.ctx.ip, userAgent: req.ctx.userAgent }).catch(() => undefined);
+  };
+  const login = (req: FastifyRequest, r: SignInResult, method: string) =>
+    record(req, {
+      tenantId: req.ctx.tenant?.id ?? null,
+      actorUserId: r.user.id,
+      action: "auth.login",
+      entityType: "user",
+      entityId: r.user.id,
+      summary: `Signed in with ${method}${r.isNewUser ? " (new account)" : ""}`,
+    });
   const setSessionCookie = (req: FastifyRequest, reply: FastifyReply, token: string, expiresAt: Date) => {
     const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
     reply.header("set-cookie", sessionCookie(service.cookieName, token, { maxAgeSeconds: maxAge, secure: isHttps(req) }));
@@ -69,9 +90,10 @@ export function authRoutes(service: AuthService) {
       });
     });
 
-    app.post("/otp/verify", async (req, reply) => {
+    app.post("/otp/verify", SELF_AUDITED, async (req, reply) => {
       const body = otpVerifyBody.parse(req.body);
       const r = await service.verifyOtp({ ...body, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      await login(req, r, "otp");
       return signedIn(req, reply, r);
     });
 
@@ -84,26 +106,43 @@ export function authRoutes(service: AuthService) {
       return { guestToken: r.guestToken, expiresAt: r.expiresAt, phone: r.phone };
     });
 
-    app.post("/google", async (req, reply) => {
+    app.post("/google", SELF_AUDITED, async (req, reply) => {
       const body = googleBody.parse(req.body);
       const r = await service.signInWithGoogle({ idToken: body.idToken, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      await login(req, r, "google");
       return signedIn(req, reply, r);
     });
 
     // Cross-origin sign-in (landing site → a shop's app): a single-use 60 s code for the signed-in user ...
     // With `tenantId` (a shop the user belongs to) the response also names where to redeem it: `appUrl` (the shop's
     // app) and `url` (its login page with `?handoff=`).
-    app.post("/handoff", async (req) => {
+    app.post("/handoff", SELF_AUDITED, async (req) => {
       const me = requireUser(req.ctx);
       const { tenantId } = handoffCreateBody.parse(req.body ?? {});
       const appUrl = tenantId ? await service.handoffAppUrl(me.id, tenantId) : null;
       const h = await service.createHandoff(me.id, { ip: req.ctx.ip });
+      await record(req, {
+        tenantId: tenantId ?? req.ctx.tenant?.id ?? null,
+        actorUserId: me.id,
+        action: "auth.handoff.create",
+        entityType: "user",
+        entityId: me.id,
+        summary: tenantId ? "Sign-in handoff to a shop app" : "Sign-in handoff",
+      });
       return appUrl ? { ...h, appUrl, url: handoffLoginUrl(appUrl, h.code) } : h;
     });
     // ... which the other origin redeems for its own session.
-    app.post("/handoff/redeem", async (req, reply) => {
+    app.post("/handoff/redeem", SELF_AUDITED, async (req, reply) => {
       const { code } = handoffBody.parse(req.body);
       const r = await service.redeemHandoff(code, { ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      await record(req, {
+        tenantId: req.ctx.tenant?.id ?? null,
+        actorUserId: r.user.id,
+        action: "auth.handoff.redeem",
+        entityType: "user",
+        entityId: r.user.id,
+        summary: "Signed in with a handoff code",
+      });
       return signedIn(req, reply, r);
     });
 
@@ -153,20 +192,44 @@ export function authRoutes(service: AuthService) {
       return service.listUsers(usersQuery.parse(req.query));
     });
 
-    app.patch("/users/:id/status", async (req) => {
+    app.patch("/users/:id/status", SELF_AUDITED, async (req) => {
       const me = requireSuperAdmin(req.ctx);
       const { id } = idParams.parse(req.params);
       const { status } = statusBody.parse(req.body);
       if (id === me.id && status !== "active") throw badRequest("You cannot disable your own account here");
-      return { user: await service.setStatus(id, status) };
+      const before = await service.getUser(id);
+      const user = await service.setStatus(id, status);
+      await record(req, {
+        tenantId: null,
+        actorUserId: me.id,
+        action: "auth.user.status",
+        entityType: "user",
+        entityId: id,
+        summary: `Account ${before?.status ?? "?"} → ${user.status}`,
+        before: { status: before?.status ?? null },
+        after: { status: user.status },
+      });
+      return { user };
     });
 
-    app.patch("/users/:id/platform-roles", async (req) => {
+    app.patch("/users/:id/platform-roles", SELF_AUDITED, async (req) => {
       const me = requireSuperAdmin(req.ctx);
       const { id } = idParams.parse(req.params);
       const { roles } = rolesBody.parse(req.body);
       if (id === me.id && !roles.includes("superadmin")) throw badRequest("You cannot remove your own superadmin role");
-      return { user: await service.setPlatformRoles(id, roles) };
+      const before = await service.getUser(id);
+      const user = await service.setPlatformRoles(id, roles);
+      await record(req, {
+        tenantId: null,
+        actorUserId: me.id,
+        action: "auth.user.platform_roles",
+        entityType: "user",
+        entityId: id,
+        summary: `Platform roles [${(before?.platformRoles ?? []).join(", ")}] → [${user.platformRoles.join(", ")}]`,
+        before: { platformRoles: before?.platformRoles ?? [] },
+        after: { platformRoles: user.platformRoles },
+      });
+      return { user };
     });
   };
 }

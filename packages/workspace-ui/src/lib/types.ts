@@ -76,7 +76,8 @@ export interface PermissionGroup {
 
 export interface AuditEvent {
   id: string;
-  tenantId: string;
+  /** Null only for platform events (super-admin listing); a shop's own log never contains them. */
+  tenantId: string | null;
   actorUserId: string | null;
   /** "invoice.cancel" or the derived "invoices.post /:id/cancel". */
   action: string;
