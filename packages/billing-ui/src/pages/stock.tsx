@@ -146,7 +146,7 @@ function Stock() {
   );
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading icon={BoxesIcon} title={t("billing.stock.title")} description={t("billing.stock.subtitle")} actions={actions} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -234,7 +234,7 @@ function Stock() {
                   <TableRow key={r.itemId}>
                     <TableCell className="max-w-72 pl-4">
                       <p className="truncate font-medium">{r.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{r.hsn ? `HSN ${r.hsn}` : t("billing.items.noHsn")}</p>
+                      <p className="mt-0.5 truncate text-meta text-muted-foreground">{r.hsn ? `HSN ${r.hsn}` : t("billing.items.noHsn")}</p>
                     </TableCell>
                     <TableCell className={cn("text-right font-semibold tabular-nums", r.track === false && "font-normal text-muted-foreground")}>
                       {formatQty(r.qty)} <span className="text-xs font-normal text-muted-foreground">{r.unit || "pcs"}</span>
@@ -264,7 +264,7 @@ function Stock() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{r.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="mt-0.5 truncate text-meta text-muted-foreground">
                         {[r.hsn && `HSN ${r.hsn}`, r.reorderLevel ? t("billing.stock.reorderAt", { qty: formatQty(r.reorderLevel) }) : null]
                           .filter(Boolean)
                           .join(" · ") || t("billing.items.noHsn")}
@@ -274,7 +274,7 @@ function Stock() {
                       <p className={cn("font-heading text-lg font-bold tabular-nums", r.track === false && "font-medium text-muted-foreground")}>
                         {formatQty(r.qty)} <span className="text-xs font-normal text-muted-foreground">{r.unit || "pcs"}</span>
                       </p>
-                      {!!r.value && <p className="text-xs text-muted-foreground tabular-nums">{money(r.value)}</p>}
+                      {!!r.value && <p className="text-meta text-muted-foreground tabular-nums">{money(r.value)}</p>}
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -296,7 +296,7 @@ function Stock() {
             ))}
           </Stagger>
           {list.data && list.data.total > items.length && (
-            <p className="mt-3 text-center text-xs text-muted-foreground">
+            <p className="mt-3 text-center text-meta text-muted-foreground">
               {t("billing.stock.showing", { shown: items.length, total: list.data.total })}
             </p>
           )}

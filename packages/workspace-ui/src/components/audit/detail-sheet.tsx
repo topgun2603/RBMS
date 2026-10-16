@@ -73,7 +73,7 @@ export function AuditDetailSheet({ event, actor, onClose }: { event: AuditEvent 
                   <div className="grid gap-2 sm:grid-cols-2">
                     {(["before", "after"] as const).map((k) => (
                       <div key={k} className="min-w-0">
-                        <p className="mb-1 text-xs font-medium text-muted-foreground">{t(`workspace.audit.${k}`)}</p>
+                        <p className="mb-1 text-meta font-medium text-muted-foreground">{t(`workspace.audit.${k}`)}</p>
                         <pre className="max-h-80 overflow-auto rounded-xl bg-muted/50 p-3 text-xs">{JSON.stringify(event[k] ?? null, null, 2)}</pre>
                       </div>
                     ))}

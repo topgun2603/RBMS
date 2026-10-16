@@ -227,7 +227,7 @@ export function ItemDialog({
                     )}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">{t("billing.itemsStock.openingHint")}</p>
+                <p className="text-meta text-muted-foreground">{t("billing.itemsStock.openingHint")}</p>
               </div>
             )}
             <UnitList />

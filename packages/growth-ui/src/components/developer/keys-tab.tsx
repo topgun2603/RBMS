@@ -163,7 +163,7 @@ function KeyList({ items, onRevoke, onRename }: { items: ApiKey[]; onRevoke: (k:
           >
             <div className="min-w-0">
               <p className={cn("truncate text-sm font-medium", k.status !== "active" && "text-muted-foreground")}>{k.name}</p>
-              <p className="truncate font-mono text-xs text-muted-foreground">{maskedKey(k.prefix)}</p>
+              <p className="truncate font-mono text-meta text-muted-foreground">{maskedKey(k.prefix)}</p>
             </div>
             <div className="col-start-2 row-start-1 flex items-center gap-1 lg:hidden">
               <KeyStatusPill status={k.status} />
@@ -181,7 +181,7 @@ function KeyList({ items, onRevoke, onRename }: { items: ApiKey[]; onRevoke: (k:
                     </button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-80 p-0">
-                    <p className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">{t("growth.developer.keys.scopesOf", { name: k.name })}</p>
+                    <p className="border-b px-3 py-2 text-meta font-medium text-muted-foreground">{t("growth.developer.keys.scopesOf", { name: k.name })}</p>
                     <ul className="grid max-h-64 gap-1 overflow-y-auto p-2">
                       {k.scopes.map((s) => (
                         <li key={s} className="grid rounded-md px-2 py-1 text-sm">

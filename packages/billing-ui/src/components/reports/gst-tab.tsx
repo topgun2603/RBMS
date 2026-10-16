@@ -38,7 +38,7 @@ export function GstTab({ from, to }: RangeProps) {
 
   if (gst.isError && !gst.data) {
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-section">
         <Gstr1Card />
         <TabError error={gst.error} onRetry={() => void gst.refetch()} />
       </div>
@@ -200,7 +200,7 @@ function Gstr3b({
         </span>
         <div className="min-w-0">
           <h2 className="font-heading text-base font-semibold">{t("billing.reports.gst.gstr3bTitle")}</h2>
-          <p className="text-xs text-muted-foreground">{t("billing.reports.gst.gstr3bDescription")}</p>
+          <p className="text-meta text-muted-foreground">{t("billing.reports.gst.gstr3bDescription")}</p>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -240,7 +240,7 @@ function Gstr3b({
           </tbody>
         </table>
       </div>
-      <p className="border-t px-4 py-2.5 text-xs text-muted-foreground sm:px-5">{t("billing.reports.gst.g3NetHint")}</p>
+      <p className="border-t px-4 py-2.5 text-meta text-muted-foreground sm:px-5">{t("billing.reports.gst.g3NetHint")}</p>
     </Card>
   );
 }
@@ -313,7 +313,7 @@ function Gstr1({ data, from, to }: { data: GstSummaryResponse; from: string; to:
           <h2 id="gstr1-title" className="font-heading text-base font-semibold">
             {t("billing.reports.gst.gstr1Title")}
           </h2>
-          <p className="text-xs text-muted-foreground">{t("billing.reports.gst.gstr1Description")}</p>
+          <p className="text-meta text-muted-foreground">{t("billing.reports.gst.gstr1Description")}</p>
         </div>
       </div>
       <CollapsibleCard title={t("billing.reports.gst.b2b")} description={t("billing.reports.gst.b2bHint")} badge={badge(data.b2b.length)} actions={csv("b2b")} defaultOpen={data.b2b.length > 0}>

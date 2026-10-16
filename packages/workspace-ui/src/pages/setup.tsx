@@ -17,7 +17,7 @@ export default function SetupPage() {
   const pct = s && s.total ? Math.round((s.completed / s.total) * 100) : 0;
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={ListChecksIcon} title={t("workspace.onboarding.pageTitle")} description={t("workspace.onboarding.pageSubtitle")} />
       {q.isError ? (
@@ -25,8 +25,8 @@ export default function SetupPage() {
       ) : !s ? (
         <Skeleton className="h-96 rounded-2xl" />
       ) : (
-        <div className="grid gap-4">
-          <Card className="flex-row items-center gap-4 px-4 py-4 sm:px-5">
+        <div className="grid gap-section">
+          <Card className="px-card flex-row items-center gap-4">
             <ProgressRing value={s.completed} max={s.total} size={72} label={t("workspace.onboarding.progressAria", { done: s.completed, total: s.total })} />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-2 font-heading text-lg font-semibold">
@@ -34,7 +34,7 @@ export default function SetupPage() {
                 {done ? t("workspace.onboarding.allDone") : t("workspace.onboarding.subtitle", { left: s.total - s.completed })}
               </p>
               <Progress value={pct} className="mt-2 h-2" aria-label={t("workspace.onboarding.progressAria", { done: s.completed, total: s.total })} />
-              {s.dismissed && !done && <p className="mt-2 text-xs text-muted-foreground">{t("workspace.onboarding.dismissedNote")}</p>}
+              {s.dismissed && !done && <p className="mt-2 text-meta text-muted-foreground">{t("workspace.onboarding.dismissedNote")}</p>}
             </div>
           </Card>
           <Card className="gap-0 overflow-hidden py-0">

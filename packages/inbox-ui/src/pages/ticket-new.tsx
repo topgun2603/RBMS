@@ -97,7 +97,7 @@ export default function TicketNewPage() {
   };
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <PageHeading icon={LifeBuoyIcon} title={t("inbox.ticket.new")} description={t("inbox.newTicket.subtitle")} back={{ href: "support", label: t("inbox.ticket.title") }} />
       <form
         className="grid gap-4"

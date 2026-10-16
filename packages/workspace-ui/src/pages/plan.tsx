@@ -69,7 +69,7 @@ function PlanBilling() {
   const { t } = useI18n();
   const allowed = useHasPermission(SUBSCRIPTIONS_PERMISSION);
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <SettingsNav />
       <PageHeading icon={WalletIcon} title={t("workspace.plan.title")} description={t("workspace.plan.subtitle")} />
       {allowed ? <PlanBody /> : <NoPermission permission={SUBSCRIPTIONS_PERMISSION} />}
@@ -89,7 +89,7 @@ function PlanBody() {
   const planName = (id: string) => planList.find((p) => p.id === id)?.name ?? id;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       {state.readOnly && (
         <Alert>
           <InfoIcon />
@@ -112,7 +112,7 @@ function PlanBody() {
 
 function PlanSkeleton() {
   return (
-    <div className="grid gap-4" aria-busy="true">
+    <div className="grid gap-section" aria-busy="true">
       <Skeleton className="h-48 rounded-2xl" />
       <Skeleton className="h-44 rounded-2xl" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -77,9 +77,9 @@ export function siteModule(opts: SiteModuleOptions = {}): WebModule {
   ];
 
   const widgetDefs: WidgetDef[] = [
-    { id: "site-store", size: "sm", feature: F.cms, component: React.lazy(() => widgets().then((m) => ({ default: m.StoreWidget }))) },
-    { id: "site-visitors", size: "sm", feature: F.analytics, permission: PERMS.reports, component: React.lazy(() => widgets().then((m) => ({ default: m.VisitorsWidget }))) },
-    { id: "site-reviews", size: "sm", feature: F.reviews, permission: PERMS.reviews, component: React.lazy(() => widgets().then((m) => ({ default: m.ReviewsWidget }))) },
+    { id: "site-store", zone: "secondary", priority: 10, feature: F.cms, component: React.lazy(() => widgets().then((m) => ({ default: m.StoreWidget }))) },
+    { id: "site-visitors", zone: "kpi", priority: 30, feature: F.analytics, permission: PERMS.reports, component: React.lazy(() => widgets().then((m) => ({ default: m.VisitorsKpiWidget }))) },
+    { id: "site-reviews", zone: "attention", priority: 40, feature: F.reviews, permission: PERMS.reviews, component: React.lazy(() => widgets().then((m) => ({ default: m.ReviewsAttentionWidget }))) },
   ];
 
   return {

@@ -158,15 +158,15 @@ export default function CouponEditPage() {
   if (!id) return <CouponEditor />;
   if (coupon.isError)
     return (
-      <Page className="max-w-4xl">
+      <Page>
         <PageHeading icon={TicketPercentIcon} title={t("orders.coupons.edit")} back={{ href: "coupons", label: t("orders.coupons.title") }} />
         <QueryError error={coupon.error} onRetry={() => void coupon.refetch()} />
       </Page>
     );
   if (coupon.isPending)
     return (
-      <Page className="max-w-4xl">
-        <div className="grid gap-4">
+      <Page>
+        <div className="grid gap-section">
           <Skeleton className="h-12 w-64" />
           <Skeleton className="h-56 rounded-2xl" />
           <Skeleton className="h-40 rounded-2xl" />
@@ -207,7 +207,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
   const disabled = !canManage;
 
   return (
-    <Page className="max-w-4xl pb-28 md:pb-8">
+    <Page className="pb-28 md:pb-8">
       <PageHeading
         icon={TicketPercentIcon}
         back={{ href: "coupons", label: t("orders.coupons.title") }}
@@ -239,7 +239,7 @@ function CouponEditor({ coupon }: { coupon?: Coupon }) {
 
       <Form {...form}>
         <form onSubmit={onSubmit} noValidate className="grid gap-4">
-          <fieldset disabled={disabled} className="grid min-w-0 gap-4">
+          <fieldset disabled={disabled} className="grid min-w-0 gap-section">
             <Section icon={PercentIcon} title={t("orders.coupons.discount")}>
               <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
                 <FormField

@@ -74,6 +74,7 @@ describe("ordersModule", () => {
     for (const s of m.nav) for (const i of s.items) expect(i.feature, i.href).toBeTruthy();
     for (const r of m.routes) expect(r.feature, r.path).toBeTruthy();
     for (const w of m.widgets ?? []) expect(w.feature, w.id).toBe("orders");
+    expect(Object.fromEntries((m.widgets ?? []).map((w) => [w.id, w.zone]))).toEqual({ "orders-today": "kpi", "orders-needs-action": "attention", "recent-orders": "main" });
     for (const a of m.actions ?? []) expect(a.feature, a.id).toBe("orders");
     for (const p of m.settings ?? []) expect(p.feature, p.path).toBeTruthy();
     expect(m.settings?.map((p) => [p.path, p.feature])).toEqual([

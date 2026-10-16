@@ -104,7 +104,7 @@ export function SchedulesList({
           </AnimatePresence>
         </ul>
       )}
-      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+      <p className="flex items-start gap-1.5 text-meta text-muted-foreground">
         <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
         {t("growth.reports.schedule.lastOnly")}
       </p>
@@ -172,7 +172,7 @@ function ScheduleRow({ schedule: s, name, onEdit, onDelete }: { schedule: Report
           <ScheduleStatus schedule={s} />
           {!s.active && <span className="text-xs font-medium text-muted-foreground">{t("growth.reports.schedule.paused")}</span>}
         </div>
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
           <span className="flex items-center gap-1">
             <CalendarClockIcon className="size-3.5" />
             {summary(s)}
@@ -182,7 +182,7 @@ function ScheduleRow({ schedule: s, name, onEdit, onDelete }: { schedule: Report
             {t("growth.reports.schedule.toCount", { count: s.recipients.length })} · {t(`growth.reports.formats.${s.format}`)}
           </span>
         </p>
-        <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <p className="flex flex-wrap gap-x-3 gap-y-1 text-meta text-muted-foreground">
           <span title={dt(s.lastRunAt)}>{s.lastRunAt ? t("growth.widgets.scheduleLast", { when: rel(s.lastRunAt) }) : t("growth.widgets.scheduleNever")}</span>
           {s.lastRowCount !== null && s.lastRunAt && <span>{t("growth.reports.schedule.rows", { count: s.lastRowCount })}</span>}
           {s.active && s.nextRunAt && <span title={dt(s.nextRunAt)}>{t("growth.widgets.scheduleNext", { when: dt(s.nextRunAt) })}</span>}

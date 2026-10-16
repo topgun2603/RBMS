@@ -74,7 +74,7 @@ function InvoiceDetail() {
   const inv = useInvoice(id);
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <div className="mb-3 flex items-center gap-2" data-print-hide>
         <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
           <ModuleLink to="invoices">
@@ -103,9 +103,9 @@ function DetailSkeleton() {
           <Skeleton className="h-4 w-64" />
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
         <Skeleton className="h-[70vh] rounded-2xl" />
-        <div className="grid content-start gap-4">
+        <div className="grid content-start gap-section">
           <Skeleton className="h-64 rounded-2xl" />
           <Skeleton className="h-40 rounded-2xl" />
         </div>
@@ -240,12 +240,12 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
       )}
 
       {/* Title + actions */}
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between" data-print-hide>
+      <div className="mb-section flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between" data-print-hide>
         <div className="flex min-w-0 items-center gap-3">
           <InitialsAvatar name={inv.customer.name} size="lg" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-heading text-2xl font-bold tracking-tight tabular-nums">{inv.number ?? t("billing.detail.draftTitle")}</h1>
+              <h1 className="font-heading text-2xl font-semibold tracking-tight tabular-nums">{inv.number ?? t("billing.detail.draftTitle")}</h1>
               <StatusBadge status={inv.status} overdue={inv.isOverdue} size="md" />
             </div>
             <p className="truncate text-sm text-muted-foreground">
@@ -253,10 +253,10 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
               {inv.dueDate && open ? ` · ${t("billing.invoices.due", { date: formatDate(inv.dueDate) })}` : ""}
             </p>
           </div>
-          <p className="ml-auto pl-2 text-right font-heading text-xl font-bold tabular-nums sm:text-2xl lg:hidden">{money(inv.total)}</p>
+          <p className="ml-auto pl-2 text-right font-heading text-xl font-bold tabular-nums sm:text-2xl 2xl:hidden">{money(inv.total)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="mr-2 hidden text-right font-heading text-2xl font-bold tabular-nums lg:block">{money(inv.total)}</p>
+          <p className="mr-2 hidden text-right font-heading text-2xl font-bold tabular-nums 2xl:block">{money(inv.total)}</p>
           {draft && (
             <>
               <Button size="lg" className="h-11" onClick={() => setDialog("issue")}>
@@ -325,15 +325,15 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
         <FadeIn>
           <InvoiceDocument invoice={inv} shopName={shopName} logoUrl={logoUrl} />
         </FadeIn>
 
         <div className="grid gap-4 lg:sticky lg:top-20" data-print-hide>
           {!draft && (
-            <Card className="gap-3 py-4">
-              <CardHeader className="px-4">
+            <Card>
+              <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <span className="icon-chip size-8 text-primary">
                     <WalletIcon className="size-4" />
@@ -341,7 +341,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                   {t("billing.detail.paymentStatus")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3 px-4">
+              <CardContent className="grid gap-3">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-sm text-muted-foreground">{t("billing.totals.paid")}</span>
                   <span className="text-right">
@@ -394,7 +394,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                                   </StatusPill>
                                 )}
                               </p>
-                              <p className="truncate text-xs text-muted-foreground">
+                              <p className="mt-0.5 truncate text-meta text-muted-foreground">
                                 {t(`billing.payment.methods.${p.method}`)} · {formatDate(p.date)}
                                 {p.reference ? ` · ${p.reference}` : ""}
                               </p>
@@ -428,8 +428,8 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
           {einvoice && !draft && !!inv.customer.gstin?.trim() && <EInvoiceCard invoice={inv} />}
 
           {sendable && whatsapp && (
-            <Card className="gap-3 py-4">
-              <CardHeader className="px-4">
+            <Card>
+              <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <span className="icon-chip size-8 text-success-ink">
                     <MessagesSquareIcon className="size-4" />
@@ -437,15 +437,15 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                   {t("billing.timeline.title")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4">
+              <CardContent>
                 <MessagesTimeline messages={inv.messages} />
               </CardContent>
             </Card>
           )}
 
           {draft && (
-            <Card className="gap-2 border-dashed py-4">
-              <CardContent className="grid gap-3 px-4 text-sm text-muted-foreground">
+            <Card className="gap-2 border-dashed">
+              <CardContent className="grid gap-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-3">
                   <span className="icon-chip size-9 text-primary">
                     <PencilIcon className="size-4" />
@@ -459,8 +459,8 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
             </Card>
           )}
           {cancelled && (
-            <Card className="gap-1 py-4 ring-destructive/30">
-              <CardContent className="flex items-start gap-3 px-4 text-sm">
+            <Card className="gap-1 ring-destructive/30">
+              <CardContent className="flex items-start gap-3 text-sm">
                 <span className="icon-chip size-9 text-danger-ink">
                   <BanIcon className="size-4" />
                 </span>

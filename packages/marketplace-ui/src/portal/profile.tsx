@@ -43,11 +43,11 @@ export default function StoreProfilePage() {
   const storeUrl = typeof window !== "undefined" ? storeLink(self.slug) : null;
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <PageHeading icon={StoreIcon} title={t("marketplace.profile.title")} description={t("marketplace.profile.subtitle")} />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Card className="py-5">
-          <CardContent className="px-4 sm:px-6">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Card>
+          <CardContent>
             <form onSubmit={submit} noValidate className="grid gap-5">
               <fieldset disabled={suspended} className="contents">
                 <ProfileFields value={draft} onChange={setDraft} errors={tried ? errors : {}} />
@@ -68,18 +68,18 @@ export default function StoreProfilePage() {
         <div className="grid content-start gap-3 lg:sticky lg:top-20">
           <Card className="gap-3 overflow-hidden py-0">
             <div className="h-20 bg-gradient-to-br from-primary/25 via-primary/10 to-transparent" />
-            <CardHeader className="-mt-12 px-4 sm:px-5">
+            <CardHeader className="-mt-12">
               <FadeIn key={draft.logoUrl}>
                 <VendorLogo name={draft.name || self.name} url={draft.logoUrl || null} className="size-16 rounded-2xl ring-4 ring-card" />
               </FadeIn>
               <CardTitle className="pt-2 text-lg">{draft.name || self.name}</CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-5 sm:px-5">
+            <CardContent className="pb-5">
               <p className="line-clamp-5 text-sm whitespace-pre-line text-muted-foreground">{draft.description || t("marketplace.profile.previewEmpty")}</p>
-              <p className="mt-3 text-xs text-muted-foreground">{t("marketplace.profile.products", { count: self.productCount ?? 0 })}</p>
+              <p className="mt-3 text-meta text-muted-foreground">{t("marketplace.profile.products", { count: self.productCount ?? 0 })}</p>
             </CardContent>
           </Card>
-          <p className="text-xs text-muted-foreground">{t("marketplace.profile.previewNote")}</p>
+          <p className="text-meta text-muted-foreground">{t("marketplace.profile.previewNote")}</p>
           {storeUrl && self.status === "active" && (
             <Button asChild variant="outline">
               <a href={storeUrl} target="_blank" rel="noreferrer">

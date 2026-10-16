@@ -41,7 +41,7 @@ export default function BranchesSettingsPage() {
   const { t } = useI18n();
   const allowed = useCan(GROWTH_PERMISSIONS.branches);
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <SettingsNav />
       <PageHeading icon={NetworkIcon} title={t("growth.branches.title")} description={t("growth.branches.subtitle")} />
       {allowed ? (
@@ -153,7 +153,7 @@ function BranchList({ loading, branches, onEdit }: { loading: boolean; branches:
                         </StatusPill>
                       )}
                     </div>
-                    <p className="font-mono text-xs text-muted-foreground">{b.code}</p>
+                    <p className="font-mono text-meta text-muted-foreground">{b.code}</p>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

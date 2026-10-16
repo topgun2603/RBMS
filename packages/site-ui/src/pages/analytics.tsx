@@ -83,7 +83,7 @@ export default function AnalyticsPage() {
 
   if (!can)
     return (
-      <Page className="max-w-3xl">
+      <Page width="narrow">
         <PageHeading icon={BarChart3Icon} title={t("site.analytics.title")} />
         <EmptyState icon={LockIcon} title={t("site.analytics.noAccessTitle")} description={t("site.analytics.noAccess")} />
       </Page>
@@ -176,7 +176,7 @@ export default function AnalyticsPage() {
               </ChartCard>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <ChartCard
                 title={t("site.analytics.funnel")}
                 description={t("site.analytics.funnelHint")}
@@ -196,7 +196,7 @@ export default function AnalyticsPage() {
                 <FunnelChart rows={funnel} label={stepLabel} />
               </ChartCard>
 
-              <div className="grid content-start gap-4">
+              <div className="grid content-start gap-section">
                 <ChartCard
                   title={t("site.analytics.sources")}
                   ariaLabel={t("site.analytics.sourcesAria")}
@@ -235,8 +235,8 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-              <Card className="gap-3 py-4">
-                <CardHeader className="px-4 sm:px-5">
+              <Card>
+                <CardHeader>
                   <CardTitle className="text-base">{t("site.analytics.topProducts")}</CardTitle>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-3">
@@ -287,7 +287,7 @@ export default function AnalyticsPage() {
                 <BarList items={(o?.topSearches ?? []).map((s) => ({ key: s.query, label: `“${s.query}”`, text: s.query, value: s.count, icon: SearchIcon }))} formatValue={count} color="var(--primary)" />
               </ChartCard>
             </div>
-            <p className="text-xs text-muted-foreground">{t("site.analytics.footnote")}</p>
+            <p className="text-meta text-muted-foreground">{t("site.analytics.footnote")}</p>
           </>
         )}
       </div>

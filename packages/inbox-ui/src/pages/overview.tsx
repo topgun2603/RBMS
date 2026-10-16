@@ -5,7 +5,8 @@ import { BookOpenIcon, InboxIcon, LifeBuoyIcon, MegaphoneIcon, MessageCircleIcon
 import { Card, EmptyState, Stagger, StaggerItem } from "@srirealtime/ui";
 import { ModuleLink, Page, PageHeading, useI18n, useVisible } from "@srirealtime/web";
 import { NAV_ITEMS } from "../lib/nav";
-import { TicketsWidget, UnreadWidget, useInboxSources } from "../widgets/inbox";
+import { TicketsWidget, UnreadWidget } from "../components/overview-cards";
+import { useInboxSources } from "../widgets/inbox";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   chat: MessageCircleIcon,
@@ -23,7 +24,7 @@ export default function InboxOverviewPage() {
   // Inside the module's scope the kit already applies its `features` restriction.
   const items = NAV_ITEMS.filter((i) => visible(i));
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading icon={InboxIcon} title={t("inbox.nav.section")} description={t("inbox.overview.subtitle")} />
       {items.length === 0 ? (
         <EmptyState icon={InboxIcon} title={t("inbox.overview.emptyTitle")} description={t("inbox.overview.emptyBody")} />
@@ -41,7 +42,7 @@ export default function InboxOverviewPage() {
               return (
                 <StaggerItem key={i.href}>
                   <ModuleLink to={i.href} className="block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    <Card className="h-full flex-row items-start gap-3 p-4 transition-colors hover:border-primary/30">
+                    <Card className="p-card h-full flex-row items-start gap-3 transition-colors hover:border-primary/30">
                       <span className="icon-chip size-10 rounded-xl text-primary">
                         <Icon className="size-5" />
                       </span>

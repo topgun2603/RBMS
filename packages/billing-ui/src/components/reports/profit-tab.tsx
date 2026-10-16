@@ -49,8 +49,8 @@ export function ProfitTab({ from, to }: RangeProps) {
         ]}
       </TileGrid>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <Card className="gap-3 px-4 py-4 sm:px-5">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <Card className="px-card">
           <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <span className="icon-chip size-8 text-primary">
               <PiggyBankIcon className="size-4" />
@@ -75,10 +75,10 @@ export function ProfitTab({ from, to }: RangeProps) {
               <Line label={t("billing.reports.profit.net")} value={money(r.netProfit)} strong />
             </dl>
           )}
-          <p className="text-xs text-muted-foreground">{t("billing.reports.profit.note")}</p>
+          <p className="text-meta text-muted-foreground">{t("billing.reports.profit.note")}</p>
         </Card>
 
-        <Card className="gap-3 px-4 py-4 sm:px-5" aria-labelledby="profit-gst">
+        <Card className="px-card" aria-labelledby="profit-gst">
           <p id="profit-gst" className="flex items-center gap-2 font-heading text-base font-semibold">
             <span className="icon-chip size-8 text-primary">
               <LandmarkIcon className="size-4" />
@@ -103,7 +103,7 @@ export function ProfitTab({ from, to }: RangeProps) {
                   {payable > 0 ? t("billing.reports.profit.payable") : payable < 0 ? t("billing.reports.profit.carryForward") : t("billing.reports.profit.nothingDue")}
                 </p>
                 <p className="font-heading text-2xl font-bold tabular-nums">{money(Math.abs(payable))}</p>
-                {payable < 0 && <p className="text-xs text-muted-foreground">{t("billing.reports.profit.carryHint")}</p>}
+                {payable < 0 && <p className="text-meta text-muted-foreground">{t("billing.reports.profit.carryHint")}</p>}
               </div>
               {gstReports && (
                 <ModuleLink to="reports?tab=gst" className="text-xs font-medium text-primary underline-offset-4 hover:underline">

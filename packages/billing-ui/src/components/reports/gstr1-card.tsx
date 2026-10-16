@@ -59,7 +59,7 @@ function Gstr1CardInner() {
   const warnings = s?.warnings ?? [];
 
   return (
-    <Card className="gap-3 px-4 py-4">
+    <Card className="px-card">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="icon-chip size-9 shrink-0 text-primary">
@@ -67,7 +67,7 @@ function Gstr1CardInner() {
           </span>
           <div className="min-w-0">
             <h2 className="font-heading text-sm font-semibold">{t("billing.gstr1.title")}</h2>
-            <p className="text-xs text-muted-foreground">{t("billing.gstr1.body")}</p>
+            <p className="text-meta text-muted-foreground">{t("billing.gstr1.body")}</p>
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-[12rem_auto] sm:items-end">

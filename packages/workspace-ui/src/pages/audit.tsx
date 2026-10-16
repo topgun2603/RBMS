@@ -48,7 +48,7 @@ export default function AuditPage() {
   const { t } = useI18n();
   const allowed = useHasPermission(PERMISSIONS.audit, { explicit: true });
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <SettingsNav />
       <PageHeading icon={HistoryIcon} title={t("workspace.audit.title")} description={t("workspace.audit.subtitle")} />
       {allowed ? <AuditLog /> : <NoPermission permission={PERMISSIONS.audit} />}
@@ -154,8 +154,8 @@ function AuditLog() {
   ];
 
   return (
-    <div className="grid gap-4">
-      <Card className="gap-3 px-4 py-4 sm:px-5">
+    <div className="grid gap-section">
+      <Card className="px-card">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <ChipGroup
             size="sm"
@@ -250,7 +250,7 @@ function AuditLog() {
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <div className={cn("grid gap-3 transition-opacity", q.isPlaceholderData && "opacity-60")}>
-          {total !== undefined && <p className="text-xs text-muted-foreground">{t("workspace.audit.count", { count: total })}</p>}
+          {total !== undefined && <p className="text-meta text-muted-foreground">{t("workspace.audit.count", { count: total })}</p>}
           <DataTable
             columns={columns}
             data={rows}

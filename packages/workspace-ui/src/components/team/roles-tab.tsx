@@ -71,7 +71,7 @@ export function RolesTab() {
             const broad = r.permissions.filter((p) => p.includes("*"));
             return (
               <StaggerItem key={r.key} className="min-w-0">
-                <Card className="h-full gap-2 px-4 py-4 sm:px-5">
+                <Card className="px-card h-full gap-2">
                   <div className="flex items-start gap-3">
                     <span className="icon-chip size-9 shrink-0 text-primary">
                       {r.builtin ? <LockIcon className="size-4" /> : <KeyRoundIcon className="size-4" />}
@@ -81,7 +81,7 @@ export function RolesTab() {
                         {roleName(t, r)}
                         {r.builtin && <StatusPill tone="neutral">{t("workspace.roles.builtinBadge")}</StatusPill>}
                       </p>
-                      <p className="line-clamp-2 text-xs text-muted-foreground">{roleDescription(t, r) || t("workspace.roles.noDescription")}</p>
+                      <p className="line-clamp-2 text-meta text-muted-foreground">{roleDescription(t, r) || t("workspace.roles.noDescription")}</p>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -112,7 +112,7 @@ export function RolesTab() {
                     ))}
                     <span className="ml-auto text-muted-foreground">{t("workspace.roles.memberCount", { count: n })}</span>
                   </div>
-                  {r.key === DEFAULT_ROLE_KEY && <p className="text-xs text-muted-foreground">{t("workspace.roles.defaultNote")}</p>}
+                  {r.key === DEFAULT_ROLE_KEY && <p className="text-meta text-muted-foreground">{t("workspace.roles.defaultNote")}</p>}
                 </Card>
               </StaggerItem>
             );

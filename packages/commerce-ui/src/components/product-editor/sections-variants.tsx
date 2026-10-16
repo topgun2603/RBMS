@@ -152,7 +152,7 @@ export function VariantsSection({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{t("commerce.variants.emptyTitle")}</p>
-              <p className="text-xs text-muted-foreground">{t("commerce.variants.emptyBody")}</p>
+              <p className="text-meta text-muted-foreground">{t("commerce.variants.emptyBody")}</p>
             </div>
             <Button type="button" variant="outline" disabled={!canManage} onClick={() => options.append({ name: "Size", values: [] })}>
               <PlusIcon /> {t("commerce.variants.addOption")}
@@ -437,7 +437,7 @@ export function InventorySection({ isNew, stock, stockLoading, unit }: { isNew: 
             <li key={r.id ?? r.key ?? i} className="flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{label}</p>
-                {r.sku && <p className="truncate font-mono text-xs text-muted-foreground">{r.sku}</p>}
+                {r.sku && <p className="truncate font-mono text-meta text-muted-foreground">{r.sku}</p>}
               </div>
               {isNew || !r.id ? (
                 <FormField
@@ -480,7 +480,7 @@ export function InventorySection({ isNew, stock, stockLoading, unit }: { isNew: 
           );
         })}
       </ul>
-      {isNew && <p className="text-xs text-muted-foreground">{t("commerce.editor.openingHint")}</p>}
+      {isNew && <p className="text-meta text-muted-foreground">{t("commerce.editor.openingHint")}</p>}
       <StockAdjustDialog
         open={!!adjusting}
         onOpenChange={(o) => !o && setAdjusting(null)}

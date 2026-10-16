@@ -112,7 +112,7 @@ export function AddressCard({ order }: { order: Order }) {
       </Button>
       {differentBilling && (
         <div className="border-t border-border/60 pt-3 text-sm">
-          <p className="mb-1 text-xs font-medium text-muted-foreground">{t("orders.address.billing")}</p>
+          <p className="mb-1 text-meta font-medium text-muted-foreground">{t("orders.address.billing")}</p>
           <address className="not-italic">
             {addressLines(b!).map((l) => (
               <span key={l} className="block">
@@ -169,7 +169,7 @@ export function DocumentsCard({ order }: { order: Order }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{t("orders.invoice.title")}</p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="mt-0.5 truncate text-meta text-muted-foreground">
               {order.invoiceNumber
                 ? order.invoiceNumber
                 : invoiceFailed

@@ -89,8 +89,8 @@ export function DeliveriesTab({ endpointId, onEndpointChange }: { endpointId: st
   ];
 
   return (
-    <div className="grid gap-4">
-      <Card className="gap-3 px-4 py-4 sm:px-5">
+    <div className="grid gap-section">
+      <Card className="px-card">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <HistoryIcon className="size-4 text-primary" />
@@ -178,7 +178,7 @@ export function DeliveriesTab({ endpointId, onEndpointChange }: { endpointId: st
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <div className={cn("grid gap-3 transition-opacity", q.isPlaceholderData && "opacity-60")}>
-          {total !== undefined && <p className="text-xs text-muted-foreground">{t("growth.developer.deliveries.count", { count: total })}</p>}
+          {total !== undefined && <p className="text-meta text-muted-foreground">{t("growth.developer.deliveries.count", { count: total })}</p>}
           <DataTable
             columns={columns}
             data={rows}

@@ -221,7 +221,7 @@ export function TemplateDialog({ contactId, contactName, open, onOpenChange }: {
               })}
             </div>
             <div className="grid content-start gap-2">
-              <p className="text-xs font-medium text-muted-foreground">{t("inbox.tpl.preview")}</p>
+              <p className="text-meta font-medium text-muted-foreground">{t("inbox.tpl.preview")}</p>
               {preview && <TemplatePreviewCard preview={preview} mediaType={chosen.headerMediaType} mediaLink={media} />}
             </div>
           </div>

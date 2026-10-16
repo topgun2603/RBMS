@@ -142,16 +142,16 @@ export default function ProductEditorPage() {
   const q = useMyProduct(isNew ? null : id);
   if (!isNew && q.isError)
     return (
-      <Page className="max-w-4xl">
+      <Page>
         <PageHeading title={t("marketplace.editor.editTitle")} back={{ href: "products", label: t("marketplace.portal.nav.products") }} />
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       </Page>
     );
   if (!isNew && q.isPending)
     return (
-      <Page className="max-w-4xl">
+      <Page>
         <Skeleton className="mb-5 h-10 w-64" />
-        <div className="grid gap-4">
+        <div className="grid gap-section">
           <Skeleton className="h-56 rounded-2xl" />
           <Skeleton className="h-40 rounded-2xl" />
         </div>
@@ -237,7 +237,7 @@ function Editor({ product }: { product: CatalogProduct | null }) {
   const busy = saving !== null;
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         back={{ href: "products", label: t("marketplace.portal.nav.products") }}
         title={product ? product.name : t("marketplace.editor.newTitle")}
@@ -366,7 +366,7 @@ function Editor({ product }: { product: CatalogProduct | null }) {
       {/* Sticky action bar above the phone tab bar. */}
       <div className="fixed inset-x-0 bottom-16 z-30 border-t bg-card/95 px-4 py-3 backdrop-blur md:sticky md:bottom-4 md:mx-auto md:max-w-4xl md:rounded-2xl md:border md:shadow-elevated">
         <div className="mx-auto flex max-w-4xl items-center justify-end gap-2">
-          <p className="mr-auto hidden text-xs text-muted-foreground sm:block">{t(status === "active" ? "marketplace.editor.liveNote" : "marketplace.editor.draftNote")}</p>
+          <p className="mr-auto hidden text-meta text-muted-foreground sm:block">{t(status === "active" ? "marketplace.editor.liveNote" : "marketplace.editor.draftNote")}</p>
           {status === "active" && product ? (
             <>
               <Button variant="outline" onClick={() => void save("draft")} disabled={busy}>
@@ -414,8 +414,8 @@ function Editor({ product }: { product: CatalogProduct | null }) {
 
 function Section({ icon: Icon, title, children }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
   return (
-    <Card className="gap-4 py-5">
-      <CardHeader className="px-4 sm:px-6">
+    <Card>
+      <CardHeader>
         <CardTitle className="flex items-center gap-2.5 text-base">
           <span className="icon-chip size-8 text-primary">
             <Icon className="size-4" />
@@ -423,7 +423,7 @@ function Section({ icon: Icon, title, children }: { icon: React.ComponentType<{ 
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 px-4 sm:px-6">{children}</CardContent>
+      <CardContent className="grid gap-4">{children}</CardContent>
     </Card>
   );
 }
@@ -597,7 +597,7 @@ function VariantRows({ rows, options, errors, onChange }: { rows: Row[]; options
           );
         })}
       </div>
-      <p className="text-xs text-muted-foreground">{t("marketplace.editor.priceRange", { range: priceRangeOf(rows) })}</p>
+      <p className="text-meta text-muted-foreground">{t("marketplace.editor.priceRange", { range: priceRangeOf(rows) })}</p>
     </div>
   );
 }

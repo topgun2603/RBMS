@@ -101,14 +101,14 @@ export function StockAdjustDialog({
           {/* Live preview */}
           <div className="flex items-center justify-between gap-3 rounded-xl border border-card-ring bg-muted/40 px-4 py-3" aria-live="polite">
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">{t("billing.adjust.current")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.adjust.current")}</p>
               <p className="font-heading text-lg font-semibold tabular-nums">
                 {formatQty(current)} <span className="text-xs font-normal text-muted-foreground">{unit}</span>
               </p>
             </div>
             <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 text-right">
-              <p className="text-xs text-muted-foreground">{t("billing.adjust.new")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.adjust.new")}</p>
               <p className={cn("font-heading text-lg font-bold tabular-nums", next < 0 ? "text-danger-ink" : "text-primary")}>
                 <AnimatedNumber value={next} format={(v) => formatQty(round3(v))} duration={0.35} />{" "}
                 <span className="text-xs font-normal text-muted-foreground">{unit}</span>

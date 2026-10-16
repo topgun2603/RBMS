@@ -31,17 +31,24 @@ import { Label } from "./label";
 
 /** Class names shared with the react-hook-form helpers (FormItem / FormLabel / FormDescription / FormMessage). */
 export const fieldStyles = {
-  /** The field column. `*:data-[slot=field-label-row]` only targets a label row that is a direct child. */
+  /**
+   * The field column: label row → 8px → control → 6px → hint / error.
+   * `*:data-[slot=field-label-row]` only targets a label row that is a direct child.
+   */
   root: "grid min-w-0 content-start gap-2 *:data-[slot=field-label-row]:min-h-5",
   /** Label + optional tag on the left, aside on the right; bottom-aligned so the control offset stays fixed. */
   labelRow: "flex items-end justify-between gap-2",
   /** Pills/badges placed inside the label text get the same -my-1 so the row stays 20px. */
   label: "data-[error=true]:text-destructive *:data-[slot=badge]:-my-1 *:data-[slot=status-pill]:-my-1",
   optional: "text-xs font-normal text-muted-foreground",
-  /** `-my-1` lets a 24px pill (StatusPill sm, a Badge) sit in the 20px row without making it taller. */
-  aside: "-my-1 flex shrink-0 items-center gap-2 text-xs leading-none text-muted-foreground",
-  hint: "text-xs text-muted-foreground",
-  error: "text-xs text-destructive",
+  /**
+   * `-mt-2` lets a 24px pill (StatusPill sm, a Badge) sit in the 20px row without making it taller, and keeps the
+   * aside's bottom on the row's bottom so a counter or link shares the label's baseline.
+   */
+  aside: "-mt-2 flex shrink-0 items-center gap-2 text-xs leading-snug text-muted-foreground",
+  /** Helper text: 13px, 6px under the control (the field's 8px gap less 2px). */
+  hint: "-mt-0.5 text-meta text-muted-foreground",
+  error: "-mt-0.5 text-meta text-destructive",
 } as const;
 
 type FieldContextValue = {
@@ -190,7 +197,7 @@ const ROW_COLS = {
 
 /** Side-by-side fields: one column on phones, `cols` from `sm` up, every column top-aligned (`items-start`). */
 function FieldRow({ className, cols = 2, ...props }: React.ComponentProps<"div"> & { cols?: keyof typeof ROW_COLS }) {
-  return <div data-slot="field-row" className={cn("grid items-start gap-4", ROW_COLS[cols], className)} {...props} />;
+  return <div data-slot="field-row" className={cn("grid items-start gap-x-4 gap-y-5", ROW_COLS[cols], className)} {...props} />;
 }
 
 /**

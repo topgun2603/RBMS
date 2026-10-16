@@ -14,7 +14,7 @@ export default function CollectionEditPage() {
   if (q.isError) {
     const missing = q.error instanceof ApiError && (q.error.status === 404 || q.error.status === 400);
     return (
-      <Page className="max-w-3xl">
+      <Page width="narrow">
         {missing ? (
           <EmptyState
             icon={LayersIcon}
@@ -33,10 +33,10 @@ export default function CollectionEditPage() {
   }
   if (!q.data) {
     return (
-      <Page className="max-w-5xl">
+      <Page>
         <Skeleton className="mb-5 h-10 w-64" />
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <Card className="gap-4 p-5">
+        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <Card className="p-card">
             {Array.from({ length: 5 }, (_, i) => (
               <Skeleton key={i} className="h-11 w-full" />
             ))}

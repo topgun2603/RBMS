@@ -107,7 +107,7 @@ export function MovementsSheet({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{tOr(t, `billing.movements.reason.${m.reason}`, m.reason)}</p>
-                      <p className="text-xs text-muted-foreground">{when(m.date)}</p>
+                      <p className="text-meta text-muted-foreground">{when(m.date)}</p>
                       {href ? (
                         <ModuleLink
                           to={href}
@@ -116,9 +116,9 @@ export function MovementsSheet({
                           {m.refNumber || t("billing.movements.viewRef")} <ExternalLinkIcon className="size-3" aria-hidden />
                         </ModuleLink>
                       ) : (
-                        m.refNumber && <p className="text-xs text-muted-foreground">{m.refNumber}</p>
+                        m.refNumber && <p className="text-meta text-muted-foreground">{m.refNumber}</p>
                       )}
-                      {m.note && <p className="mt-1 text-xs break-words text-muted-foreground italic">{m.note}</p>}
+                      {m.note && <p className="mt-1 text-meta break-words text-muted-foreground italic">{m.note}</p>}
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={cn("font-semibold tabular-nums", up ? "text-success-ink" : m.delta < 0 ? "text-danger-ink" : "")}>
@@ -136,7 +136,7 @@ export function MovementsSheet({
             </Stagger>
           )}
           {list.data && list.data.total > items.length && (
-            <p className="mt-3 text-center text-xs text-muted-foreground">
+            <p className="mt-3 text-center text-meta text-muted-foreground">
               {t("billing.movements.showing", { shown: items.length, total: list.data.total })}
             </p>
           )}

@@ -79,7 +79,7 @@ export default function PublicStatementPage() {
         {!data ? (
           <>
             <Skeleton className="h-56 rounded-2xl" />
-            <Card className="px-4 py-4">
+            <Card className="px-card">
               <LedgerSkeleton rows={6} />
             </Card>
           </>
@@ -150,7 +150,7 @@ export default function PublicStatementPage() {
             </FadeIn>
 
             <FadeIn delay={0.05}>
-              <Card className="gap-3 py-4 print:border-0 print:py-0">
+              <Card className="print:border-0 print:py-0">
                 <div className="flex items-center gap-2 px-4 sm:px-5 print:px-0">
                   <span className="icon-chip size-8 text-primary print:hidden">
                     <NotebookTabsIcon className="size-4" />

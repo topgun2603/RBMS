@@ -100,7 +100,7 @@ export default function SettingsPage() {
   const canEdit = canManageShop(me.data);
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={BuildingIcon} title={t("billing.settings.title")} description={t("billing.settings.subtitle")} />
       {!canEdit && (
@@ -112,7 +112,7 @@ export default function SettingsPage() {
       {profile.isError ? (
         <QueryError error={profile.error} onRetry={() => void profile.refetch()} />
       ) : profile.isPending ? (
-        <div className="grid gap-4">
+        <div className="grid gap-section">
           <Skeleton className="h-96 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
           <Skeleton className="h-56 rounded-2xl" />
@@ -189,9 +189,9 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} noValidate>
-        <fieldset disabled={!canEdit || save.isPending} className="grid gap-4">
-          <Card className="gap-4 py-5">
-            <CardHeader className="px-5">
+        <fieldset disabled={!canEdit || save.isPending} className="grid gap-section">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="icon-chip size-9 text-primary">
                   <BuildingIcon className="size-4" />
@@ -200,7 +200,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
               </CardTitle>
               <CardDescription>{t("billing.settings.businessHint")}</CardDescription>
             </CardHeader>
-            <CardContent className="grid items-start gap-4 px-5 sm:grid-cols-2">
+            <CardContent className="grid items-start gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">{text("legalName", t("billing.settings.legalName"))}</div>
               <FormField
                 control={form.control}
@@ -261,8 +261,8 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
             </CardContent>
           </Card>
 
-          <Card className="gap-4 py-5">
-            <CardHeader className="px-5">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="icon-chip size-9 text-info-ink">
                   <ReceiptTextIcon className="size-4" />
@@ -270,7 +270,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
                 {t("billing.settings.invoices")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 px-5">
+            <CardContent className="grid gap-4">
               {text("invoicePrefix", t("billing.settings.prefix"), {
                 upper: true,
                 max: 6,
@@ -293,8 +293,8 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
             </CardContent>
           </Card>
 
-          <Card className="gap-4 py-5">
-            <CardHeader className="px-5">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="icon-chip size-9 text-success-ink">
                   <LandmarkIcon className="size-4" />
@@ -303,7 +303,7 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
               </CardTitle>
               <CardDescription>{t("billing.settings.paymentsHint")}</CardDescription>
             </CardHeader>
-            <CardContent className="grid items-start gap-4 px-5 sm:grid-cols-2">
+            <CardContent className="grid items-start gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 {text("upiId", t("billing.settings.upiId"), { placeholder: "shop@okicici", hint: t("billing.settings.upiHint") })}
               </div>
@@ -314,8 +314,8 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
           </Card>
 
           {canEdit && (
-            <div className="sticky bottom-20 z-10 flex justify-end md:bottom-4">
-              <Button type="submit" size="lg" className="h-12 shadow-lg" disabled={save.isPending || !form.formState.isDirty}>
+            <div className="sticky bottom-20 z-30 flex justify-end rounded-2xl border border-border/70 bg-card/90 p-3 shadow-[0_8px_24px_-12px_oklch(0_0_0/0.25)] backdrop-blur-md md:bottom-4">
+              <Button type="submit" size="lg" className="h-11" disabled={save.isPending || !form.formState.isDirty}>
                 {save.isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
                 {t("billing.settings.save")}
               </Button>

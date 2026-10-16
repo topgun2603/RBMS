@@ -126,7 +126,7 @@ export default function VendorDetailPage() {
   const v = q.data;
 
   return (
-    <Page wide className="max-w-6xl">
+    <Page>
       <PageHeading
         back={{ href: "vendors", label: t("marketplace.nav.vendors") }}
         title={
@@ -177,7 +177,7 @@ export default function VendorDetailPage() {
 
 function DetailSkeleton() {
   return (
-    <Page wide className="max-w-6xl">
+    <Page>
       <div className="mb-5 flex items-center gap-3">
         <Skeleton className="size-11 rounded-xl" />
         <div className="space-y-2">
@@ -311,7 +311,7 @@ function Overview({ vendor: v }: { vendor: VendorDetail }) {
   const { t } = useI18n();
   const b = v.balance;
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title={t("marketplace.balance.payable")} value={<AnimatedNumber value={b.balance} format={money} />} description={t("marketplace.balance.payableHint")} />
         <StatCard title={t("marketplace.balance.sales")} value={<AnimatedNumber value={b.sales} format={money} />} />
@@ -320,7 +320,7 @@ function Overview({ vendor: v }: { vendor: VendorDetail }) {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ProfileCard vendor={v} />
-        <div className="grid content-start gap-4">
+        <div className="grid content-start gap-section">
           <CommissionCard vendor={v} />
           <PayoutAccountCard vendor={v} />
         </div>
@@ -333,8 +333,8 @@ function Overview({ vendor: v }: { vendor: VendorDetail }) {
 
 function SectionCard({ icon: Icon, title, action, children }: { icon: React.ComponentType<{ className?: string }>; title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 px-4 sm:px-5">
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2.5 text-base">
           <span className="icon-chip size-8 text-primary">
             <Icon className="size-4" />
@@ -343,7 +343,7 @@ function SectionCard({ icon: Icon, title, action, children }: { icon: React.Comp
         </CardTitle>
         {action}
       </CardHeader>
-      <CardContent className="px-4 sm:px-5">{children}</CardContent>
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }
@@ -839,7 +839,7 @@ function ProductsTab({ vendor: v }: { vendor: VendorDetail }) {
               <Thumb src={p.image} className="size-12" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{p.name}</p>
-                <p className="text-xs text-muted-foreground tabular-nums">{p.priceMin === p.priceMax ? money(p.priceMin) : `${money(p.priceMin)} – ${money(p.priceMax)}`}</p>
+                <p className="text-meta text-muted-foreground tabular-nums">{p.priceMin === p.priceMax ? money(p.priceMin) : `${money(p.priceMin)} – ${money(p.priceMax)}`}</p>
               </div>
             </Card>
           ))}

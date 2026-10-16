@@ -85,7 +85,7 @@ export function KanbanBoard({
               {board.isPending ? (
                 Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
               ) : items.length === 0 ? (
-                <p className="px-2 py-6 text-center text-xs text-muted-foreground">{t("orders.board.empty")}</p>
+                <p className="px-2 py-6 text-center text-meta text-muted-foreground">{t("orders.board.empty")}</p>
               ) : (
                 <AnimatePresence initial={false}>
                   {items.map((o) => (
@@ -112,7 +112,7 @@ export function KanbanBoard({
                             {o.number}
                           </ModuleLink>
                         </div>
-                        <p className="truncate text-xs text-muted-foreground">{o.customerName}</p>
+                        <p className="mt-0.5 truncate text-meta text-muted-foreground">{o.customerName}</p>
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-sm font-semibold tabular-nums">{money(o.total)}</span>
                           <span className="text-[0.6875rem] text-muted-foreground">{formatDate(o.placedAt, { day: "numeric", month: "short" })}</span>
@@ -128,7 +128,7 @@ export function KanbanBoard({
         );
       })}
       {(board.data?.total ?? 0) > (board.data?.items.length ?? 0) && (
-        <p className="col-span-5 text-center text-xs text-muted-foreground">{t("orders.board.limited", { shown: board.data?.items.length ?? 0, total: board.data?.total ?? 0 })}</p>
+        <p className="col-span-5 text-center text-meta text-muted-foreground">{t("orders.board.limited", { shown: board.data?.items.length ?? 0, total: board.data?.total ?? 0 })}</p>
       )}
     </div>
   );

@@ -39,7 +39,7 @@ export default function FeaturesSettingsPage() {
   const planId = features.data?.planId;
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading
         icon={ToggleRightIcon}
@@ -65,11 +65,11 @@ export default function FeaturesSettingsPage() {
       ) : (
         <div className="grid gap-4">
           {groups.map((g) => (
-            <Card key={g.module} className="gap-1 py-4">
-              <CardHeader className="px-4 sm:px-5">
+            <Card key={g.module} className="gap-1">
+              <CardHeader>
                 <CardTitle className="text-base">{featureModuleName(t, g.module, g.items.find((i) => i.key === g.module))}</CardTitle>
               </CardHeader>
-              <CardContent className="divide-y px-4 sm:px-5">
+              <CardContent className="divide-y">
                 {g.items.map((f) => (
                   <FeatureRow key={f.key} feature={f} all={features.features} canManage={canManage} />
                 ))}

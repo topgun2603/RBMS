@@ -77,8 +77,8 @@ export function ReportPreview({
     : "";
 
   return (
-    <Card className="gap-3 py-4" aria-busy={fetching || undefined}>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 sm:px-5">
+    <Card aria-busy={fetching || undefined}>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <CardTitle className="text-base">{t("growth.reports.preview.title")}</CardTitle>
           {fetching && <Loader2Icon className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-label={t("growth.reports.preview.running")} />}

@@ -45,7 +45,7 @@ export function CustomerPicker({
             <InitialsAvatar name={value.customer.name} />
             <div className="min-w-0 flex-1 text-sm">
               <p className="truncate font-semibold">{value.customer.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="mt-0.5 truncate text-meta text-muted-foreground">
                 {[value.customer.phone, value.customer.stateCode && stateLabel(value.customer.stateCode)].filter(Boolean).join(" · ") ||
                   t("billing.picker.noDetails")}
               </p>
@@ -274,7 +274,7 @@ function CustomerSearch({
                     <InitialsAvatar name={o.customer.name} size="sm" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{o.customer.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="mt-0.5 truncate text-meta text-muted-foreground">
                         {[o.customer.phone, o.customer.gstin].filter(Boolean).join(" · ")}
                       </p>
                     </div>

@@ -103,8 +103,8 @@ export function growthModule(opts: GrowthModuleOptions = {}): WebModule {
     opts.widgets === false
       ? []
       : [
-          { id: "loyalty-summary", size: "sm", feature: F.loyalty, permission: P.loyalty, component: widget("LoyaltyWidget", () => import("./widgets/loyalty")) },
-          { id: "report-schedules", size: "sm", feature: F.reports, permission: P.reportsManage, component: widget("ScheduledReportsWidget", () => import("./widgets/reports")) },
+          { id: "loyalty-summary", zone: "secondary", priority: 40, feature: F.loyalty, permission: P.loyalty, component: widget("LoyaltyWidget", () => import("./widgets/loyalty")) },
+          { id: "report-schedules", zone: "secondary", priority: 50, feature: F.reports, permission: P.reportsManage, component: widget("ScheduledReportsWidget", () => import("./widgets/reports")) },
         ];
 
   return {

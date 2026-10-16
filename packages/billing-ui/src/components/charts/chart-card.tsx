@@ -46,7 +46,7 @@ export function ChartCard({
   const id = React.useId();
   return (
     <Card className={cn("gap-3 py-4", className)}>
-      <CardHeader className="flex flex-row items-start justify-between gap-2 px-4 sm:px-5">
+      <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <CardTitle className="text-base">{title}</CardTitle>
           {description && <CardDescription className="text-xs">{description}</CardDescription>}

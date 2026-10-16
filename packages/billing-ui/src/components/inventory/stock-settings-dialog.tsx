@@ -69,7 +69,7 @@ export function StockSettingsDialog({
           <div className="flex items-start justify-between gap-4 rounded-xl border border-card-ring bg-muted/30 p-3">
             <div className="grid gap-0.5">
               <Label htmlFor="stk-track">{t("billing.stock.settings.track")}</Label>
-              <p className="text-xs text-muted-foreground">{t("billing.stock.settings.trackHint")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.stock.settings.trackHint")}</p>
             </div>
             <Switch id="stk-track" checked={track} onCheckedChange={setTrack} />
           </div>
@@ -89,7 +89,7 @@ export function StockSettingsDialog({
               />
               <span className="shrink-0 text-sm text-muted-foreground">{row?.unit || "pcs"}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{t("billing.stock.settings.reorderHint")}</p>
+            <p className="text-meta text-muted-foreground">{t("billing.stock.settings.reorderHint")}</p>
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" size="lg" onClick={() => onOpenChange(false)} disabled={update.isPending}>

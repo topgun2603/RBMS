@@ -53,7 +53,7 @@ export function Section({
           <h2 id={headingId} className="font-heading text-base font-semibold tracking-tight">
             {title}
           </h2>
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
+          {description && <p className="text-meta text-muted-foreground">{description}</p>}
         </div>
         {action && <div className="flex shrink-0 items-center gap-1">{action}</div>}
       </header>

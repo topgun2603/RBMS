@@ -123,7 +123,7 @@ export function MembersTab() {
                         {m.userId === me && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground">{t("workspace.team.you")}</span>}
                         {!m.active && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground">{t("workspace.team.inactive")}</span>}
                       </p>
-                      <p className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+                      <p className="flex flex-wrap items-center gap-x-3 text-meta text-muted-foreground">
                         {m.phone && (
                           <span className="inline-flex items-center gap-1 tabular-nums">
                             <PhoneIcon className="size-3" /> {m.phone}

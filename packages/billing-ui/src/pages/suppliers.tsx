@@ -42,7 +42,7 @@ export default function SuppliersPage() {
   );
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         icon={StoreIcon}
         title={t("billing.suppliers.title")}
@@ -81,7 +81,7 @@ export default function SuppliersPage() {
         <Card className={cn("gap-0 py-1 transition-opacity", list.isPlaceholderData && "opacity-60")}>
           <Stagger key={debounced} className="divide-y px-1">
             {items.map((s) => (
-              <StaggerItem key={s.id} className="flex min-h-16 items-center gap-3 px-3 py-2">
+              <StaggerItem key={s.id} className="flex min-h-16 items-center gap-3 px-3 py-3">
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -90,7 +90,7 @@ export default function SuppliersPage() {
                   <InitialsAvatar name={s.name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{s.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="mt-0.5 truncate text-meta text-muted-foreground">
                       {s.gstin ? <span className="font-mono">{s.gstin}</span> : t("billing.suppliers.noGstin")}
                       {s.stateCode && <> · {stateLabel(s.stateCode)}</>}
                     </p>
@@ -102,7 +102,7 @@ export default function SuppliersPage() {
                         <p className="text-[0.6875rem] text-muted-foreground">{t("billing.suppliers.payable")}</p>
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">{t("billing.suppliers.nothingDue")}</p>
+                      <p className="text-meta text-muted-foreground">{t("billing.suppliers.nothingDue")}</p>
                     )}
                   </div>
                 </button>

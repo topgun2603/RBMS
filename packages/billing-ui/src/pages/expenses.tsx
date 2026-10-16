@@ -47,7 +47,7 @@ export default function ExpensesPage() {
   const allowed = useHasPermission(EXPENSES_PERMISSION);
   if (!allowed) {
     return (
-      <Page className="max-w-6xl">
+      <Page>
         <PageHeading icon={ReceiptIndianRupeeIcon} title={t("billing.expenses.title")} description={t("billing.expenses.subtitle")} />
         <EmptyState icon={LockIcon} title={t("billing.expenses.noAccessTitle")} description={t("billing.expenses.noAccessBody")} />
       </Page>
@@ -159,7 +159,7 @@ function Expenses() {
       />
 
       <div className="grid gap-4">
-        <Card className="gap-3 px-4 py-3 sm:px-5">
+        <Card className="px-card gap-3 py-3">
           <DateRangePicker value={range} onChange={setRange} />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select value={categoryId} onValueChange={setCategoryId}>

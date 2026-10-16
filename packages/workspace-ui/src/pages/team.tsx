@@ -26,7 +26,7 @@ function Team() {
   const setTab = (v: string) => navigate(v === "roles" ? "?tab=roles" : "?", { replace: true, scroll: false });
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <SettingsNav />
       <PageHeading icon={UsersRoundIcon} title={t("workspace.team.title")} description={t("workspace.team.subtitle")} />
       {!allowed ? (

@@ -12,7 +12,7 @@ export function ContentLoader<T>({ kind, query, children }: { kind: "page" | "po
   if (query.isError) {
     const missing = query.error instanceof ApiError && (query.error.status === 404 || query.error.status === 400);
     return (
-      <Page className="max-w-3xl">
+      <Page width="narrow">
         {missing ? (
           <EmptyState
             icon={FileTextIcon}
@@ -31,10 +31,10 @@ export function ContentLoader<T>({ kind, query, children }: { kind: "page" | "po
   }
   if (!query.data)
     return (
-      <Page className="max-w-6xl">
+      <Page>
         <Skeleton className="mb-5 h-10 w-64" />
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <Card className="gap-4 p-5">
+        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <Card className="p-card">
             {Array.from({ length: 5 }, (_, i) => (
               <Skeleton key={i} className="h-11 w-full" />
             ))}

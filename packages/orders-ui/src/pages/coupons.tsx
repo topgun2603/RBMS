@@ -82,7 +82,7 @@ export default function CouponsPage() {
   );
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading
         icon={TicketPercentIcon}
         title={t("orders.coupons.title")}
@@ -152,7 +152,7 @@ export default function CouponsPage() {
                         <CopyButton value={c.code} variant="ghost" size="icon-sm" copiedMessage={t("orders.coupons.copied", { code: c.code })} />
                       </div>
                       {(c.description || c.minOrder > 0) && (
-                        <p className="max-w-[18rem] truncate text-xs text-muted-foreground">
+                        <p className="max-w-[18rem] truncate text-meta text-muted-foreground">
                           {[c.description, c.minOrder > 0 && t("orders.coupons.minOrder", { amount: money(c.minOrder) })].filter(Boolean).join(" · ")}
                         </p>
                       )}

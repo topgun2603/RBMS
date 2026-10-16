@@ -280,8 +280,8 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const pending = save.variables?.body.issue;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-      <div className="grid min-w-0 gap-4">
+    <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="grid min-w-0 gap-section">
         {gaps.length > 0 && (
           <Alert className="border-amber-500/40 bg-amber-500/5">
             <AlertTriangleIcon className="text-amber-600" />
@@ -303,19 +303,19 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
         )}
 
         {/* Customer */}
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
+        <Card>
+          <CardHeader>
             <CardTitle className="text-sm">{t("billing.form.customer")}</CardTitle>
           </CardHeader>
-          <CardContent className="px-4">
+          <CardContent>
             <CustomerPicker value={party} onChange={setParty} invalid={submitted && !!partyError} />
-            {submitted && partyError && <p className="mt-1.5 text-xs text-destructive">{partyError}</p>}
+            {submitted && partyError && <p className="mt-1.5 text-meta text-destructive">{partyError}</p>}
           </CardContent>
         </Card>
 
         {/* Dates + place of supply */}
-        <Card className="gap-3 py-4">
-          <CardContent className="grid items-start gap-4 px-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="grid items-start gap-4 sm:grid-cols-3">
             <Field id="inv-date">
               <FieldLabel>{t("billing.form.date")}</FieldLabel>
               <Input id="inv-date" type="date" value={date} required onChange={(e) => setDate(e.target.value || todayIST())} />
@@ -365,12 +365,12 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
         </Card>
 
         {/* Lines */}
-        <Card className="gap-3 py-4">
-          <CardHeader className="flex flex-row items-center justify-between px-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm">{t("billing.form.items")}</CardTitle>
             <span className="text-xs text-muted-foreground">{t("billing.form.lineCount", { count: filled.length })}</span>
           </CardHeader>
-          <CardContent className="grid gap-3 px-3 sm:px-4">
+          <CardContent className="grid gap-3">
             <UnitList />
             <AnimatePresence initial={false}>
               {lines.map((l, i) => {
@@ -409,8 +409,8 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
 
         {/* Notes */}
         {showNotes ? (
-          <Card className="gap-2 py-4">
-            <CardContent className="grid gap-1.5 px-4">
+          <Card className="gap-2">
+            <CardContent className="grid gap-1.5">
               <Label htmlFor="inv-notes">{t("billing.form.notes")}</Label>
               <Textarea id="inv-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
             </CardContent>
@@ -423,14 +423,14 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
       </div>
 
       {/* Totals (sticky on desktop) */}
-      <div className="grid gap-4 lg:sticky lg:top-20">
-        <Card className="gap-3 overflow-hidden pt-0 pb-4">
+      <div className="grid gap-section lg:sticky lg:top-20">
+        <Card className="overflow-hidden pt-0">
           <div className="h-1.5 bg-gradient-to-r from-primary to-primary/40 print:hidden" aria-hidden />
-          <CardHeader className="flex flex-row items-center justify-between px-4 pt-1">
+          <CardHeader className="flex flex-row items-center justify-between pt-1">
             <CardTitle className="text-sm">{t("billing.form.summary")}</CardTitle>
             <Badge variant="secondary">{inter ? "IGST" : "CGST + SGST"}</Badge>
           </CardHeader>
-          <CardContent className="grid gap-1.5 px-4 text-sm">
+          <CardContent className="grid gap-2 text-sm">
             <Row label={t("billing.totals.subtotal")} value={money(totals.subtotal)} />
             {totals.discount > 0 && <Row label={t("billing.totals.discount")} value={`−${money(totals.discount)}`} />}
             <Row label={t("billing.totals.taxable")} value={money(totals.taxable)} />
@@ -456,7 +456,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
                 className="font-heading text-2xl font-bold text-primary tabular-nums"
               />
             </div>
-            {totals.total > 0 && <p className="text-xs leading-snug text-muted-foreground">{amountInWordsINR(totals.total)}</p>}
+            {totals.total > 0 && <p className="text-meta leading-snug text-muted-foreground">{amountInWordsINR(totals.total)}</p>}
             <LoyaltySummaryRows state={loyalty} total={totals.total} />
             {totals.taxBreakup.length > 1 && (
               <div className="mt-2 grid gap-1 rounded-md bg-muted/50 p-2 text-xs">
@@ -470,7 +470,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
                 ))}
               </div>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               {formatDate(date)} · {stateLabel(effectivePos)}
             </p>
           </CardContent>
@@ -582,7 +582,7 @@ function LineRow({
   };
 
   return (
-    <div className="grid gap-2 rounded-xl border border-border/80 bg-muted/25 p-2.5 transition-colors focus-within:border-primary/40 focus-within:bg-primary/[0.03] sm:p-3" role="group" aria-label={t("billing.form.lineN", { n: index + 1 })}>
+    <div className="grid gap-3 rounded-xl border border-border/80 bg-muted/25 p-3 transition-colors focus-within:border-primary/40 focus-within:bg-primary/[0.03] sm:p-4" role="group" aria-label={t("billing.form.lineN", { n: index + 1 })}>
       <div className="flex items-start gap-2">
         <span className="mt-2 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary tabular-nums">
           {index + 1}
@@ -609,9 +609,9 @@ function LineRow({
           <Trash2Icon />
         </Button>
       </div>
-      <div className="grid grid-cols-3 items-start gap-2 sm:grid-cols-6 sm:pl-8">
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-qty`} className="text-[0.6875rem] text-muted-foreground">
+      <div className="grid grid-cols-3 items-start gap-x-2 gap-y-3 sm:grid-cols-6 sm:pl-8">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-qty`} className="text-xs text-muted-foreground">
             {t("billing.form.qty")}
           </Label>
           <Input
@@ -628,8 +628,8 @@ function LineRow({
           />
           <FieldError id={`${id}-qty-err`} msg={errors.qty} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-unit`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-unit`} className="text-xs text-muted-foreground">
             {t("billing.form.unit")}
           </Label>
           <Input
@@ -642,14 +642,14 @@ function LineRow({
             onChange={(e) => onChange({ unit: e.target.value })}
           />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-gst`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-gst`} className="text-xs text-muted-foreground">
             {t("billing.form.gst")}
           </Label>
           <GstRateSelect id={`${id}-gst`} value={line.gstRate} onChange={(gstRate) => onChange({ gstRate })} size="sm" className="w-full" />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-rate`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-rate`} className="text-xs text-muted-foreground">
             {t("billing.form.rate")}
           </Label>
           <MoneyInput
@@ -663,8 +663,8 @@ function LineRow({
           />
           <FieldError id={`${id}-rate-err`} msg={errors.rate} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-disc`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-disc`} className="text-xs text-muted-foreground">
             {t("billing.form.discount")}
           </Label>
           <MoneyInput
@@ -679,8 +679,8 @@ function LineRow({
           />
           <FieldError id={`${id}-disc-err`} msg={errors.discount} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-hsn`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-hsn`} className="text-xs text-muted-foreground">
             {t("billing.form.hsn")}
           </Label>
           <Input
@@ -816,7 +816,7 @@ function ItemSearch({
                 <PackageIcon className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{it.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="mt-0.5 truncate text-meta text-muted-foreground">
                     {[it.hsn && `HSN ${it.hsn}`, `GST ${it.gstRate}%`].filter(Boolean).join(" · ")}
                   </p>
                 </div>

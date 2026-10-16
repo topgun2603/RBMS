@@ -1,14 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { describeError, ModuleLink, QueryError, tOr, useFeature, useI18n, useMe, useShop } from "@srirealtime/web";
+import { AttentionItem, describeError, KpiTile, ModuleLink, QueryError, tOr, useFeature, useI18n } from "@srirealtime/web";
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
   BanknoteIcon,
   BarChart3Icon,
   BookOpenIcon,
-  BoxesIcon,
   CheckCircle2Icon,
   CircleSlashIcon,
   CreditCardIcon,
@@ -20,10 +19,10 @@ import {
   PlusIcon,
   ReceiptIcon,
   SmartphoneIcon,
+  TrendingUpIcon,
   WalletIcon,
 } from "lucide-react";
 import {
-  AnimatedNumber,
   Button,
   Card,
   CardContent,
@@ -40,8 +39,6 @@ import {
 } from "@srirealtime/ui";
 import { BarList } from "../components/charts/bar-list";
 import { ChartCard } from "../components/charts/chart-card";
-import { Sparkline } from "../components/charts/sparkline";
-import { StatTile } from "../components/charts/stat-tile";
 import { TrendChart } from "../components/charts/trend-chart";
 import { BillsIllustration } from "../components/illustrations";
 import { InvoiceRow, InvoiceRowSkeleton } from "../components/invoice-row";
@@ -63,11 +60,133 @@ const METHOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
  * feature is off; inside, links and buttons that belong to other optional features check them too.
  */
 
-export function SalesHeroWidget() {
-  const summary = useInvoiceSummary();
-  if (summary.isError) return <QueryError error={summary.error} onRetry={() => void summary.refetch()} />;
-  return <Hero summary={summary.data} loading={summary.isPending} />;
+// ---------------------------------------------------------------- KPI tiles (zone "kpi")
+
+/** "Sales this month" with the month's sparkline and the change vs last month. */
+export function SalesKpiWidget() {
+  const { t, formatDate } = useI18n();
+  const q = useInvoiceSummary();
+  const s = q.data;
+  const month = formatDate(new Date(), { month: "long" });
+  return (
+    <KpiTile
+      label={t("billing.dashboard.heroLabel")}
+      icon={TrendingUpIcon}
+      value={s?.month.invoiced}
+      format={compactINR}
+      exact={s ? money(s.month.invoiced) : undefined}
+      delta={s?.prevMonth ? pctChange(s.month.invoiced, s.prevMonth.invoiced) : null}
+      deltaLabel={t("billing.charts.vsLastMonth")}
+      hint={s ? t("billing.dashboard.heroCount", { count: s.month.count, month }) : undefined}
+      spark={s?.trend?.map((p) => p.invoiced)}
+      to="invoices"
+      loading={q.isPending}
+      error={q.isError}
+      onRetry={() => void q.refetch()}
+    />
+  );
 }
+
+/** "Collected" this month. */
+export function CollectedKpiWidget() {
+  const { t } = useI18n();
+  const q = useInvoiceSummary();
+  const s = q.data;
+  const reports = useFeature("invoices.reports");
+  return (
+    <KpiTile
+      label={t("billing.dashboard.collected")}
+      icon={WalletIcon}
+      value={s?.month.collected}
+      format={compactINR}
+      exact={s ? money(s.month.collected) : undefined}
+      delta={s?.prevMonth ? pctChange(s.month.collected, s.prevMonth.collected) : null}
+      deltaLabel={t("billing.charts.vsLastMonth")}
+      hint={s ? t("billing.dashboard.kpiCollectedHint") : undefined}
+      to={reports ? "reports?tab=payments" : undefined}
+      loading={q.isPending}
+      error={q.isError}
+      onRetry={() => void q.refetch()}
+    />
+  );
+}
+
+/** "To collect": every unpaid bill. */
+export function ToCollectKpiWidget() {
+  const { t } = useI18n();
+  const q = useInvoiceSummary();
+  const s = q.data;
+  const creditBook = useFeature("invoices.credit-book");
+  return (
+    <KpiTile
+      label={t("billing.dashboard.outstanding")}
+      icon={ReceiptIcon}
+      value={s?.outstanding}
+      format={compactINR}
+      exact={s ? money(s.outstanding) : undefined}
+      hint={t("billing.dashboard.outstandingHint")}
+      to={creditBook ? "credit-book" : "invoices?status=issued"}
+      loading={q.isPending}
+      error={q.isError}
+      onRetry={() => void q.refetch()}
+    />
+  );
+}
+
+/** "Overdue" bills (count). */
+export function OverdueKpiWidget() {
+  const { t } = useI18n();
+  const q = useInvoiceSummary();
+  const s = q.data;
+  return (
+    <KpiTile
+      label={t("billing.dashboard.overdue")}
+      icon={AlertTriangleIcon}
+      value={s?.overdueCount}
+      hint={s ? t("billing.dashboard.overdueBills", { count: s.overdueCount }) : undefined}
+      to="invoices?status=overdue"
+      loading={q.isPending}
+      error={q.isError}
+      onRetry={() => void q.refetch()}
+    />
+  );
+}
+
+// ---------------------------------------------------------------- needs attention (zone "attention")
+
+/** Overdue bills; with inventory, items that are low or out of stock. Rows hide themselves at zero. */
+export function BillingAttentionWidget() {
+  const { t } = useI18n();
+  const q = useInvoiceSummary();
+  const inventory = useFeature("inventory");
+  const stock = useStockSummary(inventory);
+  return (
+    <>
+      <AttentionItem
+        label={t("billing.dashboard.attnOverdue")}
+        count={q.data?.overdueCount}
+        tone="danger"
+        icon={AlertTriangleIcon}
+        to="invoices?status=overdue"
+        loading={q.isPending}
+        error={q.isError}
+      />
+      {inventory && (
+        <AttentionItem
+          label={t("billing.dashboard.attnStock")}
+          count={(stock.data?.lowCount ?? 0) + (stock.data?.outCount ?? 0)}
+          tone={(stock.data?.outCount ?? 0) > 0 ? "warning" : "info"}
+          icon={PackageIcon}
+          to="stock?filter=low"
+          loading={stock.isPending}
+          error={stock.isError}
+        />
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- main / side
 
 export function SalesTrendWidget() {
   return <SalesTrendCard />;
@@ -89,115 +208,6 @@ export function TopDuesWidget() {
 
 export function LowStockWidget() {
   return <LowStockCard />;
-}
-
-// ---------------------------------------------------------------- hero
-
-function Hero({ summary: s, loading }: { summary?: InvoiceSummaryResponse; loading: boolean }) {
-  const { t, formatDate } = useI18n();
-  const { shopName } = useShop();
-  const me = useMe();
-  const firstName = me.data?.user.name?.split(" ")[0];
-  const month = formatDate(new Date(), { month: "long" });
-  const delta = s?.prevMonth ? pctChange(s.month.invoiced, s.prevMonth.invoiced) : null;
-  const creditBook = useFeature("invoices.credit-book");
-  const purchases = useFeature("inventory.purchases");
-
-  return (
-    <section className="hero-band relative isolate overflow-hidden rounded-3xl p-5 shadow-raised sm:p-7 print:hidden" aria-labelledby="hero-title">
-      <div className="hero-dots pointer-events-none absolute inset-0 -z-10" aria-hidden />
-      <div className="pointer-events-none absolute -top-24 -right-16 -z-10 size-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
-
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 space-y-3">
-          <div>
-            <p className="text-sm font-medium opacity-80">{shopName}</p>
-            <h1 id="hero-title" className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
-              {firstName ? t("billing.dashboard.greetingName", { name: firstName }) : t("billing.dashboard.greeting")}
-            </h1>
-          </div>
-          <div>
-            <p className="text-xs font-semibold tracking-wider uppercase opacity-75">{t("billing.dashboard.heroLabel")}</p>
-            {loading ? (
-              <Skeleton className="mt-2 h-11 w-52 bg-white/20" />
-            ) : (
-              <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-                <p className="font-heading text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl">
-                  <AnimatedNumber value={s?.month.invoiced ?? 0} from={0} duration={1.1} format={(n) => money(Math.round(n / 100) * 100).replace(/\.00$/, "")} />
-                </p>
-                {s?.trend && s.trend.length > 1 && (
-                  <Sparkline values={s.trend.map((p) => p.invoiced)} width={110} height={34} className="mb-1.5 text-current opacity-90" />
-                )}
-              </div>
-            )}
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm opacity-90">
-              {delta !== null && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold">
-                  <span aria-hidden>{Math.abs(delta) < 0.5 ? "•" : delta > 0 ? "▲" : "▼"}</span>
-                  {Math.abs(delta) < 0.5 ? t("billing.charts.noChange") : t(delta > 0 ? "billing.charts.up" : "billing.charts.down", { pct: Math.round(Math.abs(delta)) })}
-                  <span className="font-normal">{t("billing.charts.vsLastMonth")}</span>
-                </span>
-              )}
-              {s && <span>{t("billing.dashboard.heroCount", { count: s.month.count, month })}</span>}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button asChild size="lg" className="h-12 rounded-xl bg-primary-foreground px-5 text-base text-primary shadow-lg shadow-black/10 hover:bg-primary-foreground/90">
-            <ModuleLink to="invoices/new">
-              <PlusIcon className="size-5" /> {t("billing.dashboard.newBill")}
-            </ModuleLink>
-          </Button>
-          {creditBook && (
-            <Button asChild size="lg" variant="ghost" className="h-12 rounded-xl bg-white/12 text-current ring-1 ring-white/20 ring-inset hover:bg-white/20 hover:text-current">
-              <ModuleLink to="credit-book?filter=due">
-                <HandCoinsIcon /> {t("billing.dashboard.quickReceive")}
-              </ModuleLink>
-            </Button>
-          )}
-          {purchases && (
-            <Button asChild size="lg" variant="ghost" className="hidden h-12 rounded-xl bg-white/12 text-current ring-1 ring-white/20 ring-inset hover:bg-white/20 hover:text-current sm:inline-flex">
-              <ModuleLink to="purchases/new">
-                <BoxesIcon /> {t("billing.dashboard.quickPurchase")}
-              </ModuleLink>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
-        <StatTile
-          variant="hero"
-          label={t("billing.dashboard.collected")}
-          value={s?.month.collected}
-          previous={s?.prevMonth?.collected}
-          icon={WalletIcon}
-          loading={loading}
-        />
-        <StatTile
-          variant="hero"
-          label={t("billing.dashboard.outstanding")}
-          value={s?.outstanding}
-          hint={t("billing.dashboard.outstandingHint")}
-          icon={ReceiptIcon}
-          href={creditBook ? "credit-book" : "invoices?status=issued"}
-          loading={loading}
-        />
-        <StatTile
-          variant="hero"
-          className="col-span-2 sm:col-span-1"
-          kind="count"
-          label={t("billing.dashboard.overdue")}
-          value={s?.overdueCount}
-          hint={s ? t("billing.dashboard.overdueBills", { count: s.overdueCount }) : undefined}
-          icon={AlertTriangleIcon}
-          href="invoices?status=overdue"
-          loading={loading}
-        />
-      </div>
-    </section>
-  );
 }
 
 // ---------------------------------------------------------------- charts
@@ -394,12 +404,12 @@ function TopDuesCard() {
         ) : (
           <ul className="grid gap-1">
             {rows.map((r) => (
-              <li key={r.customer.id} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-accent/50">
+              <li key={r.customer.id} className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-2 hover:bg-accent/50">
                 <ModuleLink to={`customers/${r.customer.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <InitialsAvatar name={r.customer.name} size="sm" className="size-9" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-medium">{r.customer.name}</span>
+                      <span className="min-w-0 truncate text-sm font-medium">{r.customer.name}</span>
                       <span className="shrink-0 text-sm font-semibold tabular-nums">{compactINR(r.balance)}</span>
                     </div>
                     <div className="mt-1 h-1.5 w-full rounded-full bg-muted" aria-hidden>
@@ -410,14 +420,14 @@ function TopDuesCard() {
                 {whatsapp && (
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-9 shrink-0 rounded-full"
+                    size="icon"
+                    className="size-9 shrink-0 rounded-full"
+                    title={t("billing.dashboard.remindAria", { name: r.customer.name })}
                     disabled={sending === r.customer.id}
                     aria-label={t("billing.dashboard.remindAria", { name: r.customer.name })}
                     onClick={() => void send(r.customer.id, r.customer.name)}
                   >
                     {sending === r.customer.id ? <Loader2Icon className="animate-spin" /> : <MessageCircleIcon className="text-[#1ea952]" />}
-                    <span className="hidden sm:inline">{t("billing.dashboard.remind")}</span>
                   </Button>
                 )}
               </li>
@@ -448,7 +458,7 @@ function LowStockCard() {
           </ModuleLink>
         </Button>
       </CardHeader>
-      <CardContent className="grid gap-3 px-4 sm:px-5">
+      <CardContent className="grid grid-cols-1 gap-3 px-4 sm:px-5">
         {q.isError ? (
           <QueryError compact error={q.error} onRetry={() => void q.refetch()} />
         ) : q.isPending || !s ? (
@@ -468,7 +478,7 @@ function LowStockCard() {
                 <CheckCircle2Icon className="size-4 shrink-0" /> {t("billing.dashboard.stockAllGood")}
               </p>
             ) : (
-              <ul className="grid gap-1.5">
+              <ul className="grid grid-cols-1 gap-1.5">
                 {s.lowItems.slice(0, 5).map((it) => (
                   <li key={it.itemId}>
                     <ModuleLink

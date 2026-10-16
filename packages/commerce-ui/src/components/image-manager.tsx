@@ -125,7 +125,7 @@ export function ImageManager({
         <Button type="button" variant="link" className="h-auto p-0" onClick={() => inputRef.current?.click()} disabled={disabled || full}>
           {t("commerce.media.choose")}
         </Button>
-        {(value.length === 0 || single) && <p className="text-xs text-muted-foreground">{t("commerce.media.dropHint")}</p>}
+        {(value.length === 0 || single) && <p className="text-meta text-muted-foreground">{t("commerce.media.dropHint")}</p>}
       </div>
     </div>
   );

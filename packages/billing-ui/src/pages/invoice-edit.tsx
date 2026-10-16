@@ -12,13 +12,13 @@ export default function EditInvoicePage() {
   const inv = useInvoice(id);
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading icon={PencilLineIcon} title={t("billing.form.editTitle")} back={{ href: `invoices/${id}`, label: t("billing.detail.back") }} />
       {inv.isError ? (
         <QueryError error={inv.error} onRetry={() => void inv.refetch()} />
       ) : inv.isPending ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="grid gap-4">
+        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid gap-section">
             <Skeleton className="h-28 rounded-2xl" />
             <Skeleton className="h-28 rounded-2xl" />
             <Skeleton className="h-64 rounded-2xl" />

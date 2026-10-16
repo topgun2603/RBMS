@@ -38,6 +38,7 @@ describe("siteModule", () => {
     expect(settings).toEqual({ store: SITE_FEATURES.storefront, domain: SITE_FEATURES.customDomain });
     expect((m.settings ?? []).find((p) => p.path === "domain")?.roles).toEqual(["owner", "admin"]);
     expect(Object.fromEntries((m.widgets ?? []).map((w) => [w.id, w.feature]))).toEqual({ "site-store": "cms", "site-visitors": "analytics", "site-reviews": "reviews" });
+    expect(Object.fromEntries((m.widgets ?? []).map((w) => [w.id, w.zone]))).toEqual({ "site-store": "secondary", "site-visitors": "kpi", "site-reviews": "attention" });
   });
 
   it("matches new before :id and honours a base path", () => {

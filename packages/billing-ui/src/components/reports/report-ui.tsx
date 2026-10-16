@@ -75,7 +75,7 @@ export function DownloadCsvButton({
 /** Headline tiles: two columns on phones, four on desktop, staggered entrance. */
 export function TileGrid({ children }: { children: React.ReactNode[] }) {
   return (
-    <Stagger className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {children.map((c, i) => (
         <StaggerItem key={i} className="min-w-0">
           {c}
@@ -111,7 +111,7 @@ export function TabError({ error, onRetry }: { error: unknown; onRetry: () => vo
 export function Refreshing({ active, children }: { active: boolean; children: React.ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className={cn("relative grid gap-4 transition-opacity", active && "opacity-60")} aria-busy={active}>
+    <div className={cn("relative grid gap-section transition-opacity", active && "opacity-60")} aria-busy={active}>
       {active && (
         <span className="sr-only" role="status">
           {t("billing.reports.updating")}
@@ -256,7 +256,7 @@ export function TableCard({
           )}
           <div className="min-w-0">
             <h2 className="font-heading text-base font-semibold">{title}</h2>
-            {description && <p className="text-xs text-muted-foreground">{description}</p>}
+            {description && <p className="text-meta text-muted-foreground">{description}</p>}
           </div>
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

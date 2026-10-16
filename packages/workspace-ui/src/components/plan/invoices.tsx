@@ -62,7 +62,7 @@ export function PlatformInvoices({ planName }: { planName: (id: string) => strin
                       {t(isVoid ? "workspace.plan.invoices.void" : "workspace.plan.invoices.paid")}
                     </StatusPill>
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="mt-0.5 truncate text-meta text-muted-foreground">
                     {planName(inv.planId)} · {t("workspace.plan.invoices.period", { from: d(inv.periodStart ?? inv.createdAt), to: d(inv.periodEnd) })}
                   </p>
                 </div>

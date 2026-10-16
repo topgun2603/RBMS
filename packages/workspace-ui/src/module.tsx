@@ -63,7 +63,7 @@ export function workspaceModule(opts: WorkspaceModuleOptions = {}): WebModule {
       : [
           {
             id: "get-set-up",
-            size: "lg",
+            zone: "setup",
             feature: F.onboarding,
             roles: ["owner", "admin"],
             component: React.lazy(() => import("./widgets/onboarding").then((m) => ({ default: m.OnboardingWidget }))),

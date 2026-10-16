@@ -37,7 +37,7 @@ export function CategoryChecklist({ value, onChange, disabled }: { value: string
           </li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground">{t("orders.coupons.selectedCount", { count: value.length })}</p>
+      <p className="text-meta text-muted-foreground">{t("orders.coupons.selectedCount", { count: value.length })}</p>
     </div>
   );
 }

@@ -83,6 +83,10 @@ export const en: Messages = {
   "billing.dashboard.quickReceive": "Receive money",
   "billing.dashboard.quickPurchase": "Add purchase",
   "billing.dashboard.quickReports": "Reports",
+  "billing.dashboard.kpiBills": "{count, plural, =0 {No bills yet} one {# bill} other {# bills}}",
+  "billing.dashboard.kpiCollectedHint": "Received this month",
+  "billing.dashboard.attnOverdue": "Overdue bills",
+  "billing.dashboard.attnStock": "Items low or out of stock",
 
   "billing.form.creditWarningTitle": "Credit limit crossed",
   "billing.form.creditWarning": "{name}'s balance is now above their credit limit.",
@@ -171,6 +175,10 @@ export const ta: Messages = {
   "billing.dashboard.quickReceive": "பணம் பெறு",
   "billing.dashboard.quickPurchase": "கொள்முதல் சேர்",
   "billing.dashboard.quickReports": "அறிக்கைகள்",
+  "billing.dashboard.kpiBills": "{count, plural, =0 {இன்னும் பில் இல்லை} other {# பில்கள்}}",
+  "billing.dashboard.kpiCollectedHint": "இந்த மாதம் வந்தது",
+  "billing.dashboard.attnOverdue": "தவணை கடந்த பில்கள்",
+  "billing.dashboard.attnStock": "குறைந்த / தீர்ந்த இருப்புப் பொருட்கள்",
 
   "billing.form.creditWarningTitle": "கடன் வரம்பு தாண்டியது",
   "billing.form.creditWarning": "{name} அவர்களின் நிலுவை இப்போது கடன் வரம்பை விட அதிகம்.",

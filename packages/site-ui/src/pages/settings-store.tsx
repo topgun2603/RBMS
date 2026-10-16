@@ -21,14 +21,14 @@ export default function StoreSettingsPage() {
   const q = useStoreSettings();
   const canEdit = useIsManager();
   return (
-    <Page className="max-w-3xl pb-0">
+    <Page width="narrow" className="pb-0">
       <SettingsNav />
       <PageHeading icon={StoreIcon} title={t("site.store.title")} description={t("site.store.subtitle")} />
       {!canEdit && <ReadOnlyNote>{t("site.common.readOnlySettings")}</ReadOnlyNote>}
       {q.isError ? (
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : !q.data ? (
-        <div className="grid gap-4">
+        <div className="grid gap-section">
           <Skeleton className="h-40 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
@@ -94,7 +94,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} noValidate className="grid gap-5">
+      <form onSubmit={onSubmit} noValidate className="grid gap-section">
         <Section icon={StoreIcon} title={t("site.store.openTitle")} description={t("site.store.openHint")}>
           <FormField
             control={form.control}

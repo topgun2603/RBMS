@@ -53,7 +53,7 @@ export default function LoyaltyMemberPage() {
   const { id } = useRouteParams<{ id: string }>();
   const member = useMember(id);
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <div className="mb-3">
         <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
           <ModuleLink to={GROWTH_ROUTES.loyalty}>
@@ -109,7 +109,7 @@ function MemberView({ id, detail }: { id: string; detail: MemberDetail }) {
           <InitialsAvatar name={m.name ?? m.memberKey} size="lg" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate font-heading text-2xl font-bold tracking-tight">{m.name || t("growth.loyalty.noName")}</h1>
+              <h1 className="truncate font-heading text-2xl font-semibold tracking-tight">{m.name || t("growth.loyalty.noName")}</h1>
               <StatusPill tone="brand" icon={CrownIcon} size="md">
                 {m.tier}
               </StatusPill>
@@ -125,25 +125,25 @@ function MemberView({ id, detail }: { id: string; detail: MemberDetail }) {
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Card className="gap-1 px-4 py-4">
-          <p className="text-xs text-muted-foreground">{t("growth.loyalty.balance")}</p>
+        <Card className="px-card gap-1">
+          <p className="text-meta text-muted-foreground">{t("growth.loyalty.balance")}</p>
           <AnimatedNumber value={m.pointsBalance} from={0} format={(n) => num(Math.round(n))} className="font-heading text-3xl font-bold tabular-nums" />
-          <p className="text-xs text-muted-foreground tabular-nums">{t("growth.loyalty.worth", { value: money(m.pointsValue) })}</p>
+          <p className="text-meta text-muted-foreground tabular-nums">{t("growth.loyalty.worth", { value: money(m.pointsValue) })}</p>
         </Card>
-        <Card className="gap-1 px-4 py-4">
-          <p className="text-xs text-muted-foreground">{t("growth.loyalty.lifetimeSpend")}</p>
+        <Card className="px-card gap-1">
+          <p className="text-meta text-muted-foreground">{t("growth.loyalty.lifetimeSpend")}</p>
           <p className="font-heading text-2xl font-bold tabular-nums">{money(m.lifetimeSpend)}</p>
           {next ? (
             <div className="mt-1 grid gap-1">
               <Progress value={progress} className="h-2" aria-label={t("growth.loyalty.toNextTier", { tier: next.tier.name, value: money(next.spendNeeded) })} />
-              <p className="text-xs text-muted-foreground">{t("growth.loyalty.toNextTier", { tier: next.tier.name, value: money(next.spendNeeded) })}</p>
+              <p className="text-meta text-muted-foreground">{t("growth.loyalty.toNextTier", { tier: next.tier.name, value: money(next.spendNeeded) })}</p>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">{t("growth.loyalty.topTier")}</p>
+            <p className="text-meta text-muted-foreground">{t("growth.loyalty.topTier")}</p>
           )}
         </Card>
-        <Card className="gap-1 px-4 py-4">
-          <p className="text-xs text-muted-foreground">{t("growth.loyalty.expiringSoon")}</p>
+        <Card className="px-card gap-1">
+          <p className="text-meta text-muted-foreground">{t("growth.loyalty.expiringSoon")}</p>
           <p className="font-heading text-2xl font-bold tabular-nums">{num(expiring)}</p>
           {detail.expiringSoon[0] ? (
             <p className="flex items-center gap-1 text-xs text-warning-ink">
@@ -151,12 +151,12 @@ function MemberView({ id, detail }: { id: string; detail: MemberDetail }) {
               {t("growth.loyalty.expiresOn", { points: num(detail.expiringSoon[0].points), date: formatDate(detail.expiringSoon[0].expiresAt) })}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">{t("growth.loyalty.nothingExpiring")}</p>
+            <p className="text-meta text-muted-foreground">{t("growth.loyalty.nothingExpiring")}</p>
           )}
         </Card>
       </div>
 
-      <Card className="gap-3 py-4">
+      <Card>
         <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-heading text-base font-semibold">{t("growth.loyalty.history")}</h2>
           <ChipGroup
@@ -236,7 +236,7 @@ function EntryRow({ entry: e, formatDate, t }: { entry: LedgerEntry; formatDate:
           </StatusPill>
           {e.amountPaise > 0 && <span className="text-xs text-muted-foreground tabular-nums">{t("growth.loyalty.onAmount", { value: money(e.amountPaise) })}</span>}
         </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+        <p className="mt-0.5 truncate text-meta text-muted-foreground">
           {formatDate(e.createdAt, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
           {ref ? ` · ${ref}` : ""}
           {e.note ? ` · ${e.note}` : ""}

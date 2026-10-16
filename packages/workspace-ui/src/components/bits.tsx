@@ -146,7 +146,7 @@ export function Dropzone({
         <Icon className="size-6" />
       </motion.span>
       <p className="font-medium">{title}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
       <input
         ref={input}
         type="file"

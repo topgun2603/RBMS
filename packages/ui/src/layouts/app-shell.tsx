@@ -213,14 +213,14 @@ function SidebarNav({
   }, [sections, currentPath]);
 
   return (
-    <nav className={cn("flex flex-col gap-4 py-3", collapsed ? "px-2" : "px-3")}>
+    <nav className={cn("flex flex-col gap-5 py-3", collapsed ? "px-2" : "px-3")}>
       {sections.map((section, si) => (
         <div key={section.id ?? section.title ?? si} className="flex flex-col gap-0.5">
           {section.title &&
             (collapsed ? (
               si > 0 && <div className="mx-2 mb-1 h-px bg-sidebar-border" />
             ) : (
-              <div className="px-2.5 pb-1.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+              <div className="px-2.5 pb-2 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">
                 {section.title}
               </div>
             ))}

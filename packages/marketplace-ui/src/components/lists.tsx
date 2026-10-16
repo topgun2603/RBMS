@@ -121,7 +121,7 @@ export function LedgerList({ rows, showVendor, showBalance = true }: { rows: (Om
                 <Amount value={e.amount} signed>
                   {signedMoney(e.amount)}
                 </Amount>
-                {showBalance && e.balanceAfter !== null && <p className="text-xs text-muted-foreground tabular-nums">{money(e.balanceAfter)}</p>}
+                {showBalance && e.balanceAfter !== null && <p className="text-meta text-muted-foreground tabular-nums">{money(e.balanceAfter)}</p>}
               </div>
             </Card>
           </StaggerItem>
@@ -172,7 +172,7 @@ function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order
             {o.orderNumber}
             {showVendor && o.vendorName ? <span className="font-normal text-muted-foreground"> · {o.vendorName}</span> : null}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             {formatDate(o.placedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} · {t("marketplace.orders.items", { count: items })}
             {shipBy && (
               <span className={cn("ml-1", late ? "font-medium text-danger-ink" : "")}>
@@ -187,7 +187,7 @@ function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order
         </div>
         <div className="text-right">
           <p className="font-semibold tabular-nums">{money(o.net)}</p>
-          <p className="text-xs text-muted-foreground tabular-nums">{t("marketplace.orders.ofSale", { sale: money(saleAmountOf(o)) })}</p>
+          <p className="text-meta text-muted-foreground tabular-nums">{t("marketplace.orders.ofSale", { sale: money(saleAmountOf(o)) })}</p>
         </div>
         <ChevronDownIcon className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
@@ -206,7 +206,7 @@ function OrderCard({ order: o, showVendor, shipByDays, open, onToggle }: { order
                   <Thumb src={l.image} className="size-10" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{l.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-meta text-muted-foreground">
                       {l.qty} {l.unit} × {money(l.price)}
                       {l.sku ? ` · ${l.sku}` : ""}
                     </p>
@@ -260,7 +260,7 @@ export function PayoutsList({ items, showVendor, actions }: { items: Payout[]; s
                 {showVendor && p.vendorName ? `${p.vendorName} · ` : ""}
                 <span className="tabular-nums">{money(p.amount)}</span>
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 {t("marketplace.payouts.period", { from: d(p.periodFrom), to: d(p.periodTo) })} · {t(`marketplace.settings.provider.${p.provider}`)}
                 {p.providerRef ? ` · ${p.providerRef}` : ""}
               </p>

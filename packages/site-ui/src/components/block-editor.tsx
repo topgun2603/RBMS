@@ -156,7 +156,7 @@ export function BlockEditor({
       </ol>
       {!disabled && (
         <div className="grid gap-2 rounded-xl border border-dashed p-3">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-meta font-medium text-muted-foreground">
             <PlusIcon className="size-3.5" /> {full ? t("site.blocks.full", { max: BLOCK_LIMITS.blocks }) : t("site.blocks.add")}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

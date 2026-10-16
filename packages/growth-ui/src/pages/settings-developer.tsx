@@ -47,7 +47,7 @@ export default function DeveloperSettingsPage() {
   }, [tab]);
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <SettingsNav />
       <PageHeading icon={CodeXmlIcon} title={t("growth.developer.title")} description={t("growth.developer.subtitle")} />
       <Tabs value={tab} onValueChange={(v) => isTab(v) && go({ tab: v, endpoint: null })} className="gap-4">

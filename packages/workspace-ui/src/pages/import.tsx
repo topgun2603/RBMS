@@ -26,7 +26,7 @@ function ImportExport() {
   const tab = params.get("tab") === "export" ? "export" : "import";
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <SettingsNav />
       <PageHeading icon={FileUpIcon} title={t("workspace.import.title")} description={t("workspace.import.subtitle")} />
       {!allowed ? (

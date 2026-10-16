@@ -68,7 +68,7 @@ export default function ReviewsPage() {
   const filtered = rating !== "all" || !!product;
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading icon={StarIcon} title={t("site.reviews.title")} description={t("site.reviews.subtitle")} actions={<ModerationSettings />} />
 
       <div className="mb-4 grid gap-3">
@@ -107,7 +107,7 @@ export default function ReviewsPage() {
       ) : list.isPending ? (
         <div className="grid gap-3">
           {Array.from({ length: 3 }, (_, i) => (
-            <Card key={i} className="gap-3 p-4">
+            <Card key={i} className="p-card">
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-40" />
@@ -123,7 +123,7 @@ export default function ReviewsPage() {
         />
       ) : (
         <>
-          <p className="mb-2 text-xs text-muted-foreground">{t("site.reviews.showing", { n: items.length, total })}</p>
+          <p className="mb-2 text-meta text-muted-foreground">{t("site.reviews.showing", { n: items.length, total })}</p>
           <Stagger className={cn("grid gap-3 transition-opacity", list.isPlaceholderData && "opacity-60")}>
             {items.map((r) => (
               <StaggerItem key={r.id}>
@@ -167,7 +167,7 @@ function ReviewCard({ review: r, product, productLoading, canManage }: { review:
   };
 
   return (
-    <Card className="gap-3 p-4 sm:p-5">
+    <Card className="p-card">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="grid gap-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -207,7 +207,7 @@ function ReviewCard({ review: r, product, productLoading, canManage }: { review:
           ))}
         </ul>
       )}
-      <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+      <p className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
         <span className="font-medium text-foreground">{r.authorName}</span>
         <span>· {formatDate(r.createdAt, { day: "numeric", month: "short", year: "numeric" })}</span>
         {r.helpfulCount > 0 && (
@@ -225,7 +225,7 @@ function ReviewCard({ review: r, product, productLoading, canManage }: { review:
       {replying && (
         <div className="grid gap-2">
           <Textarea autoFocus rows={3} maxLength={2000} value={reply} placeholder={t("site.reviews.replyPlaceholder")} aria-label={t("site.reviews.reply")} onChange={(e) => setReply(e.target.value)} />
-          <p className="text-xs text-muted-foreground">{t("site.reviews.replyHint")}</p>
+          <p className="text-meta text-muted-foreground">{t("site.reviews.replyHint")}</p>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -353,7 +353,7 @@ function ModerationSettings() {
       <PopoverContent align="end" className="grid w-[min(22rem,calc(100vw-2rem))] gap-3">
         <div>
           <p className="font-medium">{t("site.reviews.autoApprove")}</p>
-          <p className="text-xs text-muted-foreground">{t("site.reviews.autoApproveHint")}</p>
+          <p className="text-meta text-muted-foreground">{t("site.reviews.autoApproveHint")}</p>
         </div>
         {q.isError ? (
           <QueryError compact error={q.error} />
@@ -388,7 +388,7 @@ function ModerationSettings() {
             ))}
           </div>
         )}
-        {!manager && <p className="text-xs text-muted-foreground">{t("site.common.readOnlySettings")}</p>}
+        {!manager && <p className="text-meta text-muted-foreground">{t("site.common.readOnlySettings")}</p>}
       </PopoverContent>
     </Popover>
   );

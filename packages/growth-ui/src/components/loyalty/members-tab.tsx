@@ -104,7 +104,7 @@ export function MembersTab() {
   };
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard title={t("growth.loyalty.statMembers")} value={num(summary.data?.members)} icon={UsersIcon} loading={summary.isPending} />
         <StatCard

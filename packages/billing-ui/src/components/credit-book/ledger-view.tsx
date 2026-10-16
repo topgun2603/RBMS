@@ -73,7 +73,7 @@ function Particulars({ e, linkInvoices }: { e: LedgerEntry; linkInvoices: boolea
       ) : (
         <span>{label}</span>
       )}
-      {e.description && e.description !== e.number && <p className="truncate text-xs text-muted-foreground">{e.description}</p>}
+      {e.description && e.description !== e.number && <p className="mt-0.5 truncate text-meta text-muted-foreground">{e.description}</p>}
     </div>
   );
 }
@@ -186,7 +186,7 @@ export function LedgerTimeline({
               <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
                 <div className="min-w-0 text-sm">
                   <Particulars e={e} linkInvoices={linkInvoices} />
-                  <p className="text-xs text-muted-foreground tabular-nums">{formatDate(e.date)}</p>
+                  <p className="text-meta text-muted-foreground tabular-nums">{formatDate(e.date)}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   {amount ? (
@@ -196,7 +196,7 @@ export function LedgerTimeline({
                       {money(amount)}
                     </p>
                   ) : null}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-meta text-muted-foreground">
                     {t("billing.creditBook.ledger.balance")} <RunningBalance value={e.balance} className="text-xs" />
                   </p>
                 </div>

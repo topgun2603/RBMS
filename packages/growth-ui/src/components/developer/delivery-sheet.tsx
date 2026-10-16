@@ -87,7 +87,7 @@ export function DeliverySheet({ id, endpointUrl, onClose }: { id: string | null;
                 {body ? (
                   <>
                     <CodeBlock code={body.text} label={t("growth.developer.deliveries.responseBodyLabel")} maxHeight="max-h-64" wrap />
-                    {body.truncated && <p className="text-xs text-muted-foreground">{t("growth.developer.deliveries.truncated")}</p>}
+                    {body.truncated && <p className="text-meta text-muted-foreground">{t("growth.developer.deliveries.truncated")}</p>}
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">{t("growth.developer.deliveries.noBody")}</p>

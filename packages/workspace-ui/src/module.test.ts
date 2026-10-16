@@ -46,6 +46,7 @@ describe("workspaceModule", () => {
     const m = workspaceModule();
     expect(m.settings?.find((p) => p.path === "setup")?.roles).toEqual(["owner", "admin"]);
     expect(m.widgets?.[0]?.roles).toEqual(["owner", "admin"]);
+    expect(m.widgets?.[0]?.zone).toBe("setup");
     expect(workspaceModule({ onboardingWidget: false }).widgets).toEqual([]);
   });
 

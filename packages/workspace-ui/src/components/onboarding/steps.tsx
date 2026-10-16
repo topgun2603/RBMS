@@ -45,7 +45,7 @@ export function StepRow({ step, compact }: { step: OnboardingStep; compact?: boo
           {stepLabel(t, step)}
           <span className="sr-only"> — {t(`workspace.onboarding.state.${state}`)}</span>
         </p>
-        <p className="text-xs text-muted-foreground">{stepDescription(t, step)}</p>
+        <p className="text-meta text-muted-foreground">{stepDescription(t, step)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {state === "todo" && (

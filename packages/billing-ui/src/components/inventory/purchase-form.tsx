@@ -174,22 +174,22 @@ export function PurchaseForm() {
   const busy = create.isPending || done;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-      <div className="grid min-w-0 gap-4">
+    <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="grid min-w-0 gap-section">
         {/* Supplier */}
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
+        <Card>
+          <CardHeader>
             <CardTitle className="text-sm">{t("billing.purchaseForm.supplier")}</CardTitle>
           </CardHeader>
-          <CardContent className="px-4">
+          <CardContent>
             <SupplierPicker value={party} onChange={setParty} invalid={submitted && !!partyError} />
-            {submitted && partyError && <p className="mt-1.5 text-xs text-destructive">{partyError}</p>}
+            {submitted && partyError && <p className="mt-1.5 text-meta text-destructive">{partyError}</p>}
           </CardContent>
         </Card>
 
         {/* Bill details */}
-        <Card className="gap-3 py-4">
-          <CardContent className="grid items-start gap-4 px-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="grid items-start gap-4 sm:grid-cols-3">
             <div className="grid content-start gap-1.5">
               <Label htmlFor="pur-bill">{t("billing.purchaseForm.billNumber")}</Label>
               <Input
@@ -214,18 +214,18 @@ export function PurchaseForm() {
                 <span className="text-sm">{paid ? t("billing.purchases.paid") : t("billing.purchases.unpaid")}</span>
                 <Switch id="pur-paid" checked={paid} onCheckedChange={setPaid} />
               </div>
-              <p className="text-xs text-muted-foreground">{t("billing.purchaseForm.paidHint")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.purchaseForm.paidHint")}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Lines */}
-        <Card className="gap-3 py-4">
-          <CardHeader className="flex flex-row items-center justify-between px-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm">{t("billing.form.items")}</CardTitle>
             <span className="text-xs text-muted-foreground">{t("billing.form.lineCount", { count: filled.length })}</span>
           </CardHeader>
-          <CardContent className="grid gap-3 px-3 sm:px-4">
+          <CardContent className="grid gap-3">
             <UnitList />
             <AnimatePresence initial={false}>
               {lines.map((l, i) => {
@@ -263,8 +263,8 @@ export function PurchaseForm() {
         </Card>
 
         {showNotes ? (
-          <Card className="gap-2 py-4">
-            <CardContent className="grid gap-1.5 px-4">
+          <Card className="gap-2">
+            <CardContent className="grid gap-1.5">
               <Label htmlFor="pur-notes">{t("billing.form.notes")}</Label>
               <Textarea id="pur-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
             </CardContent>
@@ -277,13 +277,13 @@ export function PurchaseForm() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 lg:sticky lg:top-20">
-        <Card className="gap-3 py-4">
-          <CardHeader className="flex flex-row items-center justify-between px-4">
+      <div className="grid gap-section lg:sticky lg:top-20">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm">{t("billing.purchaseForm.summary")}</CardTitle>
             <Badge variant="secondary">{inter ? "IGST" : "CGST + SGST"}</Badge>
           </CardHeader>
-          <CardContent className="grid gap-1.5 px-4 text-sm">
+          <CardContent className="grid gap-2 text-sm">
             {totals.discount > 0 && <Row label={t("billing.totals.discount")} value={`−${money(totals.discount)}`} />}
             <Row label={t("billing.totals.taxable")} value={money(totals.taxable)} />
             {inter ? (
@@ -309,11 +309,11 @@ export function PurchaseForm() {
               <AnimatedNumber value={itc} format={(n) => money(Math.round(n))} className="font-semibold text-success-ink tabular-nums" />
             </div>
             {linked > 0 && (
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <p className="mt-1 flex items-center gap-1.5 text-meta text-muted-foreground">
                 <PackageIcon className="size-3.5" aria-hidden /> {t("billing.purchaseForm.stockNote", { count: linked })}
               </p>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               {supplierState ? stateLabel(supplierState) : t("billing.purchaseForm.supplierStateUnknown")} → {stateLabel(placeOfSupply)}
             </p>
           </CardContent>
@@ -427,7 +427,7 @@ function LineRow({
   };
 
   return (
-    <div className="grid gap-2 rounded-xl border bg-muted/20 p-2.5 sm:p-3" role="group" aria-label={t("billing.form.lineN", { n: index + 1 })}>
+    <div className="grid gap-3 rounded-xl border bg-muted/20 p-3 sm:p-4" role="group" aria-label={t("billing.form.lineN", { n: index + 1 })}>
       <div className="flex items-start gap-2">
         <span className="mt-3 w-5 shrink-0 text-center text-xs font-medium text-muted-foreground tabular-nums">{index + 1}</span>
         <div className="min-w-0 flex-1">
@@ -458,9 +458,9 @@ function LineRow({
           <Trash2Icon />
         </Button>
       </div>
-      <div className="grid grid-cols-3 items-start gap-2 sm:grid-cols-6 sm:pl-7">
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-qty`} className="text-[0.6875rem] text-muted-foreground">
+      <div className="grid grid-cols-3 items-start gap-x-2 gap-y-3 sm:grid-cols-6 sm:pl-7">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-qty`} className="text-xs text-muted-foreground">
             {t("billing.form.qty")}
           </Label>
           <Input
@@ -476,20 +476,20 @@ function LineRow({
           />
           <FieldError msg={errors.qty} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-unit`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-unit`} className="text-xs text-muted-foreground">
             {t("billing.form.unit")}
           </Label>
           <Input id={`${id}-unit`} list="sr-units" autoComplete="off" size="sm" maxLength={16} value={line.unit} onChange={(e) => onChange({ unit: e.target.value })} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-gst`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-gst`} className="text-xs text-muted-foreground">
             {t("billing.form.gst")}
           </Label>
           <GstRateSelect id={`${id}-gst`} value={line.gstRate} onChange={(gstRate) => onChange({ gstRate })} size="sm" className="w-full" />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-rate`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-rate`} className="text-xs text-muted-foreground">
             {t("billing.purchaseForm.costPrice")}
           </Label>
           <MoneyInput
@@ -502,8 +502,8 @@ function LineRow({
           />
           <FieldError msg={errors.rate} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-disc`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-disc`} className="text-xs text-muted-foreground">
             {t("billing.form.discount")}
           </Label>
           <MoneyInput
@@ -517,8 +517,8 @@ function LineRow({
           />
           <FieldError msg={errors.discount} />
         </div>
-        <div className="grid content-start gap-1">
-          <Label htmlFor={`${id}-hsn`} className="text-[0.6875rem] text-muted-foreground">
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-hsn`} className="text-xs text-muted-foreground">
             {t("billing.form.hsn")}
           </Label>
           <Input
@@ -643,7 +643,7 @@ function ItemSearch({
                 <PackageIcon className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{it.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="mt-0.5 truncate text-meta text-muted-foreground">
                     {[it.hsn && `HSN ${it.hsn}`, `GST ${it.gstRate}%`].filter(Boolean).join(" · ")}
                   </p>
                 </div>

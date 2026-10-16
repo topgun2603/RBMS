@@ -56,7 +56,7 @@ export function StatTile({
   const body = (
     <div
       className={cn(
-        "group flex h-full flex-col gap-2 rounded-2xl p-4 transition-[transform,box-shadow] duration-200",
+        "group flex h-full flex-col gap-2 rounded-2xl p-card transition-[transform,box-shadow] duration-200",
         hero
           ? "bg-white/10 ring-1 ring-white/15 backdrop-blur-sm ring-inset"
           : "border border-card-ring bg-card shadow-elevated",
@@ -89,7 +89,7 @@ export function StatTile({
             )}
           </div>
           {(pct !== null || hint) && (
-            <p className={cn("flex flex-wrap items-center gap-x-1.5 text-xs", hero ? "opacity-90" : "text-muted-foreground")}>
+            <p className={cn("flex flex-wrap items-center gap-x-1.5 text-meta", hero ? "opacity-90" : "text-muted-foreground")}>
               {pct !== null && <Delta pct={pct} goodWhen={goodWhen} hero={hero} label={deltaLabel ?? t("billing.charts.vsLastMonth")} />}
               {hint && <span>{hint}</span>}
             </p>

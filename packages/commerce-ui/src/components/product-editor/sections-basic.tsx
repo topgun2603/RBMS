@@ -351,7 +351,7 @@ export function OrganisationSection() {
       />
       <div className="grid gap-2">
         <Label>{t("commerce.editor.attributes")}</Label>
-        {attrs.fields.length === 0 && <p className="text-xs text-muted-foreground">{t("commerce.editor.attributesEmpty")}</p>}
+        {attrs.fields.length === 0 && <p className="text-meta text-muted-foreground">{t("commerce.editor.attributesEmpty")}</p>}
         <datalist id="commerce-attribute-names">
           {ATTRIBUTE_SUGGESTIONS.map((a) => (
             <option key={a} value={a} />
@@ -425,7 +425,7 @@ export function SeoSection({ isNew }: Ctx) {
           <span className="inline-flex size-7 items-center justify-center rounded-full bg-muted text-xs font-bold text-primary">{host.slice(0, 1).toUpperCase() || "S"}</span>
           <div className="min-w-0 leading-tight">
             <p className="truncate text-sm">{host || "shop"}</p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="mt-0.5 truncate text-meta text-muted-foreground">
               {host} › products › {shownSlug}
             </p>
           </div>

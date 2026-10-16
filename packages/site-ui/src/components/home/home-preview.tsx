@@ -151,7 +151,7 @@ function Title({ children }: { children: React.ReactNode }) {
 }
 
 function Placeholder({ children }: { children: React.ReactNode }) {
-  return <p className="mx-4 rounded-xl border-2 border-dashed px-4 py-6 text-center text-xs text-muted-foreground">{children}</p>;
+  return <p className="mx-4 rounded-xl border-2 border-dashed px-4 py-6 text-center text-meta text-muted-foreground">{children}</p>;
 }
 
 function ProductCard({ p }: { p: PublicProductSummary }) {

@@ -125,7 +125,7 @@ export function SeoPanel({
           <Optional />
         </Label>
         <ImageField value={value.imageUrl} onChange={(v) => set("imageUrl", v)} aspect="aspect-[1200/630]" disabled={disabled} invalid={!!errors?.imageUrl} />
-        <p className="text-xs text-muted-foreground">{t("site.seo.imageHint")}</p>
+        <p className="text-meta text-muted-foreground">{t("site.seo.imageHint")}</p>
         <FieldError code={errors?.imageUrl} />
       </div>
       <Label htmlFor={`${idPrefix}-noindex`} className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3 font-normal">

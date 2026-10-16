@@ -52,7 +52,7 @@ function InvoicesList() {
   }, [list.hasNextPage, list.isFetchingNextPage, list]);
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         icon={FileTextIcon}
         title={t("billing.invoices.title")}

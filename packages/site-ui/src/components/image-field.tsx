@@ -184,7 +184,7 @@ export function ImageField({
           <Button type="button" variant="link" className="h-auto p-0" aria-label={label} onClick={() => inputRef.current?.click()} disabled={disabled}>
             {t("site.media.choose")}
           </Button>
-          <p className="text-xs text-muted-foreground">{t("site.media.dropHint")}</p>
+          <p className="text-meta text-muted-foreground">{t("site.media.dropHint")}</p>
         </div>
       )}
       {!value && !busy && (

@@ -190,7 +190,7 @@ export default function CampaignNewPage() {
   const available = (kinds.data ?? ["wa_contacts", "phones"]).filter((k): k is AudienceKind => (AUDIENCE_KINDS as string[]).includes(k));
 
   return (
-    <Page className="max-w-5xl pb-0 lg:pb-0">
+    <Page className="pb-0 lg:pb-0">
       <PageHeading icon={MegaphoneIcon} title={t("inbox.campaign.new")} description={t("inbox.campaign.newBody")} back={{ href: "campaigns", label: t("inbox.campaign.title") }} />
 
       <ol className="mb-6 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label={t("inbox.campaign.steps")}>
@@ -217,7 +217,7 @@ export default function CampaignNewPage() {
         })}
       </ol>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 overflow-hidden">
           <AnimatePresence mode="wait" custom={dir} initial={false}>
             <motion.div
@@ -254,7 +254,7 @@ export default function CampaignNewPage() {
                       onRemove={sources.length > 1 ? () => setSources((l) => l.filter((_, j) => j !== i)) : undefined}
                     />
                   ))}
-                  <Card className="gap-3 p-4">
+                  <Card className="p-card">
                     <p className="text-sm font-medium">{t("inbox.campaign.addSource")}</p>
                     <div className="flex flex-wrap gap-2">
                       {kinds.isPending ? (
@@ -366,7 +366,7 @@ export default function CampaignNewPage() {
                     </Field>
                   )}
                   {preview.data && (
-                    <p className="text-xs text-muted-foreground">{t("inbox.campaign.duration", { minutes: preview.data.minutes, rate: preview.data.ratePerMinute })}</p>
+                    <p className="text-meta text-muted-foreground">{t("inbox.campaign.duration", { minutes: preview.data.minutes, rate: preview.data.ratePerMinute })}</p>
                   )}
                 </Section>
               )}
@@ -407,7 +407,7 @@ export default function CampaignNewPage() {
             {preview.isError ? (
               <p className="text-xs text-destructive">{describeError(preview.error, t)}</p>
             ) : !preview.data ? (
-              audience.sources.length ? <Skeleton className="h-16 w-full" /> : <p className="text-xs text-muted-foreground">{t("inbox.campaign.pickAudience")}</p>
+              audience.sources.length ? <Skeleton className="h-16 w-full" /> : <p className="text-meta text-muted-foreground">{t("inbox.campaign.pickAudience")}</p>
             ) : (
               <div className={cn("grid gap-2 transition-opacity", preview.isFetching && "opacity-60")} aria-live="polite">
                 <p className="flex items-baseline gap-2">
@@ -434,7 +434,7 @@ export default function CampaignNewPage() {
               />
               {(preview.data?.sample.length ?? 0) > 0 && (
                 <div className="grid gap-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">{t("inbox.campaign.samples")}</p>
+                  <p className="text-meta font-medium text-muted-foreground">{t("inbox.campaign.samples")}</p>
                   {preview.data!.sample.slice(0, 3).map((s) => (
                     <div key={s.phone} className="rounded-lg border bg-muted/30 px-2.5 py-1.5 text-xs">
                       <p className="font-medium">{s.name ?? s.phone}</p>
@@ -558,7 +558,7 @@ function SourceEditor({
           <FieldError>{invalid ? t("inbox.audience.tiersRequired") : null}</FieldError>
         </Field>
       )}
-      {draft.kind === "customers" && <p className="text-xs text-muted-foreground">{t("inbox.audienceHint.customersNote")}</p>}
+      {draft.kind === "customers" && <p className="text-meta text-muted-foreground">{t("inbox.audienceHint.customersNote")}</p>}
       {draft.kind === "phones" && (
         <Field invalid={invalid}>
           <FieldLabel>{t("inbox.audience.paste")}</FieldLabel>

@@ -45,8 +45,8 @@ function useOverflowEdges(ref: React.RefObject<HTMLElement | null>, deps: unknow
 
 /**
  * Tabs across every settings page the app's modules contribute (plus Settings → Features). From `sm` up: a
- * horizontally scrolling tab bar that fades the side(s) with more tabs and keeps the active tab in view. On phones: a
- * native select (the OS picker handles a long list better than a cramped row).
+ * tab bar that wraps onto more rows when the tabs don't fit (every page stays visible; the narrow settings column is too
+ * tight for one scrolling row). On phones: a native select (the OS picker handles a long list better than a cramped row).
  */
 export function SettingsNav({ className }: { className?: string }) {
   const { t } = useI18n();
@@ -94,11 +94,11 @@ export function SettingsNav({ className }: { className?: string }) {
         <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
       </div>
 
-      {/* sm and up: scrollable tab bar */}
+      {/* sm and up: wrapping tab bar */}
       <div className="hidden max-w-full rounded-xl border bg-card p-1 shadow-xs sm:flex sm:w-fit">
         <ul
           ref={scroller}
-          className="relative flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="relative flex min-w-0 flex-wrap gap-1"
           style={fadeMask(edges.left, edges.right)}
         >
           {pages.map((p) => {

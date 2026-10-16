@@ -16,7 +16,7 @@ export function InvoiceRow({ inv, hideCustomer }: { inv: InvoiceSummary; hideCus
     <ModuleLink
       to={`invoices/${inv.id}`}
       className={cn(
-        "group flex min-h-16 items-center gap-3 rounded-xl px-3 py-2.5 outline-none transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring",
+        "group flex min-h-16 items-center gap-3.5 rounded-xl px-3 py-3 outline-none transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring",
         overdue && "bg-destructive/[0.04] hover:bg-destructive/[0.08]",
       )}
     >
@@ -31,7 +31,7 @@ export function InvoiceRow({ inv, hideCustomer }: { inv: InvoiceSummary; hideCus
         <p className={cn("truncate font-medium", inv.status === "cancelled" && "text-muted-foreground line-through")}>
           {hideCustomer ? (inv.number ?? t("billing.status.draft")) : inv.customerName}
         </p>
-        <p className="truncate text-xs text-muted-foreground tabular-nums">
+        <p className="mt-0.5 truncate text-meta text-muted-foreground tabular-nums">
           {hideCustomer ? "" : `${inv.number ?? t("billing.status.draft")} · `}
           {formatDate(inv.date)}
           {inv.dueDate && open && (
@@ -60,7 +60,7 @@ export function InvoiceRow({ inv, hideCustomer }: { inv: InvoiceSummary; hideCus
 
 export function InvoiceRowSkeleton() {
   return (
-    <div className="flex min-h-16 items-center gap-3 px-3 py-2.5">
+    <div className="flex min-h-16 items-center gap-3.5 px-3 py-3">
       <Skeleton className="size-10 rounded-full" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-4 w-40" />

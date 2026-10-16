@@ -80,14 +80,14 @@ export default function FaqArticlePage() {
   const article = useFaqArticle(existing);
   if (existing && article.isError) {
     return (
-      <Page className="max-w-5xl">
+      <Page>
         <QueryError error={article.error} onRetry={() => void article.refetch()} />
       </Page>
     );
   }
   if (existing && !article.data) {
     return (
-      <Page className="max-w-5xl">
+      <Page>
         <Skeleton className="mb-4 h-10 w-64" />
         <Skeleton className="h-96 rounded-2xl" />
       </Page>
@@ -159,7 +159,7 @@ function Editor({ article }: { article: FaqArticle | undefined }) {
   );
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading
         icon={BookOpenIcon}
         back={{ href: "faq", label: t("inbox.faq.title") }}
@@ -190,7 +190,7 @@ function Editor({ article }: { article: FaqArticle | undefined }) {
         }
       />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="grid min-w-0 content-start gap-4">
           <Section icon={PencilLineIcon} title={t("inbox.faq.content")}>
             <Field invalid={tried && !!errors.title}>
@@ -251,7 +251,7 @@ function Editor({ article }: { article: FaqArticle | undefined }) {
           </Section>
         </div>
 
-        <aside className="grid content-start gap-4">
+        <aside className="grid content-start gap-section">
           <Section icon={BookOpenIcon} title={t("inbox.faq.settings")}>
             {article && (
               <Field>
@@ -330,7 +330,7 @@ function Editor({ article }: { article: FaqArticle | undefined }) {
                   <div className={cn("h-full rounded-full bg-success")} style={{ width: `${(article.helpfulYes / votes) * 100}%` }} />
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">{t("inbox.faq.noVotes")}</p>
+                <p className="text-meta text-muted-foreground">{t("inbox.faq.noVotes")}</p>
               )}
             </Section>
           )}

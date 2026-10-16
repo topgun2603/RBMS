@@ -36,7 +36,7 @@ export default function RemindersSettingsPage() {
   const canEdit = canManageShop(me.data);
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={BellRingIcon} title={t("billing.reminders.title")} description={t("billing.reminders.subtitle")} />
       {!canEdit && !me.isPending && (
@@ -47,7 +47,7 @@ export default function RemindersSettingsPage() {
       {profile.isError ? (
         <QueryError error={profile.error} onRetry={() => void profile.refetch()} />
       ) : profile.isPending ? (
-        <div className="grid gap-4">
+        <div className="grid gap-section">
           <Skeleton className="h-56 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
@@ -119,8 +119,8 @@ function RemindersForm({ profile, canEdit }: { profile: Partial<SellerProfile>; 
   return (
     <Stagger className="grid gap-4 pb-4">
       <StaggerItem>
-        <Card className="gap-4 py-5">
-          <CardHeader className="px-5">
+        <Card>
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <span className="icon-chip size-9 text-primary">
                 <CalendarClockIcon className="size-4" />
@@ -129,7 +129,7 @@ function RemindersForm({ profile, canEdit }: { profile: Partial<SellerProfile>; 
             </CardTitle>
             <CardDescription>{t("billing.reminders.autoHint")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 px-5">
+          <CardContent className="grid gap-4">
             <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3">
               <span>
                 <span className="block text-sm font-medium">{t("billing.reminders.autoLabel")}</span>
@@ -240,8 +240,8 @@ function RemindersForm({ profile, canEdit }: { profile: Partial<SellerProfile>; 
       </StaggerItem>
 
       <StaggerItem>
-        <Card className="py-5">
-          <CardContent className="px-5">
+        <Card>
+          <CardContent>
             <label className="flex min-h-11 items-center justify-between gap-4">
               <span className="flex items-start gap-3">
                 <span className="icon-chip size-9 text-success-ink">
@@ -268,8 +268,8 @@ function RemindersForm({ profile, canEdit }: { profile: Partial<SellerProfile>; 
       </StaggerItem>
 
       {canEdit && (
-        <div className="sticky bottom-20 z-10 flex justify-end md:bottom-4">
-          <Button size="lg" className="h-12 shadow-lg" disabled={save.isPending || !dirty} onClick={() => void submit()}>
+        <div className="sticky bottom-20 z-30 flex justify-end rounded-2xl border border-border/70 bg-card/90 p-3 shadow-[0_8px_24px_-12px_oklch(0_0_0/0.25)] backdrop-blur-md md:bottom-4">
+          <Button size="lg" className="h-11" disabled={save.isPending || !dirty} onClick={() => void submit()}>
             {save.isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
             {t("billing.reminders.save")}
           </Button>
@@ -301,12 +301,12 @@ function MessagePreview({ state }: { state: State }) {
   ].filter(Boolean) as { key: string; label: string; text: string }[];
 
   return (
-    <Card className="gap-3 py-5">
-      <CardHeader className="px-5">
+    <Card>
+      <CardHeader>
         <CardTitle className="text-base">{t("billing.reminders.previewTitle")}</CardTitle>
         <CardDescription>{t("billing.reminders.previewHint")}</CardDescription>
       </CardHeader>
-      <CardContent className="px-5">
+      <CardContent>
         <div className="grid gap-3 rounded-2xl bg-[color-mix(in_oklch,var(--success)_8%,var(--muted))] p-4 ring-1 ring-border ring-inset">
           <AnimatePresence initial={false} mode="popLayout">
             {bubbles.length === 0 ? (

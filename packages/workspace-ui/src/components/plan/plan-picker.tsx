@@ -140,7 +140,7 @@ export function PlanPicker({ cur, plans, readOnly }: { cur: SubscriptionCurrent;
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="font-heading text-lg font-semibold">{p.name}</h3>
-                    {p.description && <p className="line-clamp-2 text-xs text-muted-foreground">{p.description}</p>}
+                    {p.description && <p className="line-clamp-2 text-meta text-muted-foreground">{p.description}</p>}
                   </div>
                   {isCurrentPlan && (
                     <StatusPill tone="brand" icon={CrownIcon} className="shrink-0">
@@ -163,7 +163,7 @@ export function PlanPicker({ cur, plans, readOnly }: { cur: SubscriptionCurrent;
                         {paid && <span className="text-sm text-muted-foreground">{interval === "yearly" ? t("workspace.plan.perYear") : t("workspace.plan.perMonth")}</span>}
                       </div>
                       {paid && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-meta text-muted-foreground">
                           {interval === "yearly" ? t("workspace.plan.monthlyEquivalent", { price: formatPaise(Math.round(price / 12)) }) : t("workspace.plan.billedMonthly")} ·{" "}
                           {t("workspace.plan.plusGst")}
                         </p>
@@ -337,7 +337,7 @@ function ChangeDialog({
               <Badge variant="secondary">{t(`workspace.plan.plans.${p.interval}`)}</Badge>
             </div>
             {isPaidPlan(p.plan) && (
-              <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+              <p className="mt-0.5 text-meta text-muted-foreground tabular-nums">
                 {vars.price} {p.interval === "yearly" ? t("workspace.plan.perYear") : t("workspace.plan.perMonth")} · {t("workspace.plan.plusGst")}
               </p>
             )}

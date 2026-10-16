@@ -5,10 +5,41 @@ import { ArrowLeftIcon } from "lucide-react";
 import { cn, controlHeight, type ControlSize } from "@srirealtime/ui";
 import { ModuleLink } from "../app/navigation";
 
-/** Standard page container. The enter animation is applied once by the app frame. */
-export function Page({ children, className, wide }: { children: React.ReactNode; className?: string; wide?: boolean }) {
+/**
+ * Page widths. Every page sits in the same centred frame, so the page heading starts at the same x on every screen;
+ * `narrow` keeps the frame and caps the content column instead of centring a thinner page.
+ *
+ *   narrow   content ≤ 768px, left-aligned in the frame — forms and settings
+ *   default  frame ≤ 1280px (≈1216px of content) — lists, detail pages, editors
+ *   full     frame ≤ 1536px — dashboards, wide tables, report builders
+ */
+export type PageWidth = "narrow" | "default" | "full";
+
+const PAGE_WIDTH: Record<PageWidth, string> = {
+  narrow: "max-w-7xl *:max-w-3xl",
+  default: "max-w-7xl",
+  full: "max-w-[96rem]",
+};
+
+/**
+ * Standard page container: page gutters (`px-page`, 16/24/32px) and vertical padding (`py-page-y`) from the layout
+ * scale, plus one of the named widths. The enter animation is applied once by the app frame.
+ */
+export function Page({
+  children,
+  className,
+  width,
+  wide,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** Named width; defaults to "default" ("full" when `wide`). */
+  width?: PageWidth;
+  /** @deprecated use `width="full"`. */
+  wide?: boolean;
+}) {
   return (
-    <div className={cn("mx-auto w-full px-4 py-5 sm:px-6 lg:px-8 lg:py-8", wide ? "max-w-[96rem]" : "max-w-7xl", className)}>
+    <div className={cn("mx-auto w-full px-page py-page-y", PAGE_WIDTH[width ?? (wide ? "full" : "default")], className)}>
       {children}
     </div>
   );
@@ -34,24 +65,24 @@ export function PageHeading({
   className?: string;
 }) {
   return (
-    <div className={cn("mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)} data-print-hide>
-      <div className="min-w-0 space-y-2">
+    <div className={cn("mb-section flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)} data-print-hide>
+      <div className="min-w-0 space-y-3">
         {back && (
           <ModuleLink
             to={back.href}
-            className="-ml-1 inline-flex items-center gap-1 rounded-md px-1 text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="-ml-1 inline-flex items-center gap-1.5 rounded-md px-1 text-meta font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ArrowLeftIcon className="size-3.5" /> {back.label}
           </ModuleLink>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
           {Icon && (
-            <span className="icon-chip size-10 rounded-xl text-primary">
+            <span className="icon-chip size-11 rounded-xl text-primary">
               <Icon className="size-5" />
             </span>
           )}
-          <div className="min-w-0">
-            <h1 className="font-heading text-2xl font-bold tracking-tight">{title}</h1>
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="font-heading text-2xl leading-tight font-semibold tracking-tight">{title}</h1>
             {description && <p className="text-sm text-muted-foreground">{description}</p>}
           </div>
         </div>

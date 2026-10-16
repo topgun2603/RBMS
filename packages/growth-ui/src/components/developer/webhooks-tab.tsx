@@ -246,7 +246,7 @@ function EndpointCard({
           <p className="truncate font-mono text-sm font-medium" title={ep.url}>
             {ep.url}
           </p>
-          {ep.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{ep.description}</p>}
+          {ep.description && <p className="mt-0.5 line-clamp-2 text-meta text-muted-foreground">{ep.description}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <label htmlFor={switchId} className="sr-only">

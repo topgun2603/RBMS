@@ -73,7 +73,7 @@ export default function CampaignDetailPage() {
 
   if (campaign.isError) {
     return (
-      <Page className="max-w-5xl">
+      <Page>
         <PageHeading title={t("inbox.campaign.title")} back={{ href: "campaigns", label: t("inbox.campaign.title") }} />
         <QueryError error={campaign.error} onRetry={() => void campaign.refetch()} />
       </Page>
@@ -91,7 +91,7 @@ export default function CampaignDetailPage() {
     : [];
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <PageHeading
         icon={MegaphoneIcon}
         title={c?.name ?? <Skeleton className="h-7 w-48" />}
@@ -128,8 +128,8 @@ export default function CampaignDetailPage() {
           <Skeleton className="h-64 rounded-2xl" />
         </div>
       ) : (
-        <div className="grid gap-4">
-          <Card className="gap-4 p-4 sm:p-5">
+        <div className="grid gap-section">
+          <Card className="p-card">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <CampaignStatusPill status={c.status} />
               {c.status === "scheduled" && c.scheduleAt && <span className="text-muted-foreground">{t("inbox.campaign.scheduledFor", { date: formatDate(c.scheduleAt, { dateStyle: "medium", timeStyle: "short" }) })}</span>}
@@ -210,7 +210,7 @@ export default function CampaignDetailPage() {
                       <TableRow key={r.id}>
                         <TableCell className="pl-4 sm:pl-5">
                           <p className="font-medium">{r.name ?? formatPhone(r.phone)}</p>
-                          {r.name && <p className="text-xs text-muted-foreground tabular-nums">{formatPhone(r.phone)}</p>}
+                          {r.name && <p className="text-meta text-muted-foreground tabular-nums">{formatPhone(r.phone)}</p>}
                         </TableCell>
                         <TableCell>
                           <StatusPill tone={RECIPIENT_TONE[r.status]}>{t(`inbox.recipient.${r.status}`)}</StatusPill>

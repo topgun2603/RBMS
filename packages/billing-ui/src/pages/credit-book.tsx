@@ -30,7 +30,7 @@ export default function CreditBookPage() {
   const totals = creditBook.data?.totals;
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <PageHeading
         icon={NotebookTabsIcon}
         title={t("billing.creditBook.title")}
@@ -170,7 +170,7 @@ function CreditBookListRow({
         <InitialsAvatar name={c.name} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{c.name}</p>
-          <p className="truncate text-xs text-muted-foreground tabular-nums">
+          <p className="mt-0.5 truncate text-meta text-muted-foreground tabular-nums">
             {[c.phone, row.lastActivity ? t("billing.creditBook.lastActivity", { date: formatDate(row.lastActivity) }) : t("billing.creditBook.noActivity")]
               .filter(Boolean)
               .join(" · ")}

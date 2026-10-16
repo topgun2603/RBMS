@@ -41,7 +41,7 @@ export default function EInvoiceSettingsPage() {
   const { t } = useI18n();
   const allowed = useCan(GROWTH_PERMISSIONS.einvoice);
   return (
-    <Page className="max-w-4xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={ReceiptTextIcon} title={t("growth.einvoice.title")} description={t("growth.einvoice.subtitle")} />
       {allowed ? <AccountLoader /> : <NoAccess permission={GROWTH_PERMISSIONS.einvoice} />}
@@ -54,7 +54,7 @@ function AccountLoader() {
   if (account.isError) return <QueryError error={account.error} onRetry={() => void account.refetch()} />;
   if (account.isPending) {
     return (
-      <div className="grid gap-4" aria-busy="true">
+      <div className="grid gap-section" aria-busy="true">
         <Skeleton className="h-28 rounded-2xl" />
         <Skeleton className="h-80 rounded-2xl" />
       </div>
@@ -149,7 +149,7 @@ function AccountForm({ account }: { account: EInvoiceAccount }) {
 
   const configured = account.configured;
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <motion.div initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-xs sm:flex-row sm:items-center">
         <span className={`icon-chip size-12 shrink-0 rounded-2xl ${configured ? "text-success-ink" : "text-muted-foreground"}`}>
           {configured ? <ShieldCheckIcon className="size-6" /> : <PlugZapIcon className="size-6" />}
@@ -291,7 +291,7 @@ function AccountForm({ account }: { account: EInvoiceAccount }) {
             <div className="flex items-start justify-between gap-4 rounded-xl border p-3">
               <div className="space-y-0.5">
                 <FieldLabel>{t("growth.einvoice.enabled")}</FieldLabel>
-                <p className="text-xs text-muted-foreground">{t("growth.einvoice.enabledHint")}</p>
+                <p className="text-meta text-muted-foreground">{t("growth.einvoice.enabledHint")}</p>
               </div>
               <FieldControl>
                 <Switch checked={d.enabled} onCheckedChange={(v) => set({ enabled: v })} />
@@ -299,7 +299,7 @@ function AccountForm({ account }: { account: EInvoiceAccount }) {
             </div>
           </Field>
 
-          {ewbOn && <p className="text-xs text-muted-foreground">{t("growth.einvoice.ewbNote")}</p>}
+          {ewbOn && <p className="text-meta text-muted-foreground">{t("growth.einvoice.ewbNote")}</p>}
           {error && <InlineError title={error} />}
           {connected === "ok" && (
             <Alert className="border-success/40 bg-success/10 text-success-ink">
@@ -325,7 +325,7 @@ function AccountForm({ account }: { account: EInvoiceAccount }) {
               </Button>
             )}
           </div>
-          {gsp && <p className="text-xs text-muted-foreground">{t("growth.einvoice.testHint")}</p>}
+          {gsp && <p className="text-meta text-muted-foreground">{t("growth.einvoice.testHint")}</p>}
         </form>
       </SectionCard>
 

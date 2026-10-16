@@ -42,7 +42,7 @@ export function TemplatePreviewCard({
         )}
         {preview.header && <p className="mb-1 font-semibold">{highlight(preview.header)}</p>}
         <p className="break-words whitespace-pre-wrap">{highlight(preview.body) || <span className="text-muted-foreground">{t("inbox.tpl.emptyBody")}</span>}</p>
-        {preview.footer && <p className="mt-1 text-xs text-muted-foreground">{preview.footer}</p>}
+        {preview.footer && <p className="mt-1 text-meta text-muted-foreground">{preview.footer}</p>}
         {preview.buttons.length > 0 && (
           <div className="mt-2 grid gap-1 border-t pt-1.5">
             {preview.buttons.map((b, i) => (

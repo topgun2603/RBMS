@@ -346,6 +346,7 @@ const en: Messages = {
   // widgets
   "marketplace.widget.view": "View",
   "marketplace.widget.applications": "Seller applications",
+  "marketplace.widget.attnApplications": "Seller applications to review",
   "marketplace.widget.noApplications": "No applications waiting.",
   "marketplace.widget.payable": "Payable to sellers",
   "marketplace.widget.payableBody": "{count} sellers would be paid today · {skipped} skipped",
@@ -906,6 +907,7 @@ const ta: Messages = {
   // widgets
   "marketplace.widget.view": "பார்",
   "marketplace.widget.applications": "விற்பனையாளர் விண்ணப்பங்கள்",
+  "marketplace.widget.attnApplications": "பரிசீலிக்க வேண்டிய விற்பனையாளர் விண்ணப்பங்கள்",
   "marketplace.widget.noApplications": "காத்திருக்கும் விண்ணப்பங்கள் இல்லை.",
   "marketplace.widget.payable": "விற்பனையாளர்களுக்குச் செலுத்த வேண்டியது",
   "marketplace.widget.payableBody": "இன்று {count} விற்பனையாளர்களுக்குச் செலுத்தப்படும் · {skipped} தவிர்க்கப்பட்டனர்",

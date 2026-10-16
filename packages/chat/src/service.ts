@@ -302,7 +302,8 @@ export class ChatService {
         .from(chatConversations)
         .leftJoin(chatParticipants, joinOn)
         .where(where)
-        .orderBy(sql`${chatConversations.lastMessageAt} desc nulls last`, desc(chatConversations.createdAt), asc(chatConversations.id))
+        // Latest activity first; a conversation with no messages yet counts from its creation, so a new chat is on page one.
+        .orderBy(sql`coalesce(${chatConversations.lastMessageAt}, ${chatConversations.createdAt}) desc`, asc(chatConversations.id))
         .limit(q.limit)
         .offset(q.offset),
       this.db

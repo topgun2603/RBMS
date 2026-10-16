@@ -184,7 +184,7 @@ export default function ProductsPage() {
   const c = counts.data;
 
   return (
-    <Page wide className="max-w-6xl">
+    <Page width="full">
       <PageHeading
         icon={PackageIcon}
         title={t("commerce.products.title")}
@@ -226,7 +226,7 @@ export default function ProductsPage() {
       />
 
       {/* Filters */}
-      <div className="mb-4 grid gap-3">
+      <div className="mb-4 grid grid-cols-1 gap-3">
         <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_14rem_11rem]">
           <SearchField value={q} onChange={setQ} placeholder={t("commerce.products.search")} />
           <Select value={categoryId || ALL} onValueChange={(v) => setCategoryId(v === ALL ? "" : v)}>
@@ -344,7 +344,7 @@ export default function ProductsPage() {
                         <ProductThumb src={p.image} alt="" className="size-11" />
                         <div className="min-w-0">
                           <p className="truncate font-medium group-hover:text-primary">{p.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="mt-0.5 truncate text-meta text-muted-foreground">
                             {[p.categoryName ?? t("commerce.categories.uncategorised"), t("commerce.products.variantCount", { count: p.variantCount })].join(" · ")}
                           </p>
                         </div>
@@ -372,7 +372,7 @@ export default function ProductsPage() {
           </Card>
 
           {/* Phone cards */}
-          <Stagger key={JSON.stringify(filters)} className="grid gap-2.5 md:hidden">
+          <Stagger key={JSON.stringify(filters)} className="grid grid-cols-1 gap-2.5 md:hidden">
             {items.map((p) => (
               <StaggerItem key={p.id}>
                 <Card className={cn("flex-row items-center gap-3 p-3", selected.has(p.id) && "ring-2 ring-primary/50")}>
@@ -413,7 +413,7 @@ export default function ProductsPage() {
                 {t("commerce.common.loadMore")}
               </Button>
             ) : null}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               {t("commerce.products.showing", { shown: items.length, total })}
               {items[0] && ` · ${t("commerce.products.updated", { date: formatDate(items[0].updatedAt, { day: "numeric", month: "short" }) })}`}
             </p>
@@ -573,7 +573,7 @@ function ListSkeleton({ showStock }: { showStock: boolean }) {
           </div>
         ))}
       </Card>
-      <div className="grid gap-2.5 md:hidden">
+      <div className="grid grid-cols-1 gap-2.5 md:hidden">
         {Array.from({ length: 6 }, (_, i) => (
           <Card key={i} className="flex-row items-center gap-3 p-3">
             <Skeleton className="size-14 rounded-xl" />

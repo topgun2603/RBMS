@@ -23,7 +23,7 @@ export function SectionCard({
 }) {
   return (
     <Card className={cn("gap-4 py-5", className)}>
-      <CardHeader className="flex flex-col gap-3 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
             <span className="icon-chip size-9 shrink-0 rounded-xl text-primary">

@@ -167,7 +167,7 @@ function IssueList({ tone, title, issues, footer }: { tone: "error" | "warning";
           </motion.li>
         ))}
       </ul>
-      {footer && <p className="text-xs text-muted-foreground">{footer}</p>}
+      {footer && <p className="text-meta text-muted-foreground">{footer}</p>}
     </section>
   );
 }

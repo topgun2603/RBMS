@@ -8,15 +8,6 @@ const en: Messages = {
   "store.nav.products": "Products",
   "store.nav.orders": "Orders",
 
-  "store.welcome.greeting": "Hello!",
-  "store.welcome.greetingName": "Hello, {name}!",
-  "store.welcome.title": "{shop} store admin",
-  "store.welcome.body":
-    "Your online store and its billing in one place. Billing is a module mounted at /billing: bills, customers, items, stock and reports appear here as your plan and app allow.",
-  "store.welcome.quick": "Quick actions",
-  "store.welcome.products": "Products",
-  "store.welcome.orders": "Orders",
-
   "store.products.title": "Products",
   "store.products.subtitle": "Your online catalogue",
   "store.orders.title": "Orders",
@@ -35,15 +26,6 @@ const ta: Messages = {
   "store.nav.home": "முகப்பு",
   "store.nav.products": "பொருட்கள்",
   "store.nav.orders": "ஆர்டர்கள்",
-
-  "store.welcome.greeting": "வணக்கம்!",
-  "store.welcome.greetingName": "வணக்கம், {name}!",
-  "store.welcome.title": "{shop} கடை நிர்வாகம்",
-  "store.welcome.body":
-    "உங்கள் ஆன்லைன் கடையும் அதன் பில்லிங்கும் ஒரே இடத்தில். பில்லிங் /billing-இல் இணைக்கப்பட்ட ஒரு தொகுதி: உங்கள் திட்டமும் ஆப்பும் அனுமதிக்கும் பில்கள், வாடிக்கையாளர்கள், பொருட்கள், இருப்பு, அறிக்கைகள் இங்கே தோன்றும்.",
-  "store.welcome.quick": "விரைவுச் செயல்கள்",
-  "store.welcome.products": "பொருட்கள்",
-  "store.welcome.orders": "ஆர்டர்கள்",
 
   "store.products.title": "பொருட்கள்",
   "store.products.subtitle": "உங்கள் ஆன்லைன் பட்டியல்",

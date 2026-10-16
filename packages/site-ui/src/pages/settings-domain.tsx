@@ -33,12 +33,12 @@ export default function DomainSettingsPage() {
   const domains = useDomains();
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={GlobeIcon} title={t("site.domain.title")} description={t("site.domain.subtitle")} />
       {!manager && <ReadOnlyNote>{t("site.common.readOnlySettings")}</ReadOnlyNote>}
 
-      <div className="grid gap-5">
+      <div className="grid gap-section">
         <Section icon={GlobeIcon} title={t("site.domain.defaultTitle")} description={t("site.domain.defaultHint")}>
           <div className="flex flex-wrap items-center gap-2">
             <code className="rounded-lg bg-muted px-3 py-2 font-mono text-sm">{slug ? storeDomainFor(slug) : "…"}</code>
@@ -166,7 +166,7 @@ function DomainCard({ domain: d, canEdit }: { domain: TenantDomain; canEdit: boo
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono font-medium">{d.domain}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             {d.verified && d.verifiedAt
               ? t("site.domain.verifiedOn", { date: formatDate(d.verifiedAt) })
               : d.checkedAt
@@ -203,7 +203,7 @@ function DomainCard({ domain: d, canEdit }: { domain: TenantDomain; canEdit: boo
                   </li>
                 ))}
               </ol>
-              <p className="flex items-start gap-2 text-xs text-muted-foreground">
+              <p className="flex items-start gap-2 text-meta text-muted-foreground">
                 <InfoIcon className="mt-0.5 size-3.5 shrink-0" /> {t("site.domain.propagation")}
               </p>
             </>
@@ -284,8 +284,8 @@ function RecordRow({ record: r, step }: { record: DnsRecord; step: number }) {
           <CopyButton value={r.value} label={t("site.domain.copyValue")} />
         </dd>
       </dl>
-      {r.type === "TXT" && <p className="text-xs text-muted-foreground">{t("site.domain.txtHint")}</p>}
-      {r.type === "CNAME" && <p className="text-xs text-muted-foreground">{t("site.domain.cnameHint")}</p>}
+      {r.type === "TXT" && <p className="text-meta text-muted-foreground">{t("site.domain.txtHint")}</p>}
+      {r.type === "CNAME" && <p className="text-meta text-muted-foreground">{t("site.domain.cnameHint")}</p>}
       {r.note && (
         <p className="flex items-start gap-2 rounded-lg bg-info/10 p-2 text-xs text-info-ink">
           <InfoIcon className="mt-0.5 size-3.5 shrink-0" /> {t("site.domain.apexNote")}

@@ -234,7 +234,7 @@ export default function NewOrderPage() {
 
   if (!can(PERMS.manage)) {
     return (
-      <Page className="max-w-3xl">
+      <Page width="narrow">
         <PageHeading icon={ShoppingBagIcon} title={t("orders.new.title")} back={{ href: "orders", label: t("orders.list.title") }} />
         <ReadOnlyNote icon={LockIcon}>{t("orders.errors.permission_denied")}</ReadOnlyNote>
       </Page>
@@ -249,9 +249,9 @@ export default function NewOrderPage() {
   );
 
   return (
-    <Page wide className="max-w-6xl pb-32 lg:pb-8">
+    <Page className="pb-32 lg:pb-8">
       <PageHeading icon={ShoppingBagIcon} title={t("orders.new.title")} description={t("orders.new.subtitle")} back={{ href: "orders", label: t("orders.list.title") }} />
-      <form id="new-order" onSubmit={submit} noValidate className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <form id="new-order" onSubmit={submit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid min-w-0 content-start gap-4">
           {/* Items */}
           <Section icon={ShoppingCartIcon} title={t("orders.new.items")} description={t("orders.new.itemsHint")}>
@@ -275,7 +275,7 @@ export default function NewOrderPage() {
                         <Thumb src={l.variant.image} alt="" className="size-12" />
                         <div className="min-w-0">
                           <p className="truncate font-medium">{l.variant.productName}</p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="mt-0.5 truncate text-meta text-muted-foreground">
                             {[l.variant.title, l.variant.sku, t("orders.new.catalogPrice", { price: money(l.variant.price) })].filter(Boolean).join(" · ")}
                           </p>
                         </div>
@@ -528,7 +528,7 @@ export default function NewOrderPage() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-raised backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">{t("orders.new.estimate")}</p>
+            <p className="text-meta text-muted-foreground">{t("orders.new.estimate")}</p>
             <p className="font-heading text-xl font-bold tabular-nums">{money(estimate)}</p>
           </div>
           {createButton("flex-1")}
@@ -546,7 +546,7 @@ function SummaryRows({ subtotal, discount, shipping, estimate, anyExclusive }: {
       {discount > 0 && <TotalRow label={t("orders.totals.coupon")} value={<span className="text-success-ink">−{money(discount)}</span>} />}
       <TotalRow label={t("orders.totals.shipping")} value={shipping > 0 ? money(shipping) : t("orders.totals.free")} />
       <TotalRow strong label={t("orders.new.estimate")} value={money(estimate)} className="border-t pt-2" />
-      <p className="text-xs text-muted-foreground">{anyExclusive ? t("orders.new.gstAdded") : t("orders.new.gstNote")}</p>
+      <p className="text-meta text-muted-foreground">{anyExclusive ? t("orders.new.gstAdded") : t("orders.new.gstNote")}</p>
     </>
   );
 }

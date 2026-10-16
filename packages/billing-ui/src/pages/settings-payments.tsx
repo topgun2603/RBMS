@@ -68,14 +68,14 @@ export default function OnlinePaymentsSettingsPage() {
   const account = usePaymentAccount(!!me.data && canEdit);
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={CreditCardIcon} title={t("billing.online.title")} description={t("billing.online.subtitle")} />
       {me.isPending ? (
         <PaymentsSkeleton />
       ) : !canEdit ? (
-        <Card className="py-5">
-          <CardContent className="flex items-start gap-3 px-5">
+        <Card>
+          <CardContent className="flex items-start gap-3">
             <span className="icon-chip size-10 text-muted-foreground">
               <LockIcon className="size-5" />
             </span>
@@ -98,7 +98,7 @@ export default function OnlinePaymentsSettingsPage() {
 
 function PaymentsSkeleton() {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <Skeleton className="h-44 rounded-2xl" />
       <Skeleton className="h-28 rounded-2xl" />
       <Skeleton className="h-72 rounded-2xl" />
@@ -115,7 +115,7 @@ function PaymentsSettings({ account }: { account: PaymentAccount }) {
   }, [account.configured]);
 
   return (
-    <Stagger className="grid gap-4">
+    <Stagger className="grid gap-section">
       <StaggerItem>
         <AnimatePresence mode="wait" initial={false}>
           {account.configured ? (
@@ -154,8 +154,8 @@ function PaymentsSettings({ account }: { account: PaymentAccount }) {
       </AnimatePresence>
 
       <StaggerItem>
-        <Card className="gap-3 py-5">
-          <CardHeader className="px-5">
+        <Card>
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <span className="icon-chip size-9 text-info-ink">
                 <WebhookIcon className="size-4" />
@@ -164,7 +164,7 @@ function PaymentsSettings({ account }: { account: PaymentAccount }) {
             </CardTitle>
             <CardDescription>{t("billing.online.webhookHint")}</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-start gap-2 px-5">
+          <CardContent className="flex items-start gap-2">
             <Input
               readOnly
               value={account.webhookUrl}
@@ -229,7 +229,7 @@ function AccountStatus({ account, editing, onEdit }: { account: PaymentAccount; 
           </div>
         </div>
       </div>
-      <CardContent className="grid gap-4 p-5">
+      <CardContent className="p-card grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <ModePill mode={mode} />
           {account.enabled ? (
@@ -334,8 +334,8 @@ function KeyForm({ account, onSaved }: { account: PaymentAccount; onSaved: () =>
   };
 
   return (
-    <Card className="gap-4 py-5">
-      <CardHeader className="px-5">
+    <Card>
+      <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <span className="icon-chip size-9 text-primary">
             <KeyRoundIcon className="size-4" />
@@ -344,7 +344,7 @@ function KeyForm({ account, onSaved }: { account: PaymentAccount; onSaved: () =>
         </CardTitle>
         <CardDescription>{t("billing.online.formHint")}</CardDescription>
       </CardHeader>
-      <CardContent className="px-5">
+      <CardContent>
         <form className="grid gap-4" noValidate onSubmit={submit}>
           <fieldset disabled={save.isPending} className="grid gap-4">
             {credError && (
@@ -410,7 +410,7 @@ function KeyForm({ account, onSaved }: { account: PaymentAccount; onSaved: () =>
                 value={webhookSecret}
                 onChange={(e) => setWebhookSecret(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">{t("billing.online.webhookSecretHint")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.online.webhookSecretHint")}</p>
             </div>
             <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3">
               <span>
@@ -444,8 +444,8 @@ const STEPS: { key: string; icon: React.ComponentType<{ className?: string }> }[
 function SetupSteps() {
   const { t } = useI18n();
   return (
-    <Card className="gap-4 py-5">
-      <CardHeader className="px-5">
+    <Card>
+      <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <span className="icon-chip size-9 text-primary">
             <RocketIcon className="size-4" />
@@ -454,7 +454,7 @@ function SetupSteps() {
         </CardTitle>
         <CardDescription>{t("billing.online.stepsHint")}</CardDescription>
       </CardHeader>
-      <CardContent className="px-5">
+      <CardContent>
         <ol className="relative grid gap-4">
           <span className="absolute top-5 bottom-5 left-[1.1875rem] w-px bg-border" aria-hidden />
           {STEPS.map((s, i) => {
@@ -479,7 +479,7 @@ function SetupSteps() {
             </a>
           </Button>
         </div>
-        <p className="mt-4 flex items-start gap-2 rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+        <p className="mt-4 flex items-start gap-2 rounded-xl bg-muted/50 p-3 text-meta text-muted-foreground">
           <FlaskConicalIcon className="mt-0.5 size-3.5 shrink-0" />
           {t("billing.online.mockNoteLong")}
         </p>

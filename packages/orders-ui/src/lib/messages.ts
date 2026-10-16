@@ -671,6 +671,12 @@ const en: Messages = {
   "orders.widget.toConfirm": "New, to confirm",
   "orders.widget.toPackShort": "Confirmed, to pack",
   "orders.widget.toShip": "Packed, to ship",
+  "orders.widget.kpiHint": "{total} today · {count} this month",
+  "orders.widget.attnConfirm": "New orders to confirm",
+  "orders.widget.attnPack": "Orders to pack",
+  "orders.widget.attnShip": "Orders to ship",
+  "orders.widget.recent": "Recent orders",
+  "orders.widget.viewAll": "View all",
 };
 
 const ta: Messages = {
@@ -1343,6 +1349,12 @@ const ta: Messages = {
   "orders.widget.toConfirm": "புதியவை, உறுதிசெய்ய",
   "orders.widget.toPackShort": "உறுதியானவை, பேக் செய்ய",
   "orders.widget.toShip": "பேக் ஆனவை, அனுப்ப",
+  "orders.widget.kpiHint": "இன்று {total} · இந்த மாதம் {count}",
+  "orders.widget.attnConfirm": "உறுதிசெய்ய வேண்டிய புதிய ஆர்டர்கள்",
+  "orders.widget.attnPack": "பேக் செய்ய வேண்டிய ஆர்டர்கள்",
+  "orders.widget.attnShip": "அனுப்ப வேண்டிய ஆர்டர்கள்",
+  "orders.widget.recent": "சமீபத்திய ஆர்டர்கள்",
+  "orders.widget.viewAll": "எல்லாம் பார்",
 };
 
 export const ordersMessages = { en, ta } as const;

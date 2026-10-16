@@ -70,7 +70,7 @@ export function TimelineCard({ order }: { order: Order }) {
             }}
           />
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">{t("orders.timeline.noteInternal")}</p>
+            <p className="text-meta text-muted-foreground">{t("orders.timeline.noteInternal")}</p>
             <Button type="submit" size="sm" disabled={!note.trim() || (action.isPending && action.variables?.action === "notes")}>
               {action.isPending && action.variables?.action === "notes" ? <Loader2Icon className="animate-spin" /> : <SendIcon />}
               {t("orders.timeline.addNote")}
@@ -104,7 +104,7 @@ export function TimelineCard({ order }: { order: Order }) {
                 >
                   <p className={cn("text-sm font-medium", v.failed && "text-danger-ink")}>{v.title}</p>
                   {v.body && <p className="text-sm break-words whitespace-pre-wrap text-muted-foreground">{v.body}</p>}
-                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                  <p className="mt-0.5 text-meta text-muted-foreground tabular-nums">
                     {formatDate(e.createdAt, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                     {" · "}
                     {e.actorUserId ? t("orders.timeline.byStaff") : t("orders.timeline.bySystem")}

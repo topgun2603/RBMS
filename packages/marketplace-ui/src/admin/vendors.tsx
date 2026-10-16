@@ -72,7 +72,7 @@ export default function VendorsPage() {
   const items = list.data?.items ?? [];
 
   return (
-    <Page wide className="max-w-6xl">
+    <Page width="full">
       <PageHeading
         icon={StoreIcon}
         title={t("marketplace.vendors.title")}
@@ -179,7 +179,7 @@ function VendorRow({ vendor: v }: { vendor: Vendor }) {
           <VendorLogo name={v.name} url={v.logoUrl} />
           <div className="min-w-0">
             <p className="truncate font-medium group-hover:text-primary">{v.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{[v.contactName, v.contactPhone].filter(Boolean).join(" · ") || `/${v.slug}`}</p>
+            <p className="mt-0.5 truncate text-meta text-muted-foreground">{[v.contactName, v.contactPhone].filter(Boolean).join(" · ") || `/${v.slug}`}</p>
           </div>
         </ModuleLink>
       </TableCell>
@@ -215,7 +215,7 @@ function VendorCard({ vendor: v }: { vendor: Vendor }) {
             <VendorStatusPill status={v.status} />
             <KycPill status={v.kycStatus} />
           </div>
-          <p className="text-xs text-muted-foreground tabular-nums">
+          <p className="text-meta text-muted-foreground tabular-nums">
             {t("marketplace.vendors.cardLine", { rate: bpsToPercent(v.effectiveCommissionBps), products: f.products ?? "—", sales: money(f.sales) })}
           </p>
         </div>

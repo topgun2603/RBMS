@@ -68,7 +68,7 @@ export default function SupportPage() {
   );
 
   return (
-    <Page className="max-w-7xl">
+    <Page>
       <PageHeading
         icon={LifeBuoyIcon}
         title={t("inbox.ticket.title")}
@@ -269,7 +269,7 @@ function TicketCard({ tk }: { tk: Ticket }) {
           <Age at={tk.lastMessageAt} />
         </div>
         <p className="line-clamp-2 font-medium">{tk.subject}</p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="mt-0.5 truncate text-meta text-muted-foreground">
           {displayNameOf(tk.requester, t("inbox.ticket.customer"))} · {staffName(tk.assigneeId)}
         </p>
         <div className="flex flex-wrap items-center gap-1.5">

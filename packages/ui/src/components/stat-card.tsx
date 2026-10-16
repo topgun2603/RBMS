@@ -34,7 +34,7 @@ function StatCard({
     <div
       data-slot="stat-card"
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-card-ring bg-card p-5 text-card-foreground shadow-elevated print:shadow-none",
+        "flex flex-col gap-3 rounded-2xl border border-card-ring bg-card p-card text-card-foreground shadow-elevated print:shadow-none",
         className,
       )}
       {...props}
@@ -69,7 +69,7 @@ function StatCard({
               </span>
             )}
           </div>
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
+          {description && <p className="text-meta text-muted-foreground">{description}</p>}
         </div>
       )}
       {footer && !loading && <div>{footer}</div>}

@@ -49,7 +49,7 @@ export default function ReportsPage() {
   const schedules = useSchedules(undefined, canManage);
 
   return (
-    <Page wide>
+    <Page width="full">
       <PageHeading
         icon={BarChart3Icon}
         title={t("growth.reports.title")}
@@ -63,7 +63,7 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="grid gap-4">
+      <div className="grid gap-section">
         <SectionCard icon={FolderOpenIcon} title={t("growth.reports.saved.title")} description={t("growth.reports.saved.description")}>
           <SavedList
             reports={saved.data}
@@ -236,7 +236,7 @@ function SavedRow({
             </Badge>
           )}
         </div>
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
           <span title={dt(r.updatedAt)}>{t("growth.reports.saved.updated", { when: rel(r.updatedAt) })}</span>
           {latest && (
             <span className="flex items-center gap-1.5">

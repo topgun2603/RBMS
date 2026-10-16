@@ -40,7 +40,7 @@ export default function PurchaseDetailPage() {
 
   if (q.isError) {
     return (
-      <Page className="max-w-4xl">
+      <Page>
         <PageHeading title={t("billing.purchases.detailTitle")} back={back} />
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       </Page>
@@ -48,9 +48,9 @@ export default function PurchaseDetailPage() {
   }
   if (q.isPending) {
     return (
-      <Page className="max-w-4xl">
+      <Page>
         <PageHeading title={<Skeleton className="h-8 w-48" />} back={back} />
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid gap-section md:grid-cols-[minmax(0,1fr)_18rem]">
           <Skeleton className="h-72 rounded-2xl" />
           <Skeleton className="h-56 rounded-2xl" />
         </div>
@@ -75,7 +75,7 @@ export default function PurchaseDetailPage() {
   };
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <PageHeading
         icon={TruckIcon}
         back={back}
@@ -122,17 +122,17 @@ export default function PurchaseDetailPage() {
         </Alert>
       )}
 
-      <FadeIn className="grid gap-4 md:grid-cols-[minmax(0,1fr)_19rem] md:items-start">
-        <div className="grid min-w-0 gap-4">
+      <FadeIn className="grid gap-section md:grid-cols-[minmax(0,1fr)_19rem] md:items-start">
+        <div className="grid min-w-0 gap-section">
           {/* Supplier */}
-          <Card className="gap-3 py-4">
-            <CardHeader className="flex flex-row items-center gap-2 px-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
               <span className="icon-chip size-8 text-primary">
                 <StoreIcon className="size-4" />
               </span>
               <CardTitle className="text-sm">{t("billing.purchaseForm.supplier")}</CardTitle>
             </CardHeader>
-            <CardContent className="flex items-start gap-3 px-4">
+            <CardContent className="flex items-start gap-3">
               <InitialsAvatar name={p.supplier?.name} size="lg" />
               <div className="min-w-0 flex-1 text-sm">
                 {p.supplier?.id ? (
@@ -143,7 +143,7 @@ export default function PurchaseDetailPage() {
                   <p className="font-semibold">{p.supplier?.name ?? "—"}</p>
                 )}
                 {p.supplier?.gstin && <p className="font-mono text-xs">GSTIN {p.supplier.gstin}</p>}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                   {[p.supplier?.phone, p.supplier?.stateCode && stateLabel(p.supplier.stateCode)].filter(Boolean).join(" · ") ||
                     t("billing.picker.noDetails")}
                 </p>
@@ -152,8 +152,8 @@ export default function PurchaseDetailPage() {
           </Card>
 
           {/* Lines */}
-          <Card className="gap-3 py-4">
-            <CardHeader className="flex flex-row items-center gap-2 px-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
               <span className="icon-chip size-8 text-primary">
                 <ReceiptTextIcon className="size-4" />
               </span>
@@ -177,7 +177,7 @@ export default function PurchaseDetailPage() {
                       <TableRow key={i}>
                         <TableCell className="max-w-64">
                           <p className="truncate font-medium">{l.description}</p>
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <p className="flex items-center gap-1 text-meta text-muted-foreground">
                             {l.hsn && <span>HSN {l.hsn}</span>}
                             {l.itemId && (
                               <span className="inline-flex items-center gap-0.5 text-success-ink">
@@ -203,7 +203,7 @@ export default function PurchaseDetailPage() {
                   <li key={i} className="flex items-start justify-between gap-3 py-2.5 text-sm">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{l.description}</p>
-                      <p className="text-xs text-muted-foreground tabular-nums">
+                      <p className="text-meta text-muted-foreground tabular-nums">
                         {formatQty(l.qty)} {l.unit} × {money(l.rate)} · GST {l.gstRate}%
                       </p>
                     </div>
@@ -215,9 +215,9 @@ export default function PurchaseDetailPage() {
           </Card>
 
           {p.notes && (
-            <Card className="gap-2 py-4">
-              <CardContent className="px-4 text-sm">
-                <p className="mb-1 text-xs font-medium text-muted-foreground">{t("billing.form.notes")}</p>
+            <Card className="gap-2">
+              <CardContent className="text-sm">
+                <p className="mb-1 text-meta font-medium text-muted-foreground">{t("billing.form.notes")}</p>
                 <p className="whitespace-pre-wrap">{p.notes}</p>
               </CardContent>
             </Card>
@@ -226,11 +226,11 @@ export default function PurchaseDetailPage() {
 
         {/* Totals */}
         <div className="grid gap-4 md:sticky md:top-20">
-          <Card className="gap-3 py-4">
-            <CardHeader className="px-4">
+          <Card>
+            <CardHeader>
               <CardTitle className="text-sm">{t("billing.purchaseForm.summary")}</CardTitle>
             </CardHeader>
-            <CardContent className="grid px-4">
+            <CardContent className="grid">
               <DetailRow label={t("billing.purchaseForm.billNumber")}>
                 <span className="font-mono">{p.billNumber}</span>
               </DetailRow>

@@ -52,7 +52,7 @@ export function commerceModule(opts: CommerceModuleOptions = {}): WebModule {
   ];
 
   const widgetDefs: WidgetDef[] = [
-    { id: "catalogue", size: "sm", feature: F.catalogue, component: React.lazy(() => widgets().then((m) => ({ default: m.CatalogueWidget }))) },
+    { id: "catalogue", zone: "secondary", priority: 20, feature: F.catalogue, component: React.lazy(() => widgets().then((m) => ({ default: m.CatalogueWidget }))) },
   ];
 
   return {

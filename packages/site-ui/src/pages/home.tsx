@@ -61,16 +61,16 @@ export default function HomeEditorPage() {
   const slug = useTenantSlug();
   if (home.isError)
     return (
-      <Page className="max-w-3xl">
+      <Page width="narrow">
         <PageHeading icon={HomeIcon} title={t("site.home.title")} />
         <QueryError error={home.error} onRetry={() => void home.refetch()} />
       </Page>
     );
   if (!home.data || slug === undefined)
     return (
-      <Page wide>
+      <Page width="full">
         <Skeleton className="mb-5 h-10 w-64" />
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
+        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
           <div className="grid gap-3">
             {Array.from({ length: 5 }, (_, i) => (
               <Skeleton key={i} className="h-16 w-full rounded-2xl" />
@@ -246,7 +246,7 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
   );
 
   return (
-    <Page wide className="pb-0">
+    <Page width="full" className="pb-0">
       <PageHeading
         icon={HomeIcon}
         title={t("site.home.title")}
@@ -271,7 +271,7 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
         <p className="mb-4 rounded-xl bg-info/10 p-3 text-sm text-info-ink ring-1 ring-info/25 ring-inset">{t("site.home.defaultNote")}</p>
       )}
 
-      <form onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
+      <form onSubmit={onSubmit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
           {items.length === 0 ? (
             <EmptyState
@@ -401,7 +401,7 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
                               className="overflow-hidden"
                             >
                               <div className="border-t border-border/60 px-3 py-4 sm:px-4">
-                                {it.hidden && <p className="mb-3 text-xs text-muted-foreground">{t("site.home.hiddenNote")}</p>}
+                                {it.hidden && <p className="mb-3 text-meta text-muted-foreground">{t("site.home.hiddenNote")}</p>}
                                 <SectionFields
                                   form={it.form}
                                   onChange={(form) => patch(it.key, { form })}

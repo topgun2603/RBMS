@@ -45,7 +45,7 @@ const PAGE = 25;
 export default function PayoutsPage() {
   const { t } = useI18n();
   return (
-    <Page wide className="max-w-6xl">
+    <Page width="full">
       <PageHeading
         icon={WalletIcon}
         title={t("marketplace.payouts.title")}
@@ -91,8 +91,8 @@ function RunPanel() {
   };
 
   return (
-    <Card className="gap-4 py-5">
-      <CardHeader className="px-4 sm:px-6">
+    <Card>
+      <CardHeader>
         <CardTitle className="flex items-center gap-2.5 text-base">
           <span className="icon-chip size-8 text-primary">
             <PlayIcon className="size-4" />
@@ -103,7 +103,7 @@ function RunPanel() {
           {s ? t("marketplace.payouts.runBody", { min: money(s.minPayoutPaise), provider: t(`marketplace.settings.provider.${s.payoutProvider}`) }) : <Skeleton className="h-4 w-64" />}
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4 px-4 sm:px-6">
+      <CardContent className="grid gap-4">
         <div className="grid items-start gap-4 sm:grid-cols-[14rem_minmax(0,1fr)]">
           <Field>
             <FieldLabel>{t("marketplace.payouts.until")}</FieldLabel>
@@ -139,7 +139,7 @@ function RunPanel() {
               </Alert>
             )}
             <PreviewTable rows={[...preview.pay, ...preview.skip]} />
-            <p className="flex items-start gap-2 text-xs text-muted-foreground">
+            <p className="flex items-start gap-2 text-meta text-muted-foreground">
               <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
               {t("marketplace.payouts.previewNote", { date: formatDate(data.data!.until, { day: "numeric", month: "short", year: "numeric" }) })}
             </p>

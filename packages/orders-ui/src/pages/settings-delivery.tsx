@@ -62,7 +62,7 @@ export default function DeliverySettingsPage() {
   const list = zones.data?.items ?? [];
 
   return (
-    <Page className="max-w-4xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading
         icon={TruckIcon}
@@ -78,7 +78,7 @@ export default function DeliverySettingsPage() {
       />
       {!canEdit && <ReadOnlyNote icon={LockIcon}>{t("orders.delivery.readOnly")}</ReadOnlyNote>}
 
-      <div className="grid gap-4">
+      <div className="grid gap-section">
         {zones.isError ? (
           <QueryError error={zones.error} onRetry={() => void zones.refetch()} />
         ) : zones.isPending ? (
@@ -126,7 +126,7 @@ export default function DeliverySettingsPage() {
                 />
               ))
             )}
-            <p className="px-1 text-xs text-muted-foreground">{t("orders.delivery.matchOrder")}</p>
+            <p className="px-1 text-meta text-muted-foreground">{t("orders.delivery.matchOrder")}</p>
           </>
         )}
 
@@ -283,7 +283,7 @@ function RateRow({ rate: r, canEdit, onEdit, onDelete }: { rate: Rate; canEdit: 
               : t("orders.delivery.flatText", { amount: s.amount })}
           {s.freeAbove && ` · ${t("orders.delivery.freeAboveText", { amount: s.freeAbove })}`}
         </p>
-        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
           <span>{t("orders.delivery.eta", { min: r.etaMinDays, max: r.etaMaxDays })}</span>
           <span className="inline-flex items-center gap-1">
             <BanknoteIcon className="size-3.5" />
@@ -351,7 +351,7 @@ function TestQuote() {
       {result &&
         (result.serviceable && result.options.length > 0 ? (
           <div className="grid gap-2">
-            {result.zone && <p className="text-xs text-muted-foreground">{t("orders.delivery.matchedZone", { zone: result.zone.name })}</p>}
+            {result.zone && <p className="text-meta text-muted-foreground">{t("orders.delivery.matchedZone", { zone: result.zone.name })}</p>}
             {result.options.map((o) => (
               <div key={o.id} className="flex items-center justify-between gap-3 rounded-xl border bg-success/5 px-3 py-2 text-sm">
                 <span className="flex items-center gap-2">
@@ -495,7 +495,7 @@ function CarrierCard({ canEdit }: { canEdit: boolean }) {
               <p className="flex items-center gap-2 text-sm font-medium">
                 <KeyRoundIcon className="size-4 text-primary" /> {t("orders.carrier.webhook")}
               </p>
-              <p className="text-xs text-muted-foreground">{t("orders.carrier.webhookHint", { header: a.webhookHeader })}</p>
+              <p className="text-meta text-muted-foreground">{t("orders.carrier.webhookHint", { header: a.webhookHeader })}</p>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-lg bg-card px-2.5 py-2 text-xs ring-1 ring-border">{a.webhookUrl}</code>
                 <CopyButton value={a.webhookUrl} size="icon" />
@@ -509,7 +509,7 @@ function CarrierCard({ canEdit }: { canEdit: boolean }) {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">{a.webhookTokenSet ? t("orders.carrier.tokenSet") : t("orders.carrier.tokenMissing")}</p>
+                <p className="text-meta text-muted-foreground">{a.webhookTokenSet ? t("orders.carrier.tokenSet") : t("orders.carrier.tokenMissing")}</p>
               )}
               {canEdit && (
                 <Button type="button" variant="ghost" size="sm" className="w-fit" disabled={save.isPending} onClick={(e) => void submit(e, true)}>

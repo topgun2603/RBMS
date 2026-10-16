@@ -63,7 +63,7 @@ export function PaymentsCard({ order }: { order: Order }) {
                     {refund ? t("orders.payments.refundRow") : t("orders.payments.paymentRow")}
                     {d.method && ` · ${t(`orders.method.${d.method}`)}`}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="mt-0.5 truncate text-meta text-muted-foreground">
                     {[formatDate(e.createdAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }), d.reference, d.reason].filter(Boolean).join(" · ")}
                   </p>
                 </div>

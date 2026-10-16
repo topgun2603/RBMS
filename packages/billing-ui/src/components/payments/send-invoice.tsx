@@ -267,7 +267,7 @@ export function MessagesTimeline({ messages }: { messages: InvoiceMessage[] | un
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{tpl ? t(tpl.key) : m.template}</p>
-              <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+              <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-muted-foreground">
                 <ChannelIcon className="size-3.5" aria-hidden />
                 <span>{t(m.channel === "sms" ? "billing.timeline.viaSms" : "billing.timeline.viaWhatsapp")}</span>
                 {m.to && <span className="font-mono tabular-nums">· {m.to}</span>}

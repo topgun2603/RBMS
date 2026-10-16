@@ -160,7 +160,7 @@ function SidebarFooter() {
       </Avatar>
       <div className="min-w-0 flex-1 leading-tight">
         <p className="truncate text-sm font-medium">{name}</p>
-        {role && <p className="truncate text-xs text-muted-foreground">{tOr(t, `web.roles.${role}`, role)}</p>}
+        {role && <p className="mt-0.5 truncate text-meta text-muted-foreground">{tOr(t, `web.roles.${role}`, role)}</p>}
       </div>
     </div>
   );

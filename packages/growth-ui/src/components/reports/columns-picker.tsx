@@ -41,7 +41,7 @@ export function ColumnsPicker({
   return (
     <div className="grid gap-2">
       {disabled && (
-        <p className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+        <p className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-meta text-muted-foreground">
           <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
           {t("growth.reports.columns.groupedNote")}
         </p>

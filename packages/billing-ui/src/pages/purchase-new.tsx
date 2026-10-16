@@ -7,7 +7,7 @@ import { Page, PageHeading, useI18n } from "@srirealtime/web";
 export default function NewPurchasePage() {
   const { t } = useI18n();
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading
         icon={TruckIcon}
         title={t("billing.purchaseForm.title")}

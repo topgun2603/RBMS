@@ -42,7 +42,7 @@ export default function SellerDashboard() {
       } />
 
       {steps.done < steps.total && (
-        <Card className="mb-4 flex-row flex-wrap items-center gap-3 border-primary/30 bg-primary/5 p-4">
+        <Card className="p-card mb-4 flex-row flex-wrap items-center gap-3 border-primary/30 bg-primary/5">
           <span className="icon-chip size-10 rounded-xl text-primary">
             <ClipboardCheckIcon className="size-5" />
           </span>
@@ -111,8 +111,8 @@ export default function SellerDashboard() {
         </Stagger>
       )}
 
-      <Card className="mt-4 gap-3 py-4">
-        <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-5">
+      <Card className="mt-4">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2.5 text-base">
             <span className="icon-chip size-8 text-primary">
               <CalendarClockIcon className="size-4" />
@@ -144,7 +144,7 @@ export default function SellerDashboard() {
                     <Thumb src={o.lines[0]?.image} className="size-10" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{o.lines.map((l) => l.name).join(", ")}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-meta text-muted-foreground">
                         {o.orderNumber} · {formatDate(o.placedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
                       </p>
                     </div>

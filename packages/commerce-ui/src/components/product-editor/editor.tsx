@@ -332,7 +332,7 @@ export function ProductEditor({ product }: { product?: Product }) {
   const firstMrp = rupeesToPaise(values.variants?.[0]?.mrp ?? "");
 
   return (
-    <Page wide className="max-w-6xl pb-0">
+    <Page className="pb-0">
       <PageHeading
         back={{ href: "products", label: t("commerce.nav.products") }}
         icon={isNew ? PackagePlusIcon : PackageIcon}
@@ -373,7 +373,7 @@ export function ProductEditor({ product }: { product?: Product }) {
 
       <Form {...form}>
         <form onSubmit={submit} noValidate aria-label={isNew ? t("commerce.editor.newTitle") : t("commerce.editor.editTitle")}>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+          <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
               <BasicsSection />
               <MediaSection />
@@ -393,7 +393,7 @@ export function ProductEditor({ product }: { product?: Product }) {
 
             {/* Side column: status, channels, preview, jump links */}
             <aside className="order-first grid gap-4 lg:sticky lg:top-20 lg:order-none" aria-label={t("commerce.editor.sideLabel")}>
-              <Card className="gap-4 p-4">
+              <Card className="p-card">
                 <div className="grid gap-2">
                   <p className="text-sm font-semibold">{t("commerce.editor.status")}</p>
                   <ChipGroup<ProductStatus>
@@ -407,7 +407,7 @@ export function ProductEditor({ product }: { product?: Product }) {
                       ...(values.status === "archived" || server?.status === "archived" ? [{ value: "archived" as const, label: t("commerce.status.archived") }] : []),
                     ]}
                   />
-                  <p className="text-xs text-muted-foreground">{t(`commerce.editor.statusHint.${values.status}`)}</p>
+                  <p className="text-meta text-muted-foreground">{t(`commerce.editor.statusHint.${values.status}`)}</p>
                 </div>
                 <div className="grid gap-2 border-t pt-3">
                   <p className="text-sm font-semibold">{t("commerce.editor.channels")}</p>
@@ -439,7 +439,7 @@ export function ProductEditor({ product }: { product?: Product }) {
                     );
                   })}
                   {(values.channels ?? []).filter((c) => c !== "store" && c !== "billing").length > 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-meta text-muted-foreground">
                       {t("commerce.editor.otherChannels", {
                         list: (values.channels as Channel[]).filter((c) => c !== "store" && c !== "billing").join(", "),
                       })}
@@ -451,7 +451,7 @@ export function ProductEditor({ product }: { product?: Product }) {
               <Card className="hidden gap-0 overflow-hidden py-0 lg:flex" aria-label={t("commerce.editor.previewCard")}>
                 <ProductThumb src={values.images?.[0]?.url} alt="" className="aspect-square size-auto w-full rounded-none ring-0" />
                 <div className="grid gap-1 p-4">
-                  {category && <p className="text-xs text-muted-foreground">{category.name}</p>}
+                  {category && <p className="text-meta text-muted-foreground">{category.name}</p>}
                   <p className="line-clamp-2 font-medium">{values.name || t("commerce.editor.untitled")}</p>
                   <div className="flex items-baseline gap-2">
                     <span className="font-heading text-lg font-bold tabular-nums">{prices.length ? priceRange(Math.min(...prices), Math.max(...prices)) : "₹—"}</span>
@@ -462,7 +462,7 @@ export function ProductEditor({ product }: { product?: Product }) {
                       </>
                     )}
                   </div>
-                  {multi && <p className="text-xs text-muted-foreground">{t("commerce.products.variantCount", { count: values.variants.length })}</p>}
+                  {multi && <p className="text-meta text-muted-foreground">{t("commerce.products.variantCount", { count: values.variants.length })}</p>}
                 </div>
               </Card>
 

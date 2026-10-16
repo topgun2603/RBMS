@@ -212,7 +212,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <Page wide className="max-w-7xl">
+    <Page width="full">
       <PageHeading
         icon={ShoppingBagIcon}
         title={t("orders.list.title")}
@@ -260,8 +260,8 @@ export default function OrdersPage() {
       />
 
       {/* Filters */}
-      <div className="mb-4 grid gap-3">
-        <div className="grid items-start gap-2 md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem]">
+      <div className="mb-4 grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 items-start gap-2 md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem]">
           <SearchField value={q} onChange={setQ} placeholder={t("orders.list.search")} />
           <Select value={payment || ALL} onValueChange={(v) => setPayment(v === ALL ? "" : (v as PaymentStatus))}>
             <SelectTrigger size="lg" className="w-full rounded-xl bg-card" aria-label={t("orders.list.filterPayment")}>
@@ -413,7 +413,7 @@ export default function OrdersPage() {
                         </TableCell>
                         <TableCell className="max-w-[16rem]">
                           <p className="truncate font-medium">{o.customerName}</p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="mt-0.5 truncate text-meta text-muted-foreground">
                             {[o.customerPhone && formatPhone(o.customerPhone), t(`orders.channel.${o.channel}`)].filter(Boolean).join(" · ")}
                           </p>
                         </TableCell>
@@ -493,7 +493,7 @@ export default function OrdersPage() {
                   {t("orders.common.loadMore")}
                 </Button>
               )}
-              <p className="text-xs text-muted-foreground">{t("orders.list.showing", { shown: items.length, total })}</p>
+              <p className="text-meta text-muted-foreground">{t("orders.list.showing", { shown: items.length, total })}</p>
             </div>
           </div>
         )}

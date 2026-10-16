@@ -151,7 +151,7 @@ function WaList({ openId, status }: { openId: string | null; status: LiveStatus 
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-3 px-4 pt-5 pb-3 md:pt-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight">
+          <h1 className="flex items-center gap-2 font-heading text-xl font-semibold tracking-tight">
             <MessageSquareTextIcon className="size-5 text-success-ink" aria-hidden />
             {t("inbox.wa.title")}
             <UnreadBadge count={unreadTotal} label={t("inbox.common.unreadCount", { count: unreadTotal })} />
@@ -328,7 +328,7 @@ function WaThread({ id, status, onDetails }: { id: string; status: LiveStatus; o
             <InitialsAvatar name={c.name || c.displayPhone} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{c.name || c.displayPhone}</p>
-              <p className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+              <p className="flex items-center gap-2 truncate text-meta text-muted-foreground">
                 {c.name && <span className="tabular-nums">{c.displayPhone}</span>}
                 <span className="max-sm:hidden">{t("inbox.wa.assignedTo", { name: staffName(c.assigneeId) })}</span>
               </p>
@@ -489,7 +489,7 @@ function WaBubble({ m }: { m: WaMessage }) {
             <img src={link} alt={m.body ?? t("inbox.chat.photo")} loading="lazy" className="max-h-60 w-full object-cover" />
           </a>
         ) : (
-          <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="mb-1 flex items-center gap-1.5 text-meta text-muted-foreground">
             <ImageIcon className="size-4" aria-hidden /> {t("inbox.chat.photo")}
           </p>
         ))}
@@ -499,11 +499,11 @@ function WaBubble({ m }: { m: WaMessage }) {
             <FileTextIcon className="size-4" aria-hidden /> {m.media?.filename ?? t("inbox.chat.attachment")}
           </a>
         ) : (
-          <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="mb-1 flex items-center gap-1.5 text-meta text-muted-foreground">
             <FileTextIcon className="size-4" aria-hidden /> {m.media?.filename ?? t("inbox.chat.attachment")}
           </p>
         ))}
-      {!["text", "template", "image", "document", "sticker"].includes(m.type) && !m.body && <p className="text-xs text-muted-foreground italic">{t("inbox.wa.unsupported", { type: m.type })}</p>}
+      {!["text", "template", "image", "document", "sticker"].includes(m.type) && !m.body && <p className="text-meta text-muted-foreground italic">{t("inbox.wa.unsupported", { type: m.type })}</p>}
       {m.body && <p className="break-words whitespace-pre-wrap">{m.body}</p>}
       {m.status === "failed" && m.error && <p className="mt-1 text-xs text-danger-ink">{m.error}</p>}
       <span className="mt-0.5 flex items-center justify-end gap-1 text-[0.625rem] text-muted-foreground">
@@ -677,7 +677,7 @@ function ContactPanel({ id, status }: { id: string; status: LiveStatus }) {
       <Section icon={BellRingIcon} title={t("inbox.wa.consent")} description={t("inbox.wa.consentHint")}>
         <OptPill c={c} />
         {c.optedOutAt ? (
-          <p className="text-xs text-muted-foreground">{t("inbox.wa.optedOutOn", { date: formatDate(c.optedOutAt, { dateStyle: "medium" }) })}</p>
+          <p className="text-meta text-muted-foreground">{t("inbox.wa.optedOutOn", { date: formatDate(c.optedOutAt, { dateStyle: "medium" }) })}</p>
         ) : (
           <Field>
             <div className="flex items-center justify-between gap-3">
@@ -711,7 +711,7 @@ function ContactPanel({ id, status }: { id: string; status: LiveStatus }) {
       </Section>
       <Section icon={StickyNoteIcon} title={t("inbox.wa.notes")} tone="text-warning-ink">
         {c.notes.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("inbox.wa.noNotes")}</p>
+          <p className="text-meta text-muted-foreground">{t("inbox.wa.noNotes")}</p>
         ) : (
           <ul className="grid gap-2">
             {c.notes.slice(0, 5).map((n) => (

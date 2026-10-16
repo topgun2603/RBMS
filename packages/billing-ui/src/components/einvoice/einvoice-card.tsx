@@ -68,8 +68,8 @@ export function EInvoiceCard({ invoice }: { invoice: Invoice }) {
   const forbidden = status.error instanceof ApiError && status.error.status === 403;
 
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
+    <Card>
+      <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
           <span className="icon-chip size-8 text-primary">
             <FileCheck2Icon className="size-4" />
@@ -82,7 +82,7 @@ export function EInvoiceCard({ invoice }: { invoice: Invoice }) {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-3 px-4">
+      <CardContent className="grid gap-3">
         {status.isPending ? (
           <div className="grid gap-2" aria-busy>
             <Skeleton className="h-4 w-40" />
@@ -139,13 +139,13 @@ function EInvoiceBody({ invoice, status }: { invoice: Invoice; status: InvoiceEI
             <StatusPill tone="neutral" icon={BanIcon} size="md">
               {t("billing.einvoice.cancelledTitle")}
             </StatusPill>
-            <p className="text-xs text-muted-foreground">{t("billing.einvoice.cancelledHint")}</p>
+            <p className="text-meta text-muted-foreground">{t("billing.einvoice.cancelledHint")}</p>
           </motion.div>
         ) : (
           <motion.div key="none" initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid gap-3">
             <div className="text-sm">
               <p className="font-medium">{t("billing.einvoice.statusNone")}</p>
-              <p className="text-xs text-muted-foreground">{t("billing.einvoice.statusNoneHint")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.einvoice.statusNoneHint")}</p>
             </div>
             {failed && (
               <Alert variant="destructive" className="py-2">
@@ -159,7 +159,7 @@ function EInvoiceBody({ invoice, status }: { invoice: Invoice; status: InvoiceEI
                 <FileCheck2Icon /> {t("billing.einvoice.generate")}
               </Button>
             ) : (
-              !canManage && <p className="text-xs text-muted-foreground">{t("billing.einvoice.readOnly")}</p>
+              !canManage && <p className="text-meta text-muted-foreground">{t("billing.einvoice.readOnly")}</p>
             )}
           </motion.div>
         )}
@@ -195,7 +195,7 @@ function EInvoiceBody({ invoice, status }: { invoice: Invoice; status: InvoiceEI
             </motion.dl>
           ) : (
             <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 <span className="font-medium text-foreground">{t("billing.ewb.none")}</span> · {t("billing.ewb.noneHint")}
               </p>
               {canManage && !billCancelled && (
@@ -310,14 +310,14 @@ function IrnPanel({
               <QrRow label={t("billing.einvoice.qrHsn")} value={qr.MainHsnCode} mono />
             </dl>
           ) : (
-            <p className="text-xs text-muted-foreground">{t("billing.einvoice.qrUnreadable")}</p>
+            <p className="text-meta text-muted-foreground">{t("billing.einvoice.qrUnreadable")}</p>
           )}
         </div>
       )}
 
       {win.open ? (
         <div className="grid gap-2">
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <p className="flex items-start gap-1.5 text-meta text-muted-foreground">
             <TimerIcon className="mt-px size-3.5 shrink-0" />
             <span>
               {t("billing.einvoice.cancellableFor", left)} ·{" "}
@@ -326,7 +326,7 @@ function IrnPanel({
           </p>
           {canManage &&
             (ewbActive ? (
-              <p className="text-xs text-muted-foreground">{t("billing.einvoice.cancelEwbFirst")}</p>
+              <p className="text-meta text-muted-foreground">{t("billing.einvoice.cancelEwbFirst")}</p>
             ) : (
               <Button variant="outline" size="sm" className="justify-self-start text-destructive hover:text-destructive" onClick={onCancel}>
                 <BanIcon /> {t("billing.einvoice.cancelIrn")}
@@ -334,7 +334,7 @@ function IrnPanel({
             ))}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">{t("billing.einvoice.cancelClosed")}</p>
+        <p className="text-meta text-muted-foreground">{t("billing.einvoice.cancelClosed")}</p>
       )}
     </>
   );

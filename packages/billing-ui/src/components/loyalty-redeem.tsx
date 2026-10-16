@@ -123,8 +123,8 @@ export function LoyaltyRedeemCard({ state: s }: { state: LoyaltyRedeemState }) {
 
   return (
     <motion.div initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-      <Card className="gap-3 py-4">
-        <CardHeader className="px-4">
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <span className="icon-chip size-8 text-primary">
               <GiftIcon className="size-4" />
@@ -137,14 +137,14 @@ export function LoyaltyRedeemCard({ state: s }: { state: LoyaltyRedeemState }) {
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 px-4 text-sm">
+        <CardContent className="grid gap-3 text-sm">
           {s.loading && !q ? (
             <div className="grid gap-2" role="status" aria-label={t("billing.loyalty.checking")}>
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-48" />
             </div>
           ) : !q ? (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <p className="flex items-center gap-2 text-meta text-muted-foreground">
               <AlertTriangleIcon className="size-3.5" /> {t("billing.loyalty.quoteError")}
             </p>
           ) : (
@@ -163,7 +163,7 @@ export function LoyaltyRedeemCard({ state: s }: { state: LoyaltyRedeemState }) {
                 )}
               </div>
               {q.earnPreview > 0 && (
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
                   <SparklesIcon className="size-3.5 text-primary" />
                   {t("billing.loyalty.willEarn", { points: q.earnPreview })}
                 </p>
@@ -205,13 +205,13 @@ export function LoyaltyRedeemCard({ state: s }: { state: LoyaltyRedeemState }) {
                           </FieldHint>
                           <FieldError>{s.failure ? failureText(s.failure) : null}</FieldError>
                         </Field>
-                        <p className="mt-2 text-xs text-muted-foreground">{t("billing.loyalty.issueOnly")}</p>
+                        <p className="mt-2 text-meta text-muted-foreground">{t("billing.loyalty.issueOnly")}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
               ) : (
-                q.reason && <p className="text-xs text-muted-foreground">{t(`billing.loyalty.reasons.${q.reason}`, { min: q.minRedeemPoints })}</p>
+                q.reason && <p className="text-meta text-muted-foreground">{t(`billing.loyalty.reasons.${q.reason}`, { min: q.minRedeemPoints })}</p>
               )}
 
               <AnimatePresence initial={false}>

@@ -556,6 +556,10 @@ const en: Messages = {
   "inbox.widget.needReply": "waiting for your reply",
   "inbox.widget.overdue": "{count} overdue",
   "inbox.widget.view": "View",
+  "inbox.widget.attnChat": "Unread chats",
+  "inbox.widget.attnWhatsApp": "Unread WhatsApp messages",
+  "inbox.widget.attnTickets": "Tickets needing reply",
+  "inbox.widget.attnOverdue": "Tickets past their reply time",
 };
 
 const ta: Messages = {
@@ -1110,6 +1114,10 @@ const ta: Messages = {
   "inbox.widget.needReply": "உங்கள் பதிலுக்காகக் காத்திருக்கின்றன",
   "inbox.widget.overdue": "{count} கெடு தாண்டியவை",
   "inbox.widget.view": "பார்",
+  "inbox.widget.attnChat": "படிக்காத அரட்டைகள்",
+  "inbox.widget.attnWhatsApp": "படிக்காத WhatsApp செய்திகள்",
+  "inbox.widget.attnTickets": "பதில் தேவைப்படும் கோரிக்கைகள்",
+  "inbox.widget.attnOverdue": "பதில் கெடு தாண்டிய கோரிக்கைகள்",
 };
 
 export const inboxMessages = { en, ta } as const;

@@ -58,8 +58,9 @@ export function ordersModule(opts: OrdersModuleOptions = {}): WebModule {
   ];
 
   const widgetDefs: WidgetDef[] = [
-    { id: "orders-today", size: "sm", feature: F.orders, component: React.lazy(() => widgets().then((m) => ({ default: m.OrdersTodayWidget }))) },
-    { id: "orders-needs-action", size: "sm", feature: F.orders, component: React.lazy(() => widgets().then((m) => ({ default: m.NeedsActionWidget }))) },
+    { id: "orders-today", zone: "kpi", priority: 20, feature: F.orders, component: React.lazy(() => widgets().then((m) => ({ default: m.OrdersTodayKpiWidget }))) },
+    { id: "orders-needs-action", zone: "attention", priority: 20, feature: F.orders, component: React.lazy(() => widgets().then((m) => ({ default: m.OrdersAttentionWidget }))) },
+    { id: "recent-orders", zone: "main", priority: 20, feature: F.orders, component: React.lazy(() => widgets().then((m) => ({ default: m.RecentOrdersWidget }))) },
   ];
 
   return {

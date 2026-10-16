@@ -75,7 +75,7 @@ export default function CustomerDetailPage() {
   const wa = whatsappNumber(c?.phone);
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <ModuleLink
         to={creditBook ? "credit-book" : "customers"}
         data-print-hide
@@ -94,14 +94,14 @@ export default function CustomerDetailPage() {
           <Skeleton className="h-80 rounded-2xl lg:col-span-3" />
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-section">
           <div className="grid gap-4 lg:grid-cols-3">
             {/* Header: who, how to reach them, what to do */}
-            <Card className="gap-4 py-5 lg:col-span-2">
-              <CardContent className="flex items-start gap-4 px-5">
+            <Card className="lg:col-span-2">
+              <CardContent className="flex items-start gap-4">
                 <InitialsAvatar name={c.name} size="lg" />
                 <div className="min-w-0 flex-1 space-y-1.5">
-                  <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">{c.name}</h1>
+                  <h1 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">{c.name}</h1>
                   <div className="grid gap-1 text-sm text-muted-foreground">
                     {c.phone && (
                       <a href={`tel:${c.phone}`} className="flex w-fit items-center gap-2 hover:text-foreground">
@@ -146,7 +146,7 @@ export default function CustomerDetailPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </CardContent>
-              <CardContent className="grid grid-cols-2 gap-2 px-5 sm:flex sm:flex-wrap" data-print-hide>
+              <CardContent className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" data-print-hide>
                 <Button asChild size="lg" className="h-11">
                   <ModuleLink to={`invoices/new?customer=${c.id}`}>
                     <PlusIcon /> {t("billing.customers.newBill")}
@@ -182,8 +182,8 @@ export default function CustomerDetailPage() {
 
           {creditBook && <LedgerCard customer={c} />}
 
-          <Card className="gap-2 py-4">
-            <CardHeader className="px-4">
+          <Card className="gap-2">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="icon-chip size-8 text-primary">
                   <FileTextIcon className="size-4" />
@@ -265,7 +265,7 @@ function BalanceCard({ customer: c, onReceive }: { customer: Customer; onReceive
         : t("billing.creditBook.balance.settledHint", { name: c.name });
 
   return (
-    <Card className="relative gap-4 overflow-hidden py-5">
+    <Card className="relative overflow-hidden">
       <div
         aria-hidden
         className={cn(
@@ -273,7 +273,7 @@ function BalanceCard({ customer: c, onReceive }: { customer: Customer; onReceive
           bal > 0 ? "bg-warning" : bal < 0 ? "bg-success" : "bg-border",
         )}
       />
-      <CardContent className="grid gap-3 px-5">
+      <CardContent className="grid gap-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
           <BalancePill balance={bal} />
@@ -282,7 +282,7 @@ function BalanceCard({ customer: c, onReceive }: { customer: Customer; onReceive
           <AnimatedNumber value={Math.abs(bal)} from={0} duration={0.9} format={(n) => money(Math.round(n))} aria-hidden />
           <span className="sr-only">{money(Math.abs(bal))}</span>
         </p>
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-meta text-muted-foreground">{hint}</p>
         {limit !== null && (
           <div className="grid gap-1.5 rounded-xl border bg-muted/30 p-3">
             <div className="flex items-baseline justify-between gap-2 text-xs">
@@ -338,8 +338,8 @@ function LedgerCard({ customer: c }: { customer: Customer }) {
   };
 
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="gap-3 px-4 sm:px-5">
+    <Card>
+      <CardHeader className="gap-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <span className="icon-chip size-8 text-primary">

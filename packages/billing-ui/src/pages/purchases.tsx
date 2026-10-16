@@ -62,7 +62,7 @@ function Purchases() {
   );
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         icon={TruckIcon}
         title={t("billing.purchases.title")}
@@ -142,7 +142,7 @@ function Purchases() {
                     <InitialsAvatar name={supplierName(p)} />
                     <div className="min-w-0 flex-1">
                       <p className={cn("truncate font-medium", p.status === "cancelled" && "text-muted-foreground line-through")}>{supplierName(p)}</p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="mt-0.5 truncate text-meta text-muted-foreground">
                         <span className="font-mono">{p.billNumber}</span> · {formatDate(p.date)}
                       </p>
                     </div>
@@ -157,7 +157,7 @@ function Purchases() {
             </Stagger>
           </Card>
           {list.data && list.data.total > items.length && (
-            <p className="mt-3 text-center text-xs text-muted-foreground">
+            <p className="mt-3 text-center text-meta text-muted-foreground">
               {t("billing.purchases.showing", { shown: items.length, total: list.data.total })}
             </p>
           )}
@@ -170,7 +170,7 @@ function Purchases() {
 function Summary({ label, value, title, tone }: { label: string; value: string; title?: string; tone?: string }) {
   return (
     <div className="min-w-0 text-center sm:text-left" title={title}>
-      <p className="truncate text-[0.6875rem] text-muted-foreground sm:text-xs">{label}</p>
+      <p className="truncate text-[0.6875rem] text-muted-foreground sm:text-meta">{label}</p>
       <p className={cn("truncate font-heading text-lg font-bold tabular-nums", tone)}>{value}</p>
       {title && <span className="sr-only">{title}</span>}
     </div>

@@ -35,7 +35,7 @@ export default function CampaignsPage() {
   );
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading
         icon={MegaphoneIcon}
         title={t("inbox.campaign.title")}
@@ -62,14 +62,14 @@ export default function CampaignsPage() {
           {items.map((c) => (
             <StaggerItem key={c.id}>
               <ModuleLink to={`campaigns/${c.id}`} className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Card className="gap-0 p-4 transition-colors hover:border-primary/30 sm:p-5">
+                <Card className="p-card gap-0 transition-colors hover:border-primary/30">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="truncate font-heading text-base font-semibold">{c.name}</h2>
                         <CampaignStatusPill status={c.status} />
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-meta text-muted-foreground">
                         {when(c)}
                         {c.counts.total > 0 && ` · ${t("inbox.campaign.recipientsCount", { count: c.counts.total })}`}
                       </p>

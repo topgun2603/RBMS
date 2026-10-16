@@ -105,7 +105,7 @@ export {
 
 // Components
 export { WebProviders } from "./components/providers";
-export { Page, PageHeading, DetailRow, SearchField } from "./components/page";
+export { Page, PageHeading, DetailRow, SearchField, type PageWidth } from "./components/page";
 export { QueryError } from "./components/query-state";
 export { ConfirmDialog, type ConfirmDialogProps } from "./components/confirm-dialog";
 export { ThemeToggle } from "./components/theme-toggle";
@@ -137,6 +137,7 @@ export type {
   NavItem,
   RouteDef,
   WidgetDef,
+  WidgetZone,
   QuickAction,
   SettingsPage,
   Gated,
@@ -162,8 +163,28 @@ export {
   type NavigateOptions,
 } from "./app/navigation";
 export { useSession, useOptionalSession, useVisible, usePermission, useGateContext, type SessionValue } from "./app/session";
+export {
+  layoutWidgets,
+  mergeQuickActions,
+  widgetZone,
+  KPI_LIMIT,
+  WIDGET_ZONES,
+  type PlacedWidget,
+  type MergedAction,
+} from "./app/model";
 export { buildNavModel, matchRoute, checkGate, visibleFor, type NavModel, type RouteMatch, type GateContext, type GateResult } from "./app/model";
 export { Dashboard, ModuleDashboard, WidgetGrid } from "./app/dashboard";
+export {
+  KpiTile,
+  KpiTileSkeleton,
+  AttentionItem,
+  InsightCard,
+  Sparkline,
+  type KpiTileProps,
+  type AttentionItemProps,
+  type AttentionTone,
+  type InsightCardProps,
+} from "./app/dashboard-parts";
 export { AppFrame, useShellNav, useQuickActions } from "./app/shell";
 export { LoginScreen } from "./app/login";
 export { ShopGate } from "./app/shop-gate";

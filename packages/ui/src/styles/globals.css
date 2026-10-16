@@ -106,6 +106,41 @@
     --sidebar-ring: var(--ring);
   }
 
+  /*
+   * Spacing scale (layout rhythm). Everything sits on Tailwind's 4px grid (--spacing: 0.25rem); these named steps are
+   * the ones layouts share, exposed as `p-card`, `px-card`, `gap-card-gap`, `gap-section`, `px-page`, `py-page-y`.
+   *
+   *                 phone   sm (640)  lg (1024)
+   *   --card-pad    16px    20px      24px     padding inside a Card (header / content / footer)
+   *   --card-gap    16px    16px      20px     header -> content -> footer inside a Card
+   *   --section-gap 20px    24px      24px     between cards / sections on a page
+   *   --page-x      16px    24px      32px     page gutter
+   *   --page-y      20px    24px      32px     space above the page heading / below the content
+   */
+  :root {
+    --card-pad: 1rem;
+    --card-gap: 1rem;
+    --section-gap: 1.25rem;
+    --page-x: 1rem;
+    --page-y: 1.25rem;
+  }
+  @media (min-width: 40rem) {
+    :root {
+      --card-pad: 1.25rem;
+      --section-gap: 1.5rem;
+      --page-x: 1.5rem;
+      --page-y: 1.5rem;
+    }
+  }
+  @media (min-width: 64rem) {
+    :root {
+      --card-pad: 1.5rem;
+      --card-gap: 1.25rem;
+      --page-x: 2rem;
+      --page-y: 2rem;
+    }
+  }
+
   /* Dark is designed, not inverted: deep warm charcoal, lifted cards, softer borders, brighter inks. */
   .dark {
     --background: oklch(0.165 0.006 60);
@@ -233,6 +268,26 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+
+  /* Named layout steps (see the spacing scale above). */
+  --spacing-card: var(--card-pad);
+  --spacing-card-gap: var(--card-gap);
+  --spacing-section: var(--section-gap);
+  --spacing-page: var(--page-x);
+  --spacing-page-y: var(--page-y);
+}
+
+/*
+ * Type scale. Body copy is 14px (`text-sm`) at 1.5; `text-meta` (13px) is for secondary lines that carry
+ * information (a bill number and date under a name, helper text under a field); `text-xs` (12px) is for chrome:
+ * badges, counters, table column heads, eyebrows. Headings use a light negative tracking, never cramped.
+ */
+@theme {
+  --text-sm--line-height: 1.5;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.125rem;
+  --tracking-tight: -0.012em;
+  --tracking-tighter: -0.02em;
 }
 
 /*
@@ -292,9 +347,24 @@
     font-family: var(--font-heading, var(--font-sans));
     letter-spacing: -0.01em;
   }
-  /* Tamil glyphs are taller; give them a touch more line height and no negative tracking. */
+  /*
+   * Tamil glyphs are taller (stacked vowel signs above and below), so the text sizes get roomier line heights and
+   * headings drop the negative tracking. Overriding the theme variables reaches every `text-*` utility.
+   */
+  html:lang(ta) {
+    --text-xs--line-height: 1.125rem;
+    --text-meta--line-height: 1.25rem;
+    --text-sm--line-height: 1.65;
+    --text-base--line-height: 1.65;
+    --text-lg--line-height: 1.6;
+    --tracking-tight: 0em;
+    --tracking-tighter: 0em;
+    --tracking-wide: 0em;
+    --tracking-wider: 0em;
+    --tracking-widest: 0.02em;
+  }
   :lang(ta) body {
-    line-height: 1.6;
+    line-height: 1.65;
   }
   :lang(ta) :is(h1, h2, h3, h4, h5, h6) {
     letter-spacing: 0;

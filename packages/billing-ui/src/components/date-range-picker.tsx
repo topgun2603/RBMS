@@ -66,7 +66,7 @@ export function DateRangePicker({
           </div>
         </div>
       ) : (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+        <p className="flex items-center gap-1.5 text-meta text-muted-foreground tabular-nums">
           <CalendarRangeIcon className="size-3.5" />
           {formatDate(value.from, { day: "numeric", month: "short", year: "numeric" })} –{" "}
           {formatDate(value.to, { day: "numeric", month: "short", year: "numeric" })}

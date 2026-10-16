@@ -22,7 +22,7 @@ export default function CustomersPage() {
   const total = list.data?.total ?? 0;
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         icon={UsersRoundIcon}
         title={t("billing.customers.title")}
@@ -85,7 +85,7 @@ export default function CustomersPage() {
                   <InitialsAvatar name={c.name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{c.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="mt-0.5 truncate text-meta text-muted-foreground">
                       {[c.phone, c.gstin].filter(Boolean).join(" · ") || t("billing.picker.noDetails")}
                     </p>
                   </div>

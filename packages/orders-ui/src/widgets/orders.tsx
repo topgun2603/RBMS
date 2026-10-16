@@ -1,137 +1,124 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRightIcon, BadgeCheckIcon, InboxIcon, PackageCheckIcon, PlusIcon, ShoppingBagIcon, TriangleAlertIcon } from "lucide-react";
-import { AnimatedNumber, Button, Card, CardContent, CardHeader, CardTitle, cn, Skeleton } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { ArrowRightIcon, BadgeCheckIcon, ChevronRightIcon, InboxIcon, PackageCheckIcon, PlusIcon, ShoppingBagIcon } from "lucide-react";
+import { Button, Card, CardContent, CardHeader, CardTitle, EmptyState, InitialsAvatar, Skeleton, Stagger, StaggerItem } from "@srirealtime/ui";
+import { AttentionItem, KpiTile, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { OrderStatusPill } from "../components/pills";
 import { PERMS, usePermissions } from "../lib/access";
-import { money } from "../lib/format";
-import { useOrdersSummary } from "../lib/queries";
+import { money, moneyCompact } from "../lib/format";
+import { useOrdersSummary, useRecentOrders } from "../lib/queries";
 
-/** "Orders today": count + value, this month, and how many wait to be packed. */
-export function OrdersTodayWidget() {
+/** KPI tile "Orders today": count, with today's value and this month's count underneath. */
+export function OrdersTodayKpiWidget() {
   const { t } = useI18n();
   const s = useOrdersSummary();
-  const { can } = usePermissions();
   const d = s.data;
-  const toPack = d?.pending.confirmed ?? 0;
   return (
-    <Card className="h-full gap-3 py-4">
+    <KpiTile
+      label={t("orders.widget.today")}
+      icon={ShoppingBagIcon}
+      value={d?.today.count}
+      hint={d ? t("orders.widget.kpiHint", { total: moneyCompact(d.today.total), count: d.month.count }) : undefined}
+      to="orders?range=today"
+      loading={s.isPending}
+      error={s.isError}
+      onRetry={() => void s.refetch()}
+    />
+  );
+}
+
+/** Needs-attention rows: new orders to confirm, confirmed to pack, packed to ship (each hides at zero). */
+export function OrdersAttentionWidget() {
+  const { t } = useI18n();
+  const s = useOrdersSummary();
+  const p = s.data?.pending;
+  const common = { loading: s.isPending, error: s.isError };
+  return (
+    <>
+      <AttentionItem label={t("orders.widget.attnConfirm")} count={p?.placed} tone="warning" icon={InboxIcon} to="orders?status=placed" {...common} />
+      <AttentionItem label={t("orders.widget.attnPack")} count={p?.confirmed} tone="info" icon={BadgeCheckIcon} to="orders?status=confirmed" {...common} />
+      <AttentionItem label={t("orders.widget.attnShip")} count={p?.packed} tone="info" icon={PackageCheckIcon} to="orders?status=packed" {...common} />
+    </>
+  );
+}
+
+/** "Recent orders": the latest five, any status. */
+export function RecentOrdersWidget() {
+  const { t, formatDate } = useI18n();
+  const q = useRecentOrders(5);
+  const { can } = usePermissions();
+  const items = q.data?.items ?? [];
+  return (
+    <Card className="h-full gap-2 py-4">
       <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-5">
         <CardTitle className="flex items-center gap-2.5 text-base">
           <span className="icon-chip size-8 text-primary">
             <ShoppingBagIcon className="size-4" />
           </span>
-          {t("orders.widget.today")}
+          {t("orders.widget.recent")}
         </CardTitle>
         <Button asChild variant="ghost" size="sm">
-          <ModuleLink to="orders?range=today">
-            {t("orders.widget.view")} <ArrowRightIcon />
+          <ModuleLink to="orders">
+            {t("orders.widget.viewAll")} <ArrowRightIcon />
           </ModuleLink>
         </Button>
       </CardHeader>
-      <CardContent className="grid gap-3 px-4 sm:px-5">
-        {s.isError ? (
-          <QueryError compact error={s.error} onRetry={() => void s.refetch()} />
+      <CardContent className="px-1.5 sm:px-2.5">
+        {q.isError ? (
+          <QueryError compact error={q.error} onRetry={() => void q.refetch()} />
+        ) : q.isPending ? (
+          <div className="grid gap-1 px-2">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="flex items-center gap-3 py-2">
+                <Skeleton className="size-9 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-36" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-5 w-16" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            compact
+            icon={ShoppingBagIcon}
+            title={t("orders.list.emptyTitle")}
+            action={
+              can(PERMS.manage) ? (
+                <Button asChild size="sm">
+                  <ModuleLink to="orders/new">
+                    <PlusIcon /> {t("orders.list.new")}
+                  </ModuleLink>
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
-          <>
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                {s.isPending ? (
-                  <Skeleton className="h-9 w-16" />
-                ) : (
-                  <AnimatedNumber value={d!.today.count} from={0} className="font-heading text-3xl font-bold tabular-nums" />
-                )}
-                <p className="text-xs text-muted-foreground">{t("orders.widget.ordersToday")}</p>
-              </div>
-              <div className="text-right">
-                {s.isPending ? (
-                  <Skeleton className="ml-auto h-6 w-24" />
-                ) : (
-                  <AnimatedNumber value={d!.today.total} from={0} format={(n) => money(n)} className="font-heading text-lg font-semibold tabular-nums" />
-                )}
-                <p className="text-xs text-muted-foreground">{t("orders.widget.value")}</p>
-              </div>
-            </div>
-            <ModuleLink
-              to="orders?status=confirmed"
-              className={cn(
-                "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring",
-                toPack > 0 ? "border-warning/40 bg-warning/10" : "border-success/30 bg-success/10",
-              )}
-            >
-              {s.isPending ? (
-                <Skeleton className="h-4 w-40" />
-              ) : toPack > 0 ? (
-                <>
-                  <PackageCheckIcon className="size-4 shrink-0 text-warning-ink" />
-                  <span className="flex-1">{t("orders.widget.toPack", { count: toPack })}</span>
-                </>
-              ) : (
-                <>
-                  <BadgeCheckIcon className="size-4 shrink-0 text-success-ink" />
-                  <span className="flex-1 text-success-ink">{t("orders.widget.allPacked")}</span>
-                </>
-              )}
-            </ModuleLink>
-            {d && <p className="text-xs text-muted-foreground">{t("orders.widget.month", { count: d.month.count, total: money(d.month.total) })}</p>}
-            {can(PERMS.manage) && (
-              <Button asChild className="h-11 w-full">
-                <ModuleLink to="orders/new">
-                  <PlusIcon /> {t("orders.list.new")}
+          <Stagger className="divide-y divide-border/60">
+            {items.map((o) => (
+              <StaggerItem key={o.id}>
+                <ModuleLink
+                  to={`orders/${o.id}`}
+                  className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <InitialsAvatar name={o.customerName} size="sm" className="size-9" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{o.customerName}</p>
+                    <p className="truncate text-xs text-muted-foreground tabular-nums">
+                      {o.number} · {formatDate(o.placedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="text-sm font-semibold tabular-nums">{money(o.total)}</span>
+                    <OrderStatusPill status={o.status} size="sm" />
+                  </div>
+                  <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
                 </ModuleLink>
-              </Button>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-/** "Needs action": new orders to confirm, confirmed to pack, packed to ship — each opens the filtered list. */
-export function NeedsActionWidget() {
-  const { t } = useI18n();
-  const s = useOrdersSummary();
-  const p = s.data?.pending;
-  const rows = [
-    { status: "placed", label: t("orders.widget.toConfirm"), value: p?.placed, icon: InboxIcon, tone: "text-warning-ink" },
-    { status: "confirmed", label: t("orders.widget.toPackShort"), value: p?.confirmed, icon: BadgeCheckIcon, tone: "text-primary" },
-    { status: "packed", label: t("orders.widget.toShip"), value: p?.packed, icon: PackageCheckIcon, tone: "text-info-ink" },
-  ] as const;
-  const total = (p?.placed ?? 0) + (p?.confirmed ?? 0) + (p?.packed ?? 0);
-  return (
-    <Card className="h-full gap-3 py-4">
-      <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-5">
-        <CardTitle className="flex items-center gap-2.5 text-base">
-          <span className={cn("icon-chip size-8", total > 0 ? "text-warning-ink" : "text-success-ink")}>
-            <TriangleAlertIcon className="size-4" />
-          </span>
-          {t("orders.widget.needsAction")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-2 px-4 sm:px-5">
-        {s.isError ? (
-          <QueryError compact error={s.error} onRetry={() => void s.refetch()} />
-        ) : (
-          rows.map((r) => (
-            <ModuleLink
-              key={r.status}
-              to={`orders?status=${r.status}`}
-              className="flex items-center gap-3 rounded-xl border bg-muted/20 px-3 py-2.5 outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className={cn("icon-chip size-8", r.tone)}>
-                <r.icon className="size-4" />
-              </span>
-              <span className="flex-1 text-sm">{r.label}</span>
-              {s.isPending ? (
-                <Skeleton className="h-6 w-8" />
-              ) : (
-                <AnimatedNumber value={r.value ?? 0} from={0} className={cn("font-heading text-xl font-bold tabular-nums", (r.value ?? 0) === 0 && "text-muted-foreground")} />
-              )}
-              <ArrowRightIcon className="size-4 text-muted-foreground" />
-            </ModuleLink>
-          ))
+              </StaggerItem>
+            ))}
+          </Stagger>
         )}
       </CardContent>
     </Card>

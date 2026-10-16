@@ -186,7 +186,7 @@ function UploadStep({ importer, onBack, onPreview }: { importer: Importer; onBac
   return (
     <div>
       <StepHeader importer={importer} onBack={onBack} title={t("workspace.import.steps.upload")} />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Dropzone
           accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onFile={onFile}
@@ -196,9 +196,9 @@ function UploadStep({ importer, onBack, onPreview }: { importer: Importer; onBac
           hint={t("workspace.import.dropHint")}
           className={cn("min-h-64", preview.isPending && "[&_svg]:animate-spin")}
         />
-        <Card className="gap-3 px-4 py-4">
+        <Card className="px-card">
           <p className="text-sm font-semibold">{t("workspace.import.templateTitle")}</p>
-          <p className="text-xs text-muted-foreground">{t("workspace.import.templateHint")}</p>
+          <p className="text-meta text-muted-foreground">{t("workspace.import.templateHint")}</p>
           <Button variant="outline" className="h-11" onClick={() => void template()} disabled={downloading}>
             {downloading ? <Loader2Icon className="animate-spin" /> : <FileSpreadsheetIcon />} {t("workspace.import.template")}
           </Button>
@@ -277,7 +277,7 @@ function PreviewStep({
       <Card className="gap-0 overflow-hidden py-0">
         <div className="border-b px-4 py-3 sm:px-5">
           <h3 className="font-heading text-base font-semibold">{t("workspace.import.mappingTitle")}</h3>
-          <p className="text-xs text-muted-foreground">{t("workspace.import.mappingHint")}</p>
+          <p className="text-meta text-muted-foreground">{t("workspace.import.mappingHint")}</p>
         </div>
         <ul className="grid divide-y sm:grid-cols-2 sm:divide-y-0">
           {importer.columns.map((c) => {
@@ -318,7 +318,7 @@ function PreviewStep({
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-5">
           <div>
             <h3 className="font-heading text-base font-semibold">{t("workspace.import.rowsTitle")}</h3>
-            <p className="text-xs text-muted-foreground">{t("workspace.import.rowsHint", { shown: preview.rows.length, total: preview.totals.rows })}</p>
+            <p className="text-meta text-muted-foreground">{t("workspace.import.rowsHint", { shown: preview.rows.length, total: preview.totals.rows })}</p>
           </div>
           {preview.totals.invalid > 0 && (
             <Label className="flex items-center gap-2 text-sm font-normal">
@@ -374,7 +374,7 @@ function PreviewStep({
       </Card>
 
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t bg-background/90 px-4 py-3 backdrop-blur sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl sm:border">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           {nothing ? t("workspace.import.nothingValid") : preview.totals.invalid ? t("workspace.import.skipNote", { count: preview.totals.invalid }) : t("workspace.import.allGood")}
         </p>
         <div className="flex gap-2">
@@ -403,7 +403,7 @@ function JobStep({ importer, preview, initial, onAgain }: { importer: Importer; 
   return (
     <div className="grid gap-4">
       <StepHeader importer={importer} title={preview.fileName ?? ""} />
-      <Card className="gap-4 px-4 py-5 sm:px-6">
+      <Card className="px-card">
         {running ? (
           <div className="grid gap-3" role="status" aria-live="polite">
             <p className="flex items-center gap-2 font-heading text-lg font-semibold">

@@ -80,7 +80,7 @@ export default function TicketPage() {
 
   if (thread.isError) {
     return (
-      <Page className="max-w-6xl">
+      <Page>
         <PageHeading title={t("inbox.ticket.title")} back={{ href: "support", label: t("inbox.ticket.title") }} />
         <QueryError error={thread.error} onRetry={() => void thread.refetch()} />
       </Page>
@@ -88,7 +88,7 @@ export default function TicketPage() {
   }
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading
         icon={LifeBuoyIcon}
         back={{ href: "support", label: t("inbox.ticket.title") }}
@@ -113,7 +113,7 @@ export default function TicketPage() {
           </Button>
         </div>
       )}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid min-w-0 content-start gap-4">
           {!thread.data ? (
             <div className="grid gap-3">
@@ -128,7 +128,7 @@ export default function TicketPage() {
             </>
           )}
         </div>
-        <aside className="grid content-start gap-4">{tk ? <Properties ticket={tk} /> : <Skeleton className="h-80 rounded-2xl" />}</aside>
+        <aside className="grid content-start gap-section">{tk ? <Properties ticket={tk} /> : <Skeleton className="h-80 rounded-2xl" />}</aside>
       </div>
     </Page>
   );
@@ -154,7 +154,7 @@ function Thread({ ticket, messages }: { ticket: Ticket; messages: TicketMessage[
           it.messages.map((m) => (
             <motion.li key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
               {m.authorKind === "system" ? (
-                <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+                <p className="flex items-center justify-center gap-1.5 text-center text-meta text-muted-foreground">
                   <InfoIcon className="size-3.5" aria-hidden /> {m.body} · {istTime(m.createdAt)}
                 </p>
               ) : m.kind === "note" ? (
@@ -283,7 +283,7 @@ function ReplyBox({ ticket }: { ticket: Ticket }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-72">
             <DropdownMenuLabel className="text-xs text-muted-foreground">{t("inbox.saved.hint")}</DropdownMenuLabel>
-            {saved.list.length === 0 && <p className="px-2 py-3 text-center text-xs text-muted-foreground">{t("inbox.saved.none")}</p>}
+            {saved.list.length === 0 && <p className="px-2 py-3 text-center text-meta text-muted-foreground">{t("inbox.saved.none")}</p>}
             {saved.list.map((r) => (
               <DropdownMenuItem key={r.id} onSelect={() => insert(r)} className="items-start">
                 <span className="min-w-0 flex-1">
@@ -311,7 +311,7 @@ function ReplyBox({ ticket }: { ticket: Ticket }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {closed && kind === "note" && <p className="mb-2 text-xs text-muted-foreground">{t("inbox.ticket.closedHint")}</p>}
+      {closed && kind === "note" && <p className="mb-2 text-meta text-muted-foreground">{t("inbox.ticket.closedHint")}</p>}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -336,7 +336,7 @@ function ReplyBox({ ticket }: { ticket: Ticket }) {
           }}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <p className="flex-1 text-xs text-muted-foreground">{kind === "note" ? t("inbox.ticket.noteHint") : t("inbox.ticket.replyHint")}</p>
+          <p className="flex-1 text-meta text-muted-foreground">{kind === "note" ? t("inbox.ticket.noteHint") : t("inbox.ticket.replyHint")}</p>
           {statuses.length > 0 && (
             <Select value={after} onValueChange={(v) => setAfter(v as TicketStatus | typeof KEEP)}>
               <SelectTrigger className="w-auto min-w-40" aria-label={t("inbox.ticket.thenSet")}>
@@ -472,7 +472,7 @@ function Properties({ ticket }: { ticket: Ticket }) {
             <InitialsAvatar name={displayNameOf(r, "?")} />
             <div className="min-w-0">
               <p className="truncate font-medium">{displayNameOf(r, t("inbox.ticket.customer"))}</p>
-              {!r.userId && <p className="text-xs text-muted-foreground">{t("inbox.ticket.guest")}</p>}
+              {!r.userId && <p className="text-meta text-muted-foreground">{t("inbox.ticket.guest")}</p>}
             </div>
           </div>
           {r.phone && (

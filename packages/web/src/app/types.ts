@@ -52,12 +52,29 @@ export interface RouteDef extends Gated {
   immersive?: boolean;
 }
 
+/**
+ * Where a widget sits on the structured dashboard (docs/web-modules.md → Dashboard):
+ * - `setup`     full-width strip right under the header (onboarding checklist)
+ * - `kpi`       one headline tile in the KPI strip; the component renders `<KpiTile>`. Only the first KPI_LIMIT by priority show
+ * - `attention` rows of the single "Needs attention" card; the component renders `<AttentionItem>`s (hidden at zero)
+ * - `main`      wide left column (charts, recent activity)
+ * - `side`      narrow right column (short lists)
+ * - `secondary` compact cards in the "More insights" grid; the component usually renders `<InsightCard>`
+ */
+export type WidgetZone = "setup" | "kpi" | "attention" | "main" | "side" | "secondary";
+
 export interface WidgetDef extends Gated {
   id: string;
-  /** Dashboard grid width: sm = one column, md = two, lg = full row (three columns on desktop). */
-  size: "sm" | "md" | "lg";
-  /** Two rows tall on desktop (e.g. a long list next to two small cards). */
+  /**
+   * Width inside the secondary grid (sm = one column, md = two, lg = full row). Without `zone`, also picks the zone:
+   * sm → secondary, md/lg → main (older widgets keep working).
+   */
+  size?: "sm" | "md" | "lg";
+  /** @deprecated The structured dashboard stacks columns; kept so older declarations still type-check. */
   rowSpan?: 1 | 2;
+  zone?: WidgetZone;
+  /** Order inside its zone across all modules: lower comes first (default 100); ties keep module order. */
+  priority?: number;
   component: React.ComponentType;
 }
 

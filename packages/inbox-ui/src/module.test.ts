@@ -64,6 +64,8 @@ describe("inboxModule", () => {
       ["inbox-unread", [], null], // checks chat / WhatsApp itself (any-of)
       ["inbox-tickets", ["support"], "support.manage"],
     ]);
+    // Inbox contributes needs-attention rows only (unread chats / WhatsApp, tickets), no whole cards.
+    expect(m.widgets?.every((w) => w.zone === "attention")).toBe(true);
     for (const a of m.actions ?? []) expect(asArray(a.feature).length, a.id).toBeGreaterThan(0);
     expect(m.actions?.every((a) => !a.primary)).toBe(true);
   });

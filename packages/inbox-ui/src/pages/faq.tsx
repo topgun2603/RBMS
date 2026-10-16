@@ -67,9 +67,9 @@ export default function FaqPage() {
   );
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading icon={BookOpenIcon} title={t("inbox.faq.title")} description={t("inbox.faq.subtitle")} actions={add} />
-      <div className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <div className="grid gap-section lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="grid content-start gap-2">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">{t("inbox.faq.categories")}</h2>
@@ -142,7 +142,7 @@ export default function FaqPage() {
                     <Card className="flex-row items-center gap-3 p-3 sm:p-4">
                       <ModuleLink to={`faq/${a.id}`} className="min-w-0 flex-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <p className="truncate font-medium hover:text-primary">{a.title}</p>
-                        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
                           <span>{catName(a.categoryId)}</span>
                           <span className="font-mono">/{a.slug}</span>
                           <span className="inline-flex items-center gap-1" title={t("inbox.faq.helpful")}>

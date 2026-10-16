@@ -55,12 +55,12 @@ export default function MarketplaceSettingsPage() {
   const { t } = useI18n();
   const q = useMarketplaceSettings();
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <PageHeading icon={SettingsIcon} title={t("marketplace.settings.title")} description={t("marketplace.settings.subtitle")} />
       {q.isError ? (
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : q.isPending ? (
-        <Card className="gap-4 p-6">
+        <Card className="p-card">
           {Array.from({ length: 5 }, (_, i) => (
             <Skeleton key={i} className="h-14 w-full" />
           ))}
@@ -111,8 +111,8 @@ function SettingsForm({ initial }: { initial: MarketplaceSettings }) {
 
   return (
     <form onSubmit={submit} noValidate className="grid gap-4">
-      <Card className="py-5">
-        <CardContent className="grid gap-5 px-4 sm:px-6">
+      <Card>
+        <CardContent className="grid gap-5">
           <h2 className="font-heading text-base font-semibold">{t("marketplace.settings.money")}</h2>
           <FieldRow>
             <Field invalid={!!errors.commission}>
@@ -172,8 +172,8 @@ function SettingsForm({ initial }: { initial: MarketplaceSettings }) {
         </CardContent>
       </Card>
 
-      <Card className="py-5">
-        <CardContent className="grid gap-4 px-4 sm:px-6">
+      <Card>
+        <CardContent className="grid gap-4">
           <h2 className="font-heading text-base font-semibold">{t("marketplace.settings.sellers")}</h2>
           <SwitchRow
             label={t("marketplace.settings.acceptApplications")}

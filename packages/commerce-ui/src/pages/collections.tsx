@@ -40,7 +40,7 @@ export default function CollectionsPage() {
   };
 
   return (
-    <Page className="max-w-5xl">
+    <Page>
       <PageHeading icon={LayersIcon} title={t("commerce.collections.title")} description={t("commerce.collections.subtitle")} actions={addButton} />
       <SearchField className="mb-4" value={q} onChange={setQ} placeholder={t("commerce.collections.search")} />
 
@@ -92,7 +92,7 @@ export default function CollectionsPage() {
                         </span>
                       )}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="mt-0.5 truncate text-meta text-muted-foreground">
                       {c.type === "manual" ? t("commerce.collections.productCount", { count: c.productIds.length }) : ruleSummary(c)}
                     </p>
                     <p className="truncate font-mono text-[0.6875rem] text-muted-foreground/80">/collections/{c.slug}</p>

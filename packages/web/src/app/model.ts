@@ -4,7 +4,7 @@
  */
 import type { FeatureCheck } from "../lib/features";
 import { permissionAllows, roleAllows, type PermissionHolder } from "../lib/permissions";
-import type { Gated, IconType, MountedModule, RouteDef, WebApp } from "./types";
+import type { Gated, IconType, MountedModule, QuickAction, RouteDef, WebApp, WidgetDef, WidgetZone } from "./types";
 
 /** "/" + "invoices/1" → "/invoices/1"; "/billing" + "" → "/billing"; "/billing" + "?x=1" → "/billing?x=1". */
 export function joinPath(base: string, rel: string): string {
@@ -162,4 +162,76 @@ export function buildNavModel(
         break outer;
       }
   return { sections, primary };
+}
+
+// ---------------------------------------------------------------- dashboard
+
+/** How many KPI tiles the strip shows (the lowest priorities win). */
+export const KPI_LIMIT = 4;
+
+export const WIDGET_ZONES: readonly WidgetZone[] = ["setup", "kpi", "attention", "main", "side", "secondary"];
+
+/** A widget's zone: its own, else from its size (sm → secondary, md/lg → main) so older declarations keep working. */
+export function widgetZone(w: Pick<WidgetDef, "zone" | "size">): WidgetZone {
+  return w.zone ?? (w.size === "md" || w.size === "lg" ? "main" : "secondary");
+}
+
+export interface PlacedWidget {
+  widget: WidgetDef;
+  module: MountedModule;
+}
+
+/**
+ * Visible widgets of the given modules grouped by zone, each zone sorted by priority (default 100, ties keep module
+ * order), the KPI strip cut to `kpiLimit`.
+ */
+export function layoutWidgets(
+  app: Pick<WebApp, "modules">,
+  visible: VisibleFn,
+  opts: { modules?: readonly string[]; kpiLimit?: number } = {},
+): Record<WidgetZone, PlacedWidget[]> {
+  const zones = Object.fromEntries(WIDGET_ZONES.map((z) => [z, [] as PlacedWidget[]])) as Record<WidgetZone, PlacedWidget[]>;
+  let seq = 0;
+  const order = new Map<PlacedWidget, number>();
+  for (const m of app.modules) {
+    if (opts.modules && !opts.modules.includes(m.id)) continue;
+    for (const w of m.widgets ?? []) {
+      if (!visible(w, m)) continue;
+      const p = { widget: w, module: m };
+      order.set(p, seq++);
+      zones[widgetZone(w)].push(p);
+    }
+  }
+  for (const z of WIDGET_ZONES)
+    zones[z].sort((a, b) => (a.widget.priority ?? 100) - (b.widget.priority ?? 100) || order.get(a)! - order.get(b)!);
+  zones.kpi = zones.kpi.slice(0, opts.kpiLimit ?? KPI_LIMIT);
+  return zones;
+}
+
+export interface MergedAction extends QuickAction {
+  module: MountedModule;
+  absHref: string;
+}
+
+/**
+ * Every visible quick action as one list: the app's main action (first visible `primary`) first, then module order;
+ * duplicates (same target or same label) dropped, the first one kept.
+ */
+export function mergeQuickActions(app: Pick<WebApp, "modules">, visible: VisibleFn, modules?: readonly string[]): MergedAction[] {
+  const all: MergedAction[] = [];
+  for (const m of app.modules) {
+    if (modules && !modules.includes(m.id)) continue;
+    for (const a of m.actions ?? []) if (visible(a, m)) all.push({ ...a, module: m, absHref: joinPath(m.basePath, a.href) });
+  }
+  const main = all.findIndex((a) => a.primary);
+  if (main > 0) all.unshift(...all.splice(main, 1));
+  const hrefs = new Set<string>();
+  const labels = new Set<string>();
+  return all.filter((a) => {
+    const href = a.absHref;
+    if (hrefs.has(href) || labels.has(a.label)) return false;
+    hrefs.add(href);
+    labels.add(a.label);
+    return true;
+  });
 }

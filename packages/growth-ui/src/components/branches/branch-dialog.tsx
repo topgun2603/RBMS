@@ -307,7 +307,7 @@ export function BranchSheet({
                 <div className="flex items-start justify-between gap-4 rounded-xl border p-3">
                   <div className="space-y-0.5">
                     <FieldLabel>{t("growth.branches.makeMain")}</FieldLabel>
-                    <p className="text-xs text-muted-foreground">{t("growth.branches.makeMainHint")}</p>
+                    <p className="text-meta text-muted-foreground">{t("growth.branches.makeMainHint")}</p>
                   </div>
                   <FieldControl>
                     <Switch checked={d.isDefault} onCheckedChange={(v) => set({ isDefault: v })} />

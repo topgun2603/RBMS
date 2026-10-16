@@ -128,7 +128,7 @@ export function RoleEditor({ draft, onClose, takenKeys }: { draft: RoleDraft | n
             {extras.length > 0 && (
               <div className="grid gap-2">
                 <p className="text-sm font-medium">{t("workspace.roles.extras")}</p>
-                <p className="text-xs text-muted-foreground">{t("workspace.roles.extrasHint")}</p>
+                <p className="text-meta text-muted-foreground">{t("workspace.roles.extrasHint")}</p>
                 <ul className="flex flex-wrap gap-1.5">
                   {extras.map((p) => (
                     <li key={p} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pr-1 pl-2.5 text-xs">

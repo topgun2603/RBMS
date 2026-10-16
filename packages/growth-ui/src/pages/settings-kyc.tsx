@@ -62,7 +62,7 @@ export default function KycSettingsPage() {
   const { t } = useI18n();
   const allowed = useCan(GROWTH_PERMISSIONS.kyc);
   return (
-    <Page className="max-w-5xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={ShieldCheckIcon} title={t("growth.kyc.title")} description={t("growth.kyc.subtitle")} />
       {allowed ? <ShopKyc /> : <NoAccess permission={GROWTH_PERMISSIONS.kyc} />}
@@ -76,7 +76,7 @@ function ShopKyc() {
   if (subject.isError) return <QueryError error={subject.error} onRetry={() => void subject.refetch()} />;
   if (subject.isPending) {
     return (
-      <div className="grid gap-4" aria-busy="true">
+      <div className="grid gap-section" aria-busy="true">
         <Skeleton className="h-36 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
         <Skeleton className="h-48 rounded-2xl" />
@@ -84,7 +84,7 @@ function ShopKyc() {
     );
   }
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <StatusHero subject={subject.data} />
       <CheckForm shopId={tenant.id} subject={subject.data} />
       <ChecksList checks={subject.data.checks} />
@@ -118,7 +118,7 @@ function StatusHero({ subject: s }: { subject: KycSubject }) {
           </div>
           {s.verifiedName && <p className="text-sm">{t("growth.kyc.verifiedAs", { name: s.verifiedName })}</p>}
           {!s.verified && s.missing.length > 0 && <p className="text-sm text-muted-foreground">{t("growth.kyc.missing", { items: s.missing.join(", ") })}</p>}
-          {s.updatedAt && <p className="text-xs text-muted-foreground">{t("growth.kyc.updated", { date: formatDate(s.updatedAt) })}</p>}
+          {s.updatedAt && <p className="text-meta text-muted-foreground">{t("growth.kyc.updated", { date: formatDate(s.updatedAt) })}</p>}
         </div>
       </div>
       {badges.length > 0 && (
@@ -225,7 +225,7 @@ function CheckForm({ shopId, subject }: { shopId: string; subject: KycSubject })
             {submit.isPending ? <Loader2Icon className="animate-spin" /> : <SearchCheckIcon />}
             {t("growth.kyc.verify")}
           </Button>
-          <p className="text-xs text-muted-foreground">{t("growth.kyc.privacy")}</p>
+          <p className="text-meta text-muted-foreground">{t("growth.kyc.privacy")}</p>
         </div>
       </form>
     </SectionCard>
@@ -297,7 +297,7 @@ function ChecksList({ checks }: { checks: KycCheck[] }) {
                       <Badge variant="outline">{t(`growth.kyc.review.${c.review.decision}`)}</Badge>
                     )}
                   </p>
-                  <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+                  <p className="mt-0.5 truncate font-mono text-meta text-muted-foreground">
                     {maskedRows(c.input)
                       .map((r) => r.value)
                       .join(" · ")}
@@ -397,7 +397,7 @@ function Documents({ shopId, subject }: { shopId: string; subject: KycSubject })
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{t(`growth.kyc.docKinds.${d.kind}`)}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(d.createdAt)}</p>
+                    <p className="text-meta text-muted-foreground">{formatDate(d.createdAt)}</p>
                   </div>
                   <Button asChild variant="ghost" size="icon-sm" aria-label={t("growth.kyc.openDoc")}>
                     <a href={absoluteUrl(d.fileUrl)} target="_blank" rel="noreferrer noopener">

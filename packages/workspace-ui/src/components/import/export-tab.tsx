@@ -46,7 +46,7 @@ export function ExportTab() {
       <Stagger className="grid gap-3 sm:grid-cols-2" stagger={0.05}>
         {list.map((e) => (
           <StaggerItem key={e.key} className="min-w-0">
-            <Card className="h-full gap-3 px-4 py-4">
+            <Card className="px-card h-full">
               <p className="flex items-center gap-2 font-heading font-semibold">
                 <span className="icon-chip size-9 text-primary">
                   <DownloadIcon className="size-4" />

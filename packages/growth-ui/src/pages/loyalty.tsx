@@ -27,7 +27,7 @@ function Loyalty() {
   const setTab = (v: string) => navigate(v === "members" ? "?" : `?tab=${v}`, { replace: true, scroll: false });
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading icon={GiftIcon} title={t("growth.loyalty.title")} description={t("growth.loyalty.subtitle")} />
       <Tabs value={tab} onValueChange={setTab} className="gap-4">
         <TabsList aria-label={t("growth.loyalty.tabs")} className="h-11 w-full rounded-xl p-1 sm:w-max">
@@ -47,7 +47,7 @@ function Loyalty() {
 
 function LoyaltyFallback() {
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <Skeleton className="mb-5 h-12 w-72" />
       <Skeleton className="mb-4 h-11 w-64 rounded-xl" />
       <Skeleton className="h-96 rounded-2xl" />

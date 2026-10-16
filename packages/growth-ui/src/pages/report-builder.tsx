@@ -207,7 +207,7 @@ function Builder({ ds, saved }: { ds: DatasetInfo; saved: SavedReport | null }) 
   ) : null;
 
   return (
-    <Page wide>
+    <Page width="full">
       <PageHeading
         icon={WandSparklesIcon}
         title={saved?.name ?? t("growth.reports.builder.newTitle", { dataset: ds.label })}
@@ -236,8 +236,8 @@ function Builder({ ds, saved }: { ds: DatasetInfo; saved: SavedReport | null }) 
         }
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        <div className="grid gap-4">
+      <div className="grid items-start gap-section lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+        <div className="grid gap-section">
           <SectionCard icon={Columns3Icon} title={t("growth.reports.columns.title")} description={t("growth.reports.columns.description")}>
             <ColumnsPicker ds={ds} value={state.columns} onChange={(columns) => patch({ columns })} disabled={grouped} />
           </SectionCard>
@@ -306,7 +306,7 @@ function Builder({ ds, saved }: { ds: DatasetInfo; saved: SavedReport | null }) 
 
 function BuilderSkeleton() {
   return (
-    <Page wide>
+    <Page width="full">
       <div className="mb-5 flex items-center gap-3">
         <Skeleton className="size-10 rounded-xl" />
         <div className="space-y-2">
@@ -314,8 +314,8 @@ function BuilderSkeleton() {
           <Skeleton className="h-4 w-72" />
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        <div className="grid gap-4">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+        <div className="grid gap-section">
           <Skeleton className="h-64 rounded-2xl" />
           <Skeleton className="h-40 rounded-2xl" />
         </div>

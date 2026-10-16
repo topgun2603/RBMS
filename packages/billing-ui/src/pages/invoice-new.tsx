@@ -8,7 +8,7 @@ import { InvoiceForm } from "../components/invoice-form";
 export default function NewInvoicePage() {
   const { t } = useI18n();
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeading icon={FilePlus2Icon} title={t("billing.form.newTitle")} back={{ href: "invoices", label: t("billing.nav.invoices") }} />
       <React.Suspense fallback={null}>
         <NewInvoiceForm />

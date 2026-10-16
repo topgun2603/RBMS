@@ -100,7 +100,7 @@ export function UpgradeDialog({ block, onClose }: { block: PlanBlock | null; onC
               <span className="tabular-nums text-muted-foreground">{t("web.plan.upgrade.used", { used, limit })}</span>
             </div>
             <Meter value={used} max={limit} label={limitName(t, b.key)} valueText={t("web.plan.upgrade.used", { used, limit })} />
-            {b.key.endsWith("_per_month") && <p className="text-xs text-muted-foreground">{t("web.plan.upgrade.resets")}</p>}
+            {b.key.endsWith("_per_month") && <p className="text-meta text-muted-foreground">{t("web.plan.upgrade.resets")}</p>}
           </div>
         )}
 

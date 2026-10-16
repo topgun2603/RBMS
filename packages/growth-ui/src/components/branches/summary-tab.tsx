@@ -30,7 +30,7 @@ export function SummaryTab() {
   const d = (s: string) => formatDate(s, { day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <ChipGroup
         aria-label={t("growth.branches.period")}
         value={preset}
@@ -58,7 +58,7 @@ export function SummaryTab() {
             <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div>
                 <h3 className="font-heading text-base font-semibold">{t(`growth.branches.metric.${metric}`)}</h3>
-                {summary.data && <p className="text-xs text-muted-foreground">{t("growth.branches.rangeText", { from: d(summary.data.from), to: d(summary.data.to) })}</p>}
+                {summary.data && <p className="text-meta text-muted-foreground">{t("growth.branches.rangeText", { from: d(summary.data.from), to: d(summary.data.to) })}</p>}
               </div>
               <div className="flex items-center gap-2">
                 <ChipGroup

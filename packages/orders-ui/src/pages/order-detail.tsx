@@ -31,7 +31,7 @@ export default function OrderDetailPage() {
   const order = useOrder(id);
 
   return (
-    <Page wide className="max-w-6xl">
+    <Page>
       {order.isError ? (
         <>
           <PageHeading icon={ShoppingBagIcon} title={t("orders.detail.title")} back={{ href: "orders", label: t("orders.list.title") }} />
@@ -138,7 +138,7 @@ function OrderView({ order }: { order: Order }) {
         <OrderProgress order={order} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid min-w-0 content-start gap-4">
           <LinesCard order={order} />
           <ShippingCard order={order} />
@@ -158,7 +158,7 @@ function OrderView({ order }: { order: Order }) {
 
 function DetailSkeleton() {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-section">
       <div className="flex items-end justify-between">
         <div className="space-y-2">
           <Skeleton className="h-3 w-20" />
@@ -168,12 +168,12 @@ function DetailSkeleton() {
         <Skeleton className="h-11 w-36 rounded-lg" />
       </div>
       <Skeleton className="h-24 rounded-2xl" />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="grid gap-4">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid gap-section">
           <Skeleton className="h-72 rounded-2xl" />
           <Skeleton className="h-40 rounded-2xl" />
         </div>
-        <div className="grid content-start gap-4">
+        <div className="grid content-start gap-section">
           <Skeleton className="h-40 rounded-2xl" />
           <Skeleton className="h-36 rounded-2xl" />
         </div>

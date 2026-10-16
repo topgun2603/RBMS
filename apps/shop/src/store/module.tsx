@@ -1,13 +1,12 @@
 "use client";
 
-import * as React from "react";
 import { LayoutDashboardIcon } from "lucide-react";
 import type { WebModule } from "@srirealtime/web";
 import { storeMessages } from "./messages";
 
 /**
- * A tiny local module for the demo store admin: the Dashboard nav entry and a welcome card. Everything else comes from
- * the mounted UI modules (orders-ui, commerce-ui, site-ui, billing-ui, workspace-ui).
+ * A tiny local module for the demo store admin: the Dashboard nav entry. The dashboard itself (greeting, quick actions,
+ * KPIs, needs attention...) is built by the kit from the mounted UI modules' widgets and actions.
  */
 export function storeModule(opts: { basePath?: string } = {}): WebModule {
   return {
@@ -24,6 +23,5 @@ export function storeModule(opts: { basePath?: string } = {}): WebModule {
       },
     ],
     routes: [],
-    widgets: [{ id: "welcome", size: "lg", component: React.lazy(() => import("./pages").then((m) => ({ default: m.WelcomeWidget }))) }],
   };
 }

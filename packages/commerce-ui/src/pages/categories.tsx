@@ -102,7 +102,7 @@ export default function CategoriesPage() {
   );
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         icon={FolderTreeIcon}
         title={t("commerce.categories.title")}
@@ -130,7 +130,7 @@ export default function CategoriesPage() {
         <EmptyState illustration={<FoldersIllustration />} title={t("commerce.categories.emptyTitle")} description={t("commerce.categories.emptyBody")} action={addButton} />
       ) : (
         <>
-          <p className="mb-2 text-xs text-muted-foreground">{t("commerce.categories.dragHint")}</p>
+          <p className="mb-2 text-meta text-muted-foreground">{t("commerce.categories.dragHint")}</p>
           <Card className={cn("gap-0 overflow-hidden p-1.5 transition-opacity", reorder.isPending && "opacity-70")}>
             <Branch
               nodes={tree}
@@ -238,7 +238,7 @@ function Branch({
                     </span>
                   )}
                 </p>
-                <p className="truncate font-mono text-xs text-muted-foreground">/{n.slug}</p>
+                <p className="truncate font-mono text-meta text-muted-foreground">/{n.slug}</p>
               </div>
               <ModuleLink
                 to={`products?categoryId=${n.id}`}

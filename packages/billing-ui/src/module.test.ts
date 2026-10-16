@@ -110,12 +110,18 @@ describe("billingModule", () => {
     ]);
     const visible = visibleFor("anbu");
     expect((m.widgets ?? []).filter((w) => visible(w, m)).map((w) => w.id)).toEqual([
-      "sales-hero",
+      "kpi-sales",
+      "kpi-to-collect",
+      "kpi-collected",
+      "kpi-overdue",
+      "attention",
       "sales-trend",
-      "payments-by-method",
       "recent-bills",
+      "payments-by-method",
       "low-stock",
     ]);
+    // Every widget sits in an explicit zone of the structured dashboard.
+    for (const w of m.widgets ?? []) expect(w.zone, w.id).toBeTruthy();
     expect((m.actions ?? []).filter((a) => visible(a, m)).map((a) => a.id)).toEqual(["new-bill"]);
     expect(m.nav.map((s) => s.id)).toEqual(["billing"]);
   });

@@ -79,7 +79,7 @@ export function ProgramTab() {
   if (settings.isError) return <QueryError error={settings.error} onRetry={() => void settings.refetch()} />;
   if (settings.isPending) {
     return (
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Skeleton className="h-96 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
       </div>
@@ -144,8 +144,8 @@ function ProgramForm({ initial, t }: { initial: LoyaltySettings; t: ReturnType<t
   const tiersForExample = parsed.tiers.filter((x) => x.name && Number.isFinite(x.multiplier) && x.multiplier !== 1);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-      <div className="grid min-w-0 gap-4">
+    <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <div className="grid min-w-0 gap-section">
         {serverError && <InlineError title={serverError} />}
 
         <SectionCard icon={SparklesIcon} title={t("growth.loyalty.earnTitle")} description={t("growth.loyalty.earnBody")}>
@@ -275,7 +275,7 @@ function ProgramForm({ initial, t }: { initial: LoyaltySettings; t: ReturnType<t
               ))}
             </AnimatePresence>
             {(submitted || dirty) && tierListError && <p className="text-xs text-destructive">{t(`growth.loyalty.errors.tiers.${tierListError.code}`)}</p>}
-            <p className="text-xs text-muted-foreground">{t("growth.loyalty.tiersHint")}</p>
+            <p className="text-meta text-muted-foreground">{t("growth.loyalty.tiersHint")}</p>
           </div>
         </SectionCard>
       </div>

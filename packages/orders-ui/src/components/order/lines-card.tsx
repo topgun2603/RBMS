@@ -29,10 +29,10 @@ export function LinesCard({ order }: { order: Order }) {
               <Thumb src={l.image} alt="" className="size-12" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium break-words">{product}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                   {[variant, l.sku && `${t("orders.detail.sku")} ${l.sku}`].filter(Boolean).join(" · ")}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                <p className="mt-0.5 text-meta text-muted-foreground tabular-nums">
                   {formatQty(l.qty)} {l.unit !== "pcs" ? l.unit : ""} × {money(l.price)}
                   {l.gstRate > 0 && ` · ${t("orders.detail.gstRate", { rate: l.gstRate })}`}
                 </p>
@@ -86,7 +86,7 @@ export function LinesCard({ order }: { order: Order }) {
             <TotalRow muted label={t("orders.totals.sgst")} value={money(tt.sgst)} />
           </>
         )}
-        {gst > 0 && <p className="text-xs text-muted-foreground">{allInclusive ? t("orders.totals.gstIncluded") : t("orders.totals.gstAdded")}</p>}
+        {gst > 0 && <p className="text-meta text-muted-foreground">{allInclusive ? t("orders.totals.gstIncluded") : t("orders.totals.gstAdded")}</p>}
         {tt.roundOff !== 0 && <TotalRow muted label={t("orders.totals.roundOff")} value={`${tt.roundOff > 0 ? "+" : "−"}${money(Math.abs(tt.roundOff))}`} />}
         <Separator className="my-1" />
         <TotalRow strong label={t("orders.totals.total")} value={money(order.total)} />

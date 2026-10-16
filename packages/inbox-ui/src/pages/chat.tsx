@@ -217,7 +217,7 @@ function ConversationList({ openId, status }: { openId: string | null; status: L
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-3 px-4 pt-5 pb-3 md:pt-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight">
+          <h1 className="flex items-center gap-2 font-heading text-xl font-semibold tracking-tight">
             <MessageCircleIcon className="size-5 text-primary" aria-hidden />
             {t("inbox.chat.title")}
             <UnreadBadge count={unreadTotal} label={t("inbox.common.unreadCount", { count: unreadTotal })} />
@@ -478,7 +478,7 @@ function Thread({
             <InitialsAvatar name={conversationTitle(c, me.userId, t)} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{conversationTitle(c, me.userId, t)}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="mt-0.5 truncate text-meta text-muted-foreground">
                 {t(`inbox.chat.type.${c.type}`)} · {t("inbox.chat.people", { count: c.participants.length })}
               </p>
             </div>

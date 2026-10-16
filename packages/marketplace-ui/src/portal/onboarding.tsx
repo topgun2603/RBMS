@@ -43,9 +43,9 @@ export default function OnboardingPage() {
   const pct = Math.round((steps.done / steps.total) * 100);
 
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <PageHeading icon={ClipboardCheckIcon} title={t("marketplace.onboarding.title")} description={t("marketplace.onboarding.subtitle", { name: self.name })} />
-      <Card className="mb-4 gap-3 p-4 sm:p-5">
+      <Card className="p-card mb-4">
         <div className="flex items-center justify-between gap-3">
           <p className="font-medium">{t("marketplace.onboarding.progress", { done: steps.done, total: steps.total })}</p>
           <span className="font-heading text-lg font-semibold tabular-nums">{pct}%</span>

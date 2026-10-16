@@ -47,7 +47,7 @@ export function SupplierPicker({
             <InitialsAvatar name={value.supplier.name} />
             <div className="min-w-0 flex-1 text-sm">
               <p className="truncate font-semibold">{value.supplier.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="mt-0.5 truncate text-meta text-muted-foreground">
                 {[value.supplier.phone, value.supplier.stateCode && stateLabel(value.supplier.stateCode)].filter(Boolean).join(" · ") ||
                   t("billing.picker.noDetails")}
               </p>
@@ -253,7 +253,7 @@ function SupplierSearch({
                     <InitialsAvatar name={o.supplier.name} size="sm" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{o.supplier.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{[o.supplier.phone, o.supplier.gstin].filter(Boolean).join(" · ")}</p>
+                      <p className="mt-0.5 truncate text-meta text-muted-foreground">{[o.supplier.phone, o.supplier.gstin].filter(Boolean).join(" · ")}</p>
                     </div>
                     {o.supplier.payable > 0 && <span className="text-xs font-medium text-warning-ink tabular-nums">{money(o.supplier.payable)}</span>}
                   </>

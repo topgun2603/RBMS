@@ -151,7 +151,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
   };
 
   return (
-    <Page className="max-w-5xl pb-0">
+    <Page className="pb-0">
       <PageHeading
         back={{ href: "collections", label: t("commerce.nav.collections") }}
         icon={LayersIcon}
@@ -176,7 +176,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
         }
       />
 
-      <form onSubmit={submit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <form onSubmit={submit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
           <Section id="details" icon={FileTextIcon} title={t("commerce.collections.details")}>
             <Field id="col-name" invalid={!!errors.name}>
@@ -392,7 +392,7 @@ function ManualPicker({ ids, onChange, disabled }: { ids: string[]; onChange: (i
                     <ProductThumb src={p.image} alt="" className="size-10" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground tabular-nums">{priceRange(p.priceMin, p.priceMax)}</p>
+                      <p className="text-meta text-muted-foreground tabular-nums">{priceRange(p.priceMin, p.priceMax)}</p>
                     </div>
                     {p.status !== "active" && <ProductStatusPill status={p.status} className="hidden sm:inline-flex" />}
                     <Button
@@ -436,7 +436,7 @@ function ManualPicker({ ids, onChange, disabled }: { ids: string[]; onChange: (i
                 {p ? <ProductThumb src={p.image} alt="" className="size-9" /> : <Skeleton className="size-9 rounded-xl" />}
                 <div className="min-w-0 flex-1">
                   {p ? <p className="truncate text-sm font-medium">{p.name}</p> : known.isPending ? <Skeleton className="h-4 w-32" /> : <p className="text-sm text-muted-foreground">{t("commerce.collections.unknownProduct")}</p>}
-                  {p && <p className="text-xs text-muted-foreground tabular-nums">{priceRange(p.priceMin, p.priceMax)}</p>}
+                  {p && <p className="text-meta text-muted-foreground tabular-nums">{priceRange(p.priceMin, p.priceMax)}</p>}
                 </div>
                 <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || i === 0} onClick={() => sort.move(i, -1)} aria-label={t("commerce.collections.moveUp", { n: i + 1 })}>
                   <ArrowUpIcon />
@@ -517,7 +517,7 @@ function PreviewPanel({ draft, server, dirty }: { draft: Draft; server: Collecti
           <h2 id="col-preview-title" className="font-heading text-base font-semibold">
             {t("commerce.collections.preview")}
           </h2>
-          <p className="text-xs text-muted-foreground">{loading ? t("commerce.common.loading") : t("commerce.collections.matching", { count: total })}</p>
+          <p className="text-meta text-muted-foreground">{loading ? t("commerce.common.loading") : t("commerce.collections.matching", { count: total })}</p>
         </div>
         {draft.type === "rule" && <FilterIcon className="size-4 text-muted-foreground" aria-hidden />}
       </header>
@@ -551,7 +551,7 @@ function PreviewPanel({ draft, server, dirty }: { draft: Draft; server: Collecti
             ))}
           </ul>
         )}
-        {rows.length > 8 && <p className="text-center text-xs text-muted-foreground">{t("commerce.collections.andMore", { count: rows.length - 8 })}</p>}
+        {rows.length > 8 && <p className="text-center text-meta text-muted-foreground">{t("commerce.collections.andMore", { count: rows.length - 8 })}</p>}
         <p className="px-1 text-[0.6875rem] text-muted-foreground">
           {exact && publicQ.isSuccess ? t("commerce.collections.previewExact") : approximate ? t("commerce.collections.previewApprox") : t("commerce.collections.previewLive")}
         </p>

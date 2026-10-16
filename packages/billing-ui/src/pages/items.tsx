@@ -55,7 +55,7 @@ export default function ItemsPage() {
   );
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading
         icon={PackageIcon}
         title={t("billing.items.title")}
@@ -107,7 +107,7 @@ export default function ItemsPage() {
             {items.map((it) => {
               const s = stockById.get(it.id);
               return (
-                <StaggerItem key={it.id} className="flex min-h-16 items-center gap-3 px-3 py-2">
+                <StaggerItem key={it.id} className="flex min-h-16 items-center gap-3 px-3 py-3">
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -118,7 +118,7 @@ export default function ItemsPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{it.name}</p>
-                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-muted-foreground">
                         <span className="truncate">{it.hsn ? `HSN ${it.hsn}` : t("billing.items.noHsn")}</span>
                         {s && (
                           <span className="inline-flex items-center gap-1.5">

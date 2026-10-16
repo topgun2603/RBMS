@@ -72,13 +72,15 @@ export function marketplaceModule(opts: MarketplaceModuleOptions = {}): WebModul
   const widgets: WidgetDef[] = [
     {
       id: "marketplace-applications",
-      size: "sm",
+      zone: "attention",
+      priority: 35,
       ...ADMIN,
-      component: React.lazy(() => adminWidgets().then((m) => ({ default: m.ApplicationsWidget }))),
+      component: React.lazy(() => adminWidgets().then((m) => ({ default: m.ApplicationsAttentionWidget }))),
     },
     {
       id: "marketplace-payable",
-      size: "sm",
+      zone: "secondary",
+      priority: 30,
       ...ADMIN,
       feature: [F.marketplace, F.payouts],
       component: React.lazy(() => adminWidgets().then((m) => ({ default: m.PayableWidget }))),

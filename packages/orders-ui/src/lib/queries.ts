@@ -96,6 +96,15 @@ export function useOrdersSummary(enabled = true) {
   return useQuery({ queryKey: ok.summary, enabled, queryFn: () => api.get<OrdersSummary>("/orders/summary"), staleTime: 30_000 });
 }
 
+/** The latest few orders (any status) for the dashboard. */
+export function useRecentOrders(limit = 5) {
+  return useQuery({
+    queryKey: [...ok.lists, "recent", limit] as const,
+    queryFn: ({ signal }) => api.get<OrderListResult>("/orders", { limit, offset: 0 }, { signal }),
+    staleTime: 30_000,
+  });
+}
+
 export const exportOrdersCsv = (filters: OrderListFilters) => apiDownload("/orders", { ...clean(filters), format: "csv" }, "orders.csv");
 
 /** After any order write: refresh lists, the board, the summary; put the fresh order in the detail cache. */

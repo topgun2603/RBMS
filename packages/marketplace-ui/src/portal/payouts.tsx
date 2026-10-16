@@ -108,7 +108,7 @@ function Ledger({ balance }: { balance: number }) {
         <div className={cn("grid gap-2 transition-opacity", q.isPlaceholderData && "opacity-60")}>
           <LedgerList rows={rows} showBalance={running} />
           {q.data.items.length > 0 && (
-            <p className="text-right text-xs text-muted-foreground tabular-nums">
+            <p className="text-right text-meta text-muted-foreground tabular-nums">
               {t("marketplace.ledger.pageTotals", { credit: money(totals.credit), debit: money(totals.debit), net: signedMoney(totals.net) })}
             </p>
           )}

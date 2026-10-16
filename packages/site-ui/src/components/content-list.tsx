@@ -37,7 +37,7 @@ export function ContentList({ kind }: { kind: "page" | "post" }) {
   ) : null;
 
   return (
-    <Page className="max-w-4xl">
+    <Page>
       <PageHeading icon={Icon} title={t(kind === "page" ? "site.pages.title" : "site.posts.title")} description={t(kind === "page" ? "site.pages.subtitle" : "site.posts.subtitle")} actions={add} />
       <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <SearchField value={q} onChange={setQ} placeholder={t(kind === "page" ? "site.pages.search" : "site.posts.search")} />
@@ -92,7 +92,7 @@ export function ContentList({ kind }: { kind: "page" | "post" }) {
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium group-hover:text-primary">{it.title}</p>
-                      <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                      <p className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                         <span className="font-mono">{kind === "page" ? `/${it.slug}` : `/blog/${it.slug}`}</span>
                         <span>· {t("site.common.updated", { date: formatDate(it.updatedAt, { day: "numeric", month: "short" }) })}</span>
                         {post?.tags.slice(0, 3).map((tag) => (

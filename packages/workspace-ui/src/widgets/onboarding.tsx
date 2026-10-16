@@ -1,26 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { ListChecksIcon, XIcon } from "lucide-react";
+import { ArrowRightIcon, XIcon } from "lucide-react";
 import { AnimatePresence, Button, Card, motion, toast, useReducedMotionSafe } from "@srirealtime/ui";
 import { describeError, ModuleLink, useI18n, useSettingsHref } from "@srirealtime/web";
 import { ProgressRing } from "../components/bits";
-import { StepRow } from "../components/onboarding/steps";
+import { stepDescription, stepLabel, useStepHref } from "../components/onboarding/steps";
 import { WORKSPACE_SETTINGS_PATHS } from "../module";
 import { useOnboarding, useOnboardingAction } from "../lib/queries";
 
-/** "Get set up" dashboard card: progress ring and the next three steps, until the checklist is done or dismissed. */
+/**
+ * "Get set up" strip for the dashboard's setup zone: progress, the next step with "Do it" / "Skip", a link to every
+ * step, and a dismiss button. Hidden once the checklist is done or dismissed.
+ */
 export function OnboardingWidget() {
   const { t } = useI18n();
   const reduced = useReducedMotionSafe();
   const q = useOnboarding();
   const action = useOnboardingAction();
   const settingsHref = useSettingsHref();
+  const stepHref = useStepHref();
   const s = q.data;
   const visible = !!s && !s.dismissed && s.total > 0 && s.completed < s.total;
-  const next = (s?.steps ?? []).filter((x) => !x.done && !x.skipped).slice(0, 3);
+  const next = (s?.steps ?? []).find((x) => !x.done && !x.skipped);
 
-  const dismiss = () => action.mutate({ kind: "dismiss" }, { onError: (err) => toast.error(describeError(err, t)) });
+  const run = (body: Parameters<typeof action.mutate>[0]) => action.mutate(body, { onError: (err) => toast.error(describeError(err, t)) });
 
   return (
     <AnimatePresence initial={false}>
@@ -29,46 +33,58 @@ export function OnboardingWidget() {
           key="setup"
           initial={reduced ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0, marginBottom: 0 }}
+          exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
           transition={{ duration: 0.25 }}
         >
           <Card className="relative gap-0 overflow-hidden py-0">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 [background-image:radial-gradient(60%_80%_at_0%_0%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent)]"
+              className="pointer-events-none absolute inset-0 [background-image:radial-gradient(50%_120%_at_0%_0%,color-mix(in_oklch,var(--primary)_9%,transparent),transparent)]"
             />
-            <div className="relative grid gap-4 p-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-6 sm:p-5">
-              <div className="flex items-center gap-4 sm:flex-col sm:items-start sm:justify-center">
-                <ProgressRing value={s.completed} max={s.total} label={t("workspace.onboarding.progressAria", { done: s.completed, total: s.total })} />
-                <div className="sm:max-w-44">
-                  <p className="flex items-center gap-2 font-heading text-lg font-semibold">
-                    <ListChecksIcon className="size-5 text-primary" /> {t("workspace.onboarding.title")}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{t("workspace.onboarding.subtitle", { left: s.total - s.completed })}</p>
+            <div className="relative flex flex-col gap-3 p-3 pr-12 sm:flex-row sm:items-center sm:gap-5 sm:p-4 sm:pr-14">
+              <div className="flex shrink-0 items-center gap-3">
+                <ProgressRing value={s.completed} max={s.total} size={52} label={t("workspace.onboarding.progressAria", { done: s.completed, total: s.total })} />
+                <div>
+                  <p className="font-heading text-base leading-tight font-semibold">{t("workspace.onboarding.title")}</p>
+                  <p className="text-xs text-muted-foreground">{t("workspace.onboarding.subtitle", { left: s.total - s.completed })}</p>
+                  <ModuleLink
+                    href={settingsHref(WORKSPACE_SETTINGS_PATHS.setup)}
+                    className="text-xs font-medium text-primary underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+                  >
+                    {t("workspace.onboarding.viewAll", { total: s.total })}
+                  </ModuleLink>
                 </div>
               </div>
-              <div className="min-w-0">
-                <ul className="divide-y">
-                  {next.map((step) => (
-                    <StepRow key={step.key} step={step} compact />
-                  ))}
-                </ul>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                  <Button asChild variant="link" className="h-9 px-0">
-                    <ModuleLink href={settingsHref(WORKSPACE_SETTINGS_PATHS.setup)}>{t("workspace.onboarding.viewAll", { total: s.total })}</ModuleLink>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={dismiss} disabled={action.isPending}>
-                    {t("workspace.onboarding.dismiss")}
-                  </Button>
+              {next && (
+                <div className="flex min-w-0 flex-1 flex-col gap-2 border-t pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5 xl:flex-row xl:items-center xl:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.6875rem] font-semibold tracking-wider text-primary uppercase">{t("workspace.onboarding.next")}</p>
+                    <p className="truncate text-sm font-medium">{stepLabel(t, next)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{stepDescription(t, next)}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground" disabled={action.isPending} onClick={() => run({ kind: "skip", key: next.key })}>
+                      {t("workspace.onboarding.skip")}
+                    </Button>
+                    <Button asChild size="sm">
+                      <ModuleLink href={stepHref(next.href)} aria-label={t("workspace.onboarding.goAria", { step: stepLabel(t, next) })}>
+                        {t("workspace.onboarding.go")} <ArrowRightIcon />
+                      </ModuleLink>
+                    </Button>
+                    <Button asChild variant="link" size="sm" className="hidden px-2 sm:inline-flex">
+                      <ModuleLink href={settingsHref(WORKSPACE_SETTINGS_PATHS.setup)}>{t("workspace.onboarding.viewAll", { total: s.total })}</ModuleLink>
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-2 text-muted-foreground"
+              className="absolute top-2 right-2 size-8 text-muted-foreground sm:top-1/2 sm:-translate-y-1/2"
               aria-label={t("workspace.onboarding.dismiss")}
-              onClick={dismiss}
+              title={t("workspace.onboarding.dismiss")}
+              onClick={() => run({ kind: "dismiss" })}
               disabled={action.isPending}
             >
               <XIcon />

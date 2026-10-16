@@ -73,7 +73,7 @@ export function ProductPicker({
                   <Thumb src={p.image} className="size-10" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground tabular-nums">
+                    <p className="text-meta text-muted-foreground tabular-nums">
                       {priceRange(p.priceMin, p.priceMax)}
                       {(p.status !== "active" || !p.channels.includes("store")) && <span className="ml-2 text-warning-ink">· {t("site.pickers.notInStore")}</span>}
                     </p>

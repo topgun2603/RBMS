@@ -62,8 +62,8 @@ export function inboxModule(opts: InboxModuleOptions = {}): WebModule {
 
   const widgetDefs: WidgetDef[] = [
     // Chat and/or WhatsApp: the kit's `feature` is all-of, so the card checks each source itself and hides when neither is on.
-    { id: "inbox-unread", size: "sm", component: React.lazy(() => widgets().then((m) => ({ default: m.UnreadWidget }))) },
-    { id: "inbox-tickets", size: "sm", ...SUPPORT, component: React.lazy(() => widgets().then((m) => ({ default: m.TicketsWidget }))) },
+    { id: "inbox-unread", zone: "attention", priority: 30, component: React.lazy(() => widgets().then((m) => ({ default: m.UnreadAttentionWidget }))) },
+    { id: "inbox-tickets", zone: "attention", priority: 25, ...SUPPORT, component: React.lazy(() => widgets().then((m) => ({ default: m.TicketsAttentionWidget }))) },
   ];
 
   const actions: QuickAction[] = [

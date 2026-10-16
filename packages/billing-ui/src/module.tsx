@@ -122,12 +122,19 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
   ];
 
   const widgetDefs: WidgetDef[] = [
-    { id: "sales-hero", size: "lg", feature: F.invoices, component: widget("SalesHeroWidget", widgets) },
-    { id: "sales-trend", size: "md", feature: F.reports, component: widget("SalesTrendWidget", widgets) },
-    { id: "payments-by-method", size: "sm", feature: F.reports, component: widget("PaymentMethodsWidget", widgets) },
-    { id: "recent-bills", size: "md", rowSpan: 2, feature: F.invoices, component: widget("RecentBillsWidget", widgets) },
-    { id: "top-dues", size: "sm", feature: F.creditBook, component: widget("TopDuesWidget", widgets) },
-    { id: "low-stock", size: "sm", feature: F.inventory, component: widget("LowStockWidget", widgets) },
+    // KPI strip: sales leads every app it is mounted in; "to collect" outranks collected/overdue so a store (EC) that
+    // also shows orders and visitors keeps it among its four.
+    { id: "kpi-sales", zone: "kpi", priority: 10, feature: F.invoices, component: widget("SalesKpiWidget", widgets) },
+    { id: "kpi-to-collect", zone: "kpi", priority: 40, feature: F.invoices, component: widget("ToCollectKpiWidget", widgets) },
+    { id: "kpi-collected", zone: "kpi", priority: 45, feature: F.invoices, component: widget("CollectedKpiWidget", widgets) },
+    { id: "kpi-overdue", zone: "kpi", priority: 50, feature: F.invoices, component: widget("OverdueKpiWidget", widgets) },
+    // Needs attention: overdue bills, low / out-of-stock items.
+    { id: "attention", zone: "attention", priority: 10, feature: F.invoices, component: widget("BillingAttentionWidget", widgets) },
+    { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, component: widget("SalesTrendWidget", widgets) },
+    { id: "recent-bills", zone: "main", priority: 30, feature: F.invoices, component: widget("RecentBillsWidget", widgets) },
+    { id: "payments-by-method", zone: "side", priority: 10, feature: F.reports, component: widget("PaymentMethodsWidget", widgets) },
+    { id: "top-dues", zone: "side", priority: 20, feature: F.creditBook, component: widget("TopDuesWidget", widgets) },
+    { id: "low-stock", zone: "side", priority: 30, feature: F.inventory, component: widget("LowStockWidget", widgets) },
   ];
 
   return {

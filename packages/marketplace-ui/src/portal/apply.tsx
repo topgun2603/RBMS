@@ -79,8 +79,8 @@ export default function ApplyScreen() {
           </Stagger>
         </FadeIn>
         <FadeIn delay={0.05}>
-          <Card className="py-5">
-            <CardContent className="px-4 sm:px-6">
+          <Card>
+            <CardContent>
               {apply.isSuccess ? (
                 <div className="grid justify-items-center gap-3 py-8 text-center">
                   <SuccessCheck size={56} />

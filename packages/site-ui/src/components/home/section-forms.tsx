@@ -103,7 +103,7 @@ function HeroFields({ form, onChange, errors, disabled, idp }: Props<"hero">) {
                 <Optional />
               </Label>
               <ImageField value={s.imageUrl} onChange={(imageUrl) => setSlide(i, { imageUrl })} aspect="aspect-[16/7]" disabled={disabled} invalid={!!errors[`slides.${i}.imageUrl`]} />
-              <p className="text-xs text-muted-foreground">{t("site.home.heroImageHint")}</p>
+              <p className="text-meta text-muted-foreground">{t("site.home.heroImageHint")}</p>
               <FieldError code={errors[`slides.${i}.imageUrl`]} />
             </div>
             <div className="grid content-start gap-2">
@@ -112,7 +112,7 @@ function HeroFields({ form, onChange, errors, disabled, idp }: Props<"hero">) {
                 <Optional />
               </Label>
               <ImageField value={s.mobileImageUrl} onChange={(mobileImageUrl) => setSlide(i, { mobileImageUrl })} aspect="aspect-[4/5]" className="max-w-40" disabled={disabled} />
-              <p className="text-xs text-muted-foreground">{t("site.home.mobileImageHint")}</p>
+              <p className="text-meta text-muted-foreground">{t("site.home.mobileImageHint")}</p>
               <FieldError code={errors[`slides.${i}.mobileImageUrl`]} />
             </div>
           </div>
@@ -373,7 +373,7 @@ function NewsletterFields({ form, onChange, errors, disabled, idp }: Props<"news
         </FieldControl>
         <FieldError code={errors.text} />
       </UiField>
-      <p className="text-xs text-muted-foreground">{t("site.home.newsletterHint")}</p>
+      <p className="text-meta text-muted-foreground">{t("site.home.newsletterHint")}</p>
     </div>
   );
 }

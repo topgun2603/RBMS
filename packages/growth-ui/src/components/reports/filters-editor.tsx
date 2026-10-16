@@ -168,7 +168,7 @@ function FilterRow({
         </Field>
       </div>
       {col && <FilterValue col={col} filter={f} onChange={onChange} error={errOf("value")} error2={errOf("value2")} />}
-      {incomplete && <p className="text-xs text-muted-foreground">{t("growth.reports.filters.incomplete")}</p>}
+      {incomplete && <p className="text-meta text-muted-foreground">{t("growth.reports.filters.incomplete")}</p>}
     </div>
   );
 }

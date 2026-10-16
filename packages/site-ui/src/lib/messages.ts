@@ -655,6 +655,9 @@ const en: Messages = {
   "site.widgets.edit": "Edit",
   "site.widgets.editHome": "Edit home page",
   "site.widgets.publish": "Publish home page",
+  "site.widgets.kpiVisitors": "Store visitors · 7 days",
+  "site.widgets.kpiConversion": "{pct} conversion",
+  "site.widgets.attnReviews": "Reviews to approve",
 };
 
 const ta: Messages = {
@@ -1311,6 +1314,9 @@ const ta: Messages = {
   "site.widgets.edit": "திருத்து",
   "site.widgets.editHome": "முகப்புப் பக்கத்தைத் திருத்து",
   "site.widgets.publish": "முகப்புப் பக்கத்தை வெளியிடு",
+  "site.widgets.kpiVisitors": "கடைப் பார்வையாளர்கள் · 7 நாட்கள்",
+  "site.widgets.kpiConversion": "{pct} மாற்று விகிதம்",
+  "site.widgets.attnReviews": "ஒப்புதலுக்கான மதிப்புரைகள்",
 };
 
 export const siteMessages = { en, ta } as const;

@@ -15,14 +15,14 @@ export default function OrderSettingsPage() {
   // PUT /settings/orders/tenant is for owners and admins.
   const canEdit = !!useOptionalSession()?.canManage;
   return (
-    <Page className="max-w-3xl">
+    <Page width="narrow">
       <SettingsNav />
       <PageHeading icon={ShoppingBagIcon} title={t("orders.settings.title")} description={t("orders.settings.subtitle")} />
       {!canEdit && <ReadOnlyNote icon={LockIcon}>{t("orders.settings.readOnly")}</ReadOnlyNote>}
       {settings.isError ? (
         <QueryError error={settings.error} onRetry={() => void settings.refetch()} />
       ) : settings.isPending ? (
-        <div className="grid gap-4">
+        <div className="grid gap-section">
           <Skeleton className="h-36 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
         </div>
@@ -100,7 +100,7 @@ function SettingsForm({ initial, canEdit }: { initial: OrderSettings; canEdit: b
             { value: "delivered", label: t("orders.settings.invoiceOn.delivered") },
           ]}
         />
-        <p className="text-xs text-muted-foreground">{t(`orders.settings.invoiceOnHint.${v.invoiceOn}`)}</p>
+        <p className="text-meta text-muted-foreground">{t(`orders.settings.invoiceOnHint.${v.invoiceOn}`)}</p>
       </Section>
       <Section icon={CheckCheckIcon} title={t("orders.settings.handling")}>
         {toggle("autoConfirm", CheckCheckIcon)}

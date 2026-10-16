@@ -196,7 +196,7 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
   const errs = showErrors;
 
   return (
-    <Page className="max-w-6xl pb-0">
+    <Page className="pb-0">
       <PageHeading
         back={{ href: listHref, label: t(kind === "page" ? "site.nav.pages" : "site.nav.blog") }}
         icon={Icon}
@@ -247,7 +247,7 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
       />
       {!canEdit && <ReadOnlyNote>{t("site.common.readOnlyCms")}</ReadOnlyNote>}
 
-      <form onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <form onSubmit={onSubmit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
           <Section id="ce-details" icon={Icon} title={t("site.editor.details")}>
             <TextField id="ce-title" label={t("site.editor.title")} value={d.title} maxLength={CMS_LIMITS.title} disabled={!canEdit} error={errs ? titleError : null} inputClassName="text-base" onChange={(v) => set("title", v)} />
@@ -279,7 +279,7 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
                   {storeUrl ? storeUrl(path) : path} · {t("site.slug.hint")}
                 </p>
               )}
-              {slugProblem === "reserved" && <p className="text-xs text-muted-foreground">{t("site.slug.reservedList", { list: [...RESERVED_SLUGS].join(", ") })}</p>}
+              {slugProblem === "reserved" && <p className="text-meta text-muted-foreground">{t("site.slug.reservedList", { list: [...RESERVED_SLUGS].join(", ") })}</p>}
               {!isNew && server && d.slug.trim() && d.slug.trim() !== server.slug && live && <p className="text-xs text-warning-ink">{t("site.slug.changeWarning")}</p>}
             </div>
             {kind === "post" && (

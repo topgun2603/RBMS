@@ -72,7 +72,7 @@ export default function MenusPage() {
   const canEdit = useCan(PERMS.cms);
 
   return (
-    <Page className="max-w-4xl pb-0">
+    <Page className="pb-0">
       <PageHeading icon={MenuIcon} title={t("site.menus.title")} description={t("site.menus.subtitle")} />
       {!canEdit && <ReadOnlyNote>{t("site.common.readOnlyCms")}</ReadOnlyNote>}
       <ChipGroup<MenuKey>
@@ -289,7 +289,7 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
         )}
         <p className={cn("text-xs", full ? "text-warning-ink" : "text-muted-foreground")}>{t("site.menus.count", { n: count, max: MENU_MAX_ITEMS })}</p>
       </div>
-      <p className="text-xs text-muted-foreground">{t("site.menus.nestHint")}</p>
+      <p className="text-meta text-muted-foreground">{t("site.menus.nestHint")}</p>
       {storeUrl && (
         <a href={storeUrl("/")} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline">
           <ExternalLinkIcon className="size-4" /> {t("site.common.viewStore")}

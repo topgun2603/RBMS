@@ -22,7 +22,7 @@ interface WebModule {
   nav: NavSection[];                           // { id, title (msg key), items: { href (relative), label (msg key), icon, feature?, mobile?: "tab" | "more" }[] }
   routes: RouteDef[];                          // { path: "invoices/:id", component: lazy(() => import(...)), feature?: string | string[], roles?: string[] }
   publicRoutes?: RouteDef[];                   // no login: "i/:token", "s/:token"
-  widgets?: WidgetDef[];                       // dashboard cards: { id, feature?, size: "sm"|"md"|"lg", component }
+  widgets?: WidgetDef[];                       // dashboard widgets: { id, zone, priority?, feature?, size?, component } (see "Dashboard")
   actions?: QuickAction[];                     // e.g. { id: "new-bill", label, href: "invoices/new", feature: "invoices", primary: true }
   settings?: SettingsPage[];                   // pages that appear under the app's Settings: { path, label, component, feature?, roles? }
 }
@@ -79,7 +79,7 @@ interface NavSection extends Gated { id; title /* msg key */; items: NavItem[] }
 interface NavItem extends Gated { href /* relative, "" = module root */; label; icon?; mobile?: "tab" | "more";
   tabLabel? /* shorter label for the phone bar */; exact? /* default: true for the module root */ }
 interface RouteDef extends Gated { path; component; immersive?: boolean /* own sticky action bar: phone tab bar hides */ }
-interface WidgetDef extends Gated { id; size: "sm" | "md" | "lg"; rowSpan?: 1 | 2; component }
+interface WidgetDef extends Gated { id; zone?: WidgetZone; priority?: number; size?: "sm" | "md" | "lg"; rowSpan? /* deprecated */; component }
 interface QuickAction extends Gated { id; label; href; icon?; primary? }
 interface SettingsPage extends Gated { path /* "" = /settings itself */; label; icon?; component }
 interface WebModule { id; basePath?; features?; messages; nav; routes; publicRoutes?; widgets?; actions?; settings? }
@@ -124,6 +124,38 @@ interface WebModule { id; basePath?; features?; messages; nav; routes; publicRou
   `packages/web/src/lib/permissions.ts`).
 - **Settings tabs** (`<SettingsNav />`): from `sm` up a horizontally scrolling tab bar (no scrollbar) that fades only the
   side(s) with more tabs and scrolls the active tab into view; on phones a native `<select>` of the same pages.
+
+### Dashboard
+
+`/` (and a module's own overview, e.g. billing at `/billing`) is one structured page built from every mounted module's
+`widgets` and `actions` (`packages/web/src/app/dashboard.tsx`); no app hard-codes it.
+
+| Zone | What the widget renders | Layout |
+|---|---|---|
+| (header) | — built by the kit | greeting + date (IST) + one quick-actions bar: every visible `actions` entry, the app's main (`primary`) action first, de-duplicated by target and label, 4 visible (2 on phones), the rest under "More" |
+| `setup` | a full-width strip (onboarding) | right under the header; hides itself when done or dismissed |
+| `kpi` | `<KpiTile label value format? exact? hint? delta? spark? icon? to/href loading error>` | one row, first `KPI_LIMIT` (4) by priority; the first tile is the page's one accent tile; 2 columns on phones |
+| `attention` | one or more `<AttentionItem label count tone icon to/href loading error>` | rows of the single "Needs attention" card, sorted danger → warning → info → neutral, bigger counts first; a row hides at zero; "All caught up" when nothing is left |
+| `main` | a card | wide left column (charts, recent activity) |
+| `side` | a card | narrow right column under "Needs attention" |
+| `secondary` | `<InsightCard icon title to linkLabel value caption>` | "More insights": even grid (equal row heights), collapsible |
+
+- `priority`: lower first inside a zone (default 100), ties keep module order. Widgets without `zone` keep working: `size: "sm"` → secondary, md/lg → main.
+- Phones: header → setup → KPIs → needs attention → main → side → more insights.
+- Every widget sits in its own Suspense (a skeleton shaped like its zone) and error boundary: one failing widget shows a retry card (or, in `attention`/`setup`, disappears); the page stays up.
+- Feature / role / permission gating per widget is unchanged (`Gated`).
+- Pure helpers: `layoutWidgets(app, visible, { modules?, kpiLimit? })`, `mergeQuickActions(app, visible, modules?)`, `widgetZone(w)` (`model.ts`, tested in `dashboard-model.test.ts`).
+
+| Module | kpi | attention | main | side | secondary |
+|---|---|---|---|---|---|
+| billing-ui | sales this month (10), to collect (40), collected (45), overdue (50) | overdue bills, items low/out of stock | sales trend (10), recent bills (30) | payments by method (10), top dues (20), low stock (30) | — |
+| orders-ui | orders today (20) | to confirm, to pack, to ship | recent orders (20) | — | — |
+| site-ui | store visitors · 7 days + conversion (30) | reviews to approve | — | — | your store (10) |
+| inbox-ui | — | tickets past due, tickets needing reply, unread chats, unread WhatsApp | — | — | — |
+| marketplace-ui | — | seller applications | — | — | payable to sellers (30) |
+| commerce-ui | — | — | — | — | catalogue (20) |
+| growth-ui | — | — | — | — | loyalty (40), scheduled reports (50) |
+| workspace-ui | setup: "Get set up" strip | | | | |
 
 ### Permission gating
 
