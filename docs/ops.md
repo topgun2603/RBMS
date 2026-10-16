@@ -13,7 +13,11 @@ jobs run in parallel on `ubuntu-latest`, each with the pnpm store and the Turbor
 
 Parallelism is capped (`--concurrency=2`, `NODE_OPTIONS=--max-old-space-size=3072`): the full parallel run runs out of
 memory. In CI `E2E_REQUIRE_BROWSER=1` makes `run-all.mjs` fail instead of skip when the store browser test can't run.
-`*.localhost` shop hosts are added to `/etc/hosts` for Node's `fetch`; Chrome resolves them itself.
+`*.localhost` shop hosts are added to `/etc/hosts` for Node's `fetch`; Chrome resolves them itself. The e2e job loads
+`apps/api/test/e2e/fixtures/pincode-cache.sql` after migrating, because the API's live PIN lookup
+(api.postalpincode.in) doesn't answer from GitHub runners and the tests expect the city for 620001.
+
+Timing: about 8 minutes with a cold cache (check is the slowest), about 2.5 minutes when the Turborepo cache hits.
 
 ### Secrets
 
@@ -33,6 +37,8 @@ pnpm turbo run build --filter="./apps/*" --concurrency=2  # build (writes .next;
 # e2e: infra up, a clean database, then the same sequence as the job
 pnpm infra:up
 pnpm --filter @srirealtime/api db:migrate
+# optional: the PIN codes the tests look up, if api.postalpincode.in isn't reachable (CI always loads this)
+docker compose exec -T postgres psql -U srikit -d srikit -f - < apps/api/test/e2e/fixtures/pincode-cache.sql
 pnpm --filter @srirealtime/api seed
 pnpm --filter @srirealtime/api seed:e2e
 pnpm --filter @srirealtime/api start      # terminal 1 (or `pnpm dev`)

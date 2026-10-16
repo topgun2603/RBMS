@@ -4,7 +4,7 @@ name: CI
 
 on:
   push:
-    branches: [main, ci-setup] # TEMP: ci-setup only while bringing CI up
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
