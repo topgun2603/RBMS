@@ -7,6 +7,7 @@ import * as reportsV2 from "./messages/reports";
 import * as expensesV2 from "./messages/expenses";
 import * as growthV2 from "./messages/growth";
 import * as creditNotesV2 from "./messages/credit-notes";
+import * as listsV2 from "./messages/lists";
 
 /**
  * billing.* strings for the billing module. Tenant/server overrides from GET /v1/i18n/messages win
@@ -713,7 +714,7 @@ const ta: Messages = {
   "billing.errors.loadFailed": "ஏற்ற முடியவில்லை",
 };
 
-const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, growthV2, creditNotesV2];
+const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, growthV2, creditNotesV2, listsV2];
 
 export const billingMessages = {
   en: Object.assign({}, en, ...areas.map((a) => a.en)) as Messages,

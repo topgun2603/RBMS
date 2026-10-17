@@ -68,6 +68,12 @@ export interface Customer {
   /** v2: unallocated receipt money (paise). */
   advance?: number;
   createdAt: ISODate;
+  /** Customer list only: latest issued bill date. */
+  lastBillDate?: string | null;
+  /** Customer list only: paise billed less credit notes. */
+  totalBilled?: number;
+  /** Customer list only: paise of open bills past their due date. */
+  overdue?: number;
 }
 
 export interface CustomerInput {
@@ -89,6 +95,19 @@ export interface Item {
   rate: number;
   gstRate: GstRate;
   createdAt: ISODate;
+  /** Catalogue items: the product's category. */
+  categoryId?: string | null;
+  /** Catalogue items: false for draft/archived products. */
+  active?: boolean;
+  /** With stock tracking: quantity on hand (all locations) and its status. */
+  stockQty?: number | null;
+  stockStatus?: "in" | "low" | "out" | "untracked" | null;
+}
+
+/** GET /invoices/items: `categories` names the ids in `facets.category`. */
+export interface ItemListResponse extends Paged<Item> {
+  facets?: Record<string, Record<string, number>>;
+  categories?: { id: string; name: string }[];
 }
 
 export interface ItemInput {
@@ -393,11 +412,17 @@ export interface CreditBookRow {
   /** The contract doesn't pin this down: an overdue amount (paise) or a flag. */
   overdue: number | boolean;
   lastActivity: ISODate | null;
+  /** Due date (or bill date) of the oldest open bill with money left on it. */
+  oldestDue?: string | null;
+  /** Latest payment or receipt date. */
+  lastPayment?: string | null;
 }
 
 export interface CreditBookResponse {
   items: CreditBookRow[];
+  total?: number;
   totals: { receivable: number; advance: number; customersWithDues: number };
+  facets?: Record<string, Record<string, number>>;
 }
 
 export interface ShareLink {
@@ -434,6 +459,8 @@ export interface StockRow {
   value: number;
   status: StockStatus;
   updatedAt: ISODate | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
 }
 
 export type StockFilter = "all" | "low" | "out" | "untracked";
@@ -442,6 +469,8 @@ export interface StockListResponse {
   items: StockRow[];
   total: number;
   totals: { stockValue: number; lowCount: number; outCount: number };
+  facets?: Record<string, Record<string, number>>;
+  categories?: { id: string; name: string }[];
 }
 
 export interface StockSummary {
@@ -484,6 +513,8 @@ export interface Supplier {
   /** Sum of unpaid purchases (paise). */
   payable: number;
   createdAt: ISODate;
+  /** Supplier list only: latest recorded purchase date. */
+  lastPurchase?: string | null;
 }
 
 export interface SupplierInput {

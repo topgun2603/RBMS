@@ -14,6 +14,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { CUSTOM_DOMAIN_FEATURE, shouldForceVerify } from "./domains";
 import { TENANT_STATUSES } from "./schema";
+import type { TenantListQuery } from "./list";
 import { publicTenant, type TenancyService } from "./service";
 
 /** Base levels and `role:<key>` custom roles; the service validates the combination (normalizeMemberRoles). */
@@ -39,11 +40,6 @@ const addMemberBody = z
   })
   .refine((b) => Boolean(b.userId) !== Boolean(b.target), { message: "Give either userId or target" });
 const rolesBody = z.object({ roles });
-const listQuery = z.object({
-  q: z.string().max(100).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
 const statusBody = z.object({ status: z.enum(TENANT_STATUSES) });
 const appBody = z.object({ appId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,32}$/, "Invalid app id").nullable() });
 const planBody = z.object({ planId: z.string().min(1).max(64).nullable() });
@@ -229,8 +225,7 @@ export function tenancyRoutes(
     // ---- super-admin
     app.get("/tenants", async (req) => {
       requireSuperAdmin(req.ctx);
-      const q = listQuery.parse(req.query);
-      return service.list(q);
+      return service.list(req.query as TenantListQuery);
     });
 
     app.patch("/tenants/:id/status", platform("tenancy.tenant.status"), async (req) => {

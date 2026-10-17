@@ -81,6 +81,34 @@ describe("parseTableState", () => {
   });
 });
 
+describe("parseTableState: server-loaded options", () => {
+  const ids = ["b1f0c9e2-0000-4000-8000-000000000001", "b1f0c9e2-0000-4000-8000-000000000002"];
+  const loaded = [{ value: ids[0]!, label: "Main" }];
+
+  it("keeps URL values of a dynamic filter that aren't in its options yet (refresh before the options load)", () => {
+    const d = { branch: { kind: "options", label: "Branch", options: loaded, dynamic: true } } satisfies ServerFilterDefs;
+    const s = parseTableState(new URLSearchParams(`branch=${ids.join(",")}`), d);
+    expect(s.filters.branch).toEqual(ids);
+  });
+
+  it("keeps URL values while a filter's options are still empty, even without `dynamic`", () => {
+    const d = { supplier: { kind: "options", label: "Supplier", options: [] } } satisfies ServerFilterDefs;
+    expect(parseTableState(new URLSearchParams(`supplier=${ids[1]}`), d).filters.supplier).toEqual([ids[1]]);
+  });
+
+  it("de-duplicates, drops blanks and bounds dynamic values", () => {
+    const d = { cat: { kind: "options", label: "Category", options: [], dynamic: true, single: true } } satisfies ServerFilterDefs;
+    expect(parseTableState(new URLSearchParams(`cat=,${"x".repeat(101)},a,a,b`), d).filters.cat).toEqual(["a"]);
+    const many = Array.from({ length: 60 }, (_, i) => `v${i}`).join(",");
+    const m = { cat: { kind: "options", label: "Category", options: [], dynamic: true } } satisfies ServerFilterDefs;
+    expect(parseTableState(new URLSearchParams(`cat=${many}`), m).filters.cat).toHaveLength(50);
+  });
+
+  it("still drops unknown values of a fixed, loaded list", () => {
+    expect(parse("status=paid,bogus").filters.status).toEqual(["paid"]);
+  });
+});
+
 describe("serializeTableState", () => {
   it("leaves defaults out", () => {
     expect(serializeTableState(emptyTableState(defs, opts), defs, opts)).toBe("");

@@ -177,7 +177,7 @@ export function BillingAttentionWidget() {
           count={(stock.data?.lowCount ?? 0) + (stock.data?.outCount ?? 0)}
           tone={(stock.data?.outCount ?? 0) > 0 ? "warning" : "info"}
           icon={PackageIcon}
-          to="stock?filter=low"
+          to="stock?status=low"
           loading={stock.isPending}
           error={stock.isError}
         />
@@ -453,7 +453,7 @@ function LowStockCard() {
           {t("billing.dashboard.lowStockTitle")}
         </CardTitle>
         <Button asChild variant="ghost" size="sm">
-          <ModuleLink to="stock?filter=low">
+          <ModuleLink to="stock?status=low">
             {t("billing.dashboard.viewStock")} <ArrowRightIcon />
           </ModuleLink>
         </Button>

@@ -23,6 +23,10 @@ const en: Messages = {
 
   "admin.kyc.filter.shop": "Shop",
   "admin.kyc.filter.allShops": "All shops",
+  "admin.kyc.filter.status": "Status",
+  "admin.kyc.filter.allStatuses": "All checks",
+  "admin.kyc.search": "Search names",
+  "admin.kyc.count": "{count, plural, one {# check} other {# checks}}",
 
   "admin.kyc.empty": "Nothing to review",
   "admin.kyc.emptyHint": "Checks that need a person show up here.",
@@ -113,6 +117,10 @@ const ta: Messages = {
 
   "admin.kyc.filter.shop": "கடை",
   "admin.kyc.filter.allShops": "எல்லாக் கடைகளும்",
+  "admin.kyc.filter.status": "நிலை",
+  "admin.kyc.filter.allStatuses": "எல்லாச் சரிபார்ப்புகளும்",
+  "admin.kyc.search": "பெயர்களைத் தேடு",
+  "admin.kyc.count": "{count} சரிபார்ப்புகள்",
 
   "admin.kyc.empty": "சரிபார்க்க எதுவும் இல்லை",
   "admin.kyc.emptyHint": "ஒருவர் பார்க்க வேண்டிய சரிபார்ப்புகள் இங்கே தோன்றும்.",

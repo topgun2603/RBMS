@@ -4,7 +4,6 @@ import * as React from "react";
 import { BookOpenIcon, FolderIcon, Loader2Icon, PencilIcon, PlusIcon, ThumbsDownIcon, ThumbsUpIcon, Trash2Icon } from "lucide-react";
 import {
   Button,
-  Card,
   ChipGroup,
   cn,
   Dialog,
@@ -20,43 +19,175 @@ import {
   FieldLabel,
   Input,
   Skeleton,
-  Stagger,
-  StaggerItem,
+  DataTable,
+  DataTableToolbar,
   StatusPill,
   Switch,
   Textarea,
   toast,
+  type DataTableColumn,
 } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useI18n } from "@srirealtime/web";
-import { useFaqArticleMutations, useFaqArticles, useFaqCategories, useFaqCategoryMutations } from "../lib/queries";
-import type { FaqArticle, FaqCategory } from "../lib/types";
+import {
+  ConfirmDialog,
+  describeError,
+  ModuleLink,
+  Page,
+  PageHeading,
+  QueryError,
+  useI18n,
+  useModuleNavigate,
+  useQueryParams,
+  useServerTable,
+  type ServerFilterDefs,
+} from "@srirealtime/web";
+import { qk, useFaqArticleMutations, useFaqCategories, useFaqCategoryMutations } from "../lib/queries";
+import type { FaqArticleListItem, FaqCategory } from "../lib/types";
 
-type StatusFilter = "" | "published" | "draft";
-const ALL = "__all";
-const NONE_CAT = "__none";
+const STATUSES = ["published", "draft"] as const;
+const ALL = "all";
+/** The API's "no category" value (`categoryId=none`). */
+const NONE_CAT = "none";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function FaqPage() {
-  const { t } = useI18n();
-  const [q, setQ] = React.useState("");
-  const [status, setStatus] = React.useState<StatusFilter>("");
-  const [cat, setCat] = React.useState<string>(ALL);
-  const debounced = useDebounced(q.trim(), 300);
+  // useServerTable reads the search params, which needs a Suspense boundary.
+  return (
+    <React.Suspense fallback={null}>
+      <FaqManager />
+    </React.Suspense>
+  );
+}
+
+function FaqManager() {
+  const { t, formatDate, formatNumber } = useI18n();
+  const navigate = useModuleNavigate();
+  const params = useQueryParams();
   const cats = useFaqCategories();
-  const articles = useFaqArticles({ q: debounced, status, categoryId: cat !== ALL && cat !== NONE_CAT ? cat : undefined });
   const muts = useFaqArticleMutations();
   const [editCat, setEditCat] = React.useState<FaqCategory | "new" | null>(null);
-  const items = (articles.data?.items ?? []).filter((a) => (cat === NONE_CAT ? !a.categoryId : true));
-  const catName = (id: string | null) => cats.data?.find((c) => c.id === id)?.name ?? t("inbox.faq.uncategorised");
-  const filtered = !!(debounced || status || cat !== ALL);
+  const catList = React.useMemo(() => cats.data ?? [], [cats.data]);
+  const catName = React.useCallback((id: string | null) => catList.find((c) => c.id === id)?.name ?? t("inbox.faq.uncategorised"), [catList, t]);
 
-  const toggle = async (a: FaqArticle, on: boolean) => {
-    try {
-      await muts.publish.mutateAsync({ id: a.id, on });
-      toast.success(on ? t("inbox.faq.publishedToast", { title: a.title }) : t("inbox.faq.unpublishedToast", { title: a.title }));
-    } catch (err) {
-      toast.error(describeError(err, t));
-    }
-  };
+  const publish = muts.publish;
+  const toggle = React.useCallback(
+    async (a: FaqArticleListItem, on: boolean) => {
+      try {
+        await publish.mutateAsync({ id: a.id, on });
+        toast.success(on ? t("inbox.faq.publishedToast", { title: a.title }) : t("inbox.faq.unpublishedToast", { title: a.title }));
+      } catch (err) {
+        toast.error(describeError(err, t));
+      }
+    },
+    [publish, t],
+  );
+  const publishing = publish.isPending;
+
+  // A category id from a shared link stays selected even before the categories have loaded.
+  const linkedCats = React.useMemo(() => (params?.get("categoryId") ?? "").split(",").filter((v) => UUID_RE.test(v)), [params]);
+  const filters = React.useMemo(
+    () =>
+      ({
+        // Both are driven by the category list and the status pills rather than toolbar buttons.
+        categoryId: {
+          kind: "options",
+          label: t("inbox.faq.category"),
+          single: true,
+          hidden: true,
+          options: [
+            ...catList.map((c) => ({ value: c.id, label: c.name })),
+            ...linkedCats.filter((id) => !catList.some((c) => c.id === id)).map((id) => ({ value: id, label: t("inbox.faq.category") })),
+            { value: NONE_CAT, label: t("inbox.faq.uncategorised") },
+          ],
+        },
+        status: {
+          kind: "options",
+          label: t("inbox.faq.status"),
+          single: true,
+          hidden: true,
+          options: STATUSES.map((s) => ({ value: s, label: t(`inbox.faq.${s}`) })),
+        },
+      }) satisfies ServerFilterDefs,
+    [t, catList, linkedCats],
+  );
+
+  const columns = React.useMemo<DataTableColumn<FaqArticleListItem>[]>(
+    () => [
+      {
+        id: "title",
+        header: t("inbox.faq.articleTitle"),
+        sortable: true,
+        hideable: false,
+        card: "title",
+        className: "max-w-[28rem]",
+        cell: (a) => (
+          <div className="grid min-w-0">
+            <ModuleLink to={`faq/${a.id}`} className="truncate font-medium outline-none hover:text-primary hover:underline focus-visible:underline">
+              {a.title}
+            </ModuleLink>
+            <span className="truncate font-mono text-xs text-muted-foreground">/{a.slug}</span>
+          </div>
+        ),
+        cardCell: (a) => a.title,
+      },
+      {
+        id: "category",
+        header: t("inbox.faq.category"),
+        hideBelow: "md",
+        card: "subtitle",
+        cell: (a) => <span className={cn(!a.categoryId && "text-muted-foreground")}>{catName(a.categoryId)}</span>,
+        cardCell: (a) => catName(a.categoryId),
+      },
+      { id: "helpful", header: t("inbox.faq.helpfulYes"), sortable: true, sortDescFirst: true, card: "meta", cell: (a) => <Helpful a={a} /> },
+      {
+        id: "updated",
+        header: t("inbox.faq.col.updated"),
+        sortable: true,
+        sortDescFirst: true,
+        hideBelow: "lg",
+        cell: (a) => <span className="text-muted-foreground tabular-nums">{formatDate(a.updatedAt, { day: "numeric", month: "short", year: "numeric" })}</span>,
+      },
+      {
+        id: "status",
+        header: t("inbox.faq.col.status"),
+        sortable: true,
+        hideable: false,
+        card: "right",
+        cell: (a) => (
+          <span className="flex items-center gap-2">
+            <Switch checked={a.status === "published"} disabled={publishing} onCheckedChange={(on) => void toggle(a, on)} aria-label={t("inbox.faq.publishToggle", { title: a.title })} />
+            <StatusPill tone={a.status === "published" ? "success" : "neutral"} className="max-sm:hidden">
+              {a.status === "published" ? t("inbox.faq.published") : t("inbox.faq.draft")}
+            </StatusPill>
+          </span>
+        ),
+      },
+    ],
+    [t, formatDate, catName, publishing, toggle],
+  );
+
+  const st = useServerTable<FaqArticleListItem, typeof filters>({
+    queryKey: qk.faqArticleTable,
+    path: "/support/faq/articles",
+    columns,
+    filters,
+    defaultSort: "order",
+    search: t("inbox.faq.search"),
+    storageKey: "inbox-faq",
+  });
+
+  const cat = st.filters.categoryId;
+  const status = st.filters.status;
+  const catCounts = st.facets?.category;
+  const statusCounts = st.facets?.status;
+  const sum = (c?: Record<string, number>) => (c ? Object.values(c).reduce((a, b) => a + b, 0) : undefined);
+  const count = (n: number | undefined) => (n !== undefined ? formatNumber(n) : undefined);
+  const selectedCat = cat.value[0] ?? ALL;
+  const filtered = st.table.activeFilterCount > 0 || cat.value.length > 0 || status.value.length > 0;
+  const catItems = [
+    { id: ALL, name: t("inbox.faq.allCategories"), n: sum(catCounts), category: null as FaqCategory | null },
+    ...catList.map((c) => ({ id: c.id, name: c.name, n: catCounts ? (catCounts[c.id] ?? 0) : undefined, category: c as FaqCategory | null })),
+    { id: NONE_CAT, name: t("inbox.faq.uncategorised"), n: catCounts ? (catCounts[NONE_CAT] ?? 0) : undefined, category: null as FaqCategory | null },
+  ];
 
   const add = (
     <Button asChild size="lg">
@@ -68,7 +199,12 @@ export default function FaqPage() {
 
   return (
     <Page>
-      <PageHeading icon={BookOpenIcon} title={t("inbox.faq.title")} description={t("inbox.faq.subtitle")} actions={add} />
+      <PageHeading
+        icon={BookOpenIcon}
+        title={t("inbox.faq.title")}
+        description={st.total !== undefined && st.total > 0 && !filtered ? t("inbox.faq.count", { count: st.total }) : t("inbox.faq.subtitle")}
+        actions={add}
+      />
       <div className="grid gap-section lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="grid content-start gap-2">
           <div className="flex items-center justify-between">
@@ -83,22 +219,29 @@ export default function FaqPage() {
             <Skeleton className="h-32 rounded-xl" />
           ) : (
             <ul className="flex gap-1 overflow-x-auto pb-1 lg:grid lg:overflow-visible" aria-label={t("inbox.faq.categories")}>
-              {[{ id: ALL, name: t("inbox.faq.allCategories") }, ...(cats.data ?? []), { id: NONE_CAT, name: t("inbox.faq.uncategorised") }].map((c) => (
+              {catItems.map((c) => (
                 <li key={c.id} className="group flex shrink-0 items-center">
                   <button
                     type="button"
-                    onClick={() => setCat(c.id)}
-                    aria-pressed={cat === c.id}
+                    onClick={() => cat.set(c.id === ALL ? [] : [c.id])}
+                    aria-pressed={selectedCat === c.id}
                     className={cn(
                       "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
-                      cat === c.id && "bg-primary/10 font-medium text-primary",
+                      selectedCat === c.id && "bg-primary/10 font-medium text-primary",
                     )}
                   >
                     <FolderIcon className="size-4 shrink-0" aria-hidden />
                     <span className="truncate">{c.name}</span>
+                    {c.n !== undefined && <span className="ml-auto pl-1 text-xs text-muted-foreground tabular-nums">{formatNumber(c.n)}</span>}
                   </button>
-                  {"slug" in c && (
-                    <Button variant="ghost" size="icon-sm" className="opacity-60 group-hover:opacity-100 max-lg:hidden" onClick={() => setEditCat(c as FaqCategory)} aria-label={t("inbox.faq.editCategory", { name: c.name })}>
+                  {c.category && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-60 group-hover:opacity-100 max-lg:hidden"
+                      onClick={() => setEditCat(c.category)}
+                      aria-label={t("inbox.faq.editCategory", { name: c.name })}
+                    >
                       <PencilIcon />
                     </Button>
                   )}
@@ -108,70 +251,55 @@ export default function FaqPage() {
           )}
         </aside>
 
-        <div className="grid min-w-0 content-start gap-3">
-          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-            <SearchField value={q} onChange={setQ} placeholder={t("inbox.faq.search")} />
-            <ChipGroup<StatusFilter>
-              size="sm"
-              aria-label={t("inbox.faq.status")}
-              value={status}
-              onChange={setStatus}
-              options={[
-                { value: "", label: t("inbox.common.all") },
-                { value: "published", label: t("inbox.faq.published") },
-                { value: "draft", label: t("inbox.faq.draft") },
-              ]}
-            />
-          </div>
-          {articles.isError ? (
-            <QueryError error={articles.error} onRetry={() => void articles.refetch()} />
-          ) : articles.isPending ? (
-            <div className="grid gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-20 rounded-xl" />
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <EmptyState icon={BookOpenIcon} title={filtered ? t("inbox.common.noMatch") : t("inbox.faq.emptyTitle")} description={filtered ? undefined : t("inbox.faq.emptyBody")} action={filtered ? undefined : add} />
-          ) : (
-            <Stagger className={cn("grid gap-2", articles.isPlaceholderData && "opacity-60")}>
-              {items.map((a) => {
-                const votes = a.helpfulYes + a.helpfulNo;
-                return (
-                  <StaggerItem key={a.id}>
-                    <Card className="flex-row items-center gap-3 p-3 sm:p-4">
-                      <ModuleLink to={`faq/${a.id}`} className="min-w-0 flex-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        <p className="truncate font-medium hover:text-primary">{a.title}</p>
-                        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
-                          <span>{catName(a.categoryId)}</span>
-                          <span className="font-mono">/{a.slug}</span>
-                          <span className="inline-flex items-center gap-1" title={t("inbox.faq.helpful")}>
-                            <ThumbsUpIcon className="size-3" aria-hidden />
-                            <span className="sr-only">{t("inbox.faq.helpfulYes")}</span>
-                            {a.helpfulYes}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <ThumbsDownIcon className="size-3" aria-hidden />
-                            <span className="sr-only">{t("inbox.faq.helpfulNo")}</span>
-                            {a.helpfulNo}
-                          </span>
-                          {votes > 0 && <span>{t("inbox.faq.helpfulPct", { pct: Math.round((a.helpfulYes / votes) * 100) })}</span>}
-                        </p>
-                      </ModuleLink>
-                      <StatusPill tone={a.status === "published" ? "success" : "neutral"} className="max-sm:hidden">
-                        {a.status === "published" ? t("inbox.faq.published") : t("inbox.faq.draft")}
-                      </StatusPill>
-                      <Switch checked={a.status === "published"} disabled={muts.publish.isPending} onCheckedChange={(on) => void toggle(a, on)} aria-label={t("inbox.faq.publishToggle", { title: a.title })} />
-                    </Card>
-                  </StaggerItem>
-                );
-              })}
-            </Stagger>
-          )}
+        <div className="min-w-0">
+          <DataTableToolbar
+            table={st.table}
+            quickFilters={
+              <ChipGroup
+                size="sm"
+                aria-label={t("inbox.faq.status")}
+                value={status.value[0] ?? ALL}
+                onChange={(v) => status.set(v === ALL ? [] : [v])}
+                options={[
+                  { value: ALL, label: t("inbox.common.all"), meta: count(sum(statusCounts)) },
+                  ...STATUSES.map((s) => ({ value: s as string, label: t(`inbox.faq.${s}`), meta: count(statusCounts ? (statusCounts[s] ?? 0) : undefined) })),
+                ]}
+              />
+            }
+          />
+          <DataTable
+            table={st.table}
+            onRowClick={(a) => navigate(`faq/${a.id}`)}
+            empty={
+              filtered ? undefined : (
+                <EmptyState className="border-0 bg-transparent" icon={BookOpenIcon} title={t("inbox.faq.emptyTitle")} description={t("inbox.faq.emptyBody")} action={add} />
+              )
+            }
+          />
         </div>
       </div>
       <CategoryDialog value={editCat} onClose={() => setEditCat(null)} />
     </Page>
+  );
+}
+
+function Helpful({ a }: { a: FaqArticleListItem }) {
+  const { t } = useI18n();
+  const votes = a.helpfulYes + a.helpfulNo;
+  return (
+    <span className="inline-flex items-center gap-3 text-sm text-muted-foreground tabular-nums" title={t("inbox.faq.helpful")}>
+      <span className="inline-flex items-center gap-1">
+        <ThumbsUpIcon className="size-3.5" aria-hidden />
+        <span className="sr-only">{t("inbox.faq.helpfulYes")}</span>
+        {a.helpfulYes}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <ThumbsDownIcon className="size-3.5" aria-hidden />
+        <span className="sr-only">{t("inbox.faq.helpfulNo")}</span>
+        {a.helpfulNo}
+      </span>
+      {votes > 0 && <span className="text-xs" title={t("inbox.faq.helpfulPct", { pct: Math.round((a.helpfulYes / votes) * 100) })}>{Math.round((a.helpfulYes / votes) * 100)}%</span>}
+    </span>
   );
 }
 

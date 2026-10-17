@@ -157,3 +157,21 @@ export const AUDIT_MODULES = [
 
 /** Entity types the filter offers (free text is also accepted). */
 export const ENTITY_TYPES = ["invoices", "catalog", "inventory", "orders", "expenses", "member", "role", "import"] as const;
+
+/**
+ * The "Area" filter: module id (label `workspace.audit.modules.<id>`) → the `action` prefix sent to the API.
+ * Bills use `invoice*` so both derived ("invoices.post /…") and explicit ("invoice.cancel") actions match.
+ */
+export const AUDIT_AREAS: readonly { id: (typeof AUDIT_MODULES)[number]; action: string }[] = [
+  { id: "invoices", action: "invoice*" },
+  { id: "catalog", action: "catalog.*" },
+  { id: "inventory", action: "inventory.*" },
+  { id: "orders", action: "orders.*" },
+  { id: "coupons", action: "coupons.*" },
+  { id: "expenses", action: "expenses.*" },
+  { id: "staff", action: "staff.*" },
+  { id: "import", action: "import.*" },
+  { id: "features", action: "features.*" },
+  { id: "payments", action: "payments.*" },
+  { id: "settings", action: "settings.*" },
+];

@@ -1,4 +1,20 @@
-import { AppError, badRequest, conflict, notFound } from "@srirealtime/core";
+import {
+  AppError,
+  badRequest,
+  conflict,
+  defineSort,
+  facetCounts,
+  listFilter,
+  listQuerySchema,
+  notFound,
+  parseSortValue,
+  rangeOrder,
+  runList,
+  searchAny,
+  splitList,
+  type ListPage,
+  type ResolvedSort,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   computeInvoice,
@@ -126,6 +142,9 @@ export interface StockLevelRow extends StockRow {
   /** qty − reserved. */
   available: number;
   locationId: string | null;
+  /** Stock lists: the item's category (when the catalogue gives one). */
+  categoryId?: string | null;
+  categoryName?: string | null;
 }
 
 export interface StockLocation {
@@ -196,7 +215,13 @@ export interface StockTotals {
 }
 
 export interface StockList extends ListResult<StockLevelRow> {
+  limit?: number;
+  offset?: number;
   totals: StockTotals;
+  /** `status` (in/low/out/untracked) and `category` (id or "none") counts under the other filters. */
+  facets?: Record<string, Record<string, number>>;
+  /** Names of the categories in `facets.category`. */
+  categories?: { id: string; name: string }[];
 }
 
 export interface StockSummary extends StockTotals {
@@ -328,12 +353,54 @@ const formatParam = z.enum(["json", "csv"]).default("json");
 /** Optional location filter/target: the default location for writes, all locations (summed) for lists. */
 const locationIdParam = z.preprocess((v) => (v === "" || v === null ? undefined : v), uuid.optional());
 
-export const stockQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
+/** Stock list statuses: in stock, low (at or under the reorder level), out, not tracked. */
+export const STOCK_LIST_STATUSES = ["in", "low", "out", "untracked"] as const;
+export type StockListStatus = (typeof STOCK_LIST_STATUSES)[number];
+/** `category` value for items without a category. */
+export const NO_CATEGORY = "none";
+
+/**
+ * GET /v1/inventory/stock (docs/CONVENTIONS.md → "Lists and tables"). Without `limit` every item comes back (up to
+ * 1000), as before. `status` (comma list) replaces the single `filter`, which still works; `category` takes ids or
+ * "none".
+ */
+export const stockQuerySchema = listQuerySchema({ defaultLimit: 1000, maxLimit: 1000 }).extend({
   filter: z.enum(["all", "low", "out", "untracked"]).default("all"),
+  status: listFilter.oneOf(STOCK_LIST_STATUSES),
+  category: z.preprocess(splitList, z.array(z.union([z.string().uuid(), z.literal(NO_CATEGORY)])).max(50).optional()),
   locationId: locationIdParam,
 });
 export type StockQuery = z.input<typeof stockQuerySchema>;
+
+export const STOCK_SORT_KEYS = ["name", "qty", "value", "reorderLevel"] as const;
+export type StockSortKey = (typeof STOCK_SORT_KEYS)[number];
+
+/** Resolves the stock list `sort` (default "name"); unknown keys are a 400 listing the allowed ones. */
+export function parseStockSort(raw: string | undefined | null): ResolvedSort<StockSortKey> {
+  const value = (raw ?? "").trim() || "name";
+  const r = parseSortValue(value, STOCK_SORT_KEYS);
+  if (!r) {
+    throw badRequest(`Unknown sort field "${value}". Sort by one of: ${STOCK_SORT_KEYS.join(", ")} (prefix "-" for descending).`, {
+      field: "sort",
+      value,
+      allowed: STOCK_SORT_KEYS,
+    });
+  }
+  return r;
+}
+
+/** The list status of a stock row. */
+export const stockListStatus = (r: Pick<StockRow, "track" | "status">): StockListStatus =>
+  !r.track ? "untracked" : r.status === "ok" ? "in" : r.status;
+
+/** Sorts stock rows (a copy) by the resolved sort; ties by name, then item id. */
+export function sortStockRows<T extends StockRow>(rows: readonly T[], sort: ResolvedSort<StockSortKey>): T[] {
+  const dir = sort.desc ? -1 : 1;
+  const byName = (a: T, b: T) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.itemId.localeCompare(b.itemId);
+  const val = (r: T) => (sort.key === "qty" ? r.qty : sort.key === "value" ? r.value : r.reorderLevel);
+  return [...rows].sort((a, b) => (sort.key === "name" ? dir * byName(a, b) : dir * (val(a) - val(b)) || byName(a, b)));
+}
+
 
 export const stockPatchSchema = z.object({
   track: z.boolean().optional(),
@@ -397,7 +464,8 @@ export const supplierInputSchema = z.object({
 export const supplierPatchSchema = supplierInputSchema.partial();
 export type SupplierInput = z.input<typeof supplierInputSchema>;
 
-export const supplierListQuerySchema = pageQuerySchema.extend({ q: z.string().trim().max(100).optional() });
+/** GET /v1/inventory/suppliers: limits 50 / 200; `sort` = name / balance / lastPurchase. */
+export const supplierListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 200 });
 export type SupplierListQuery = z.input<typeof supplierListQuerySchema>;
 
 /** A purchase line: rate = cost per unit (paise, excluding GST); `itemId` adds stock for that item. */
@@ -447,15 +515,40 @@ export const purchaseInputSchema = z.object({
 });
 export type PurchaseInput = z.input<typeof purchaseInputSchema>;
 
-export const purchaseListQuerySchema = pageQuerySchema.extend({
-  q: z.string().trim().max(100).optional(),
-  supplierId: uuid.optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-});
+/** Purchase list statuses: recorded and unpaid / recorded and paid / cancelled. */
+export const PURCHASE_LIST_STATUSES = ["unpaid", "paid", "cancelled"] as const;
+export type PurchaseListStatus = (typeof PURCHASE_LIST_STATUSES)[number];
+
+/**
+ * GET /v1/inventory/purchases (docs/CONVENTIONS.md → "Lists and tables"): limits 50 / 200; `status` and `supplierId`
+ * take comma lists; `from`/`to` are bill dates.
+ */
+export const purchaseListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 200 })
+  .extend({
+    status: listFilter.oneOf(PURCHASE_LIST_STATUSES),
+    supplierId: listFilter.ids(),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export type PurchaseListQuery = z.input<typeof purchaseListQuerySchema>;
 
 export const paidInputSchema = z.object({ paid: z.boolean() });
+
+/** `unpaid` / `paid` / `cancelled` of a purchase, as SQL. */
+const purchaseListStatusSql = sql<string>`(case when ${purchases.status} = 'cancelled' then 'cancelled' when ${purchases.paid} then 'paid' else 'unpaid' end)`;
+
+/** Purchase list sort; `balance` = what is still to pay (unpaid recorded bills). Default: newest first. */
+export const PURCHASE_SORT = defineSort(
+  {
+    date: purchases.date,
+    number: sql`lower(${purchases.billNumber})`,
+    supplier: sql`lower(${purchases.supplier}->>'name')`,
+    total: purchases.total,
+    balance: sql`(case when ${purchases.status} = 'recorded' and not ${purchases.paid} then ${purchases.total} else 0 end)`,
+  },
+  { default: "-date", tieBreaker: [purchases.createdAt, purchases.id] },
+);
 
 export const purchaseReportQuerySchema = z
   .object({ from: dateStr, to: dateStr, format: formatParam })
@@ -1251,22 +1344,48 @@ export class InventoryService {
       else byItem.set(s.itemId, [s]);
     }
     return items
-      .map((i) => this.levelRow(i, byItem.get(i.id) ?? [], locationId ?? null))
+      .map((i): StockLevelRow => {
+        const row = this.levelRow(i, byItem.get(i.id) ?? [], locationId ?? null);
+        return i.categoryId !== undefined ? { ...row, categoryId: i.categoryId ?? null, categoryName: i.categoryName ?? null } : row;
+      })
       .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.itemId.localeCompare(b.itemId));
   }
 
-  /** Every saved item with its stock. Totals cover the tracked items matching `q`. */
+  /**
+   * Every saved item with its stock, paged, sorted (name / qty / value / reorderLevel; default name) and filtered by
+   * search, `status` (in/low/out/untracked; `filter` is the older single form), category and location. Totals cover
+   * the tracked items matching `q`; `facets` count status and category under the other filters. Items come from the
+   * catalogue (not SQL), so this pages in memory.
+   */
   async listStock(tenantId: string, query: StockQuery = {}): Promise<StockList> {
     const p = stockQuerySchema.parse(query);
+    const sort = parseStockSort(p.sort);
     const loc = p.locationId ? await this.resolveLocation(tenantId, p.locationId) : null;
     const all = await this.allRows(tenantId, p.q, loc?.id);
-    const items = all.filter((r) => {
-      if (p.filter === "untracked") return !r.track;
-      if (p.filter === "low") return r.track && r.status === "low";
-      if (p.filter === "out") return r.track && r.status === "out";
-      return true;
-    });
-    return { items, total: items.length, totals: stockTotals(all) };
+    const statuses = p.status ?? (p.filter === "all" ? undefined : [p.filter === "untracked" ? "untracked" : p.filter]);
+    const byStatus = (r: StockLevelRow) => !statuses?.length || statuses.includes(stockListStatus(r));
+    const byCategory = (r: StockLevelRow) => !p.category?.length || p.category.includes(r.categoryId ?? NO_CATEGORY);
+    const filtered = all.filter((r) => byStatus(r) && byCategory(r));
+    const status: Record<string, number> = {};
+    for (const r of all) if (byCategory(r)) status[stockListStatus(r)] = (status[stockListStatus(r)] ?? 0) + 1;
+    const category: Record<string, number> = {};
+    const categoryNames = new Map<string, string>();
+    for (const r of all) {
+      if (!byStatus(r)) continue;
+      const id = r.categoryId ?? NO_CATEGORY;
+      category[id] = (category[id] ?? 0) + 1;
+      if (r.categoryId && r.categoryName) categoryNames.set(r.categoryId, r.categoryName);
+    }
+    const items = sortStockRows(filtered, sort).slice(p.offset, p.offset + p.limit);
+    return {
+      items,
+      total: filtered.length,
+      limit: p.limit,
+      offset: p.offset,
+      totals: stockTotals(all),
+      facets: { status, category },
+      categories: [...categoryNames].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
+    };
   }
 
   /** One item's stock at `locationId`, or summed over all locations. */
@@ -1883,39 +2002,53 @@ export class InventoryService {
 
   // ================================================================ suppliers
 
-  private payableSubquery(tenantId: string) {
+  payableSubquery(tenantId: string) {
     return this.db
       .select({
         supplierId: purchases.supplierId,
-        payable: sql<string>`coalesce(sum(${purchases.total}), 0)`.as("payable"),
+        payable: sql<string>`coalesce(sum(${purchases.total}) filter (where not ${purchases.paid}), 0)`.as("payable"),
+        lastPurchase: sql<string | null>`max(${purchases.date})::text`.as("last_purchase"),
       })
       .from(purchases)
-      .where(and(eq(purchases.tenantId, tenantId), eq(purchases.status, "recorded"), eq(purchases.paid, false)))
+      .where(and(eq(purchases.tenantId, tenantId), eq(purchases.status, "recorded")))
       .groupBy(purchases.supplierId)
       .as("supplier_payable");
   }
 
-  async listSuppliers(tenantId: string, query: SupplierListQuery = {}): Promise<ListResult<Supplier>> {
-    const { q, limit, offset } = supplierListQuerySchema.parse(query);
-    const pat = q ? likePattern(q) : null;
+  /** Supplier list sort (name / balance = unpaid purchases / lastPurchase). Default: name A→Z. */
+  supplierSort(due: ReturnType<InventoryService["payableSubquery"]>) {
+    return defineSort(
+      { name: sql`lower(${suppliers.name})`, balance: sql`coalesce(${due.payable}, 0)`, lastPurchase: due.lastPurchase },
+      { default: "name", tieBreaker: suppliers.id },
+    );
+  }
+
+  /**
+   * Suppliers: paged, sorted (name / balance / lastPurchase; default name) and searched by name, phone or GSTIN.
+   * Limits stay 50 / 200 (the supplier picker asks for 100).
+   */
+  async listSuppliers(tenantId: string, query: SupplierListQuery = {}): Promise<ListPage<Supplier & { lastPurchase: string | null }>> {
+    const p = supplierListQuerySchema.parse(query);
     const where = and(
       eq(suppliers.tenantId, tenantId),
       isNull(suppliers.deletedAt),
-      pat ? or(ilike(suppliers.name, pat), ilike(suppliers.phone, pat), ilike(suppliers.gstin, pat)) : undefined,
+      searchAny(p.q, [suppliers.name, suppliers.phone, suppliers.gstin]),
     );
     const due = this.payableSubquery(tenantId);
-    const [rows, [counted]] = await Promise.all([
-      this.db
-        .select({ s: suppliers, payable: due.payable })
-        .from(suppliers)
-        .leftJoin(due, eq(due.supplierId, suppliers.id))
-        .where(where)
-        .orderBy(asc(suppliers.name), asc(suppliers.id))
-        .limit(limit)
-        .offset(offset),
-      this.db.select({ total: count() }).from(suppliers).where(where),
-    ]);
-    return { items: rows.map((r) => toSupplier(r.s, r.payable)), total: counted?.total ?? 0 };
+    const order = this.supplierSort(due).orderBy(p.sort);
+    return runList(p, {
+      rows: () =>
+        this.db
+          .select({ s: suppliers, payable: due.payable, lastPurchase: due.lastPurchase })
+          .from(suppliers)
+          .leftJoin(due, eq(due.supplierId, suppliers.id))
+          .where(where)
+          .orderBy(...order)
+          .limit(p.limit)
+          .offset(p.offset),
+      count: () => this.db.select({ total: count() }).from(suppliers).where(where),
+      map: (r) => ({ ...toSupplier(r.s, r.payable), lastPurchase: r.lastPurchase ?? null }),
+    });
   }
 
   private async supplierRow(db: DbOrTx, tenantId: string, id: string): Promise<SupplierRow | null> {
@@ -2011,20 +2144,36 @@ export class InventoryService {
     return and(...conds);
   }
 
-  async listPurchases(tenantId: string, query: PurchaseListQuery = {}): Promise<ListResult<PurchaseSummary>> {
+  /** WHERE of the purchase list; without `status` for its facet counts. */
+  purchaseListConditions(tenantId: string, p: z.output<typeof purchaseListQuerySchema>, withStatus = true): SQL | undefined {
+    return and(
+      eq(purchases.tenantId, tenantId),
+      withStatus && p.status?.length ? inArray(purchaseListStatusSql, [...p.status]) : undefined,
+      p.supplierId?.length ? inArray(purchases.supplierId, p.supplierId) : undefined,
+      p.from ? gte(purchases.date, p.from) : undefined,
+      p.to ? lte(purchases.date, p.to) : undefined,
+      searchAny(p.q, [purchases.billNumber, sql`${purchases.supplier}->>'name'`, sql`${purchases.supplier}->>'gstin'`]),
+    );
+  }
+
+  /** Purchases: paged, sorted (PURCHASE_SORT) and filtered; `facets.status` counts unpaid / paid / cancelled. */
+  async listPurchases(tenantId: string, query: PurchaseListQuery = {}): Promise<ListPage<PurchaseSummary>> {
     const p = purchaseListQuerySchema.parse(query);
-    const where = this.purchaseWhere(tenantId, p);
-    const [rows, [counted]] = await Promise.all([
+    const order = PURCHASE_SORT.orderBy(p.sort);
+    const where = this.purchaseListConditions(tenantId, p);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(purchases).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(purchases).where(where),
+        map: toPurchaseSummary,
+      }),
       this.db
-        .select()
+        .select({ key: purchaseListStatusSql, n: count() })
         .from(purchases)
-        .where(where)
-        .orderBy(desc(purchases.date), desc(purchases.createdAt))
-        .limit(p.limit)
-        .offset(p.offset),
-      this.db.select({ total: count() }).from(purchases).where(where),
+        .where(this.purchaseListConditions(tenantId, p, false))
+        .groupBy(sql`1`),
     ]);
-    return { items: rows.map(toPurchaseSummary), total: counted?.total ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus) } };
   }
 
   async getPurchase(tenantId: string, id: string): Promise<Purchase> {

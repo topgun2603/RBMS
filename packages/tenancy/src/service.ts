@@ -1,6 +1,6 @@
-import { badRequest, conflict, forbidden, notFound, type TenantRef } from "@srirealtime/core";
+import { badRequest, conflict, facetCounts, forbidden, notFound, runList, type ListPage, type TenantRef } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, arrayContains, asc, count, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, arrayContains, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   tenantDomains,
   tenantMemberships,
@@ -18,6 +18,7 @@ import {
   type DomainInstructions,
   type DomainVerifier,
 } from "./domains";
+import { NONE, TENANT_SORT, tenantListConditions, tenantListQuerySchema, type TenantListQuery } from "./list";
 import { normalizeMemberRoles } from "./roles";
 import { isPlatformHost, isValidDomain, normalizeHost, slugCandidates, slugFromHost, validateSlug } from "./slug";
 
@@ -325,19 +326,30 @@ export class TenancyService {
     return t;
   }
 
-  /** Super-admin listing with optional search on slug/name. */
-  async list(opts: { q?: string; limit?: number; offset?: number } = {}): Promise<{ items: Tenant[]; total: number }> {
-    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
-    const offset = Math.max(opts.offset ?? 0, 0);
-    const q = opts.q?.trim();
-    const where = q
-      ? or(ilike(tenants.slug, `%${escapeLike(q)}%`), ilike(tenants.name, `%${escapeLike(q)}%`))
-      : undefined;
-    const [items, totals] = await Promise.all([
-      this.db.select().from(tenants).where(where).orderBy(asc(tenants.createdAt)).limit(limit).offset(offset),
-      this.db.select({ n: count() }).from(tenants).where(where),
+  /**
+   * Super-admin listing: search on name/slug, filters status / plan / app (`none` = unset), sort
+   * (name, created, plan, status, app; default newest first), facet counts per filter. See ./list.ts.
+   */
+  async list(query: TenantListQuery = {}): Promise<ListPage<Tenant>> {
+    const p = tenantListQuerySchema.parse(query);
+    const order = TENANT_SORT.orderBy(p.sort);
+    const where = tenantListConditions(p);
+    const facet = (col: typeof tenants.status | typeof tenants.planId | typeof tenants.appId, omit: "status" | "plan" | "app") =>
+      this.db
+        .select({ key: sql<string>`coalesce(${col}, ${NONE})`, n: count() })
+        .from(tenants)
+        .where(tenantListConditions(p, omit))
+        .groupBy(sql`1`);
+    const [page, byStatus, byPlan, byApp] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(tenants).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(tenants).where(where),
+      }),
+      facet(tenants.status, "status"),
+      facet(tenants.planId, "plan"),
+      facet(tenants.appId, "app"),
     ]);
-    return { items, total: totals[0]?.n ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus), plan: facetCounts(byPlan), app: facetCounts(byApp) } };
   }
 
   // ---------------------------------------------------------------- domains
@@ -637,5 +649,3 @@ export class TenancyService {
     return rows;
   }
 }
-
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);

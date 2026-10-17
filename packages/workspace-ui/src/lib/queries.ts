@@ -1,10 +1,8 @@
 "use client";
 
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiDownload, type QueryParams } from "@srirealtime/web";
 import type {
-  AuditEvent,
-  AuditFilters,
   Exporter,
   ImportJob,
   Importer,
@@ -20,15 +18,15 @@ import type {
   StaffMember,
 } from "./types";
 
-export const AUDIT_PAGE = 50;
-
 export const wk = {
   members: ["staff", "members"] as const,
   roles: ["staff", "roles"] as const,
   permissions: ["staff", "permissions"] as const,
-  audit: (f: AuditFilters) => ["audit", f] as const,
+  /** Activity log table (useServerTable appends the request params). */
+  audit: ["audit", "list"] as const,
   importers: ["import", "importers"] as const,
   exporters: ["export", "exporters"] as const,
+  /** Import history table (useServerTable appends the request params); commits invalidate it. */
   jobs: ["import", "jobs"] as const,
   job: (id: string) => ["import", "job", id] as const,
   onboarding: ["onboarding"] as const,
@@ -115,23 +113,11 @@ export function useDeleteRole() {
 
 // ---------------------------------------------------------------- audit
 
-const auditParams = (f: AuditFilters): QueryParams => ({ ...f });
-
-export function useAuditLog(filters: AuditFilters) {
-  return useInfiniteQuery({
-    queryKey: wk.audit(filters),
-    initialPageParam: 0,
-    queryFn: ({ pageParam, signal }) =>
-      api.get<Paged<AuditEvent>>("/audit", { ...auditParams(filters), limit: AUDIT_PAGE, offset: pageParam }, { signal }),
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((n, p) => n + p.items.length, 0);
-      return last.items.length === AUDIT_PAGE && loaded < last.total ? loaded : undefined;
-    },
-    placeholderData: keepPreviousData,
-  });
+/** CSV of the activity log with the table's filters and sort (paging dropped: every match up to the server's cap). */
+export function downloadAuditCsv(params: QueryParams) {
+  const { limit: _limit, offset: _offset, ...rest } = params;
+  return apiDownload("/audit", { ...rest, format: "csv" }, "audit-log.csv");
 }
-
-export const downloadAuditCsv = (filters: AuditFilters) => apiDownload("/audit", { ...auditParams(filters), format: "csv" }, "audit-log.csv");
 
 // ---------------------------------------------------------------- import / export
 
@@ -146,10 +132,6 @@ export function useExporters(enabled = true) {
     staleTime: 5 * 60_000,
     enabled,
   });
-}
-
-export function useImportJobs() {
-  return useQuery({ queryKey: wk.jobs, queryFn: () => api.get<Paged<ImportJob>>("/import/jobs", { limit: 20 }) });
 }
 
 /** Polls a job every second while it is queued or running. */

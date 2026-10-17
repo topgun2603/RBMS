@@ -1,11 +1,11 @@
 import { Readable } from "node:stream";
-import { AppError, badRequest, conflict, featureDisabled, notFound, type FeatureGatePort } from "@srirealtime/core";
+import { AppError, badRequest, conflict, featureDisabled, notFound, type FeatureGatePort, type ListPage } from "@srirealtime/core";
 import { rupees, type ExportColumn } from "./columns";
 import { CsvError, csvLine, parseCsv } from "./csv";
 import { autoMap, missingRequired, parseRows, resolveMapping, type DetectedColumn, type Mapping, type ParsedRow } from "./engine";
 import type { ImportExportRegistry, ImporterDef } from "./registry";
 import type { ImportJobStatus, ImportJobSummary } from "./schema";
-import type { ImportJob, ImportJobStore } from "./store";
+import { IMPORT_JOB_SORT, importJobListQuerySchema, type ImportJob, type ImportJobListQuery, type ImportJobStore } from "./store";
 import { XlsxError, readXlsx, writeXlsx, xlsxStream, type XlsxValue } from "./xlsx";
 
 export const COMMIT_JOB = "importexport.commit";
@@ -289,9 +289,15 @@ export class ImportExportService {
     return toStatus(job);
   }
 
-  async list(tenantId: string, opts: { key?: string; limit?: number; offset?: number } = {}) {
-    const res = await this.deps.store.list(tenantId, { key: opts.key, limit: Math.min(100, opts.limit ?? 20), offset: opts.offset ?? 0 });
-    return { items: res.items.map(toStatus), total: res.total };
+  /**
+   * Job history: paged, sorted (IMPORT_JOB_SORT, default `-created`) and filtered (`importJobListQuerySchema`), with
+   * `facets.status`. Bad params → ZodError, unknown sort → 400.
+   */
+  async list(tenantId: string, query: ImportJobListQuery = {}): Promise<ListPage<JobStatus>> {
+    const p = importJobListQuerySchema.parse(query);
+    IMPORT_JOB_SORT.parse(p.sort);
+    const res = await this.deps.store.list(tenantId, p);
+    return { ...res, items: res.items.map(toStatus) };
   }
 
   /** Template workbook: headers, one example row, and a Help sheet. */

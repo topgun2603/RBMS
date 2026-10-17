@@ -88,8 +88,8 @@ export function StockTab() {
         {[
           <StatTile key="a" label={t("billing.reports.stock.value")} value={value} icon={WarehouseIcon} loading={loading} />,
           <StatTile key="b" label={t("billing.reports.stock.items")} value={rows.length} kind="count" icon={PackageIcon} iconTone="text-info" loading={loading} />,
-          <StatTile key="c" label={t("billing.reports.stock.low")} value={low} kind="count" icon={TriangleAlertIcon} iconTone="text-warning" loading={loading} href="stock?filter=low" />,
-          <StatTile key="d" label={t("billing.reports.stock.out")} value={out} kind="count" icon={PackageXIcon} iconTone="text-destructive" loading={loading} href="stock?filter=out" />,
+          <StatTile key="c" label={t("billing.reports.stock.low")} value={low} kind="count" icon={TriangleAlertIcon} iconTone="text-warning" loading={loading} href="stock?status=low" />,
+          <StatTile key="d" label={t("billing.reports.stock.out")} value={out} kind="count" icon={PackageXIcon} iconTone="text-destructive" loading={loading} href="stock?status=out" />,
         ]}
       </TileGrid>
 

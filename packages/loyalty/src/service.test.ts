@@ -1,4 +1,4 @@
-import { emptyContext, type RequestContext } from "@srirealtime/core";
+import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
 import { createDb } from "@srirealtime/db";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -15,7 +15,9 @@ import {
   lockMemberStatement,
   LoyaltyService,
   memberListQuerySchema,
+  memberSort,
   openLotsStatement,
+  summaryStatement,
   redeemInputSchema,
 } from "./service";
 
@@ -85,6 +87,42 @@ describe("SQL", () => {
     expect(byName.params).toEqual([T, "Gold", "%Meena%"]);
     const leadingZero = db.select().from(createLoyaltyTables().members).where(svc.listConditions(T, memberListQuerySchema.parse({ q: "098765" }))).toSQL();
     expect(leadingZero.params).toContain("%98765%");
+  });
+  it("takes tier comma lists; the tier facet ignores the tier filter", () => {
+    const svc = new LoyaltyService({ db });
+    const p = memberListQuerySchema.parse({ tier: "Gold,Silver", q: "Meena" });
+    expect(p).toMatchObject({ tier: ["Gold", "Silver"], limit: 50, offset: 0 });
+    const members = createLoyaltyTables().members;
+    const withTier = db.select().from(members).where(svc.listConditions(T, p)).toSQL();
+    expect(withTier.sql).toContain('"loyalty_members"."tier" in ($2, $3)');
+    expect(withTier.params).toEqual([T, "Gold", "Silver", "%Meena%"]);
+    const facet = db.select().from(members).where(svc.listConditions(T, p, false)).toSQL();
+    expect(facet.params).toEqual([T, "%Meena%"]);
+    expect(memberListQuerySchema.parse({ limit: "500" }).limit).toBe(500);
+    expect(() => memberListQuerySchema.parse({ limit: "501" })).toThrow(ZodError);
+  });
+  it("sorts by whitelisted fields; tier by rank, last activity falling back to the join date", () => {
+    const members = createLoyaltyTables().members;
+    const tiers = [
+      { name: "Gold", minSpend: 5_000_000 },
+      { name: "Silver", minSpend: 0 },
+    ];
+    const render = (s?: string, t = tiers) => db.select().from(members).orderBy(...memberSort(t).orderBy(s)).toSQL();
+    expect(render().sql).toContain('order by coalesce("loyalty_members"."last_activity_at", "loyalty_members"."joined_at") desc nulls last, "loyalty_members"."id" desc');
+    expect(render("-points").sql).toContain('order by "loyalty_members"."points_balance" desc nulls last');
+    expect(render("spend").sql).toContain('order by "loyalty_members"."lifetime_spend" asc nulls last');
+    const byTier = render("-tier");
+    expect(byTier.sql).toContain('(case "loyalty_members"."tier" when $1 then 0 when $2 then 1 else 2 end) desc nulls last');
+    expect(byTier.params).toEqual(["Silver", "Gold"]);
+    expect(render("tier", []).sql).toContain('lower("loyalty_members"."tier") asc');
+    expect(memberSort().keys).toEqual(["points", "tier", "spend", "lastActivity", "name", "joined"]);
+    expect(() => render("recent")).toThrow(AppError);
+  });
+  it("sums points over the whole shop", () => {
+    const { sql, params } = summaryStatement(db, T).toSQL();
+    expect(sql).toContain('coalesce(sum("points_balance"), 0) from "loyalty_members"');
+    expect(sql).toContain("count(*)");
+    expect(params).toEqual([T]);
   });
 });
 
@@ -182,6 +220,7 @@ async function build(reqCtx: RequestContext) {
     quote: vi.fn(async () => ({ maxPoints: 0 })),
     shopperKey: vi.fn(async () => "+919876543210"),
     list: vi.fn(async () => ({ items: [], total: 0 })),
+    summary: vi.fn(async () => ({ members: 0, points: 0, liability: 0 })),
     exportCsv: vi.fn(async () => "﻿Mobile\r\n"),
     get: vi.fn(async () => ({ member: { id: M } })),
     adjust: vi.fn(async () => ({ member: { id: M }, entry: { points: 50, note: "Goodwill" } })),
@@ -242,6 +281,8 @@ describe("routes", () => {
     expect(csv.headers["content-type"]).toContain("text/csv");
     expect(csv.headers["content-disposition"]).toBe('attachment; filename="loyalty-members.csv"');
     expect(service.exportCsv).toHaveBeenCalledWith(T, { q: "meena" });
+    expect((await app.inject({ url: "/v1/loyalty/summary" })).json()).toEqual({ members: 0, points: 0, liability: 0 });
+    expect(service.summary).toHaveBeenCalledWith(T);
     await app.inject({ url: `/v1/loyalty/members/${M}?limit=10` });
     expect(service.get).toHaveBeenCalledWith(T, M, { limit: "10" });
     const adj = await app.inject({ method: "POST", url: `/v1/loyalty/members/${M}/adjust`, payload: { points: 50, reason: "Goodwill" } });

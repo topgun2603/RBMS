@@ -68,7 +68,13 @@ export interface MemberDetail {
   expiringSoon: { expiresAt: ISODate; points: number }[];
 }
 
-export type MemberSort = "recent" | "points" | "spend" | "name" | "joined";
+/** `GET /loyalty/summary`: the whole shop. */
+export interface LoyaltySummary {
+  members: number;
+  points: number;
+  /** Paise. */
+  liability: number;
+}
 
 export interface LoyaltyQuote {
   balance: number;

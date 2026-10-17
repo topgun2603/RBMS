@@ -7,6 +7,9 @@ export interface CatalogItem {
   /** Selling rate, paise per unit. */
   rate: number;
   gstRate: number;
+  /** Optional: the item's category (stock lists filter by it). */
+  categoryId?: string | null;
+  categoryName?: string | null;
 }
 
 export interface ItemCatalogPort {

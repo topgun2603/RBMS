@@ -195,7 +195,7 @@ describe("seller products wait for review (never public before approval)", () =>
 
 describe("staff product list by seller", () => {
   it("accepts a vendorId filter (uuid only)", () => {
-    expect(productListQuerySchema.parse({ vendorId: VENDOR })).toMatchObject({ vendorId: VENDOR });
+    expect(productListQuerySchema.parse({ vendorId: VENDOR })).toMatchObject({ vendorId: [VENDOR] });
     expect(() => productListQuerySchema.parse({ vendorId: "nope" })).toThrow();
   });
 });

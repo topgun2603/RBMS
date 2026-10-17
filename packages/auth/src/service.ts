@@ -3,15 +3,19 @@ import {
   addMinutes,
   AppError,
   badRequest,
+  facetCounts,
   forbidden,
   notFound,
+  runList,
   randomDigits,
   randomToken,
   safeEqual,
   sha256,
   tooMany,
   type AuditPort,
+  type ListPage,
 } from "@srirealtime/core";
+import { roleCondition, USER_SORT, userListConditions, userListQuerySchema, type UserListQuery } from "./list";
 import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -178,8 +182,6 @@ export function createGoogleVerifier(): GoogleTokenVerifier {
     return payload as unknown as GoogleClaims;
   };
 }
-
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export class AuthService {
   private readonly db: Db;
@@ -705,26 +707,34 @@ export class AuthService {
     return toAuthUser(row);
   }
 
-  async listUsers(opts: { q?: string; limit?: number; offset?: number } = {}): Promise<{ items: AuthUser[]; total: number }> {
-    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
-    const offset = Math.max(opts.offset ?? 0, 0);
-    const q = opts.q?.trim();
-    let where;
-    if (q) {
-      const like = `%${escapeLike(q)}%`;
-      const phone = detectTarget(q);
-      where = or(
-        ilike(users.email, like),
-        ilike(users.name, like),
-        ilike(users.phone, like),
-        ...(phone?.kind === "phone" ? [eq(users.phone, phone.value)] : []),
-      );
-    }
-    const [items, [count]] = await Promise.all([
-      this.db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset(offset),
-      this.db.select({ n: sql<number>`count(*)::int` }).from(users).where(where),
+  /**
+   * Super-admin listing: search on email/name/phone, filters status and platform role, sort (name, email, phone,
+   * created, lastActive; default newest first), facet counts per filter. See ./list.ts.
+   */
+  async listUsers(query: UserListQuery = {}): Promise<ListPage<AuthUser & { lastLoginAt: Date | null }> & { facets: Record<string, Record<string, number>> }> {
+    const p = userListQuerySchema.parse(query);
+    const where = userListConditions(p);
+    const roleWhere = userListConditions(p, "role");
+    const [page, byStatus, [byRole]] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(users).where(where).orderBy(...USER_SORT.orderBy(p.sort)).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: sql<number>`count(*)::int` }).from(users).where(where),
+        // Last sign-in is a list column (and sort key) here; AuthUser elsewhere stays as it was.
+        map: (u) => ({ ...toAuthUser(u), lastLoginAt: u.lastLoginAt }),
+      }),
+      this.db.select({ key: users.status, n: sql<number>`count(*)::int` }).from(users).where(userListConditions(p, "status")).groupBy(users.status),
+      this.db
+        .select({
+          superadmin: sql<number>`(count(*) filter (where ${roleCondition("superadmin")}))::int`,
+          none: sql<number>`(count(*) filter (where ${roleCondition("none")}))::int`,
+        })
+        .from(users)
+        .where(roleWhere),
     ]);
-    return { items: items.map(toAuthUser), total: count?.n ?? 0 };
+    return {
+      ...page,
+      facets: { status: facetCounts(byStatus), role: { superadmin: Number(byRole?.superadmin ?? 0), none: Number(byRole?.none ?? 0) } },
+    };
   }
 
   // ---------------------------------------------------------------- DPDP

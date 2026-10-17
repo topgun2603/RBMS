@@ -2,6 +2,7 @@ import { AppError, badRequest, notFound, requireSuperAdmin, requireUser, tooMany
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
+import type { UserListQuery } from "./list";
 import type { AuthService, SignInResult } from "./service";
 
 const otpRequestBody = z.object({
@@ -66,11 +67,6 @@ const profileBody = z.object({
   locale: z.string().min(2).max(10).optional(),
 });
 const idParams = z.object({ id: z.string().uuid() });
-const usersQuery = z.object({
-  q: z.string().max(254).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
 const statusBody = z.object({ status: z.enum(["active", "disabled", "deleted"]) });
 const rolesBody = z.object({ roles: z.array(z.string().trim().min(1).max(50)).max(20) });
 
@@ -234,7 +230,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
 
     app.get("/users", async (req) => {
       requireSuperAdmin(req.ctx);
-      return service.listUsers(usersQuery.parse(req.query));
+      return service.listUsers(req.query as UserListQuery);
     });
 
     app.patch("/users/:id/status", SELF_AUDITED, async (req) => {

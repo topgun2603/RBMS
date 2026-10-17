@@ -85,6 +85,19 @@ export function useVendorList(q: { status?: VendorStatus; q?: string; offset: nu
   });
 }
 
+/** Every seller as filter options (name order; the first 500). */
+export function useSellerOptions(enabled = true) {
+  return useQuery({
+    queryKey: [...mk.all, "vendors", "options"],
+    enabled,
+    queryFn: ({ signal }) =>
+      api
+        .get<VendorListResponse>(`${MP}/vendors`, { limit: 500, offset: 0, sort: "name" }, { signal })
+        .then((r) => r.items.map((v) => ({ value: v.id, label: v.name }))),
+    staleTime: 60_000,
+  });
+}
+
 export function useVendorDetail(id: string | null) {
   return useQuery({
     queryKey: mk.vendor(id ?? ""),

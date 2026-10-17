@@ -1,5 +1,6 @@
+import { listFilter, listQuerySchema, splitList } from "@srirealtime/core";
 import { z } from "zod";
-import type { FaqArticleRow, FaqCategoryRow, FaqSeo, FaqStatus } from "./schema";
+import { FAQ_STATUSES, type FaqArticleRow, type FaqCategoryRow, type FaqSeo, type FaqStatus } from "./schema";
 
 // ------------------------------------------------------------------ markdown + slugs (same rules as @srirealtime/cms)
 
@@ -97,10 +98,16 @@ export const faqArticlePatchSchema = faqArticleInputSchema
   .extend({ sort: z.number().int().min(0).max(100_000).optional(), body: markdown(FAQ_LIMITS.body).optional(), status: z.enum(["draft", "published"]).optional() });
 export type FaqArticlePatch = z.input<typeof faqArticlePatchSchema>;
 
-export const faqArticleQuerySchema = z.object({
-  status: z.enum(["draft", "published"]).optional(),
-  categoryId: z.string().uuid().optional(),
-  q: z.string().trim().max(100).optional(),
+/** `categoryId=none` = articles without a category. */
+export const FAQ_NO_CATEGORY = "none";
+
+/**
+ * Staff `GET /faq/articles` (docs/CONVENTIONS.md → "Lists and tables"): `status` and `categoryId` take comma lists
+ * (`categoryId=none` for uncategorised); `q` searches title and body; `sort` see `FAQ_ARTICLE_SORT` (default `order`).
+ */
+export const faqArticleQuerySchema = listQuerySchema({ defaultLimit: 25, maxLimit: 200 }).extend({
+  status: listFilter.oneOf(FAQ_STATUSES),
+  categoryId: z.preprocess(splitList, z.array(z.union([z.literal(FAQ_NO_CATEGORY), z.string().uuid()])).max(50).optional()),
 });
 export type FaqArticleQuery = z.input<typeof faqArticleQuerySchema>;
 
@@ -135,6 +142,9 @@ export interface FaqArticle {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** Staff list row: the article without its body and SEO fields. */
+export type FaqArticleListItem = Omit<FaqArticle, "body" | "seo">;
 
 /** Public list entry (no body). */
 export interface FaqArticleSummary {

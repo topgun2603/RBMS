@@ -1,4 +1,15 @@
-import { AppError, badRequest, conflict, notFound, sha256 } from "@srirealtime/core";
+import { AppError, badRequest, conflict, facetCounts, notFound, runList, sha256 } from "@srirealtime/core";
+import {
+  NO_PROVIDER,
+  PLATFORM_INVOICE_SORT,
+  platformInvoiceListConditions,
+  platformInvoiceListQuerySchema,
+  subscriptionListConditions,
+  subscriptionListQuerySchema,
+  subscriptionSort,
+  type PlatformInvoiceListQuery,
+  type SubscriptionListQuery,
+} from "./list";
 import type { Db } from "@srirealtime/db";
 import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
 import {
@@ -212,7 +223,6 @@ const LIVE: SubscriptionStatus[] = ["trialing", "active", "past_due"];
 const CHARGING = (p: SubscriptionRow["provider"]) => p === "razorpay" || p === "mock";
 const str = (v: unknown) => (typeof v === "string" && v ? v : null);
 const fromUnix = (v: unknown) => (typeof v === "number" && v > 0 ? new Date(v * 1000) : null);
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 const rupees = (paise: number) => `Rs.${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const dateText = (d: Date | null | undefined) => (d ? istDate(d) : "");
 
@@ -1373,36 +1383,42 @@ export class SubscriptionsService {
 
   // ================================================================ super-admin
 
-  async adminList(opts: { status?: SubscriptionStatus; q?: string; limit?: number; offset?: number } = {}) {
-    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
-    const offset = Math.max(opts.offset ?? 0, 0);
-    const conds: SQL[] = [];
-    if (opts.status) conds.push(eq(subscriptions.status, opts.status));
-    if (opts.q?.trim()) {
-      const ids = await this.deps.tenancy.search(opts.q.trim());
-      const q = `%${escapeLike(opts.q.trim())}%`;
-      conds.push(ids.length ? or(inArray(subscriptions.tenantId, ids), ilike(subscriptions.planId, q))! : ilike(subscriptions.planId, q));
-    }
-    const where = conds.length ? and(...conds) : undefined;
-    const [rows, totals] = await Promise.all([
-      this.db.select().from(subscriptions).where(where).orderBy(desc(subscriptions.updatedAt)).limit(limit).offset(offset),
-      this.db.select({ n: count() }).from(subscriptions).where(where),
+  /**
+   * Super-admin subscription list: search (shop name/slug, plan id), filters status / plan / provider (`none` = no
+   * provider), sort (shop, plan, status, next, mrr, updated; default last updated first), facet counts. See ./list.ts.
+   */
+  async adminList(query: SubscriptionListQuery = {}) {
+    const p = subscriptionListQuerySchema.parse(query);
+    const [plans, shopIds] = await Promise.all([this.deps.plans.listPlans(), p.q ? this.deps.tenancy.search(p.q) : Promise.resolve([] as string[])]);
+    const order = subscriptionSort(plans).orderBy(p.sort);
+    const where = subscriptionListConditions(p, shopIds);
+    const facet = (key: SQL, omit: "status" | "plan" | "provider") =>
+      this.db.select({ key: sql<string>`${key}`, n: count() }).from(subscriptions).where(subscriptionListConditions(p, shopIds, omit)).groupBy(sql`1`);
+    const [page, byStatus, byPlan, byProvider] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(subscriptions).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(subscriptions).where(where),
+      }),
+      facet(sql`${subscriptions.status}`, "status"),
+      facet(sql`${subscriptions.planId}`, "plan"),
+      facet(sql`coalesce(${subscriptions.provider}, ${NO_PROVIDER})`, "provider"),
     ]);
-    const [tenants, plans] = await Promise.all([this.deps.tenancy.getTenants(rows.map((r) => r.tenantId)), this.deps.plans.listPlans()]);
+    const tenants = await this.deps.tenancy.getTenants(page.items.map((r) => r.tenantId));
     const tenantBy = new Map(tenants.map((t) => [t.id, t]));
-    const planBy = new Map(plans.map((p) => [p.id, p]));
+    const planBy = new Map(plans.map((pl) => [pl.id, pl]));
     return {
-      items: rows.map((r) => {
+      ...page,
+      items: page.items.map((r) => {
         const t: TenantInfo | undefined = tenantBy.get(r.tenantId);
-        const p = planBy.get(r.planId);
+        const pl = planBy.get(r.planId);
         return {
           ...toView(r),
           tenant: t ? { id: t.id, slug: t.slug, name: t.name, appId: t.appId, status: t.status } : null,
-          plan: p ? { id: p.id, name: p.name } : { id: r.planId, name: r.planId },
-          mrrPaise: this.mrrOf(r, p),
+          plan: pl ? { id: pl.id, name: pl.name } : { id: r.planId, name: r.planId },
+          mrrPaise: this.mrrOf(r, pl),
         };
       }),
-      total: totals[0]?.n ?? 0,
+      facets: { status: facetCounts(byStatus), plan: facetCounts(byPlan), provider: facetCounts(byProvider) },
     };
   }
 
@@ -1518,29 +1534,33 @@ export class SubscriptionsService {
     return { subscription: toView(sub) };
   }
 
-  async adminInvoices(opts: { status?: "paid" | "void"; tenantId?: string; q?: string; limit?: number; offset?: number } = {}) {
-    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
-    const offset = Math.max(opts.offset ?? 0, 0);
-    const conds: SQL[] = [];
-    if (opts.status) conds.push(eq(platformInvoices.status, opts.status));
-    if (opts.tenantId) conds.push(eq(platformInvoices.tenantId, opts.tenantId));
-    if (opts.q?.trim()) {
-      const ids = await this.deps.tenancy.search(opts.q.trim());
-      const q = ilike(platformInvoices.number, `%${escapeLike(opts.q.trim())}%`);
-      conds.push(ids.length ? or(q, inArray(platformInvoices.tenantId, ids))! : q);
-    }
-    const where = conds.length ? and(...conds) : undefined;
-    const [rows, totals] = await Promise.all([
-      this.db.select().from(platformInvoices).where(where).orderBy(desc(platformInvoices.createdAt)).limit(limit).offset(offset),
-      this.db.select({ n: count() }).from(platformInvoices).where(where),
+  /**
+   * Super-admin platform invoice list: search (number, buyer name/GSTIN, shop name/slug), filters status / shop /
+   * date range, sort (number, date, total; default newest first), status facet counts. See ./list.ts.
+   */
+  async adminInvoices(query: PlatformInvoiceListQuery = {}) {
+    const p = platformInvoiceListQuerySchema.parse(query);
+    const shopIds = p.q ? await this.deps.tenancy.search(p.q) : [];
+    const where = platformInvoiceListConditions(p, shopIds);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(platformInvoices).where(where).orderBy(...PLATFORM_INVOICE_SORT.orderBy(p.sort)).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(platformInvoices).where(where),
+      }),
+      this.db
+        .select({ key: platformInvoices.status, n: count() })
+        .from(platformInvoices)
+        .where(platformInvoiceListConditions(p, shopIds, "status"))
+        .groupBy(platformInvoices.status),
     ]);
-    const tenants = new Map((await this.deps.tenancy.getTenants([...new Set(rows.map((r) => r.tenantId))])).map((t) => [t.id, t]));
+    const tenants = new Map((await this.deps.tenancy.getTenants([...new Set(page.items.map((r) => r.tenantId))])).map((t) => [t.id, t]));
     return {
-      items: rows.map((r) => {
+      ...page,
+      items: page.items.map((r) => {
         const t = tenants.get(r.tenantId);
         return { ...this.invoiceView(r), tenant: t ? { id: t.id, slug: t.slug, name: t.name } : null };
       }),
-      total: totals[0]?.n ?? 0,
+      facets: { status: facetCounts(byStatus) },
     };
   }
 

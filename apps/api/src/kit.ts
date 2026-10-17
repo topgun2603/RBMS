@@ -38,6 +38,7 @@ import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
 import {
   catalogueAvailability,
+  catalogueStockSql,
   cmsCatalogPort,
   dnsDomainVerifier,
   fulfillmentPort,
@@ -222,6 +223,7 @@ export function createKit(env: Env, log: Logger) {
     db,
     featureGate: features.gate,
     availability: catalogueAvailability(() => inventoryRef!.service, (tenantId, key) => features.service.isEnabled(tenantId, key)),
+    stock: catalogueStockSql((tenantId, key) => features.service.isEnabled(tenantId, key)),
     ratings: { ratings: (tenantId, productIds) => reviewsRef!.ratingsPort.ratings(tenantId, productIds) },
     // Marketplace sellers manage their own products through the catalogue routes.
     vendorScope: { vendorFor: (tenantId, userId, header) => b3!.vendorFor(tenantId, userId, header) },

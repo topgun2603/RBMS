@@ -383,8 +383,8 @@ describe("items facade (ItemSourcePort)", () => {
 
   it("delegates every item method with validated input and keeps the Item shape", async () => {
     const { service, items } = setup();
-    expect(await service.listItems(tenantId, { q: " silk ", limit: "10" as unknown as number })).toEqual({ items: [record], total: 1 });
-    expect(items.list).toHaveBeenCalledWith(tenantId, { q: "silk", limit: 10, offset: 0 });
+    expect(await service.listItems(tenantId, { q: " silk ", limit: "10" as unknown as number })).toEqual({ items: [record], total: 1, limit: 10, offset: 0 });
+    expect(items.list).toHaveBeenCalledWith(tenantId, { q: "silk", limit: 10, offset: 0, sort: "name" });
     expect(await service.getItem(tenantId, itemId)).toEqual(record);
     expect(Object.keys(await service.getItem(tenantId, itemId)).sort()).toEqual(["createdAt", "gstRate", "hsn", "id", "name", "rate", "unit"]);
 
@@ -428,7 +428,7 @@ describe("items facade (ItemSourcePort)", () => {
     await app.register(invoicesRoutes(service), { prefix: "/v1/invoices" });
     const json = { ...record, createdAt: record.createdAt.toISOString() };
 
-    expect((await app.inject({ url: "/v1/invoices/items?q=silk" })).json()).toEqual({ items: [json], total: 1 });
+    expect((await app.inject({ url: "/v1/invoices/items?q=silk" })).json()).toEqual({ items: [json], total: 1, limit: 50, offset: 0 });
     expect((await app.inject({ url: `/v1/invoices/items/${itemId}` })).json()).toEqual(json);
     expect((await app.inject({ url: "/v1/invoices/items/44444444-4444-4444-8444-444444444444" })).statusCode).toBe(404);
     const created = await app.inject({ method: "POST", url: "/v1/invoices/items", payload: { name: "Silk saree", rate: 650_000, gstRate: 5 } });

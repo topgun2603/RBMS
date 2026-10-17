@@ -227,6 +227,16 @@ export interface Customer {
   createdAt: Date;
 }
 
+/** A customer row of the customer list: the customer plus what the list sorts by. */
+export interface CustomerListItem extends Customer {
+  /** Latest issued (non-draft) bill date. */
+  lastBillDate: string | null;
+  /** Paise billed (issued bills, not cancelled) less credit notes. */
+  totalBilled: number;
+  /** Paise of open bills past their due date. */
+  overdue: number;
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -235,6 +245,13 @@ export interface Item {
   rate: number;
   gstRate: GstRate;
   createdAt: Date;
+  /** Catalogue items only: the product's category. */
+  categoryId?: string | null;
+  /** Catalogue items only: false for draft/archived products. */
+  active?: boolean;
+  /** Catalogue items with inventory: quantity on hand over all locations and its status. */
+  stockQty?: number | null;
+  stockStatus?: ItemStockStatus | "untracked" | null;
 }
 
 export interface InvoiceSummary {
@@ -365,10 +382,23 @@ export interface CreditBookRow {
   overdue: number;
   /** Latest bill, payment or receipt date. */
   lastActivity: string | null;
+  /** Due date (or bill date) of the oldest open bill with money left on it; null when none. */
+  oldestDue: string | null;
+  /** Latest payment or receipt date. */
+  lastPayment: string | null;
 }
 
 export interface CreditBookResult extends ListResult<CreditBookRow> {
+  limit?: number;
+  offset?: number;
   totals: { receivable: number; advance: number; customersWithDues: number };
+  /** `age`: customers per overdue bucket under the other filters. */
+  facets?: Record<string, Record<string, number>>;
+}
+
+/** Item list response: `categories` names the catalogue categories counted in `facets.category`. */
+export interface ItemListResult extends ListPage<Item> {
+  categories?: { id: string; name: string }[];
 }
 
 export interface PaymentTarget {
@@ -662,11 +692,70 @@ export const INVOICE_SORT = defineSort(
   { default: "-date", tieBreaker: [invoices.createdAt, invoices.id] },
 );
 
-export const creditBookQuerySchema = listQuerySchema.extend({
+/** Ledger balance kinds of a customer: owes the shop, in credit (advance), or settled (zero). */
+export const BALANCE_KINDS = ["due", "advance", "settled"] as const;
+
+/**
+ * GET /v1/invoices/customers (docs/CONVENTIONS.md → "Lists and tables"). Limits stay 50 / 200 (pickers ask for 8).
+ * `balance=due,advance,settled`; `overLimit=true` = balance above the customer's credit limit.
+ */
+export const customerListQuerySchema = baseListQuery({ defaultLimit: 50, maxLimit: 200 }).extend({
+  balance: listFilter.oneOf(BALANCE_KINDS),
+  overLimit: listFilter.bool(),
+});
+export type CustomerListQuery = z.input<typeof customerListQuerySchema>;
+
+/** Customer list sort keys. `lastBill` = latest issued bill date; `billed` = total billed less credit notes. */
+export const CUSTOMER_SORT_KEYS = ["name", "balance", "lastBill", "billed"] as const;
+
+/** Days-past-due buckets of a customer's oldest open bill (no due date = due on the bill date). */
+export const CREDIT_AGE_BUCKETS = ["current", "1-30", "31-60", "61-90", "90+"] as const;
+export type CreditAgeBucket = (typeof CREDIT_AGE_BUCKETS)[number];
+
+/**
+ * GET /v1/invoices/credit-book. `filter` (due / advance / all, default all) stays for existing callers; `age` buckets
+ * customers by how long their oldest open bill is past due. Limits 100 / 500 (the CSV export asks for 500).
+ */
+export const creditBookQuerySchema = baseListQuery({ defaultLimit: 100, maxLimit: 500 }).extend({
   filter: z.enum(["due", "advance", "all"]).default("all"),
-  limit: z.coerce.number().int().min(1).max(500).default(100),
+  age: listFilter.oneOf(CREDIT_AGE_BUCKETS),
 });
 export type CreditBookQuery = z.input<typeof creditBookQuerySchema>;
+
+/** Credit book sort keys: `due` = balance, `oldestDue` = oldest open bill's due date, `lastPayment` = latest money in. */
+export const CREDIT_BOOK_SORT_KEYS = ["due", "oldestDue", "lastPayment", "name"] as const;
+
+/** Item list stock status (catalogue items with inventory): in stock, low (at or under the reorder level), out. */
+export const ITEM_STOCK_STATUSES = ["in", "low", "out"] as const;
+export type ItemStockStatus = (typeof ITEM_STOCK_STATUSES)[number];
+
+/**
+ * GET /v1/invoices/items. Limits stay 50 / 200 (bill-form search asks for 6, e2e for 200). `category` (ids),
+ * `stock` (in/low/out), `gstRate` (e.g. `5,18`) and `active` filter catalogue items; the built-in item table only has
+ * GST rates.
+ */
+export const itemListQuerySchema = baseListQuery({ defaultLimit: 50, maxLimit: 200 }).extend({
+  category: listFilter.ids(),
+  stock: listFilter.oneOf(ITEM_STOCK_STATUSES),
+  gstRate: listFilter.oneOf(GST_RATES.map(String) as [string, ...string[]]),
+  active: listFilter.bool(),
+});
+export type ItemListQuery = z.input<typeof itemListQuerySchema>;
+
+/** Item list sort keys (`price` = GST-exclusive rate, `stock` = quantity on hand over all locations). */
+export const ITEM_SORT_KEYS = ["name", "price", "stock", "gstRate"] as const;
+export type ItemSortKey = (typeof ITEM_SORT_KEYS)[number];
+
+/** Items in `billing_items` (when no item source is wired). No stock here: "stock" keeps the name order. */
+export const LOCAL_ITEM_SORT = defineSort(
+  {
+    name: sql`lower(${billingItems.name})`,
+    price: billingItems.rate,
+    stock: sql`lower(${billingItems.name})`,
+    gstRate: billingItems.gstRate,
+  } satisfies Record<ItemSortKey, unknown>,
+  { default: "name", tieBreaker: billingItems.id },
+);
 
 const checkRange = (v: { from?: string; to?: string }, ctx: z.RefinementCtx) => {
   if (!v.from || !v.to) return;
@@ -787,6 +876,10 @@ const toItem = (i: BillingItem | ItemSourceRecord): Item => ({
   rate: i.rate,
   gstRate: i.gstRate as GstRate,
   createdAt: i.createdAt,
+  ...("categoryId" in i && i.categoryId !== undefined ? { categoryId: i.categoryId } : {}),
+  ...("active" in i && i.active !== undefined ? { active: i.active } : {}),
+  ...("stockQty" in i && i.stockQty !== undefined ? { stockQty: i.stockQty } : {}),
+  ...("stockStatus" in i && i.stockStatus !== undefined ? { stockStatus: i.stockStatus } : {}),
 });
 
 const toPayment = (p: InvoicePaymentRow): InvoicePayment => ({
@@ -984,6 +1077,9 @@ export class InvoicesService {
           "cq_overdue",
         ),
         lastInvoice: sql<string | null>`max(${invoices.date})::text`.as("cq_last_invoice"),
+        oldestDue: sql<string | null>`min(coalesce(${invoices.dueDate}, ${invoices.date})) filter (where ${invoices.status} in ('issued', 'partially_paid') and ${invoices.total} - ${invoices.paid} - ${invoices.credited} > 0)::text`.as(
+          "cq_oldest_due",
+        ),
       })
       .from(invoices)
       .where(and(eq(invoices.tenantId, tenantId), ne(invoices.status, "draft"), forCustomer(invoices.customerId)))
@@ -1013,6 +1109,16 @@ export class InvoicesService {
       .as("agg_rcp");
 
     const balance = sql<string>`(${billingCustomers.openingBalance} + coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0) - coalesce(${pay.paid}, 0) - coalesce(${rcp.received}, 0))`;
+    /** Expressions the lists sort and filter by (same SQL the rows compute). */
+    const exprs = {
+      balance,
+      billed: sql<string>`(coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0))`,
+      lastBill: sql<string | null>`${inv.lastInvoice}`,
+      oldestDue: sql<string | null>`${inv.oldestDue}`,
+      lastPayment: sql<string | null>`greatest(${pay.lastPayment}, ${rcp.lastReceipt})`,
+      /** Whole days the oldest open bill is past due (null: no open bill). */
+      daysPastDue: sql<number | null>`(${today}::date - ${inv.oldestDue}::date)`,
+    };
     const fields = {
       c: billingCustomers,
       billed: inv.billed,
@@ -1022,6 +1128,9 @@ export class InvoicesService {
       advance: rcp.advance,
       overdue: inv.overdue,
       lastActivity: sql<string | null>`greatest(${inv.lastInvoice}, ${pay.lastPayment}, ${rcp.lastReceipt})`,
+      lastBill: exprs.lastBill,
+      oldestDue: exprs.oldestDue,
+      lastPayment: exprs.lastPayment,
     };
     const totalsFields = {
       receivable: sql<string>`coalesce(sum(greatest(${balance}, 0)), 0)`,
@@ -1031,7 +1140,16 @@ export class InvoicesService {
     const base = and(eq(billingCustomers.tenantId, tenantId), isNull(billingCustomers.deletedAt), customerId ? eq(billingCustomers.id, customerId) : undefined);
     return {
       balance,
+      exprs,
       base,
+      /** `select key, count(*)` over the same joins (add `.where(...).groupBy(key)`), for facet counts. */
+      facet: (key: SQL<string | null>) =>
+        this.db
+          .select({ key, n: count() })
+          .from(billingCustomers)
+          .leftJoin(inv, eq(inv.customerId, billingCustomers.id))
+          .leftJoin(pay, eq(pay.customerId, billingCustomers.id))
+          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id)),
       rows: () =>
         this.db
           .select(fields)
@@ -1057,20 +1175,69 @@ export class InvoicesService {
   }
 
   private customerSearch(q: string | undefined) {
-    if (!q) return undefined;
-    const pat = likePattern(q);
-    return or(ilike(billingCustomers.name, pat), ilike(billingCustomers.phone, pat), ilike(billingCustomers.gstin, pat));
+    return searchAny(q, [billingCustomers.name, billingCustomers.phone, billingCustomers.gstin]);
   }
 
-  async listCustomers(tenantId: string, query: ListQuery = {}): Promise<ListResult<Customer>> {
-    const { q, limit, offset } = listQuerySchema.parse(query);
-    const where = and(eq(billingCustomers.tenantId, tenantId), isNull(billingCustomers.deletedAt), this.customerSearch(q));
+  /** Customer list sort (CUSTOMER_SORT_KEYS) over a customerQuery's expressions. Default: name A→Z. */
+  customerSort(cq: ReturnType<InvoicesService["customerQuery"]>) {
+    return defineSort(
+      { name: sql`lower(${billingCustomers.name})`, balance: cq.exprs.balance, lastBill: cq.exprs.lastBill, billed: cq.exprs.billed } satisfies Record<
+        (typeof CUSTOMER_SORT_KEYS)[number],
+        unknown
+      >,
+      { default: "name", tieBreaker: billingCustomers.id },
+    );
+  }
+
+  /** `kind` of a ledger balance as SQL: 'due' / 'advance' / 'settled'. */
+  private balanceKind(balance: SQL): SQL<string> {
+    return sql<string>`(case when ${balance} > 0 then 'due' when ${balance} < 0 then 'advance' else 'settled' end)`;
+  }
+
+  /** WHERE of the customer list; without `balance` for its facet counts. */
+  customerListConditions(
+    cq: ReturnType<InvoicesService["customerQuery"]>,
+    p: z.output<typeof customerListQuerySchema>,
+    withBalance = true,
+  ): SQL | undefined {
+    const bal = cq.balance;
+    const kinds = withBalance ? p.balance : undefined;
+    const overLimit = sql`(${billingCustomers.creditLimit} is not null and ${bal} > ${billingCustomers.creditLimit})`;
+    return and(
+      cq.base,
+      this.customerSearch(p.q),
+      kinds?.length ? inArray(this.balanceKind(bal), [...kinds]) : undefined,
+      p.overLimit === true ? overLimit : p.overLimit === false ? sql`not ${overLimit}` : undefined,
+    );
+  }
+
+  /**
+   * Customer list: paged, sorted (CUSTOMER_SORT_KEYS, default name), searched by name/phone/GSTIN and filtered by
+   * balance kind and credit limit. `facets.balance` counts due / advance / settled under the other filters.
+   */
+  async listCustomers(tenantId: string, query: CustomerListQuery | ListQuery = {}): Promise<ListPage<CustomerListItem>> {
+    const p = customerListQuerySchema.parse(query);
     const cq = this.customerQuery(tenantId);
-    const [rows, [counted]] = await Promise.all([
-      cq.rows().where(where).orderBy(asc(billingCustomers.name), asc(billingCustomers.id)).limit(limit).offset(offset),
-      this.db.select({ total: count() }).from(billingCustomers).where(where),
+    const order = this.customerSort(cq).orderBy(p.sort);
+    const where = this.customerListConditions(cq, p);
+    // Only the balance filters need the aggregate joins to count.
+    const needsJoins = !!p.balance?.length || p.overLimit !== undefined;
+    const kind = this.balanceKind(cq.balance);
+    const [page, byKind] = await Promise.all([
+      runList(p, {
+        rows: () => cq.rows().where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () =>
+          needsJoins ? cq.count().where(where) : this.db.select({ total: count() }).from(billingCustomers).where(and(cq.base, this.customerSearch(p.q))),
+        map: (r): CustomerListItem => ({
+          ...toCustomer(r.c, r),
+          lastBillDate: r.lastBill ?? null,
+          totalBilled: num(r.billed) - num(r.credited),
+          overdue: num(r.overdue),
+        }),
+      }),
+      cq.facet(kind).where(this.customerListConditions(cq, p, false)).groupBy(sql`1`),
     ]);
-    return { items: rows.map((r) => toCustomer(r.c, r)), total: counted?.total ?? 0 };
+    return { ...page, facets: { balance: facetCounts(byKind) } };
   }
 
   private async customerRow(db: DbOrTx, tenantId: string, id: string): Promise<BillingCustomer | null> {
@@ -1140,18 +1307,10 @@ export class InvoicesService {
   async creditBook(tenantId: string, query: CreditBookQuery = {}): Promise<CreditBookResult> {
     const p = creditBookQuerySchema.parse(query);
     const cq = this.customerQuery(tenantId);
-    const where = and(
-      cq.base,
-      this.customerSearch(p.q),
-      p.filter === "due" ? sql`${cq.balance} > 0` : p.filter === "advance" ? sql`${cq.balance} < 0` : undefined,
-    );
-    const order =
-      p.filter === "due"
-        ? [sql`${cq.balance} desc`, asc(billingCustomers.name)]
-        : p.filter === "advance"
-          ? [sql`${cq.balance} asc`, asc(billingCustomers.name)]
-          : [asc(billingCustomers.name), asc(billingCustomers.id)];
-    const [rows, [counted], [totals]] = await Promise.all([
+    const order = this.creditBookSort(cq).orderBy(p.sort);
+    const where = this.creditBookConditions(cq, p);
+    const age = this.ageBucket(cq);
+    const [rows, [counted], [totals], byAge] = await Promise.all([
       cq
         .rows()
         .where(where)
@@ -1160,19 +1319,59 @@ export class InvoicesService {
         .offset(p.offset),
       cq.count().where(where),
       cq.totals().where(cq.base),
+      cq.facet(age).where(this.creditBookConditions(cq, p, false)).groupBy(sql`1`),
     ]);
     return {
       items: rows.map((r) => {
         const customer = toCustomer(r.c, r);
-        return { customer, balance: customer.outstanding, overdue: num(r.overdue), lastActivity: r.lastActivity ?? null };
+        return {
+          customer,
+          balance: customer.outstanding,
+          overdue: num(r.overdue),
+          lastActivity: r.lastActivity ?? null,
+          oldestDue: r.oldestDue ?? null,
+          lastPayment: r.lastPayment ?? null,
+        };
       }),
       total: counted?.total ?? 0,
+      limit: p.limit,
+      offset: p.offset,
       totals: {
         receivable: num(totals?.receivable),
         advance: num(totals?.advance),
         customersWithDues: num(totals?.withDues),
       },
+      facets: { age: facetCounts(byAge) },
     };
+  }
+
+  /** Credit book sort (CREDIT_BOOK_SORT_KEYS). Default: biggest dues first. */
+  creditBookSort(cq: ReturnType<InvoicesService["customerQuery"]>) {
+    return defineSort(
+      {
+        due: cq.exprs.balance,
+        oldestDue: cq.exprs.oldestDue,
+        lastPayment: cq.exprs.lastPayment,
+        name: sql`lower(${billingCustomers.name})`,
+      } satisfies Record<(typeof CREDIT_BOOK_SORT_KEYS)[number], unknown>,
+      { default: "-due", tieBreaker: billingCustomers.id },
+    );
+  }
+
+  /** CREDIT_AGE_BUCKETS key of a customer (by the oldest open bill; none or not yet due = "current"). */
+  private ageBucket(cq: ReturnType<InvoicesService["customerQuery"]>): SQL<string> {
+    const d = cq.exprs.daysPastDue;
+    return sql<string>`(case when ${d} is null or ${d} <= 0 then 'current' when ${d} <= 30 then '1-30' when ${d} <= 60 then '31-60' when ${d} <= 90 then '61-90' else '90+' end)`;
+  }
+
+  /** WHERE of the credit book; without `age` for its facet counts. */
+  creditBookConditions(cq: ReturnType<InvoicesService["customerQuery"]>, p: z.output<typeof creditBookQuerySchema>, withAge = true): SQL | undefined {
+    return and(
+      cq.base,
+      this.customerSearch(p.q),
+      p.filter === "due" ? sql`${cq.balance} > 0` : p.filter === "advance" ? sql`${cq.balance} < 0` : undefined,
+      withAge && p.age?.length ? inArray(this.ageBucket(cq), [...p.age]) : undefined,
+    );
   }
 
   /** Records money received on account and allocates it oldest-first to open bills; the rest is advance. */
@@ -1440,29 +1639,65 @@ export class InvoicesService {
 
   // ================================================================ items
 
-  async listItems(tenantId: string, query: ListQuery = {}): Promise<ListResult<Item>> {
-    const { q, limit, offset } = listQuerySchema.parse(query);
-    if (this.itemSource) {
-      const page = await this.itemSource.list(tenantId, { q, limit, offset });
-      return { items: page.items.map(toItem), total: page.total };
-    }
-    const pat = q ? likePattern(q) : null;
-    const where = and(
+  /** WHERE of the built-in item list (`billing_items`); without `gstRate` for its facet counts. */
+  localItemConditions(tenantId: string, p: z.output<typeof itemListQuerySchema>, withRate = true): SQL | undefined {
+    return and(
       eq(billingItems.tenantId, tenantId),
       isNull(billingItems.deletedAt),
-      pat ? or(ilike(billingItems.name, pat), ilike(billingItems.hsn, pat)) : undefined,
+      searchAny(p.q, [billingItems.name, billingItems.hsn]),
+      withRate && p.gstRate?.length ? inArray(billingItems.gstRate, p.gstRate.map(Number)) : undefined,
     );
-    const [rows, [counted]] = await Promise.all([
+  }
+
+  /**
+   * Saved items: paged, sorted (ITEM_SORT_KEYS, default name) and filtered. With an item source (the catalogue) the
+   * source sorts and filters (category, stock, GST rate, active) and may add facets; the built-in table filters by GST
+   * rate only.
+   */
+  async listItems(tenantId: string, query: ItemListQuery | ListQuery = {}): Promise<ItemListResult> {
+    const p = itemListQuerySchema.parse(query);
+    const sort = LOCAL_ITEM_SORT.parse(p.sort);
+    if (this.itemSource) {
+      const page = await this.itemSource.list(tenantId, {
+        q: p.q,
+        limit: p.limit,
+        offset: p.offset,
+        sort: sort.value,
+        ...(p.category ? { category: p.category } : {}),
+        ...(p.stock ? { stock: p.stock } : {}),
+        ...(p.gstRate ? { gstRate: p.gstRate.map(Number) } : {}),
+        ...(p.active !== undefined ? { active: p.active } : {}),
+      });
+      return {
+        items: page.items.map(toItem),
+        total: page.total,
+        limit: p.limit,
+        offset: p.offset,
+        ...(page.facets ? { facets: page.facets } : {}),
+        ...(page.categories ? { categories: page.categories } : {}),
+      };
+    }
+    const where = this.localItemConditions(tenantId, p);
+    const [page, byRate] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select()
+            .from(billingItems)
+            .where(where)
+            .orderBy(...LOCAL_ITEM_SORT.orderBy(sort))
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(billingItems).where(where),
+        map: toItem,
+      }),
       this.db
-        .select()
+        .select({ key: sql<string>`${billingItems.gstRate}::text`, n: count() })
         .from(billingItems)
-        .where(where)
-        .orderBy(asc(billingItems.name), asc(billingItems.id))
-        .limit(limit)
-        .offset(offset),
-      this.db.select({ total: count() }).from(billingItems).where(where),
+        .where(this.localItemConditions(tenantId, p, false))
+        .groupBy(billingItems.gstRate),
     ]);
-    return { items: rows.map(toItem), total: counted?.total ?? 0 };
+    return { ...page, facets: { gstRate: facetCounts(byRate.map((r) => ({ key: String(Number(r.key)), n: r.n }))) } };
   }
 
   async getItem(tenantId: string, id: string): Promise<Item> {

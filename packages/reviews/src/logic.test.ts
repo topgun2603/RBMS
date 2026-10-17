@@ -125,7 +125,7 @@ describe("input schemas", () => {
     expect(publicReviewQuerySchema.parse({ sort: "helpful", rating: "5", limit: "20" })).toEqual({ sort: "helpful", rating: 5, limit: 20, offset: 0 });
     expect(() => publicReviewQuerySchema.parse({ sort: "random" })).toThrow(ZodError);
     expect(() => publicReviewQuerySchema.parse({ rating: "6" })).toThrow(ZodError);
-    expect(staffReviewQuerySchema.parse({ status: "pending", productId: A })).toMatchObject({ status: "pending", productId: A, limit: 50 });
+    expect(staffReviewQuerySchema.parse({ status: "pending", productId: A })).toMatchObject({ status: ["pending"], productId: A, limit: 50 });
     expect(() => staffReviewQuerySchema.parse({ status: "spam" })).toThrow(ZodError);
     expect(productIdsQuerySchema.parse({ productIds: `${A}, ${B}` }).productIds).toEqual([A, B]);
     expect(() => productIdsQuerySchema.parse({ productIds: "nope" })).toThrow(ZodError);

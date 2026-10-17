@@ -1,4 +1,16 @@
-import { badRequest, conflict, featureDisabled, newId, notFound, type FeatureGatePort } from "@srirealtime/core";
+import {
+  badRequest,
+  conflict,
+  defineSort,
+  facetCounts,
+  featureDisabled,
+  listFilter,
+  listQuerySchema,
+  newId,
+  notFound,
+  type FeatureGatePort,
+  type ListPage,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import { and, asc, count, desc, eq, ilike, inArray, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -68,6 +80,7 @@ import {
   categoryPath,
   groupFacetRows,
   MAX_CANDIDATES,
+  minPriceSql,
   nameTierSql,
   parseQuery,
   parseSearchQuery,
@@ -164,6 +177,8 @@ export interface CatalogueDeps {
   log?: LoggerPort;
   /** Stock for the search `inStock` filter (inventory). Without it the filter is ignored. */
   availability?: AvailabilityPort;
+  /** Stock levels in SQL for the staff list's stock column, filter and sort (inventory). Without it they are off. */
+  stock?: StockSqlPort;
   /** Product ratings for `sort=rating` (reviews). Without it rating sort falls back to relevance. */
   ratings?: RatingsPort;
   /**
@@ -326,18 +341,73 @@ const limit = (max: number, dflt: number) => z.coerce.number().int().min(1).max(
 const offset = z.coerce.number().int().min(0).default(0);
 const q = z.string().trim().max(100).optional();
 
-export const productListQuerySchema = z.object({
-  q,
-  categoryId: uuid.optional(),
-  /** Staff: one seller's products (any status). Vendor-scoped calls are limited to their own seller anyway. */
-  vendorId: uuid.optional(),
-  status: z.enum(PRODUCT_STATUSES).optional(),
-  channel: z.enum(CHANNELS).optional(),
+/** Stock status of a product in the staff list: the worst of its tracked variants, or `untracked` (none tracked). */
+export const PRODUCT_STOCK_STATUSES = ["ok", "low", "out", "untracked"] as const;
+export type ProductStockStatus = (typeof PRODUCT_STOCK_STATUSES)[number];
+
+/**
+ * Staff `GET /products` (docs/CONVENTIONS.md → "Lists and tables"). `status`, `categoryId`, `vendorId`, `channel`
+ * and `stock` take comma lists; `collectionId` is one collection (manual: its products; rule: its rule).
+ * Default 50 / max 200 rows (pickers and the collection editor page through 200 at a time).
+ */
+export const productListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 200 }).extend({
+  categoryId: listFilter.ids(),
+  collectionId: listFilter.id(),
+  /** Staff: these sellers' products (any status). Vendor-scoped calls are limited to their own seller anyway. */
+  vendorId: listFilter.ids(),
+  status: listFilter.oneOf(PRODUCT_STATUSES),
+  channel: listFilter.oneOf(CHANNELS),
+  /** Needs the stock port and the shop's inventory feature (ignored otherwise). */
+  stock: listFilter.oneOf(PRODUCT_STOCK_STATUSES),
   tag: z.string().trim().toLowerCase().max(40).optional(),
-  limit: limit(200, 50),
-  offset,
 });
 export type ProductListQuery = z.input<typeof productListQuerySchema>;
+type ProductListParams = z.output<typeof productListQuerySchema>;
+
+/**
+ * Stock levels in SQL (implemented by the host over inventory's tables) for the staff list's stock column, filter and
+ * sort. `variantLevels` is a one-row subquery for `left join lateral (...) on true` with columns `qty` and `reorder`
+ * (numeric, summed over locations) and `track` (false when the variant is untracked at any location); all null when
+ * the variant has no stock rows (inventory counts that as tracked with qty 0).
+ */
+export interface StockSqlPort {
+  variantLevels(tenantId: SQL, variantId: SQL): SQL;
+  /** False when the shop doesn't track stock (no inventory feature): the stock filter and sort are ignored then. */
+  enabled?(tenantId: string): Promise<boolean>;
+}
+
+/** Product-level stock expressions over the product's live, tracked variants (`stock.variantLevels`). */
+export function productStockSql(stock: StockSqlPort): { qty: SQL; status: SQL } {
+  const from = sql`from ${catalogVariants} cv left join lateral (${stock.variantLevels(sql`cv.tenant_id`, sql`cv.id`)}) sl on true
+    where cv.product_id = ${catalogProducts.id} and cv.deleted_at is null and coalesce(sl.track, true)`;
+  return {
+    /** Units on hand over tracked variants; null when nothing is tracked. */
+    qty: sql`(select sum(coalesce(sl.qty, 0)) ${from})`,
+    /** Same rule as inventory's stockStatus per variant, worst first: out (qty ≤ 0) → low (≤ reorder level) → ok. */
+    status: sql`(select case when count(*) = 0 then 'untracked'
+      when bool_or(coalesce(sl.qty, 0) <= 0) then 'out'
+      when bool_or(coalesce(sl.reorder, 0) > 0 and sl.qty <= sl.reorder) then 'low'
+      else 'ok' end ${from})`,
+  };
+}
+
+/**
+ * Staff list sort fields. `stock` sorts by units on hand (untracked products last); without a stock port it is a
+ * no-op (the tie-breakers decide). With `q` and no `sort` the list keeps its relevance order instead.
+ */
+export function productSort(stock?: StockSqlPort | null) {
+  return defineSort(
+    {
+      name: sql`lower(${catalogProducts.name})`,
+      price: minPriceSql,
+      stock: stock ? productStockSql(stock).qty : sql`null`,
+      updated: catalogProducts.updatedAt,
+      status: catalogProducts.status,
+    },
+    { default: "name", tieBreaker: catalogProducts.id },
+  );
+}
+export const PRODUCT_SORT = productSort();
 
 export const PUBLIC_SORTS = ["new", "price-asc", "price-desc", "name"] as const;
 export const publicProductQuerySchema = z.object({
@@ -362,6 +432,45 @@ export const idsQuerySchema = z.object({
 export const codeQuerySchema = z.object({ code });
 
 export const itemListQuerySchema = z.object({ q, limit: limit(500, 50), offset, channel: z.enum(CHANNELS).optional() });
+
+/** Per-variant stock expressions (over `catalogVariants.id`) for billing's item list. */
+export interface VariantStockSql {
+  /** Quantity on hand over all locations. */
+  qty: SQL;
+  /** 'in' | 'low' | 'out' | 'untracked'. */
+  status: SQL<string>;
+}
+
+/** Per-variant stock expressions from the stock port (same aggregation as inventory: untracked anywhere = untracked). */
+export function variantStockSql(stock: StockSqlPort, tenantId: string): VariantStockSql {
+  const levels = sql`(${stock.variantLevels(sql`${tenantId}`, sql`${catalogVariants.id}`)}) sl`;
+  return {
+    qty: sql`(select coalesce(sl.qty, 0) from ${levels})`,
+    status: sql<string>`(select case when sl.track = false then 'untracked' when coalesce(sl.qty, 0) <= 0 then 'out' when coalesce(sl.reorder, 0) > 0 and sl.qty <= sl.reorder then 'low' else 'in' end from ${levels})`,
+  };
+}
+
+/** Billing's item list query (validated by invoices; `sort` is name / price / stock / gstRate, "-" = descending). */
+export interface BillingItemListQuery {
+  q?: string;
+  limit: number;
+  offset: number;
+  sort?: string;
+  category?: string[];
+  stock?: string[];
+  gstRate?: number[];
+  active?: boolean;
+  channel?: Channel;
+}
+
+export type BillingItemFacet = "category" | "gstRate" | "stock";
+
+export interface BillingItemListPage {
+  items: (CatalogItem & { active: boolean; stockQty: number | null; stockStatus: "in" | "low" | "out" | "untracked" | null })[];
+  total: number;
+  facets: Record<string, Record<string, number>>;
+  categories: { id: string; name: string }[];
+}
 export type ItemListQuery = z.input<typeof itemListQuerySchema>;
 
 /** A billing-style item (invoices' Item input): one product with one default variant. */
@@ -490,6 +599,7 @@ export function toCatalogItem(v: VariantRow, p: ProductRow): CatalogItem {
     gstRate: p.gstRate,
     image: p.images?.[0]?.url ?? null,
     createdAt: v.createdAt,
+    categoryId: p.categoryId ?? null,
   };
 }
 
@@ -691,19 +801,32 @@ export class CatalogueService {
 
   // ================================================================ products
 
-  /** Staff `GET /products`: the search matching (see searchMatchSql) plus SKU, barcode and HSN substrings. */
-  private productFilters(tenantId: string, query: z.output<typeof productListQuerySchema>, scope?: ProductScope): SQL | undefined {
+  /**
+   * WHERE of the staff `GET /products`: the search matching (see searchMatchSql) plus SKU, barcode and HSN substrings,
+   * and the filters. `omit` leaves out one filter (for its facet counts); `extra` holds pre-resolved conditions
+   * (the collection's membership, see `collectionCondition`); `stock` is the stock-status expression when stock is on.
+   */
+  productFilters(
+    tenantId: string,
+    query: ProductListParams,
+    scope?: ProductScope,
+    opts: { omit?: "status" | "stock"; extra?: SQL; stock?: SQL | null } = {},
+  ): SQL | undefined {
     const pat = query.q ? likePattern(query.q) : null;
     const match = searchMatchSql(parseQuery(query.q));
     return and(
       eq(catalogProducts.tenantId, tenantId),
       isNull(catalogProducts.deletedAt),
       scope ? eq(catalogProducts.vendorId, scope.vendorId) : undefined,
-      query.vendorId ? eq(catalogProducts.vendorId, query.vendorId) : undefined,
-      query.status ? eq(catalogProducts.status, query.status) : undefined,
-      query.categoryId ? eq(catalogProducts.categoryId, query.categoryId) : undefined,
-      query.channel ? sql`${catalogProducts.channels} @> array[${query.channel}]::text[]` : undefined,
+      query.vendorId?.length ? inArray(catalogProducts.vendorId, query.vendorId) : undefined,
+      query.status?.length && opts.omit !== "status" ? inArray(catalogProducts.status, query.status) : undefined,
+      query.categoryId?.length ? inArray(catalogProducts.categoryId, query.categoryId) : undefined,
+      query.channel?.length ? sql`${catalogProducts.channels} && array[${sql.join(query.channel.map((c) => sql`${c}`), sql`, `)}]::text[]` : undefined,
       query.tag ? sql`${catalogProducts.tags} @> array[${query.tag}]::text[]` : undefined,
+      query.stock?.length && opts.stock && opts.omit !== "stock"
+        ? sql`${opts.stock} in (${sql.join(query.stock.map((s) => sql`${s}`), sql`, `)})`
+        : undefined,
+      opts.extra,
       pat
         ? or(
             match ?? undefined,
@@ -734,43 +857,114 @@ export class CatalogueService {
     return out;
   }
 
-  /** With a scope: only that seller's products. */
-  async listProducts(tenantId: string, query: ProductListQuery = {}, scope?: ProductScope): Promise<ListResult<ProductSummary>> {
-    const parsed = productListQuerySchema.parse(query);
-    const where = this.productFilters(tenantId, parsed, scope);
-    const text = parseQuery(parsed.q);
-    const order = text.text ? relevanceOrderSql(text) : [asc(catalogProducts.name), asc(catalogProducts.id)];
-    const [rows, [counted]] = await Promise.all([
+  /** Stock SQL for this shop's staff list, or null when there is no stock port or the shop doesn't track stock. */
+  private async stockFor(tenantId: string): Promise<{ qty: SQL; status: SQL } | null> {
+    const port = this.deps.stock;
+    if (!port) return null;
+    if (port.enabled) {
+      try {
+        if (!(await port.enabled(tenantId))) return null;
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "catalogue: stock check failed, list without stock");
+        return null;
+      }
+    }
+    return productStockSql(port);
+  }
+
+  /**
+   * `collectionId` as a condition on products: a manual collection's products, or a rule collection's rule (its
+   * category with subcategories, any category status). Unknown collection → 404.
+   */
+  private async collectionCondition(tenantId: string, collectionId: string | undefined): Promise<SQL | undefined> {
+    if (!collectionId) return undefined;
+    const c = await this.collectionRow(tenantId, collectionId);
+    if (c.type === "manual") {
+      const ids = c.productIds ?? [];
+      return ids.length ? inArray(catalogProducts.id, ids) : sql`false`;
+    }
+    const rule = c.rule ?? { sort: "new" as const };
+    let categoryIds: string[] | null = null;
+    if (rule.categoryId) {
+      const all = await this.db
+        .select({ id: catalogCategories.id, parentId: catalogCategories.parentId })
+        .from(catalogCategories)
+        .where(eq(catalogCategories.tenantId, tenantId));
+      categoryIds = all.some((x) => x.id === rule.categoryId) ? descendantIds(all, rule.categoryId) : [];
+    }
+    return and(...ruleWhereSql(rule, categoryIds)) ?? sql`true`;
+  }
+
+  /**
+   * Staff product list: paged, sorted (`productSort`), filtered. `facets.status` (and `facets.stock` when stock is
+   * on) count products per value under the other filters. With a scope: only that seller's products.
+   * With `q` and no `sort`, the best matches come first.
+   */
+  async listProducts(tenantId: string, query: ProductListQuery = {}, scope?: ProductScope): Promise<ListPage<ProductSummary>> {
+    const p = productListQuerySchema.parse(query);
+    const [stock, extra] = await Promise.all([this.stockFor(tenantId), this.collectionCondition(tenantId, p.collectionId)]);
+    const sortSpec = stock ? productSort(this.deps.stock) : PRODUCT_SORT;
+    const text = parseQuery(p.q);
+    const order = !p.sort && text.text ? relevanceOrderSql(text) : sortSpec.orderBy(p.sort);
+    const where = this.productFilters(tenantId, p, scope, { extra, stock: stock?.status });
+    const [rows, [counted], byStatus, byStock] = await Promise.all([
       this.db
-        .select({ p: catalogProducts, categoryName: catalogCategories.name })
+        .select({
+          p: catalogProducts,
+          categoryName: catalogCategories.name,
+          ...(stock ? { stockQty: stock.qty, stockStatus: stock.status } : {}),
+        })
         .from(catalogProducts)
         .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
         .where(where)
         .orderBy(...order)
-        .limit(parsed.limit)
-        .offset(parsed.offset),
+        .limit(p.limit)
+        .offset(p.offset),
       this.db.select({ total: count() }).from(catalogProducts).where(where),
+      this.db
+        .select({ key: catalogProducts.status, n: count() })
+        .from(catalogProducts)
+        .where(this.productFilters(tenantId, p, scope, { extra, stock: stock?.status, omit: "status" }))
+        .groupBy(catalogProducts.status),
+      stock
+        ? this.db
+            .select({ key: sql<string>`${stock.status}`, n: count() })
+            .from(catalogProducts)
+            .where(this.productFilters(tenantId, p, scope, { extra, stock: stock.status, omit: "stock" }))
+            .groupBy(sql`1`)
+        : Promise.resolve(null),
     ]);
     const variants = await this.variantsOf(tenantId, rows.map((r) => r.p.id));
     return {
-      items: rows.map((r) => toSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null)),
-      total: counted?.total ?? 0,
+      items: rows.map((r) => {
+        const summary = toSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null);
+        if (!stock) return summary;
+        const row = r as typeof r & { stockQty?: string | number | null; stockStatus?: ProductStockStatus | null };
+        const status = row.stockStatus ?? "untracked";
+        return { ...summary, stock: status === "untracked" ? null : { qty: Number(row.stockQty ?? 0), status } };
+      }),
+      total: Number(counted?.total ?? 0),
+      limit: p.limit,
+      offset: p.offset,
+      facets: { status: facetCounts(byStatus), ...(byStock ? { stock: facetCounts(byStock) } : {}) },
     };
   }
 
-  /** Every variant of the matching products (CSV export; capped at 20 000 products). */
+  /** Every variant of the matching products (CSV export; capped at 20 000 products), in the list's sort. */
   async exportProducts(
     tenantId: string,
     query: Omit<ProductListQuery, "limit" | "offset"> = {},
     scope?: ProductScope,
   ): Promise<ProductExportRow[]> {
     const parsed = productListQuerySchema.parse({ ...query, limit: 1, offset: 0 });
+    const [stock, extra] = await Promise.all([this.stockFor(tenantId), this.collectionCondition(tenantId, parsed.collectionId)]);
+    const sortSpec = stock ? productSort(this.deps.stock) : PRODUCT_SORT;
     const rows = await this.db
       .select({ p: catalogProducts, categoryName: catalogCategories.name })
       .from(catalogProducts)
       .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
-      .where(this.productFilters(tenantId, parsed, scope))
-      .orderBy(asc(catalogProducts.name), asc(catalogProducts.id))
+      .where(this.productFilters(tenantId, parsed, scope, { extra, stock: stock?.status }))
+      .orderBy(...sortSpec.orderBy(parsed.sort))
       .limit(20_000);
     const out: ProductExportRow[] = [];
     for (let i = 0; i < rows.length; i += 500) {
@@ -2198,6 +2392,126 @@ export class CatalogueService {
     const parsed = itemListQuerySchema.parse(query);
     const { rows, total } = await this.searchRows(tenantId, parsed);
     return { items: rows.map((r) => toCatalogItem(r.v, r.p)), total };
+  }
+
+  /** Per-variant stock SQL for billing's item list, or null without a stock port or when the shop doesn't track stock. */
+  private async variantStockFor(tenantId: string): Promise<VariantStockSql | null> {
+    const port = this.deps.stock;
+    if (!port) return null;
+    if (port.enabled) {
+      try {
+        if (!(await port.enabled(tenantId))) return null;
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "catalogue: stock check failed, items without stock");
+        return null;
+      }
+    }
+    return variantStockSql(port, tenantId);
+  }
+
+  /** WHERE of billing's item list; `without` leaves one filter out (for its facet counts). */
+  billingItemConditions(tenantId: string, query: BillingItemListQuery, stock?: VariantStockSql | null, without?: BillingItemFacet): SQL {
+    const pat = query.q ? likePattern(query.q) : null;
+    const channel = query.channel ?? "billing";
+    return this.live(
+      tenantId,
+      query.active === true
+        ? eq(catalogProducts.status, "active")
+        : query.active === false
+          ? ne(catalogProducts.status, "active")
+          : ne(catalogProducts.status, "archived"),
+      sql`${catalogProducts.channels} @> array[${channel}]::text[]`,
+      pat
+        ? or(
+            ilike(catalogProducts.name, pat),
+            ilike(catalogProducts.hsn, pat),
+            ilike(catalogVariants.title, pat),
+            ilike(catalogVariants.sku, pat),
+            ilike(catalogVariants.barcode, pat),
+          )
+        : undefined,
+      without !== "category" && query.category?.length ? inArray(catalogProducts.categoryId, query.category) : undefined,
+      without !== "gstRate" && query.gstRate?.length ? inArray(catalogProducts.gstRate, query.gstRate) : undefined,
+      without !== "stock" && stock && query.stock?.length ? inArray(stock.status, query.stock) : undefined,
+    );
+  }
+
+  /** Billing item list sort over variants + products (+ inventory's stock when wired). Default: name A→Z. */
+  billingItemSort(stock?: VariantStockSql | null) {
+    return defineSort(
+      {
+        name: sql`(lower(${catalogProducts.name}), ${catalogVariants.position})`,
+        price: sql`(case when ${catalogProducts.taxInclusive} then round(${catalogVariants.price} * 100.0 / (100 + ${catalogProducts.gstRate})) else ${catalogVariants.price} end)`,
+        stock: stock ? stock.qty : sql`(lower(${catalogProducts.name}), ${catalogVariants.position})`,
+        gstRate: catalogProducts.gstRate,
+      },
+      { default: "name", tieBreaker: catalogVariants.id },
+    );
+  }
+
+  /**
+   * Billing's saved items (invoices' item source): sellable variants on `channel` (default "billing"), paged, sorted
+   * (name / price / stock / gstRate) and filtered by search, category, GST rate, stock status and active. `facets`
+   * counts category, gstRate and (with stock) stock status under the other filters; `categories` names the counted
+   * categories.
+   */
+  async listBillingItems(tenantId: string, query: BillingItemListQuery): Promise<BillingItemListPage> {
+    const stock = await this.variantStockFor(tenantId);
+    const order = this.billingItemSort(stock).orderBy(query.sort);
+    const where = this.billingItemConditions(tenantId, query, stock);
+    const facet = (key: SQL<string | null>, without: BillingItemFacet) =>
+      this.db
+        .select({ key, n: count() })
+        .from(catalogVariants)
+        .innerJoin(catalogProducts, eq(catalogProducts.id, catalogVariants.productId))
+        .where(this.billingItemConditions(tenantId, query, stock, without))
+        .groupBy(sql`1`);
+    const [rows, [counted], byCategory, byRate, byStock] = await Promise.all([
+      this.db
+        .select({
+          v: catalogVariants,
+          p: catalogProducts,
+          stockQty: stock ? sql<string | null>`${stock.qty}` : sql<string | null>`null`,
+          stockStatus: stock ? sql<string | null>`${stock.status}` : sql<string | null>`null`,
+        })
+        .from(catalogVariants)
+        .innerJoin(catalogProducts, eq(catalogProducts.id, catalogVariants.productId))
+        .where(where)
+        .orderBy(...order)
+        .limit(query.limit)
+        .offset(query.offset),
+      this.db
+        .select({ total: count() })
+        .from(catalogVariants)
+        .innerJoin(catalogProducts, eq(catalogProducts.id, catalogVariants.productId))
+        .where(where),
+      facet(sql<string | null>`${catalogProducts.categoryId}::text`, "category"),
+      facet(sql<string | null>`${catalogProducts.gstRate}::text`, "gstRate"),
+      stock ? facet(stock.status, "stock") : Promise.resolve([]),
+    ]);
+    const categoryIds = byCategory.map((r) => r.key).filter((k): k is string => !!k);
+    const categories = categoryIds.length
+      ? await this.db
+          .select({ id: catalogCategories.id, name: catalogCategories.name })
+          .from(catalogCategories)
+          .where(and(eq(catalogCategories.tenantId, tenantId), inArray(catalogCategories.id, categoryIds)))
+          .orderBy(asc(catalogCategories.name))
+      : [];
+    return {
+      items: rows.map((r) => ({
+        ...toCatalogItem(r.v, r.p),
+        active: r.p.status === "active",
+        stockQty: r.stockQty === null ? null : Number(r.stockQty),
+        stockStatus: (r.stockStatus as BillingItemListPage["items"][number]["stockStatus"]) ?? null,
+      })),
+      total: counted?.total ?? 0,
+      facets: {
+        category: facetCounts(byCategory),
+        gstRate: facetCounts(byRate.map((r) => ({ key: r.key === null ? null : String(Number(r.key)), n: r.n }))),
+        ...(stock ? { stock: facetCounts(byStock) } : {}),
+      },
+      categories,
+    };
   }
 
   /** Items with these variant ids, any status, in the order asked; unknown or deleted ids are left out. */

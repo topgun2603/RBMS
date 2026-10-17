@@ -8,8 +8,10 @@ import {
   requireUser,
   tooMany,
   type AuditPort,
+  type ListPage,
   type RequestContext,
 } from "@srirealtime/core";
+import { REVIEW_SORT, reviewFilter, reviewListQuerySchema, type ReviewListQuery } from "./list";
 import type { Db } from "@srirealtime/db";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
@@ -33,7 +35,7 @@ import {
   type KycSubjectRow,
   type SubjectType,
 } from "./schema";
-import { DrizzleKycStore, type KycStore, type NewCheck } from "./store";
+import { DrizzleKycStore, type KycStore, type NewCheck, type ReviewPage } from "./store";
 import {
   isValidAccountNumber,
   isValidIfsc,
@@ -516,10 +518,13 @@ export class KycService {
   // ------------------------------------------------------------ review (super-admin)
 
   /** Checks waiting for a human, oldest first. `tenantId` null = every shop. */
-  async reviewQueue(q: { tenantId?: string | null; limit?: number; offset?: number } = {}): Promise<{ items: ReviewItem[]; total: number }> {
-    const limit = Math.min(Math.max(q.limit ?? 50, 1), 200);
-    const offset = Math.max(q.offset ?? 0, 0);
-    const { items, total } = await this.store.listReview({ tenantId: q.tenantId ?? null, limit, offset });
+  /**
+   * Super-admin review list: by default the queue (checks waiting for review, oldest first); filters status (`all`),
+   * check type, shop and a name search; sort submitted / match. See ./list.ts.
+   */
+  async reviewQueue(query: ReviewListQuery = {}): Promise<ListPage<ReviewItem> & { facets: ReviewPage["facets"] }> {
+    const p = reviewListQuerySchema.parse(query);
+    const { items, total, facets } = await this.store.listReview({ ...reviewFilter(p), sort: REVIEW_SORT.parse(p.sort), limit: p.limit, offset: p.offset });
     const out: ReviewItem[] = [];
     for (const { check, subject } of items) {
       let comparedWith: string | null = null;
@@ -533,7 +538,7 @@ export class KycService {
         comparedWith,
       });
     }
-    return { items: out, total };
+    return { items: out, total, limit: p.limit, offset: p.offset, facets };
   }
 
   approve(checkId: string, reviewerId: string, reason?: string | null, meta: ReviewMeta = {}) {

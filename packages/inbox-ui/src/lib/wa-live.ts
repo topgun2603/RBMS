@@ -48,7 +48,7 @@ export function useWhatsAppLive(opts: { enabled?: boolean; onInbound?: (m: WaMes
             break;
           case "campaign":
             qc.setQueryData<Campaign>(qk.campaign(d.campaignId), (c) => (c ? { ...c, status: d.status, counts: d.counts } : c));
-            void qc.invalidateQueries({ queryKey: qk.campaigns, exact: true });
+            void qc.invalidateQueries({ queryKey: qk.campaignTable });
             void qc.invalidateQueries({ queryKey: [...qk.campaigns, "recipients", d.campaignId] });
             break;
         }

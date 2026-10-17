@@ -1,6 +1,7 @@
-import { addDays, badRequest, conflict, notFound } from "@srirealtime/core";
+import { addDays, badRequest, conflict, facetCounts, notFound, runList, type ListPage } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, desc, eq, inArray, isNotNull, isNull, lt, lte, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, lt, lte, or, type SQL } from "drizzle-orm";
+import { DATA_REQUEST_SORT, dataRequestListConditions, dataRequestListQuerySchema, type DataRequestListQuery } from "./list";
 import { latestByPurpose, runErasers, runExporters, type ConsentDecision } from "./logic";
 import type { DataEraser, DataExporter, LoggerPort, QueuePort } from "./ports";
 import {
@@ -365,20 +366,20 @@ export class ConsentService {
     return { ...deletions, purgedExports };
   }
 
-  async listRequests(
-    opts: { status?: DataRequestStatus; type?: DataRequestType; limit?: number; offset?: number } = {},
-  ): Promise<{ items: DataRequestView[] }> {
-    const conds: SQL[] = [];
-    if (opts.status) conds.push(eq(dataRequests.status, opts.status));
-    if (opts.type) conds.push(eq(dataRequests.type, opts.type));
-    const rows = await this.db
-      .select()
-      .from(dataRequests)
-      .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(dataRequests.createdAt))
-      .limit(Math.min(Math.max(opts.limit ?? 50, 1), 200))
-      .offset(Math.max(opts.offset ?? 0, 0));
-    return { items: rows.map(toView) };
+  /** Super-admin list: filters status / type, `q` on the user or request id, sort, facet counts. See ./list.ts. */
+  async listRequests(query: DataRequestListQuery = {}): Promise<ListPage<DataRequestView> & { facets: Record<string, Record<string, number>> }> {
+    const p = dataRequestListQuerySchema.parse(query);
+    const where = dataRequestListConditions(p);
+    const [page, byStatus, byType] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(dataRequests).where(where).orderBy(...DATA_REQUEST_SORT.orderBy(p.sort)).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(dataRequests).where(where),
+        map: toView,
+      }),
+      this.db.select({ key: dataRequests.status, n: count() }).from(dataRequests).where(dataRequestListConditions(p, "status")).groupBy(dataRequests.status),
+      this.db.select({ key: dataRequests.type, n: count() }).from(dataRequests).where(dataRequestListConditions(p, "type")).groupBy(dataRequests.type),
+    ]);
+    return { ...page, facets: { status: facetCounts(byStatus), type: facetCounts(byType) } };
   }
 
   // ---------------------------------------------------------------- internals

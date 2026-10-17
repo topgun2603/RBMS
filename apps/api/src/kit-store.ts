@@ -1,6 +1,8 @@
 import { resolveCname, resolveTxt } from "node:dns/promises";
 import { AppError, type FeatureGatePort } from "@srirealtime/core";
-import { isPublicRef, type createCatalogue, type ProductRef } from "@srirealtime/catalogue";
+import { isPublicRef, type createCatalogue, type ProductRef, type StockSqlPort } from "@srirealtime/catalogue";
+import { sql } from "@srirealtime/db";
+import { stockItems } from "@srirealtime/inventory";
 import type { CatalogPort as CmsCatalogPort, PublicProductSummary as CmsProductSummary } from "@srirealtime/cms";
 import type { FulfillmentOrder, OrderFulfillmentPort } from "@srirealtime/delivery";
 import type { createInventory } from "@srirealtime/inventory";
@@ -43,6 +45,19 @@ export function catalogueAvailability(inventory: () => Inventory, isEnabled: Fea
       const rows = await chunked(variantIds, async (itemIds) => (await inventory().publicAvailability(tenantId, { itemIds })).items);
       return rows.filter((r) => r.inStock).map((r) => r.itemId);
     },
+  };
+}
+
+/**
+ * Catalogue staff list stock column / filter / sort: one variant's `stock_items` rows summed over locations (inventory's
+ * own aggregation: qty and reorder level are sums; untracked anywhere = untracked). Off without the inventory feature.
+ */
+export function catalogueStockSql(isEnabled: FeatureGatePort["isEnabled"]): StockSqlPort {
+  return {
+    variantLevels: (tenantId, variantId) =>
+      sql`select sum(${stockItems.qty}) as qty, sum(${stockItems.reorderLevel}) as reorder, bool_and(${stockItems.track}) as track
+        from ${stockItems} where ${stockItems.tenantId} = ${tenantId} and ${stockItems.itemId} = ${variantId}`,
+    enabled: (tenantId) => isEnabled(tenantId, "inventory"),
   };
 }
 

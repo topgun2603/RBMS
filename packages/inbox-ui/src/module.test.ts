@@ -121,7 +121,6 @@ describe("messages", () => {
       ["inbox.ticket.status.", TICKET_STATUSES],
       ["inbox.ticket.priority.", TICKET_PRIORITIES],
       ["inbox.ticket.channel.", TICKET_CHANNELS],
-      ["inbox.ticket.sort.", ["recent", "due", "oldest"]],
       ["inbox.ticket.related.", ["order", "invoice"]],
       ["inbox.sla.", ["overdue", "due_soon", "on_track", "met", "missed"]],
       ["inbox.campaign.status.", CAMPAIGN_STATUSES],

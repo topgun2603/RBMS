@@ -6,7 +6,8 @@
   "description": "Shared client kit for srikit front ends: API client, session, OTP login, i18n, branding, features, app shell and the UI module system.",
   "exports": {
     ".": "./src/index.ts",
-    "./firebase-phone": "./src/lib/firebase-phone.ts"
+    "./firebase-phone": "./src/lib/firebase-phone.ts",
+    "./server-table-state": "./src/lib/server-table-state.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

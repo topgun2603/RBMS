@@ -16,6 +16,9 @@ import {
   CardTitle,
   ChipGroup,
   cn,
+  DataTable,
+  DataTableToolbar,
+  EmptyState,
   Field,
   FieldControl,
   FieldHint,
@@ -32,33 +35,25 @@ import {
   TableRow,
   toast,
 } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
-import { PayoutsList, Pager, RowsSkeleton } from "../components/lists";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { RowsSkeleton } from "../components/lists";
+import { usePayoutColumns } from "../components/table-columns";
 import { money, previewPayouts, type PreviewRow } from "../lib/logic";
-import { exportCsv, PREVIEW_VENDOR_CAP, todayIST, useMarketplaceSettings, usePayoutPreviewData, useRunPayouts, useStaffPayouts } from "../lib/queries";
-import { PAYOUT_STATUSES, type PayoutRunResult, type PayoutStatus } from "../lib/types";
+import { exportCsv, mk, MP, PREVIEW_VENDOR_CAP, todayIST, useMarketplaceSettings, usePayoutPreviewData, useRunPayouts, useSellerOptions } from "../lib/queries";
+import { PAYOUT_STATUSES, type Payout, type PayoutRunResult } from "../lib/types";
 import { PayoutActions } from "./payout-actions";
-
-type Filter = "all" | PayoutStatus;
-const PAGE = 25;
 
 export default function PayoutsPage() {
   const { t } = useI18n();
   return (
     <Page width="full">
-      <PageHeading
-        icon={WalletIcon}
-        title={t("marketplace.payouts.title")}
-        description={t("marketplace.payouts.subtitle")}
-        actions={
-          <Button variant="outline" size="lg" onClick={() => void exportCsv("payouts", {}).catch((e) => toast.error(describeError(e, t)))}>
-            <DownloadIcon /> {t("marketplace.common.exportCsv")}
-          </Button>
-        }
-      />
+      <PageHeading icon={WalletIcon} title={t("marketplace.payouts.title")} description={t("marketplace.payouts.subtitle")} />
       <div className="grid gap-6">
         <RunPanel />
-        <History />
+        {/* useServerTable reads the search params, which needs a Suspense boundary. */}
+        <React.Suspense fallback={null}>
+          <History />
+        </React.Suspense>
       </div>
     </Page>
   );
@@ -230,36 +225,74 @@ function PreviewTable({ rows }: { rows: PreviewRow[] }) {
   );
 }
 
+const payoutActions = (p: Payout) => <PayoutActions payout={p} />;
+
 function History() {
   const { t } = useI18n();
-  const [filter, setFilter] = React.useState<Filter>("all");
-  const [offset, setOffset] = React.useState(0);
-  React.useEffect(() => setOffset(0), [filter]);
-  const q = useStaffPayouts({ status: filter === "all" ? undefined : filter, offset, limit: PAGE });
+  const sellers = useSellerOptions();
+  const sellerOptions = sellers.data;
+  const filters = React.useMemo(
+    () =>
+      ({
+        status: {
+          kind: "options",
+          label: t("marketplace.payouts.filterStatus"),
+          options: PAYOUT_STATUSES.map((s) => ({ value: s, label: t(`marketplace.payout.status.${s}`) })),
+        },
+        vendorId: { kind: "options", label: t("marketplace.payouts.filterSeller"), options: sellerOptions ?? [], dynamic: true },
+        date: { kind: "dateRange", label: t("marketplace.payouts.filterDate") },
+      }) satisfies ServerFilterDefs,
+    [t, sellerOptions],
+  );
+  const columns = usePayoutColumns({ showVendor: true, actions: payoutActions });
+  const st = useServerTable<Payout, typeof filters>({
+    queryKey: [...mk.all, "payouts", "table"],
+    path: `${MP}/payouts`,
+    columns,
+    filters,
+    defaultSort: "-date",
+    search: t("marketplace.payouts.search"),
+    storageKey: "marketplace-payouts",
+  });
+  const status = st.filters.status;
+  const counts = st.facets?.status;
+  const all = counts ? Object.values(counts).reduce((n, c) => n + c, 0) : undefined;
+  const pill = status.value.length === 0 ? "all" : status.value.length === 1 ? status.value[0]! : "";
+  const filtered = st.table.activeFilterCount > 0;
+  const { limit: _l, offset: _o, ...exportParams } = st.apiParams;
+
   return (
     <section className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-          <CalendarIcon className="size-4 text-muted-foreground" /> {t("marketplace.payouts.history")}
-        </h2>
-        <ChipGroup<Filter>
-          value={filter}
-          onChange={setFilter}
-          size="sm"
-          aria-label={t("marketplace.payouts.filter")}
-          options={[{ value: "all", label: t("marketplace.vendors.tabAll") }, ...PAYOUT_STATUSES.map((s) => ({ value: s, label: t(`marketplace.payout.status.${s}`) }))]}
-        />
-      </div>
-      {q.isError ? (
-        <QueryError error={q.error} onRetry={() => void q.refetch()} />
-      ) : q.isPending ? (
-        <RowsSkeleton />
-      ) : (
-        <div className={cn("transition-opacity", q.isPlaceholderData && "opacity-60")}>
-          <PayoutsList items={q.data.items} showVendor actions={(p) => <PayoutActions payout={p} />} />
-          <Pager offset={offset} limit={PAGE} total={q.data.total} onChange={setOffset} />
-        </div>
-      )}
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <CalendarIcon className="size-4 text-muted-foreground" /> {t("marketplace.payouts.history")}
+      </h2>
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            size="sm"
+            aria-label={t("marketplace.payouts.filter")}
+            value={pill}
+            onChange={(v) => status.set(v === "all" ? [] : [v])}
+            options={[
+              { value: "all", label: t("marketplace.vendors.tabAll"), meta: all || undefined },
+              ...PAYOUT_STATUSES.map((s) => ({ value: s, label: t(`marketplace.payout.status.${s}`), meta: counts ? counts[s] || undefined : undefined })),
+            ]}
+          />
+        }
+      >
+        <Button variant="outline" onClick={() => void exportCsv("payouts", exportParams).catch((e) => toast.error(describeError(e, t)))}>
+          <DownloadIcon /> <span className="hidden sm:inline">{t("marketplace.common.exportCsv")}</span>
+        </Button>
+      </DataTableToolbar>
+      <DataTable
+        table={st.table}
+        empty={
+          filtered ? undefined : (
+            <EmptyState className="border-0 bg-transparent" icon={WalletIcon} title={t("marketplace.payouts.emptyTitle")} description={t("marketplace.payouts.emptyBody")} />
+          )
+        }
+      />
     </section>
   );
 }

@@ -165,12 +165,16 @@ Phone card: title (bold) and subtitle on the left, `right` slots stacked on the 
 **Filters** (`ServerFilterDefs`; memoise; the object's keys are the filter ids and the default URL/API param names):
 
 ```ts
-{ kind: "options", label, options: [{ value, label, icon? }], param?, single?, facet?, hidden? }  // value: string[]
+{ kind: "options", label, options: [{ value, label, icon? }], param?, single?, facet?, hidden?, dynamic? }  // value: string[]
 { kind: "dateRange", label, fromParam? /* "from" */, toParam? /* "to" */, presets? }              // value: { from?, to? }
 { kind: "text", param? }   // value: string | undefined; fixed context from a link (?customerId=…), never in the toolbar
 ```
 
 `hidden: true` keeps a filter in the URL/API but drops its toolbar button (e.g. branch on single-branch shops).
+`dynamic: true` for options loaded from the server (categories, suppliers, locations, branches, team members, sellers):
+URL values are kept as they are instead of being checked against `options`, so a refreshed or shared filtered link
+works before those options load (the API validates the ids). A filter whose options are still empty is treated the
+same way; fixed lists (statuses, payment modes) drop unknown values.
 `st.filters.<id>` is `{ value, set }` for quick filters such as status pills. "Clear filters" clears search and every
 options/date filter (not `text` ones), keeping sort and page size.
 
@@ -273,6 +277,10 @@ Notes for conversions:
   key is a 400; the hook drops sort keys from the URL that no column declares).
 - Small client-side lists keep the older props form `<DataTable columns data loading pagination? pageSize? />`;
   `useDataTable({...})` from `@srirealtime/ui` builds an instance for any other data source (you handle sort/paging).
+- The super-admin panel (apps/admin) has no web-kit app context or I18nProvider, so it uses its own thin
+  `useServerTable` (`apps/admin/src/lib/use-server-table.tsx`) on the same pure helpers, imported from the
+  `@srirealtime/web/server-table-state` subpath; same options and URL contract, platform API calls (`tenant: null`),
+  strings under `admin.table.*`.
 - Pure, tested helpers: `parseTableState`, `serializeTableState`, `tableApiParams`, `patchTableState`,
   `clearTableFilters` (`packages/web/src/lib/server-table-state.ts`); `pageWindow`, `rangeInfo`, `nextSort`,
   `cardSlots`, `initialVisibility`, `readVisibility`/`writeVisibility`, `presetDateRange`
@@ -281,7 +289,27 @@ Notes for conversions:
 | Page | Sort | Filters | Notes |
 |---|---|---|---|
 | billing-ui Bills (`invoices`) | number, date, customer, total, balance, status (default `-date`) | status (multi, facet counts, + pills incl. overdue), date, paid by (payment method), branch (multi-branch shops), q | `customerId` text filter for links |
+| billing-ui Customers (`customers`) | name, balance, lastBill, billed (default `name`) | balance (due/advance/settled, facets + pills), overLimit, q (name, phone, GSTIN) | `/invoices/customers` keeps 50/200 for the customer picker |
+| billing-ui Credit book (`credit-book`) | due, oldestDue, lastPayment, name (default `-due`) | filter (due/advance pills), age (overdue buckets, facets), q | `totals` band; CSV keeps limit 500 |
+| billing-ui Items (`items`) | name, price, stock, gstRate (default `name`) | category (catalogue, ids), stock (in/low/out, needs the catalogue stock port), gstRate, active, q | items come from the catalogue's `listBillingItems`; `categories` names `facets.category`; bill-form/purchase search unchanged |
+| billing-ui Stock (`stock`) | name, qty, value, reorderLevel (default `name`) | status (in/low/out/untracked; old `filter` still works), category, locationId, q | paged in memory (items come from the catalogue port); no `limit` = up to 1000 rows as before |
+| billing-ui Purchases (`purchases`) | date, number, supplier, total, balance (default `-date`) | status (unpaid/paid/cancelled, facets + pills), supplierId (ids), date, q | |
+| billing-ui Suppliers (`suppliers`) | name, balance, lastPurchase (default `name`) | q | supplier picker keeps `limit=100` |
+| billing-ui Expenses (`expenses`) | date, amount, category (default `-date`) | date, categoryId (ids), paymentMethod, status (none sent = recorded, as before; the page sends `all`), q | tiles/charts follow the date filter (this month when empty) |
+| billing-ui Credit notes (`credit-notes`) | number, date, total, refund (default `-date`) | status (facets + pills), reason, refundMode, date, q (number, bill number, customer) | `totals` = count / issued / total / refunded |
 | orders-ui Orders (`orders`) | number, placed, customer, total, status (default `-placed`) | status (multi, facets, + pills), payment status, channel, date, q (number, name, phone, email) | row selection + bulk bar (mark packed, packing slips); the kanban board (`?view=board`) uses the same filters minus status |
+| marketplace-ui Sellers (`vendors`) | name, sales, commission (effective), joined, status (default `-joined`) | status (facets + pills), KYC (facets), q (name, slug, contact, email, GSTIN) | products count still per row from the seller detail |
+| marketplace-ui Payout history (`payouts`) | date, amount, status, paid (default `-date`) | status (facets + pills), seller, created date, q (reference, seller) | row actions menu; CSV export uses the same filters |
+| marketplace-ui Products to review (`reviews`) | submitted, product, reviewed, status (default `submitted`, oldest first) | status (facets + pills; opens on `pending`), kind (first review / re-review), seller, q | row opens a details sheet with approve / ask for changes |
+| marketplace-ui seller My orders / Money / My products | orders: date, number, total, net, status; ledger: date, amount, type; payouts: date, amount, status, paid; products (catalogue): name, price, stock, status, updated | orders: status, step (hidden; "To ship" pill), date, q; ledger: type, date, q (running `balanceAfter` from the API); products: status, stock | `fetcher` sends `x-vendor`; payouts table uses `urlPrefix: "po"` |
+| commerce-ui Products (`catalog/products`) | name, price, stock, updated, status (default `name`; `q` without `sort` = relevance) | status (facets + pills), categoryId, collectionId (single), stock (ok/low/out/untracked, facets; inventory shops), vendorId (marketplace), channel, q (name, brand, SKU, barcode, HSN) | stock comes from the catalogue's `stock` port (host wires inventory's `stock_items`); filter options load before the table mounts so URL filters survive a refresh; bulk active/draft/archive |
+| orders-ui Coupons (`coupons`) | code, uses, ends, created (default `-created`) | status (active/scheduled/expired/used_up/off, facets + pills), type, q (code, description) | on/off switch per row |
+| site-ui Reviews (`reviews`) | date, rating, helpful (default `-date`) | status (facets + pills), rating (facets), hasPhotos, productId, q | row side panel; bulk approve/reject |
+| site-ui Pages / Blog (`cms/pages`, `cms/posts`) | updated, published, title (default `-updated`) | status (facets + pills), q (posts: + tag) | one shared content-list component |
+| growth-ui Loyalty members (`loyalty/members`) | name, tier, points, spend, lastActivity, joined (default `-lastActivity`) | tier (facets), q | totals from `GET /loyalty/summary` (no capped client sum) |
+| growth-ui Webhook deliveries (`developer/deliveries`) | time, statusCode, attempts (default `-time`) | status (facets), type (event), endpointId, date, q | `urlPrefix: "dl"` inside the developer settings tabs |
+| workspace-ui Activity log (`settings/audit`) | time (default `-time`) | period, area (`action` prefixes, comma list), who (`actorUserId`, team members), record type, q (summary, action, record id) | capped count: `total` ≤ 10,000 + `totalCapped` ("More than 10,000 events"); CSV button exports the same filters/sort; `entityId` text filter for links |
+| workspace-ui Import history (`settings/import`) | file, kind, created, status (default `-created`) | status (facets; "Not started" uploads left out unless asked), type (importer key), uploaded on, q (file name) | refetches every 2 s while a job is queued/running |
 
 ### Dashboard
 

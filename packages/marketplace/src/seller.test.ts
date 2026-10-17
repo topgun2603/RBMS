@@ -312,7 +312,7 @@ describe("product reviews", () => {
   });
 
   it("lists with counts per status; productIds must be ids", async () => {
-    const { service } = make([[], [{ n: 0 }], [{ status: "pending", n: 2 }]]);
+    const { service } = make([[], [{ total: 0 }], [{ key: "pending", n: 2 }]]);
     const r = await service.listProductReviews(TENANT, { vendorId: VA, productIds: `${VARIANT},${ORDER_ID}` as unknown as string[] });
     expect(r).toMatchObject({ items: [], total: 0, counts: { pending: 2, approved: 0, rejected: 0, withdrawn: 0 } });
     await expect(service.listProductReviews(TENANT, { productIds: "x" as unknown as string[] })).rejects.toThrow();

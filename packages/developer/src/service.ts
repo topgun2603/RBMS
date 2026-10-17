@@ -1,6 +1,20 @@
-import { badRequest, newId, notFound, type PermissionDef } from "@srirealtime/core";
+import {
+  badRequest,
+  defineSort,
+  facetCounts,
+  listFilter,
+  listQuerySchema,
+  newId,
+  notFound,
+  rangeOrder,
+  runList,
+  searchAny,
+  splitList,
+  type ListPage,
+  type PermissionDef,
+} from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, count, desc, eq, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, gte, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";
 import { ALL_EVENTS, buildPayload, isWebhookEventType, PING_EVENT, WEBHOOK_EVENTS, type WebhookPayload } from "./events";
@@ -103,14 +117,51 @@ export const endpointPatchSchema = z.object({
 });
 export type EndpointPatch = z.input<typeof endpointPatchSchema>;
 
-export const deliveryListSchema = z.object({
-  endpointId: z.string().uuid().optional(),
-  status: z.enum(DELIVERY_STATUSES).optional(),
-  type: z.string().max(60).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).max(100_000).default(0),
-});
+/**
+ * `GET /deliveries`: `status` (comma list), `type` (event types, comma list), `endpointId` (comma list), `from`/`to`
+ * (IST days, inclusive), `q` (event type or event id), `sort` (DELIVERY_SORT, default `-time`), `limit` 50/100, `offset`.
+ */
+export const deliveryListSchema = listQuerySchema({ defaultLimit: 50, maxLimit: 100 })
+  .extend({
+    endpointId: listFilter.ids(),
+    status: listFilter.oneOf(DELIVERY_STATUSES),
+    type: z.preprocess(splitList, z.array(z.string().max(60)).max(50).optional()),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export type DeliveryListQuery = z.input<typeof deliveryListSchema>;
+
+export const DELIVERY_SORT = defineSort(
+  {
+    time: webhookDeliveries.createdAt,
+    statusCode: webhookDeliveries.responseStatus,
+    attempts: webhookDeliveries.attempts,
+  },
+  { default: "-time", tieBreaker: webhookDeliveries.id },
+);
+
+/** IST calendar days `from`..`to` (inclusive) → [start, end) instants. */
+export function istDayRange(from?: string | null, to?: string | null): { start: Date | null; end: Date | null } {
+  const start = from ? new Date(`${from}T00:00:00.000+05:30`) : null;
+  const end = to ? new Date(new Date(`${to}T00:00:00.000+05:30`).getTime() + 86_400_000) : null;
+  return { start, end };
+}
+
+/** WHERE of the delivery log; `without` drops one filter (for that filter's facet counts). */
+export function deliveryConditions(tenantId: string, p: z.output<typeof deliveryListSchema>, without?: "status" | "type"): SQL | undefined {
+  const d = webhookDeliveries;
+  const { start, end } = istDayRange(p.from, p.to);
+  return and(
+    eq(d.tenantId, tenantId),
+    p.endpointId?.length ? inArray(d.endpointId, p.endpointId) : undefined,
+    without !== "status" && p.status?.length ? inArray(d.status, p.status) : undefined,
+    without !== "type" && p.type?.length ? inArray(d.type, p.type) : undefined,
+    start ? gte(d.createdAt, start) : undefined,
+    end ? lt(d.createdAt, end) : undefined,
+    searchAny(p.q, [d.type, sql`${d.eventId}::text`]),
+  );
+}
 
 // ------------------------------------------------------------------ views
 
@@ -126,10 +177,6 @@ export const endpointView = (r: WebhookEndpointRow): EndpointView => {
   return rest;
 };
 export type DeliveryListItem = Omit<WebhookDeliveryRow, "payload">;
-const deliveryListItem = (r: WebhookDeliveryRow): DeliveryListItem => {
-  const { payload: _p, ...rest } = r;
-  return rest;
-};
 
 export const newWebhookSecret = () => `whsec_${randomBase62(32)}`;
 
@@ -611,18 +658,22 @@ export class DeveloperService implements ApiKeyStore {
     return this.attempt(d!, ep);
   }
 
-  async listDeliveries(tenantId: string, query: DeliveryListQuery = {}) {
-    const q = deliveryListSchema.parse(query);
-    const conds: SQL[] = [eq(webhookDeliveries.tenantId, tenantId)];
-    if (q.endpointId) conds.push(eq(webhookDeliveries.endpointId, q.endpointId));
-    if (q.status) conds.push(eq(webhookDeliveries.status, q.status));
-    if (q.type) conds.push(eq(webhookDeliveries.type, q.type));
-    const where = and(...conds);
-    const [rows, [c]] = await Promise.all([
-      this.db.select().from(webhookDeliveries).where(where).orderBy(desc(webhookDeliveries.createdAt)).limit(q.limit).offset(q.offset),
-      this.db.select({ n: count() }).from(webhookDeliveries).where(where),
+  /** The delivery log: paged, sorted (DELIVERY_SORT), filtered; `facets.status` / `facets.type` under the other filters. */
+  async listDeliveries(tenantId: string, query: DeliveryListQuery = {}): Promise<ListPage<DeliveryListItem>> {
+    const p = deliveryListSchema.parse(query);
+    const order = DELIVERY_SORT.orderBy(p.sort);
+    const where = deliveryConditions(tenantId, p);
+    const d = webhookDeliveries;
+    const { payload: _payload, ...summaryColumns } = getTableColumns(d);
+    const [page, byStatus, byType] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select(summaryColumns).from(d).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(d).where(where),
+      }),
+      this.db.select({ key: d.status, n: count() }).from(d).where(deliveryConditions(tenantId, p, "status")).groupBy(d.status),
+      this.db.select({ key: d.type, n: count() }).from(d).where(deliveryConditions(tenantId, p, "type")).groupBy(d.type),
     ]);
-    return { items: rows.map(deliveryListItem), total: Number(c?.n ?? 0) };
+    return { ...page, facets: { status: facetCounts(byStatus), type: facetCounts(byType) } };
   }
 
   async getDelivery(tenantId: string, id: string) {

@@ -1,15 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useI18n } from "@srirealtime/web";
-import { ChevronRightIcon, FileTextIcon, Undo2Icon } from "lucide-react";
-import { Button, Card, ChipGroup, cn, EmptyState, InitialsAvatar, Skeleton, Stagger, StaggerItem } from "@srirealtime/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { FileTextIcon, Undo2Icon } from "lucide-react";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
 import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui";
 import { compactINR, money } from "../lib/format";
-import { useCreditNotes } from "../lib/queries-credit-notes";
-import type { CreditNoteStatus } from "../lib/types";
+import type { CreditNoteSummary } from "../lib/types";
+
+const STATUSES = ["issued", "cancelled"] as const;
+const REASONS = ["return", "price_correction", "discount", "other"] as const;
+const MODES = ["cash", "upi", "card", "credit_book", "none"] as const;
+
+interface CreditNoteTotals {
+  count: number;
+  issued?: number;
+  total: number;
+  refunded?: number;
+}
 
 export default function CreditNotesPage() {
+  // useServerTable reads the search params, which needs a Suspense boundary.
   return (
     <React.Suspense fallback={null}>
       <CreditNotes />
@@ -19,15 +30,132 @@ export default function CreditNotesPage() {
 
 function CreditNotes() {
   const { t, formatDate, formatNumber } = useI18n();
-  const [q, setQ] = React.useState("");
-  const [status, setStatus] = React.useState<CreditNoteStatus | "">("");
-  const debounced = useDebounced(q.trim(), 300);
-  const list = useCreditNotes({ q: debounced, status });
-  const items = list.data?.items ?? [];
-  const live = items.filter((n) => n.status === "issued");
-  const credited = live.reduce((s, n) => s + n.total, 0);
-  const refunded = live.reduce((s, n) => s + n.refundAmount, 0);
-  const filtered = !!debounced || !!status;
+  const navigate = useModuleNavigate();
+
+  const filters = React.useMemo(
+    () =>
+      ({
+        status: { kind: "options", label: t("billing.cn.statusFilter"), options: STATUSES.map((s) => ({ value: s, label: t(`billing.cn.status.${s}`) })) },
+        reason: { kind: "options", label: t("billing.cn.reason"), options: REASONS.map((r) => ({ value: r, label: t(`billing.cn.reasons.${r}`) })) },
+        refundMode: { kind: "options", label: t("billing.cn.refundMode"), options: MODES.map((m) => ({ value: m, label: t(`billing.cn.modes.${m}`) })) },
+        date: { kind: "dateRange", label: t("billing.cn.col.date") },
+        customerId: { kind: "text" },
+      }) satisfies ServerFilterDefs,
+    [t],
+  );
+
+  const columns = React.useMemo<DataTableColumn<CreditNoteSummary>[]>(
+    () => [
+      {
+        id: "number",
+        header: t("billing.cn.col.number"),
+        sortable: true,
+        hideable: false,
+        card: "subtitle",
+        cell: (n) => (
+          <ModuleLink to={`credit-notes/${n.id}`} className="font-mono font-medium outline-none hover:text-primary hover:underline focus-visible:underline">
+            {n.number}
+          </ModuleLink>
+        ),
+        cardCell: (n) => (
+          <span>
+            <span className="font-mono">{n.number}</span> · {t("billing.cn.against", { number: n.invoiceNumber })} · {formatDate(n.date)}
+          </span>
+        ),
+      },
+      {
+        id: "date",
+        header: t("billing.cn.col.date"),
+        sortable: true,
+        sortDescFirst: true,
+        cell: (n) => <span className="tabular-nums">{formatDate(n.date)}</span>,
+      },
+      {
+        id: "customer",
+        header: t("billing.cn.col.customer"),
+        hideable: false,
+        card: "title",
+        className: "max-w-[18rem]",
+        cell: (n) => (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <InitialsAvatar name={n.customerName} size="sm" />
+            <span className={cn("truncate font-medium", n.status === "cancelled" && "text-muted-foreground line-through")}>{n.customerName}</span>
+          </div>
+        ),
+        cardCell: (n) => <span className={cn(n.status === "cancelled" && "text-muted-foreground line-through")}>{n.customerName}</span>,
+      },
+      {
+        id: "invoice",
+        header: t("billing.cn.col.bill"),
+        hideBelow: "md",
+        cell: (n) => (
+          <ModuleLink to={`invoices/${n.invoiceId}`} className="font-mono text-sm text-muted-foreground hover:text-primary hover:underline">
+            {n.invoiceNumber}
+          </ModuleLink>
+        ),
+      },
+      {
+        id: "reason",
+        header: t("billing.cn.reason"),
+        hideBelow: "lg",
+        card: "meta",
+        cell: (n) => t(`billing.cn.reasons.${n.reason}`),
+      },
+      {
+        id: "refund",
+        header: t("billing.cn.col.refund"),
+        sortable: true,
+        numeric: true,
+        card: "meta",
+        cell: (n) =>
+          n.refundAmount > 0 ? (
+            <span className="grid">
+              <span className="text-warning-ink">{money(n.refundAmount)}</span>
+              <span className="text-xs text-muted-foreground">{t(`billing.cn.modes.${n.refundMode}`)}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">{t(`billing.cn.modes.${n.refundMode}`)}</span>
+          ),
+        cardCell: (n) =>
+          n.refundAmount > 0 ? (
+            <span className="tabular-nums">{t("billing.cn.refundedIn", { amount: money(n.refundAmount), mode: t(`billing.cn.modes.${n.refundMode}`) })}</span>
+          ) : (
+            t(`billing.cn.modes.${n.refundMode}`)
+          ),
+      },
+      {
+        id: "status",
+        header: t("billing.cn.statusFilter"),
+        card: "right",
+        cell: (n) => <CreditNoteStatusPill status={n.status} />,
+      },
+      {
+        id: "total",
+        header: t("billing.cn.col.total"),
+        sortable: true,
+        numeric: true,
+        card: "right",
+        cell: (n) => <span className="font-semibold">−{money(n.total)}</span>,
+      },
+    ],
+    [t, formatDate],
+  );
+
+  const st = useServerTable<CreditNoteSummary, typeof filters>({
+    queryKey: ["credit-notes", "list", "table"],
+    path: "/invoices/credit-notes",
+    columns,
+    filters,
+    defaultSort: "-date",
+    search: t("billing.cn.search"),
+    storageKey: "billing-credit-notes",
+  });
+
+  const totals = (st.query.data as { totals?: CreditNoteTotals } | undefined)?.totals;
+  const status = st.filters.status;
+  const counts = st.facets?.status;
+  const pill = status.value.length === 0 ? "all" : status.value.length === 1 ? status.value[0]! : "";
+  const filtered = st.table.activeFilterCount > 0;
 
   const billsButton = (
     <Button asChild variant="outline" size="lg">
@@ -41,79 +169,44 @@ function CreditNotes() {
     <Page>
       <PageHeading icon={Undo2Icon} title={t("billing.cn.title")} description={t("billing.cn.subtitle")} actions={billsButton} />
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <SearchField value={q} onChange={setQ} placeholder={t("billing.cn.search")} />
-        <ChipGroup
-          aria-label={t("billing.cn.statusFilter")}
-          value={status || "all"}
-          onChange={(v) => setStatus(v === "all" ? "" : (v as CreditNoteStatus))}
-          options={[
-            { value: "all", label: t("billing.cn.allStatuses") },
-            { value: "issued", label: t("billing.cn.status.issued") },
-            { value: "cancelled", label: t("billing.cn.status.cancelled") },
-          ]}
-        />
-      </div>
-
-      {list.isError ? (
-        <QueryError error={list.error} onRetry={() => void list.refetch()} />
-      ) : list.isPending ? (
-        <Card className="gap-0 divide-y py-1">
-          {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-3">
-              <Skeleton className="size-10 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-28" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="ml-auto h-4 w-20" />
-                <Skeleton className="h-5 w-16" />
-              </div>
-            </div>
-          ))}
-        </Card>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={Undo2Icon}
-          title={filtered ? t("billing.cn.noMatch") : t("billing.cn.emptyTitle")}
-          description={filtered ? undefined : t("billing.cn.emptyBody")}
-          action={filtered ? undefined : billsButton}
-        />
-      ) : (
-        <>
-          <div className="mb-3 grid grid-cols-3 gap-2 rounded-2xl border border-card-ring bg-card p-3 shadow-elevated" aria-live="polite">
-            <Summary label={t("billing.cn.count")} value={formatNumber(live.length)} />
-            <Summary label={t("billing.cn.totalShown")} value={compactINR(credited)} title={money(credited)} />
-            <Summary label={t("billing.cn.refundedShown")} value={compactINR(refunded)} title={money(refunded)} tone={refunded > 0 ? "text-warning-ink" : undefined} />
-          </div>
-          <Card className={cn("gap-0 py-1 transition-opacity", list.isPlaceholderData && "opacity-60")}>
-            <Stagger key={`${debounced}-${status}`} className="divide-y px-1">
-              {items.map((n) => (
-                <StaggerItem key={n.id}>
-                  <ModuleLink
-                    to={`credit-notes/${n.id}`}
-                    className="flex min-h-16 items-center gap-3 rounded-lg px-3 py-2.5 outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <InitialsAvatar name={n.customerName} />
-                    <div className="min-w-0 flex-1">
-                      <p className={cn("truncate font-medium", n.status === "cancelled" && "text-muted-foreground line-through")}>{n.customerName}</p>
-                      <p className="mt-0.5 truncate text-meta text-muted-foreground">
-                        <span className="font-mono">{n.number}</span> · {t("billing.cn.against", { number: n.invoiceNumber })} · {formatDate(n.date)}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="font-semibold tabular-nums">−{money(n.total)}</span>
-                      <CreditNoteStatusPill status={n.status} />
-                    </div>
-                    <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  </ModuleLink>
-                </StaggerItem>
-              ))}
-            </Stagger>
-          </Card>
-        </>
+      {totals && totals.count > 0 && (
+        <div className="mb-3 grid grid-cols-3 gap-2 rounded-2xl border border-card-ring bg-card p-3 shadow-elevated" aria-live="polite">
+          <Summary label={t("billing.cn.count")} value={formatNumber(totals.issued ?? totals.count)} />
+          <Summary label={t("billing.cn.totalShown")} value={compactINR(totals.total)} title={money(totals.total)} />
+          <Summary
+            label={t("billing.cn.refundedShown")}
+            value={compactINR(totals.refunded ?? 0)}
+            title={money(totals.refunded ?? 0)}
+            tone={(totals.refunded ?? 0) > 0 ? "text-warning-ink" : undefined}
+          />
+        </div>
       )}
+
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            size="sm"
+            aria-label={t("billing.cn.statusFilter")}
+            value={pill}
+            onChange={(v) => status.set(v === "all" ? [] : [v])}
+            options={[
+              { value: "all", label: t("billing.cn.allStatuses") },
+              ...STATUSES.map((s) => ({ value: s, label: t(`billing.cn.status.${s}`), meta: counts ? counts[s] || undefined : undefined })),
+            ]}
+          />
+        }
+      />
+
+      <DataTable
+        table={st.table}
+        onRowClick={(n) => navigate(`credit-notes/${n.id}`)}
+        empty={
+          filtered ? undefined : (
+            <EmptyState className="border-0 bg-transparent" icon={Undo2Icon} title={t("billing.cn.emptyTitle")} description={t("billing.cn.emptyBody")} action={billsButton} />
+          )
+        }
+      />
     </Page>
   );
 }

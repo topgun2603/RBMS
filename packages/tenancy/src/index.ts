@@ -20,6 +20,7 @@ export type {
   TenantWithRoles,
 } from "./service";
 export { tenancyRoutes } from "./routes";
+export { TENANT_SORT, tenantListConditions, tenantListQuerySchema, type TenantListQuery, type TenantListParams } from "./list";
 
 /** Port shape auth uses to look up a user's roles in a tenant. `service` satisfies it. */
 export interface MembershipLookup {

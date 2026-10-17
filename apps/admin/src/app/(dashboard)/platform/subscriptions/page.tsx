@@ -34,17 +34,28 @@ function Subscriptions() {
   const pathname = usePathname() ?? "/platform/subscriptions";
   const params = useSearchParams();
   const tab = params.get("tab") === "invoices" ? "invoices" : "subscriptions";
-  const raw = params.get("status");
-  const status: SubscriptionStatus | "all" = raw && (STATUSES as string[]).includes(raw) ? (raw as SubscriptionStatus) : "all";
+  // The subscription table's own `status` URL filter: one value lights its tile.
+  const raw = (params.get("status") ?? "").split(",").filter(Boolean);
+  const status: SubscriptionStatus | "all" = raw.length === 1 && (STATUSES as string[]).includes(raw[0]!) ? (raw[0] as SubscriptionStatus) : "all";
 
-  const setQuery = (next: { tab?: string; status?: string }) => {
-    const sp = new URLSearchParams(params.toString());
-    for (const [key, v] of Object.entries(next)) {
-      if (!v || v === "all" || (key === "tab" && v === "subscriptions")) sp.delete(key);
-      else sp.set(key, v);
-    }
+  const replace = (sp: URLSearchParams) => {
     const qs = sp.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const setTab = (v: string) => {
+    const sp = new URLSearchParams(params.toString());
+    if (v === "invoices") sp.set("tab", v);
+    else sp.delete("tab");
+    replace(sp);
+  };
+  /** A status tile: the same filter the table's pills set (back to page 1). */
+  const setStatus = (s: SubscriptionStatus | "all") => {
+    const sp = new URLSearchParams(params.toString());
+    sp.delete("tab");
+    sp.delete("page");
+    if (s === "all") sp.delete("status");
+    else sp.set("status", s);
+    replace(sp);
   };
 
   const stats = useQuery({
@@ -61,14 +72,9 @@ function Subscriptions() {
           <QueryError error={stats.error} onRetry={() => void stats.refetch()} />
         </div>
       ) : (
-        <SubscriptionStatsTiles
-          stats={stats.data}
-          loading={stats.isLoading}
-          status={status}
-          onStatus={(s) => setQuery({ tab: "subscriptions", status: s })}
-        />
+        <SubscriptionStatsTiles stats={stats.data} loading={stats.isLoading} status={tab === "subscriptions" ? status : "all"} onStatus={setStatus} />
       )}
-      <Tabs value={tab} onValueChange={(v) => setQuery({ tab: v, status: v === "invoices" ? undefined : status })} className="gap-4">
+      <Tabs value={tab} onValueChange={setTab} className="gap-4">
         <TabsList aria-label={k("admin.subs.tabs")} className="h-11 w-full rounded-xl p-1 shadow-inner sm:w-max">
           <TabsTrigger value="subscriptions" className="h-full flex-1 rounded-lg px-4 sm:flex-none">
             <CreditCardIcon /> {k("admin.subs.tab.subscriptions")}
@@ -77,9 +83,7 @@ function Subscriptions() {
             <ReceiptIcon /> {k("admin.subs.tab.invoices")}
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="subscriptions">
-          {tab === "subscriptions" && <SubscriptionsTable status={status} onStatus={(s) => setQuery({ status: s })} stats={stats.data} />}
-        </TabsContent>
+        <TabsContent value="subscriptions">{tab === "subscriptions" && <SubscriptionsTable />}</TabsContent>
         <TabsContent value="invoices">{tab === "invoices" && <PlatformInvoicesTable />}</TabsContent>
       </Tabs>
     </Page>

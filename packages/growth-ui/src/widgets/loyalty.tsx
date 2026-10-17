@@ -23,13 +23,7 @@ export function LoyaltyWidget() {
       linkLabel={t("growth.widgets.openLoyalty")}
       loading={s.isPending}
       value={
-        d && d.members > 0 ? (
-          d.exact ? (
-            <AnimatedNumber value={d.liability} from={0} format={(n) => money(Math.round(n))} />
-          ) : (
-            t("growth.widgets.liabilityAtLeast", { value: money(d.liability) })
-          )
-        ) : undefined
+        d && d.members > 0 ? <AnimatedNumber value={d.liability} from={0} format={(n) => money(Math.round(n))} /> : undefined
       }
       caption={d && d.members > 0 ? t("growth.widgets.liability") : undefined}
     >

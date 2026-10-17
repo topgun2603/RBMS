@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ChevronRightIcon, PlusIcon, SettingsIcon, StoreIcon } from "lucide-react";
+import { PlusIcon, SettingsIcon, StoreIcon } from "lucide-react";
 import {
   Button,
-  Card,
   ChipGroup,
-  cn,
+  DataTable,
+  DataTableToolbar,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,61 +22,140 @@ import {
   FieldRow,
   Input,
   Skeleton,
-  Stagger,
-  StaggerItem,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   toast,
+  type DataTableColumn,
 } from "@srirealtime/ui";
-import {
-  describeError,
-  ModuleLink,
-  Page,
-  PageHeading,
-  QueryError,
-  SearchField,
-  useDebounced,
-  useI18n,
-  useModuleNavigate,
-  useQueryParams,
-} from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
 import { KycPill, VendorLogo, VendorStatusPill } from "../components/bits";
-import { Pager, RowsSkeleton } from "../components/lists";
 import { SubmitButton } from "../components/account";
 import { bpsToPercent, money, PHONE_RE } from "../lib/logic";
-import { useCreateVendor, useVendorDetail, useVendorList, VENDOR_PAGE } from "../lib/queries";
-import { VENDOR_STATUSES, type Vendor, type VendorStatus } from "../lib/types";
-
-type Tab = "all" | VendorStatus;
+import { MP, mk, useCreateVendor, useVendorDetail } from "../lib/queries";
+import { VENDOR_KYC_STATUSES, VENDOR_STATUSES, type VendorListItem } from "../lib/types";
 
 export default function VendorsPage() {
-  const { t } = useI18n();
-  const params = useQueryParams();
-  const navigate = useModuleNavigate();
-  const initial = params.get("status");
-  const [tab, setTab] = React.useState<Tab>((VENDOR_STATUSES as readonly string[]).includes(initial ?? "") ? (initial as VendorStatus) : "all");
-  const [q, setQ] = React.useState("");
-  const [offset, setOffset] = React.useState(0);
-  const [adding, setAdding] = React.useState(false);
-  const debounced = useDebounced(q.trim(), 300);
-  React.useEffect(() => setOffset(0), [tab, debounced]);
+  // useServerTable reads the search params, which needs a Suspense boundary.
+  return (
+    <React.Suspense fallback={null}>
+      <VendorsList />
+    </React.Suspense>
+  );
+}
 
-  const list = useVendorList({ status: tab === "all" ? undefined : tab, q: debounced || undefined, offset });
-  const counts = list.data?.counts;
-  const all = counts ? counts.pending + counts.active + counts.suspended : undefined;
-  const items = list.data?.items ?? [];
+function VendorsList() {
+  const { t, formatDate } = useI18n();
+  const navigate = useModuleNavigate();
+  const [adding, setAdding] = React.useState(false);
+
+  const filters = React.useMemo(
+    () =>
+      ({
+        status: {
+          kind: "options",
+          label: t("marketplace.vendors.filterStatus"),
+          options: VENDOR_STATUSES.map((s) => ({ value: s, label: t(`marketplace.status.${s}`) })),
+        },
+        kycStatus: {
+          kind: "options",
+          label: t("marketplace.vendors.filterKyc"),
+          options: VENDOR_KYC_STATUSES.map((s) => ({ value: s, label: t(`marketplace.kyc.status.${s}`) })),
+        },
+      }) satisfies ServerFilterDefs,
+    [t],
+  );
+
+  const columns = React.useMemo<DataTableColumn<VendorListItem>[]>(
+    () => [
+      {
+        id: "name",
+        header: t("marketplace.vendors.col.seller"),
+        sortable: true,
+        hideable: false,
+        card: "title",
+        className: "max-w-[22rem]",
+        cell: (v) => (
+          <ModuleLink to={`vendors/${v.id}`} className="flex min-w-0 items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <VendorLogo name={v.name} url={v.logoUrl} />
+            <div className="min-w-0">
+              <p className="truncate font-medium hover:text-primary">{v.name}</p>
+              <p className="mt-0.5 truncate text-meta text-muted-foreground">{[v.contactName, v.contactPhone].filter(Boolean).join(" · ") || `/${v.slug}`}</p>
+            </div>
+          </ModuleLink>
+        ),
+        cardCell: (v) => v.name,
+      },
+      {
+        id: "contact",
+        header: t("marketplace.profile.phone"),
+        defaultHidden: true,
+        card: "subtitle",
+        cell: (v) => <span className="text-muted-foreground">{[v.contactName, v.contactPhone].filter(Boolean).join(" · ") || `/${v.slug}`}</span>,
+      },
+      { id: "status", header: t("marketplace.vendors.col.status"), sortable: true, card: "meta", cell: (v) => <VendorStatusPill status={v.status} /> },
+      { id: "kyc", header: t("marketplace.vendors.col.kyc"), card: "meta", cell: (v) => <KycPill status={v.kycStatus} /> },
+      {
+        id: "commission",
+        header: t("marketplace.vendors.col.commission"),
+        sortable: true,
+        numeric: true,
+        card: "meta",
+        cell: (v) => (
+          <>
+            {bpsToPercent(v.effectiveCommissionBps)}
+            {v.commissionBps === null && <span className="block text-xs text-muted-foreground">{t("marketplace.vendors.shopDefault")}</span>}
+          </>
+        ),
+        cardCell: (v) => <span className="tabular-nums">{bpsToPercent(v.effectiveCommissionBps)}</span>,
+      },
+      { id: "products", header: t("marketplace.vendors.col.products"), numeric: true, hideBelow: "lg", cell: (v) => <ProductCount id={v.id} /> },
+      {
+        id: "sales",
+        header: t("marketplace.vendors.col.sales"),
+        sortable: true,
+        numeric: true,
+        card: "right",
+        cell: (v) => <span className="font-semibold">{money(v.sales)}</span>,
+      },
+      {
+        id: "joined",
+        header: t("marketplace.vendors.col.joined"),
+        sortable: true,
+        sortDescFirst: true,
+        hideBelow: "md",
+        cell: (v) => <span className="text-muted-foreground tabular-nums">{formatDate(v.createdAt, { day: "numeric", month: "short", year: "numeric" })}</span>,
+      },
+    ],
+    [t, formatDate],
+  );
+
+  const st = useServerTable<VendorListItem, typeof filters>({
+    queryKey: [...mk.all, "vendors", "table"],
+    path: `${MP}/vendors`,
+    columns,
+    filters,
+    defaultSort: "-joined",
+    search: t("marketplace.vendors.searchAll"),
+    storageKey: "marketplace-vendors",
+  });
+
+  const status = st.filters.status;
+  const counts = st.facets?.status;
+  const all = counts ? Object.values(counts).reduce((n, c) => n + c, 0) : undefined;
+  const pill = status.value.length === 0 ? "all" : status.value.length === 1 ? status.value[0]! : "";
+  const filtered = st.table.activeFilterCount > 0;
+
+  const addButton = (
+    <Button size="lg" onClick={() => setAdding(true)}>
+      <PlusIcon /> {t("marketplace.vendors.add")}
+    </Button>
+  );
 
   return (
     <Page width="full">
       <PageHeading
         icon={StoreIcon}
         title={t("marketplace.vendors.title")}
-        description={t("marketplace.vendors.subtitle")}
+        description={st.total !== undefined && st.total > 0 ? t("marketplace.vendors.count", { count: st.total }) : t("marketplace.vendors.subtitle")}
         actions={
           <>
             <Button asChild variant="outline" size="lg">
@@ -84,145 +163,53 @@ export default function VendorsPage() {
                 <SettingsIcon /> <span className="hidden sm:inline">{t("marketplace.nav.settings")}</span>
               </ModuleLink>
             </Button>
-            <Button size="lg" onClick={() => setAdding(true)}>
-              <PlusIcon /> {t("marketplace.vendors.add")}
-            </Button>
+            {addButton}
           </>
         }
       />
 
-      <div className="mb-4 grid gap-3">
-        <SearchField value={q} onChange={setQ} placeholder={t("marketplace.vendors.search")} />
-        <ChipGroup<Tab>
-          value={tab}
-          onChange={(v) => {
-            setTab(v);
-            navigate(v === "all" ? "?" : `?status=${v}`, { replace: true, scroll: false });
-          }}
-          size="sm"
-          aria-label={t("marketplace.vendors.filter")}
-          options={[
-            { value: "all", label: t("marketplace.vendors.tabAll"), meta: all },
-            { value: "pending", label: t("marketplace.status.pending"), meta: counts?.pending || undefined },
-            { value: "active", label: t("marketplace.status.active"), meta: counts?.active },
-            { value: "suspended", label: t("marketplace.status.suspended"), meta: counts?.suspended || undefined },
-          ]}
-        />
-      </div>
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            size="sm"
+            aria-label={t("marketplace.vendors.filter")}
+            value={pill}
+            onChange={(v) => status.set(v === "all" ? [] : [v])}
+            options={[
+              { value: "all", label: t("marketplace.vendors.tabAll"), meta: all || undefined },
+              ...VENDOR_STATUSES.map((s) => ({ value: s, label: t(`marketplace.status.${s}`), meta: counts ? counts[s] || undefined : undefined })),
+            ]}
+          />
+        }
+      />
 
-      {list.isError ? (
-        <QueryError error={list.error} onRetry={() => void list.refetch()} />
-      ) : list.isPending ? (
-        <RowsSkeleton rows={6} />
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={StoreIcon}
-          title={debounced || tab !== "all" ? t("marketplace.vendors.noMatch") : t("marketplace.vendors.emptyTitle")}
-          description={debounced || tab !== "all" ? t("marketplace.vendors.noMatchBody") : t("marketplace.vendors.emptyBody")}
-          action={
-            <Button size="lg" onClick={() => setAdding(true)}>
-              <PlusIcon /> {t("marketplace.vendors.add")}
-            </Button>
-          }
-        />
-      ) : (
-        <div className={cn("transition-opacity", list.isPlaceholderData && "opacity-60")}>
-          <Card className="hidden gap-0 overflow-hidden py-0 md:flex">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="pl-4">{t("marketplace.vendors.col.seller")}</TableHead>
-                  <TableHead>{t("marketplace.vendors.col.status")}</TableHead>
-                  <TableHead>{t("marketplace.vendors.col.kyc")}</TableHead>
-                  <TableHead className="text-right">{t("marketplace.vendors.col.commission")}</TableHead>
-                  <TableHead className="text-right">{t("marketplace.vendors.col.products")}</TableHead>
-                  <TableHead className="text-right">{t("marketplace.vendors.col.sales")}</TableHead>
-                  <TableHead className="w-10 pr-4" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((v) => (
-                  <VendorRow key={v.id} vendor={v} />
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-          <Stagger key={`${tab}-${debounced}-${offset}`} className="grid gap-2 md:hidden">
-            {items.map((v) => (
-              <StaggerItem key={v.id}>
-                <VendorCard vendor={v} />
-              </StaggerItem>
-            ))}
-          </Stagger>
-          <Pager offset={offset} limit={VENDOR_PAGE} total={list.data?.total ?? 0} onChange={setOffset} />
-        </div>
-      )}
+      <DataTable
+        table={st.table}
+        onRowClick={(v) => navigate(`vendors/${v.id}`)}
+        empty={
+          filtered ? undefined : (
+            <EmptyState
+              className="border-0 bg-transparent"
+              icon={StoreIcon}
+              title={t("marketplace.vendors.emptyTitle")}
+              description={t("marketplace.vendors.emptyBody")}
+              action={addButton}
+            />
+          )
+        }
+      />
 
       <AddVendorDialog open={adding} onOpenChange={setAdding} />
     </Page>
   );
 }
 
-/** Products and sales come from the seller's detail (the list has neither). */
-function useFigures(id: string) {
+/** Product count comes from the seller's detail (the catalogue counts it; the list doesn't). */
+function ProductCount({ id }: { id: string }) {
   const d = useVendorDetail(id);
-  return { loading: d.isPending, products: d.data?.productCount ?? null, sales: d.data?.balance.sales ?? 0 };
-}
-
-function VendorRow({ vendor: v }: { vendor: Vendor }) {
-  const { t } = useI18n();
-  const f = useFigures(v.id);
-  return (
-    <TableRow className="group">
-      <TableCell className="pl-4">
-        <ModuleLink to={`vendors/${v.id}`} className="flex items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <VendorLogo name={v.name} url={v.logoUrl} />
-          <div className="min-w-0">
-            <p className="truncate font-medium group-hover:text-primary">{v.name}</p>
-            <p className="mt-0.5 truncate text-meta text-muted-foreground">{[v.contactName, v.contactPhone].filter(Boolean).join(" · ") || `/${v.slug}`}</p>
-          </div>
-        </ModuleLink>
-      </TableCell>
-      <TableCell>
-        <VendorStatusPill status={v.status} />
-      </TableCell>
-      <TableCell>
-        <KycPill status={v.kycStatus} />
-      </TableCell>
-      <TableCell className="text-right tabular-nums">
-        {bpsToPercent(v.effectiveCommissionBps)}
-        {v.commissionBps === null && <span className="block text-xs text-muted-foreground">{t("marketplace.vendors.shopDefault")}</span>}
-      </TableCell>
-      <TableCell className="text-right tabular-nums">{f.loading ? <Skeleton className="ml-auto h-4 w-8" /> : (f.products ?? "—")}</TableCell>
-      <TableCell className="text-right font-semibold tabular-nums">{f.loading ? <Skeleton className="ml-auto h-4 w-16" /> : money(f.sales)}</TableCell>
-      <TableCell className="pr-4">
-        <ChevronRightIcon className="size-4 text-muted-foreground" />
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function VendorCard({ vendor: v }: { vendor: Vendor }) {
-  const { t } = useI18n();
-  const f = useFigures(v.id);
-  return (
-    <ModuleLink to={`vendors/${v.id}`} className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <Card className="flex-row items-center gap-3 p-3 active:scale-[0.99]">
-        <VendorLogo name={v.name} url={v.logoUrl} className="size-12" />
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="truncate font-medium">{v.name}</p>
-          <div className="flex flex-wrap gap-1.5">
-            <VendorStatusPill status={v.status} />
-            <KycPill status={v.kycStatus} />
-          </div>
-          <p className="text-meta text-muted-foreground tabular-nums">
-            {t("marketplace.vendors.cardLine", { rate: bpsToPercent(v.effectiveCommissionBps), products: f.products ?? "—", sales: money(f.sales) })}
-          </p>
-        </div>
-        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
-      </Card>
-    </ModuleLink>
-  );
+  if (d.isPending) return <Skeleton className="ml-auto h-4 w-8" />;
+  return <>{d.data?.productCount ?? "—"}</>;
 }
 
 function AddVendorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {

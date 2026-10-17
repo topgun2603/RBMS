@@ -136,7 +136,7 @@ export default function PurchaseDetailPage() {
               <InitialsAvatar name={p.supplier?.name} size="lg" />
               <div className="min-w-0 flex-1 text-sm">
                 {p.supplier?.id ? (
-                  <ModuleLink to={`purchases?supplier=${p.supplier.id}`} className="font-semibold hover:underline">
+                  <ModuleLink to={`purchases?supplierId=${p.supplier.id}`} className="font-semibold hover:underline">
                     {p.supplier.name}
                   </ModuleLink>
                 ) : (

@@ -1,3 +1,4 @@
+import { listFilter, listQuerySchema, rangeOrder, splitList } from "@srirealtime/core";
 import { z } from "zod";
 import { stripHtml } from "./faq";
 import {
@@ -159,34 +160,35 @@ export const priorityInputSchema = z.object({ priority: z.enum(TICKET_PRIORITIES
 export const tagsInputSchema = z.object({ tags: tagsSchema });
 export const mergeInputSchema = z.object({ intoId: z.string().uuid() });
 
-const csvList = (inner: z.ZodTypeAny) =>
-  z
-    .union([z.string(), z.array(z.string())])
-    .transform((v) => (Array.isArray(v) ? v : [v]).flatMap((s) => s.split(",")).map((s) => s.trim()).filter(Boolean))
-    .pipe(z.array(inner))
-    .optional();
-const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-const boolish = z
-  .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
-  .transform((v) => v === true || v === "true" || v === "1")
-  .optional();
+/** Sort names of the older desk (`recent`, `oldest`) → the list keys; `due` is a key itself. */
+export const LEGACY_TICKET_SORTS: Readonly<Record<string, string>> = { recent: "-updated", oldest: "created" };
 
-/** `GET /tickets`. `assignee`: a user id, `me` or `none`. `from`/`to`: IST dates on `created_at`. */
-export const ticketListQuerySchema = z.object({
-  status: csvList(z.enum(TICKET_STATUSES)),
-  priority: csvList(z.enum(TICKET_PRIORITIES)),
-  channel: csvList(z.enum(TICKET_CHANNELS)),
-  assignee: z.union([z.literal("me"), z.literal("none"), z.string().uuid()]).optional(),
-  tag: z.string().trim().toLowerCase().max(SUPPORT_LIMITS.tag).optional(),
-  overdue: boolish,
-  q: z.string().trim().max(100).optional(),
-  from: dateOnly.optional(),
-  to: dateOnly.optional(),
-  sort: z.enum(["recent", "oldest", "due"]).default("recent"),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
+/** One assignee value: a user id, `me` (the viewer) or `none` (unassigned). */
+const assigneeValue = z.union([z.literal("me"), z.literal("none"), z.string().uuid()]);
+
+/**
+ * `GET /tickets` (docs/CONVENTIONS.md → "Lists and tables"). Lists are comma-separated. `assignee`: user ids, `me`
+ * and/or `none` (ORed). `overdue`: past the first-response deadline (true) or not (false). `from`/`to`: IST dates on
+ * `created_at`. `sort`: see `TICKET_SORT` (default `-updated` = latest activity first). Limits stay 50 / 500 (CSV).
+ */
+export const ticketListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 500 })
+  .extend({
+    status: listFilter.oneOf(TICKET_STATUSES),
+    priority: listFilter.oneOf(TICKET_PRIORITIES),
+    channel: listFilter.oneOf(TICKET_CHANNELS),
+    assignee: z.preprocess(splitList, z.array(assigneeValue).max(50).optional()),
+    tag: z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().toLowerCase().max(SUPPORT_LIMITS.tag).optional()),
+    overdue: listFilter.bool(),
+    from: listFilter.date(),
+    to: listFilter.date(),
+    sort: z.preprocess(
+      (v) => (typeof v === "string" ? (LEGACY_TICKET_SORTS[v.trim()] ?? v) : v),
+      z.string().trim().max(64).optional(),
+    ),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export type TicketListQuery = z.input<typeof ticketListQuerySchema>;
+export type TicketListParams = z.output<typeof ticketListQuerySchema>;
 
 /** IST date "2026-10-15" → the UTC instant of its midnight. */
 export const istMidnight = (date: string) => new Date(Date.parse(`${date}T00:00:00+05:30`));

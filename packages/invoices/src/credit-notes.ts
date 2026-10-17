@@ -1,4 +1,17 @@
-import { AppError, badRequest, conflict, newId, notFound } from "@srirealtime/core";
+import {
+  AppError,
+  badRequest,
+  conflict,
+  defineSort,
+  facetCounts,
+  listFilter,
+  listQuerySchema,
+  newId,
+  notFound,
+  rangeOrder,
+  searchAny,
+  type ListPage,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   amountInWordsINR,
@@ -12,7 +25,7 @@ import {
   type CreditLineRequest,
   type LineCreditState,
 } from "@srirealtime/gst";
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { cancelProblem, creditNotePrefix, settleCreditNote } from "./credit-notes-calc";
 import { balanceOf, deriveStatus } from "./logic";
@@ -127,20 +140,38 @@ export const creditNoteInputSchema = z.object({
 });
 export type CreditNoteInput = z.input<typeof creditNoteInputSchema>;
 
-export const creditNoteListQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
-  status: z.enum(CREDIT_NOTE_STATUSES).optional(),
-  invoiceId: z.string().uuid().optional(),
-  customerId: z.string().uuid().optional(),
-  branchId: z.string().uuid().optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
+/**
+ * GET /v1/invoices/credit-notes (docs/CONVENTIONS.md → "Lists and tables"). Limits stay 50 / 200 (CSV asks for 200).
+ * `status`, `reason`, `refundMode` and `branchId` take comma lists; `q` matches the note number, the bill number and
+ * the customer's name or phone.
+ */
+export const creditNoteListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 200 })
+  .extend({
+    status: listFilter.oneOf(CREDIT_NOTE_STATUSES),
+    reason: listFilter.oneOf(CREDIT_NOTE_REASONS),
+    refundMode: listFilter.oneOf(REFUND_MODES),
+    invoiceId: listFilter.id(),
+    customerId: listFilter.id(),
+    branchId: listFilter.ids(),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export type CreditNoteListQuery = z.input<typeof creditNoteListQuerySchema>;
 
-const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+/** Credit note list sort: `number` follows the series (FY, then sequence), `refund` = amount paid back. */
+export const CREDIT_NOTE_SORT = defineSort(
+  {
+    number: sql`(${creditNotes.fy}, ${creditNotes.seq})`,
+    date: creditNotes.date,
+    total: creditNotes.total,
+    refund: creditNotes.refundAmount,
+  },
+  { default: "-date", tieBreaker: [creditNotes.issuedAt, creditNotes.id] },
+);
+
+/** Facet-able filters of the list. */
+type CreditNoteFacet = "status" | "reason" | "refundMode";
 
 const asBadRequest = (err: unknown): never => {
   if (err instanceof CreditNoteError) throw new AppError(400, err.code, err.message);
@@ -466,35 +497,63 @@ export class CreditNotesService {
     return this.toCreditNote(await this.noteRow(this.db, tenantId, id));
   }
 
-  async list(tenantId: string, query: CreditNoteListQuery = {}): Promise<{ items: CreditNoteSummary[]; total: number; totals: { count: number; total: number } }> {
+  /** WHERE of the credit note list; `without` leaves one filter out (for that filter's facet counts). */
+  listConditions(tenantId: string, p: z.output<typeof creditNoteListQuerySchema>, without?: CreditNoteFacet): SQL | undefined {
+    return and(
+      eq(creditNotes.tenantId, tenantId),
+      without !== "status" && p.status?.length ? inArray(creditNotes.status, p.status) : undefined,
+      without !== "reason" && p.reason?.length ? inArray(creditNotes.reason, p.reason) : undefined,
+      without !== "refundMode" && p.refundMode?.length ? inArray(creditNotes.refundMode, p.refundMode) : undefined,
+      p.invoiceId ? eq(creditNotes.invoiceId, p.invoiceId) : undefined,
+      p.customerId ? eq(creditNotes.customerId, p.customerId) : undefined,
+      p.branchId?.length ? inArray(creditNotes.branchId, p.branchId) : undefined,
+      p.from ? gte(creditNotes.date, p.from) : undefined,
+      p.to ? lte(creditNotes.date, p.to) : undefined,
+      searchAny(p.q, [creditNotes.number, creditNotes.invoiceNumber, sql`${creditNotes.customer}->>'name'`, sql`${creditNotes.customer}->>'phone'`]),
+    );
+  }
+
+  /**
+   * Credit notes: paged, sorted (CREDIT_NOTE_SORT, default newest first) and filtered. `totals` sums the issued notes
+   * under the filters; `facets` counts status, reason and refund mode under the other filters.
+   */
+  async list(
+    tenantId: string,
+    query: CreditNoteListQuery = {},
+  ): Promise<ListPage<CreditNoteSummary> & { totals: { count: number; issued: number; total: number; refunded: number } }> {
     const p = creditNoteListQuerySchema.parse(query);
-    const conds: (SQL | undefined)[] = [eq(creditNotes.tenantId, tenantId)];
-    if (p.status) conds.push(eq(creditNotes.status, p.status));
-    if (p.invoiceId) conds.push(eq(creditNotes.invoiceId, p.invoiceId));
-    if (p.customerId) conds.push(eq(creditNotes.customerId, p.customerId));
-    if (p.branchId) conds.push(eq(creditNotes.branchId, p.branchId));
-    if (p.from) conds.push(gte(creditNotes.date, p.from));
-    if (p.to) conds.push(lte(creditNotes.date, p.to));
-    if (p.q) {
-      const pat = likePattern(p.q);
-      conds.push(
-        or(
-          ilike(creditNotes.number, pat),
-          ilike(creditNotes.invoiceNumber, pat),
-          sql`${creditNotes.customer}->>'name' ilike ${pat}`,
-          sql`${creditNotes.customer}->>'phone' ilike ${pat}`,
-        ),
-      );
-    }
-    const where = and(...conds);
-    const [rows, [agg]] = await Promise.all([
-      this.db.select().from(creditNotes).where(where).orderBy(desc(creditNotes.date), desc(creditNotes.issuedAt)).limit(p.limit).offset(p.offset),
+    const order = CREDIT_NOTE_SORT.orderBy(p.sort);
+    const where = this.listConditions(tenantId, p);
+    const facet = (col: typeof creditNotes.status | typeof creditNotes.reason | typeof creditNotes.refundMode, without: CreditNoteFacet) =>
       this.db
-        .select({ n: count(), total: sql<string>`coalesce(sum(${creditNotes.total}) filter (where ${creditNotes.status} = 'issued'), 0)` })
+        .select({ key: col, n: count() })
+        .from(creditNotes)
+        .where(this.listConditions(tenantId, p, without))
+        .groupBy(col);
+    const [rows, [agg], byStatus, byReason, byMode] = await Promise.all([
+      this.db.select().from(creditNotes).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+      this.db
+        .select({
+          n: count(),
+          total: sql<string>`coalesce(sum(${creditNotes.total}) filter (where ${creditNotes.status} = 'issued'), 0)`,
+          refunded: sql<string>`coalesce(sum(${creditNotes.refundAmount}) filter (where ${creditNotes.status} = 'issued'), 0)`,
+          live: sql<string>`count(*) filter (where ${creditNotes.status} = 'issued')`,
+        })
         .from(creditNotes)
         .where(where),
+      facet(creditNotes.status, "status"),
+      facet(creditNotes.reason, "reason"),
+      facet(creditNotes.refundMode, "refundMode"),
     ]);
-    return { items: rows.map((r) => this.toSummary(r)), total: agg?.n ?? 0, totals: { count: agg?.n ?? 0, total: Number(agg?.total ?? 0) } };
+    const total = Number(agg?.n ?? 0);
+    return {
+      items: rows.map((r) => this.toSummary(r)),
+      total,
+      limit: p.limit,
+      offset: p.offset,
+      totals: { count: total, issued: Number(agg?.live ?? 0), total: Number(agg?.total ?? 0), refunded: Number(agg?.refunded ?? 0) },
+      facets: { status: facetCounts(byStatus), reason: facetCounts(byReason), refundMode: facetCounts(byMode) },
+    };
   }
 
   /** All notes of a bill (issued and cancelled), oldest first. */

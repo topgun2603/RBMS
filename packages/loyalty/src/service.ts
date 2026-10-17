@@ -1,6 +1,6 @@
-import { AppError, badRequest, newId, notFound } from "@srirealtime/core";
+import { AppError, badRequest, defineSort, facetCounts, listQuerySchema, newId, notFound, runList, splitList, type ListPage } from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
-import { and, asc, count, desc, eq, gt, ilike, inArray, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gt, ilike, inArray, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { membersCsv } from "./csv";
 import {
@@ -193,14 +193,52 @@ export const adjustInputSchema = z.object({
 });
 export type AdjustInput = z.input<typeof adjustInputSchema>;
 
-export const memberListQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
-  tier: z.string().trim().max(40).optional(),
-  sort: z.enum(["recent", "points", "spend", "name", "joined"]).default("recent"),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
+/**
+ * `GET /members`: `q` (name or phone digits), `tier` (comma list of tier names), `sort` (MEMBER_SORT_KEYS, default
+ * `-lastActivity`), `limit` (default 50, max 500), `offset`.
+ */
+export const memberListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 500 }).extend({
+  tier: z.preprocess(splitList, z.array(z.string().max(40)).max(20).optional()),
 });
 export type MemberListQuery = z.input<typeof memberListQuerySchema>;
+
+export const MEMBER_SORT_KEYS = ["points", "tier", "spend", "lastActivity", "name", "joined"] as const;
+export const MEMBER_SORT_DEFAULT = "-lastActivity" as const;
+
+/**
+ * Member sort map. `tier` sorts by the tier's rank (the settings' tiers by minimum spend; unknown names last), not
+ * alphabetically; `lastActivity` falls back to the join date (what the list shows).
+ */
+export function memberSort(tiers: readonly Pick<Tier, "name" | "minSpend">[] = []) {
+  const ranked = [...tiers].sort((a, b) => a.minSpend - b.minSpend);
+  const m = loyaltyMembers;
+  const tierRank = ranked.length
+    ? sql`(case ${m.tier} ${sql.join(
+        ranked.map((t, i) => sql`when ${t.name} then ${sql.raw(String(i))}`),
+        sql` `,
+      )} else ${sql.raw(String(ranked.length))} end)`
+    : sql`lower(${m.tier})`;
+  return defineSort(
+    {
+      points: m.pointsBalance,
+      tier: tierRank,
+      spend: m.lifetimeSpend,
+      lastActivity: sql`coalesce(${m.lastActivityAt}, ${m.joinedAt})`,
+      name: sql`lower(${m.name})`,
+      joined: m.joinedAt,
+    } satisfies Record<(typeof MEMBER_SORT_KEYS)[number], unknown>,
+    { default: MEMBER_SORT_DEFAULT, tieBreaker: m.id },
+  );
+}
+
+/** Tenant-wide totals for the loyalty page and the dashboard card. */
+export interface LoyaltySummary {
+  members: number;
+  /** Unused points over all members. */
+  points: number;
+  /** What those points are worth, paise (points × point value). */
+  liability: number;
+}
 
 export const ledgerQuerySchema = z.object({
   type: z.enum(LEDGER_TYPES).optional(),
@@ -270,6 +308,14 @@ export function openLotsStatement(db: DbOrTx, tenantId: string, memberId: string
     .for("update");
 }
 
+/** Member count and unused points of a shop. */
+export function summaryStatement(db: DbOrTx, tenantId: string) {
+  return db
+    .select({ members: count(), points: sql<string>`coalesce(sum(${loyaltyMembers.pointsBalance}), 0)` })
+    .from(loyaltyMembers)
+    .where(eq(loyaltyMembers.tenantId, tenantId));
+}
+
 /** (tenant, member) pairs with due lots: what the expiry job works through. */
 export function dueMembersStatement(db: DbOrTx, now: Date, skipTenants: readonly string[], limit: number) {
   const conds: (SQL | undefined)[] = [gt(loyaltyLedger.remaining, 0), lte(loyaltyLedger.expiresAt, now)];
@@ -336,9 +382,9 @@ export class LoyaltyService {
   }
 
   /** Builds the member list conditions (exported for tests). */
-  listConditions(tenantId: string, p: z.output<typeof memberListQuerySchema>): SQL | undefined {
+  listConditions(tenantId: string, p: z.output<typeof memberListQuerySchema>, withTier = true): SQL | undefined {
     const conds: (SQL | undefined)[] = [eq(loyaltyMembers.tenantId, tenantId)];
-    if (p.tier) conds.push(eq(loyaltyMembers.tier, p.tier));
+    if (withTier && p.tier?.length) conds.push(inArray(loyaltyMembers.tier, p.tier));
     if (p.q) {
       const digits = p.q.replace(/\D/g, "");
       const byName = ilike(loyaltyMembers.name, likePattern(p.q));
@@ -349,46 +395,45 @@ export class LoyaltyService {
     return and(...conds);
   }
 
-  private static order(sort: z.output<typeof memberListQuerySchema>["sort"]) {
-    switch (sort) {
-      case "points":
-        return [desc(loyaltyMembers.pointsBalance), asc(loyaltyMembers.id)];
-      case "spend":
-        return [desc(loyaltyMembers.lifetimeSpend), asc(loyaltyMembers.id)];
-      case "name":
-        return [asc(loyaltyMembers.name), asc(loyaltyMembers.id)];
-      case "joined":
-        return [desc(loyaltyMembers.joinedAt), asc(loyaltyMembers.id)];
-      default:
-        return [sql`${loyaltyMembers.lastActivityAt} desc nulls last`, desc(loyaltyMembers.joinedAt), asc(loyaltyMembers.id)];
-    }
+  /** Members: paged, sorted (memberSort), filtered; `facets.tier` = members per tier under the other filters. */
+  async list(tenantId: string, query: MemberListQuery = {}): Promise<ListPage<Member>> {
+    const p = memberListQuerySchema.parse(query);
+    const settings = await this.getSettings(tenantId);
+    const order = memberSort(settings.tiers).orderBy(p.sort);
+    const where = this.listConditions(tenantId, p);
+    const [page, byTier] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(loyaltyMembers).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(loyaltyMembers).where(where),
+        map: (r) => toMember(r, settings),
+      }),
+      this.db
+        .select({ key: loyaltyMembers.tier, n: count() })
+        .from(loyaltyMembers)
+        .where(this.listConditions(tenantId, p, false))
+        .groupBy(loyaltyMembers.tier),
+    ]);
+    return { ...page, facets: { tier: facetCounts(byTier) } };
   }
 
-  async list(tenantId: string, query: MemberListQuery = {}): Promise<ListResult<Member>> {
-    const p = memberListQuerySchema.parse(query);
-    const where = this.listConditions(tenantId, p);
-    const [settings, rows, [counted]] = await Promise.all([
-      this.getSettings(tenantId),
-      this.db
-        .select()
-        .from(loyaltyMembers)
-        .where(where)
-        .orderBy(...LoyaltyService.order(p.sort))
-        .limit(p.limit)
-        .offset(p.offset),
-      this.db.select({ total: count() }).from(loyaltyMembers).where(where),
-    ]);
-    return { items: rows.map((r) => toMember(r, settings)), total: counted?.total ?? 0 };
+  /** Members, unused points and their value over the whole shop (one aggregate query). */
+  async summary(tenantId: string): Promise<LoyaltySummary> {
+    const [settings, [row]] = await Promise.all([this.getSettings(tenantId), summaryStatement(this.db, tenantId)]);
+    const points = Number(row?.points ?? 0);
+    return { members: Number(row?.members ?? 0), points, liability: points * settings.pointValuePaise };
   }
 
   /** CSV of the members matching the filters (up to 10,000 rows). */
   async exportCsv(tenantId: string, query: MemberListQuery = {}): Promise<string> {
     const p = memberListQuerySchema.parse({ ...query, limit: 500, offset: 0 });
+    const settings = await this.getSettings(tenantId);
+    const order = memberSort(settings.tiers).orderBy(p.sort);
+    const where = this.listConditions(tenantId, p);
     const items: Member[] = [];
     for (let offset = 0; offset < 10_000; offset += 500) {
-      const page = await this.list(tenantId, { ...p, offset });
-      items.push(...page.items);
-      if (page.items.length < 500) break;
+      const rows = await this.db.select().from(loyaltyMembers).where(where).orderBy(...order).limit(500).offset(offset);
+      items.push(...rows.map((r) => toMember(r, settings)));
+      if (rows.length < 500) break;
     }
     return membersCsv(items);
   }

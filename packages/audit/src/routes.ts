@@ -8,24 +8,9 @@ import {
   type RequestContext,
 } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { z } from "zod";
 import { toCsv, type CsvColumn } from "./csv";
 import type { AuditEventRow } from "./schema";
-import { MAX_CSV, MAX_LIST, type AuditService } from "./service";
-
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-const listQuery = z.object({
-  entityType: z.string().trim().min(1).max(100).optional(),
-  entityId: z.string().trim().min(1).max(200).optional(),
-  actorUserId: z.string().uuid().optional(),
-  action: z.string().trim().min(1).max(200).optional(),
-  from: day.optional(),
-  to: day.optional(),
-  limit: z.coerce.number().int().min(1).max(MAX_CSV).optional(),
-  offset: z.coerce.number().int().min(0).default(0),
-  format: z.enum(["json", "csv"]).default("json"),
-});
-const platformQuery = listQuery.extend({ tenantId: z.string().uuid().optional() });
+import { auditListQuerySchema, auditPlatformQuerySchema, MAX_CSV, MAX_LIST, type AuditPlatformQuery, type AuditQuery, type AuditService } from "./service";
 
 /**
  * Who may read the tenant log: owners, admins, super-admins, and staff whose roles grant `audit.view` explicitly
@@ -67,22 +52,25 @@ export function auditRoutes(service: AuditService) {
       requireUser(req.ctx);
       const tenant = requireTenant(req.ctx);
       if (!canViewAudit(req.ctx)) throw permissionDenied("audit.view");
-      const q = listQuery.parse(req.query);
+      const raw = (req.query ?? {}) as Record<string, unknown>;
+      const q = auditListQuerySchema.parse(raw);
       if (q.format === "csv") {
-        const { items } = await service.list(tenant.id, { ...q, limit: q.limit ?? MAX_CSV }, MAX_CSV);
+        // Same filters and sort as the table; every matching row up to MAX_CSV unless a limit is given.
+        const { items } = await service.list(tenant.id, { ...raw, limit: raw.limit ?? MAX_CSV } as AuditQuery, MAX_CSV);
         return sendCsv(reply, `audit-${tenant.slug}`, auditCsv(items));
       }
-      return service.list(tenant.id, q, MAX_LIST);
+      return service.list(tenant.id, raw as AuditQuery, MAX_LIST);
     });
 
     app.get("/platform", async (req, reply) => {
       requireSuperAdmin(req.ctx);
-      const q = platformQuery.parse(req.query);
+      const raw = (req.query ?? {}) as Record<string, unknown>;
+      const q = auditPlatformQuerySchema.parse(raw);
       if (q.format === "csv") {
-        const { items } = await service.listPlatform({ ...q, limit: q.limit ?? MAX_CSV }, MAX_CSV);
+        const { items } = await service.listPlatform({ ...raw, limit: raw.limit ?? MAX_CSV } as AuditPlatformQuery, MAX_CSV);
         return sendCsv(reply, "audit-platform", auditCsv(items, true));
       }
-      return service.listPlatform(q, MAX_LIST);
+      return service.listPlatform(raw as AuditPlatformQuery, MAX_LIST);
     });
   };
 }

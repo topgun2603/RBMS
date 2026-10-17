@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { absoluteUrl, api, apiDownload, ApiError } from "@srirealtime/web";
 import type {
   Category,
@@ -29,11 +29,11 @@ import type {
 
 const CAT = "/catalog";
 const INV = "/inventory";
-export const PAGE_SIZE = 50;
 
 export const ck = {
   all: ["catalog"] as const,
-  products: (f: ProductListFilters) => ["catalog", "products", f] as const,
+  /** The products table (useServerTable appends the request params); product writes invalidate ["catalog", "products"]. */
+  productTable: ["catalog", "products", "table"] as const,
   product: (id: string) => ["catalog", "product", id] as const,
   counts: ["catalog", "counts"] as const,
   categories: ["catalog", "categories"] as const,
@@ -47,20 +47,6 @@ export const ck = {
 };
 
 // ---------------------------------------------------------------- products
-
-export function useProductList(filters: ProductListFilters) {
-  return useInfiniteQuery({
-    queryKey: ck.products(filters),
-    initialPageParam: 0,
-    queryFn: ({ pageParam, signal }) =>
-      api.get<Paged<ProductSummary>>(`${CAT}/products`, { ...filters, limit: PAGE_SIZE, offset: pageParam }, { signal }),
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((n, p) => n + p.items.length, 0);
-      return last.items.length === PAGE_SIZE && loaded < last.total ? loaded : undefined;
-    },
-    placeholderData: keepPreviousData,
-  });
-}
 
 /** Totals for the list's status chips and the dashboard widget (three cheap `limit=1` calls). */
 export function useProductCounts(enabled = true) {
@@ -146,11 +132,14 @@ export function useBulkStatus() {
       await qc.cancelQueries({ queryKey: ["catalog", "products"] });
       const snapshot = qc.getQueriesData({ queryKey: ["catalog", "products"] });
       const set = new Set(ids);
-      qc.setQueriesData<{ pages: Paged<ProductSummary>[]; pageParams: unknown[] }>({ queryKey: ["catalog", "products"] }, (old) =>
-        old
-          ? { ...old, pages: old.pages.map((p) => ({ ...p, items: p.items.map((it) => (set.has(it.id) ? { ...it, status } : it)) })) }
-          : old,
-      );
+      const patch = <P extends Paged<ProductSummary>>(p: P): P => ({ ...p, items: p.items.map((it) => (set.has(it.id) ? { ...it, status } : it)) });
+      // The table caches plain `{ items, total, … }` pages; infinite queries cache `{ pages }`.
+      qc.setQueriesData<Paged<ProductSummary> | { pages: Paged<ProductSummary>[]; pageParams: unknown[] }>({ queryKey: ["catalog", "products"] }, (old) => {
+        if (!old || typeof old !== "object") return old;
+        if ("pages" in old && Array.isArray(old.pages)) return { ...old, pages: old.pages.map(patch) };
+        if ("items" in old && Array.isArray(old.items)) return patch(old);
+        return old;
+      });
       return { snapshot };
     },
     onError: (_e, _v, ctx) => {
@@ -160,9 +149,22 @@ export function useBulkStatus() {
   });
 }
 
-/** Downloads `GET /products?format=csv` (one row per variant) for the current filters. */
-export const exportProductsCsv = (filters: ProductListFilters) =>
-  apiDownload(`${CAT}/products`, { ...filters, format: "csv" }, "products.csv");
+/** Downloads `GET /products?format=csv` (one row per variant) for the current filters and sort (e.g. the table's API params). */
+export const exportProductsCsv = (params: ProductListFilters) => {
+  const { limit: _l, offset: _o, ...filters } = params;
+  return apiDownload(`${CAT}/products`, { ...filters, format: "csv" }, "products.csv");
+};
+
+/** Marketplace sellers for the products seller filter (newest 100; only when marketplace is on). */
+export function useSellerOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: ["marketplace", "vendors", "options"],
+    enabled,
+    retry: 0,
+    staleTime: 60_000,
+    queryFn: ({ signal }) => api.get<Paged<{ id: string; name: string }>>("/marketplace/vendors", { limit: 100 }, { signal }).then((r) => r.items),
+  });
+}
 
 // ---------------------------------------------------------------- variants
 

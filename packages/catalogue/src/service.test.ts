@@ -13,13 +13,26 @@ import {
   itemListQuerySchema,
   productInputSchema,
   productListQuerySchema,
+  PRODUCT_SORT,
   productPatchSchema,
+  productSort,
+  productStockSql,
   publicProductQuerySchema,
   simpleItemInputSchema,
   simpleItemPatchSchema,
   variantInputSchema,
   type CatalogueService,
+  type StockSqlPort,
 } from "./service";
+import { catalogProducts } from "./schema";
+import { sql } from "drizzle-orm";
+
+const T = "11111111-1111-4111-8111-111111111111";
+/** What the host wires over inventory's stock_items (see apps/api kit). */
+const stockPort: StockSqlPort = {
+  variantLevels: (tenantId, variantId) =>
+    sql`select sum(si.qty) as qty, sum(si.reorder_level) as reorder, bool_and(si.track) as track from stock_items si where si.tenant_id = ${tenantId} and si.item_id = ${variantId}`,
+};
 import { isPublicRef, type CatalogItem } from "./types";
 
 // Never connects.
@@ -92,14 +105,64 @@ describe("input schemas", () => {
   });
 
   it("parses list queries", () => {
-    expect(productListQuerySchema.parse({ limit: "10", status: "draft", channel: "store" })).toMatchObject({ limit: 10, offset: 0, status: "draft" });
+    expect(productListQuerySchema.parse({ limit: "10", status: "draft", channel: "store" })).toMatchObject({
+      limit: 10,
+      offset: 0,
+      status: ["draft"],
+      channel: ["store"],
+    });
     expect(() => productListQuerySchema.parse({ status: "gone" })).toThrow(ZodError);
+    expect(productListQuerySchema.parse({ status: "active,draft", stock: "low,out", categoryId: `${uuid},${uuid}`, q: "  " })).toMatchObject({
+      status: ["active", "draft"],
+      stock: ["low", "out"],
+      categoryId: [uuid],
+      q: undefined,
+      limit: 50,
+    });
+    expect(productListQuerySchema.parse({ limit: "200" }).limit).toBe(200);
+    expect(() => productListQuerySchema.parse({ limit: "201" })).toThrow(ZodError);
+    expect(() => productListQuerySchema.parse({ stock: "plenty" })).toThrow(ZodError);
+    expect(() => productListQuerySchema.parse({ collectionId: "summer" })).toThrow(ZodError);
     expect(publicProductQuerySchema.parse({})).toMatchObject({ sort: "new", limit: 24, offset: 0 });
     expect(() => publicProductQuerySchema.parse({ sort: "cost" })).toThrow(ZodError);
     expect(idsQuerySchema.parse({ ids: `${uuid}, ${uuid}` }).ids).toEqual([uuid, uuid]);
     expect(idsQuerySchema.parse({ ids: [uuid] }).ids).toEqual([uuid]);
     expect(() => idsQuerySchema.parse({ ids: "nope" })).toThrow(ZodError);
     expect(itemListQuerySchema.parse({ limit: "500" }).limit).toBe(500);
+  });
+
+  it("sorts the staff list by whitelisted fields only", () => {
+    const render = (spec: ReturnType<typeof productSort>, s?: string) => db.select().from(catalogProducts).orderBy(...spec.orderBy(s)).toSQL().sql;
+    expect(PRODUCT_SORT.default).toBe("name");
+    expect(PRODUCT_SORT.keys).toEqual(["name", "price", "stock", "updated", "status"]);
+    expect(render(PRODUCT_SORT)).toContain('order by lower("catalog_products"."name") asc nulls last, "catalog_products"."id" asc');
+    expect(render(PRODUCT_SORT, "-updated")).toContain('"catalog_products"."updated_at" desc nulls last, "catalog_products"."id" desc');
+    expect(render(PRODUCT_SORT, "price")).toContain("select min(cv.price)");
+    expect(render(PRODUCT_SORT, "-stock")).toContain("null desc nulls last");
+    const withStock = productSort(stockPort);
+    expect(render(withStock, "-stock")).toContain("select sum(coalesce(sl.qty, 0))");
+    expect(render(withStock, "-stock")).toContain("from stock_items si where si.tenant_id = cv.tenant_id and si.item_id = cv.id");
+    expect(() => render(PRODUCT_SORT, "cost")).toThrow(/Sort by one of: name, price, stock, updated, status/);
+  });
+
+  it("filters the staff list (multi-value, stock status, facets without their own filter)", () => {
+    const svc = createCatalogue({ db }).service;
+    const p = productListQuerySchema.parse({ status: "active,draft", channel: "store,pos", categoryId: uuid, vendorId: uuid, stock: "out", q: "silk" });
+    const stock = productStockSql(stockPort).status;
+    const where = (omit?: "status" | "stock") => db.select().from(catalogProducts).where(svc.productFilters(T, p, undefined, { stock, omit })).toSQL();
+    const all = where();
+    expect(all.sql).toContain('"catalog_products"."status" in ($');
+    expect(all.sql).toContain('"catalog_products"."channels" && array[');
+    expect(all.sql).toContain('"catalog_products"."category_id" in ($');
+    expect(all.sql).toContain('"catalog_products"."vendor_id" in ($');
+    expect(all.sql).toContain("when count(*) = 0 then 'untracked'");
+    expect(all.params).toEqual(expect.arrayContaining([T, "active", "draft", "store", "pos", uuid, "out", "%silk%"]));
+    expect(where("status").params).not.toContain("draft");
+    expect(where("stock").params).not.toContain("out");
+    // Without stock SQL (no port / inventory off) the stock filter is ignored.
+    const noStock = db.select().from(catalogProducts).where(svc.productFilters(T, p)).toSQL();
+    expect(noStock.sql).not.toContain("untracked");
+    expect(noStock.params).not.toContain("out");
   });
 
   it("accepts billing-style items", () => {
@@ -339,6 +402,13 @@ describe("adapters", () => {
   function stub() {
     return {
       listItems: vi.fn(async () => ({ items: [item], total: 1 })),
+      listBillingItems: vi.fn(async () => ({
+        items: [{ ...item, categoryId: "c1", active: true, stockQty: 3, stockStatus: "low" as const }],
+        total: 1,
+        facets: { stock: { low: 1 } },
+        categories: [{ id: "c1", name: "Shirts" }],
+      })),
+      listCategories: vi.fn(async () => ({ items: [{ id: "c1", name: "Shirts" }], total: 1 })),
       getItems: vi.fn(async () => [item]),
       getItem: vi.fn(async (_t: string, id: string) => {
         if (id !== uuid) throw notFound("Item");
@@ -358,8 +428,13 @@ describe("adapters", () => {
   it("maps catalogue items to billing items (exclusive rate) and 404s to null/false", async () => {
     const s = stub();
     const src = billingItemSource(s as unknown as CatalogueService);
-    expect(await src.list("t", { q: "sh", limit: 50, offset: 0 })).toEqual({ items: [billingShape], total: 1 });
-    expect(s.listItems).toHaveBeenCalledWith("t", { q: "sh", limit: 50, offset: 0, channel: "billing" });
+    expect(await src.list("t", { q: "sh", limit: 50, offset: 0, sort: "-stock", stock: ["low"] })).toEqual({
+      items: [{ ...billingShape, categoryId: "c1", active: true, stockQty: 3, stockStatus: "low" }],
+      total: 1,
+      facets: { stock: { low: 1 } },
+      categories: [{ id: "c1", name: "Shirts" }],
+    });
+    expect(s.listBillingItems).toHaveBeenCalledWith("t", { q: "sh", limit: 50, offset: 0, sort: "-stock", stock: ["low"], channel: "billing" });
     expect(await src.get("t", uuid)).toEqual(billingShape);
     expect(await src.get("t", "other")).toBeNull();
     const input = { name: "Shirt", hsn: null, unit: "pcs", rate: 100, gstRate: 12 };
@@ -380,7 +455,7 @@ describe("adapters", () => {
   it("serves inventory's catalog port across all channels", async () => {
     const s = stub();
     const cat = inventoryItemCatalog(s as unknown as CatalogueService);
-    expect(await cat.listItems("t", "sh")).toEqual([item]);
+    expect(await cat.listItems("t", "sh")).toEqual([{ ...item, categoryName: null }]);
     expect(s.listItems).toHaveBeenCalledWith("t", { q: "sh", limit: 500, offset: 0 });
     expect(await cat.getItems("t", [uuid])).toEqual([item]);
   });

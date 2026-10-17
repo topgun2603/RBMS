@@ -35,7 +35,9 @@ const isStaff = (ctx: RequestContext) => isSuperAdmin(ctx) || (ctx.user?.tenantR
  * - `GET /me` — the signed-in shopper's points, tier and history (store);
  * - `POST /quote` `{ phone?, amount }` — redeemable points and earn preview. Staff (owner/admin/staff) quote any
  *   customer's phone (billing counter); anyone else quotes only their own number (checkout);
- * - staff with `loyalty.manage`: `GET /members` (`q`, `tier`, `sort`, `format=csv`), `GET /members/:id` (with ledger),
+ * - staff with `loyalty.manage`: `GET /members` (`q`, `tier` comma list, `sort` points|tier|spend|lastActivity|name|joined
+ *   with "-" for descending, default `-lastActivity`, `limit` 50/500, `offset`, `format=csv`; `facets.tier`),
+ *   `GET /summary` (`{ members, points, liability }` for the whole shop), `GET /members/:id` (with ledger),
  *   `POST /members/:id/adjust` `{ points, reason }`, `GET|PUT /settings`.
  */
 export function loyaltyRoutes(service: LoyaltyService) {
@@ -76,6 +78,8 @@ export function loyaltyRoutes(service: LoyaltyService) {
         const csv = await service.exportCsv(tid(req), filters as MemberListQuery);
         return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", csvDisposition("loyalty-members")).send(csv);
       });
+
+      staff.get("/summary", staffRead, async (req) => service.summary(tid(req)));
 
       staff.get(`/members${ID}`, staffRead, async (req) => {
         const { id } = idParam.parse(req.params);

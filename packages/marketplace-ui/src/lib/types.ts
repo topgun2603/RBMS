@@ -31,9 +31,20 @@ export type VendorUserRole = "owner" | "staff";
 export const PRODUCT_REVIEW_STATUSES = ["pending", "approved", "rejected", "withdrawn"] as const;
 export type ProductReviewStatus = (typeof PRODUCT_REVIEW_STATUSES)[number];
 
+/** Review list `kind`: first review of a new product, or a re-review of a live product the seller changed. */
+export const REVIEW_KINDS = ["new", "changed"] as const;
+export type ReviewKind = (typeof REVIEW_KINDS)[number];
+
+/** Vendor order list `step` (the seller's next fulfilment step). */
+export const VENDOR_ORDER_STEPS = ["to_confirm", "to_pack", "to_ship", "shipped", "done", "closed"] as const;
+
 export interface ListResult<T> {
   items: T[];
   total: number;
+  limit?: number;
+  offset?: number;
+  /** Per-filter value counts under the other filters (server-driven tables). */
+  facets?: Record<string, Record<string, number>>;
 }
 
 export interface VendorAddress {
@@ -98,7 +109,10 @@ export interface VendorDetail extends Vendor {
 
 export type VendorSelf = Vendor & { role: VendorUserRole; balance: LedgerBalance; productCount: number | null };
 
-export interface VendorListResponse extends ListResult<Vendor> {
+/** A seller-list row: the seller plus their sales to date (paise). */
+export type VendorListItem = Vendor & { sales: number };
+
+export interface VendorListResponse extends ListResult<VendorListItem> {
   counts: Record<VendorStatus, number>;
 }
 
@@ -202,6 +216,8 @@ export interface LedgerEntry {
   refId: string | null;
   note: string | null;
   createdAt: ISODate;
+  /** The seller's balance right after this entry (lists for one seller). */
+  balanceAfter?: number;
 }
 
 export interface LedgerResponse extends ListResult<LedgerEntry> {
@@ -380,6 +396,8 @@ export interface CatalogProductSummary {
   variantCount: number;
   vendorId?: string | null;
   updatedAt: ISODate;
+  /** Staff/seller list with stock on: units on hand over tracked variants and the worst status; null = untracked. */
+  stock?: { qty: number; status: "ok" | "low" | "out" } | null;
 }
 
 export interface UploadSignResponse {

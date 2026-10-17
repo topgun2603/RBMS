@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangleIcon,
   BadgeCheckIcon,
@@ -20,7 +20,9 @@ import {
   AnimatePresence,
   Badge,
   Button,
+  ChipGroup,
   DataTable,
+  DataTableToolbar,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,11 +36,6 @@ import {
   FieldHint,
   FieldLabel,
   PageHeader,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Separator,
   Sheet,
   SheetContent,
@@ -55,12 +52,12 @@ import {
   type StatusTone,
 } from "@srirealtime/ui";
 import { Page } from "@/components/page";
-import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";
 import { api } from "@/lib/api";
 import { describeError, tOr, useI18n } from "@/lib/i18n";
 import { useKycT } from "@/lib/kyc-messages";
 import type { Paged, Tenant } from "@/lib/types";
+import { useServerTable, type ServerFilterDefs } from "@/lib/use-server-table";
 
 // ---------------------------------------------------------------- types (mirror packages/kyc/src/service.ts)
 
@@ -91,7 +88,9 @@ interface ReviewItem {
   comparedWith: string | null;
 }
 
-const PAGE = 50;
+const CHECK_TYPES: CheckType[] = ["pan", "gstin", "bank_account", "upi", "digilocker_aadhaar", "selfie"];
+/** Status pills (packages/kyc/src/list.ts): no `status` param = the queue (manual_review); `all` = every check. */
+const STATUS_FILTERS = ["manual_review", "pending", "verified", "failed", "all"] as const;
 /** Pass mark for bank / UPI vs PAN name (packages/kyc/src/names.ts NAME_MATCH_THRESHOLD). */
 const THRESHOLD = 80;
 const REASON_MAX = 500;
@@ -102,7 +101,10 @@ const QUEUE_KEY = ["platform", "kyc-review"] as const;
 export default function KycReviewPage() {
   return (
     <SuperAdminOnly>
-      <ReviewQueue />
+      {/* useServerTable reads the search params, which needs a Suspense boundary. */}
+      <React.Suspense fallback={null}>
+        <ReviewQueue />
+      </React.Suspense>
     </SuperAdminOnly>
   );
 }
@@ -110,70 +112,97 @@ export default function KycReviewPage() {
 function ReviewQueue() {
   const { t, formatRelative, formatDateTime } = useI18n();
   const k = useKycT();
-  const [shop, setShop] = React.useState("all");
-  const [page, setPage] = React.useState(0);
   const [selected, setSelected] = React.useState<ReviewItem | null>(null);
 
   const tenants = useQuery({
     queryKey: ["platform", "tenants", "lookup"],
-    queryFn: () => api.get<Paged<Tenant>>("/tenancy/tenants", { limit: 200 }, { tenant: null }).then((r) => r.items),
+    queryFn: () => api.get<Paged<Tenant>>("/tenancy/tenants", { limit: 200, sort: "name" }, { tenant: null }).then((r) => r.items),
     staleTime: 5 * 60_000,
   });
   const tenantById = React.useMemo(() => new Map((tenants.data ?? []).map((tn) => [tn.id, tn])), [tenants.data]);
   const shopName = React.useCallback((id: string) => tenantById.get(id)?.name ?? `${id.slice(0, 8)}…`, [tenantById]);
 
-  const queue = useQuery({
-    queryKey: [...QUEUE_KEY, shop, page],
-    queryFn: () =>
-      api.get<{ items: ReviewItem[]; total: number }>(
-        "/kyc/review",
-        { tenantId: shop === "all" ? undefined : shop, limit: PAGE, offset: page * PAGE },
-        { tenant: null },
-      ),
-    placeholderData: keepPreviousData,
+  const filters = React.useMemo(
+    () =>
+      ({
+        // The pills below: none = the queue (needs review), `all` = every check.
+        status: { kind: "options", label: k("admin.kyc.filter.status"), hidden: true, single: true, options: STATUS_FILTERS.map((s) => ({ value: s, label: s })) },
+        type: { kind: "options", label: k("admin.kyc.col.check"), options: CHECK_TYPES.map((c) => ({ value: c, label: tOr(k, `admin.kyc.type.${c}`, c) })) },
+        tenantId: {
+          kind: "options",
+          label: k("admin.kyc.filter.shop"),
+          single: true,
+          options: (tenants.data ?? []).map((tn) => ({ value: tn.id, label: tn.name })),
+        },
+      }) satisfies ServerFilterDefs,
+    [k, tenants.data],
+  );
+
+  const columns = React.useMemo<DataTableColumn<ReviewItem>[]>(
+    () => [
+      {
+        id: "shop",
+        header: k("admin.kyc.col.shop"),
+        hideable: false,
+        card: "title",
+        cell: (r) => {
+          const tn = tenantById.get(r.subject.tenantId);
+          return (
+            <div className="min-w-0">
+              <div className="truncate font-medium">{shopName(r.subject.tenantId)}</div>
+              {tn && <div className="truncate font-mono text-xs text-muted-foreground">{tn.slug}</div>}
+            </div>
+          );
+        },
+        cardCell: (r) => shopName(r.subject.tenantId),
+      },
+      {
+        id: "subject",
+        header: k("admin.kyc.col.subject"),
+        hideBelow: "md",
+        card: "meta",
+        cell: (r) => <Badge variant="outline">{tOr(k, `admin.kyc.subject.${r.subject.subjectType}`, r.subject.subjectType)}</Badge>,
+      },
+      {
+        id: "check",
+        header: k("admin.kyc.col.check"),
+        card: "subtitle",
+        cell: (r) => <span className="whitespace-nowrap">{tOr(k, `admin.kyc.type.${r.check.type}`, r.check.type)}</span>,
+      },
+      { id: "match", header: k("admin.kyc.col.match"), sortable: true, sortDescFirst: false, card: "right", cell: (r) => <ScorePill score={r.check.nameMatchScore} /> },
+      { id: "status", header: k("admin.kyc.col.status"), hideBelow: "sm", card: "meta", cell: (r) => <CheckStatusPill status={r.check.status} /> },
+      {
+        id: "submitted",
+        header: k("admin.kyc.col.submitted"),
+        sortable: true,
+        align: "right",
+        hideBelow: "md",
+        card: "meta",
+        cell: (r) => (
+          <span className="whitespace-nowrap text-muted-foreground" title={formatDateTime(r.check.createdAt)}>
+            {formatRelative(r.check.createdAt)}
+          </span>
+        ),
+      },
+    ],
+    [k, tenantById, shopName, formatRelative, formatDateTime],
+  );
+
+  const st = useServerTable<ReviewItem, typeof filters>({
+    queryKey: [...QUEUE_KEY, "table"],
+    path: "/kyc/review",
+    columns,
+    filters,
+    defaultSort: "submitted", // = REVIEW_SORT default: oldest first, like a queue
+    search: k("admin.kyc.search"),
+    storageKey: "admin-platform-kyc",
+    getRowId: (r) => r.check.id,
   });
 
-  const columns: DataTableColumn<ReviewItem>[] = [
-    {
-      id: "shop",
-      header: k("admin.kyc.col.shop"),
-      cell: (r) => {
-        const tn = tenantById.get(r.subject.tenantId);
-        return (
-          <div className="min-w-0">
-            <div className="truncate font-medium">{shopName(r.subject.tenantId)}</div>
-            {tn && <div className="truncate font-mono text-xs text-muted-foreground">{tn.slug}</div>}
-          </div>
-        );
-      },
-    },
-    {
-      id: "subject",
-      header: k("admin.kyc.col.subject"),
-      hideBelow: "md",
-      cell: (r) => <Badge variant="outline">{tOr(k, `admin.kyc.subject.${r.subject.subjectType}`, r.subject.subjectType)}</Badge>,
-    },
-    {
-      id: "check",
-      header: k("admin.kyc.col.check"),
-      cell: (r) => <span className="whitespace-nowrap">{tOr(k, `admin.kyc.type.${r.check.type}`, r.check.type)}</span>,
-    },
-    { id: "match", header: k("admin.kyc.col.match"), cell: (r) => <ScorePill score={r.check.nameMatchScore} /> },
-    { id: "status", header: k("admin.kyc.col.status"), hideBelow: "sm", cell: (r) => <CheckStatusPill status={r.check.status} /> },
-    {
-      id: "submitted",
-      header: k("admin.kyc.col.submitted"),
-      align: "right",
-      hideBelow: "md",
-      cell: (r) => (
-        <span className="whitespace-nowrap text-muted-foreground" title={formatDateTime(r.check.createdAt)}>
-          {formatRelative(r.check.createdAt)}
-        </span>
-      ),
-    },
-  ];
-
-  const total = queue.data?.total;
+  const status = st.filters.status;
+  const counts = st.facets?.status;
+  const waiting = counts?.manual_review;
+  const pill = status.value[0] ?? "manual_review";
 
   return (
     <Page>
@@ -182,52 +211,36 @@ function ReviewQueue() {
         title={k("admin.kyc.title")}
         description={k("admin.kyc.subtitle")}
         actions={
-          total !== undefined && total > 0 ? (
+          waiting !== undefined && waiting > 0 ? (
             <StatusPill tone="warning" icon={ClockIcon} size="md">
-              {k("admin.kyc.waiting", { count: total })}
+              {k("admin.kyc.waiting", { count: waiting })}
             </StatusPill>
           ) : undefined
         }
       />
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Select
-          value={shop}
-          onValueChange={(v) => {
-            setShop(v);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger size="sm" className="w-full sm:w-56" aria-label={k("admin.kyc.filter.shop")}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{k("admin.kyc.filter.allShops")}</SelectItem>
-            {(tenants.data ?? []).map((tn) => (
-              <SelectItem key={tn.id} value={tn.id}>
-                {tn.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {queue.isError ? (
-        <QueryError error={queue.error} onRetry={() => void queue.refetch()} />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={queue.data?.items}
-          loading={queue.isLoading}
-          getRowId={(r) => r.check.id}
-          onRowClick={setSelected}
-          pagination={{ page, pageSize: PAGE, total, onPageChange: setPage }}
-          labels={{
-            previous: t("admin.table.previous"),
-            next: t("admin.table.next"),
-            range: ({ from, to, total: n }) => (n !== undefined ? t("admin.table.range", { from, to, total: n }) : t("admin.table.rangeOpen", { from, to })),
-          }}
-          empty={<EmptyState compact icon={BadgeCheckIcon} title={k("admin.kyc.empty")} description={k("admin.kyc.emptyHint")} />}
-        />
-      )}
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            aria-label={k("admin.kyc.filter.status")}
+            size="sm"
+            value={pill}
+            onChange={(v) => status.set(v === "manual_review" ? [] : [v])}
+            options={STATUS_FILTERS.map((s) => ({
+              value: s,
+              label: s === "all" ? k("admin.kyc.filter.allStatuses") : tOr(k, `admin.kyc.status.${s}`, s),
+              meta: counts ? (s === "all" ? Object.values(counts).reduce((a, b) => a + b, 0) : (counts[s] ?? 0)) : undefined,
+            }))}
+          />
+        }
+      >
+        {st.total !== undefined && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{k("admin.kyc.count", { count: st.total })}</span>}
+      </DataTableToolbar>
+      <DataTable
+        table={st.table}
+        onRowClick={setSelected}
+        empty={<EmptyState compact icon={BadgeCheckIcon} title={k("admin.kyc.empty")} description={k("admin.kyc.emptyHint")} />}
+      />
       <CheckSheet item={selected} shopName={selected ? shopName(selected.subject.tenantId) : ""} onClose={() => setSelected(null)} />
     </Page>
   );

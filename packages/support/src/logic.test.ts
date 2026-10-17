@@ -207,10 +207,10 @@ describe("input", () => {
   it("list queries take comma lists, me/none and booleans", () => {
     expect(ticketListQuerySchema.parse({ status: "open,pending", assignee: "me", overdue: "true" })).toMatchObject({
       status: ["open", "pending"],
-      assignee: "me",
+      assignee: ["me"],
       overdue: true,
-      sort: "recent",
       limit: 50,
+      offset: 0,
     });
     expect(() => ticketListQuerySchema.parse({ status: "lost" })).toThrow(ZodError);
     expect(() => ticketListQuerySchema.parse({ assignee: "bob" })).toThrow(ZodError);

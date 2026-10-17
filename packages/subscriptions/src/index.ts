@@ -8,6 +8,7 @@ export * from "./logic";
 export * from "./ports";
 export * from "./provider";
 export * from "./service";
+export * from "./list";
 export { subscriptionsRoutes, SUBSCRIPTIONS_PERMISSION } from "./routes";
 
 export const SUBSCRIPTIONS_MODULE = "subscriptions";

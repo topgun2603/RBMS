@@ -52,7 +52,7 @@ export function ReviewsAttentionWidget() {
   const can = useCan(PERMS.reviews);
   const q = usePendingReviews(1, can);
   if (!can) return null;
-  return <AttentionItem label={t("site.widgets.attnReviews")} count={q.data?.total} tone="info" icon={StarIcon} to="reviews" loading={q.isPending} error={q.isError} />;
+  return <AttentionItem label={t("site.widgets.attnReviews")} count={q.data?.total} tone="info" icon={StarIcon} to="reviews?status=pending" loading={q.isPending} error={q.isError} />;
 }
 
 /** "More insights" card: the store link and whether the home page is live or has unpublished changes. */

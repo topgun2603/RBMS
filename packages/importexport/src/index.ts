@@ -81,5 +81,15 @@ export {
   type QueuePort,
   type LoggerPort,
 } from "./service";
-export { DrizzleImportJobStore, MemoryImportJobStore, type ImportJob, type ImportJobStore } from "./store";
+export {
+  DrizzleImportJobStore,
+  IMPORT_JOB_SORT,
+  importJobConditions,
+  importJobListQuerySchema,
+  MemoryImportJobStore,
+  type ImportJob,
+  type ImportJobListPage,
+  type ImportJobListQuery,
+  type ImportJobStore,
+} from "./store";
 export { importRoutes, exportRoutes, IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION, UPLOAD_CONTENT_TYPES } from "./routes";

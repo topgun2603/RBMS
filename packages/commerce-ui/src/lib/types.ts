@@ -127,8 +127,15 @@ export interface ProductSummary {
   priceMax: number;
   variantCount: number;
   channels: Channel[];
+  /** Marketplace seller owning the product; null = the shop's own. */
+  vendorId?: string | null;
   updatedAt: ISODate;
+  /** Staff list with inventory on: units on hand over tracked variants and the worst status; null = not tracked. */
+  stock?: { qty: number; status: StockStatus } | null;
 }
+
+/** `stock` filter values of the staff product list. */
+export const PRODUCT_STOCK_FILTERS = ["ok", "low", "out", "untracked"] as const;
 
 /** Product fields shared by POST and PATCH. */
 export interface ProductFields {
@@ -160,12 +167,20 @@ export interface ProductCreateInput extends ProductFields {
   weightGrams?: number | null;
 }
 
+/** `GET /catalog/products` params (lists comma-joined: `status=active,draft`). */
 export interface ProductListFilters {
   q?: string;
-  status?: ProductStatus;
+  status?: string;
   categoryId?: string;
-  channel?: Channel;
+  collectionId?: string;
+  vendorId?: string;
+  channel?: string;
+  stock?: string;
   tag?: string;
+  sort?: string;
+  limit?: string | number;
+  offset?: string | number;
+  [param: string]: string | number | undefined;
 }
 
 /** `GET /variants/search`: a variant with its product (pickers, stock mapping). */

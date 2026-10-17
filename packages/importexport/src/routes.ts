@@ -3,6 +3,7 @@ import type { FastifyContextConfig, FastifyInstance, FastifyRequest } from "fast
 import { z } from "zod";
 import { MultipartError, fileFromMultipart } from "./multipart";
 import type { ImportExportService, UploadedFile } from "./service";
+import type { ImportJobListQuery } from "./store";
 
 export const IMPORTEXPORT_FEATURE = "importexport";
 export const IMPORTEXPORT_PERMISSION = "importexport.run";
@@ -23,11 +24,6 @@ const commitBody = z.object({
   skipInvalid: z.boolean().default(true),
 });
 const jobParam = z.object({ jobId: z.string().uuid() });
-const listQuery = z.object({
-  key: z.string().max(60).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  offset: z.coerce.number().int().min(0).default(0),
-});
 
 const cfg = (feature: string | string[], permission?: string) => ({
   config: { feature, ...(permission ? { permission } : {}) } as FastifyContextConfig,
@@ -91,7 +87,7 @@ export function importRoutes(service: ImportExportService) {
 
     app.get("/jobs", cfg(IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION), async (req) => {
       const { tenant } = staff(req.ctx);
-      return service.list(tenant.id, listQuery.parse(req.query ?? {}));
+      return service.list(tenant.id, (req.query ?? {}) as ImportJobListQuery);
     });
 
     for (const imp of service.registry.listImporters()) {

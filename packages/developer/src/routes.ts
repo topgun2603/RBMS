@@ -32,7 +32,9 @@ const keyLabel = (k: { name: string; prefix: string }) => `${k.name} (${k.prefix
  * - Staff with `developer.manage`: `GET /events`, `GET /scopes`, keys (`GET|POST /keys`, `PATCH /keys/:id`,
  *   `POST /keys/:id/revoke` — refused for API keys), endpoints (`GET|POST /endpoints`, `GET|PATCH|DELETE /endpoints/:id`,
  *   `POST /endpoints/:id/rotate-secret`, `POST /endpoints/:id/test`), deliveries (`GET /deliveries`,
- *   `GET /deliveries/:id`, `POST /deliveries/:id/redeliver`). Secrets are only returned by create / rotate.
+ *   `GET /deliveries/:id`, `POST /deliveries/:id/redeliver`). The delivery list takes `status`, `type`, `endpointId` (comma
+ *   lists), `from`/`to` (IST days), `q`, `sort` time|statusCode|attempts (default `-time`), `limit` 50/100, `offset` and
+ *   returns `facets.status` / `facets.type`. Secrets are only returned by create / rotate.
  */
 export function developerRoutes(service: DeveloperService) {
   return async (app: FastifyInstance) => {

@@ -5,7 +5,22 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 import { createCoupons } from "./index";
 import { couponsRoutes } from "./routes";
-import { couponError, couponInputSchema, lockCouponStatement, publicValidateSchema, type CouponsService } from "./service";
+import { AppError } from "@srirealtime/core";
+import { count, sql } from "drizzle-orm";
+import { coupons } from "./schema";
+import {
+  COUPON_SORT,
+  COUPON_STATUSES,
+  couponError,
+  couponInputSchema,
+  couponListConditions,
+  couponStatusCondition,
+  couponStatusSql,
+  listQuerySchema,
+  lockCouponStatement,
+  publicValidateSchema,
+  type CouponsService,
+} from "./service";
 
 // Never connects: only used to render SQL.
 const { db, close } = createDb("postgres://u:p@127.0.0.1:1/none", { max: 1 });
@@ -73,6 +88,76 @@ describe("redeem locking", () => {
   });
   it("throws 409 coupon_invalid with the reason", () => {
     expect(couponError("usage_limit")).toMatchObject({ status: 409, code: "coupon_invalid", details: { reason: "usage_limit" } });
+  });
+});
+
+describe("list query", () => {
+  const T = "11111111-1111-4111-8111-111111111111";
+  const NOW = new Date("2026-10-17T06:30:00.000Z");
+  const where = (q: Record<string, unknown>, withStatus = true) =>
+    db.select().from(coupons).where(couponListConditions(T, listQuerySchema.parse(q), NOW, withStatus)).toSQL();
+
+  it("keeps the 50 / 200 limits the pickers use, takes comma lists, rejects unknown values", () => {
+    expect(listQuerySchema.parse({})).toMatchObject({ limit: 50, offset: 0 });
+    expect(listQuerySchema.parse({ limit: "200" }).limit).toBe(200);
+    expect(() => listQuerySchema.parse({ limit: "201" })).toThrow(ZodError);
+    expect(listQuerySchema.parse({ status: "active,used_up", type: "flat", q: "  " })).toMatchObject({ status: ["active", "used_up"], type: ["flat"], q: undefined });
+    expect(() => listQuerySchema.parse({ status: "live" })).toThrow(ZodError);
+    expect(() => listQuerySchema.parse({ type: "bogo" })).toThrow(ZodError);
+  });
+
+  it("filters by tenant, type, on/off and code/description search", () => {
+    const q = where({ type: "percent,flat", active: "false", q: "diwali_10" });
+    expect(q.sql).toContain('"coupons"."tenant_id" = $1');
+    expect(q.sql).toContain('"coupons"."type" in ($2, $3)');
+    expect(q.sql).toContain('"coupons"."active" = $4');
+    expect(q.sql).toContain('("coupons"."code" ilike $5 or "coupons"."description" ilike $6)');
+    expect(q.params).toEqual([T, "percent", "flat", false, "%diwali\\_10%", "%diwali\\_10%"]);
+  });
+
+  it("expresses each derived status as SQL with the same precedence as the CASE", () => {
+    const render = (s: (typeof COUPON_STATUSES)[number]) => db.select().from(coupons).where(couponStatusCondition(s, NOW)).toSQL();
+    expect(render("off").sql).toMatch(/where "coupons"\."active" = \$1$/);
+    expect(render("off").params).toEqual([false]);
+    const expired = render("expired");
+    expect(expired.sql).toContain('"coupons"."ends_at" is not null and "coupons"."ends_at" < $2::timestamptz');
+    expect(expired.params).toEqual([true, NOW.toISOString()]);
+    const scheduled = render("scheduled").sql;
+    expect(scheduled).toContain("not (");
+    expect(scheduled).toContain('"coupons"."starts_at" > $');
+    const usedUp = render("used_up").sql;
+    expect(usedUp).toContain('"coupons"."usage_limit" is not null');
+    expect(usedUp).toContain(`>= "coupons"."usage_limit"`);
+    expect(usedUp).toContain(`from "coupon_redemptions" where "coupon_redemptions"."coupon_id" = "coupons"."id" and "coupon_redemptions"."status" = 'active'`);
+    const active = render("active").sql;
+    expect(active.match(/not \(/g)).toHaveLength(3);
+    // Dates are bound as ISO strings, never raw Date objects.
+    for (const s of COUPON_STATUSES) expect(render(s).params.some((p) => p instanceof Date)).toBe(false);
+  });
+
+  it("ORs the chosen statuses; the facet WHERE leaves status out", () => {
+    const q = where({ status: "expired,off", type: "flat" });
+    expect(q.sql).toContain(" or ");
+    expect(q.params).toEqual(expect.arrayContaining([T, true, NOW.toISOString(), false, "flat"]));
+    const facet = where({ status: "expired,off", type: "flat" }, false);
+    expect(facet.params).toEqual([T, "flat"]);
+  });
+
+  it("counts every status in one CASE grouped by position", () => {
+    const q = db.select({ key: couponStatusSql(NOW), n: count() }).from(coupons).where(couponListConditions(T, listQuerySchema.parse({}), NOW, false)).groupBy(sql`1`).toSQL();
+    expect(q.sql).toMatch(/^select case when "coupons"\."active" = \$1 then 'off' when .* then 'expired' when .* then 'scheduled' when .* then 'used_up' else 'active' end, count\(\*\)/);
+    expect(q.sql).toMatch(/group by 1$/);
+  });
+
+  it("sorts by code, uses, ends and created only (default newest first)", () => {
+    expect(COUPON_SORT.default).toBe("-created");
+    expect([...COUPON_SORT.keys].sort()).toEqual(["code", "created", "ends", "uses"]);
+    const render = (s?: string) => db.select().from(coupons).orderBy(...COUPON_SORT.orderBy(s)).toSQL().sql;
+    expect(render()).toContain('order by "coupons"."created_at" desc nulls last, "coupons"."id" desc');
+    expect(render("code")).toContain('order by "coupons"."code" asc nulls last, "coupons"."id" asc');
+    expect(render("-ends")).toContain('order by "coupons"."ends_at" desc nulls last');
+    expect(render("-uses")).toMatch(/order by \(select count\(\*\)::int from "coupon_redemptions" .*\) desc nulls last/);
+    expect(() => render("value")).toThrow(AppError);
   });
 });
 

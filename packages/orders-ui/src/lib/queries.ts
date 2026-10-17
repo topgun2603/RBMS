@@ -44,7 +44,9 @@ export const ok = {
   order: (id: string) => ["orders", "detail", id] as const,
   summary: ["orders", "summary"] as const,
   settings: ["settings", "orders"] as const,
-  coupons: (q: string, active: string) => ["coupons", "list", q, active] as const,
+  /** Every coupon list cache (the table's key starts with it). */
+  couponLists: ["coupons", "list"] as const,
+  couponTable: ["coupons", "list", "table"] as const,
   coupon: (id: string) => ["coupons", "detail", id] as const,
   redemptions: (id: string) => ["coupons", "redemptions", id] as const,
   zones: ["delivery", "zones"] as const,
@@ -210,14 +212,6 @@ export function useSaveOrderSettings() {
 
 // ---------------------------------------------------------------- coupons
 
-export function useCoupons(q: string, active: "" | "true" | "false") {
-  return useQuery({
-    queryKey: ok.coupons(q, active),
-    queryFn: ({ signal }) => api.get<Paged<Coupon>>("/coupons", { q: q || undefined, active: active || undefined, limit: 200 }, { signal }),
-    placeholderData: keepPreviousData,
-  });
-}
-
 export function useCoupon(id: string | null) {
   return useQuery({ queryKey: ok.coupon(id ?? ""), enabled: !!id, queryFn: () => api.get<Coupon>(`/coupons/${id}`) });
 }
@@ -236,7 +230,7 @@ export function useSaveCoupon() {
     mutationFn: ({ id, body }: { id?: string; body: Partial<CouponInput> }) => (id ? api.patch<Coupon>(`/coupons/${id}`, body) : api.post<Coupon>("/coupons", body)),
     onSuccess: (c) => {
       qc.setQueryData(ok.coupon(c.id), c);
-      void qc.invalidateQueries({ queryKey: ["coupons", "list"] });
+      void qc.invalidateQueries({ queryKey: ok.couponLists });
     },
   });
 }
@@ -247,10 +241,11 @@ export function useToggleCoupon() {
   return useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => api.patch<Coupon>(`/coupons/${id}`, { active }),
     onMutate: async ({ id, active }) => {
-      await qc.cancelQueries({ queryKey: ["coupons", "list"] });
-      const prev = qc.getQueriesData<Paged<Coupon>>({ queryKey: ["coupons", "list"] });
+      await qc.cancelQueries({ queryKey: ok.couponLists });
+      // The table's cache is one `{ items, total, … }` page; leave any other shape alone.
+      const prev = qc.getQueriesData<Paged<Coupon>>({ queryKey: ok.couponLists });
       for (const [key, data] of prev) {
-        if (data) qc.setQueryData<Paged<Coupon>>(key, { ...data, items: data.items.map((c) => (c.id === id ? { ...c, active } : c)) });
+        if (data && Array.isArray(data.items)) qc.setQueryData<Paged<Coupon>>(key, { ...data, items: data.items.map((c) => (c.id === id ? { ...c, active } : c)) });
       }
       return { prev };
     },
@@ -258,7 +253,7 @@ export function useToggleCoupon() {
       for (const [key, data] of ctx?.prev ?? []) qc.setQueryData(key, data);
     },
     onSuccess: (c) => qc.setQueryData(ok.coupon(c.id), c),
-    onSettled: () => void qc.invalidateQueries({ queryKey: ["coupons", "list"] }),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ok.couponLists }),
   });
 }
 
@@ -268,7 +263,7 @@ export function useDeleteCoupon() {
     mutationFn: (id: string) => api.delete<{ ok: true }>(`/coupons/${id}`),
     onSuccess: (_r, id) => {
       qc.removeQueries({ queryKey: ok.coupon(id) });
-      void qc.invalidateQueries({ queryKey: ["coupons", "list"] });
+      void qc.invalidateQueries({ queryKey: ok.couponLists });
     },
   });
 }

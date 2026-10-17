@@ -1,5 +1,6 @@
+import { listFilter, listQuerySchema } from "@srirealtime/core";
 import { z } from "zod";
-import type { ReviewRow, ReviewStatus } from "./schema";
+import { REVIEW_STATUSES, type ReviewRow, type ReviewStatus } from "./schema";
 
 // ------------------------------------------------------------------ settings
 
@@ -70,14 +71,19 @@ export const publicReviewQuerySchema = z.object({
 });
 export type PublicReviewQuery = z.input<typeof publicReviewQuerySchema>;
 
-export const staffReviewQuerySchema = z.object({
-  status: z.enum(["pending", "approved", "rejected"]).optional(),
-  rating: ratingFilter,
-  productId: z.string().uuid().optional(),
-  limit: limit(200, 50),
-  offset,
+/**
+ * Staff moderation list, `GET /v1/reviews` (docs/CONVENTIONS.md → "Lists and tables"): `status` and `rating` take
+ * comma lists (`status=pending`, `rating=1,2`), `hasPhotos=true|false`, `productId`, `q` (title, text, author name).
+ * Default 50 / max 200 rows (unchanged for existing callers).
+ */
+export const staffReviewQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: 200 }).extend({
+  status: listFilter.oneOf(REVIEW_STATUSES),
+  rating: listFilter.oneOf(["1", "2", "3", "4", "5"]).transform((v) => v?.map(Number)),
+  hasPhotos: listFilter.bool(),
+  productId: listFilter.id(),
 });
 export type StaffReviewQuery = z.input<typeof staffReviewQuerySchema>;
+export type StaffReviewParams = z.output<typeof staffReviewQuerySchema>;
 
 /** `productIds=a,b` (or repeated). */
 export const productIdsQuerySchema = z.object({

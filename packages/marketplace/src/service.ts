@@ -1,6 +1,22 @@
-import { AppError, badRequest, conflict, forbidden, newId, notFound, type FeatureGatePort } from "@srirealtime/core";
+import {
+  AppError,
+  badRequest,
+  conflict,
+  defineSort,
+  facetCounts,
+  forbidden,
+  listFilter,
+  listQuerySchema,
+  newId,
+  notFound,
+  rangeOrder,
+  runList,
+  searchAny,
+  type FeatureGatePort,
+  type ListPage,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, lt, lte, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";
 import { MARKETPLACE_FEATURE, PAYOUTS_FEATURE } from "./features";
@@ -159,6 +175,9 @@ export interface Vendor {
   updatedAt: Date;
 }
 
+/** A row of the seller list: the seller plus their sales to date (paise). */
+export type VendorListItem = Vendor & { sales: number };
+
 export interface VendorUser {
   userId: string;
   role: VendorUserRole;
@@ -238,6 +257,8 @@ export interface LedgerEntry {
   refId: string | null;
   note: string | null;
   createdAt: Date;
+  /** The seller's balance right after this entry (lists for one seller); absent otherwise. */
+  balanceAfter?: number;
 }
 
 export interface Payout {
@@ -390,35 +411,52 @@ export type AdjustmentInput = z.input<typeof adjustmentSchema>;
 export const markPaidSchema = z.object({ reference: z.string().trim().min(1).max(120) });
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-const page = {
-  limit: z.coerce.number().int().min(1).max(500).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-};
 
-export const vendorListQuery = z.object({ q: z.string().trim().max(100).optional(), status: z.enum(VENDOR_STATUSES).optional(), ...page });
-export const vendorOrderListQuery = z.object({
-  vendorId: z.string().uuid().optional(),
-  orderId: z.string().uuid().optional(),
-  status: z.enum(ORDER_STATUSES).optional(),
-  settlementStatus: z.enum(SETTLEMENT_STATUSES).optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-  ...page,
+/*
+ * List routes (docs/CONVENTIONS.md → "Lists and tables"): `limit` (default 50, max 500: the seller dashboard and the
+ * payout preview read up to 500), `offset`, `sort` (one field, `-` for descending), `q`, comma-list filters,
+ * `from`/`to` IST calendar days. Responses keep `{ items, total }` and add `limit`, `offset`, `facets`.
+ */
+const LIST_LIMITS = { defaultLimit: 50, maxLimit: 500 } as const;
+
+export const vendorListQuery = listQuerySchema(LIST_LIMITS).extend({
+  status: listFilter.oneOf(VENDOR_STATUSES),
+  kycStatus: listFilter.oneOf(VENDOR_KYC_STATUSES),
 });
-export const ledgerListQuery = z.object({
-  vendorId: z.string().uuid().optional(),
-  type: z.enum(LEDGER_TYPES).optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-  ...page,
-});
-export const payoutListQuery = z.object({
-  vendorId: z.string().uuid().optional(),
-  status: z.enum(PAYOUT_STATUSES).optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-  ...page,
-});
+
+/** The seller's next fulfilment step (same rule as the portal's `fulfilmentStep`). */
+export const VENDOR_ORDER_STEPS = ["to_confirm", "to_pack", "to_ship", "shipped", "done", "closed"] as const;
+export type VendorOrderStep = (typeof VENDOR_ORDER_STEPS)[number];
+
+export const vendorOrderListQuery = listQuerySchema(LIST_LIMITS)
+  .extend({
+    vendorId: listFilter.ids(),
+    orderId: listFilter.id(),
+    status: listFilter.oneOf(ORDER_STATUSES),
+    settlementStatus: listFilter.oneOf(SETTLEMENT_STATUSES),
+    /** `step=to_confirm,to_pack,to_ship` = the seller's open orders. */
+    step: listFilter.oneOf(VENDOR_ORDER_STEPS),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
+export const ledgerListQuery = listQuerySchema(LIST_LIMITS)
+  .extend({
+    /** One seller (the running balance `balanceAfter` is filled then). */
+    vendorId: listFilter.id(),
+    type: listFilter.oneOf(LEDGER_TYPES),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
+export const payoutListQuery = listQuerySchema(LIST_LIMITS)
+  .extend({
+    vendorId: listFilter.ids(),
+    status: listFilter.oneOf(PAYOUT_STATUSES),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export const runPayoutsSchema = z.object({
   /** Last IST day whose payable sales are included (default today). */
   until: dateStr.optional(),
@@ -430,11 +468,15 @@ const idList = z
   .transform((v) => (Array.isArray(v) ? v : [v]).flatMap((x) => x.split(",")).map((x) => x.trim()).filter(Boolean))
   .pipe(z.array(z.string().uuid()).max(200));
 
-export const reviewListQuery = z.object({
-  status: z.enum(PRODUCT_REVIEW_STATUSES).optional(),
-  vendorId: z.string().uuid().optional(),
-  productIds: idList.optional(),
-  ...page,
+/** First review of a new product, or a re-review of a live product the seller changed. */
+export const REVIEW_KINDS = ["new", "changed"] as const;
+export type ReviewKind = (typeof REVIEW_KINDS)[number];
+
+export const reviewListQuery = listQuerySchema(LIST_LIMITS).extend({
+  status: listFilter.oneOf(PRODUCT_REVIEW_STATUSES),
+  kind: listFilter.oneOf(REVIEW_KINDS),
+  vendorId: listFilter.ids(),
+  productIds: listFilter.ids(200),
 });
 export const rejectReviewSchema = z.object({ reason: z.string().trim().min(3, "Tell the seller what to change").max(500) });
 export const stockQuery = z.object({ productIds: idList.optional() });
@@ -472,6 +514,100 @@ function istRange(from?: string, to?: string): { start: Date | null; end: Date |
     end: to ? new Date(istMidnight(to).getTime() + DAY_MS) : null,
   };
 }
+
+/** `from`/`to` (IST days) on a timestamp column. */
+function istBetween(col: AnyColumn, from?: string, to?: string): SQL | undefined {
+  const { start, end } = istRange(from, to);
+  return and(start ? gte(col, start) : undefined, end ? lt(col, end) : undefined);
+}
+
+// ------------------------------------------------------------------ list sorting
+
+/*
+ * Correlated subqueries name their columns explicitly: drizzle leaves columns unqualified in a single-table select
+ * list, where `vendor_id = id` would resolve both sides inside the subquery.
+ */
+const V = sql.identifier("vendors");
+
+/** Seller sales to date: the sum of their `sale` ledger entries (as `balance.sales`). */
+export const vendorSalesSql = sql<number>`(select coalesce(sum(vl.amount), 0) from ${vendorLedger} vl where vl.tenant_id = ${V}.tenant_id and vl.vendor_id = ${V}.id and vl.type = 'sale')`;
+
+/** Seller list sort; `commission` is the effective rate (the seller's own, else the shop default). */
+export function vendorSort(defaultCommissionBps = 0) {
+  const bps = Math.trunc(defaultCommissionBps);
+  return defineSort(
+    {
+      name: sql`lower(${vendors.name})`,
+      sales: vendorSalesSql,
+      commission: sql`coalesce(${vendors.commissionBps}, ${sql.raw(String(bps))})`,
+      joined: vendors.createdAt,
+      status: vendors.status,
+    },
+    { default: "-joined", tieBreaker: vendors.id },
+  );
+}
+export const VENDOR_SORT = vendorSort();
+
+/** What the customer paid for the seller's lines (subtotal − discount + shipping share). */
+const vendorOrderSaleSql = sql`(${vendorOrders.subtotal} - ${vendorOrders.discount} + ${vendorOrders.shippingShare})`;
+
+/** The seller's next step, mirroring the portal's `fulfilmentStep`. */
+export const vendorOrderStepSql = sql<VendorOrderStep>`(case
+  when ${vendorOrders.status} in ('cancelled', 'returned') then 'closed'
+  when ${vendorOrders.status} = 'delivered' then 'done'
+  when ${vendorOrders.shippedAt} is not null or ${vendorOrders.status} = 'shipped' then 'shipped'
+  when ${vendorOrders.packedAt} is not null or ${vendorOrders.status} = 'packed' then 'to_ship'
+  when ${vendorOrders.status} = 'placed' then 'to_confirm'
+  else 'to_pack' end)`;
+
+export const VENDOR_ORDER_SORT = defineSort(
+  {
+    date: vendorOrders.placedAt,
+    number: vendorOrders.orderNumber,
+    total: vendorOrderSaleSql,
+    net: vendorOrders.net,
+    status: vendorOrders.status,
+  },
+  { default: "-date", tieBreaker: vendorOrders.id },
+);
+
+export const PAYOUT_SORT = defineSort(
+  {
+    date: vendorPayouts.createdAt,
+    amount: vendorPayouts.amount,
+    status: vendorPayouts.status,
+    paid: vendorPayouts.paidAt,
+  },
+  { default: "-date", tieBreaker: vendorPayouts.id },
+);
+
+export const LEDGER_SORT = defineSort(
+  { date: vendorLedger.createdAt, amount: vendorLedger.amount, type: vendorLedger.type },
+  { default: "-date", tieBreaker: vendorLedger.id },
+);
+
+/** Review queue: oldest submission first by default (first in, first reviewed). */
+export const REVIEW_SORT = defineSort(
+  {
+    submitted: vendorProductReviews.submittedAt,
+    product: sql`lower(${vendorProductReviews.productName})`,
+    reviewed: vendorProductReviews.reviewedAt,
+    status: vendorProductReviews.status,
+  },
+  { default: "submitted", tieBreaker: vendorProductReviews.id },
+);
+
+const reviewKindSql = sql<ReviewKind>`(case when ${vendorProductReviews.changedAfterApproval} then 'changed' else 'new' end)`;
+
+/** Seller name of a row (scalar subquery) for search without joining in the count. */
+const vendorNameOf = (table: "vendor_payouts" | "vendor_orders" | "vendor_ledger") =>
+  sql`(select vn.name from ${vendors} vn where vn.id = ${sql.identifier(table)}.vendor_id)`;
+
+const inList = (expr: SQL, values: readonly string[] | undefined) =>
+  values?.length ? sql`${expr} in (${sql.join(values.map((v) => sql`${v}`), sql`, `)})` : undefined;
+
+const zeroCounts = <K extends string>(keys: readonly K[], facet: Record<string, number>) =>
+  Object.fromEntries(keys.map((k) => [k, facet[k] ?? 0])) as Record<K, number>;
 
 const toVendorOrder = (r: VendorOrderRow, vendorName?: string): VendorOrder => ({
   id: r.id,
@@ -630,23 +766,39 @@ export class MarketplaceService {
     return row;
   }
 
-  async listVendors(tenantId: string, query: VendorListQuery = {}): Promise<ListResult<Vendor> & { counts: Record<VendorStatus, number> }> {
-    const q = vendorListQuery.parse(query);
-    const base: SQL[] = [eq(vendors.tenantId, tenantId)];
-    if (q.q) {
-      const like = `%${q.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-      base.push(or(ilike(vendors.name, like), ilike(vendors.slug, like), ilike(vendors.contactPhone, like))!);
-    }
-    const where = q.status ? and(...base, eq(vendors.status, q.status)) : and(...base);
-    const [rows, [totalRow], countRows, s] = await Promise.all([
-      this.db.select().from(vendors).where(where).orderBy(desc(vendors.createdAt), asc(vendors.id)).limit(q.limit).offset(q.offset),
-      this.db.select({ n: count() }).from(vendors).where(where),
-      this.db.select({ status: vendors.status, n: count() }).from(vendors).where(and(...base)).groupBy(vendors.status),
-      this.settings(tenantId),
+  /** WHERE of the seller list; `omit` leaves one filter out (its facet counts). */
+  vendorConditions(tenantId: string, p: z.output<typeof vendorListQuery>, omit?: "status" | "kycStatus"): SQL | undefined {
+    return and(
+      eq(vendors.tenantId, tenantId),
+      omit !== "status" && p.status?.length ? inArray(vendors.status, p.status) : undefined,
+      omit !== "kycStatus" && p.kycStatus?.length ? inArray(vendors.kycStatus, p.kycStatus) : undefined,
+      searchAny(p.q, [vendors.name, vendors.slug, vendors.contactName, vendors.contactPhone, vendors.contactEmail, vendors.gstin]),
+    );
+  }
+
+  /**
+   * `GET /vendors`: sort `name | sales | commission | joined | status` (default `-joined`), filters `status`, `kycStatus`,
+   * `q` (name, slug, contact name/phone/email, GSTIN). Items carry `sales`; `facets.status` / `facets.kycStatus`;
+   * `counts` = the status facet with every status (older callers).
+   */
+  async listVendors(tenantId: string, query: VendorListQuery = {}): Promise<ListPage<VendorListItem> & { counts: Record<VendorStatus, number> }> {
+    const p = vendorListQuery.parse(query);
+    VENDOR_SORT.parse(p.sort); // 400 before any query
+    const s = await this.settings(tenantId);
+    const order = vendorSort(s.defaultCommissionBps).orderBy(p.sort);
+    const where = this.vendorConditions(tenantId, p);
+    const [page, byStatus, byKyc] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db.select({ v: vendors, sales: vendorSalesSql }).from(vendors).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(vendors).where(where),
+        map: (r): VendorListItem => ({ ...this.toVendor(r.v, s.defaultCommissionBps), sales: Number(r.sales ?? 0) }),
+      }),
+      this.db.select({ key: vendors.status, n: count() }).from(vendors).where(this.vendorConditions(tenantId, p, "status")).groupBy(vendors.status),
+      this.db.select({ key: vendors.kycStatus, n: count() }).from(vendors).where(this.vendorConditions(tenantId, p, "kycStatus")).groupBy(vendors.kycStatus),
     ]);
-    const counts = Object.fromEntries(VENDOR_STATUSES.map((st) => [st, 0])) as Record<VendorStatus, number>;
-    for (const c of countRows) counts[c.status] = Number(c.n);
-    return { items: rows.map((r) => this.toVendor(r, s.defaultCommissionBps)), total: Number(totalRow?.n ?? 0), counts };
+    const status = facetCounts(byStatus);
+    return { ...page, facets: { status, kycStatus: facetCounts(byKyc) }, counts: zeroCounts(VENDOR_STATUSES, status) };
   }
 
   async balance(tenantId: string, vendorId: string, db: DbOrTx = this.db): Promise<LedgerBalance> {
@@ -1056,29 +1208,55 @@ export class MarketplaceService {
       .onConflictDoNothing();
   }
 
-  async listVendorOrders(tenantId: string, query: VendorOrderListQuery = {}): Promise<ListResult<VendorOrder>> {
-    const q = vendorOrderListQuery.parse(query);
-    const conds: SQL[] = [eq(vendorOrders.tenantId, tenantId)];
-    if (q.vendorId) conds.push(eq(vendorOrders.vendorId, q.vendorId));
-    if (q.orderId) conds.push(eq(vendorOrders.orderId, q.orderId));
-    if (q.status) conds.push(eq(vendorOrders.status, q.status));
-    if (q.settlementStatus) conds.push(eq(vendorOrders.settlementStatus, q.settlementStatus));
-    const { start, end } = istRange(q.from, q.to);
-    if (start) conds.push(gte(vendorOrders.placedAt, start));
-    if (end) conds.push(lt(vendorOrders.placedAt, end));
-    const where = and(...conds);
-    const [rows, [t]] = await Promise.all([
+  /** WHERE of the vendor order list; `omit` leaves one filter out (its facet counts). */
+  vendorOrderConditions(tenantId: string, p: z.output<typeof vendorOrderListQuery>, omit?: "status" | "step"): SQL | undefined {
+    return and(
+      eq(vendorOrders.tenantId, tenantId),
+      p.vendorId?.length ? inArray(vendorOrders.vendorId, p.vendorId) : undefined,
+      p.orderId ? eq(vendorOrders.orderId, p.orderId) : undefined,
+      omit !== "status" && p.status?.length ? inArray(vendorOrders.status, p.status) : undefined,
+      p.settlementStatus?.length ? inArray(vendorOrders.settlementStatus, p.settlementStatus) : undefined,
+      omit !== "step" ? inList(vendorOrderStepSql, p.step) : undefined,
+      istBetween(vendorOrders.placedAt, p.from, p.to),
+      searchAny(p.q, [vendorOrders.orderNumber]),
+    );
+  }
+
+  /**
+   * Seller orders (staff: all or `vendorId=a,b`; the seller route pins their own). Sort `date | number | total | net |
+   * status` (default `-date`; total = subtotal − discount + shipping share), filters `status`, `settlementStatus`,
+   * `step`, `from`/`to` (placed, IST), `orderId`, `q` (order number). `facets.status`, `facets.step`.
+   */
+  async listVendorOrders(tenantId: string, query: VendorOrderListQuery = {}): Promise<ListPage<VendorOrder>> {
+    const p = vendorOrderListQuery.parse(query);
+    const order = VENDOR_ORDER_SORT.orderBy(p.sort);
+    const where = this.vendorOrderConditions(tenantId, p);
+    const [page, byStatus, byStep] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({ vo: vendorOrders, vendorName: vendors.name })
+            .from(vendorOrders)
+            .innerJoin(vendors, eq(vendors.id, vendorOrders.vendorId))
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(vendorOrders).where(where),
+        map: (r) => toVendorOrder(r.vo, r.vendorName),
+      }),
       this.db
-        .select({ vo: vendorOrders, vendorName: vendors.name })
+        .select({ key: vendorOrders.status, n: count() })
         .from(vendorOrders)
-        .innerJoin(vendors, eq(vendors.id, vendorOrders.vendorId))
-        .where(where)
-        .orderBy(desc(vendorOrders.placedAt), asc(vendorOrders.id))
-        .limit(q.limit)
-        .offset(q.offset),
-      this.db.select({ n: count() }).from(vendorOrders).where(where),
+        .where(this.vendorOrderConditions(tenantId, p, "status"))
+        .groupBy(vendorOrders.status),
+      this.db
+        .select({ key: vendorOrderStepSql, n: count() })
+        .from(vendorOrders)
+        .where(this.vendorOrderConditions(tenantId, p, "step"))
+        .groupBy(sql`1`),
     ]);
-    return { items: rows.map((r) => toVendorOrder(r.vo, r.vendorName)), total: Number(t?.n ?? 0) };
+    return { ...page, facets: { status: facetCounts(byStatus), step: facetCounts(byStep) } };
   }
 
   // ---------------------------------------------------------------- settlement
@@ -1428,53 +1606,101 @@ export class MarketplaceService {
     return n;
   }
 
-  async listPayouts(tenantId: string, query: PayoutListQuery = {}): Promise<ListResult<Payout>> {
-    const q = payoutListQuery.parse(query);
-    const conds: SQL[] = [eq(vendorPayouts.tenantId, tenantId)];
-    if (q.vendorId) conds.push(eq(vendorPayouts.vendorId, q.vendorId));
-    if (q.status) conds.push(eq(vendorPayouts.status, q.status));
-    const { start, end } = istRange(q.from, q.to);
-    if (start) conds.push(gte(vendorPayouts.createdAt, start));
-    if (end) conds.push(lt(vendorPayouts.createdAt, end));
-    const where = and(...conds);
-    const [rows, [t]] = await Promise.all([
+  /** WHERE of the payout list; `omitStatus` for the status facet. */
+  payoutConditions(tenantId: string, p: z.output<typeof payoutListQuery>, omitStatus = false): SQL | undefined {
+    return and(
+      eq(vendorPayouts.tenantId, tenantId),
+      p.vendorId?.length ? inArray(vendorPayouts.vendorId, p.vendorId) : undefined,
+      !omitStatus && p.status?.length ? inArray(vendorPayouts.status, p.status) : undefined,
+      istBetween(vendorPayouts.createdAt, p.from, p.to),
+      searchAny(p.q, [vendorPayouts.providerRef, vendorNameOf("vendor_payouts")]),
+    );
+  }
+
+  /**
+   * Payouts. Sort `date | amount | status | paid` (default `-date`; date = created), filters `status`, `vendorId=a,b`,
+   * `from`/`to` (created, IST), `q` (reference or seller name). `facets.status`.
+   */
+  async listPayouts(tenantId: string, query: PayoutListQuery = {}): Promise<ListPage<Payout>> {
+    const p = payoutListQuery.parse(query);
+    const order = PAYOUT_SORT.orderBy(p.sort);
+    const where = this.payoutConditions(tenantId, p);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({ p: vendorPayouts, vendorName: vendors.name })
+            .from(vendorPayouts)
+            .innerJoin(vendors, eq(vendors.id, vendorPayouts.vendorId))
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(vendorPayouts).where(where),
+        map: (r) => toPayout(r.p, r.vendorName),
+      }),
       this.db
-        .select({ p: vendorPayouts, vendorName: vendors.name })
+        .select({ key: vendorPayouts.status, n: count() })
         .from(vendorPayouts)
-        .innerJoin(vendors, eq(vendors.id, vendorPayouts.vendorId))
-        .where(where)
-        .orderBy(desc(vendorPayouts.createdAt), asc(vendorPayouts.id))
-        .limit(q.limit)
-        .offset(q.offset),
-      this.db.select({ n: count() }).from(vendorPayouts).where(where),
+        .where(this.payoutConditions(tenantId, p, true))
+        .groupBy(vendorPayouts.status),
     ]);
-    return { items: rows.map((r) => toPayout(r.p, r.vendorName)), total: Number(t?.n ?? 0) };
+    return { ...page, facets: { status: facetCounts(byStatus) } };
   }
 
   // ---------------------------------------------------------------- ledger
 
-  async listLedger(tenantId: string, query: LedgerListQuery = {}): Promise<ListResult<LedgerEntry> & { balance: LedgerBalance | null }> {
-    const q = ledgerListQuery.parse(query);
-    const conds: SQL[] = [eq(vendorLedger.tenantId, tenantId)];
-    if (q.vendorId) conds.push(eq(vendorLedger.vendorId, q.vendorId));
-    if (q.type) conds.push(eq(vendorLedger.type, q.type));
-    const { start, end } = istRange(q.from, q.to);
-    if (start) conds.push(gte(vendorLedger.createdAt, start));
-    if (end) conds.push(lt(vendorLedger.createdAt, end));
-    const where = and(...conds);
-    const [rows, [t], balance] = await Promise.all([
-      this.db
-        .select({ e: vendorLedger, vendorName: vendors.name })
-        .from(vendorLedger)
-        .innerJoin(vendors, eq(vendors.id, vendorLedger.vendorId))
-        .where(where)
-        .orderBy(desc(vendorLedger.createdAt), desc(vendorLedger.id))
-        .limit(q.limit)
-        .offset(q.offset),
-      this.db.select({ n: count() }).from(vendorLedger).where(where),
-      q.vendorId ? this.balance(tenantId, q.vendorId) : Promise.resolve(null),
+  /** WHERE of the ledger list; `omitType` for the type facet. */
+  ledgerConditions(tenantId: string, p: z.output<typeof ledgerListQuery>, omitType = false): SQL | undefined {
+    return and(
+      eq(vendorLedger.tenantId, tenantId),
+      p.vendorId ? eq(vendorLedger.vendorId, p.vendorId) : undefined,
+      !omitType && p.type?.length ? inArray(vendorLedger.type, p.type) : undefined,
+      istBetween(vendorLedger.createdAt, p.from, p.to),
+      searchAny(p.q, [vendorLedger.note]),
+    );
+  }
+
+  /**
+   * Ledger entries. Sort `date | amount | type` (default `-date`), filters `type`, `from`/`to` (IST), `q` (note),
+   * `vendorId` (one seller: `balance` and each entry's running `balanceAfter` over all their entries, whatever the
+   * filters). `facets.type`.
+   */
+  async listLedger(tenantId: string, query: LedgerListQuery = {}): Promise<ListPage<LedgerEntry> & { balance: LedgerBalance | null }> {
+    const p = ledgerListQuery.parse(query);
+    const order = LEDGER_SORT.orderBy(p.sort);
+    const where = this.ledgerConditions(tenantId, p);
+    // Running balance per entry of one seller, in date order (empty without a seller).
+    const running = this.db
+      .select({
+        id: vendorLedger.id,
+        after: sql<string>`sum(${vendorLedger.amount}) over (order by ${vendorLedger.createdAt}, ${vendorLedger.id})`.as("balance_after"),
+      })
+      .from(vendorLedger)
+      .where(p.vendorId ? and(eq(vendorLedger.tenantId, tenantId), eq(vendorLedger.vendorId, p.vendorId)) : sql`false`)
+      .as("ledger_running");
+    const [page, byType, balance] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({ e: vendorLedger, vendorName: vendors.name, after: running.after })
+            .from(vendorLedger)
+            .innerJoin(vendors, eq(vendors.id, vendorLedger.vendorId))
+            .leftJoin(running, eq(running.id, vendorLedger.id))
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(vendorLedger).where(where),
+        map: (r) => ({
+          ...toLedgerEntry(r.e, r.vendorName),
+          ...(r.after !== null && r.after !== undefined ? { balanceAfter: Number(r.after) } : {}),
+        }),
+      }),
+      this.db.select({ key: vendorLedger.type, n: count() }).from(vendorLedger).where(this.ledgerConditions(tenantId, p, true)).groupBy(vendorLedger.type),
+      p.vendorId ? this.balance(tenantId, p.vendorId) : Promise.resolve(null),
     ]);
-    return { items: rows.map((r) => toLedgerEntry(r.e, r.vendorName)), total: Number(t?.n ?? 0), balance };
+    return { ...page, facets: { type: facetCounts(byType) }, balance };
   }
 
   /** Manual credit (+) or debit (−) on a seller's ledger, e.g. a penalty or a goodwill credit. */
@@ -1537,35 +1763,59 @@ export class MarketplaceService {
     return row;
   }
 
-  /** Review queue (staff) or a seller's own reviews (`vendorId`). Waiting ones oldest first, others newest first. */
+  /** WHERE of the review list; `omit` leaves one filter out (its facet counts). */
+  reviewConditions(tenantId: string, p: z.output<typeof reviewListQuery>, omit?: "status" | "kind"): SQL | undefined {
+    const kinds = omit !== "kind" && p.kind?.length && p.kind.length < REVIEW_KINDS.length ? p.kind : undefined;
+    return and(
+      eq(vendorProductReviews.tenantId, tenantId),
+      p.vendorId?.length ? inArray(vendorProductReviews.vendorId, p.vendorId) : undefined,
+      p.productIds?.length ? inArray(vendorProductReviews.productId, p.productIds) : undefined,
+      omit !== "status" && p.status?.length ? inArray(vendorProductReviews.status, p.status) : undefined,
+      kinds ? eq(vendorProductReviews.changedAfterApproval, kinds[0] === "changed") : undefined,
+      searchAny(p.q, [vendorProductReviews.productName]),
+    );
+  }
+
+  /**
+   * Review queue (staff) or a seller's own reviews (`vendorId`). Sort `submitted | product | reviewed | status`
+   * (default `submitted`: oldest first), filters `status`, `kind` (new = first review, changed = re-review of a live
+   * product), `vendorId=a,b`, `productIds`, `q` (product name). `facets.status` / `facets.kind`; `counts` = the
+   * status facet with every status.
+   */
   async listProductReviews(
     tenantId: string,
     query: ReviewListQuery = {},
-  ): Promise<ListResult<ProductReview> & { counts: Record<ProductReviewStatus, number> }> {
-    const q = reviewListQuery.parse(query);
-    const base: SQL[] = [eq(vendorProductReviews.tenantId, tenantId)];
-    if (q.vendorId) base.push(eq(vendorProductReviews.vendorId, q.vendorId));
-    if (q.productIds?.length) base.push(inArray(vendorProductReviews.productId, q.productIds));
-    const where = q.status ? and(...base, eq(vendorProductReviews.status, q.status)) : and(...base);
-    const [rows, [t], countRows] = await Promise.all([
+  ): Promise<ListPage<ProductReview> & { counts: Record<ProductReviewStatus, number> }> {
+    const p = reviewListQuery.parse(query);
+    const order = REVIEW_SORT.orderBy(p.sort);
+    const where = this.reviewConditions(tenantId, p);
+    const [page, byStatus, byKind] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({ r: vendorProductReviews, vendorName: vendors.name })
+            .from(vendorProductReviews)
+            .innerJoin(vendors, eq(vendors.id, vendorProductReviews.vendorId))
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(vendorProductReviews).where(where),
+        map: (r) => toReview(r.r, r.vendorName),
+      }),
       this.db
-        .select({ r: vendorProductReviews, vendorName: vendors.name })
+        .select({ key: vendorProductReviews.status, n: count() })
         .from(vendorProductReviews)
-        .innerJoin(vendors, eq(vendors.id, vendorProductReviews.vendorId))
-        .where(where)
-        .orderBy(q.status === "pending" ? asc(vendorProductReviews.submittedAt) : desc(vendorProductReviews.submittedAt), asc(vendorProductReviews.id))
-        .limit(q.limit)
-        .offset(q.offset),
-      this.db.select({ n: count() }).from(vendorProductReviews).where(where),
-      this.db
-        .select({ status: vendorProductReviews.status, n: count() })
-        .from(vendorProductReviews)
-        .where(and(...base))
+        .where(this.reviewConditions(tenantId, p, "status"))
         .groupBy(vendorProductReviews.status),
+      this.db
+        .select({ key: reviewKindSql, n: count() })
+        .from(vendorProductReviews)
+        .where(this.reviewConditions(tenantId, p, "kind"))
+        .groupBy(sql`1`),
     ]);
-    const counts = Object.fromEntries(PRODUCT_REVIEW_STATUSES.map((st) => [st, 0])) as Record<ProductReviewStatus, number>;
-    for (const c of countRows) counts[c.status] = Number(c.n);
-    return { items: rows.map((r) => toReview(r.r, r.vendorName)), total: Number(t?.n ?? 0), counts };
+    const status = facetCounts(byStatus);
+    return { ...page, facets: { status, kind: facetCounts(byKind) }, counts: zeroCounts(PRODUCT_REVIEW_STATUSES, status) };
   }
 
   /** Approve a waiting product: the catalogue makes it active (live in the store) and the seller is told. */

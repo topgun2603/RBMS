@@ -83,6 +83,11 @@ export interface ProductSummary {
   /** Marketplace seller owning the product; null = the shop's own product. */
   vendorId: string | null;
   updatedAt: Date;
+  /**
+   * Staff list with stock on (stock port + inventory feature): units on hand over tracked variants and the worst
+   * variant status; null = no tracked variant. Absent when stock is off.
+   */
+  stock?: { qty: number; status: "ok" | "low" | "out" } | null;
 }
 
 /**
@@ -148,6 +153,8 @@ export interface CatalogItem {
   image: string | null;
   /** When the variant was created (billing's Item.createdAt). */
   createdAt: Date;
+  /** The product's category (null = none). */
+  categoryId?: string | null;
 }
 
 /** Staff lookups (`GET /variants*`): the item plus the variant and product details pickers need. */

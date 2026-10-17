@@ -1,5 +1,7 @@
+import { facetCounts } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql, type SQL } from "drizzle-orm";
+import { REVIEW_SORT, reviewConditions, type ReviewPageQuery } from "./list";
 import {
   kycChecks,
   kycDocuments,
@@ -15,6 +17,12 @@ export type NewCheck = Omit<typeof kycChecks.$inferInsert, "id" | "createdAt" | 
 export type CheckPatch = Partial<Omit<KycCheckRow, "id" | "tenantId" | "subjectId" | "createdAt">>;
 export type SubjectPatch = Pick<KycSubjectRow, "status" | "verifiedName" | "badges">;
 export type NewDocument = Omit<typeof kycDocuments.$inferInsert, "id" | "createdAt">;
+
+export interface ReviewPage {
+  items: { check: KycCheckRow; subject: KycSubjectRow }[];
+  total: number;
+  facets: { status: Record<string, number>; type: Record<string, number> };
+}
 
 /**
  * Persistence used by the service. Every tenant-scoped read takes `tenantId`; only the super-admin review queue reads
@@ -34,8 +42,11 @@ export interface KycStore {
   /** Newest first. */
   listChecks(tenantId: string, subjectRowId: string): Promise<KycCheckRow[]>;
   countChecksSince(tenantId: string, subjectRowId: string, type: CheckType, since: Date): Promise<number>;
-  /** Checks in `manual_review`, oldest first. `tenantId` null = all tenants. */
-  listReview(q: { tenantId: string | null; limit: number; offset: number }): Promise<{ items: { check: KycCheckRow; subject: KycSubjectRow }[]; total: number }>;
+  /**
+   * Super-admin review list across tenants (`tenantId` null = all): filtered, sorted and paged (./list.ts), with the
+   * per-status and per-type counts under the other filters.
+   */
+  listReview(q: ReviewPageQuery): Promise<ReviewPage>;
 
   insertDocument(values: NewDocument): Promise<KycDocumentRow>;
   listDocuments(tenantId: string, subjectRowId: string): Promise<KycDocumentRow[]>;
@@ -118,20 +129,32 @@ export class DrizzleKycStore implements KycStore {
     return Number(row?.n ?? 0);
   }
 
-  async listReview(q: { tenantId: string | null; limit: number; offset: number }) {
-    const where = q.tenantId
-      ? and(eq(kycChecks.status, "manual_review"), eq(kycChecks.tenantId, q.tenantId))
-      : eq(kycChecks.status, "manual_review");
-    const rows = await this.db
-      .select({ check: kycChecks, subject: kycSubjects })
-      .from(kycChecks)
-      .innerJoin(kycSubjects, eq(kycSubjects.id, kycChecks.subjectId))
-      .where(where)
-      .orderBy(kycChecks.createdAt)
-      .limit(q.limit)
-      .offset(q.offset);
-    const [t] = await this.db.select({ n: sql<number>`count(*)::int` }).from(kycChecks).where(where);
-    return { items: rows, total: Number(t?.n ?? 0) };
+  async listReview(q: ReviewPageQuery): Promise<ReviewPage> {
+    const where = reviewConditions(q);
+    // The search reads the subject's verified name; without it the counts need no join.
+    const counted = (w: SQL | undefined) => {
+      const base = this.db.select({ n: sql<number>`count(*)::int` }).from(kycChecks);
+      return q.q ? base.innerJoin(kycSubjects, eq(kycSubjects.id, kycChecks.subjectId)).where(w) : base.where(w);
+    };
+    const facet = (col: typeof kycChecks.status | typeof kycChecks.type, omit: "status" | "type") => {
+      const base = this.db.select({ key: col, n: sql<number>`count(*)::int` }).from(kycChecks);
+      const w = reviewConditions(q, omit);
+      return (q.q ? base.innerJoin(kycSubjects, eq(kycSubjects.id, kycChecks.subjectId)).where(w) : base.where(w)).groupBy(col);
+    };
+    const [rows, [t], byStatus, byType] = await Promise.all([
+      this.db
+        .select({ check: kycChecks, subject: kycSubjects })
+        .from(kycChecks)
+        .innerJoin(kycSubjects, eq(kycSubjects.id, kycChecks.subjectId))
+        .where(where)
+        .orderBy(...REVIEW_SORT.orderBy(q.sort))
+        .limit(q.limit)
+        .offset(q.offset),
+      counted(where),
+      facet(kycChecks.status, "status"),
+      facet(kycChecks.type, "type"),
+    ]);
+    return { items: rows, total: Number(t?.n ?? 0), facets: { status: facetCounts(byStatus), type: facetCounts(byType) } };
   }
 
   async insertDocument(values: NewDocument) {
@@ -231,12 +254,41 @@ export class MemoryKycStore implements KycStore {
   async countChecksSince(tenantId: string, subjectRowId: string, type: CheckType, since: Date) {
     return this.checks.filter((c) => c.tenantId === tenantId && c.subjectId === subjectRowId && c.type === type && c.createdAt >= since).length;
   }
-  async listReview(q: { tenantId: string | null; limit: number; offset: number }) {
+  async listReview(q: ReviewPageQuery): Promise<ReviewPage> {
+    const needle = q.q?.trim().toLowerCase();
+    const subjectOf = (c: KycCheckRow) => this.subjects.find((s) => s.id === c.subjectId)!;
+    const matches = (c: KycCheckRow, omit?: "status" | "type") => {
+      if (q.tenantId != null && c.tenantId !== q.tenantId) return false;
+      if (omit !== "status" && q.statuses && !q.statuses.includes(c.status)) return false;
+      if (omit !== "type" && q.types?.length && !q.types.includes(c.type)) return false;
+      if (needle) {
+        const name = c.inputMasked.name;
+        const texts = [c.nameOnRecord, typeof name === "string" ? name : null, subjectOf(c)?.verifiedName];
+        if (!texts.some((x) => x?.toLowerCase().includes(needle))) return false;
+      }
+      return true;
+    };
+    const dir = q.sort.desc ? -1 : 1;
+    const value = (c: KycCheckRow) => (q.sort.key === "match" ? c.nameMatchScore : c.createdAt.getTime());
     const all = this.checks
-      .filter((c) => c.status === "manual_review" && (q.tenantId == null || c.tenantId === q.tenantId))
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    const items = all.slice(q.offset, q.offset + q.limit).map((check) => ({ check, subject: this.subjects.find((s) => s.id === check.subjectId)! }));
-    return { items, total: all.length };
+      .filter((c) => matches(c))
+      .sort((a, b) => {
+        const va = value(a);
+        const vb = value(b);
+        if (va !== vb) {
+          if (va === null) return 1; // nulls last either way
+          if (vb === null) return -1;
+          return (va - vb) * dir;
+        }
+        return a.id.localeCompare(b.id) * dir;
+      });
+    const counts = (key: "status" | "type") => {
+      const out: Record<string, number> = {};
+      for (const c of this.checks) if (matches(c, key)) out[c[key]] = (out[c[key]] ?? 0) + 1;
+      return out;
+    };
+    const items = all.slice(q.offset, q.offset + q.limit).map((check) => ({ check, subject: subjectOf(check) }));
+    return { items, total: all.length, facets: { status: counts("status"), type: counts("type") } };
   }
   async insertDocument(values: NewDocument) {
     const row: KycDocumentRow = { id: crypto.randomUUID(), uploadedBy: null, ...values, createdAt: this.now() } as KycDocumentRow;

@@ -1,25 +1,48 @@
 "use client";
 
 import * as React from "react";
-import { DownloadIcon, LandmarkIcon, WalletIcon } from "lucide-react";
-import { AnimatedNumber, Button, ChipGroup, cn, EmptyState, StatCard, Stagger, StaggerItem, Tabs, TabsContent, TabsList, TabsTrigger, toast } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+import { DownloadIcon, LandmarkIcon, ReceiptTextIcon, WalletIcon } from "lucide-react";
+import {
+  AnimatedNumber,
+  Button,
+  ChipGroup,
+  DataTable,
+  DataTableToolbar,
+  EmptyState,
+  StatCard,
+  Stagger,
+  StaggerItem,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  toast,
+} from "@srirealtime/ui";
+import { api, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
 import { AccountPill } from "../components/bits";
-import { LedgerList, PayoutsList, Pager, RowsSkeleton } from "../components/lists";
-import { accountText, bpsToPercent, ledgerTotals, money, signedMoney, withRunningBalance } from "../lib/logic";
+import { useLedgerColumns, usePayoutColumns } from "../components/table-columns";
+import { accountText, bpsToPercent, ledgerTotals, money, signedMoney } from "../lib/logic";
 import { MP } from "../lib/queries";
-import { useMyLedger, useMyPayouts, useVendor, vendorDownload } from "../lib/vendor";
-import { LEDGER_TYPES, type LedgerType } from "../lib/types";
-
-const PAGE = 25;
-type TypeFilter = "all" | LedgerType;
+import { useVendor, vendorDownload, vendorOpts } from "../lib/vendor";
+import { LEDGER_TYPES, PAYOUT_STATUSES, type LedgerEntry, type LedgerResponse, type ListResult, type Payout } from "../lib/types";
 
 /** Money: balance, the ledger with a running balance, and payouts. */
 export default function MyPayoutsPage() {
+  // The tables read the search params, which needs a Suspense boundary.
+  return (
+    <React.Suspense fallback={null}>
+      <Money />
+    </React.Suspense>
+  );
+}
+
+function Money() {
   const { t } = useI18n();
   const { self } = useVendor();
   const payoutsOn = useFeature("marketplace.payouts");
-  const [tab, setTab] = React.useState("ledger");
+  const params = useQueryParams();
+  // A shared link to the payouts table (po.* params) opens that tab.
+  const [tab, setTab] = React.useState(() => ([...(params?.keys() ?? [])].some((k) => k.startsWith("po.")) ? "payouts" : "ledger"));
   if (!self) return null;
   const b = self.balance;
   return (
@@ -55,7 +78,7 @@ export default function MyPayoutsPage() {
           <TabsTrigger value="payouts">{t("marketplace.vendor.tab.payouts")}</TabsTrigger>
         </TabsList>
         <TabsContent value="ledger">
-          <Ledger balance={b.balance} />
+          <Ledger />
         </TabsContent>
         <TabsContent value="payouts">
           {payoutsOn ? <Payouts /> : <EmptyState icon={LandmarkIcon} title={t("marketplace.payouts.offTitle")} description={t("marketplace.payouts.offBodyVendor")} />}
@@ -65,71 +88,110 @@ export default function MyPayoutsPage() {
   );
 }
 
-function Ledger({ balance }: { balance: number }) {
+function Ledger() {
   const { t } = useI18n();
   const { vendorId } = useVendor();
-  const [type, setType] = React.useState<TypeFilter>("all");
-  const [offset, setOffset] = React.useState(0);
-  React.useEffect(() => setOffset(0), [type]);
-  const q = useMyLedger({ type: type === "all" ? undefined : type, limit: PAGE, offset });
-  // Running balance only makes sense for the unfiltered list; paging continues from the entries above.
-  const before = useMyLedger({ limit: offset || 1, offset: 0 });
-  const running = type === "all";
-  const start = balance - (offset > 0 ? (before.data?.items.reduce((s, e) => s + e.amount, 0) ?? 0) : 0);
-  const rows = q.data ? (running ? withRunningBalance(q.data.items, start) : q.data.items.map((e) => ({ ...e, balanceAfter: null }))) : [];
-  const totals = ledgerTotals(q.data?.items ?? []);
+  const filters = React.useMemo(
+    () =>
+      ({
+        type: { kind: "options", label: t("marketplace.ledger.filterType"), options: LEDGER_TYPES.map((x) => ({ value: x, label: t(`marketplace.ledger.type.${x}`) })) },
+        date: { kind: "dateRange", label: t("marketplace.ledger.filterDate") },
+      }) satisfies ServerFilterDefs,
+    [t],
+  );
+  // The API sends each entry's running balance (`balanceAfter`), whatever the filters and sort.
+  const columns = useLedgerColumns();
+  const st = useServerTable<LedgerEntry, typeof filters>({
+    queryKey: ["marketplace", "self", vendorId, "ledger", "table"],
+    path: `${MP}/vendor/ledger`,
+    fetcher: (params, signal) => api.get<LedgerResponse>(`${MP}/vendor/ledger`, params, vendorOpts(vendorId, { signal })),
+    columns,
+    filters,
+    defaultSort: "-date",
+    search: t("marketplace.ledger.search"),
+    storageKey: "marketplace-seller-ledger",
+  });
+  const type = st.filters.type;
+  const counts = st.facets?.type;
+  const all = counts ? Object.values(counts).reduce((n, c) => n + c, 0) : undefined;
+  const pill = type.value.length === 0 ? "all" : type.value.length === 1 ? type.value[0]! : "";
+  const items = st.query.data?.items ?? [];
+  const totals = ledgerTotals(items);
+  const filtered = st.table.activeFilterCount > 0;
+
+  const download = () => {
+    const { limit: _l, offset: _o, ...q } = st.apiParams;
+    void vendorDownload(vendorId, `${MP}/vendor/ledger`, { ...q, format: "csv" }, "seller-ledger.csv").catch((e) => toast.error(describeError(e, t)));
+  };
+
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none]">
-          <ChipGroup<TypeFilter>
-            value={type}
-            onChange={setType}
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            value={pill}
+            onChange={(v) => type.set(v === "all" || v === "" ? [] : [v])}
             size="sm"
             aria-label={t("marketplace.ledger.filter")}
-            options={[{ value: "all", label: t("marketplace.vendors.tabAll") }, ...LEDGER_TYPES.map((x) => ({ value: x, label: t(`marketplace.ledger.type.${x}`) }))]}
+            options={[
+              { value: "all", label: t("marketplace.vendors.tabAll"), meta: all || undefined },
+              ...LEDGER_TYPES.map((x) => ({ value: x as string, label: t(`marketplace.ledger.type.${x}`), meta: counts ? counts[x] || undefined : undefined })),
+            ]}
           />
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            void vendorDownload(vendorId, `${MP}/vendor/ledger`, { format: "csv", ...(type !== "all" ? { type } : {}) }, "seller-ledger.csv").catch((e) => toast.error(describeError(e, t)))
-          }
-        >
-          <DownloadIcon /> {t("marketplace.common.exportCsv")}
+        }
+      >
+        <Button variant="outline" onClick={download}>
+          <DownloadIcon /> <span className="hidden sm:inline">{t("marketplace.common.exportCsv")}</span>
         </Button>
-      </div>
-      {q.isError ? (
-        <QueryError error={q.error} onRetry={() => void q.refetch()} />
-      ) : q.isPending || (running && offset > 0 && before.isPending) ? (
-        <RowsSkeleton />
-      ) : (
-        <div className={cn("grid gap-2 transition-opacity", q.isPlaceholderData && "opacity-60")}>
-          <LedgerList rows={rows} showBalance={running} />
-          {q.data.items.length > 0 && (
-            <p className="text-right text-meta text-muted-foreground tabular-nums">
-              {t("marketplace.ledger.pageTotals", { credit: money(totals.credit), debit: money(totals.debit), net: signedMoney(totals.net) })}
-            </p>
-          )}
-          <Pager offset={offset} limit={PAGE} total={q.data.total} onChange={setOffset} />
-        </div>
+      </DataTableToolbar>
+      <DataTable
+        table={st.table}
+        empty={filtered ? undefined : <EmptyState className="border-0 bg-transparent" icon={ReceiptTextIcon} title={t("marketplace.ledger.emptyTitle")} description={t("marketplace.ledger.emptyBody")} />}
+      />
+      {items.length > 0 && (
+        <p className="text-right text-meta text-muted-foreground tabular-nums">
+          {t("marketplace.ledger.pageTotals", { credit: money(totals.credit), debit: money(totals.debit), net: signedMoney(totals.net) })}
+        </p>
       )}
     </div>
   );
 }
 
 function Payouts() {
-  const [offset, setOffset] = React.useState(0);
-  const q = useMyPayouts({ limit: PAGE, offset });
-  return q.isError ? (
-    <QueryError error={q.error} onRetry={() => void q.refetch()} />
-  ) : q.isPending ? (
-    <RowsSkeleton />
-  ) : (
-    <>
-      <PayoutsList items={q.data.items} />
-      <Pager offset={offset} limit={PAGE} total={q.data.total} onChange={setOffset} />
-    </>
+  const { t } = useI18n();
+  const { vendorId } = useVendor();
+  const filters = React.useMemo(
+    () =>
+      ({
+        status: {
+          kind: "options",
+          label: t("marketplace.payouts.filterStatus"),
+          options: PAYOUT_STATUSES.map((s) => ({ value: s, label: t(`marketplace.payout.status.${s}`) })),
+        },
+        date: { kind: "dateRange", label: t("marketplace.payouts.filterDate") },
+      }) satisfies ServerFilterDefs,
+    [t],
+  );
+  const columns = usePayoutColumns();
+  const st = useServerTable<Payout, typeof filters>({
+    queryKey: ["marketplace", "self", vendorId, "payouts", "table"],
+    path: `${MP}/vendor/payouts`,
+    fetcher: (params, signal) => api.get<ListResult<Payout>>(`${MP}/vendor/payouts`, params, vendorOpts(vendorId, { signal })),
+    columns,
+    filters,
+    defaultSort: "-date",
+    urlPrefix: "po",
+    storageKey: "marketplace-seller-payouts",
+  });
+  const filtered = st.table.activeFilterCount > 0;
+  return (
+    <div className="grid gap-3">
+      <DataTableToolbar table={st.table} />
+      <DataTable
+        table={st.table}
+        empty={filtered ? undefined : <EmptyState className="border-0 bg-transparent" icon={WalletIcon} title={t("marketplace.payouts.emptyTitle")} description={t("marketplace.payouts.emptyBody")} />}
+      />
+    </div>
   );
 }

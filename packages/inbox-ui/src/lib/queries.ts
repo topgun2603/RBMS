@@ -24,7 +24,6 @@ import type {
   RecipientStatus,
   StaffMember,
   Ticket,
-  TicketFilters,
   TicketList,
   TicketMessage,
   TicketPriority,
@@ -59,15 +58,19 @@ export const qk = {
   waTags: ["inbox", "wa", "tags"] as const,
   waTemplates: ["inbox", "wa", "templates"] as const,
   campaigns: ["inbox", "wa", "campaigns"] as const,
+  /** The campaigns table (prefix of every page/filter of it). */
+  campaignTable: ["inbox", "wa", "campaigns", "list"] as const,
   campaign: (id: string) => ["inbox", "wa", "campaigns", "detail", id] as const,
   recipients: (id: string, status: string) => ["inbox", "wa", "campaigns", "recipients", id, status] as const,
   audienceSources: ["inbox", "wa", "audience-sources"] as const,
   tickets: ["inbox", "support", "tickets"] as const,
-  ticketList: (f: object) => ["inbox", "support", "tickets", "list", f] as const,
+  /** The desk table (useServerTable appends the request params); ticket mutations invalidate `[...tickets, "list"]`. */
+  ticketTable: ["inbox", "support", "tickets", "list", "table"] as const,
   ticketSummary: ["inbox", "support", "tickets", "summary"] as const,
   ticket: (id: string) => ["inbox", "support", "tickets", "detail", id] as const,
   faqCategories: ["inbox", "support", "faq", "categories"] as const,
-  faqArticles: (f: object) => ["inbox", "support", "faq", "articles", f] as const,
+  /** The FAQ manager table; article mutations invalidate `[...faq, "articles"]`. */
+  faqArticleTable: ["inbox", "support", "faq", "articles", "table"] as const,
   faqArticle: (id: string) => ["inbox", "support", "faq", "article", id] as const,
   faq: ["inbox", "support", "faq"] as const,
   staff: ["inbox", "staff"] as const,
@@ -425,16 +428,6 @@ export function useSyncTemplates() {
 
 // ================================================================ campaigns
 
-export function useCampaigns(refetchInterval: number | false) {
-  return useInfiniteQuery({
-    queryKey: qk.campaigns,
-    ...offsetPaging<Campaign>(PAGE),
-    queryFn: ({ pageParam, signal }) => api.get<Paged<Campaign>>("/whatsapp/campaigns", { limit: PAGE, offset: pageParam }, { signal }),
-    refetchInterval,
-    retry,
-  });
-}
-
 export function useCampaign(id: string, refetchInterval: number | false | ((c: Campaign | undefined) => number | false)) {
   return useQuery({
     queryKey: qk.campaign(id),
@@ -511,20 +504,6 @@ export function useCampaignAction(id: string) {
 }
 
 // ================================================================ support
-
-export const TICKETS_PAGE = 50;
-
-export function useTickets(filters: TicketFilters) {
-  const f = clean({ ...filters, overdue: filters.overdue ? "true" : undefined });
-  return useInfiniteQuery({
-    queryKey: qk.ticketList(f),
-    ...offsetPaging<Ticket>(TICKETS_PAGE),
-    queryFn: ({ pageParam, signal }) => api.get<TicketList>("/support/tickets", { ...f, limit: TICKETS_PAGE, offset: pageParam }, { signal }),
-    placeholderData: keepPreviousData,
-    refetchInterval: 60_000,
-    retry,
-  });
-}
 
 /** Open (waiting on the shop) and overdue counts for widgets and the overview. */
 export function useTicketSummary(enabled = true) {
@@ -609,16 +588,6 @@ export function useFaqCategories() {
   return useQuery({
     queryKey: qk.faqCategories,
     queryFn: ({ signal }) => api.get<{ items: FaqCategory[] }>("/support/faq/categories", undefined, { signal }).then((r) => r.items),
-    retry,
-  });
-}
-
-export function useFaqArticles(f: { q?: string; status?: string; categoryId?: string }) {
-  const filters = clean(f);
-  return useQuery({
-    queryKey: qk.faqArticles(filters),
-    queryFn: ({ signal }) => api.get<Paged<FaqArticle>>("/support/faq/articles", filters, { signal }),
-    placeholderData: keepPreviousData,
     retry,
   });
 }

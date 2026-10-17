@@ -298,7 +298,12 @@ export interface TicketMessage {
   createdAt: ISODate;
 }
 
+/** `GET /support/tickets`: the standard list page plus per-status counts and the past-due count (other filters applied). */
 export interface TicketList extends Paged<Ticket> {
+  limit?: number;
+  offset?: number;
+  /** `status` and `priority` value counts under the other filters. */
+  facets?: Record<string, Record<string, number>>;
   counts: Record<TicketStatus, number>;
   overdue: number;
 }
@@ -306,16 +311,6 @@ export interface TicketList extends Paged<Ticket> {
 export interface TicketThread {
   ticket: Ticket;
   messages: TicketMessage[];
-}
-
-export interface TicketFilters {
-  status?: TicketStatus | "";
-  priority?: TicketPriority | "";
-  assignee?: "me" | "none" | string;
-  tag?: string;
-  overdue?: boolean;
-  q?: string;
-  sort?: "recent" | "oldest" | "due";
 }
 
 export interface FaqCategory {
@@ -341,6 +336,9 @@ export interface FaqArticle {
   createdAt: ISODate;
   updatedAt: ISODate;
 }
+
+/** A row of the staff article list (`GET /support/faq/articles`): no body or SEO fields. */
+export type FaqArticleListItem = Omit<FaqArticle, "body" | "seo">;
 
 // ------------------------------------------------------------------ others
 

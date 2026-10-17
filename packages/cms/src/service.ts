@@ -1,4 +1,4 @@
-import { badRequest, conflict, notFound, type FeatureGatePort } from "@srirealtime/core";
+import { badRequest, conflict, facetCounts, notFound, runList, type FeatureGatePort, type ListPage } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { and, arrayContains, count, desc, eq, ilike, inArray, ne, or, type SQL } from "drizzle-orm";
 import {
@@ -10,7 +10,6 @@ import {
   postInputSchema,
   postPatchSchema,
   publicPostsQuerySchema,
-  staffListQuerySchema,
   type Block,
   type ContentStatus,
   type HomeDoc,
@@ -31,6 +30,7 @@ import { publicHome, resolveMenu, resolveSections, type PublicHome, type Resolve
 import { cmsHome, cmsMenus, cmsPages, cmsPosts, type CmsPageRow, type CmsPostRow } from "./schema";
 import { buildRobotsTxt, buildSitemap, SITEMAP_MAX_URLS } from "./seo/sitemap";
 import { CMS_FEATURE_KEYS } from "./features";
+import { contentListQuerySchema, PAGE_SORT, pageListConditions, POST_SORT, postListConditions } from "./list";
 import { slugify, slugProblem, uniqueSlug } from "./slug";
 
 export interface CmsDeps {
@@ -251,17 +251,36 @@ export class CmsService {
 
   // ---------------------------------------------------------------- pages
 
-  async listPages(tenantId: string, query: unknown = {}): Promise<ListResult<CmsPageSummary>> {
-    const q = staffListQuerySchema.parse(query);
-    const conds: SQL[] = [eq(cmsPages.tenantId, tenantId)];
-    if (q.status) conds.push(eq(cmsPages.status, q.status));
-    if (q.q) conds.push(or(ilike(cmsPages.title, `%${q.q}%`), ilike(cmsPages.slug, `%${q.q}%`))!);
-    const where = and(...conds);
-    const [rows, [total]] = await Promise.all([
-      this.db.select().from(cmsPages).where(where).orderBy(desc(cmsPages.updatedAt)).limit(q.limit).offset(q.offset),
-      this.db.select({ n: count() }).from(cmsPages).where(where),
+  /** Staff pages list: paged, sorted (PAGE_SORT), filtered; `facets.status` = pages per status under the other filters. */
+  async listPages(tenantId: string, query: unknown = {}): Promise<ListPage<CmsPageSummary>> {
+    const p = contentListQuerySchema.parse(query);
+    const order = PAGE_SORT.orderBy(p.sort);
+    const where = pageListConditions(tenantId, p);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({
+              id: cmsPages.id,
+              slug: cmsPages.slug,
+              title: cmsPages.title,
+              status: cmsPages.status,
+              seo: cmsPages.seo,
+              publishedAt: cmsPages.publishedAt,
+              createdAt: cmsPages.createdAt,
+              updatedAt: cmsPages.updatedAt,
+            })
+            .from(cmsPages)
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(cmsPages).where(where),
+        map: (r): CmsPageSummary => ({ ...r, seo: r.seo ?? null }),
+      }),
+      this.db.select({ key: cmsPages.status, n: count() }).from(cmsPages).where(pageListConditions(tenantId, p, false)).groupBy(cmsPages.status),
     ]);
-    return { items: rows.map((r) => withoutBlocks(toPage(r))), total: total?.n ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus) } };
   }
 
   async getPage(tenantId: string, id: string): Promise<CmsPage> {
@@ -332,18 +351,40 @@ export class CmsService {
 
   // ---------------------------------------------------------------- posts
 
-  async listPosts(tenantId: string, query: unknown = {}): Promise<ListResult<CmsPostSummary>> {
-    const q = staffListQuerySchema.parse(query);
-    const conds: SQL[] = [eq(cmsPosts.tenantId, tenantId)];
-    if (q.status) conds.push(eq(cmsPosts.status, q.status));
-    if (q.tag) conds.push(arrayContains(cmsPosts.tags, [q.tag]));
-    if (q.q) conds.push(or(ilike(cmsPosts.title, `%${q.q}%`), ilike(cmsPosts.slug, `%${q.q}%`))!);
-    const where = and(...conds);
-    const [rows, [total]] = await Promise.all([
-      this.db.select().from(cmsPosts).where(where).orderBy(desc(cmsPosts.updatedAt)).limit(q.limit).offset(q.offset),
-      this.db.select({ n: count() }).from(cmsPosts).where(where),
+  /** Staff blog list: paged, sorted (POST_SORT), filtered; `facets.status` = posts per status under the other filters. */
+  async listPosts(tenantId: string, query: unknown = {}): Promise<ListPage<CmsPostSummary>> {
+    const p = contentListQuerySchema.parse(query);
+    const order = POST_SORT.orderBy(p.sort);
+    const where = postListConditions(tenantId, p);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({
+              id: cmsPosts.id,
+              slug: cmsPosts.slug,
+              title: cmsPosts.title,
+              excerpt: cmsPosts.excerpt,
+              coverUrl: cmsPosts.coverUrl,
+              tags: cmsPosts.tags,
+              authorName: cmsPosts.authorName,
+              status: cmsPosts.status,
+              seo: cmsPosts.seo,
+              publishedAt: cmsPosts.publishedAt,
+              createdAt: cmsPosts.createdAt,
+              updatedAt: cmsPosts.updatedAt,
+            })
+            .from(cmsPosts)
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(cmsPosts).where(where),
+        map: (r): CmsPostSummary => ({ ...r, tags: r.tags ?? [], seo: r.seo ?? null }),
+      }),
+      this.db.select({ key: cmsPosts.status, n: count() }).from(cmsPosts).where(postListConditions(tenantId, p, false)).groupBy(cmsPosts.status),
     ]);
-    return { items: rows.map((r) => withoutBlocks(toPost(r))), total: total?.n ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus) } };
   }
 
   async getPost(tenantId: string, id: string): Promise<CmsPost> {

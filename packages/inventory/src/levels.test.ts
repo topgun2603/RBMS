@@ -296,7 +296,7 @@ describe("locations", () => {
 
 describe("query and input schemas", () => {
   it("existing inputs accept an optional locationId", () => {
-    expect(stockQuerySchema.parse({ locationId: L1 })).toEqual({ filter: "all", locationId: L1 });
+    expect(stockQuerySchema.parse({ locationId: L1 })).toMatchObject({ filter: "all", locationId: L1 });
     expect(stockQuerySchema.parse({ locationId: "" }).locationId).toBeUndefined();
     expect(adjustInputSchema.parse({ mode: "add", qty: 1, locationId: L2 })).toMatchObject({ locationId: L2 });
     expect(() => stockQuerySchema.parse({ locationId: "nope" })).toThrow(ZodError);

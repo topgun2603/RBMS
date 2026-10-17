@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, ChevronDownIcon, ClipboardCheckIcon, ImageIcon, Loader2Icon, MessageSquareWarningIcon, XIcon } from "lucide-react";
+import { CheckIcon, ClipboardCheckIcon, ImageIcon, Loader2Icon, MessageSquareWarningIcon, XIcon } from "lucide-react";
 import {
-  AnimatePresence,
   Button,
-  Card,
   ChipGroup,
   cn,
+  DataTable,
+  DataTableToolbar,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,146 +21,273 @@ import {
   FieldHint,
   FieldLabel,
   motion,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Skeleton,
   Textarea,
   toast,
+  type DataTableColumn,
 } from "@srirealtime/ui";
-import { absoluteUrl, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { absoluteUrl, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
 import { ReviewPill, Thumb } from "../components/bits";
-import { Pager, RowsSkeleton } from "../components/lists";
 import { SubmitButton } from "../components/account";
 import { money } from "../lib/logic";
-import { REVIEW_PAGE, useCatalogProduct, useProductReviews, useReviewDecision } from "../lib/queries";
-import type { ProductReview, ProductReviewStatus } from "../lib/types";
+import { mk, MP, useCatalogProduct, useReviewDecision, useSellerOptions } from "../lib/queries";
+import { PRODUCT_REVIEW_STATUSES, REVIEW_KINDS, type ProductReview, type ProductReviewStatus } from "../lib/types";
 
-type Tab = Exclude<ProductReviewStatus, "withdrawn">;
-const TABS: Tab[] = ["pending", "rejected", "approved"];
+type Pill = "all" | Exclude<ProductReviewStatus, "withdrawn">;
+const PILLS: Exclude<Pill, "all">[] = ["pending", "rejected", "approved"];
 
 /** Products to review: seller products waiting to go live (approve, or reject with a reason the seller sees). */
 export default function ProductReviewsPage() {
-  const { t } = useI18n();
+  // useServerTable reads the search params, which needs a Suspense boundary.
+  return (
+    <React.Suspense fallback={null}>
+      <ReviewsList />
+    </React.Suspense>
+  );
+}
+
+function ReviewsList() {
+  const { t, formatDate } = useI18n();
   const params = useQueryParams();
-  const navigate = useModuleNavigate();
-  const initial = params.get("status") as Tab | null;
-  const [tab, setTab] = React.useState<Tab>(initial && TABS.includes(initial) ? initial : "pending");
-  const [offset, setOffset] = React.useState(0);
-  const [open, setOpen] = React.useState<string | null>(null);
+  const [open, setOpen] = React.useState<ProductReview | null>(null);
   const [rejecting, setRejecting] = React.useState<ProductReview | null>(null);
-  React.useEffect(() => setOffset(0), [tab]);
-  const q = useProductReviews({ status: tab, offset });
-  const counts = q.data?.counts;
-  const items = q.data?.items ?? [];
+  const sellers = useSellerOptions();
+  const sellerOptions = sellers.data;
+
+  const filters = React.useMemo(
+    () =>
+      ({
+        status: {
+          kind: "options",
+          label: t("marketplace.reviews.filterStatus"),
+          options: PRODUCT_REVIEW_STATUSES.map((s) => ({ value: s, label: t(`marketplace.review.status.${s}`) })),
+        },
+        kind: {
+          kind: "options",
+          label: t("marketplace.reviews.filterKind"),
+          options: REVIEW_KINDS.map((k) => ({ value: k, label: t(`marketplace.reviews.kind.${k}`) })),
+        },
+        vendorId: { kind: "options", label: t("marketplace.reviews.filterSeller"), options: sellerOptions ?? [], dynamic: true },
+      }) satisfies ServerFilterDefs,
+    [t, sellerOptions],
+  );
+
+  const columns = React.useMemo<DataTableColumn<ProductReview>[]>(
+    () => [
+      {
+        id: "product",
+        header: t("marketplace.reviews.col.product"),
+        sortable: true,
+        hideable: false,
+        card: "title",
+        className: "max-w-[24rem]",
+        cell: (r) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <Thumb src={r.productImage} className="size-11" />
+            <div className="min-w-0">
+              <p className="truncate font-medium">{r.productName}</p>
+              {r.changedAfterApproval && (r.changedFields?.length ?? 0) > 0 && (
+                <p className="truncate text-xs text-muted-foreground" data-testid="changed-fields">
+                  {(r.changedFields ?? []).map((f) => t(`marketplace.reviews.field.${f}`)).join(" · ")}
+                </p>
+              )}
+              {r.status === "rejected" && r.reason && (
+                <p className="flex items-center gap-1 truncate text-xs text-danger-ink">
+                  <MessageSquareWarningIcon className="size-3.5 shrink-0" /> <span className="truncate">{r.reason}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        ),
+        cardCell: (r) => r.productName,
+      },
+      {
+        id: "seller",
+        header: t("marketplace.reviews.col.seller"),
+        card: "subtitle",
+        cell: (r) => (
+          <ModuleLink to={`vendors/${r.vendorId}`} className="font-medium hover:text-primary hover:underline">
+            {r.vendorName ?? "—"}
+          </ModuleLink>
+        ),
+        cardCell: (r) => `${r.vendorName ?? "—"} · ${formatDate(r.submittedAt, { day: "numeric", month: "short" })}`,
+      },
+      {
+        id: "kind",
+        header: t("marketplace.reviews.col.kind"),
+        card: "meta",
+        cell: (r) =>
+          r.changedAfterApproval ? (
+            <span className="inline-flex h-6 items-center rounded-md bg-info/12 px-2 text-xs font-medium whitespace-nowrap text-info-ink">{t("marketplace.reviews.kind.changed")}</span>
+          ) : (
+            <span className="inline-flex h-6 items-center rounded-md border px-2 text-xs whitespace-nowrap">{t("marketplace.reviews.kind.new")}</span>
+          ),
+      },
+      {
+        id: "submitted",
+        header: t("marketplace.reviews.col.submitted"),
+        sortable: true,
+        hideBelow: "md",
+        cell: (r) => (
+          <span className="whitespace-nowrap tabular-nums text-muted-foreground">
+            {formatDate(r.submittedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+          </span>
+        ),
+      },
+      { id: "status", header: t("marketplace.reviews.col.status"), sortable: true, card: "right", cell: (r) => <ReviewPill status={r.status} /> },
+      {
+        id: "actions",
+        header: <span className="sr-only">{t("marketplace.reviews.col.actions")}</span>,
+        label: t("marketplace.reviews.col.actions"),
+        hideable: false,
+        align: "right",
+        card: "meta",
+        cell: (r) => <ReviewActions review={r} onReject={() => setRejecting(r)} compact />,
+      },
+    ],
+    [t, formatDate],
+  );
+
+  const st = useServerTable<ProductReview, typeof filters>({
+    queryKey: [...mk.all, "reviews", "table"],
+    path: `${MP}/product-reviews`,
+    columns,
+    filters,
+    defaultSort: "submitted",
+    search: t("marketplace.reviews.search"),
+    storageKey: "marketplace-reviews",
+  });
+
+  // The queue opens on waiting products (as the dashboard's "Needs attention" link expects); "All" clears it.
+  const status = st.filters.status;
+  const opened = React.useRef(false);
+  React.useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    if (!params?.has("status")) status.set(["pending"]);
+  }, [params, status]);
+
+  const counts = st.facets?.status;
+  const all = counts ? Object.values(counts).reduce((n, c) => n + c, 0) : undefined;
+  const pill = status.value.length === 0 ? "all" : status.value.length === 1 ? status.value[0]! : "";
+  const onlyPending = status.value.length === 1 && status.value[0] === "pending" && st.table.activeFilterCount === 1;
 
   return (
-    <Page>
+    <Page width="full">
       <PageHeading icon={ClipboardCheckIcon} title={t("marketplace.reviews.title")} description={t("marketplace.reviews.subtitle")} />
-      <div className="mb-4 -mx-4 overflow-x-auto px-4 [scrollbar-width:none]">
-        <ChipGroup<Tab>
-          value={tab}
-          onChange={(v) => {
-            setTab(v);
-            navigate(v === "pending" ? "?" : `?status=${v}`, { replace: true, scroll: false });
-          }}
-          size="sm"
-          aria-label={t("marketplace.reviews.filter")}
-          options={TABS.map((v) => ({ value: v, label: t(`marketplace.reviews.tab.${v}`), meta: counts?.[v] || undefined }))}
-        />
-      </div>
-      {q.isError ? (
-        <QueryError error={q.error} onRetry={() => void q.refetch()} />
-      ) : q.isPending ? (
-        <RowsSkeleton rows={4} />
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={ClipboardCheckIcon}
-          title={t(tab === "pending" ? "marketplace.reviews.emptyTitle" : "marketplace.reviews.noneHere")}
-          description={tab === "pending" ? t("marketplace.reviews.emptyBody") : undefined}
-        />
-      ) : (
-        <div className={cn("transition-opacity", q.isPlaceholderData && "opacity-60")}>
-          <motion.ul layout className="grid gap-2">
-            <AnimatePresence initial={false}>
-              {items.map((r) => (
-                <motion.li key={r.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -24, transition: { duration: 0.18 } }}>
-                  <ReviewCard review={r} open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} onReject={() => setRejecting(r)} />
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </motion.ul>
-          <Pager offset={offset} limit={REVIEW_PAGE} total={q.data.total} onChange={setOffset} />
-        </div>
-      )}
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            size="sm"
+            aria-label={t("marketplace.reviews.filter")}
+            value={pill}
+            onChange={(v) => status.set(v === "all" || v === "" ? [] : [v])}
+            options={[
+              ...PILLS.map((v) => ({ value: v as string, label: t(`marketplace.reviews.tab.${v}`), meta: counts ? counts[v] || undefined : undefined })),
+              { value: "all", label: t("marketplace.reviews.all"), meta: all || undefined },
+            ]}
+          />
+        }
+      />
+      <DataTable
+        table={st.table}
+        onRowClick={setOpen}
+        empty={
+          onlyPending ? (
+            <EmptyState className="border-0 bg-transparent" icon={ClipboardCheckIcon} title={t("marketplace.reviews.emptyTitle")} description={t("marketplace.reviews.emptyBody")} />
+          ) : undefined
+        }
+      />
+      <ReviewSheet review={open} onClose={() => setOpen(null)} onReject={(r) => setRejecting(r)} />
       <RejectDialog review={rejecting} onOpenChange={(o) => !o && setRejecting(null)} />
     </Page>
   );
 }
 
-function ReviewCard({ review: r, open, onToggle, onReject }: { review: ProductReview; open: boolean; onToggle: () => void; onReject: () => void }) {
-  const { t, formatDate } = useI18n();
+/** Approve / ask for changes on a waiting review (nothing for decided ones). */
+function ReviewActions({ review: r, onReject, onDone, compact }: { review: ProductReview; onReject: () => void; onDone?: () => void; compact?: boolean }) {
+  const { t } = useI18n();
   const decide = useReviewDecision();
+  if (r.status !== "pending") return null;
   const approving = decide.isPending && decide.variables?.decision === "approve";
   const approve = async () => {
     try {
       await decide.mutateAsync({ id: r.id, decision: "approve" });
       toast.success(t("marketplace.reviews.approved", { name: r.productName }));
+      onDone?.();
     } catch (err) {
       toast.error(describeError(err, t));
     }
   };
   return (
-    <Card className="gap-0 overflow-hidden p-0" data-testid="review-card">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 sm:p-4">
-        <Thumb src={r.productImage} className="size-14" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{r.productName}</p>
-          <p className="text-meta text-muted-foreground">
-            <ModuleLink to={`vendors/${r.vendorId}`} className="font-medium text-foreground hover:underline">
-              {r.vendorName ?? "—"}
-            </ModuleLink>
-            {" · "}
-            {t("marketplace.reviews.submittedOn", { date: formatDate(r.submittedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) })}
-          </p>
-          {r.changedAfterApproval && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-testid="changed-fields">
-              <span className="inline-flex h-6 items-center rounded-md bg-info/12 px-2 text-xs font-medium text-info-ink">{t("marketplace.reviews.reReview")}</span>
-              {(r.changedFields ?? []).map((f) => (
-                <span key={f} className="inline-flex h-6 items-center rounded-md border px-2 text-xs">
-                  {t(`marketplace.reviews.field.${f}`)}
-                </span>
-              ))}
+    <div className="flex items-center justify-end gap-2">
+      <Button variant="outline" size="sm" onClick={onReject} disabled={decide.isPending} className="text-danger-ink" aria-label={t("marketplace.reviews.reject")}>
+        <XIcon /> {compact ? null : t("marketplace.reviews.reject")}
+      </Button>
+      <Button size="sm" onClick={() => void approve()} disabled={decide.isPending} data-testid="review-approve">
+        {approving ? <Loader2Icon className="animate-spin" /> : <CheckIcon />} {t("marketplace.reviews.approve")}
+      </Button>
+    </div>
+  );
+}
+
+/** A review's details in a side sheet: photos, prices, GST, description, with the decision buttons. */
+function ReviewSheet({ review, onClose, onReject }: { review: ProductReview | null; onClose: () => void; onReject: (r: ProductReview) => void }) {
+  const { t, formatDate } = useI18n();
+  // Keep the last review on screen while the sheet slides out.
+  const [last, setLast] = React.useState<ProductReview | null>(review);
+  React.useEffect(() => {
+    if (review) setLast(review);
+  }, [review]);
+  const r = review ?? last;
+  return (
+    <Sheet open={!!review} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-xl" closeLabel={t("marketplace.common.close")}>
+        <SheetHeader className="border-b px-5 py-4">
+          <SheetTitle className="truncate">{r?.productName ?? " "}</SheetTitle>
+          <SheetDescription>
+            {r
+              ? `${r.vendorName ?? "—"} · ${t("marketplace.reviews.submittedOn", { date: formatDate(r.submittedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) })}`
+              : " "}
+          </SheetDescription>
+        </SheetHeader>
+        {r && (
+          <motion.div key={r.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="flex-1 overflow-y-auto">
+            <div className="flex flex-wrap items-center gap-1.5 px-4 pt-4 sm:px-5">
+              <ReviewPill status={r.status} />
+              {r.changedAfterApproval && (
+                <>
+                  <span className="inline-flex h-6 items-center rounded-md bg-info/12 px-2 text-xs font-medium text-info-ink">{t("marketplace.reviews.reReview")}</span>
+                  {(r.changedFields ?? []).map((f) => (
+                    <span key={f} className="inline-flex h-6 items-center rounded-md border px-2 text-xs">
+                      {t(`marketplace.reviews.field.${f}`)}
+                    </span>
+                  ))}
+                </>
+              )}
             </div>
-          )}
-          {r.status === "rejected" && r.reason && (
-            <p className="mt-1 flex items-start gap-1.5 text-sm text-danger-ink">
-              <MessageSquareWarningIcon className="mt-0.5 size-4 shrink-0" /> {r.reason}
-            </p>
-          )}
-        </div>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-          {r.status !== "pending" && <ReviewPill status={r.status} />}
-          <Button variant="ghost" size="sm" onClick={onToggle} aria-expanded={open}>
-            {t("marketplace.reviews.details")} <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
-          </Button>
-          {r.status === "pending" && (
-            <>
-              <Button variant="outline" size="sm" onClick={onReject} disabled={decide.isPending} className="text-danger-ink">
-                <XIcon /> {t("marketplace.reviews.reject")}
-              </Button>
-              <Button size="sm" onClick={() => void approve()} disabled={decide.isPending} data-testid="review-approve">
-                {approving ? <Loader2Icon className="animate-spin" /> : <CheckIcon />} {t("marketplace.reviews.approve")}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden border-t bg-muted/20">
+            {r.status === "rejected" && r.reason && (
+              <p className="mx-4 mt-3 flex items-start gap-1.5 text-sm text-danger-ink sm:mx-5">
+                <MessageSquareWarningIcon className="mt-0.5 size-4 shrink-0" /> {r.reason}
+              </p>
+            )}
             <ProductDetails productId={r.productId} changed={r.changedAfterApproval ? (r.changedFields ?? []) : []} />
           </motion.div>
         )}
-      </AnimatePresence>
-    </Card>
+        {r?.status === "pending" && review && (
+          <SheetFooter className="border-t px-5 py-3">
+            <ReviewActions review={r} onReject={() => onReject(r)} onDone={onClose} />
+          </SheetFooter>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 

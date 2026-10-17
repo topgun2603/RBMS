@@ -1,7 +1,8 @@
 "use client";
 
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { absoluteUrl, api, ApiError } from "@srirealtime/web";
+import { patchReviewList } from "./review-cache";
 import type { HomeDocInput, MenuItemInput, MenuKey, PageInput, PagePatch, PostInput, PostPatch } from "./content";
 import type {
   CatalogCategory,
@@ -19,7 +20,6 @@ import type {
   ResolvedHomeSection,
   Review,
   ReviewSettings,
-  ReviewStatus,
   SettingsValues,
   StaffHome,
   StaffMenu,
@@ -34,12 +34,17 @@ export const sk = {
   home: ["site", "home"] as const,
   preview: ["site", "home", "preview"] as const,
   pages: (f: object) => ["site", "pages", f] as const,
+  /** The Pages table (useServerTable appends its params); under ["site", "pages"], which the page mutations invalidate. */
+  pageList: ["site", "pages", "list"] as const,
   page: (id: string) => ["site", "page", id] as const,
   posts: (f: object) => ["site", "posts", f] as const,
+  /** The Blog table; under ["site", "posts"]. */
+  postList: ["site", "posts", "list"] as const,
   post: (id: string) => ["site", "post", id] as const,
   menu: (key: MenuKey) => ["site", "menu", key] as const,
-  reviews: (f: object) => ["site", "reviews", f] as const,
-  reviewCounts: ["site", "reviews", "counts"] as const,
+  reviews: ["site", "reviews"] as const,
+  /** The moderation table; under ["site", "reviews"], which the review actions invalidate. */
+  reviewList: ["site", "reviews", "list"] as const,
   reviewSettings: ["site", "settings", "reviews"] as const,
   overview: (from: string, to: string) => ["site", "analytics", from, to] as const,
   store: ["site", "settings", "store"] as const,
@@ -284,45 +289,6 @@ export function usePublicCollection(slug: string, limit: number) {
 
 // ---------------------------------------------------------------- reviews
 
-export interface ReviewFilters {
-  status: ReviewStatus;
-  rating?: number;
-  productId?: string;
-}
-
-export const REVIEWS_PAGE = 20;
-
-export function useReviews(f: ReviewFilters, enabled = true) {
-  return useInfiniteQuery({
-    queryKey: sk.reviews(f),
-    enabled,
-    retry,
-    initialPageParam: 0,
-    placeholderData: keepPreviousData,
-    queryFn: ({ pageParam, signal }) =>
-      api.get<Paged<Review>>("/reviews", { status: f.status, rating: f.rating, productId: f.productId, limit: REVIEWS_PAGE, offset: pageParam }, { signal }),
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((n, p) => n + p.items.length, 0);
-      return last.items.length === REVIEWS_PAGE && loaded < last.total ? loaded : undefined;
-    },
-  });
-}
-
-/** Totals for the status tabs (three `limit=1` calls). */
-export function useReviewCounts(enabled = true) {
-  return useQuery({
-    queryKey: sk.reviewCounts,
-    enabled,
-    retry,
-    staleTime: 20_000,
-    queryFn: async () => {
-      const count = (status: ReviewStatus) => api.get<Paged<Review>>("/reviews", { status, limit: 1 }).then((r) => r.total);
-      const [pending, approved, rejected] = await Promise.all([count("pending"), count("approved"), count("rejected")]);
-      return { pending, approved, rejected };
-    },
-  });
-}
-
 /** A few pending reviews for the dashboard. */
 export function usePendingReviews(limit: number, enabled = true) {
   return useQuery({
@@ -343,7 +309,20 @@ export function useReviewAction() {
       if (a.kind === "reply") return api.post<Review>(`/reviews/${a.id}/reply`, { reply: a.reply.trim() || null });
       return api.post<Review>(`/reviews/${a.id}/${a.kind}`);
     },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["site", "reviews"] }),
+    // Approve / reject / delete show at once in every cached reviews list (table pages, the dashboard widget, older
+    // infinite caches); a failure puts the lists back. The refetch afterwards moves rows out of filtered views.
+    onMutate: async (a) => {
+      if (a.kind === "reply") return undefined;
+      await qc.cancelQueries({ queryKey: sk.reviews });
+      const before = qc.getQueriesData({ queryKey: sk.reviews });
+      const patch = a.kind === "delete" ? null : { status: a.kind === "approve" ? ("approved" as const) : ("rejected" as const) };
+      qc.setQueriesData({ queryKey: sk.reviews }, (data: unknown) => patchReviewList(data, a.id, patch));
+      return { before };
+    },
+    onError: (_err, _a, ctx) => {
+      for (const [key, data] of ctx?.before ?? []) qc.setQueryData(key, data);
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: sk.reviews }),
   });
 }
 

@@ -110,6 +110,31 @@ export interface ItemSourceRecord {
   rate: number;
   gstRate: number;
   createdAt: Date;
+  /** Optional extras a source may fill (catalogue: category, product active, stock with inventory). */
+  categoryId?: string | null;
+  active?: boolean;
+  stockQty?: number | null;
+  stockStatus?: "in" | "low" | "out" | "untracked" | null;
+}
+
+/** The item list query handed to a source (already validated; `sort` is one of ITEM_SORT_KEYS, "-" = descending). */
+export interface ItemSourceListQuery {
+  q?: string;
+  limit: number;
+  offset: number;
+  sort?: string;
+  category?: string[];
+  stock?: ("in" | "low" | "out")[];
+  gstRate?: number[];
+  active?: boolean;
+}
+
+/** A source's list page; `facets`/`categories` are optional extras (category, gstRate and stock counts). */
+export interface ItemSourcePage {
+  items: ItemSourceRecord[];
+  total: number;
+  facets?: Record<string, Record<string, number>>;
+  categories?: { id: string; name: string }[];
 }
 
 /** Validated item fields handed to the source (already parsed by the invoices item schemas). */
@@ -126,7 +151,8 @@ export interface ItemSourceInput {
  * variant). When wired, every `/v1/invoices/items*` route and getItem/listItems/createItem/updateItem/deleteItem use it.
  */
 export interface ItemSourcePort {
-  list(tenantId: string, query: { q?: string; limit: number; offset: number }): Promise<{ items: ItemSourceRecord[]; total: number }>;
+  /** Sorting and the filters beyond `q` are optional for a source to honour. */
+  list(tenantId: string, query: ItemSourceListQuery): Promise<ItemSourcePage>;
   /** Null when unknown or deleted. */
   get(tenantId: string, id: string): Promise<ItemSourceRecord | null>;
   create(tenantId: string, input: ItemSourceInput): Promise<ItemSourceRecord>;

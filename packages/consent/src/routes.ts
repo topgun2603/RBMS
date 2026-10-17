@@ -1,6 +1,7 @@
 import { badRequest, requireSuperAdmin, requireUser } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { DataRequestListQuery } from "./list";
 import type { ConsentService } from "./service";
 
 const purposeKey = z.string().regex(/^[a-z][a-z0-9_.:-]{0,63}$/, "Invalid purpose");
@@ -13,12 +14,6 @@ const recordBody = z.object({
   anonymousId: z.string().min(8).max(128).optional(),
 });
 const idParams = z.object({ id: z.string().uuid() });
-const requestsQuery = z.object({
-  status: z.enum(["pending", "processing", "completed", "cancelled", "failed"]).optional(),
-  type: z.enum(["export", "delete"]).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
 
 export function consentRoutes(service: ConsentService) {
   return (app: FastifyInstance) => {
@@ -83,7 +78,7 @@ export function consentRoutes(service: ConsentService) {
 
     app.get("/requests", async (req) => {
       requireSuperAdmin(req.ctx);
-      return service.listRequests(requestsQuery.parse(req.query));
+      return service.listRequests(req.query as DataRequestListQuery);
     });
 
     app.post("/requests/process-due", async (req) => {

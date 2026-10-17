@@ -18,6 +18,7 @@ export * from "./drivers/types";
 export * from "./drivers/mock";
 export * from "./drivers/http";
 export { kycRoutes } from "./routes";
+export * from "./list";
 
 /**
  * PAN / GSTIN / bank / UPI / DigiLocker / selfie verification for shops, marketplace vendors and users, with a

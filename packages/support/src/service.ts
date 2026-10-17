@@ -1,7 +1,22 @@
-import { AppError, badRequest, conflict, forbidden, notFound, unauthorized, type FeatureGatePort } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import {
+  AppError,
+  badRequest,
+  conflict,
+  defineSort,
+  facetCounts,
+  forbidden,
+  notFound,
+  runList,
+  searchAny,
+  unauthorized,
+  type FeatureGatePort,
+  type ListPage,
+} from "@srirealtime/core";
+import type { Db, DbOrTx } from "@srirealtime/db";
+import { and, arrayContains, asc, count, desc, eq, getTableColumns, gte, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import type { z } from "zod";
+import {
+  FAQ_NO_CATEGORY,
   faqArticleInputSchema,
   faqArticlePatchSchema,
   faqArticleQuerySchema,
@@ -19,6 +34,7 @@ import {
   uniqueSlug,
   type FaqArticle,
   type FaqArticleInput,
+  type FaqArticleListItem,
   type FaqArticlePatch,
   type FaqArticleQuery,
   type FaqArticleSummary,
@@ -59,6 +75,7 @@ import {
   type StaffMessageInput,
   type StaffTicketInput,
   type Ticket,
+  type TicketListParams,
   type TicketListQuery,
 } from "./logic";
 import {
@@ -144,12 +161,45 @@ export interface ListResult<T> {
   total: number;
 }
 
-export interface TicketList extends ListResult<Ticket> {
-  /** Per status, over the other filters (the status filter itself is ignored). */
+export interface TicketList extends ListPage<Ticket> {
+  /** Per status, over the other filters (the status filter itself is ignored). Same numbers as `facets.status`. */
   counts: Record<TicketStatus, number>;
-  /** Overdue tickets over the other filters. */
+  /** Overdue tickets over the other filters (the status filter itself is ignored). */
   overdue: number;
 }
+
+/** Severity rank for sorting by priority: `-priority` puts urgent first. */
+export const PRIORITY_RANK_SQL = sql`(case ${supportTickets.priority} when 'urgent' then 4 when 'high' then 3 when 'normal' then 2 when 'low' then 1 else 0 end)`;
+
+/**
+ * Sort keys of `GET /tickets`. `updated` is the latest activity (last message), the desk's default (`-updated`);
+ * `due` is the first-response deadline (nulls last either way); `number` follows the ticket sequence.
+ */
+export const TICKET_SORT = defineSort(
+  {
+    number: supportTickets.seq,
+    subject: sql`lower(${supportTickets.subject})`,
+    updated: supportTickets.lastMessageAt,
+    created: supportTickets.createdAt,
+    priority: PRIORITY_RANK_SQL,
+    due: supportTickets.slaDueAt,
+    // Workflow order (open → pending → resolved → closed), not alphabetical.
+    status: sql`(case ${supportTickets.status} when 'open' then 1 when 'pending' then 2 when 'resolved' then 3 when 'closed' then 4 else 5 end)`,
+  },
+  { default: "-updated", tieBreaker: supportTickets.id },
+);
+
+/** Sort keys of `GET /faq/articles`. `order` is the manual order (then title), the default. `helpful` = yes − no votes. */
+export const FAQ_ARTICLE_SORT = defineSort(
+  {
+    order: faqArticles.sort,
+    title: sql`lower(${faqArticles.title})`,
+    updated: faqArticles.updatedAt,
+    helpful: sql`(${faqArticles.helpfulYes} - ${faqArticles.helpfulNo})`,
+    status: faqArticles.status,
+  },
+  { default: "order", tieBreaker: [sql`lower(${faqArticles.title})`, faqArticles.id] },
+);
 
 export interface TicketThread {
   ticket: Ticket;
@@ -454,41 +504,29 @@ export class SupportService {
 
   // ================================================================ staff: tickets
 
-  private listWhere(tenantId: string, q: ReturnType<typeof ticketListQuerySchema.parse>, viewerId: string | null, withStatus: boolean): SQL {
+  /**
+   * WHERE of the staff list. `skip` leaves one filter out (for its facet counts). `assignee` values are ORed (`me` is
+   * the viewer, `none` unassigned).
+   */
+  listConditions(tenantId: string, q: TicketListParams, viewerId: string | null, skip?: "status" | "priority"): SQL {
     const now = this.now();
-    const term = q.q ? `%${q.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
     const seq = q.q ? parseTicketNumber(q.q) : null;
-    const assignee =
-      q.assignee === "none"
-        ? isNull(supportTickets.assigneeId)
-        : q.assignee === "me"
-          ? viewerId
-            ? eq(supportTickets.assigneeId, viewerId)
-            : sql`false`
-          : q.assignee
-            ? eq(supportTickets.assigneeId, q.assignee)
-            : undefined;
+    const assignees = (q.assignee ?? []).map((a) =>
+      a === "none" ? isNull(supportTickets.assigneeId) : a === "me" ? (viewerId ? eq(supportTickets.assigneeId, viewerId) : sql`false`) : eq(supportTickets.assigneeId, a),
+    );
+    const search = searchAny(q.q, [supportTickets.number, supportTickets.subject, supportTickets.requesterName, supportTickets.requesterPhone, supportTickets.requesterEmail]);
     return and(
       eq(supportTickets.tenantId, tenantId),
-      withStatus && q.status?.length ? inArray(supportTickets.status, q.status) : undefined,
-      q.priority?.length ? inArray(supportTickets.priority, q.priority) : undefined,
+      skip !== "status" && q.status?.length ? inArray(supportTickets.status, q.status) : undefined,
+      skip !== "priority" && q.priority?.length ? inArray(supportTickets.priority, q.priority) : undefined,
       q.channel?.length ? inArray(supportTickets.channel, q.channel) : undefined,
-      assignee,
+      assignees.length ? or(...assignees) : undefined,
       q.tag ? arrayContains(supportTickets.tags, [q.tag]) : undefined,
       q.overdue === true ? this.overdueSql(now) : undefined,
       q.overdue === false ? sql`not (${this.overdueSql(now)})` : undefined,
       q.from ? gte(supportTickets.createdAt, istMidnight(q.from)) : undefined,
       q.to ? lt(supportTickets.createdAt, new Date(istMidnight(q.to).getTime() + 86_400_000)) : undefined,
-      term
-        ? or(
-            ilike(supportTickets.number, term),
-            ilike(supportTickets.subject, term),
-            ilike(supportTickets.requesterName, term),
-            ilike(supportTickets.requesterPhone, term),
-            ilike(supportTickets.requesterEmail, term),
-            seq ? eq(supportTickets.seq, seq) : undefined,
-          )
-        : undefined,
+      search && seq ? or(search, eq(supportTickets.seq, seq)) : search,
     )!;
   }
 
@@ -502,25 +540,30 @@ export class SupportService {
     )!;
   }
 
-  /** `GET /tickets`: filtered list with per-status counts (`assignee=me` uses `viewerId`). */
+  /**
+   * `GET /tickets`: one page with `total`, per-status `counts` (= `facets.status`, over the other filters),
+   * `facets.priority` and `overdue` (tickets past due over the other filters, status included). `assignee=me` uses
+   * `viewerId`. Unknown `sort` → 400.
+   */
   async list(tenantId: string, query: TicketListQuery = {}, viewerId: string | null = null): Promise<TicketList> {
     const q = ticketListQuerySchema.parse(query);
-    const where = this.listWhere(tenantId, q, viewerId, true);
-    const countWhere = this.listWhere(tenantId, q, viewerId, false);
-    const order =
-      q.sort === "oldest"
-        ? [asc(supportTickets.createdAt)]
-        : q.sort === "due"
-          ? [sql`${supportTickets.slaDueAt} asc nulls last`, asc(supportTickets.createdAt)]
-          : [desc(supportTickets.lastMessageAt)];
+    const order = TICKET_SORT.orderBy(q.sort);
+    const where = this.listConditions(tenantId, q, viewerId);
+    const noStatus = this.listConditions(tenantId, q, viewerId, "status");
+    const noPriority = this.listConditions(tenantId, q, viewerId, "priority");
     const now = this.now();
-    const [rows, [counted], grouped, [overdue]] = await Promise.all([
-      this.db.select().from(supportTickets).where(where).orderBy(...order, asc(supportTickets.id)).limit(q.limit).offset(q.offset),
-      this.db.select({ total: count() }).from(supportTickets).where(where),
-      this.db.select({ status: supportTickets.status, count: count() }).from(supportTickets).where(countWhere).groupBy(supportTickets.status),
-      this.db.select({ total: count() }).from(supportTickets).where(and(countWhere, this.overdueSql(now))),
+    const [page, grouped, byPriority, [overdue]] = await Promise.all([
+      runList(q, {
+        rows: () => this.db.select().from(supportTickets).where(where).orderBy(...order).limit(q.limit).offset(q.offset),
+        count: () => this.db.select({ total: count() }).from(supportTickets).where(where),
+        map: (r) => toTicket(r, now),
+      }),
+      this.db.select({ status: supportTickets.status, count: count() }).from(supportTickets).where(noStatus).groupBy(supportTickets.status),
+      this.db.select({ key: supportTickets.priority, n: count() }).from(supportTickets).where(noPriority).groupBy(supportTickets.priority),
+      this.db.select({ total: count() }).from(supportTickets).where(and(noStatus, this.overdueSql(now))),
     ]);
-    return { items: rows.map((r) => toTicket(r, now)), total: counted?.total ?? 0, counts: statusCounts(grouped), overdue: overdue?.total ?? 0 };
+    const counts = statusCounts(grouped);
+    return { ...page, facets: { status: { ...counts }, priority: facetCounts(byPriority) }, counts, overdue: overdue?.total ?? 0 };
   }
 
   /** `GET /tickets/:id`: the ticket and the whole thread (notes included). */
@@ -975,23 +1018,47 @@ export class SupportService {
     if (rows.length === 0) throw notFound("Category");
   }
 
-  async listArticles(tenantId: string, query: FaqArticleQuery = {}): Promise<ListResult<FaqArticle>> {
+  /** WHERE of the staff article list; `skip` leaves one filter out (for its facet counts). */
+  articleConditions(tenantId: string, q: z.output<typeof faqArticleQuerySchema>, skip?: "status" | "category"): SQL {
+    const cats = q.categoryId ?? [];
+    const ids = cats.filter((c) => c !== FAQ_NO_CATEGORY);
+    const byCategory = [ids.length ? inArray(faqArticles.categoryId, ids) : undefined, cats.includes(FAQ_NO_CATEGORY) ? isNull(faqArticles.categoryId) : undefined].filter(
+      (c): c is SQL => c !== undefined,
+    );
+    return and(
+      eq(faqArticles.tenantId, tenantId),
+      skip !== "status" && q.status?.length ? inArray(faqArticles.status, q.status) : undefined,
+      skip !== "category" && byCategory.length ? or(...byCategory) : undefined,
+      searchAny(q.q, [faqArticles.title, faqArticles.body]),
+    )!;
+  }
+
+  /**
+   * Staff `GET /faq/articles`: one page of articles (no body/SEO) with `total` and `facets.status` / `facets.category`
+   * (category id, or `none`, → count). Unknown `sort` → 400.
+   */
+  async listArticles(tenantId: string, query: FaqArticleQuery = {}): Promise<ListPage<FaqArticleListItem>> {
     const q = faqArticleQuerySchema.parse(query);
-    const term = q.q ? `%${q.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
-    const rows = await this.db
-      .select()
-      .from(faqArticles)
-      .where(
-        and(
-          eq(faqArticles.tenantId, tenantId),
-          q.status ? eq(faqArticles.status, q.status) : undefined,
-          q.categoryId ? eq(faqArticles.categoryId, q.categoryId) : undefined,
-          term ? or(ilike(faqArticles.title, term), ilike(faqArticles.body, term)) : undefined,
-        ),
-      )
-      .orderBy(asc(faqArticles.sort), asc(faqArticles.title))
-      .limit(1000);
-    return { items: rows.map(toFaqArticle), total: rows.length };
+    const order = FAQ_ARTICLE_SORT.orderBy(q.sort);
+    const where = this.articleConditions(tenantId, q);
+    const { body: _b, seo: _s, ...columns } = getTableColumns(faqArticles);
+    const [page, byStatus, byCategory] = await Promise.all([
+      runList(q, {
+        rows: () => this.db.select(columns).from(faqArticles).where(where).orderBy(...order).limit(q.limit).offset(q.offset),
+        count: () => this.db.select({ total: count() }).from(faqArticles).where(where),
+        map: (r): FaqArticleListItem => {
+          const { tenantId: _t, ...a } = r;
+          return a;
+        },
+      }),
+      this.db.select({ key: faqArticles.status, n: count() }).from(faqArticles).where(this.articleConditions(tenantId, q, "status")).groupBy(faqArticles.status),
+      this.db
+        .select({ key: sql<string>`coalesce(${faqArticles.categoryId}::text, ${FAQ_NO_CATEGORY})`, n: count() })
+        .from(faqArticles)
+        .where(this.articleConditions(tenantId, q, "category"))
+        .groupBy(faqArticles.categoryId),
+    ]);
+    return { ...page, facets: { status: facetCounts(byStatus), category: facetCounts(byCategory) } };
   }
 
   async getArticle(tenantId: string, id: string): Promise<FaqArticle> {

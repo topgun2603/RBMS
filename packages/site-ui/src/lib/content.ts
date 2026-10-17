@@ -420,15 +420,6 @@ export type PostPatch = z.input<typeof postPatchSchema>;
 export const CONTENT_STATUSES = ["draft", "published"] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 
-export const staffListQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
-  status: z.enum(CONTENT_STATUSES).optional(),
-  tag: tag.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().min(0).max(100_000).default(0),
-});
-export type StaffListQuery = z.input<typeof staffListQuerySchema>;
-
 export const publicPostsQuerySchema = z.object({
   tag: tag.optional(),
   limit: z.coerce.number().int().min(1).max(50).default(12),

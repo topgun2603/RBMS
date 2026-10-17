@@ -1,4 +1,4 @@
-import { AppError, badRequest, conflict, forbidden, notFound, randomToken } from "@srirealtime/core";
+import { AppError, badRequest, conflict, defineSort, facetCounts, forbidden, listFilter, listQuerySchema, notFound, randomToken, runList, searchAny } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { and, arrayContains, arrayOverlaps, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -33,6 +33,7 @@ import {
 } from "./logic";
 import { noopLogger, type AudiencePort, type FeatureGatePort, type LoggerPort, type QueuePort, type StaffDirectoryPort, type WhatsAppSettingsPort } from "./ports";
 import {
+  CAMPAIGN_STATUSES,
   waAccounts,
   waCampaignRecipients,
   waCampaigns,
@@ -155,6 +156,25 @@ export const campaignInputSchema = z.object({
 });
 export type CampaignInput = z.input<typeof campaignInputSchema>;
 export const campaignPatchSchema = campaignInputSchema.partial();
+
+/** `GET /campaigns` query: `status=draft,running`, `q` (name), `sort`, `limit` (30 / max 100), `offset`. */
+export const campaignListQuerySchema = listQuerySchema({ defaultLimit: 30, maxLimit: 100 }).extend({
+  status: listFilter.oneOf(CAMPAIGN_STATUSES),
+});
+export type CampaignListQuery = z.input<typeof campaignListQuerySchema>;
+export type CampaignListParams = z.output<typeof campaignListQuerySchema>;
+
+/** Sort keys of `GET /campaigns`: `sent` is when the run started (unsent ones last either way). Default `-created`. */
+export const CAMPAIGN_SORT = defineSort(
+  {
+    name: sql`lower(${waCampaigns.name})`,
+    created: waCampaigns.createdAt,
+    sent: waCampaigns.startedAt,
+    scheduled: waCampaigns.scheduleAt,
+    status: waCampaigns.status,
+  },
+  { default: "-created", tieBreaker: waCampaigns.id },
+);
 export const previewSchema = z.object({
   audience: audienceSpecSchema,
   templateId: z.string().uuid().optional(),
@@ -941,16 +961,32 @@ export class WhatsAppService {
     return c;
   }
 
-  async listCampaigns(tenantId: string, query: { status?: string; limit?: string | number; offset?: string | number } = {}) {
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 30) || 30));
-    const offset = Math.max(0, Number(query.offset ?? 0) || 0);
-    const where = [eq(waCampaigns.tenantId, tenantId)];
-    if (query.status) where.push(eq(waCampaigns.status, query.status as CampaignStatus));
-    const [rows, [tot]] = await Promise.all([
-      this.db.select().from(waCampaigns).where(and(...where)).orderBy(desc(waCampaigns.createdAt)).limit(limit).offset(offset),
-      this.db.select({ n: count() }).from(waCampaigns).where(and(...where)),
+  /** WHERE of the campaign list; `withStatus = false` for the status facet counts. */
+  campaignConditions(tenantId: string, q: CampaignListParams, withStatus = true): SQL {
+    return and(
+      eq(waCampaigns.tenantId, tenantId),
+      withStatus && q.status?.length ? inArray(waCampaigns.status, q.status) : undefined,
+      searchAny(q.q, [waCampaigns.name]),
+    )!;
+  }
+
+  /**
+   * `GET /campaigns` (docs/CONVENTIONS.md → "Lists and tables"): `status` (comma list), `q` (name), `sort` see
+   * `CAMPAIGN_SORT` (default `-created`), 30 / 100 per page; `facets.status` for the pills.
+   */
+  async listCampaigns(tenantId: string, query: CampaignListQuery = {}) {
+    const q = campaignListQuerySchema.parse(query ?? {});
+    const order = CAMPAIGN_SORT.orderBy(q.sort);
+    const where = this.campaignConditions(tenantId, q);
+    const [page, byStatus] = await Promise.all([
+      runList(q, {
+        rows: () => this.db.select().from(waCampaigns).where(where).orderBy(...order).limit(q.limit).offset(q.offset),
+        count: () => this.db.select({ total: count() }).from(waCampaigns).where(where),
+        map: (r: WaCampaignRow) => this.campaignView(r),
+      }),
+      this.db.select({ key: waCampaigns.status, n: count() }).from(waCampaigns).where(this.campaignConditions(tenantId, q, false)).groupBy(waCampaigns.status),
     ]);
-    return { items: rows.map((r) => this.campaignView(r)), total: tot?.n ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus) } };
   }
 
   async getCampaign(tenantId: string, id: string) {

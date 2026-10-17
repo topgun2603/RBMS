@@ -1,4 +1,4 @@
-import { badRequest, notFound, type FeatureGatePort } from "@srirealtime/core";
+import { badRequest, defineSort, facetCounts, notFound, runList, searchAny, type FeatureGatePort, type ListPage } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { and, asc, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { REVIEW_FEATURE_KEYS } from "./features";
@@ -21,6 +21,7 @@ import {
   type ReplyInput,
   type Review,
   type ReviewInput,
+  type StaffReviewParams,
   type StaffReviewQuery,
 } from "./logic";
 import { noopLogger, type EventsPort, type LoggerPort, type OrdersPort, type ProductsPort, type ReviewSettings, type ReviewSettingsPort, type ShopperPort } from "./ports";
@@ -48,6 +49,16 @@ export interface ListResult<T> {
   items: T[];
   total: number;
 }
+
+/** Staff list sort fields: `date` (written), `rating`, `helpful` (votes). Default newest first. */
+export const REVIEW_SORT = defineSort(
+  {
+    date: productReviews.createdAt,
+    rating: productReviews.rating,
+    helpful: productReviews.helpfulCount,
+  },
+  { default: "-date", tieBreaker: [productReviews.createdAt, productReviews.id] },
+);
 
 export interface PublicReviewPage extends ListResult<PublicReview> {
   /** Over all approved reviews of the product (the `rating` filter doesn't change it). */
@@ -250,20 +261,51 @@ export class ReviewsService {
 
   // ================================================================ staff
 
-  /** `GET /`: every review, newest first, filterable by status, rating and product. */
-  async list(tenantId: string, query: StaffReviewQuery = {}): Promise<ListResult<Review>> {
-    const q = staffReviewQuerySchema.parse(query);
-    const where = and(
+  /**
+   * WHERE of the staff list; `without` drops one filter for its facet counts (status counts under the other filters,
+   * rating counts under the other filters).
+   */
+  listConditions(tenantId: string, p: StaffReviewParams, without?: "status" | "rating"): SQL | undefined {
+    return and(
       eq(productReviews.tenantId, tenantId),
-      q.status ? eq(productReviews.status, q.status) : undefined,
-      q.rating ? eq(productReviews.rating, q.rating) : undefined,
-      q.productId ? eq(productReviews.productId, q.productId) : undefined,
+      without !== "status" && p.status?.length ? inArray(productReviews.status, p.status) : undefined,
+      without !== "rating" && p.rating?.length ? inArray(productReviews.rating, p.rating) : undefined,
+      p.productId ? eq(productReviews.productId, p.productId) : undefined,
+      p.hasPhotos === undefined
+        ? undefined
+        : p.hasPhotos
+          ? sql`jsonb_array_length(${productReviews.photos}) > 0`
+          : sql`jsonb_array_length(${productReviews.photos}) = 0`,
+      searchAny(p.q, [productReviews.title, productReviews.body, productReviews.authorName]),
     );
-    const [rows, [counted]] = await Promise.all([
-      this.db.select().from(productReviews).where(where).orderBy(desc(productReviews.createdAt), asc(productReviews.id)).limit(q.limit).offset(q.offset),
-      this.db.select({ total: count() }).from(productReviews).where(where),
+  }
+
+  /**
+   * `GET /`: every review (docs/CONVENTIONS.md → "Lists and tables"), newest first by default (REVIEW_SORT), with
+   * `facets.status` and `facets.rating` counts under the other filters.
+   */
+  async list(tenantId: string, query: StaffReviewQuery = {}): Promise<ListPage<Review>> {
+    const p = staffReviewQuerySchema.parse(query);
+    const order = REVIEW_SORT.orderBy(p.sort);
+    const where = this.listConditions(tenantId, p);
+    const [page, byStatus, byRating] = await Promise.all([
+      runList(p, {
+        rows: () => this.db.select().from(productReviews).where(where).orderBy(...order).limit(p.limit).offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(productReviews).where(where),
+        map: toReview,
+      }),
+      this.db
+        .select({ key: productReviews.status, n: count() })
+        .from(productReviews)
+        .where(this.listConditions(tenantId, p, "status"))
+        .groupBy(productReviews.status),
+      this.db
+        .select({ key: sql<string>`${productReviews.rating}::text`, n: count() })
+        .from(productReviews)
+        .where(this.listConditions(tenantId, p, "rating"))
+        .groupBy(productReviews.rating),
     ]);
-    return { items: rows.map(toReview), total: counted?.total ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus), rating: facetCounts(byRating) } };
   }
 
   async get(tenantId: string, id: string): Promise<Review> {

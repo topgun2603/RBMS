@@ -25,6 +25,12 @@ export interface OptionsFilterDef {
   /** Parsed from the URL and sent to the API, but no toolbar button (e.g. a filter shown only as pills). */
   hidden?: boolean;
   icon?: ComponentType<{ className?: string }>;
+  /**
+   * Options loaded from the server (categories, suppliers, locations, branches): URL values are kept as they are
+   * instead of being checked against `options`, which may not have loaded yet. The API validates them.
+   * Fixed option lists leave this off, so a stale or mistyped value in a link is dropped.
+   */
+  dynamic?: boolean;
 }
 
 export interface DateRangeFilterDef {
@@ -119,9 +125,15 @@ export function parseTableState<F extends ServerFilterDefs>(search: URLSearchPar
   const filters = s.filters as Record<string, unknown>;
   for (const [id, d] of Object.entries(defs)) {
     if (d.kind === "options") {
-      const allowed = new Set(d.options.map((x) => x.value));
       const raw = search.getAll(key(o, paramOf(id, d))).flatMap((v) => v.split(","));
-      const vals = d.options.map((x) => x.value).filter((v) => raw.includes(v) && allowed.has(v));
+      let vals: string[];
+      if (d.dynamic || d.options.length === 0) {
+        // Server-loaded (or not loaded yet): keep the URL's values, de-duplicated and bounded; the API checks them.
+        vals = [...new Set(raw.map((v) => v.trim()).filter((v) => v.length > 0 && v.length <= 100))].slice(0, 50);
+      } else {
+        // Fixed list: only known values, in the options' order.
+        vals = d.options.map((x) => x.value).filter((v) => raw.includes(v));
+      }
       filters[id] = d.single ? vals.slice(0, 1) : vals;
     } else if (d.kind === "dateRange") {
       const [fp, tp] = rangeParams(d);

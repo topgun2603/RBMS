@@ -14,7 +14,8 @@ import {
   type InvoicesService,
   type ItemInput,
   type LedgerQuery,
-  type ListQuery,
+  type CustomerListQuery,
+  type ItemListQuery,
   type PaymentInput,
   type ReceiptInput,
   type ReportRange,
@@ -79,7 +80,7 @@ export function invoicesRoutes(service: InvoicesService) {
       });
 
       // customers
-      staff.get("/customers", BASE, async (req) => service.listCustomers(requireTenant(req.ctx).id, req.query as ListQuery));
+      staff.get("/customers", BASE, async (req) => service.listCustomers(requireTenant(req.ctx).id, req.query as CustomerListQuery));
       staff.get("/customers/:id", BASE, async (req) => {
         const { id } = idParam.parse(req.params);
         return service.getCustomer(requireTenant(req.ctx).id, id);
@@ -101,7 +102,7 @@ export function invoicesRoutes(service: InvoicesService) {
       staff.get("/credit-book", CREDIT_BOOK, async (req, reply) => {
         const csv = wantsCsv(req);
         const q = query(req);
-        const result = await service.creditBook(requireTenant(req.ctx).id, (csv ? { ...q, limit: "500" } : q) as CreditBookQuery);
+        const result = await service.creditBook(requireTenant(req.ctx).id, (csv ? { ...q, limit: "500", offset: "0" } : q) as CreditBookQuery);
         return csv ? sendCsv(reply, csvBuilders.creditBook(result.items), "credit-book", q.filter ?? "all") : result;
       });
       staff.get("/customers/:id/ledger", CREDIT_BOOK, async (req, reply) => {
@@ -132,7 +133,7 @@ export function invoicesRoutes(service: InvoicesService) {
       });
 
       // items
-      staff.get("/items", BASE, async (req) => service.listItems(requireTenant(req.ctx).id, req.query as ListQuery));
+      staff.get("/items", BASE, async (req) => service.listItems(requireTenant(req.ctx).id, req.query as ItemListQuery));
       staff.get("/items/:id", BASE, async (req) => {
         const { id } = idParam.parse(req.params);
         return service.getItem(requireTenant(req.ctx).id, id);
@@ -190,7 +191,7 @@ export function invoicesRoutes(service: InvoicesService) {
       staff.get("/credit-notes", BASE, async (req, reply) => {
         const q = query(req);
         const csv = wantsCsv(req);
-        const result = await service.creditNotes.list(requireTenant(req.ctx).id, (csv ? { ...q, limit: "200" } : q) as CreditNoteListQuery);
+        const result = await service.creditNotes.list(requireTenant(req.ctx).id, (csv ? { ...q, limit: "200", offset: "0" } : q) as CreditNoteListQuery);
         if (!csv) return result;
         return sendCsv(reply, csvBuilders.creditNotes(result.items), "credit-notes", q.from, q.to);
       });

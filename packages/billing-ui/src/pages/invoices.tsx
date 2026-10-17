@@ -59,6 +59,7 @@ function InvoicesList() {
           kind: "options",
           label: t("billing.invoices.filterBranch"),
           options: branchList.map((b) => ({ value: b.id, label: b.name })),
+          dynamic: true,
           hidden: branchList.length < 2,
         },
         customerId: { kind: "text" },

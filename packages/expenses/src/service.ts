@@ -1,7 +1,7 @@
-import { badRequest, conflict, notFound } from "@srirealtime/core";
+import { badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny, splitList } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { GST_RATES, isValidDate, normalizeGstin, todayIST } from "@srirealtime/gst";
-import { and, asc, count, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { itcOf, profitReport, resolveGst, summarize, ZERO_GST, type ExpenseSummary, type ProfitReport } from "./logic";
 import type { LoggerPort, PurchasesReportPort, SalesReportPort } from "./ports";
@@ -63,15 +63,20 @@ export const expensePatch = expenseInput
   .strict();
 export type ExpensePatch = z.input<typeof expensePatch>;
 
-export const listQuery = z.object({
-  from: date.optional(),
-  to: date.optional(),
-  categoryId: z.string().uuid().optional(),
-  status: z.enum([...EXPENSE_STATUSES, "all"]).default("recorded"),
-  q: z.string().trim().max(100).optional(),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
+/**
+ * GET /v1/expenses (docs/CONVENTIONS.md → "Lists and tables"). Limits 50 / 500 (the CSV export asks for 500).
+ * `status`: "recorded" when left out (as before), "all", or a comma list; `categoryId` and `paymentMethod` take comma
+ * lists; `q` matches vendor, note and reference.
+ */
+export const listQuery = listQuerySchema({ defaultLimit: 50, maxLimit: 500 })
+  .extend({
+    from: listFilter.date(),
+    to: listFilter.date(),
+    categoryId: listFilter.ids(),
+    paymentMethod: listFilter.oneOf(EXPENSE_PAYMENT_METHODS),
+    status: z.preprocess(splitList, z.array(z.enum([...EXPENSE_STATUSES, "all"])).max(3).optional()),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export type ExpenseListQuery = z.input<typeof listQuery>;
 
 const categoryInput = z.object({ name: z.string().trim().min(1).max(60), sort: z.number().int().min(0).max(10_000).optional() });
@@ -88,15 +93,30 @@ export interface ExpenseView extends ExpenseRow {
 export interface ExpenseList {
   items: ExpenseView[];
   total: number;
+  limit: number;
+  offset: number;
   totals: { amount: number; gst: number; itc: number };
+  /** `category` (ids), `paymentMethod` and `status` counts under the other filters. */
+  facets: Record<string, Record<string, number>>;
 }
+
+/** Expense list sort: `category` by the category's name. Default: newest first. */
+export const EXPENSE_SORT = defineSort(
+  {
+    date: expenses.date,
+    amount: expenses.amount,
+    category: sql`(select lower(${expenseCategories.name}) from ${expenseCategories} where ${expenseCategories.id} = ${expenses.categoryId})`,
+  },
+  { default: "-date", tieBreaker: [expenses.createdAt, expenses.id] },
+);
+
+type ExpenseFacet = "category" | "paymentMethod" | "status";
 
 function isUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
   return e?.code === "23505" || e?.cause?.code === "23505";
 }
 
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Checks a report period; defaults to the current IST month up to today. */
 export function reportRange(q: { from?: string; to?: string }, today: string): { from: string; to: string } {
@@ -214,32 +234,46 @@ export class ExpensesService {
     return new Map((await this.categories(tenantId)).map((c) => [c.id, c.name]));
   }
 
+  /** WHERE of the expense list; `without` leaves one filter out (for that filter's facet counts). */
+  listConditions(tenantId: string, q: z.output<typeof listQuery>, without?: ExpenseFacet): SQL | undefined {
+    const statuses = q.status?.includes("all") ? undefined : (q.status ?? ["recorded" as const]);
+    return and(
+      eq(expenses.tenantId, tenantId),
+      q.from ? gte(expenses.date, q.from) : undefined,
+      q.to ? lte(expenses.date, q.to) : undefined,
+      without !== "category" && q.categoryId?.length ? inArray(expenses.categoryId, q.categoryId) : undefined,
+      without !== "paymentMethod" && q.paymentMethod?.length ? inArray(expenses.paymentMethod, q.paymentMethod) : undefined,
+      without !== "status" && statuses?.length
+        ? inArray(
+            expenses.status,
+            statuses.filter((s): s is (typeof EXPENSE_STATUSES)[number] => s !== "all"),
+          )
+        : undefined,
+      searchAny(q.q, [expenses.vendorName, expenses.note, expenses.reference]),
+    );
+  }
+
+  /**
+   * Expenses: paged, sorted (EXPENSE_SORT, default newest first) and filtered. `totals` cover every matching recorded
+   * expense; `facets` count category, payment method and status under the other filters.
+   */
   async list(tenantId: string, query: ExpenseListQuery = {}): Promise<ExpenseList> {
     const q = listQuery.parse(query);
-    const conds: SQL[] = [eq(expenses.tenantId, tenantId)];
-    if (q.from) conds.push(gte(expenses.date, q.from));
-    if (q.to) conds.push(lte(expenses.date, q.to));
-    if (q.categoryId) conds.push(eq(expenses.categoryId, q.categoryId));
-    if (q.status !== "all") conds.push(eq(expenses.status, q.status));
-    if (q.q) {
-      const like = `%${escapeLike(q.q)}%`;
-      conds.push(or(ilike(expenses.vendorName, like), ilike(expenses.note, like), ilike(expenses.reference, like))!);
-    }
-    const where = and(...conds);
-    const [rows, all, names] = await Promise.all([
-      this.db
-        .select()
-        .from(expenses)
-        .where(where)
-        .orderBy(desc(expenses.date), desc(expenses.createdAt))
-        .limit(q.limit)
-        .offset(q.offset),
+    const order = EXPENSE_SORT.orderBy(q.sort);
+    const where = this.listConditions(tenantId, q);
+    const facet = (col: typeof expenses.categoryId | typeof expenses.paymentMethod | typeof expenses.status, without: ExpenseFacet) =>
+      this.db.select({ key: col, n: count() }).from(expenses).where(this.listConditions(tenantId, q, without)).groupBy(col);
+    const [rows, all, names, byCategory, byMethod, byStatus] = await Promise.all([
+      this.db.select().from(expenses).where(where).orderBy(...order).limit(q.limit).offset(q.offset),
       // Totals need the GSTIN check per row, so they're summed here rather than in SQL.
       this.db
         .select({ amount: expenses.amount, gstAmount: expenses.gstAmount, vendorGstin: expenses.vendorGstin, status: expenses.status })
         .from(expenses)
         .where(where),
       this.names(tenantId),
+      facet(expenses.categoryId, "category"),
+      facet(expenses.paymentMethod, "paymentMethod"),
+      facet(expenses.status, "status"),
     ]);
     const totals = { amount: 0, gst: 0, itc: 0 };
     for (const r of all) {
@@ -248,7 +282,14 @@ export class ExpensesService {
       totals.gst += r.gstAmount;
       totals.itc += itcOf(r);
     }
-    return { items: rows.map((r) => this.view(r, names)), total: all.length, totals };
+    return {
+      items: rows.map((r) => this.view(r, names)),
+      total: all.length,
+      limit: q.limit,
+      offset: q.offset,
+      totals,
+      facets: { category: facetCounts(byCategory), paymentMethod: facetCounts(byMethod), status: facetCounts(byStatus) },
+    };
   }
 
   private async row(tenantId: string, id: string): Promise<ExpenseRow> {

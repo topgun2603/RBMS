@@ -1,7 +1,8 @@
 import { notFound, requirePermission, requireSuperAdmin, requireTenant, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
-import { BILLING_INTERVALS, SUBSCRIPTION_STATUSES } from "./schema";
+import type { PlatformInvoiceListQuery, SubscriptionListQuery } from "./list";
+import { BILLING_INTERVALS } from "./schema";
 import { parseUntil, type Actor, type SubscriptionsService } from "./service";
 
 export const SUBSCRIPTIONS_PERMISSION = "subscriptions.manage";
@@ -13,19 +14,6 @@ const lifecycleBody = z.object({ tenantId: z.string().uuid(), now: z.string().da
 const fileParam = z.object({ file: z.string().regex(/^[0-9a-fA-F-]{36}\.pdf$/, "Not a PDF") });
 const tenantParam = z.object({ tenantId: z.string().uuid() });
 const idParam = z.object({ id: z.string().uuid() });
-const adminListQuery = z.object({
-  status: z.enum(SUBSCRIPTION_STATUSES).optional(),
-  q: z.string().max(100).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-const invoiceListQuery = z.object({
-  status: z.enum(["paid", "void"]).optional(),
-  tenantId: z.string().uuid().optional(),
-  q: z.string().max(100).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
 const extendBody = z.object({ days: z.number().int().min(1).max(365) });
 const compBody = z.object({ planId: z.string().trim().min(1).max(40), until: z.string().max(40).nullable().optional() });
 const voidBody = z.object({ reason: z.string().trim().max(300).optional() });
@@ -111,7 +99,7 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
       admin.addHook("preHandler", async (req) => {
         requireSuperAdmin(req.ctx);
       });
-      admin.get("/admin/subscriptions", async (req) => service.adminList(adminListQuery.parse(req.query ?? {})));
+      admin.get("/admin/subscriptions", async (req) => service.adminList((req.query ?? {}) as SubscriptionListQuery));
       admin.get("/admin/stats", async () => service.adminStats());
       admin.post("/admin/:tenantId/extend-trial", SELF_AUDITED, async (req) => {
         const { tenantId } = tenantParam.parse(req.params);
@@ -122,7 +110,7 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
         const b = compBody.parse(req.body ?? {});
         return service.comp(tenantId, { planId: b.planId, until: parseUntil(b.until) }, actorOf(req.ctx));
       });
-      admin.get("/admin/invoices", async (req) => service.adminInvoices(invoiceListQuery.parse(req.query ?? {})));
+      admin.get("/admin/invoices", async (req) => service.adminInvoices((req.query ?? {}) as PlatformInvoiceListQuery));
       admin.get("/admin/invoices/:file", async (req, reply) => {
         const parsed = fileParam.safeParse(req.params);
         if (!parsed.success) throw notFound("Invoice");

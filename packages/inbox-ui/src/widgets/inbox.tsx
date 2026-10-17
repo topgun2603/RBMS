@@ -49,7 +49,7 @@ export function TicketsAttentionWidget() {
   const common = { loading: s.isPending, error: s.isError };
   return (
     <>
-      <AttentionItem label={t("inbox.widget.attnOverdue")} count={d?.overdue} tone="danger" icon={OctagonAlertIcon} to="support?status=open&overdue=1" {...common} />
+      <AttentionItem label={t("inbox.widget.attnOverdue")} count={d?.overdue} tone="danger" icon={OctagonAlertIcon} to="support?status=open&overdue=1&sort=due" {...common} />
       <AttentionItem label={t("inbox.widget.attnTickets")} count={d?.counts.open} tone="warning" icon={LifeBuoyIcon} to="support?status=open" {...common} />
     </>
   );

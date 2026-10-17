@@ -175,7 +175,10 @@ Rules:
   `using gin ((customer->>'name') gin_trgm_ops)`) in a migration. Sorts on big tables want a
   `(tenant_id, <sort column>)` btree.
 
-Converted so far: `GET /v1/invoices` (bills), `GET /v1/orders`.
+Converted so far: `GET /v1/invoices` (bills), `GET /v1/orders`, `GET /v1/audit` (+ `/platform`; capped count, `totalCapped`), `GET /v1/import/jobs`, marketplace `GET /v1/marketplace/vendors | payouts | product-reviews | vendor-orders | ledger` and the seller's `vendor/orders | ledger | payouts` (default 50 / max 500).
+Super-admin: `GET /v1/tenancy/tenants`, `GET /v1/auth/users`, `GET /v1/subscriptions/admin/subscriptions`,
+`GET /v1/subscriptions/admin/invoices`, `GET /v1/kyc/review` (no `status` = the queue, `status=all` = every check),
+`GET /v1/consent/requests`; each package's `src/list.ts` holds the schema, sort map and WHERE builder.
 
 ## Errors and logging
 

@@ -1,6 +1,17 @@
-import type { AuditEvent, AuditPort } from "@srirealtime/core";
+import {
+  defineSort,
+  listFilter,
+  listQuerySchema,
+  rangeOrder,
+  searchAny,
+  splitList,
+  type AuditEvent,
+  type AuditPort,
+  type ListPage,
+} from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, count, desc, eq, gte, like, lt, type SQL } from "drizzle-orm";
+import { and, count, eq, gte, inArray, like, lt, or, sql, type SQL } from "drizzle-orm";
+import { z } from "zod";
 import { istDayEnd, istDayStart, MAX_SUMMARY, MAX_USER_AGENT } from "./derive";
 import { auditEvents, type AuditEventRow } from "./schema";
 
@@ -15,25 +26,57 @@ export interface AuditDeps {
   log?: LoggerPort;
 }
 
-export interface AuditQuery {
-  entityType?: string;
-  entityId?: string;
-  actorUserId?: string;
-  /** Exact action, or a prefix when it ends with `*` ("invoice.*"). */
-  action?: string;
+/** Most rows a single list call returns (larger `limit`s are clamped, not rejected: older callers send 500). */
+export const MAX_LIST = 200;
+/** Most rows a CSV export returns. */
+export const MAX_CSV = 10_000;
+/** The count stops here: `total` is at most this, with `totalCapped: true` when more events match. */
+export const MAX_COUNT = 10_000;
+
+const optText = (max: number) =>
+  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().min(1).max(max).optional());
+const textList = (maxItem: number, maxItems: number) =>
+  z.preprocess(splitList, z.array(z.string().min(1).max(maxItem)).max(maxItems).optional());
+
+const auditFilterShape = {
+  entityType: textList(100, 20),
+  entityId: optText(200),
+  actorUserId: listFilter.ids(),
+  /** Exact actions, or prefixes ending in `*` ("invoices.*,invoice.*"). */
+  action: textList(200, 30),
   /** `YYYY-MM-DD` (IST), inclusive. */
-  from?: string;
-  to?: string;
-  limit?: number;
-  offset?: number;
+  from: listFilter.date(),
+  to: listFilter.date(),
+  format: z.enum(["json", "csv"]).default("json"),
+};
+
+/**
+ * `GET /v1/audit` query (docs/CONVENTIONS.md → "Lists and tables"):
+ * `?q=&sort=-time&actorUserId=<uuid>,<uuid>&action=invoices.*,invoice.*&entityType=invoices,orders&entityId=&from=&to=`.
+ * `limit` defaults to 50; JSON pages are clamped to MAX_LIST, CSV to MAX_CSV (so `limit=500` still works).
+ */
+export const auditListQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: MAX_CSV })
+  .extend(auditFilterShape)
+  .superRefine(rangeOrder("from", "to"));
+export type AuditQuery = z.input<typeof auditListQuerySchema>;
+export type AuditListParams = z.output<typeof auditListQuerySchema>;
+
+/** `GET /v1/audit/platform`: the same plus `tenantId`. */
+export const auditPlatformQuerySchema = listQuerySchema({ defaultLimit: 50, maxLimit: MAX_CSV })
+  .extend({ ...auditFilterShape, tenantId: listFilter.id() })
+  .superRefine(rangeOrder("from", "to"));
+export type AuditPlatformQuery = z.input<typeof auditPlatformQuerySchema>;
+
+/** Sort: newest first by default; `id` keeps equal timestamps in a stable order across pages. */
+export const AUDIT_SORT = defineSort({ time: auditEvents.createdAt }, { default: "-time", tieBreaker: auditEvents.id });
+
+export interface AuditListPage extends ListPage<AuditEventRow> {
+  /** True when more than MAX_COUNT events match (`total` is then MAX_COUNT). */
+  totalCapped: boolean;
 }
 
-/** Most rows a single list/CSV call returns. */
-export const MAX_LIST = 200;
-export const MAX_CSV = 10_000;
-
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 const clip = (s: string | null | undefined, max: number) => (s ? s.slice(0, max) : null);
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export class AuditService implements AuditPort {
   private readonly db: Db;
@@ -65,24 +108,32 @@ export class AuditService implements AuditPort {
     }
   }
 
-  /** Tenant audit log, newest first. */
-  list(tenantId: string, q: AuditQuery = {}, maxLimit = MAX_LIST) {
-    return this.query(and(eq(auditEvents.tenantId, tenantId), ...filters(q)), q, maxLimit);
+  /** Tenant audit log, sorted by AUDIT_SORT (newest first by default). Bad params → ZodError, unknown sort → 400. */
+  list(tenantId: string, q: AuditQuery = {}, maxLimit = MAX_LIST): Promise<AuditListPage> {
+    const p = auditListQuerySchema.parse(q);
+    return this.query(and(eq(auditEvents.tenantId, tenantId), ...auditConditions(p)), p, maxLimit);
   }
 
   /** Super-admin: across tenants incl. platform events (tenant null), or one tenant's. */
-  listPlatform(q: AuditQuery & { tenantId?: string } = {}, maxLimit = MAX_LIST) {
-    return this.query(and(...(q.tenantId ? [eq(auditEvents.tenantId, q.tenantId)] : []), ...filters(q)), q, maxLimit);
+  listPlatform(q: AuditPlatformQuery = {}, maxLimit = MAX_LIST): Promise<AuditListPage> {
+    const p = auditPlatformQuerySchema.parse(q);
+    return this.query(and(...(p.tenantId ? [eq(auditEvents.tenantId, p.tenantId)] : []), ...auditConditions(p)), p, maxLimit);
   }
 
-  private async query(where: SQL | undefined, q: AuditQuery, maxLimit: number): Promise<{ items: AuditEventRow[]; total: number }> {
-    const limit = Math.min(Math.max(q.limit ?? 50, 1), maxLimit);
-    const offset = Math.max(q.offset ?? 0, 0);
-    const [items, totals] = await Promise.all([
-      this.db.select().from(auditEvents).where(where).orderBy(desc(auditEvents.createdAt)).limit(limit).offset(offset),
-      this.db.select({ n: count() }).from(auditEvents).where(where),
+  /**
+   * One page plus a capped count. The log can hold millions of rows, so the count reads at most MAX_COUNT + 1 matches
+   * (`count(*) from (select 1 … limit 10001)`) instead of every one.
+   */
+  private async query(where: SQL | undefined, p: AuditListParams, maxLimit: number): Promise<AuditListPage> {
+    const order = AUDIT_SORT.orderBy(p.sort);
+    const limit = Math.min(p.limit, maxLimit);
+    const offset = p.offset;
+    const [items, counted] = await Promise.all([
+      this.db.select().from(auditEvents).where(where).orderBy(...order).limit(limit).offset(offset),
+      this.db.select({ n: count() }).from(cappedMatches(this.db, where)),
     ]);
-    return { items, total: totals[0]?.n ?? 0 };
+    const n = Number(counted[0]?.n ?? 0);
+    return { items, total: Math.min(n, MAX_COUNT), totalCapped: n > MAX_COUNT, limit, offset };
   }
 
   /** Retention: deletes events older than `olderThanDays` (default 400). Returns the number deleted. */
@@ -94,18 +145,36 @@ export class AuditService implements AuditPort {
   }
 }
 
-/** Query filters as SQL conditions (all optional). */
+/** `select 1 from audit_events where … limit MAX_COUNT + 1`, the subquery of the capped count. */
+export function cappedMatches(db: Db, where: SQL | undefined) {
+  return db
+    .select({ one: sql<number>`1`.as("one") })
+    .from(auditEvents)
+    .where(where)
+    .limit(MAX_COUNT + 1)
+    .as("matches");
+}
+
+/** One `action` item: exact, or a prefix when it ends with `*` ("invoice.*"). */
+const actionCondition = (a: string): SQL =>
+  a.endsWith("*") ? like(auditEvents.action, `${escapeLike(a.slice(0, -1))}%`) : eq(auditEvents.action, a);
+
+type FilterParams = Pick<AuditListParams, "q" | "entityType" | "entityId" | "actorUserId" | "action" | "from" | "to">;
+
+/** The list's filter conditions (tenant scoping is added by the caller). */
+export function auditConditions(p: FilterParams): SQL[] {
+  const out: (SQL | undefined)[] = [];
+  if (p.entityType?.length) out.push(p.entityType.length === 1 ? eq(auditEvents.entityType, p.entityType[0]!) : inArray(auditEvents.entityType, p.entityType));
+  if (p.entityId) out.push(eq(auditEvents.entityId, p.entityId));
+  if (p.actorUserId?.length) out.push(p.actorUserId.length === 1 ? eq(auditEvents.actorUserId, p.actorUserId[0]!) : inArray(auditEvents.actorUserId, p.actorUserId));
+  if (p.action?.length) out.push(p.action.length === 1 ? actionCondition(p.action[0]!) : or(...p.action.map(actionCondition)));
+  if (p.from) out.push(gte(auditEvents.createdAt, istDayStart(p.from)));
+  if (p.to) out.push(lt(auditEvents.createdAt, istDayEnd(p.to)));
+  out.push(searchAny(p.q, [auditEvents.summary, auditEvents.action, auditEvents.entityId]));
+  return out.filter((c): c is SQL => !!c);
+}
+
+/** Filter conditions from a raw query (all optional). */
 export function filters(q: AuditQuery): SQL[] {
-  const out: SQL[] = [];
-  if (q.entityType) out.push(eq(auditEvents.entityType, q.entityType));
-  if (q.entityId) out.push(eq(auditEvents.entityId, q.entityId));
-  if (q.actorUserId) out.push(eq(auditEvents.actorUserId, q.actorUserId));
-  if (q.action) {
-    out.push(
-      q.action.endsWith("*") ? like(auditEvents.action, `${escapeLike(q.action.slice(0, -1))}%`) : eq(auditEvents.action, q.action),
-    );
-  }
-  if (q.from) out.push(gte(auditEvents.createdAt, istDayStart(q.from)));
-  if (q.to) out.push(lt(auditEvents.createdAt, istDayEnd(q.to)));
-  return out;
+  return auditConditions(auditListQuerySchema.parse(q));
 }

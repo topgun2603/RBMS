@@ -1,10 +1,9 @@
 "use client";
 
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@srirealtime/web";
-import { DELIVERY_PAGE_SIZE } from "../developer";
 import { retry4xx } from "../http";
-import type { ApiKey, DeliveryStatus, ISODate, Paged, ScopeDef, WebhookDelivery, WebhookEndpoint, WebhookEventDef } from "../types";
+import type { ApiKey, ISODate, Paged, ScopeDef, WebhookDelivery, WebhookEndpoint, WebhookEventDef } from "../types";
 
 /** /v1/developer: API keys, webhook endpoints, delivery log (packages/developer/src/routes.ts). */
 const BASE = "/developer";
@@ -15,18 +14,13 @@ export const developerKeys = {
   events: () => ["developer", "events"] as const,
   keys: () => ["developer", "keys"] as const,
   endpoints: () => ["developer", "endpoints"] as const,
-  deliveries: (f?: DeliveryFilters) => (f ? (["developer", "deliveries", f] as const) : (["developer", "deliveries"] as const)),
+  /** Prefix of every delivery-log query (the table appends its params); redeliver / test / delete invalidate it. */
+  deliveries: () => ["developer", "deliveries"] as const,
   delivery: (id: string) => ["developer", "delivery", id] as const,
 };
 
 /** Server rows carry a few more fields than lib/types has. */
 export type DeliveryDetail = WebhookDelivery & { deliveredAt?: ISODate | null; tenantId?: string };
-
-export interface DeliveryFilters {
-  endpointId?: string;
-  status?: DeliveryStatus;
-  type?: string;
-}
 
 export interface CreateKeyInput {
   name: string;
@@ -154,21 +148,8 @@ export function useTestEndpoint() {
 
 // ------------------------------------------------------------------ deliveries
 
-export const useDeliveries = (filters: DeliveryFilters) =>
-  useInfiniteQuery({
-    queryKey: developerKeys.deliveries(filters),
-    queryFn: ({ pageParam }) =>
-      api<Paged<DeliveryDetail>>(`${BASE}/deliveries`, {
-        query: { endpointId: filters.endpointId, status: filters.status, type: filters.type, limit: DELIVERY_PAGE_SIZE, offset: pageParam },
-      }),
-    initialPageParam: 0,
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((n, p) => n + p.items.length, 0);
-      return last.items.length === DELIVERY_PAGE_SIZE && loaded < last.total ? loaded : undefined;
-    },
-    placeholderData: keepPreviousData,
-    retry: retry4xx,
-  });
+/** The delivery log's server default sort (packages/developer `DELIVERY_SORT`). */
+export const DELIVERIES_DEFAULT_SORT = "-time";
 
 export const useDelivery = (id: string | null) =>
   useQuery({

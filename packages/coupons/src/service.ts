@@ -1,6 +1,17 @@
-import { AppError, conflict, notFound } from "@srirealtime/core";
+import {
+  AppError,
+  conflict,
+  defineSort,
+  facetCounts,
+  listFilter,
+  listQuerySchema as baseListQuerySchema,
+  notFound,
+  runList,
+  searchAny,
+  type ListPage,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
-import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, not, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
   CODE_RE,
@@ -157,13 +168,23 @@ export const couponInputSchema = z
 export type CouponInput = z.input<typeof couponInputSchema>;
 type ParsedCoupon = z.output<typeof couponInputSchema>;
 
-export const listQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
+/**
+ * Where a coupon stands now, in this order of precedence: switched off, ended, not started yet, fully used, live.
+ * Mirrors `couponState` in orders-ui (lib/coupons.ts).
+ */
+export const COUPON_STATUSES = ["active", "scheduled", "expired", "used_up", "off"] as const;
+export type CouponStatus = (typeof COUPON_STATUSES)[number];
+
+/** GET /v1/coupons: paged (50 by default, up to 200 for the pickers), sorted, filtered by status/type/on-off and `q`. */
+export const listQuerySchema = baseListQuerySchema({ defaultLimit: 50, maxLimit: 200 }).extend({
+  /** Derived status (multi): `status=active,scheduled`. */
+  status: listFilter.oneOf(COUPON_STATUSES),
+  type: listFilter.oneOf(COUPON_TYPES),
+  /** The on/off switch (older callers). */
   active: z.enum(["true", "false"]).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
 });
 export type CouponListQuery = z.input<typeof listQuerySchema>;
+export type CouponListParams = z.output<typeof listQuerySchema>;
 
 export const redemptionsQuerySchema = z.object({
   status: z.enum(REDEMPTION_STATUSES).optional(),
@@ -199,7 +220,6 @@ export type PublicValidateInput = z.input<typeof publicValidateSchema>;
 
 const refSchema = z.object({ refType: z.enum(REDEMPTION_REF_TYPES), refId: z.string().uuid() });
 
-const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
 
 /** 409 coupon_invalid `{ reason }` — what redeem throws when the coupon can't be used any more. */
 export const couponError = (reason: CouponReason) => new AppError(409, "coupon_invalid", REASON_MESSAGES[reason], { reason });
@@ -249,6 +269,63 @@ const asRule = (r: CouponRow): CouponRule => r;
 /** Active redemptions per coupon (correlated count used in lists). */
 const usedCountSql = sql<number>`(select count(*)::int from ${couponRedemptions} where ${couponRedemptions.couponId} = ${coupons.id} and ${couponRedemptions.status} = 'active')`;
 
+/** `now` bound as an ISO string (postgres-js mis-serialises raw Dates inside sql``). */
+const nowSql = (now: Date) => sql`${now.toISOString()}::timestamptz`;
+
+/** The pieces of the derived status, as SQL conditions (all assume nothing about `active`). */
+function statusParts(now: Date) {
+  const n = nowSql(now);
+  const ended = and(isNotNull(coupons.endsAt), sql`${coupons.endsAt} < ${n}`)!;
+  const notStarted = and(isNotNull(coupons.startsAt), sql`${coupons.startsAt} > ${n}`)!;
+  const usedUp = and(isNotNull(coupons.usageLimit), sql`${usedCountSql} >= ${coupons.usageLimit}`)!;
+  return { n, ended, notStarted, usedUp };
+}
+
+/** WHERE condition for one derived status (same precedence as `couponStatusSql`). */
+export function couponStatusCondition(status: CouponStatus, now: Date): SQL {
+  const { ended, notStarted, usedUp } = statusParts(now);
+  const on = eq(coupons.active, true);
+  switch (status) {
+    case "off":
+      return eq(coupons.active, false);
+    case "expired":
+      return and(on, ended)!;
+    case "scheduled":
+      return and(on, not(ended), notStarted)!;
+    case "used_up":
+      return and(on, not(ended), not(notStarted), usedUp)!;
+    case "active":
+      return and(on, not(ended), not(notStarted), not(usedUp))!;
+  }
+}
+
+/** The derived status as one CASE expression (facet counts). */
+export function couponStatusSql(now: Date): SQL<CouponStatus> {
+  const { ended, notStarted, usedUp } = statusParts(now);
+  return sql<CouponStatus>`case when ${eq(coupons.active, false)} then 'off' when ${ended} then 'expired' when ${notStarted} then 'scheduled' when ${usedUp} then 'used_up' else 'active' end`;
+}
+
+export const COUPON_SORT = defineSort(
+  {
+    code: coupons.code,
+    uses: usedCountSql,
+    ends: coupons.endsAt,
+    created: coupons.createdAt,
+  },
+  { default: "-created", tieBreaker: coupons.id },
+);
+
+/** WHERE of the staff list; without `status` for the status facet counts. */
+export function couponListConditions(tenantId: string, p: CouponListParams, now: Date, withStatus = true): SQL | undefined {
+  return and(
+    eq(coupons.tenantId, tenantId),
+    withStatus && p.status?.length ? or(...p.status.map((s) => couponStatusCondition(s, now))) : undefined,
+    p.type?.length ? inArray(coupons.type, p.type) : undefined,
+    p.active ? eq(coupons.active, p.active === "true") : undefined,
+    searchAny(p.q, [coupons.code, coupons.description]),
+  );
+}
+
 /** `SELECT … FOR UPDATE` on the coupon row: serialises concurrent redemptions of one coupon until the tx ends. */
 export function lockCouponStatement(db: DbOrTx, tenantId: string, code: string) {
   return db
@@ -271,26 +348,30 @@ export class CouponsService {
 
   // ================================================================ CRUD
 
-  async list(tenantId: string, query: CouponListQuery = {}): Promise<ListResult<Coupon>> {
+  async list(tenantId: string, query: CouponListQuery = {}): Promise<ListPage<Coupon>> {
     const p = listQuerySchema.parse(query);
-    const conds: (SQL | undefined)[] = [eq(coupons.tenantId, tenantId)];
-    if (p.active) conds.push(eq(coupons.active, p.active === "true"));
-    if (p.q) {
-      const pat = likePattern(p.q);
-      conds.push(or(ilike(coupons.code, pat), ilike(coupons.description, pat)));
-    }
-    const where = and(...conds);
-    const [rows, [counted]] = await Promise.all([
-      this.db
-        .select({ row: coupons, used: usedCountSql })
-        .from(coupons)
-        .where(where)
-        .orderBy(desc(coupons.createdAt))
-        .limit(p.limit)
-        .offset(p.offset),
-      this.db.select({ total: count() }).from(coupons).where(where),
+    const order = COUPON_SORT.orderBy(p.sort);
+    const now = this.now();
+    const where = couponListConditions(tenantId, p, now);
+    const status = couponStatusSql(now);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({ row: coupons, used: usedCountSql })
+            .from(coupons)
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(coupons).where(where),
+        map: (r) => toCoupon(r.row, Number(r.used ?? 0)),
+      }),
+      this.db.select({ key: status, n: count() }).from(coupons).where(couponListConditions(tenantId, p, now, false))
+        // By position: the CASE binds `now` as parameters, so repeating it in GROUP BY would not match the SELECT.
+        .groupBy(sql`1`),
     ]);
-    return { items: rows.map((r) => toCoupon(r.row, Number(r.used ?? 0))), total: counted?.total ?? 0 };
+    return { ...page, facets: { status: facetCounts(byStatus) } };
   }
 
   private async row(db: DbOrTx, tenantId: string, id: string): Promise<CouponRow> {

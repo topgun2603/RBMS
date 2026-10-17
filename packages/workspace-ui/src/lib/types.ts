@@ -91,13 +91,9 @@ export interface AuditEvent {
   createdAt: string;
 }
 
-export interface AuditFilters {
-  from?: string;
-  to?: string;
-  actorUserId?: string;
-  action?: string;
-  entityType?: string;
-  entityId?: string;
+/** Extra field of the `GET /audit` list: the count stops at 10,000 (`total` is then 10,000). */
+export interface AuditListExtras {
+  totalCapped?: boolean;
 }
 
 // ---------------------------------------------------------------- import / export

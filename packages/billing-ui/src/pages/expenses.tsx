@@ -12,35 +12,20 @@ import {
   ReceiptTextIcon,
   WalletIcon,
 } from "lucide-react";
-import {
-  Button,
-  Card,
-  cn,
-  EmptyState,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  StatusPill,
-  Switch,
-} from "@srirealtime/ui";
-import { absoluteUrl, Page, PageHeading, SearchField, useDebounced, useI18n } from "@srirealtime/web";
+import { Button, cn, DataTable, DataTableToolbar, EmptyState, StatusPill, type DataTableColumn } from "@srirealtime/ui";
+import { absoluteUrl, api, Page, PageHeading, useI18n, useServerTable, type ListResponse, type ServerFilterDefs } from "@srirealtime/web";
 import { BarList } from "../components/charts/bar-list";
 import { ChartCard } from "../components/charts/chart-card";
 import { MonthBars } from "../components/charts/month-bars";
 import { StatTile } from "../components/charts/stat-tile";
-import { DateRangePicker, initialRange, type DateRangeValue } from "../components/date-range-picker";
+import { initialRange } from "../components/date-range-picker";
 import { CategoriesDialog } from "../components/expenses/categories-dialog";
 import { categoryLabel, ExpenseDialog } from "../components/expenses/expense-dialog";
 import { ChartIllustration } from "../components/illustrations";
-import { DownloadCsvButton, PeriodEmpty, ReportTable, TabError, TableCard, TableSkeleton, TileGrid, type Column } from "../components/reports/report-ui";
+import { DownloadCsvButton, TabError, TileGrid } from "../components/reports/report-ui";
 import { EXPENSES_PERMISSION, useHasPermission } from "../lib/access";
-import { useExpenseCategories, useExpenses, useExpenseSummary, type Expense } from "../lib/expenses";
+import { EXPENSE_PAYMENT_METHODS, useExpenseCategories, useExpenseSummary, type Expense, type ExpenseCategory, type ExpenseList } from "../lib/expenses";
 import { compactINR, money } from "../lib/format";
-
-const ALL = "__all";
 
 export default function ExpensesPage() {
   const { t } = useI18n();
@@ -57,90 +42,157 @@ export default function ExpensesPage() {
 }
 
 function Expenses() {
+  // The category names load first so a `?categoryId=` in the URL survives a refresh; useServerTable reads the search
+  // params, which needs a Suspense boundary.
+  const categories = useExpenseCategories();
+  if (categories.isPending) return null;
+  return (
+    <React.Suspense fallback={null}>
+      <ExpensesList categories={categories.data ?? []} />
+    </React.Suspense>
+  );
+}
+
+function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
   const { t, formatDate } = useI18n();
-  const [range, setRange] = React.useState<DateRangeValue>(() => initialRange("thisMonth"));
-  const [categoryId, setCategoryId] = React.useState(ALL);
-  const [search, setSearch] = React.useState("");
-  const [withCancelled, setWithCancelled] = React.useState(false);
-  const q = useDebounced(search.trim(), 300);
   const [dialog, setDialog] = React.useState<{ expense: Expense | null } | null>(null);
   const [cats, setCats] = React.useState(false);
+  const dShort = React.useCallback((d: string) => formatDate(d, { day: "numeric", month: "short" }), [formatDate]);
 
   const filters = React.useMemo(
-    () => ({
-      from: range.from,
-      to: range.to,
-      categoryId: categoryId === ALL ? undefined : categoryId,
-      q: q || undefined,
-      status: withCancelled ? ("all" as const) : ("recorded" as const),
-    }),
-    [range.from, range.to, categoryId, q, withCancelled],
+    () =>
+      ({
+        date: { kind: "dateRange", label: t("billing.expenses.date") },
+        category: {
+          kind: "options",
+          param: "categoryId",
+          label: t("billing.expenses.category"),
+          options: categories.map((c) => ({ value: c.id, label: categoryLabel(t, c) })),
+          dynamic: true,
+        },
+        paymentMethod: {
+          kind: "options",
+          label: t("billing.expenses.method"),
+          options: EXPENSE_PAYMENT_METHODS.map((m) => ({ value: m, label: t(`billing.payment.methods.${m}`) })),
+        },
+        status: {
+          kind: "options",
+          label: t("billing.expenses.filter.status"),
+          options: [
+            { value: "recorded", label: t("billing.expenses.status.recorded") },
+            { value: "cancelled", label: t("billing.expenses.cancelledBadge") },
+          ],
+        },
+      }) satisfies ServerFilterDefs,
+    [t, categories],
   );
-  const list = useExpenses(filters);
-  const summary = useExpenseSummary(range.from, range.to);
-  const categories = useExpenseCategories();
+
+  const columns = React.useMemo<DataTableColumn<Expense>[]>(
+    () => [
+      {
+        id: "date",
+        header: t("billing.expenses.date"),
+        sortable: true,
+        sortDescFirst: true,
+        hideable: false,
+        card: "subtitle",
+        cell: (e) => (
+          <button type="button" onClick={() => setDialog({ expense: e })} className="font-medium text-primary tabular-nums underline-offset-4 hover:underline">
+            {dShort(e.date)}
+          </button>
+        ),
+        cardCell: (e) => `${dShort(e.date)} · ${categoryLabel(t, { name: e.categoryName })} · ${t(`billing.payment.methods.${e.paymentMethod}`)}`,
+      },
+      {
+        id: "category",
+        header: t("billing.expenses.category"),
+        sortable: true,
+        cell: (e) => categoryLabel(t, { name: e.categoryName }),
+      },
+      {
+        id: "vendor",
+        header: t("billing.expenses.vendor"),
+        card: "title",
+        cell: (e) => (
+          <span className="grid max-w-56">
+            <span className="truncate">{e.vendorName || "—"}</span>
+            {e.vendorGstin && <span className="truncate font-mono text-xs text-muted-foreground">{e.vendorGstin}</span>}
+          </span>
+        ),
+        cardCell: (e) => e.vendorName || categoryLabel(t, { name: e.categoryName }),
+      },
+      {
+        id: "amount",
+        header: t("billing.expenses.amount"),
+        sortable: true,
+        numeric: true,
+        card: "right",
+        cell: (e) => <span className={e.status === "cancelled" ? "text-muted-foreground line-through" : "font-semibold"}>{money(e.amount)}</span>,
+      },
+      {
+        id: "gst",
+        header: t("billing.expenses.gstItc"),
+        numeric: true,
+        card: "right",
+        cell: (e) =>
+          e.gstAmount ? (
+            <span className="grid">
+              <span>{money(e.gstAmount)}</span>
+              <span className={cn("text-xs", e.itc ? "text-success-ink" : "text-muted-foreground")}>
+                {e.itc ? t("billing.expenses.itcShort", { amount: money(e.itc) }) : t("billing.expenses.noItc")}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+        cardCell: (e) =>
+          e.status === "cancelled" ? (
+            <StatusPill tone="neutral">{t("billing.expenses.cancelledBadge")}</StatusPill>
+          ) : e.itc ? (
+            <span className="text-xs text-success-ink">{t("billing.expenses.itcShort", { amount: money(e.itc) })}</span>
+          ) : null,
+      },
+      { id: "method", header: t("billing.expenses.method"), hideBelow: "md", cell: (e) => t(`billing.payment.methods.${e.paymentMethod}`) },
+      {
+        id: "receipt",
+        header: t("billing.expenses.receipt"),
+        hideBelow: "md",
+        cell: (e) => <ReceiptThumb url={e.receiptUrl} />,
+      },
+    ],
+    [t, dShort],
+  );
+
+  const st = useServerTable<Expense, typeof filters>({
+    queryKey: ["expenses", "list", "table"],
+    path: "/expenses",
+    columns,
+    filters,
+    defaultSort: "-date",
+    search: t("billing.expenses.search"),
+    storageKey: "billing-expenses",
+    // No status chosen = recorded and cancelled (left out, the API shows recorded ones only).
+    fetcher: (params, signal) => api.get<ListResponse<Expense>>("/expenses", { status: "all", ...params }, { signal }),
+  });
+
+  // The tiles and charts cover the table's date filter (this month when none is set).
+  const date = st.filters.date.value;
+  const period = React.useMemo(() => {
+    const month = initialRange("thisMonth");
+    return { from: date.from ?? month.from, to: date.to ?? (date.from && date.from > month.to ? date.from : month.to) };
+  }, [date.from, date.to]);
+  const summary = useExpenseSummary(period.from, period.to);
   const s = summary.data;
-  const items = list.data?.items ?? [];
   const loading = summary.isPending;
-  const dShort = (d: string) => formatDate(d, { day: "numeric", month: "short" });
+  const totals = (st.query.data as ExpenseList | undefined)?.totals;
+  const filtered = st.table.activeFilterCount > 0;
+  const { limit: _limit, offset: _offset, ...csvParams } = st.apiParams;
 
   const addButton = (
     <Button size="lg" className="h-11" onClick={() => setDialog({ expense: null })}>
       <PlusIcon /> {t("billing.expenses.add")}
     </Button>
   );
-
-  const columns: Column<Expense>[] = [
-    {
-      key: "date",
-      label: t("billing.expenses.date"),
-      cell: (e) => (
-        <button type="button" onClick={() => setDialog({ expense: e })} className="font-medium text-primary tabular-nums underline-offset-4 hover:underline">
-          {dShort(e.date)}
-        </button>
-      ),
-      footer: t("billing.reports.total"),
-    },
-    { key: "category", label: t("billing.expenses.category"), cell: (e) => categoryLabel(t, { name: e.categoryName }) },
-    {
-      key: "vendor",
-      label: t("billing.expenses.vendor"),
-      cell: (e) => (
-        <span className="grid max-w-56">
-          <span className="truncate">{e.vendorName || "—"}</span>
-          {e.vendorGstin && <span className="truncate font-mono text-xs text-muted-foreground">{e.vendorGstin}</span>}
-        </span>
-      ),
-    },
-    {
-      key: "amount",
-      label: t("billing.expenses.amount"),
-      numeric: true,
-      cell: (e) => <span className={e.status === "cancelled" ? "text-muted-foreground line-through" : "font-semibold"}>{money(e.amount)}</span>,
-      footer: money(list.data?.totals.amount ?? 0),
-    },
-    {
-      key: "gst",
-      label: t("billing.expenses.gstItc"),
-      numeric: true,
-      cell: (e) =>
-        e.gstAmount ? (
-          <span className="grid">
-            <span>{money(e.gstAmount)}</span>
-            <span className={cn("text-xs", e.itc ? "text-success-ink" : "text-muted-foreground")}>{e.itc ? t("billing.expenses.itcShort", { amount: money(e.itc) }) : t("billing.expenses.noItc")}</span>
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-      footer: money(list.data?.totals.gst ?? 0),
-    },
-    { key: "method", label: t("billing.expenses.method"), cell: (e) => t(`billing.payment.methods.${e.paymentMethod}`) },
-    {
-      key: "receipt",
-      label: t("billing.expenses.receipt"),
-      cell: (e) => <ReceiptThumb url={e.receiptUrl} />,
-    },
-  ];
 
   return (
     <Page>
@@ -159,29 +211,7 @@ function Expenses() {
       />
 
       <div className="grid gap-4">
-        <Card className="px-card gap-3 py-3">
-          <DateRangePicker value={range} onChange={setRange} />
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger size="lg" className="w-full sm:w-52" aria-label={t("billing.expenses.category")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>{t("billing.expenses.allCategories")}</SelectItem>
-                {(categories.data ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {categoryLabel(t, c)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <SearchField value={search} onChange={setSearch} placeholder={t("billing.expenses.search")} className="sm:max-w-xs sm:flex-1" />
-            <Label className="flex items-center gap-2 text-sm font-normal sm:ml-auto">
-              <Switch checked={withCancelled} onCheckedChange={setWithCancelled} /> {t("billing.expenses.showCancelled")}
-            </Label>
-          </div>
-        </Card>
-
+        <p className="text-meta text-muted-foreground">{t("billing.expenses.summaryPeriod", { from: dShort(period.from), to: dShort(period.to) })}</p>
         {summary.isError && !s ? (
           <TabError error={summary.error} onRetry={() => void summary.refetch()} />
         ) : (
@@ -241,51 +271,31 @@ function Expenses() {
           </div>
         )}
 
-        {list.isError && !list.data ? (
-          <TabError error={list.error} onRetry={() => void list.refetch()} />
-        ) : list.isPending ? (
-          <TableSkeleton />
-        ) : !items.length ? (
-          filters.categoryId || filters.q ? (
-            <PeriodEmpty title={t("billing.expenses.noMatch")} />
-          ) : (
-            <EmptyState illustration={<ChartIllustration />} title={t("billing.expenses.emptyTitle")} description={t("billing.expenses.emptyBody")} action={addButton} />
-          )
-        ) : (
-          <TableCard
-            title={t("billing.expenses.listTitle")}
-            description={t("billing.expenses.entries", { count: list.data.total })}
-            icon={ReceiptIndianRupeeIcon}
-            actions={<DownloadCsvButton path="/expenses" params={{ ...filters }} fileName={`expenses-${range.from}-to-${range.to}.csv`} />}
-          >
-            <div className="hidden sm:block">
-              <ReportTable columns={columns} rows={items} rowKey={(e) => e.id} caption={t("billing.expenses.listTitle")} />
-            </div>
-            <ul className="divide-y sm:hidden">
-              {items.map((e) => (
-                <li key={e.id}>
-                  <button type="button" onClick={() => setDialog({ expense: e })} className="flex w-full items-center gap-3 px-4 py-3 text-left outline-none hover:bg-accent/40 focus-visible:bg-accent/40">
-                    <ReceiptThumb url={e.receiptUrl} link={false} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{e.vendorName || categoryLabel(t, { name: e.categoryName })}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {dShort(e.date)} · {categoryLabel(t, { name: e.categoryName })} · {t(`billing.payment.methods.${e.paymentMethod}`)}
-                      </span>
-                    </span>
-                    <span className="text-right">
-                      <span className={cn("block font-semibold tabular-nums", e.status === "cancelled" && "text-muted-foreground line-through")}>{money(e.amount)}</span>
-                      {e.status === "cancelled" ? (
-                        <StatusPill tone="neutral">{t("billing.expenses.cancelledBadge")}</StatusPill>
-                      ) : e.itc ? (
-                        <span className="text-xs text-success-ink">{t("billing.expenses.itcShort", { amount: money(e.itc) })}</span>
-                      ) : null}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </TableCard>
-        )}
+        <section aria-label={t("billing.expenses.listTitle")} className="grid gap-1">
+          <DataTableToolbar table={st.table}>
+            <DownloadCsvButton path="/expenses" params={{ status: "all", ...csvParams }} fileName={`expenses-${date.from ?? "all"}-to-${date.to ?? "today"}.csv`} />
+          </DataTableToolbar>
+          {totals && st.total ? (
+            <p className="mb-2 text-meta text-muted-foreground tabular-nums" aria-live="polite">
+              {t("billing.expenses.listTotals", { count: st.total, amount: money(totals.amount), gst: money(totals.gst) })}
+            </p>
+          ) : null}
+          <DataTable
+            table={st.table}
+            onRowClick={(e) => setDialog({ expense: e })}
+            empty={
+              filtered ? undefined : (
+                <EmptyState
+                  className="border-0 bg-transparent"
+                  illustration={<ChartIllustration />}
+                  title={t("billing.expenses.emptyTitle")}
+                  description={t("billing.expenses.emptyBody")}
+                  action={addButton}
+                />
+              )
+            }
+          />
+        </section>
       </div>
 
       <ExpenseDialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)} expense={dialog?.expense ?? null} />

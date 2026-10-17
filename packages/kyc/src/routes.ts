@@ -2,16 +2,12 @@ import { requireSuperAdmin, requireTenant, requireUser } from "@srirealtime/core
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { KYC_FEATURE } from "./features";
+import type { ReviewListQuery } from "./list";
 import { SUBJECT_TYPES } from "./schema";
 import { documentSchema, submitCheckSchema, type KycService } from "./service";
 
 const idParam = z.object({ id: z.string().uuid() });
 const subjectParams = z.object({ type: z.enum(SUBJECT_TYPES), id: z.string().uuid() });
-const reviewQuery = z.object({
-  tenantId: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(200).optional(),
-  offset: z.coerce.number().int().min(0).optional(),
-});
 const approveBody = z.object({ reason: z.string().trim().max(500).optional() });
 const rejectBody = z.object({ reason: z.string().trim().min(1).max(500) });
 
@@ -31,7 +27,7 @@ const audited = (action: string, entity: string, idParamName?: string) => ({
  * - `POST /checks/:id/refresh` (DigiLocker polling)
  * - `GET /subjects/:type/:id` → status + checks + documents
  * - `POST /documents` `{ subjectType, subjectId, kind, fileUrl }`, `DELETE /documents/:id`
- * Super-admin: `GET /review?tenantId&limit&offset`, `POST /checks/:id/approve` `{ reason? }`, `POST /checks/:id/reject` `{ reason }`.
+ * Super-admin: `GET /review?tenantId&status&type&q&sort&limit&offset` (./list.ts), `POST /checks/:id/approve` `{ reason? }`, `POST /checks/:id/reject` `{ reason }`.
  *
  * Audit summaries carry the check type and outcome only — never identifiers or names.
  */
@@ -86,7 +82,7 @@ export function kycRoutes(service: KycService) {
     // ---- review queue (super-admin, across shops)
     app.get("/review", { config: feature }, async (req) => {
       requireSuperAdmin(req.ctx);
-      return service.reviewQueue(reviewQuery.parse(req.query ?? {}));
+      return service.reviewQueue((req.query ?? {}) as ReviewListQuery);
     });
 
     // The service records these (`kyc.review.*`) under the check's shop; the host hook would have no shop.

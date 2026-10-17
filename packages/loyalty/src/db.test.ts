@@ -175,11 +175,15 @@ describe.skipIf(!URL_)("service against Postgres", () => {
 
   it("lists, searches and exports members", async () => {
     settings = { ...LOYALTY_SETTINGS_DEFAULTS, pointValuePaise: 50 };
-    const list = await svc.list(T, { q: "98765", sort: "points" });
+    const list = await svc.list(T, { q: "98765", sort: "-points" });
     expect(list.total).toBe(1);
     expect(list.items[0]!.memberKey).toBe(PHONE);
     expect((await svc.list(T, { q: "meena" })).total).toBe(1);
     expect((await svc.list(T, {})).total).toBe(2);
+    const summary = await svc.summary(T);
+    expect(summary.members).toBe(2);
+    expect(summary.liability).toBe(summary.points * 50);
+    expect((await svc.list(T, {})).facets?.tier).toBeDefined();
     const csv = await svc.exportCsv(T);
     expect(csv.split("\r\n").filter(Boolean)).toHaveLength(3);
   });

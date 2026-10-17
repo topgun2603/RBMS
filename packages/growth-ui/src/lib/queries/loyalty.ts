@@ -3,22 +3,19 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiDownload } from "@srirealtime/web";
 import { retry4xx } from "../http";
-import type { LedgerEntry, LedgerType, LoyaltyMember, LoyaltySettings, MemberDetail, MemberSort, Paged } from "../types";
+import type { LedgerEntry, LedgerType, LoyaltyMember, LoyaltySettings, LoyaltySummary, MemberDetail, Paged } from "../types";
 
 const L = "/loyalty";
-export const MEMBERS_PAGE = 50;
 export const LEDGER_PAGE = 50;
 
-export interface MemberFilters {
-  q?: string;
-  tier?: string;
-  sort?: MemberSort;
-}
+/** The members table (useServerTable): server default sort, the same as packages/loyalty `MEMBER_SORT_DEFAULT`. */
+export const MEMBERS_DEFAULT_SORT = "-lastActivity";
 
 export const lk = {
   all: ["loyalty"] as const,
   settings: ["loyalty", "settings"] as const,
-  members: (f: MemberFilters) => ["loyalty", "members", f] as const,
+  /** Prefix of every members list query (the table appends its params). */
+  members: ["loyalty", "members"] as const,
   member: (id: string, type?: LedgerType) => ["loyalty", "member", id, type ?? null] as const,
   summary: ["loyalty", "summary"] as const,
 };
@@ -34,29 +31,16 @@ export function useSaveLoyaltySettings() {
     onSuccess: (s) => {
       qc.setQueryData(lk.settings, s);
       // Tier names and point values show up in member rows.
-      void qc.invalidateQueries({ queryKey: ["loyalty", "members"] });
+      void qc.invalidateQueries({ queryKey: lk.members });
+      void qc.invalidateQueries({ queryKey: lk.summary });
     },
   });
 }
 
-/** Members, 50 per page, "Load more" appends. */
-export function useMembers(f: MemberFilters) {
-  return useInfiniteQuery({
-    queryKey: lk.members(f),
-    queryFn: ({ pageParam }) =>
-      api.get<Paged<LoyaltyMember>>(`${L}/members`, { q: f.q || undefined, tier: f.tier || undefined, sort: f.sort ?? "recent", limit: MEMBERS_PAGE, offset: pageParam }),
-    initialPageParam: 0,
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((n, p) => n + p.items.length, 0);
-      return loaded < last.total ? loaded : undefined;
-    },
-    placeholderData: keepPreviousData,
-    retry: retry4xx,
-  });
-}
-
-export function downloadMembersCsv(f: MemberFilters) {
-  return apiDownload(`${L}/members`, { format: "csv", q: f.q || undefined, tier: f.tier || undefined, sort: f.sort ?? "recent" }, "loyalty-members.csv");
+/** CSV of the members under the table's current search, tier filter and sort (`apiParams` minus paging). */
+export function downloadMembersCsv(params: Record<string, string | number>) {
+  const { limit: _l, offset: _o, ...rest } = params;
+  return apiDownload(`${L}/members`, { ...rest, format: "csv" }, "loyalty-members.csv");
 }
 
 /** Member header (balance, tier, next tier, expiring soon). */
@@ -95,19 +79,11 @@ export function useAdjustPoints(id: string) {
   });
 }
 
-/**
- * Members count + points liability for the dashboard. The list API has no sum, so the liability adds up the top
- * 500 members by points (exact when the shop has ≤ 500 members, otherwise a lower bound).
- */
+/** Members, unused points and their value (points liability) over the whole shop: `GET /loyalty/summary`. */
 export function useLoyaltySummary() {
   return useQuery({
     queryKey: lk.summary,
-    queryFn: async () => {
-      const page = await api.get<Paged<LoyaltyMember>>(`${L}/members`, { sort: "points", limit: 500, offset: 0 });
-      const liability = page.items.reduce((s, m) => s + m.pointsValue, 0);
-      const points = page.items.reduce((s, m) => s + m.pointsBalance, 0);
-      return { members: page.total, liability, points, exact: page.items.length >= page.total };
-    },
+    queryFn: () => api.get<LoyaltySummary>(`${L}/summary`),
     staleTime: 60_000,
     retry: retry4xx,
   });

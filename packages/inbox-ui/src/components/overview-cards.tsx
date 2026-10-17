@@ -92,7 +92,7 @@ export function TicketsWidget() {
                 <p className="text-meta text-muted-foreground">{t("inbox.widget.needReply")}</p>
               </div>
               {d && d.overdue > 0 && (
-                <ModuleLink to="support?status=open&overdue=1" className="inline-flex items-center gap-1.5 rounded-full bg-destructive/12 px-3 py-1 text-sm font-medium text-danger-ink ring-1 ring-destructive/25 ring-inset outline-none hover:bg-destructive/20 focus-visible:ring-2 focus-visible:ring-ring">
+                <ModuleLink to="support?status=open&overdue=1&sort=due" className="inline-flex items-center gap-1.5 rounded-full bg-destructive/12 px-3 py-1 text-sm font-medium text-danger-ink ring-1 ring-destructive/25 ring-inset outline-none hover:bg-destructive/20 focus-visible:ring-2 focus-visible:ring-ring">
                   <OctagonAlertIcon className="size-4" aria-hidden /> {t("inbox.widget.overdue", { count: d.overdue })}
                 </ModuleLink>
               )}
