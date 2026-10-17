@@ -14,6 +14,7 @@ import {
   checkoutSchema,
   listQuerySchema,
   manualOrderSchema,
+  ORDER_SORT,
   OrdersService,
   statusInputSchema,
   summaryColumns,
@@ -104,16 +105,26 @@ describe("SQL", () => {
     const svc = new OrdersService({ db, catalog: { getVariants: async () => [] }, seller: { get: async () => ({ stateCode: "33" }) }, settings: { get: async () => ({}) } });
     const p = listQuerySchema.parse({ status: "placed", channel: "store", q: "meena", from: "2026-10-01", to: "2026-10-31" });
     const withStatus = db.select().from(orders).where(svc.listConditions(T, p, true)).toSQL();
-    expect(withStatus.sql).toContain('"orders"."status" = $');
+    expect(withStatus.sql).toContain('"orders"."status" in ($');
     expect(withStatus.sql).toContain(`"orders"."customer"->>'phone' ilike`);
     expect(withStatus.params).toEqual(expect.arrayContaining([T, "placed", "store", "%meena%"]));
     expect(withStatus.params).toContain("2026-09-30T18:30:00.000Z");
     const counts = db.select().from(orders).where(svc.listConditions(T, p, false)).toSQL();
     expect(counts.params).not.toContain("placed");
     const byBranch = db.select().from(orders).where(svc.listConditions(T, listQuerySchema.parse({ branchId: V1 }), true)).toSQL();
-    expect(byBranch.sql).toContain('"orders"."branch_id" = $');
+    expect(byBranch.sql).toContain('"orders"."branch_id" in ($');
     expect(byBranch.params).toEqual([T, V1]);
     expect(() => listQuerySchema.parse({ branchId: "main" })).toThrow(ZodError);
+  });
+  it("takes comma lists, sorts by whitelisted fields only", () => {
+    const p = listQuerySchema.parse({ status: "placed,packed", channel: "store,pos", paymentStatus: "cod" });
+    expect(p).toMatchObject({ status: ["placed", "packed"], channel: ["store", "pos"], paymentStatus: ["cod"], limit: 50 });
+    expect(() => listQuerySchema.parse({ status: "placed,lost" })).toThrow(ZodError);
+    const render = (s?: string) => db.select().from(orders).orderBy(...ORDER_SORT.orderBy(s)).toSQL().sql;
+    expect(render()).toContain('order by "orders"."placed_at" desc nulls last, "orders"."seq" desc, "orders"."id" desc');
+    expect(render("total")).toContain('order by "orders"."total" asc nulls last');
+    expect(render("-number")).toContain('("orders"."fy", "orders"."seq") desc nulls last');
+    expect(() => render("price")).toThrow(AppError);
   });
 });
 

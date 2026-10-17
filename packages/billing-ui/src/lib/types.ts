@@ -108,6 +108,8 @@ export const PAYMENT_METHODS: PaymentMethod[] = ["cash", "upi", "card", "bank", 
 export interface InvoiceSummary {
   id: string;
   number: string | null;
+  /** Shop branch (multi-branch shops); null = no branch. */
+  branchId?: string | null;
   status: InvoiceStatus;
   date: string;
   dueDate: string | null;

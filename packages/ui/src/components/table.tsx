@@ -8,10 +8,12 @@ import { cn } from "../lib/utils";
  */
 const NUMERIC = "text-right tabular-nums";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({ className, containerless, ...props }: React.ComponentProps<"table"> & { /** Render the bare <table> (the caller provides the scroll container). */ containerless?: boolean }) {
+  const table = <table data-slot="table" className={cn("w-full caption-bottom text-sm tabular-nums", className)} {...props} />;
+  if (containerless) return table;
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table data-slot="table" className={cn("w-full caption-bottom text-sm tabular-nums", className)} {...props} />
+      {table}
     </div>
   );
 }

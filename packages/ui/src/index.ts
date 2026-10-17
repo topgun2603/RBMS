@@ -43,6 +43,8 @@ export * from "./components/initials-avatar";
 export * from "./components/meter";
 export * from "./components/status-pill";
 export * from "./components/data-table";
+export * from "./components/data-table-toolbar";
+export * from "./components/data-table-model";
 export * from "./components/empty-state";
 export * from "./components/otp-input";
 export * from "./components/page-header";

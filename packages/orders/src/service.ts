@@ -1,4 +1,20 @@
-import { AppError, badRequest, conflict, newId, notFound, randomToken, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
+import {
+  AppError,
+  badRequest,
+  conflict,
+  defineSort,
+  listFilter,
+  listQuerySchema as baseListQuery,
+  newId,
+  notFound,
+  randomToken,
+  rangeOrder,
+  runList,
+  searchAny,
+  type FeatureGatePort,
+  type ListPage,
+  type TenantRef,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   financialYear,
@@ -9,7 +25,7 @@ import {
   sanitizePrefix,
   todayIST,
 } from "@srirealtime/gst";
-import { and, asc, count, desc, eq, gte, ilike, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { ORDER_FEATURES_KEYS } from "./features";
 import {
@@ -135,8 +151,8 @@ export interface OrderSummary {
   placedAt: Date;
 }
 
-export interface OrderListResult extends ListResult<OrderSummary> {
-  /** Orders per status for the same filters (status filter aside). */
+export interface OrderListResult extends ListPage<OrderSummary> {
+  /** Orders per status for the same filters (status filter aside); same as `facets.status`. */
   counts: Record<OrderStatus, number>;
 }
 
@@ -362,22 +378,33 @@ export const onlinePaymentSchema = z.object({
 });
 export type OnlineOrderPaymentInput = z.input<typeof onlinePaymentSchema>;
 
-export const listQuerySchema = z
-  .object({
-    status: z.enum(ORDER_STATUSES).optional(),
-    paymentStatus: z.enum(PAYMENT_STATUSES).optional(),
-    channel: z.enum(ORDER_CHANNELS).optional(),
-    branchId: z.string().uuid().optional(),
-    q: z.string().trim().max(100).optional(),
-    from: dateStr.optional(),
-    to: dateStr.optional(),
-    limit: z.coerce.number().int().min(1).max(500).default(50),
-    offset: z.coerce.number().int().min(0).default(0),
+/**
+ * GET /v1/orders (docs/CONVENTIONS.md → "Lists and tables"). `status`, `paymentStatus`, `channel` and `branchId` take
+ * comma lists. Default 50 / max 500 rows (the CSV export and the kanban board ask for more than a table page).
+ */
+export const listQuerySchema = baseListQuery({ defaultLimit: 50, maxLimit: 500 })
+  .extend({
+    status: listFilter.oneOf(ORDER_STATUSES),
+    paymentStatus: listFilter.oneOf(PAYMENT_STATUSES),
+    channel: listFilter.oneOf(ORDER_CHANNELS),
+    branchId: listFilter.ids(),
+    from: listFilter.date(),
+    to: listFilter.date(),
   })
-  .superRefine((v, ctx) => {
-    if (v.from && v.to && v.to < v.from) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["to"], message: "'to' must be on or after 'from'" });
-  });
+  .superRefine(rangeOrder("from", "to"));
 export type OrderListQuery = z.input<typeof listQuerySchema>;
+
+/** Order list sort fields ("placed" = placed time; "number" follows the FY series). */
+export const ORDER_SORT = defineSort(
+  {
+    number: sql`(${orders.fy}, ${orders.seq})`,
+    placed: orders.placedAt,
+    customer: sql`lower(${orders.customer}->>'name')`,
+    total: orders.total,
+    status: orders.status,
+  },
+  { default: "-placed", tieBreaker: [orders.seq, orders.id] },
+);
 
 export const customerListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -385,7 +412,6 @@ export const customerListQuerySchema = z.object({
 });
 export type CustomerListQuery = z.input<typeof customerListQuerySchema>;
 
-const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
 const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -677,52 +703,55 @@ export class OrdersService {
   /** Filters shared by the list and its status counts. */
   listConditions(tenantId: string, p: z.output<typeof listQuerySchema>, withStatus: boolean): SQL | undefined {
     const conds: (SQL | undefined)[] = [eq(orders.tenantId, tenantId)];
-    if (withStatus && p.status) conds.push(eq(orders.status, p.status));
-    if (p.paymentStatus) conds.push(eq(orders.paymentStatus, p.paymentStatus));
-    if (p.channel) conds.push(eq(orders.channel, p.channel));
-    if (p.branchId) conds.push(eq(orders.branchId, p.branchId));
+    if (withStatus && p.status?.length) conds.push(inArray(orders.status, p.status));
+    if (p.paymentStatus?.length) conds.push(inArray(orders.paymentStatus, p.paymentStatus));
+    if (p.channel?.length) conds.push(inArray(orders.channel, p.channel));
+    if (p.branchId?.length) conds.push(inArray(orders.branchId, p.branchId));
     const { start, end } = istRange(p.from, p.to);
     if (start) conds.push(gte(orders.placedAt, start));
     if (end) conds.push(lt(orders.placedAt, end));
-    if (p.q) {
-      const pat = likePattern(p.q);
-      conds.push(
-        or(
-          ilike(orders.number, pat),
-          sql`${orders.customer}->>'name' ilike ${pat}`,
-          sql`${orders.customer}->>'phone' ilike ${pat}`,
-          sql`${orders.customer}->>'email' ilike ${pat}`,
-        ),
-      );
-    }
+    conds.push(
+      searchAny(p.q, [
+        orders.number,
+        sql`${orders.customer}->>'name'`,
+        sql`${orders.customer}->>'phone'`,
+        sql`${orders.customer}->>'email'`,
+      ]),
+    );
     return and(...conds);
   }
 
+  /** Order list: paged, sorted (ORDER_SORT), filtered; `counts` / `facets.status` = orders per status under the other filters. */
   async list(tenantId: string, query: OrderListQuery = {}): Promise<OrderListResult> {
     const p = listQuerySchema.parse(query);
+    const order = ORDER_SORT.orderBy(p.sort);
     const where = this.listConditions(tenantId, p, true);
-    const [rows, [counted], byStatus] = await Promise.all([
-      this.db
-        .select({
-          id: orders.id,
-          number: orders.number,
-          channel: orders.channel,
-          status: orders.status,
-          paymentStatus: orders.paymentStatus,
-          paymentMethod: orders.paymentMethod,
-          customer: orders.customer,
-          lines: orders.lines,
-          total: orders.total,
-          paid: orders.paid,
-          branchId: orders.branchId,
-          placedAt: orders.placedAt,
-        })
-        .from(orders)
-        .where(where)
-        .orderBy(desc(orders.placedAt), desc(orders.seq))
-        .limit(p.limit)
-        .offset(p.offset),
-      this.db.select({ total: count() }).from(orders).where(where),
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({
+              id: orders.id,
+              number: orders.number,
+              channel: orders.channel,
+              status: orders.status,
+              paymentStatus: orders.paymentStatus,
+              paymentMethod: orders.paymentMethod,
+              customer: orders.customer,
+              lines: orders.lines,
+              total: orders.total,
+              paid: orders.paid,
+              branchId: orders.branchId,
+              placedAt: orders.placedAt,
+            })
+            .from(orders)
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(orders).where(where),
+        map: (r) => this.summaryOf(r),
+      }),
       this.db
         .select({ status: orders.status, n: count() })
         .from(orders)
@@ -731,7 +760,7 @@ export class OrdersService {
     ]);
     const counts = emptyCounts();
     for (const r of byStatus) counts[r.status] = Number(r.n);
-    return { items: rows.map((r) => this.summaryOf(r)), total: counted?.total ?? 0, counts };
+    return { ...page, counts, facets: { status: { ...counts } } };
   }
 
   /** Dashboard: today's and this month's orders (IST, cancelled excluded) and orders waiting for the shop. */

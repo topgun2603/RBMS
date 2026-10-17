@@ -1,4 +1,21 @@
-import { AppError, badRequest, conflict, newId, notFound, randomToken, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
+import {
+  AppError,
+  badRequest,
+  conflict,
+  defineSort,
+  facetCounts,
+  listFilter,
+  listQuerySchema as baseListQuery,
+  newId,
+  notFound,
+  randomToken,
+  rangeOrder,
+  runList,
+  searchAny,
+  type FeatureGatePort,
+  type ListPage,
+  type TenantRef,
+} from "@srirealtime/core";
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   amountInWordsINR,
@@ -615,15 +632,35 @@ export const listQuerySchema = z.object({
 });
 export type ListQuery = z.input<typeof listQuerySchema>;
 
-export const invoiceListQuerySchema = listQuerySchema.extend({
-  /** An InvoiceStatus, or "overdue". */
-  status: z.enum([...INVOICE_STATUSES, "overdue"]).optional(),
-  customerId: z.string().uuid().optional(),
-  branchId: z.string().uuid().optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-});
+/**
+ * GET /v1/invoices (docs/CONVENTIONS.md → "Lists and tables"). Limits stay at 50 by default / 200 max for existing
+ * API callers. `status`, `branchId` and `method` take comma lists; "overdue" = issued/partly paid and past due.
+ */
+export const invoiceListQuerySchema = baseListQuery({ defaultLimit: 50, maxLimit: 200 })
+  .extend({
+    status: listFilter.oneOf([...INVOICE_STATUSES, "overdue"] as const),
+    customerId: listFilter.id(),
+    branchId: listFilter.ids(),
+    /** Bills with at least one payment by these methods. */
+    method: listFilter.oneOf(PAYMENT_METHODS),
+    from: listFilter.date(),
+    to: listFilter.date(),
+  })
+  .superRefine(rangeOrder("from", "to"));
 export type InvoiceListQuery = z.input<typeof invoiceListQuerySchema>;
+
+/** Bill list sort fields. "number" follows the series (FY, then sequence); drafts (no number) sort last. */
+export const INVOICE_SORT = defineSort(
+  {
+    number: sql`(${invoices.fy}, ${invoices.seq})`,
+    date: invoices.date,
+    customer: sql`lower(${invoices.customer}->>'name')`,
+    total: invoices.total,
+    balance: sql`(case when ${invoices.status} = 'cancelled' then 0 else greatest(${invoices.total} - ${invoices.paid} - ${invoices.credited}, 0) end)`,
+    status: invoices.status,
+  },
+  { default: "-date", tieBreaker: [invoices.createdAt, invoices.id] },
+);
 
 export const creditBookQuerySchema = listQuerySchema.extend({
   filter: z.enum(["due", "advance", "all"]).default("all"),
@@ -1588,52 +1625,78 @@ export class InvoicesService {
     return this.toInvoice(row, await this.payments(this.db, tenantId, id));
   }
 
-  async list(tenantId: string, query: InvoiceListQuery = {}): Promise<ListResult<InvoiceSummary>> {
-    const p = invoiceListQuerySchema.parse(query);
-    const today = this.today();
+  /** Filters of the bill list (everything but `status` when `withStatus` is false, for the status facet counts). */
+  listConditions(tenantId: string, p: z.output<typeof invoiceListQuerySchema>, today: string, withStatus = true): SQL | undefined {
     const conds: (SQL | undefined)[] = [eq(invoices.tenantId, tenantId)];
-    if (p.status === "overdue") {
-      conds.push(inArray(invoices.status, [...OPEN_STATUSES]), lt(invoices.dueDate, today));
-    } else if (p.status) {
-      conds.push(eq(invoices.status, p.status));
-    }
-    if (p.customerId) conds.push(eq(invoices.customerId, p.customerId));
-    if (p.branchId) conds.push(eq(invoices.branchId, p.branchId));
-    if (p.from) conds.push(gte(invoices.date, p.from));
-    if (p.to) conds.push(lte(invoices.date, p.to));
-    if (p.q) {
-      const pat = likePattern(p.q);
+    if (withStatus && p.status?.length) {
+      const plain = p.status.filter((s): s is InvoiceStatus => s !== "overdue");
       conds.push(
         or(
-          ilike(invoices.number, pat),
-          sql`${invoices.customer}->>'name' ilike ${pat}`,
-          sql`${invoices.customer}->>'phone' ilike ${pat}`,
+          plain.length ? inArray(invoices.status, plain) : undefined,
+          p.status.includes("overdue") ? and(inArray(invoices.status, [...OPEN_STATUSES]), lt(invoices.dueDate, today)) : undefined,
         ),
       );
     }
-    const where = and(...conds);
-    const [rows, [counted]] = await Promise.all([
+    if (p.customerId) conds.push(eq(invoices.customerId, p.customerId));
+    if (p.branchId?.length) conds.push(inArray(invoices.branchId, p.branchId));
+    if (p.from) conds.push(gte(invoices.date, p.from));
+    if (p.to) conds.push(lte(invoices.date, p.to));
+    if (p.method?.length) {
+      conds.push(
+        sql`exists (select 1 from ${invoicePayments} where ${invoicePayments.invoiceId} = ${invoices.id} and ${invoicePayments.tenantId} = ${tenantId} and ${inArray(invoicePayments.method, p.method)})`,
+      );
+    }
+    conds.push(searchAny(p.q, [invoices.number, sql`${invoices.customer}->>'name'`, sql`${invoices.customer}->>'phone'`]));
+    return and(...conds);
+  }
+
+  /**
+   * Bill list: paged, sorted (INVOICE_SORT), filtered. `facets.status` counts the bills per status (and "overdue")
+   * under every other filter, for the status pills.
+   */
+  async list(tenantId: string, query: InvoiceListQuery = {}): Promise<ListPage<InvoiceSummary> & ListResult<InvoiceSummary>> {
+    const p = invoiceListQuerySchema.parse(query);
+    const order = INVOICE_SORT.orderBy(p.sort);
+    const today = this.today();
+    const where = this.listConditions(tenantId, p, today);
+    const [page, byStatus] = await Promise.all([
+      runList(p, {
+        rows: () =>
+          this.db
+            .select({
+              id: invoices.id,
+              number: invoices.number,
+              branchId: invoices.branchId,
+              status: invoices.status,
+              date: invoices.date,
+              dueDate: invoices.dueDate,
+              total: invoices.total,
+              paid: invoices.paid,
+              credited: invoices.credited,
+              customerName: sql<string>`${invoices.customer}->>'name'`,
+            })
+            .from(invoices)
+            .where(where)
+            .orderBy(...order)
+            .limit(p.limit)
+            .offset(p.offset),
+        count: () => this.db.select({ total: count() }).from(invoices).where(where),
+        map: (r) => this.toSummary(r, r.customerName ?? "", today),
+      }),
       this.db
         .select({
-          id: invoices.id,
-          number: invoices.number,
-          branchId: invoices.branchId,
-          status: invoices.status,
-          date: invoices.date,
-          dueDate: invoices.dueDate,
-          total: invoices.total,
-          paid: invoices.paid,
-          credited: invoices.credited,
-          customerName: sql<string>`${invoices.customer}->>'name'`,
+          key: invoices.status,
+          n: count(),
+          overdue: sql<number>`count(*) filter (where ${inArray(invoices.status, [...OPEN_STATUSES])} and ${lt(invoices.dueDate, today)})`,
         })
         .from(invoices)
-        .where(where)
-        .orderBy(desc(invoices.date), desc(invoices.createdAt))
-        .limit(p.limit)
-        .offset(p.offset),
-      this.db.select({ total: count() }).from(invoices).where(where),
+        .where(this.listConditions(tenantId, p, today, false))
+        .groupBy(invoices.status),
     ]);
-    return { items: rows.map((r) => this.toSummary(r, r.customerName ?? "", today)), total: counted?.total ?? 0 };
+    const status = facetCounts(byStatus);
+    const overdue = byStatus.reduce((s, r) => s + Number(r.overdue ?? 0), 0);
+    if (overdue) status.overdue = overdue;
+    return { ...page, facets: { status } };
   }
 
   /** Bills (issued, partially paid, paid) per date; `branchId` narrows to one branch's bills. */

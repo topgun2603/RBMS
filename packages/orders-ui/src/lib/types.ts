@@ -126,6 +126,9 @@ export interface OrderSummary {
 
 export interface OrderListResult extends Paged<OrderSummary> {
   counts: Record<OrderStatus, number>;
+  limit?: number;
+  offset?: number;
+  facets?: Record<string, Record<string, number>>;
 }
 
 export interface Order {
@@ -171,10 +174,11 @@ export interface OrdersSummary {
   month: { count: number; total: number };
 }
 
+/** Query of GET /orders. `status`, `paymentStatus` and `channel` take one value or a comma list ("placed,packed"). */
 export interface OrderListFilters {
-  status?: OrderStatus;
-  paymentStatus?: PaymentStatus;
-  channel?: OrderChannel;
+  status?: OrderStatus | (string & {});
+  paymentStatus?: PaymentStatus | (string & {});
+  channel?: OrderChannel | (string & {});
   q?: string;
   from?: string;
   to?: string;

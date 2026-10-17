@@ -72,6 +72,38 @@ export {
 } from "./lib/branch";
 export { useDebounced } from "./lib/use-debounced";
 
+// Lists and tables (docs/web-modules.md → "Lists and tables")
+export {
+  useServerTable,
+  useDataTableLabels,
+  type ListResponse,
+  type UseServerTableOptions,
+  type ServerTable,
+  type FilterHandle,
+} from "./lib/use-server-table";
+export {
+  parseTableState,
+  serializeTableState,
+  tableApiParams,
+  patchTableState,
+  emptyTableState,
+  clearTableFilters,
+  activeFilterCount,
+  ownedParams,
+  DEFAULT_PAGE_SIZES,
+  type ServerFilterDef,
+  type ServerFilterDefs,
+  type OptionsFilterDef,
+  type DateRangeFilterDef,
+  type TextFilterDef,
+  type FilterValue,
+  type FilterValues,
+  type ServerTableState,
+  type TableSort,
+  type TablePatch,
+  type TableUrlOptions,
+} from "./lib/server-table-state";
+
 // i18n, branding, features
 export {
   I18nProvider,

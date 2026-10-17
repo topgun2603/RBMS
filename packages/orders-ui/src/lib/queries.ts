@@ -121,7 +121,19 @@ function useOrdersChanged() {
   );
 }
 
-type ListCache = InfiniteData<OrderListResult, number>;
+/** Order list caches: infinite pages (older lists) or one table page (useServerTable). */
+type ListCache = InfiniteData<OrderListResult, number> | OrderListResult;
+
+function moveInPage(p: OrderListResult, id: string, from: OrderStatus, to: OrderStatus, withCounts: boolean): OrderListResult {
+  if (!Array.isArray(p.items)) return p;
+  const counts = withCounts && p.counts ? moveCount(p.counts, from, to) : p.counts;
+  return {
+    ...p,
+    items: p.items.map((o) => (o.id === id ? { ...o, status: to } : o)),
+    counts,
+    facets: p.facets && withCounts && counts ? { ...p.facets, status: { ...counts } } : p.facets,
+  };
+}
 
 /**
  * Status change with an optimistic update: the order's pill (in every cached list, the board and the detail) moves at
@@ -140,14 +152,10 @@ export function useUpdateStatus() {
       const to = body.status;
       for (const [key, data] of lists) {
         if (!data) continue;
-        qc.setQueryData<ListCache>(key, {
-          ...data,
-          pages: data.pages.map((p, i) => ({
-            ...p,
-            items: p.items.map((o) => (o.id === id ? { ...o, status: to } : o)),
-            counts: i === 0 ? moveCount(p.counts, from, to) : p.counts,
-          })),
-        });
+        qc.setQueryData<ListCache>(
+          key,
+          ("pages" in data ? { ...data, pages: data.pages.map((p, i) => moveInPage(p, id, from, to, i === 0)) } : moveInPage(data, id, from, to, true)) as ListCache,
+        );
       }
       for (const [key, data] of boards) {
         if (!data) continue;

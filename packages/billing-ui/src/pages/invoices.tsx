@@ -1,15 +1,29 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, QueryError, useDebounced, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
-import { FileTextIcon, Loader2Icon, PlusIcon, SearchIcon, Undo2Icon, XIcon } from "lucide-react";
-import { Button, Card, ChipGroup, cn, EmptyState, Input, Stagger, StaggerItem } from "@srirealtime/ui";
+import {
+  ModuleLink,
+  MULTI_BRANCH_FEATURE,
+  Page,
+  PageHeading,
+  useFeature,
+  useI18n,
+  useModuleNavigate,
+  useMyBranches,
+  useServerTable,
+  type ServerFilterDefs,
+} from "@srirealtime/web";
+import { FileTextIcon, PlusIcon, Undo2Icon } from "lucide-react";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
 import { BillsIllustration } from "../components/illustrations";
-import { InvoiceRow, InvoiceRowSkeleton } from "../components/invoice-row";
-import { useInvoiceList, type InvoiceFilters } from "../lib/queries";
+import { StatusBadge } from "../components/status-badge";
+import { money } from "../lib/format";
+import type { InvoiceSummary } from "../lib/types";
 
-const FILTERS = ["", "draft", "issued", "partially_paid", "overdue", "paid", "cancelled"] as const;
-type Filter = (typeof FILTERS)[number];
+const STATUSES = ["draft", "issued", "partially_paid", "overdue", "paid", "cancelled"] as const;
+const METHODS = ["cash", "upi", "card", "bank", "cheque", "other"] as const;
+
+const isOpen = (inv: InvoiceSummary) => inv.status === "issued" || inv.status === "partially_paid";
 
 export default function InvoicesPage() {
   return (
@@ -20,43 +34,152 @@ export default function InvoicesPage() {
 }
 
 function InvoicesList() {
-  const { t } = useI18n();
+  const { t, formatDate } = useI18n();
   const navigate = useModuleNavigate();
-  const params = useQueryParams();
-  const status = (FILTERS as readonly string[]).includes(params.get("status") ?? "") ? (params.get("status") as Filter) : "";
-  const [q, setQ] = React.useState(params.get("q") ?? "");
-  const debounced = useDebounced(q.trim(), 300);
+  const multiBranch = useFeature(MULTI_BRANCH_FEATURE);
+  const branches = useMyBranches();
+  const branchList = React.useMemo(() => (multiBranch ? (branches.data?.items ?? []) : []), [multiBranch, branches.data]);
+  const branchName = React.useMemo(() => new Map(branchList.map((b) => [b.id, b.name])), [branchList]);
 
-  const setStatus = (s: Filter) => {
-    const next = new URLSearchParams(params.toString());
-    if (s) next.set("status", s);
-    else next.delete("status");
-    navigate(next.toString() ? `?${next}` : "?", { replace: true, scroll: false });
-  };
+  const filters = React.useMemo(
+    () =>
+      ({
+        status: {
+          kind: "options",
+          label: t("billing.invoices.filterStatus"),
+          options: STATUSES.map((s) => ({ value: s, label: t(`billing.status.${s}`) })),
+        },
+        date: { kind: "dateRange", label: t("billing.invoices.filterDate") },
+        method: {
+          kind: "options",
+          label: t("billing.payment.method"),
+          options: METHODS.map((m) => ({ value: m, label: t(`billing.payment.methods.${m}`) })),
+        },
+        branchId: {
+          kind: "options",
+          label: t("billing.invoices.filterBranch"),
+          options: branchList.map((b) => ({ value: b.id, label: b.name })),
+          hidden: branchList.length < 2,
+        },
+        customerId: { kind: "text" },
+      }) satisfies ServerFilterDefs,
+    [t, branchList],
+  );
 
-  const filters: InvoiceFilters = { status, q: debounced };
-  const list = useInvoiceList(filters);
-  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
-  const total = list.data?.pages[0]?.total;
+  const columns = React.useMemo<DataTableColumn<InvoiceSummary>[]>(
+    () => [
+      {
+        id: "number",
+        header: t("billing.invoices.col.number"),
+        sortable: true,
+        hideable: false,
+        card: "subtitle",
+        cell: (inv) => (
+          <ModuleLink to={`invoices/${inv.id}`} className="font-medium tabular-nums outline-none hover:text-primary hover:underline focus-visible:underline">
+            {inv.number ?? <span className="text-muted-foreground">{t("billing.status.draft")}</span>}
+          </ModuleLink>
+        ),
+        cardCell: (inv) => (
+          <span className="tabular-nums">
+            {inv.number ?? t("billing.status.draft")} · {formatDate(inv.date)}
+          </span>
+        ),
+      },
+      {
+        id: "date",
+        header: t("billing.invoices.col.date"),
+        sortable: true,
+        sortDescFirst: true,
+        cell: (inv) => (
+          <div className="grid">
+            <span className="tabular-nums">{formatDate(inv.date)}</span>
+            {inv.dueDate && isOpen(inv) && (
+              <span className={cn("text-xs text-muted-foreground tabular-nums", inv.isOverdue && "font-medium text-danger-ink")}>
+                {t("billing.invoices.due", { date: formatDate(inv.dueDate) })}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "customer",
+        header: t("billing.invoices.col.customer"),
+        sortable: true,
+        hideable: false,
+        card: "title",
+        className: "max-w-[18rem]",
+        cell: (inv) => (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <InitialsAvatar name={inv.customerName} size="sm" />
+            <span className={cn("truncate font-medium", inv.status === "cancelled" && "text-muted-foreground line-through")}>{inv.customerName}</span>
+          </div>
+        ),
+        cardCell: (inv) => <span className={cn(inv.status === "cancelled" && "text-muted-foreground line-through")}>{inv.customerName}</span>,
+      },
+      ...(branchList.length > 1
+        ? [
+            {
+              id: "branch",
+              header: t("billing.invoices.col.branch"),
+              hideBelow: "lg",
+              cell: (inv: InvoiceSummary) => <span className="text-muted-foreground">{(inv.branchId && branchName.get(inv.branchId)) || "—"}</span>,
+            } satisfies DataTableColumn<InvoiceSummary>,
+          ]
+        : []),
+      {
+        id: "status",
+        header: t("billing.invoices.col.status"),
+        sortable: true,
+        card: "right",
+        cell: (inv) => <StatusBadge status={inv.status} overdue={inv.isOverdue} />,
+      },
+      {
+        id: "total",
+        header: t("billing.invoices.col.total"),
+        sortable: true,
+        numeric: true,
+        card: "right",
+        cell: (inv) => <span className="font-semibold">{money(inv.total)}</span>,
+      },
+      {
+        id: "balance",
+        header: t("billing.invoices.col.balance"),
+        sortable: true,
+        numeric: true,
+        card: "meta",
+        cell: (inv) => (isOpen(inv) && inv.balance > 0 ? money(inv.balance) : <span className="text-muted-foreground">—</span>),
+        cardCell: (inv) =>
+          isOpen(inv) && inv.balance > 0 && inv.balance !== inv.total ? (
+            <span className="tabular-nums">{t("billing.invoices.balanceShort", { amount: money(inv.balance) })}</span>
+          ) : null,
+      },
+    ],
+    [t, formatDate, branchList, branchName],
+  );
 
-  // Auto-load the next page when the sentinel scrolls into view.
-  const sentinel = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const el = sentinel.current;
-    if (!el || !list.hasNextPage) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting) && !list.isFetchingNextPage) void list.fetchNextPage();
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [list.hasNextPage, list.isFetchingNextPage, list]);
+  const st = useServerTable<InvoiceSummary, typeof filters>({
+    queryKey: ["invoices", "list", "table"],
+    path: "/invoices",
+    columns,
+    filters,
+    defaultSort: "-date",
+    search: t("billing.invoices.search"),
+    storageKey: "billing-invoices",
+  });
+
+  // Status pills: a quick single-status view of the same `status` filter (counts from the API's facets).
+  const status = st.filters.status;
+  const counts = st.facets?.status;
+  const allCount = counts ? Object.entries(counts).reduce((n, [k, v]) => (k === "overdue" ? n : n + v), 0) : undefined;
+  const pill = status.value.length === 0 ? "all" : status.value.length === 1 ? status.value[0]! : "";
+  const filtered = st.table.activeFilterCount > 0;
 
   return (
     <Page>
       <PageHeading
         icon={FileTextIcon}
         title={t("billing.invoices.title")}
-        description={total !== undefined ? t("billing.invoices.count", { count: total }) : undefined}
+        description={st.total !== undefined ? t("billing.invoices.count", { count: st.total }) : undefined}
         actions={
           <>
             <Button asChild variant="outline" size="lg">
@@ -73,91 +196,43 @@ function InvoicesList() {
         }
       />
 
-      <div className="sticky top-14 z-20 -mx-4 mb-3 grid gap-3 bg-page/90 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            aria-label={t("billing.invoices.search")}
-            placeholder={t("billing.invoices.search")}
-            size="lg"
-            className="rounded-xl bg-card pl-9 text-base sm:text-sm"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+      <DataTableToolbar
+        table={st.table}
+        quickFilters={
+          <ChipGroup
+            size="sm"
+            aria-label={t("billing.invoices.filter")}
+            value={pill}
+            onChange={(v) => status.set(v === "all" ? [] : [v])}
+            options={[
+              { value: "all", label: t("billing.invoices.all"), meta: allCount },
+              ...STATUSES.map((s) => ({ value: s, label: t(`billing.status.${s}`), meta: counts ? counts[s] || undefined : undefined })),
+            ]}
           />
-          {q && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="absolute top-1/2 right-1.5 -translate-y-1/2"
-              aria-label={t("billing.common.clear")}
-              onClick={() => setQ("")}
-            >
-              <XIcon />
-            </Button>
-          )}
-        </div>
-        <ChipGroup
-          aria-label={t("billing.invoices.filter")}
-          value={status || "all"}
-          onChange={(v) => setStatus(v === "all" ? "" : (v as Filter))}
-          options={FILTERS.map((f) => ({ value: f || "all", label: f ? t(`billing.status.${f}`) : t("billing.invoices.all") }))}
-        />
-      </div>
+        }
+      />
 
-      {list.isError ? (
-        <QueryError error={list.error} onRetry={() => void list.refetch()} />
-      ) : list.isPending ? (
-        <Card className="gap-0 divide-y py-1">
-          {Array.from({ length: 6 }, (_, i) => (
-            <InvoiceRowSkeleton key={i} />
-          ))}
-        </Card>
-      ) : items.length === 0 ? (
-        <EmptyState
-          illustration={<BillsIllustration />}
-          title={debounced || status ? t("billing.invoices.noMatchTitle") : t("billing.invoices.emptyTitle")}
-          description={debounced || status ? t("billing.invoices.noMatchBody") : t("billing.invoices.emptyBody")}
-          action={
-            debounced || status ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQ("");
-                  setStatus("");
-                }}
-              >
-                {t("billing.invoices.clearFilters")}
-              </Button>
-            ) : (
-              <Button asChild size="lg">
-                <ModuleLink to="invoices/new">
-                  <PlusIcon /> {t("billing.dashboard.firstBill")}
-                </ModuleLink>
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <Card className={cn("gap-0 py-1 transition-opacity", list.isPlaceholderData && "opacity-60")}>
-          <Stagger key={`${status}|${debounced}`} className="divide-y divide-border/60 px-1.5">
-            {items.map((inv) => (
-              <StaggerItem key={inv.id}>
-                <InvoiceRow inv={inv} />
-              </StaggerItem>
-            ))}
-          </Stagger>
-          <div ref={sentinel} />
-          {list.hasNextPage && (
-            <div className="flex justify-center p-3">
-              <Button variant="ghost" onClick={() => void list.fetchNextPage()} disabled={list.isFetchingNextPage}>
-                {list.isFetchingNextPage && <Loader2Icon className="animate-spin" />}
-                {t("billing.common.loadMore")}
-              </Button>
-            </div>
-          )}
-        </Card>
-      )}
+      <DataTable
+        table={st.table}
+        onRowClick={(inv) => navigate(`invoices/${inv.id}`)}
+        empty={
+          filtered ? undefined : (
+            <EmptyState
+              className="border-0 bg-transparent"
+              illustration={<BillsIllustration />}
+              title={t("billing.invoices.emptyTitle")}
+              description={t("billing.invoices.emptyBody")}
+              action={
+                <Button asChild size="lg">
+                  <ModuleLink to="invoices/new">
+                    <PlusIcon /> {t("billing.dashboard.firstBill")}
+                  </ModuleLink>
+                </Button>
+              }
+            />
+          )
+        }
+      />
     </Page>
   );
 }

@@ -7,4 +7,5 @@ export * from "./module";
 export * from "./util";
 export * from "./permissions";
 export * from "./audit";
+export * from "./list";
 export type { RouteAuditConfig } from "./fastify";
