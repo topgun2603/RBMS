@@ -52,7 +52,13 @@ export async function buildServer(opts: ServerOptions) {
   };
   const app = opts.loggerInstance ? Fastify({ ...base, loggerInstance: opts.loggerInstance }) : Fastify({ ...base, logger: false });
 
-  await app.register(cors, { origin: opts.corsOrigins, credentials: true, exposedHeaders: ["x-request-id"] });
+  // @fastify/cors defaults to GET,HEAD,POST only, which blocks the browser's PUT/PATCH/DELETE calls.
+  await app.register(cors, {
+    origin: opts.corsOrigins,
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+    exposedHeaders: ["x-request-id"],
+  });
 
   app.decorateRequest("ctx", null as never);
   app.addHook("onRequest", async (req, reply) => {
