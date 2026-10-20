@@ -1,5 +1,7 @@
 "use client";
 
+import { usePack } from "../lib/pack";
+
 import * as React from "react";
 import {
   ArrowDownIcon,
@@ -60,7 +62,8 @@ import type { Category, CategoryNode } from "../lib/types";
 type Editing = { mode: "new"; parentId: string | null } | { mode: "edit"; category: Category } | null;
 
 export default function CategoriesPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const pack = usePack();
   const q = useCategories();
   const reorder = useReorderCategories();
   const del = useDeleteCategory();
@@ -127,7 +130,7 @@ export default function CategoriesPage() {
           ))}
         </Card>
       ) : tree.length === 0 ? (
-        <EmptyState illustration={<FoldersIllustration />} title={t("commerce.categories.emptyTitle")} description={t("commerce.categories.emptyBody")} action={addButton} />
+        <EmptyState illustration={<FoldersIllustration />} title={t("commerce.categories.emptyTitle")} description={t("commerce.categories.emptyBody", { example: pack.editor.categoryExample })} action={addButton} />
       ) : (
         <>
           <p className="mb-2 text-meta text-muted-foreground">{t("commerce.categories.dragHint")}</p>

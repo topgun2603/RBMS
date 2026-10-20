@@ -44,7 +44,7 @@ export function ProductGridSkeleton({ count = 8, layout = "full" }: { count?: nu
     <ul className={cn("grid", gridCols[layout])} aria-hidden>
       {Array.from({ length: count }, (_, i) => (
         <li key={i} className="flex flex-col gap-3">
-          <div className="sf-shimmer aspect-[4/5] rounded-[var(--sf-radius-card)]" />
+          <div className="sf-shimmer aspect-[var(--sf-image-ratio,4/5)] rounded-[var(--sf-radius-card)]" />
           <div className="sf-shimmer h-2.5 w-1/3 rounded-full" />
           <div className="sf-shimmer h-3.5 w-4/5 rounded-full" />
           <div className="sf-shimmer h-3.5 w-2/5 rounded-full" />

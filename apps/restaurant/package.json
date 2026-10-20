@@ -1,0 +1,38 @@
+{
+  "name": "@srirealtime/restaurant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbopack -p 3007",
+    "build": "next build",
+    "start": "next start -p 3007",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@srirealtime/billing-ui": "workspace:*",
+    "@srirealtime/commerce-ui": "workspace:*",
+    "@srirealtime/growth-ui": "workspace:*",
+    "@srirealtime/i18n": "workspace:*",
+    "@srirealtime/inbox-ui": "workspace:*",
+    "@srirealtime/orders-ui": "workspace:*",
+    "@srirealtime/pos-ui": "workspace:*",
+    "@srirealtime/restaurant-ui": "workspace:*",
+    "@srirealtime/site-ui": "workspace:*",
+    "@srirealtime/ui": "workspace:*",
+    "@srirealtime/web": "workspace:*",
+    "@srirealtime/workspace-ui": "workspace:*",
+    "@tanstack/react-query": "^5.83.0",
+    "lucide-react": "^0.525.0",
+    "next": "^15.5.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

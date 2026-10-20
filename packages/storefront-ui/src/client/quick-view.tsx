@@ -14,11 +14,12 @@ import { SizeChart, sizeKindFor } from "../components/size-guide";
 import { call } from "./api";
 import { ProductGallery } from "./product-gallery";
 import { PurchasePanel, type AvailabilityMap } from "./purchase-panel";
+import { packFor } from "@srirealtime/verticals";
 import { useStore } from "./store-context";
 
 /** Quick view from product cards: gallery, variant picker, add to cart — without leaving the listing. */
 export function QuickView({ slug, onClose }: { slug: string | null; onClose: () => void }) {
-  const { t } = useStore();
+  const { t, shell } = useStore();
   const [last, setLast] = React.useState(slug);
   React.useEffect(() => {
     if (slug) setLast(slug);
@@ -48,7 +49,7 @@ export function QuickView({ slug, onClose }: { slug: string | null; onClose: () 
         <DialogDescription className="sr-only">{t("product.quickView")}</DialogDescription>
         {!p || !avail.isFetched ? (
           <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-6" aria-busy>
-            <Bone className="aspect-[4/5] rounded-2xl" />
+            <Bone className="aspect-[var(--sf-image-ratio,4/5)] rounded-2xl" />
             <div className="grid content-start gap-4">
               <Bone className="h-3 w-24 rounded-full" />
               <Bone className="h-8 w-3/4" />
@@ -67,7 +68,7 @@ export function QuickView({ slug, onClose }: { slug: string | null; onClose: () 
                 {(p.brand || p.categoryName) && <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">{p.brand ?? p.categoryName}</p>}
                 <h2 className="mt-1 font-display text-h3 leading-tight font-semibold sm:text-2xl">{p.name}</h2>
               </div>
-              <PurchasePanel product={p} availability={availability} compact onAdded={onClose} sizeGuide={<SizeChart kind={sizeKindFor(p.categoryName, p.name)} t={t} />} />
+              <PurchasePanel product={p} availability={availability} compact onAdded={onClose} sizeGuide={packFor(shell.businessType)?.sizeGuide ? <SizeChart kind={sizeKindFor(p.categoryName, p.name)} t={t} /> : undefined} />
               <Link href={STORE_PATHS.product(p.slug)} onClick={onClose} className="group inline-flex items-center gap-1.5 text-sm font-semibold text-primary focus-ring">
                 {t("product.fullDetails")}
                 <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />

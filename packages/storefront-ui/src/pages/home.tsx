@@ -1,3 +1,4 @@
+import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -77,15 +78,15 @@ export async function HomePage() {
         ]}
       />
       {!(home.sections[0]?.type === "hero" && home.sections[0].slides[0]?.heading) && <h1 className="sr-only">{config.shop.name}</h1>}
-      <div className="flex flex-col gap-[var(--sf-section)] pb-4">
+      <div className="sf-home flex flex-col gap-[var(--sf-section)] pb-4">
         {home.sections.map((s, i) => (
           <React.Fragment key={s.id ?? i}>
             <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} />
             {/* Trust row right under the hero, unless the shop has its own "Why shop with us" (usp) section. */}
             {i === 0 && s.type === "hero" && !hasUsp && (
-              <Container className="-mt-[calc(var(--sf-section)*0.55)]">
+              <Container className="sf-unboxed -mt-[calc(var(--sf-section)*0.55)]">
                 <Reveal>
-                  <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} compact />
+                  <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />
                 </Reveal>
               </Container>
             )}
@@ -198,7 +199,7 @@ export function HomeSectionView({ section: s, index, t, ratings, config }: { sec
               <StoreImage src={s.imageUrl} alt={s.heading} className="transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none" />
             </div>
             <div className="px-6 pb-8 md:px-0 md:py-12 md:pe-12">
-              <h2 className="font-display text-h2 font-semibold">{s.heading}</h2>
+              <h2 className="sf-heading font-display text-h2 font-semibold">{s.heading}</h2>
               <Markdown source={s.markdown} className="mt-4 text-foreground/80" />
               {s.cta && (
                 <Link href={s.cta.href} className="group/cta mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/30 transition-transform hover:scale-[1.02] focus-ring motion-reduce:transition-none">
@@ -218,7 +219,7 @@ export function HomeSectionView({ section: s, index, t, ratings, config }: { sec
             {s.title && (
               <Reveal className="mb-10 text-center">
                 <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-primary uppercase">{t("home.loved")}</p>
-                <h2 className="font-display text-h2 font-semibold">{s.title}</h2>
+                <h2 className="sf-heading font-display text-h2 font-semibold">{s.title}</h2>
               </Reveal>
             )}
             <Carousel label={s.title || t("home.loved")} itemClassName="w-[84%] sm:w-[46%] lg:w-[32%] xl:w-[32%]">
@@ -274,7 +275,7 @@ export function HomeSectionView({ section: s, index, t, ratings, config }: { sec
           <Reveal className="sf-brand-hero relative overflow-hidden rounded-[var(--sf-radius-card)] px-6 py-12 text-primary-foreground sm:px-12 sm:py-14">
             <div className="relative z-[1] flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
               <div className="max-w-lg">
-                <h2 className="font-display text-h2 font-semibold">{s.heading}</h2>
+                <h2 className="sf-heading font-display text-h2 font-semibold">{s.heading}</h2>
                 {s.text && <p className="mt-2 text-primary-foreground/85">{s.text}</p>}
               </div>
               <NewsletterForm />

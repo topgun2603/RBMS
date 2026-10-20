@@ -1,9 +1,14 @@
+import { packFor } from "@srirealtime/verticals";
 import { b4En, b4Ta } from "./messages-b4";
+import { diningEn, diningTa } from "./messages-dining";
+import { servicesEn, servicesTa } from "./messages-services";
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
 
 /** Storefront UI strings. Shop content (product names, CMS text) stays as the shop entered it. */
 export const en: Messages = {
   ...b4En,
+  ...diningEn,
+  ...servicesEn,
   "nav.home": "Home",
   "nav.shopAll": "Shop all",
   "nav.menu": "Menu",
@@ -18,7 +23,7 @@ export const en: Messages = {
   "store.notFoundTitle": "Store not found",
   "store.notFoundBody": "There is no shop at this address.",
 
-  "search.placeholder": "Search for kurtis, sarees…",
+  "search.placeholder": "Search products…",
   "search.label": "Search products",
   "search.submit": "Search",
   "search.products": "Products",
@@ -290,7 +295,7 @@ export const en: Messages = {
   "account.name": "Name",
   "account.email": "Email",
   "account.phone": "Mobile",
-  "account.marketing": "Send me offers and new arrivals",
+  "account.marketing": "Send me offers and news",
   "account.save": "Save",
   "account.saved": "Saved",
   "account.orderCount": "{count, plural, =0 {No orders} one {# order} other {# orders}}",
@@ -389,7 +394,7 @@ export const en: Messages = {
   "cart.freeProgress": "Progress towards free delivery",
   "checkout.change": "Change",
   "footer.newsletterTitle": "Be the first to know",
-  "footer.newsletterText": "New arrivals, festive drops and offers — straight to your inbox or WhatsApp.",
+  "footer.newsletterText": "News and offers, straight to your inbox or WhatsApp.",
   "trust.secure": "Secure payments",
   "trust.secureText": "UPI, cards & net banking",
   "trust.cod": "Cash on delivery",
@@ -419,6 +424,8 @@ export const en: Messages = {
 
 export const ta: Messages = {
   ...b4Ta,
+  ...diningTa,
+  ...servicesTa,
   "nav.home": "முகப்பு",
   "nav.shopAll": "அனைத்தும்",
   "nav.menu": "பட்டியல்",
@@ -433,7 +440,7 @@ export const ta: Messages = {
   "store.notFoundTitle": "கடை கிடைக்கவில்லை",
   "store.notFoundBody": "இந்த முகவரியில் கடை எதுவும் இல்லை.",
 
-  "search.placeholder": "குர்த்தி, சேலை… தேடுங்கள்",
+  "search.placeholder": "பொருட்களைத் தேடுங்கள்…",
   "search.label": "பொருட்களைத் தேடு",
   "search.submit": "தேடு",
   "search.products": "பொருட்கள்",
@@ -705,7 +712,7 @@ export const ta: Messages = {
   "account.name": "பெயர்",
   "account.email": "மின்னஞ்சல்",
   "account.phone": "மொபைல்",
-  "account.marketing": "சலுகைகளையும் புதிய வரவுகளையும் எனக்கு அனுப்பவும்",
+  "account.marketing": "சலுகைகளையும் செய்திகளையும் எனக்கு அனுப்பவும்",
   "account.save": "சேமி",
   "account.saved": "சேமிக்கப்பட்டது",
   "account.orderCount": "{count, plural, =0 {ஆர்டர்கள் இல்லை} one {# ஆர்டர்} other {# ஆர்டர்கள்}}",
@@ -804,7 +811,7 @@ export const ta: Messages = {
   "cart.freeProgress": "இலவச டெலிவரிக்கான முன்னேற்றம்",
   "checkout.change": "மாற்று",
   "footer.newsletterTitle": "முதலில் தெரிந்துகொள்ளுங்கள்",
-  "footer.newsletterText": "புதிய வரவுகள், பண்டிகை சேகரிப்புகள், சலுகைகள் — உங்கள் இன்பாக்ஸ் அல்லது WhatsApp-க்கு.",
+  "footer.newsletterText": "செய்திகளும் சலுகைகளும் — உங்கள் இன்பாக்ஸ் அல்லது WhatsApp-க்கு.",
   "trust.secure": "பாதுகாப்பான பணம் செலுத்துதல்",
   "trust.secureText": "UPI, கார்டுகள் & நெட் பேங்கிங்",
   "trust.cod": "டெலிவரியின் போது பணம்",
@@ -835,15 +842,25 @@ export const ta: Messages = {
 export const LOCALE_COOKIE = "sr_locale";
 export type { Locale, Translator };
 
-const cache = new Map<Locale, Translator>();
+const cache = new Map<string, Translator>();
 
 /** Translator for a locale, English as fallback for missing keys. */
-export function translatorFor(locale: string | null | undefined): Translator {
+/** The shop's own words for a few store strings (search box, "new arrivals", newsletter), from its business pack. */
+export function packMessages(businessType: string | null | undefined, locale: Locale): Messages {
+  const pack = packFor(businessType);
+  if (!pack) return {};
+  const c = pack.copy[locale === "ta" ? "ta" : "en"];
+  return { "search.placeholder": c.search, "nav.newArrivals": c.newItems, "footer.newsletterText": c.newsletter };
+}
+
+/** Store strings for a locale, with the shop's pack wording on top when `businessType` is given. */
+export function translatorFor(locale: string | null | undefined, businessType?: string | null): Translator {
   const l = normalizeLocale(locale);
-  let t = cache.get(l);
+  const key = `${l}|${businessType ?? ""}`;
+  let t = cache.get(key);
   if (!t) {
-    t = createTranslator(l === "ta" ? ta : en, en, l);
-    cache.set(l, t);
+    t = createTranslator({ ...(l === "ta" ? ta : en), ...packMessages(businessType, l) }, { ...en, ...packMessages(businessType, "en") }, l);
+    cache.set(key, t);
   }
   return t;
 }

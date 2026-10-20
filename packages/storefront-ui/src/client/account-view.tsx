@@ -384,7 +384,7 @@ function Wishlist() {
       {items.map((w) => (
         <motion.li key={w.productId} layout exit={{ opacity: 0, scale: 0.9 }} className="group relative">
           <Link href={STORE_PATHS.product(w.slug)} className="block">
-            <span className="block aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
+            <span className="block aspect-[var(--sf-image-ratio,4/5)] overflow-hidden rounded-2xl bg-muted">
               <StoreImage src={w.image} alt={w.name} className={cn("transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none", !w.available && "opacity-50 grayscale")} />
             </span>
             <span className="mt-2 line-clamp-2 block text-sm font-medium">{w.name}</span>

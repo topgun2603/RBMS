@@ -260,7 +260,10 @@ const panelMotion = {
 } as const;
 
 export function StoreHeader({ menu, categories = [], featured = null }: { menu: MenuItem[]; categories?: NavCategory[]; featured?: NavCollection | null }) {
-  const { t, auth } = useStore();
+  const { t, auth, shell } = useStore();
+  // Theme header: classic (menu in the bar) · centered (logo centred, menu row below) · minimal (drawer only) · bold (brand bar).
+  const variant = shell.theme.header;
+  const navInBar = variant === "classic" || variant === "bold";
   const [navOpen, setNavOpen] = React.useState(false);
   const pathname = usePathname();
   const hideMiniCart = pathname === "/cart" || pathname === "/checkout";
@@ -274,31 +277,36 @@ export function StoreHeader({ menu, categories = [], featured = null }: { menu: 
 
   return (
     <>
-      <header className="sticky top-0 z-40" data-scrolled={scrolled || undefined}>
+      <header className="sf-header sticky top-0 z-40" data-scrolled={scrolled || undefined}>
         {/* Surface: fades from a light wash to frosted glass + shadow once the page scrolls (opacity only). */}
-        <div aria-hidden className="absolute inset-0 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70" />
+        <div aria-hidden className="sf-header-surface absolute inset-0 border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70" />
         <motion.div
           aria-hidden
-          className="absolute inset-0 border-b border-border/80 bg-background/85 shadow-[0_10px_30px_-18px_rgb(0_0_0/0.35)] backdrop-blur-xl backdrop-saturate-150"
+          className="sf-header-surface absolute inset-0 border-b border-border/80 bg-background/85 shadow-[0_10px_30px_-18px_rgb(0_0_0/0.35)] backdrop-blur-xl backdrop-saturate-150"
           initial={false}
           animate={{ opacity: scrolled ? 1 : 0 }}
           transition={{ duration: reduced ? 0 : 0.25 }}
         />
-        <div className="relative mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
-          <Button variant="ghost" size="icon" className="-ms-2 rounded-full lg:hidden" onClick={() => setNavOpen(true)} aria-label={t("nav.menu")} aria-expanded={navOpen}>
+        <div className={cn("relative mx-auto flex w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8", variant === "minimal" ? "h-14" : "h-16")}>
+          <Button variant="ghost" size="icon" className={cn("-ms-2 rounded-full", variant !== "minimal" && "lg:hidden")} onClick={() => setNavOpen(true)} aria-label={t("nav.menu")} aria-expanded={navOpen}>
             <MenuIcon className="size-5" />
           </Button>
-          <motion.div initial={false} animate={{ scale: scrolled && !reduced ? 0.93 : 1 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="origin-left">
-            <Logo className="me-2" />
-          </motion.div>
-          <nav aria-label={t("nav.menu")} className="hidden items-center gap-0.5 lg:flex">
-            {categories.length > 0 && <MegaMenu categories={categories} featured={featured} />}
-            {menu.map((item, i) => (
-              <DesktopMenuItem key={i} item={item} active={i === activeIndex} />
-            ))}
-          </nav>
-          <SuspendedSearch className="ms-auto hidden w-full md:block" expandable />
-          <div className="ms-auto flex items-center gap-0.5 md:ms-1">
+          {variant === "centered" && <SuspendedSearch className="hidden w-full max-w-xs lg:block" expandable />}
+          <div className={cn(variant === "centered" && "lg:absolute lg:left-1/2 lg:-translate-x-1/2")}>
+            <motion.div initial={false} animate={{ scale: scrolled && !reduced ? 0.93 : 1 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className={variant === "centered" ? "origin-center" : "origin-left"}>
+              <Logo className={variant === "centered" ? "lg:mx-auto" : "me-2"} />
+            </motion.div>
+          </div>
+          {navInBar && (
+            <nav aria-label={t("nav.menu")} className="hidden items-center gap-0.5 lg:flex">
+              {categories.length > 0 && <MegaMenu categories={categories} featured={featured} />}
+              {menu.map((item, i) => (
+                <DesktopMenuItem key={i} item={item} active={i === activeIndex} />
+              ))}
+            </nav>
+          )}
+          <SuspendedSearch className={cn("ms-auto hidden w-full md:block", variant === "centered" && "lg:hidden", variant === "minimal" && "max-w-sm")} expandable />
+          <div className={cn("ms-auto flex items-center gap-0.5 md:ms-1", variant === "centered" && "lg:ms-auto")}>
             <LocaleSwitch className="hidden sm:inline-flex" />
             <ThemeToggle className="hidden sm:flex" />
             <WishlistLink />
@@ -313,6 +321,14 @@ export function StoreHeader({ menu, categories = [], featured = null }: { menu: 
             <CartButton asLink={hideMiniCart} />
           </div>
         </div>
+        {variant === "centered" && (
+          <nav aria-label={t("nav.menu")} className="relative hidden items-center justify-center gap-0.5 pb-2 lg:flex">
+            {categories.length > 0 && <MegaMenu categories={categories} featured={featured} />}
+            {menu.map((item, i) => (
+              <DesktopMenuItem key={i} item={item} active={i === activeIndex} />
+            ))}
+          </nav>
+        )}
         <div className="relative px-4 pb-3 md:hidden">
           <SuspendedSearch />
         </div>

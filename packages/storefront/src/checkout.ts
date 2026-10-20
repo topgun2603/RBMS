@@ -14,6 +14,7 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   contactEmail: "",
   social: {},
   policies: {},
+  businessType: "",
 };
 
 /** Fills a partial `store` settings object with the defaults. */
@@ -30,6 +31,7 @@ export function normalizeStoreSettings(s: Partial<StoreSettings> | null | undefi
     contactEmail: typeof v.contactEmail === "string" ? v.contactEmail : "",
     social: { ...(v.social ?? {}) },
     policies: { ...(v.policies ?? {}) },
+    businessType: typeof v.businessType === "string" ? v.businessType : "",
   };
 }
 

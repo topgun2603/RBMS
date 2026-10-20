@@ -217,6 +217,8 @@ export interface StoreSettings {
   contactEmail: string;
   social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
+  /** @srirealtime/verticals pack id; "" = the app's default. */
+  businessType?: string;
 }
 
 /** Settings namespace `store` (apps/api). May return a partial object; defaults fill the rest. */
@@ -226,7 +228,15 @@ export interface StoreSettingsPort {
 
 /** The shop's branding (kit: branding service + business name). */
 export interface BrandingPort {
-  get(tenantId: string): Promise<{ name: string | null; logoUrl: string | null; css: string }>;
+  get(tenantId: string): Promise<{
+    name: string | null;
+    logoUrl: string | null;
+    css: string;
+    /** Theme variants (header, hero, card, imageRatio…) from the brand tokens. */
+    theme?: Record<string, string>;
+    /** Font families the CSS uses (the store loads them). */
+    fonts?: string[];
+  }>;
 }
 
 /** Optional: the signed-in user's profile, used to prefill a new store customer. */

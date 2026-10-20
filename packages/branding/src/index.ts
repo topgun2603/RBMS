@@ -6,6 +6,7 @@ import { BrandingService, type BrandingDeps } from "./service";
 export * from "./schema";
 export * from "./color";
 export * from "./tokens";
+export * from "./theme";
 export { BrandingService, brandingPatchSchema } from "./service";
 export type { Branding, BrandingDeps, BrandingPatch } from "./service";
 export { brandingRoutes } from "./routes";

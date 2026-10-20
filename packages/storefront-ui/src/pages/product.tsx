@@ -1,3 +1,4 @@
+import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -48,7 +49,8 @@ export async function ProductPage({ slug }: { slug: string }) {
   const { t, baseUrl } = info;
   const ids = product.variants.map((v) => v.id);
   const emptyReviews: ReviewList = { items: [], total: 0, summary: { average: 0, count: 0, distribution: {} } };
-  const hasSizes = product.options.some((o) => /size|அளவு/i.test(o.name) && o.values.length > 0);
+  // The clothing size guide only for trades that use it (a pizza or pack "Size" is not a bust/waist chart).
+  const hasSizes = !!packFor(config.shop.businessType)?.sizeGuide && product.options.some((o) => /size|அளவு/i.test(o.name) && o.values.length > 0);
   const [avail, reviews, guidePage, seller] = await Promise.all([
     apiGetSafe<List<Availability>>("/inventory/public/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } }),
     apiGetSafe<ReviewList>(`/reviews/public/products/${product.id}/reviews`, emptyReviews, { revalidate: 60, query: { limit: 5 } }),
@@ -129,7 +131,7 @@ export async function ProductPage({ slug }: { slug: string }) {
               {seller && <SoldBy seller={seller} className="mt-3 text-sm [&_svg]:size-4" />}
             </div>
             <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} />
-            <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} compact />
+            <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />
             <ProductInfo product={product} attrs={attrs} t={t} shipping={config.policies.shipping ?? ""} returns={config.policies.returns ?? ""} />
           </div>
         </div>

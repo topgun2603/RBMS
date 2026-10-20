@@ -1,5 +1,7 @@
 "use client";
 
+import { usePack } from "../../lib/pack";
+
 import * as React from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { exclusiveOf } from "@srirealtime/gst";
@@ -20,7 +22,8 @@ type Ctx = { canManage: boolean; variantsOn: boolean; multi: boolean; isNew: boo
 // ---------------------------------------------------------------- basics
 
 export function BasicsSection() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const pack = usePack();
   const form = useFormContext<ProductFormValues>();
   const [tab, setTab] = React.useState("write");
   const description = useWatch({ control: form.control, name: "description" });
@@ -33,7 +36,7 @@ export function BasicsSection() {
           <FormItem>
             <FormLabel>{t("commerce.editor.name")}</FormLabel>
             <FormControl>
-              <Input className="text-base" autoComplete="off" placeholder={t("commerce.editor.namePlaceholder")} {...field} />
+              <Input className="text-base" autoComplete="off" placeholder={locale === "ta" ? t("commerce.editor.namePlaceholder") : pack.editor.namePlaceholder} {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -61,7 +64,7 @@ export function BasicsSection() {
               </div>
               <TabsContent value="write" className="mt-0">
                 <FormControl>
-                  <Textarea rows={7} className="min-h-40 font-mono text-sm leading-relaxed" placeholder={t("commerce.editor.descriptionPlaceholder")} {...field} />
+                  <Textarea rows={7} className="min-h-40 font-mono text-sm leading-relaxed" placeholder={locale === "ta" ? t("commerce.editor.descriptionPlaceholder") : pack.editor.descriptionPlaceholder} {...field} />
                 </FormControl>
               </TabsContent>
               <TabsContent value="preview" className="mt-0">
@@ -323,10 +326,10 @@ export function PriceBreakdown({
 
 // ---------------------------------------------------------------- organisation
 
-const ATTRIBUTE_SUGGESTIONS = ["Fabric", "Material", "Colour", "Pattern", "Fit", "Occasion", "Care", "Origin", "Warranty"];
 
 export function OrganisationSection() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const pack = usePack();
   const form = useFormContext<ProductFormValues>();
   const attrs = useFieldArray({ control: form.control, name: "attributes" });
   return (
@@ -353,7 +356,7 @@ export function OrganisationSection() {
         <Label>{t("commerce.editor.attributes")}</Label>
         {attrs.fields.length === 0 && <p className="text-meta text-muted-foreground">{t("commerce.editor.attributesEmpty")}</p>}
         <datalist id="commerce-attribute-names">
-          {ATTRIBUTE_SUGGESTIONS.map((a) => (
+          {pack.editor.attributes.map((a) => (
             <option key={a} value={a} />
           ))}
         </datalist>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AppWindowIcon,
+  BlocksIcon,
   BadgeCheckIcon,
   BellIcon,
   Building2Icon,
@@ -114,6 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/plans", label: t("admin.nav.platformPlans"), icon: LayersIcon },
           { href: "/platform/subscriptions", label: subsNav, icon: CreditCardIcon },
           { href: "/platform/apps", label: t("admin.nav.platformApps"), icon: AppWindowIcon },
+          { href: "/platform/solutions", label: t("admin.nav.solutions"), icon: BlocksIcon },
           { href: "/platform/privacy-requests", label: t("admin.nav.privacyRequests"), icon: FileLockIcon },
           { href: "/platform/kyc", label: kycNav, icon: BadgeCheckIcon },
         ],

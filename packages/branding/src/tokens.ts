@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { contrastRatio, hexToOklchString, NEAR_BLACK, readableForeground, WHITE } from "./color";
+import { DEFAULT_STORE_THEME, storeThemePatchSchema, storeThemeSchema, themeCssVariables } from "./theme";
 
 export const hexColor = z
   .string()
@@ -30,6 +31,10 @@ export const brandTokensSchema = z.object({
   fontSans: fontName.default("Inter"),
   fontHeading: fontName.optional(),
   mode: z.enum(BRAND_MODES).default("light"),
+  /** Storefront structure (header, cards, hero, image shape…); see theme.ts. */
+  theme: storeThemeSchema.default(DEFAULT_STORE_THEME),
+  /** The preset the shop started from (informational; every value is stored in the other fields). */
+  preset: z.string().trim().max(40).optional(),
 });
 
 export type BrandTokens = z.output<typeof brandTokensSchema>;
@@ -50,6 +55,8 @@ export const brandTokensPatchSchema = z.object({
   fontSans: fontName.optional(),
   fontHeading: fontName.nullable().optional(),
   mode: z.enum(BRAND_MODES).optional(),
+  theme: storeThemePatchSchema.optional(),
+  preset: z.string().trim().max(40).nullable().optional(),
 });
 
 export type BrandTokensPatch = z.output<typeof brandTokensPatchSchema>;
@@ -59,6 +66,7 @@ export const DEFAULT_BRAND_TOKENS: BrandTokens = {
   radius: 0.625,
   fontSans: "Inter",
   mode: "light",
+  theme: { ...DEFAULT_STORE_THEME },
 };
 
 type ColorKey = keyof BrandTokens["colors"];
@@ -68,13 +76,14 @@ const OPTIONAL_COLORS = ["secondary", "accent", "background", "foreground"] as c
 export function combinePatches(a: BrandTokensPatch | null | undefined, b: BrandTokensPatch | null | undefined): BrandTokensPatch {
   const out: BrandTokensPatch = { ...(a ?? {}), ...(b ?? {}) };
   if (a?.colors || b?.colors) out.colors = { ...(a?.colors ?? {}), ...(b?.colors ?? {}) };
+  if (a?.theme || b?.theme) out.theme = { ...(a?.theme ?? {}), ...(b?.theme ?? {}) };
   for (const k of Object.keys(out) as (keyof BrandTokensPatch)[]) if (out[k] === undefined) delete out[k];
   return out;
 }
 
 /** Applies patches over full tokens. `null` deletes optional fields. */
 export function mergeTokens(base: BrandTokens, ...patches: (BrandTokensPatch | null | undefined)[]): BrandTokens {
-  const out: BrandTokens = { ...base, colors: { ...base.colors } };
+  const out: BrandTokens = { ...base, colors: { ...base.colors }, theme: { ...(base.theme ?? DEFAULT_STORE_THEME) } };
   for (const p of patches) {
     if (!p) continue;
     if (p.colors?.primary) out.colors.primary = p.colors.primary;
@@ -88,6 +97,9 @@ export function mergeTokens(base: BrandTokens, ...patches: (BrandTokensPatch | n
     if (p.fontHeading === null) delete out.fontHeading;
     else if (p.fontHeading !== undefined) out.fontHeading = p.fontHeading;
     if (p.mode !== undefined) out.mode = p.mode;
+    if (p.theme) for (const [k, v] of Object.entries(p.theme)) if (v !== undefined) (out.theme as Record<string, string>)[k] = v;
+    if (p.preset === null) delete out.preset;
+    else if (p.preset !== undefined) out.preset = p.preset;
   }
   return out;
 }
@@ -137,6 +149,7 @@ export function toCssVariables(tokens: BrandTokens): Record<string, string> {
   vars["--radius"] = `${tokens.radius}rem`;
   vars["--font-sans"] = fontStack(tokens.fontSans);
   vars["--font-heading"] = fontStack(tokens.fontHeading ?? tokens.fontSans);
+  Object.assign(vars, themeCssVariables(tokens.theme ?? DEFAULT_STORE_THEME));
   return vars;
 }
 

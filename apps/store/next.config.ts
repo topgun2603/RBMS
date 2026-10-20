@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/storefront-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/cms", "@srirealtime/gst"],
+    transpilePackages: ["@srirealtime/storefront-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/cms", "@srirealtime/gst", "@srirealtime/branding", "@srirealtime/verticals"],
     poweredByHeader: false,
     // Each shop's store opens on its own subdomain (anbu.localhost:3003) in dev; custom domains in production.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],

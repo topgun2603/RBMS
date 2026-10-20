@@ -49,10 +49,10 @@ export function ProductPageSkeleton() {
         <div className="flex gap-4">
           <div className="hidden w-20 shrink-0 flex-col gap-3 lg:flex">
             {[0, 1, 2, 3].map((i) => (
-              <Bone key={i} className="aspect-[4/5]" />
+              <Bone key={i} className="aspect-[var(--sf-image-ratio,4/5)]" />
             ))}
           </div>
-          <Bone className="aspect-[4/5] flex-1 rounded-3xl" />
+          <Bone className="aspect-[var(--sf-image-ratio,4/5)] flex-1 rounded-3xl" />
         </div>
         <div className="grid content-start gap-5">
           <Bone className="h-3 w-24 rounded-full" />
@@ -176,7 +176,7 @@ export function RailSkeleton({ count = 4 }: { count?: number }) {
     <div className="flex gap-3 overflow-hidden sm:gap-5" aria-hidden>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="w-[44%] shrink-0 sm:w-[30%] lg:w-[23%]">
-          <Bone className="aspect-[4/5] rounded-[var(--sf-radius-card)]" />
+          <Bone className="aspect-[var(--sf-image-ratio,4/5)] rounded-[var(--sf-radius-card)]" />
           <Bone className="mt-3 h-3.5 w-3/4 rounded-full" />
           <Bone className="mt-2 h-3.5 w-1/3 rounded-full" />
         </div>

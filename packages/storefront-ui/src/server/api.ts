@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { normalizeLocale, LOCALE_COOKIE, translatorFor, type Locale, type Translator } from "../lib/messages";
 import { API_ORIGIN, tenantFromHost, upstreamTenantHeaders } from "../lib/tenant";
-import type { Branding, Menus, PricedCart, StoreConfig, StoreShell } from "../types";
+import type { Branding, Menus, PricedCart, StoreConfig, StoreShell, StoreThemeView } from "../types";
 
 /** Cookie holding the anonymous / shopper cart token (read on the server for the header count). */
 export const CART_COOKIE = "sr_cart";
@@ -169,5 +169,30 @@ export async function getShell(config: StoreConfig, branding: Branding | null): 
     cartToken: cart ? cart.token : info.cartToken,
     cartCount: cart?.itemCount ?? 0,
     features,
+    businessType: config.shop.businessType ?? "",
+    theme: themeView(config.shop.theme),
   };
 }
+
+const THEME_DEFAULTS: StoreThemeView = {
+  header: "classic",
+  hero: "slider",
+  card: "standard",
+  imageRatio: "portrait",
+  buttons: "pill",
+  density: "comfortable",
+  sections: "plain",
+  motif: "kolam",
+  headings: "display",
+};
+
+/** The shop's theme variants with defaults for anything missing (older APIs send none). */
+export function themeView(theme: Record<string, string> | null | undefined): StoreThemeView {
+  return { ...THEME_DEFAULTS, ...(theme ?? {}) } as StoreThemeView;
+}
+
+/** The store translator with the shop's business-pack wording (search box, "new arrivals", newsletter). */
+export const getStoreT = cache(async (): Promise<Translator> => {
+  const [info, config] = await Promise.all([getRequestInfo(), getConfig().catch(() => null)]);
+  return config?.shop.businessType ? translatorFor(info.locale, config.shop.businessType) : info.t;
+});

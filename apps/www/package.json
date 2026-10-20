@@ -15,6 +15,7 @@
     "@srirealtime/i18n": "workspace:*",
     "@srirealtime/tenancy": "workspace:*",
     "@srirealtime/ui": "workspace:*",
+    "@srirealtime/verticals": "workspace:*",
     "@srirealtime/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "firebase": "^12.19.0",

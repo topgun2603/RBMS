@@ -150,7 +150,7 @@ export function SectionTitle({ title, eyebrow, href, linkLabel, badge, className
     <div className={cn("mb-6 flex items-end justify-between gap-4 sm:mb-8", className)}>
       <div className="min-w-0">
         {eyebrow && <p className="mb-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">{eyebrow}</p>}
-        <h2 className="flex flex-wrap items-center gap-3 font-display text-h2 font-semibold">
+        <h2 className="sf-heading flex flex-wrap items-center gap-3 font-display text-h2 font-semibold">
           {title}
           {badge}
         </h2>

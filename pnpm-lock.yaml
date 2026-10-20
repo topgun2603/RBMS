@@ -93,6 +93,9 @@ importers:
       '@srirealtime/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@srirealtime/bookings':
+        specifier: workspace:*
+        version: link:../../packages/bookings
       '@srirealtime/branches':
         specifier: workspace:*
         version: link:../../packages/branches
@@ -126,6 +129,9 @@ importers:
       '@srirealtime/developer':
         specifier: workspace:*
         version: link:../../packages/developer
+      '@srirealtime/dining':
+        specifier: workspace:*
+        version: link:../../packages/dining
       '@srirealtime/documents':
         specifier: workspace:*
         version: link:../../packages/documents
@@ -153,6 +159,9 @@ importers:
       '@srirealtime/invoices':
         specifier: workspace:*
         version: link:../../packages/invoices
+      '@srirealtime/jobcards':
+        specifier: workspace:*
+        version: link:../../packages/jobcards
       '@srirealtime/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
@@ -165,6 +174,12 @@ importers:
       '@srirealtime/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
+      '@srirealtime/medicines':
+        specifier: workspace:*
+        version: link:../../packages/medicines
+      '@srirealtime/memberships':
+        specifier: workspace:*
+        version: link:../../packages/memberships
       '@srirealtime/monitoring':
         specifier: workspace:*
         version: link:../../packages/monitoring
@@ -210,6 +225,9 @@ importers:
       '@srirealtime/uploads':
         specifier: workspace:*
         version: link:../../packages/uploads
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../../packages/verticals
       '@srirealtime/whatsapp':
         specifier: workspace:*
         version: link:../../packages/whatsapp
@@ -294,6 +312,146 @@ importers:
         specifier: ^4.1.0
         version: 4.3.3
 
+  apps/pharmacy:
+    dependencies:
+      '@srirealtime/billing-ui':
+        specifier: workspace:*
+        version: link:../../packages/billing-ui
+      '@srirealtime/commerce-ui':
+        specifier: workspace:*
+        version: link:../../packages/commerce-ui
+      '@srirealtime/growth-ui':
+        specifier: workspace:*
+        version: link:../../packages/growth-ui
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@srirealtime/inbox-ui':
+        specifier: workspace:*
+        version: link:../../packages/inbox-ui
+      '@srirealtime/orders-ui':
+        specifier: workspace:*
+        version: link:../../packages/orders-ui
+      '@srirealtime/pharmacy-ui':
+        specifier: workspace:*
+        version: link:../../packages/pharmacy-ui
+      '@srirealtime/pos-ui':
+        specifier: workspace:*
+        version: link:../../packages/pos-ui
+      '@srirealtime/site-ui':
+        specifier: workspace:*
+        version: link:../../packages/site-ui
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../../packages/web
+      '@srirealtime/workspace-ui':
+        specifier: workspace:*
+        version: link:../../packages/workspace-ui
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.3
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+
+  apps/restaurant:
+    dependencies:
+      '@srirealtime/billing-ui':
+        specifier: workspace:*
+        version: link:../../packages/billing-ui
+      '@srirealtime/commerce-ui':
+        specifier: workspace:*
+        version: link:../../packages/commerce-ui
+      '@srirealtime/growth-ui':
+        specifier: workspace:*
+        version: link:../../packages/growth-ui
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@srirealtime/inbox-ui':
+        specifier: workspace:*
+        version: link:../../packages/inbox-ui
+      '@srirealtime/orders-ui':
+        specifier: workspace:*
+        version: link:../../packages/orders-ui
+      '@srirealtime/pos-ui':
+        specifier: workspace:*
+        version: link:../../packages/pos-ui
+      '@srirealtime/restaurant-ui':
+        specifier: workspace:*
+        version: link:../../packages/restaurant-ui
+      '@srirealtime/site-ui':
+        specifier: workspace:*
+        version: link:../../packages/site-ui
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../../packages/web
+      '@srirealtime/workspace-ui':
+        specifier: workspace:*
+        version: link:../../packages/workspace-ui
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.3
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+
   apps/seller:
     dependencies:
       '@srirealtime/i18n':
@@ -308,6 +466,82 @@ importers:
       '@srirealtime/web':
         specifier: workspace:*
         version: link:../../packages/web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.3
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+
+  apps/services:
+    dependencies:
+      '@srirealtime/billing-ui':
+        specifier: workspace:*
+        version: link:../../packages/billing-ui
+      '@srirealtime/bookings-ui':
+        specifier: workspace:*
+        version: link:../../packages/bookings-ui
+      '@srirealtime/commerce-ui':
+        specifier: workspace:*
+        version: link:../../packages/commerce-ui
+      '@srirealtime/growth-ui':
+        specifier: workspace:*
+        version: link:../../packages/growth-ui
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@srirealtime/inbox-ui':
+        specifier: workspace:*
+        version: link:../../packages/inbox-ui
+      '@srirealtime/jobcards-ui':
+        specifier: workspace:*
+        version: link:../../packages/jobcards-ui
+      '@srirealtime/memberships-ui':
+        specifier: workspace:*
+        version: link:../../packages/memberships-ui
+      '@srirealtime/orders-ui':
+        specifier: workspace:*
+        version: link:../../packages/orders-ui
+      '@srirealtime/pos-ui':
+        specifier: workspace:*
+        version: link:../../packages/pos-ui
+      '@srirealtime/site-ui':
+        specifier: workspace:*
+        version: link:../../packages/site-ui
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../../packages/web
+      '@srirealtime/workspace-ui':
+        specifier: workspace:*
+        version: link:../../packages/workspace-ui
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.104.2(react@19.3.0)
@@ -467,6 +701,9 @@ importers:
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../../packages/verticals
       '@srirealtime/web':
         specifier: workspace:*
         version: link:../../packages/web
@@ -617,6 +854,62 @@ importers:
         specifier: ^19.1.0
         version: 19.3.0(react@19.3.0)
 
+  packages/bookings:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/bookings-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/branches:
     dependencies:
       '@srirealtime/core':
@@ -704,6 +997,9 @@ importers:
       '@srirealtime/db':
         specifier: workspace:*
         version: link:../db
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../verticals
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(postgres@3.4.9)
@@ -729,6 +1025,9 @@ importers:
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../ui
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../verticals
       '@srirealtime/web':
         specifier: workspace:*
         version: link:../web
@@ -848,6 +1147,28 @@ importers:
       '@srirealtime/db':
         specifier: workspace:*
         version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/dining:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(postgres@3.4.9)
@@ -1135,6 +1456,62 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/jobcards:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/jobcards-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/jobs:
     dependencies:
       '@srirealtime/core':
@@ -1239,6 +1616,84 @@ importers:
       zod:
         specifier: ^3.25.0
         version: 3.25.76
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
+  packages/medicines:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/memberships:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/memberships-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
     devDependencies:
       '@types/react':
         specifier: ^19.1.0
@@ -1387,6 +1842,40 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/pharmacy-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/plans:
     dependencies:
       '@srirealtime/core':
@@ -1480,6 +1969,40 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/restaurant-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/reviews:
     dependencies:
       '@srirealtime/core':
@@ -1523,6 +2046,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/branding':
+        specifier: workspace:*
+        version: link:../branding
       '@srirealtime/gst':
         specifier: workspace:*
         version: link:../gst
@@ -1532,6 +2058,9 @@ importers:
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../ui
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../verticals
       '@srirealtime/web':
         specifier: workspace:*
         version: link:../web
@@ -1594,6 +2123,9 @@ importers:
       '@srirealtime/gst':
         specifier: workspace:*
         version: link:../gst
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../verticals
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(postgres@3.4.9)
@@ -1622,6 +2154,9 @@ importers:
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../ui
+      '@srirealtime/verticals':
+        specifier: workspace:*
+        version: link:../verticals
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.104.2(react@19.3.0)
@@ -1793,6 +2328,12 @@ importers:
       fastify:
         specifier: ^5.3.0
         version: 5.12.7
+
+  packages/verticals:
+    devDependencies:
+      '@srirealtime/branding':
+        specifier: workspace:*
+        version: link:../branding
 
   packages/web:
     dependencies:
@@ -4917,7 +5458,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    deprecated: Glob versions prior to v9 are no longer supported
 
   globalthis@1.0.4:
     resolution: {integrity: sha512-DpLKbNU4WylpxJykQujfCcwYWiV/Jhm50Goo0wrVILAv5jOr9d+H+UR3PhSCD2rCCEIg0uc+G+muBTwD54JhDQ==}

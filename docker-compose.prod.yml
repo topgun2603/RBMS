@@ -2,7 +2,7 @@
 # docker-compose.yml (`pnpm infra:up`), reached through host.docker.internal. Host ports are the dev ports + 10000,
 # so it runs next to `pnpm dev`.
 #
-#   docker compose -f docker-compose.prod.yml build                 # all 7 images (srikit-<app>:local)
+#   docker compose -f docker-compose.prod.yml build                 # all 10 images (srikit-<app>:local)
 #   docker compose -f docker-compose.prod.yml run --rm migrate      # one-off: migrations (no-op on an up-to-date db)
 #   docker compose -f docker-compose.prod.yml up -d                 # api, worker and the six apps
 #   curl localhost:14000/ready ; curl localhost:13005/pricing ; curl -H "Host: e2e-store.localhost" localhost:13003/
@@ -23,10 +23,10 @@ x-api-env: &api-env
   WHATSAPP_SECRET_KEY: local-smoke-test-only-whatsapp-0123456789abcdef
   API_PUBLIC_URL: http://localhost:14000
   ROOT_DOMAIN: localhost
-  CORS_ORIGINS: http://localhost:13000,http://localhost:13001,http://*.localhost:13001,http://localhost:13002,http://*.localhost:13002,http://localhost:13003,http://*.localhost:13003,http://localhost:13004,http://*.localhost:13004,http://localhost:13005
+  CORS_ORIGINS: http://localhost:13000,http://localhost:13001,http://*.localhost:13001,http://localhost:13002,http://*.localhost:13002,http://localhost:13003,http://*.localhost:13003,http://localhost:13004,http://*.localhost:13004,http://localhost:13005,http://localhost:13006,http://*.localhost:13006,http://localhost:13007,http://*.localhost:13007,http://localhost:13008,http://*.localhost:13008
   WWW_PUBLIC_URL: http://localhost:13005
-  APP_PUBLIC_URL: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002
-  BILLING_PUBLIC_URL: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002/billing
+  APP_PUBLIC_URL: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002,PH=http://{slug}.localhost:13006,RS=http://{slug}.localhost:13007,SV=http://{slug}.localhost:13008
+  BILLING_PUBLIC_URL: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002/billing,PH=http://{slug}.localhost:13006,RS=http://{slug}.localhost:13007/billing,SV=http://{slug}.localhost:13008
   STORE_PUBLIC_URL: http://{slug}.localhost:13003
   STORAGE_DRIVER: local
   STORAGE_LOCAL_DIR: /app/apps/api/.uploads
@@ -42,7 +42,7 @@ x-next-build-args: &next-build-args
   NEXT_PUBLIC_API_URL: http://localhost:14000
   NEXT_PUBLIC_ROOT_DOMAIN: localhost
   NEXT_PUBLIC_SITE_URL: http://localhost:13005
-  NEXT_PUBLIC_APP_URLS: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002
+  NEXT_PUBLIC_APP_URLS: BL=http://{slug}.localhost:13001,EC=http://{slug}.localhost:13002,PH=http://{slug}.localhost:13006,RS=http://{slug}.localhost:13007,SV=http://{slug}.localhost:13008
   NEXT_PUBLIC_STORE_URL: http://{slug}.localhost:13003
   NEXT_PUBLIC_STORE_DOMAIN: localhost:13003
   NEXT_PUBLIC_SHOP_DOMAIN: localhost
@@ -126,6 +126,21 @@ services:
     image: srikit-www:local
     build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: www } }
     ports: ["13005:3000"]
+  pharmacy:
+    <<: *next
+    image: srikit-pharmacy:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: pharmacy } }
+    ports: ["13006:3000"]
+  restaurant:
+    <<: *next
+    image: srikit-restaurant:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: restaurant } }
+    ports: ["13007:3000"]
+  services:
+    <<: *next
+    image: srikit-services:local
+    build: { context: ., dockerfile: docker/next.Dockerfile, args: { <<: *next-build-args, APP: services } }
+    ports: ["13008:3000"]
 
 volumes:
   uploads:

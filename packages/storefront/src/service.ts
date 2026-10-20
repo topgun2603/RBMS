@@ -1,3 +1,4 @@
+import { packOrDefault } from "@srirealtime/verticals";
 import { AppError, addDays, badRequest, conflict, notFound, randomToken, tooMany, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { and, count, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
@@ -133,6 +134,12 @@ export interface StoreConfig {
     name: string;
     logoUrl: string | null;
     css: string;
+    /** The shop's trade (@srirealtime/verticals pack id, never empty: the app's default when unset). */
+    businessType: string;
+    /** Theme variants: header, hero, card, imageRatio, buttons, density, sections, motif, headings. */
+    theme: Record<string, string>;
+    /** Font families to load. */
+    fonts: string[];
     contactPhone: string;
     contactEmail: string;
     social: StoreSettings["social"];
@@ -266,6 +273,9 @@ export class StorefrontService {
         name: b.name || tenant.slug,
         logoUrl: b.logoUrl,
         css: b.css,
+        businessType: packOrDefault(s.businessType, tenant.appId).id,
+        theme: b.theme ?? {},
+        fonts: b.fonts ?? [],
         contactPhone: s.contactPhone,
         contactEmail: s.contactEmail,
         social: s.social,

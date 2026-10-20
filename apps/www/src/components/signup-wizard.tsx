@@ -5,13 +5,16 @@ import Link from "next/link";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  CalendarClockIcon,
   CheckIcon,
   CircleAlertIcon,
   Loader2Icon,
   LogOutIcon,
   MonitorSmartphoneIcon,
+  PillIcon,
   ReceiptIndianRupeeIcon,
   SparklesIcon,
+  UtensilsCrossedIcon,
   XIcon,
 } from "lucide-react";
 import { Badge } from "@srirealtime/ui/components/badge";
@@ -24,7 +27,7 @@ import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe } from "@sr
 import { cn } from "@srirealtime/ui/lib/utils";
 import { api, ApiError, errorMessage, getToken, handoffCode, handoffUrl, type SignupResult, type User } from "@/lib/api";
 import { isFreePlan, maxSavingPct, planDescription, planName, pricePaise, rupees, type Interval, type Plan } from "@/lib/plans";
-import { BUSINESS_TYPES, SHOP_DOMAIN, type AppId } from "@/lib/site";
+import { BUSINESS_TYPES, PACKS, SHOP_DOMAIN, type AppId } from "@/lib/site";
 import { GST_STATES, isGstinShape, slugShapeOk, slugify, stateLabel } from "@/lib/states";
 import { useSite } from "./site-context";
 import { OtpSignIn } from "./otp-sign-in";
@@ -386,6 +389,9 @@ function NeedStep({ value, onChange, t }: { value: AppId | null; onChange: (a: A
   const options: { id: AppId; icon: React.ReactNode; title: string; body: string }[] = [
     { id: "BL", icon: <ReceiptIndianRupeeIcon />, title: t("products.billing.title"), body: t("products.billing.body") },
     { id: "EC", icon: <MonitorSmartphoneIcon />, title: t("products.store.title"), body: t("products.store.body") },
+    { id: "PH", icon: <PillIcon />, title: t("products.pharmacy.title"), body: t("products.pharmacy.body") },
+    { id: "RS", icon: <UtensilsCrossedIcon />, title: t("products.restaurant.title"), body: t("products.restaurant.body") },
+    { id: "SV", icon: <CalendarClockIcon />, title: t("products.services.title"), body: t("products.services.body") },
   ];
   return (
     <div className="space-y-6">
@@ -542,11 +548,14 @@ function ShopStep({
               </SelectTrigger>
             </FieldControl>
             <SelectContent>
-              {BUSINESS_TYPES.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {t(`biz.${b}`)}
-                </SelectItem>
-              ))}
+              {/* Trades made for the chosen product first; any trade can still be picked. */}
+              {[...BUSINESS_TYPES]
+                .sort((a, b) => Number(PACKS[b].appId === draft.app) - Number(PACKS[a].appId === draft.app))
+                .map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {locale === "ta" ? PACKS[b].nameTa : PACKS[b].name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </Field>

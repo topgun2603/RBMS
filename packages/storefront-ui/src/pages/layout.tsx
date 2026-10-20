@@ -1,9 +1,9 @@
 import * as React from "react";
 import type { Metadata } from "next";
-import { apiGetSafe, getBranding, getConfig, getMenus, getRequestInfo, getShell, storeCss } from "../server/api";
+import { apiGetSafe, getBranding, getConfig, getMenus, getRequestInfo, getShell, getStoreT, storeCss } from "../server/api";
 import { helpCentreOn } from "../lib/features";
 import { imageUrl } from "../lib/format";
-import type { Collection, HomeSection, List, StoreConfig } from "../types";
+import type { Collection, HomeSection, List, StoreConfig, StoreThemeView } from "../types";
 import type { Translator } from "../lib/messages";
 import { StoreProvider } from "../client/store-context";
 import { PageViewTracker, StoreHeader, THEME_SCRIPT, type NavCategory, type NavCollection } from "../client/header";
@@ -38,6 +38,18 @@ function announcements(sections: HomeSection[], config: StoreConfig, t: Translat
   return out.slice(0, 5);
 }
 
+/** `data-sf-*` attributes the theme CSS keys on (styles.css → "Theme variants"). */
+function themeAttributes(theme: StoreThemeView): Record<string, string> {
+  return Object.fromEntries(Object.entries(theme).map(([k, v]) => [`data-sf-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, v]));
+}
+
+/** One Google Fonts stylesheet for the shop's families (every family used here has 400 and 700). */
+function fontsHref(fonts: string[] | undefined): string | null {
+  const families = [...new Set((fonts ?? []).filter((f) => /^[A-Za-z0-9 -]{1,64}$/.test(f) && !/^(system-ui|sans-serif|serif)$/i.test(f)))];
+  if (!families.length) return null;
+  return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;700`).join("&")}&display=swap`;
+}
+
 /**
  * Everything around a store page: branding CSS (server-injected), providers, offer ribbon, header (mega menu),
  * closed banner, footer, floating WhatsApp / back-to-top. Unknown hosts get a "store not found" screen (404 semantics
@@ -56,7 +68,8 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
     getHome(),
   ]);
   const shell = await getShell(config, branding);
-  const t = info.t;
+  const t = await getStoreT();
+  const fonts = fontsHref(config.shop.fonts);
   const categories: NavCategory[] = cats.items.filter((c) => !c.parentId).map((c) => ({ id: c.id, name: c.name, slug: c.slug, imageUrl: c.imageUrl }));
   const f = cols.items[0];
   const featured: NavCollection | null = f ? { name: f.name, slug: f.slug, description: f.description, imageUrl: f.imageUrl } : null;
@@ -66,7 +79,14 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
       <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       {/* Tenant branding overrides --primary, --radius, fonts … (unlayered, so it beats the design-system defaults). */}
       <style id="sr-branding" dangerouslySetInnerHTML={{ __html: storeCss(config.shop.css || branding?.css) }} />
+      {fonts && (
+        <>
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link rel="stylesheet" href={fonts} />
+        </>
+      )}
       <StoreProvider shell={shell} locale={info.locale}>
+        <div className="sf-root" {...themeAttributes(shell.theme)} data-sf-brand-fonts={(config.shop.fonts?.length ?? 0) > 1 ? "" : undefined}>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">
           {t("nav.skip")}
         </a>
@@ -83,6 +103,7 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
         </main>
         <StoreFooter config={config} menu={menus.footer} t={t} help={helpCentreOn(shell.features)} />
         <FloatingActions whatsapp={config.shop.social?.whatsapp ?? null} />
+        </div>
       </StoreProvider>
     </>
   );

@@ -15,6 +15,12 @@ export interface StoreConfig {
     name: string;
     logoUrl: string | null;
     css: string;
+    /** The shop's trade (@srirealtime/verticals pack id). Older APIs leave it out. */
+    businessType?: string;
+    /** Theme variants (header, hero, card, imageRatio, buttons, density, sections, motif, headings). */
+    theme?: Record<string, string>;
+    /** Font families the shop's CSS uses (loaded from Google Fonts). */
+    fonts?: string[];
     contactPhone: string;
     contactEmail: string;
     social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
@@ -466,6 +472,23 @@ export interface StoreShell {
   cartCount: number;
   /** Feature keys on for this shop (GET /v1/features `enabled`); empty when the call failed. */
   features: string[];
+  /** The shop's trade (pack id): wording, size guide. */
+  businessType: string;
+  /** Theme variants (see StoreConfig.shop.theme), with defaults filled in. */
+  theme: StoreThemeView;
+}
+
+/** The storefront's theme variants (mirrors @srirealtime/branding StoreTheme). */
+export interface StoreThemeView {
+  header: "classic" | "centered" | "minimal" | "bold";
+  hero: "slider" | "split" | "full" | "compact";
+  card: "standard" | "minimal" | "framed" | "overlay";
+  imageRatio: "portrait" | "square" | "landscape";
+  buttons: "rounded" | "pill" | "square";
+  density: "comfortable" | "compact";
+  sections: "plain" | "tinted" | "boxed";
+  motif: "none" | "kolam" | "dots" | "waves" | "grid";
+  headings: "display" | "uppercase" | "underline";
 }
 
 // ------------------------------------------------------------------ batch 4: chat, help centre, sellers, loyalty

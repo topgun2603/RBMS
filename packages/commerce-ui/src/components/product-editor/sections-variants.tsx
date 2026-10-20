@@ -1,5 +1,7 @@
 "use client";
 
+import { usePack } from "../../lib/pack";
+
 import * as React from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { BoxesIcon, InfoIcon, Layers3Icon, Loader2Icon, PlusIcon, SlidersHorizontalIcon, SparklesIcon, Trash2Icon, WandSparklesIcon, XIcon } from "lucide-react";
@@ -13,7 +15,6 @@ import { cartesian, cleanQty, comboKey, formatQty, rupeesToPaise, variantTitle }
 import type { StockRow } from "../../lib/types";
 import { emptyVariant, optionsKey, type ProductFormValues, type VariantRow } from "./model";
 
-const OPTION_SUGGESTIONS = ["Size", "Colour", "Material", "Style", "Pack"];
 
 // ---------------------------------------------------------------- options + variants
 
@@ -35,7 +36,8 @@ export function VariantsSection({
   /** Edit mode: delete a saved variant. */
   onDeleteVariant?: (variantId: string) => Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const pack = usePack();
   const form = useFormContext<ProductFormValues>();
   const options = useFieldArray({ control: form.control, name: "options" });
   const variants = useFieldArray({ control: form.control, name: "variants", keyName: "fieldKey" });
@@ -141,7 +143,7 @@ export function VariantsSection({
       {/* Option builder */}
       <div className="grid gap-3">
         <datalist id="commerce-option-names">
-          {OPTION_SUGGESTIONS.map((o) => (
+          {pack.editor.options.map((o) => (
             <option key={o} value={o} />
           ))}
         </datalist>

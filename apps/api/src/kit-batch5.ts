@@ -52,7 +52,7 @@ export interface Batch5Deps {
 
 /** Sign-up details passed to the on-tenant-created hooks (`details.signup`). */
 export interface SignupDetails {
-  appId: "BL" | "EC";
+  appId: "BL" | "EC" | "PH" | "RS" | "SV";
   planId: string;
   interval: "monthly" | "yearly";
   state: string;
@@ -83,7 +83,7 @@ const DEFAULT_COLOUR = "#0f766e";
 const signupBody = z.object({
   shopName: z.string().trim().min(2).max(120),
   slug: z.string().trim().toLowerCase().min(1).max(60),
-  appId: z.enum(["BL", "EC"]),
+  appId: z.enum(["BL", "EC", "PH", "RS", "SV"]),
   planId: z.string().trim().min(1).max(40),
   interval: z.enum(["monthly", "yearly"]).default("monthly"),
   businessType: z.string().trim().max(60).optional().nullable(),
@@ -227,7 +227,7 @@ export function createBatch5(d: Batch5Deps) {
       if (s?.phone) general.supportPhone = s.phone;
       if (s?.gstin) general.gstin = s.gstin;
       await settings.handle("general").setTenant(tenant.id, general);
-      if (s?.appId === "EC" && s.phone) {
+      if (s?.appId && s.appId !== "BL" && s.phone) {
         await settings.handle("store").setTenant(tenant.id, { contactPhone: s.phone, social: { whatsapp: s.phone } });
       }
       const colour = (s?.businessType && TYPE_COLOURS[s.businessType.toLowerCase()]) || DEFAULT_COLOUR;

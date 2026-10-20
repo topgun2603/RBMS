@@ -127,7 +127,7 @@ export function normalizeTarget(raw: string): { target: string; kind: "phone" | 
  * Where a shop's own app lives, by app profile: NEXT_PUBLIC_APP_URLS = "BL=https://{slug}.srikit.in,EC=…"
  * (dev default: billing on :3001, the store admin on :3002). Unknown profiles fall back to the billing app.
  */
-const APP_URLS = (process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002")
+const APP_URLS = (process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008")
   .split(",")
   .map((p) => p.split("=").map((s) => s.trim()) as [string, string | undefined])
   .filter(([k, v]) => k && v);

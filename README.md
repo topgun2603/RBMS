@@ -26,6 +26,11 @@ apps/
                   "/billing", workspace-ui
   store/          Customer storefront (:3003, SSR): each shop on its subdomain (anbu.localhost:3003) or custom domain;
                   theme from storefront-ui. Browser test: test/e2e.cjs
+  pharmacy/       Pharmacy app (:3006, app profile "PH"): medicine billing, counter, workspace (medplus.localhost:3006)
+  restaurant/     Restaurant app (:3007, app profile "RS"): orders, menu, counter, billing at "/billing"
+                  (annapoorna.localhost:3007)
+  services/       Services app (:3008, app profile "SV"): appointments, job cards, memberships for salons, gyms,
+                  repair shops, tailors and opticals (glow.localhost:3008)
 packages/
   core/           Shared contracts: errors, request context, env loading, module definition, permissions
   db/             Drizzle client and column helpers
@@ -55,6 +60,12 @@ packages/
                   analytics, custom domain
   workspace-ui/   UI module every app mounts: team & roles, audit log, import/export, onboarding
   storefront-ui/  The shopper-facing store theme (server + client components) used by apps/store
+  medicines/      Pharmacy back end: medicine details, batches + expiry sold first-expiry-first-out, prescriptions,
+                  Schedule H1 register (docs/verticals.md)
+  dining/         Restaurant back end: tables, running orders, KOTs per station, kitchen display feed, QR table
+                  ordering, bills from orders (docs/verticals.md)
+  pharmacy-ui/    UI module: batches & expiry, medicines, prescriptions, H1 register
+  restaurant-ui/  UI module: floor, order screen, kitchen display, Settings → Restaurant
 docs/
   CONVENTIONS.md     How a module package is structured — read before adding one
   web-modules.md     The front-end contract: UI modules any Next.js app can mount (features, permissions)
@@ -70,8 +81,10 @@ pnpm install
 pnpm infra:up                      # Postgres + Redis in Docker
 cp .env.example apps/api/.env
 pnpm db:generate && pnpm db:migrate
-pnpm dev                           # API :4000, admin :3000, billing :3001, shop :3002, store :3003
-pnpm seed                          # demo shops: raja, kumar (billing), anbu (store)
+pnpm dev                           # API :4000, admin :3000, billing :3001, shop :3002, store :3003,
+                                   # pharmacy :3006, restaurant :3007
+pnpm seed                          # demo shops: raja, kumar (billing), anbu (store), medplus (pharmacy),
+                                   # annapoorna (restaurant)
 ```
 
 Without provider keys, SMS/email/WhatsApp/push messages are printed to the API console, so OTP sign-in

@@ -4,8 +4,8 @@ import { cn } from "@srirealtime/ui/lib/utils";
 
 type T = (key: string, vars?: Record<string, string | number | null | undefined>) => string;
 
-/** Secure payment · COD · easy returns · made in Tamil Nadu — only the claims the shop's settings back up. */
-export function TrustBadges({ t, cod, returns, local = true, className, compact }: { t: T; cod: boolean; returns: boolean; /** "Made in Tamil Nadu" (on by default for this platform; pass false to hide). */ local?: boolean; className?: string; compact?: boolean }) {
+/** Secure payment · COD · easy returns · made in Tamil Nadu: only the claims the shop's settings and trade back up. */
+export function TrustBadges({ t, cod, returns, local = false, className, compact }: { t: T; cod: boolean; returns: boolean; /** "Made in Tamil Nadu": only for trades that make things locally (the business pack's `localMade`). */ local?: boolean; className?: string; compact?: boolean }) {
   const items = [
     { icon: ShieldCheckIcon, title: t("trust.secure"), text: t("trust.secureText"), show: true },
     { icon: BanknoteIcon, title: t("trust.cod"), text: t("trust.codText"), show: cod },

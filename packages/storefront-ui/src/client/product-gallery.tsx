@@ -61,7 +61,7 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
               type="button"
               key={i}
               onClick={() => open(i)}
-              className="aspect-[4/5] w-full shrink-0 snap-center overflow-hidden bg-muted sm:rounded-3xl"
+              className="aspect-[var(--sf-image-ratio,4/5)] w-full shrink-0 snap-center overflow-hidden bg-muted sm:rounded-3xl"
               aria-label={hasImages ? `${t("product.zoom")}: ${t("product.image", { n: i + 1, total: list.length })}` : undefined}
               tabIndex={i === index ? 0 : -1}
               data-gallery-main={i === index ? "" : undefined}
@@ -82,7 +82,7 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
               setZoom({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
             }}
             onPointerLeave={() => setZoom(null)}
-            className={cn("relative hidden aspect-[4/5] w-full overflow-hidden rounded-3xl bg-muted focus-ring lg:block", hasImages && "cursor-zoom-in")}
+            className={cn("relative hidden aspect-[var(--sf-image-ratio,4/5)] w-full overflow-hidden rounded-3xl bg-muted focus-ring lg:block", hasImages && "cursor-zoom-in")}
             aria-label={hasImages ? `${t("product.zoom")}: ${t("product.image", { n: index + 1, total: list.length })}` : name}
             data-gallery-main=""
           >
@@ -138,7 +138,7 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
                 onPointerEnter={(e) => e.pointerType === "mouse" && setIndex(i)}
                 aria-label={t("product.image", { n: i + 1, total: list.length })}
                 aria-current={i === index}
-                className="relative block aspect-[4/5] w-full rounded-xl focus-ring"
+                className="relative block aspect-[var(--sf-image-ratio,4/5)] w-full rounded-xl focus-ring"
               >
                 <span className={cn("block size-full overflow-hidden rounded-xl bg-muted transition-opacity", i === index ? "opacity-100" : "opacity-60 hover:opacity-100")}>
                   <StoreImage src={img.url || null} alt="" name={name} />

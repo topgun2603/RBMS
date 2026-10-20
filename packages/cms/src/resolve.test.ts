@@ -92,9 +92,20 @@ describe("default home", () => {
     expect(home.sections.map((s) => s.type)).toEqual(["hero", "categories", "products"]);
     expect(home.sections[0]).toEqual({
       type: "hero",
-      slides: [{ imageUrl: null, heading: "Raja Silks", subheading: "Since 1962", cta: { label: "Shop now", href: "/products" } }],
+      slides: [{ imageUrl: null, heading: "Raja Silks", subheading: "Since 1962", cta: { label: "Shop the collection", href: "/products" } }],
     });
+    expect(home.sections[1]).toMatchObject({ title: "Shop by category" });
     expect(home.sections[2]).toMatchObject({ title: "New arrivals", href: "/products" });
+  });
+
+  it("speaks the shop's trade (business pack), not clothing", async () => {
+    const pharmacy = await defaultHome(T, { catalog: stubCatalog(), shop: { info: async () => ({ name: "MedPlus", businessType: "pharmacy" }) } });
+    expect(pharmacy.sections[0]).toMatchObject({ slides: [{ cta: { label: "Order medicines" } }] });
+    expect(pharmacy.sections[1]).toMatchObject({ title: "Shop by need" });
+    expect(pharmacy.sections[2]).toMatchObject({ title: "Just in" });
+    // No business type: the app's default pack (restaurant app → restaurant words).
+    const rs = await defaultHome(T, { catalog: stubCatalog(), shop: { info: async () => ({ name: "Annapoorna", appId: "RS" }) } });
+    expect(rs.sections[2]).toMatchObject({ title: "Today's specials" });
   });
 
   it("an empty shop still gets a hero", async () => {

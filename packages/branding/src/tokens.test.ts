@@ -1,3 +1,4 @@
+import { DEFAULT_STORE_THEME } from "./theme";
 import { describe, expect, it } from "vitest";
 import {
   brandTokensPatchSchema,
@@ -13,7 +14,7 @@ import {
 describe("brandTokensSchema", () => {
   it("applies defaults and lowercases colours", () => {
     const t = brandTokensSchema.parse({ colors: { primary: "#AABBCC" } });
-    expect(t).toEqual({ colors: { primary: "#aabbcc" }, radius: 0.625, fontSans: "Inter", mode: "light" });
+    expect(t).toEqual({ colors: { primary: "#aabbcc" }, radius: 0.625, fontSans: "Inter", mode: "light", theme: DEFAULT_STORE_THEME });
   });
   it("rejects bad input", () => {
     expect(brandTokensSchema.safeParse({ colors: { primary: "red" } }).success).toBe(false);

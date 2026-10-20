@@ -1,0 +1,101 @@
+@import "@srirealtime/ui/styles.css";
+
+/* Scan the app, the kit and the mounted UI modules for Tailwind classes (workspace packages are TS source). */
+@source "../";
+@source "../../../../packages/web/src";
+@source "../../../../packages/growth-ui/src";
+@source "../../../../packages/inbox-ui/src";
+@source "../../../../packages/pos-ui/src";
+@source "../../../../packages/billing-ui/src";
+@source "../../../../packages/commerce-ui/src";
+@source "../../../../packages/orders-ui/src";
+@source "../../../../packages/restaurant-ui/src";
+@source "../../../../packages/workspace-ui/src";
+@source "../../../../packages/site-ui/src";
+
+/* Number inputs without spinners (qty / rate fields are typed, not clicked). */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/*
+ * Print / Save as PDF: A4, only the invoice. App chrome (sidebar, top bar, tab bar, action bars)
+ * is hidden; anything marked [data-print-hide] or .no-print too. Colours are forced light, but the
+ * shop's --primary (from branding CSS) is kept so the invoice stays on-brand.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html,
+  html.dark {
+    color-scheme: light;
+    --background: #fff;
+    --foreground: #111;
+    --card: #fff;
+    --card-foreground: #111;
+    --muted: #f4f4f5;
+    --muted-foreground: #555;
+    --border: #d4d4d8;
+  }
+  html,
+  html.dark {
+    --page: #fff;
+    --elevation-1: none;
+    --elevation-2: none;
+  }
+  /* Print-safe documents: flat, no gradients or shadows. */
+  [data-print-area],
+  [data-print-area] * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    background-image: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Only the shell's own bars: the invoice has a <header> of its own. */
+  [data-slot="app-shell"] > aside,
+  [data-slot="app-shell"] > div > header,
+  [data-print-hide],
+  .no-print,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+  [data-slot="app-shell"] main,
+  [data-print-root],
+  [data-print-root] > div > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  [data-print-area] {
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  [data-print-area] table {
+    font-size: 9.5pt;
+  }
+  [data-print-area] tr,
+  [data-print-area] .avoid-break {
+    break-inside: avoid;
+  }
+  /* Tables that scroll on phones must print in full. */
+  [data-print-area] .overflow-x-auto {
+    overflow: visible !important;
+  }
+}

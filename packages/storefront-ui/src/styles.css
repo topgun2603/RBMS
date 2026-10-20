@@ -290,3 +290,133 @@ html {
     animation: none !important;
   }
 }
+
+/* ------------------------------------------------------------------ theme variants
+ * The shop's theme (@srirealtime/branding `tokens.theme`) arrives as data-sf-* attributes on .sf-root (pages/layout)
+ * plus --sf-image-ratio / --sf-button-radius / --sf-density in the branding CSS. Components read the structural
+ * variants (header, hero, card) from the shell; everything below is pure CSS.
+ */
+@layer base {
+  :root {
+    --sf-image-ratio: 4 / 5;
+    --sf-button-radius: 9999px;
+    --sf-density: 1;
+  }
+}
+
+/* Density: section rhythm scales (compact = tighter, for shops with many products). */
+.sf-root {
+  --sf-section: calc(clamp(3rem, 2.2rem + 3.2vw, 5.5rem) * var(--sf-density, 1));
+}
+
+/* The shop's own heading font for display text (presets set one); otherwise Fraunces as before. */
+.sf-root[data-sf-brand-fonts] {
+  --sf-font-display: var(--font-heading), var(--font-noto-tamil, "Noto Sans Tamil"), serif;
+}
+
+/* Button shape: rounded · pill · square. Text buttons only (icon buttons keep their circles). */
+.sf-root .sf-btn,
+.sf-root [data-slot="button"].rounded-full:not([class*="size-"]) {
+  border-radius: var(--sf-button-radius, 9999px);
+}
+
+/* Brand gradient: the warm festive blend belongs to the kolam (heritage) look; other themes use their own colour. */
+.sf-root:not([data-sf-motif="kolam"]) {
+  --sf-gradient: linear-gradient(120deg, color-mix(in oklch, var(--primary) 86%, black) 0%, var(--primary) 100%);
+}
+
+/* Motifs on brand blocks (hero without a photo, newsletter, testimonials). */
+.sf-root[data-sf-motif="none"] .sf-brand-hero {
+  background-image:
+    radial-gradient(60% 80% at 85% 20%, color-mix(in oklch, var(--primary) 70%, white) 0%, transparent 70%),
+    linear-gradient(120deg, color-mix(in oklch, var(--primary) 80%, black) 0%, var(--primary) 100%);
+  background-size: auto, auto;
+}
+.sf-root[data-sf-motif="dots"] .sf-brand-hero {
+  background-image:
+    radial-gradient(circle, rgb(255 255 255 / 0.22) 1.5px, transparent 1.6px),
+    linear-gradient(120deg, color-mix(in oklch, var(--primary) 78%, black) 0%, var(--primary) 100%);
+  background-size: 22px 22px, auto;
+}
+.sf-root[data-sf-motif="waves"] .sf-brand-hero {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24' viewBox='0 0 120 24'%3E%3Cpath d='M0 12c20 0 20-10 40-10s20 10 40 10 20-10 40-10' fill='none' stroke='%23fff' stroke-opacity='.16' stroke-width='1.5'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, color-mix(in oklch, var(--primary) 75%, black) 0%, var(--primary) 60%, color-mix(in oklch, var(--primary) 82%, white) 100%);
+  background-size: 120px 24px, auto;
+}
+.sf-root[data-sf-motif="grid"] .sf-brand-hero {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.08) 1px, transparent 1px),
+    linear-gradient(135deg, color-mix(in oklch, var(--primary) 70%, black) 0%, var(--primary) 100%);
+  background-size: 32px 32px, 32px 32px, auto;
+}
+.sf-root:not([data-sf-motif="kolam"]) .sf-brand-hero::after {
+  display: none;
+}
+.sf-root[data-sf-motif="none"] .kolam {
+  background-image: none;
+}
+.sf-root[data-sf-motif="dots"] .kolam {
+  background-image: radial-gradient(circle, rgb(0 0 0 / 0.06) 1.2px, transparent 1.3px);
+  background-size: 20px 20px;
+}
+.sf-root[data-sf-motif="waves"] .kolam {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24' viewBox='0 0 120 24'%3E%3Cpath d='M0 12c20 0 20-10 40-10s20 10 40 10 20-10 40-10' fill='none' stroke='%23000' stroke-opacity='.05' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: 120px 24px;
+}
+.sf-root[data-sf-motif="grid"] .kolam {
+  background-image: linear-gradient(rgb(0 0 0 / 0.04) 1px, transparent 1px), linear-gradient(90deg, rgb(0 0 0 / 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Section headings: display (default) · uppercase (small, tracked, sans) · underline (accent bar). */
+.sf-root[data-sf-headings="uppercase"] :is(.sf-heading, .sf-hero-title) {
+  font-family: var(--font-heading);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.sf-root[data-sf-headings="uppercase"] .sf-heading {
+  font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
+  font-weight: 700;
+}
+.sf-root[data-sf-headings="underline"] .sf-heading::after {
+  content: "";
+  display: block;
+  flex-basis: 100%;
+  width: 3rem;
+  height: 3px;
+  margin-top: 0.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+/* Section style: plain · tinted (every other section on a full-width brand tint) · boxed (sections as cards). */
+.sf-root[data-sf-sections="tinted"] .sf-home > :nth-child(2n + 3):not(.sf-unboxed) {
+  box-shadow: 0 0 0 100vmax var(--sf-tint-1);
+  clip-path: inset(calc(var(--sf-section) * -0.5) -100vmax);
+  background: var(--sf-tint-1);
+}
+.sf-root[data-sf-sections="boxed"] .sf-home > :not(:first-child):not(.sf-unboxed) {
+  width: min(80rem, calc(100% - 2 * var(--sf-gutter)));
+  margin-inline: auto;
+  padding-block: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+  border: 1px solid var(--border);
+  border-radius: var(--sf-radius-card);
+  background: var(--card);
+}
+
+/* Header: bold = brand-coloured bar. */
+.sf-root[data-sf-header="bold"] .sf-header {
+  color: var(--primary-foreground);
+}
+.sf-root[data-sf-header="bold"] .sf-header .sf-header-surface {
+  background: var(--primary);
+  border-color: transparent;
+}
+.sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button, a[aria-label], button[aria-label]) {
+  color: var(--primary-foreground);
+}
+.sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button):hover {
+  background: color-mix(in oklch, var(--primary-foreground) 14%, transparent);
+}

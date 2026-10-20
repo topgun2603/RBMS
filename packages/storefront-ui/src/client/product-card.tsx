@@ -74,10 +74,14 @@ export function ProductCardView({ product, rating, eager, className }: { product
   const second = product.images?.[1] ?? null;
   const spring = { type: "spring" as const, stiffness: 320, damping: 26 };
   const addLabel = product.variantCount > 1 ? t("product.chooseOptions") : t("product.addToCart");
+  // Theme card: standard (photo over text) · minimal (no frame) · framed (bordered tile, add button always shown) · overlay (text on the photo).
+  const variant = shell.theme.card;
+  const overlay = variant === "overlay";
+  const framed = variant === "framed";
 
   return (
     <motion.article
-      className={cn("group/card relative flex h-full flex-col gap-3", className)}
+      className={cn("group/card relative flex h-full flex-col gap-3", framed && "rounded-[var(--sf-radius-card)] border bg-card p-2.5 shadow-xs", className)}
       initial="rest"
       animate="rest"
       whileHover={reduced ? undefined : "hover"}
@@ -86,8 +90,16 @@ export function ProductCardView({ product, rating, eager, className }: { product
     >
       <motion.div variants={reduced ? undefined : liftVariants} transition={spring} className="relative">
         {/* Glow lives on its own layer and only fades (opacity), so hover never repaints the shadow. */}
-        <motion.span aria-hidden variants={glowVariants} transition={{ duration: 0.25 }} className="pointer-events-none absolute inset-0 rounded-[var(--sf-radius-card)] shadow-lift" />
-        <div ref={media} className="relative aspect-[4/5] overflow-hidden rounded-[var(--sf-radius-card)] bg-muted ring-1 ring-black/5 dark:ring-white/5">
+        {(variant === "standard" || overlay) && (
+          <motion.span aria-hidden variants={glowVariants} transition={{ duration: 0.25 }} className="pointer-events-none absolute inset-0 rounded-[var(--sf-radius-card)] shadow-lift" />
+        )}
+        <div
+          ref={media}
+          className={cn(
+            "relative aspect-[var(--sf-image-ratio,4/5)] overflow-hidden bg-muted",
+            variant === "minimal" ? "rounded-[calc(var(--radius)*0.5)]" : framed ? "rounded-[calc(var(--sf-radius-card)-0.375rem)]" : "rounded-[var(--sf-radius-card)] ring-1 ring-black/5 dark:ring-white/5",
+          )}
+        >
           <motion.div variants={reduced ? undefined : zoomVariants} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="size-full">
             <StoreImage src={product.image} alt={product.name} eager={eager} sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
           </motion.div>
@@ -103,10 +115,23 @@ export function ProductCardView({ product, rating, eager, className }: { product
           )}
           <WishlistHeart productId={product.id} size="sm" className="absolute top-2.5 right-2.5 z-[3]" />
 
-          {shell.open && (
+          {overlay && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3 pt-12 pb-3 pe-14 text-white">
+              <p className="line-clamp-2 text-sm leading-snug font-semibold sm:text-[15px]">{product.name}</p>
+              <div className="mt-0.5 text-sm font-semibold tabular-nums opacity-90 [&_*]:!text-white">
+                <Price price={product.priceMin} priceMax={product.priceMax} mrp={null} t={t} size="sm" />
+              </div>
+            </div>
+          )}
+
+          {shell.open && !framed && (
             <>
               {/* Desktop: a bar that slides up on hover (and stays reachable by keyboard focus). */}
-              <motion.div variants={reduced ? undefined : barVariants} transition={spring} className="absolute inset-x-2.5 bottom-2.5 z-[3] hidden [@media(hover:hover)]:block focus-within:![transform:none] focus-within:!opacity-100">
+              <motion.div
+                variants={reduced ? undefined : barVariants}
+                transition={spring}
+                className={cn("absolute inset-x-2.5 bottom-2.5 z-[3] hidden focus-within:![transform:none] focus-within:!opacity-100", !overlay && "[@media(hover:hover)]:block")}
+              >
                 <button
                   type="button"
                   onClick={() => run(media.current)}
@@ -125,7 +150,10 @@ export function ProductCardView({ product, rating, eager, className }: { product
                 disabled={busy}
                 whileTap={reduced ? undefined : { scale: 0.88 }}
                 aria-label={`${addLabel}: ${product.name}`}
-                className="absolute right-2.5 bottom-2.5 z-[3] flex size-10 items-center justify-center rounded-full bg-background/95 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring [@media(hover:hover)]:hidden"
+                className={cn(
+                  "absolute right-2.5 bottom-2.5 z-[3] flex size-10 items-center justify-center rounded-full bg-background/95 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring",
+                  !overlay && "[@media(hover:hover)]:hidden",
+                )}
               >
                 {busy ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon className="size-5" />}
               </motion.button>
@@ -134,8 +162,8 @@ export function ProductCardView({ product, rating, eager, className }: { product
         </div>
       </motion.div>
 
-      <div className="flex flex-col gap-1 px-0.5">
-        {product.categoryName && <p className="truncate text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{product.categoryName}</p>}
+      <div className={cn("flex flex-col gap-1 px-0.5", overlay && "sr-only")}>
+        {product.categoryName && variant !== "minimal" && <p className="truncate text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{product.categoryName}</p>}
         <h3 className="line-clamp-2 text-sm leading-snug font-medium text-foreground/90 transition-colors group-hover/card:text-foreground sm:text-[15px]">
           <Link href={href} className="outline-none after:absolute after:inset-0 after:z-[1] after:rounded-[var(--sf-radius-card)] focus-visible:after:shadow-[var(--sf-focus)]">
             {product.name}
@@ -144,6 +172,22 @@ export function ProductCardView({ product, rating, eager, className }: { product
         <Price price={product.priceMin} priceMax={product.priceMax} mrp={product.mrp} t={t} size="sm" />
         {rating && rating.count > 0 && <Stars value={rating.average} count={rating.count} t={t} />}
       </div>
+      {overlay && (
+        // The stretched link of the (visually hidden) title still covers the tile; keep one visible link target for keyboards.
+        <Link href={href} aria-hidden tabIndex={-1} className="absolute inset-0 z-[1] rounded-[var(--sf-radius-card)]" />
+      )}
+      {framed && shell.open && (
+        <button
+          type="button"
+          onClick={() => run(media.current)}
+          disabled={busy}
+          className="sf-btn relative z-[2] mt-auto flex h-9 w-full items-center justify-center gap-2 border border-primary/40 text-sm font-semibold text-primary transition-colors focus-ring hover:bg-primary hover:text-primary-foreground"
+          data-testid="quick-add"
+        >
+          {busy ? <Loader2Icon className="size-4 animate-spin" /> : product.variantCount > 1 ? <EyeIcon className="size-4" /> : <PlusIcon className="size-4" />}
+          {addLabel}
+        </button>
+      )}
     </motion.article>
   );
 }

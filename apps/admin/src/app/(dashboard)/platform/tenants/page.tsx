@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  BlocksIcon,
   Building2Icon,
   ExternalLinkIcon,
   LayersIcon,
@@ -41,6 +42,7 @@ import {
 } from "@srirealtime/ui";
 import { StatusBadge } from "@/components/badges";
 import { TenantFeaturesSheet } from "@/components/features/tenant-features-sheet";
+import { SolutionDialog } from "@/components/solution-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Page } from "@/components/page";
 import { SuperAdminOnly } from "@/components/superadmin-only";
@@ -49,6 +51,7 @@ import { useSwitchTenant } from "@/lib/auth";
 import { useAppProfiles } from "@/lib/features";
 import { describeError, tOr, useI18n } from "@/lib/i18n";
 import { usePlans } from "@/lib/queries";
+import { useSolutions, useTenantSolutions } from "@/lib/solutions";
 import type { Tenant } from "@/lib/types";
 import { useServerTable, type ServerFilterDefs } from "@/lib/use-server-table";
 
@@ -77,6 +80,12 @@ function TenantsList() {
   const [statusTarget, setStatusTarget] = React.useState<Tenant | null>(null);
   const [planTarget, setPlanTarget] = React.useState<Tenant | null>(null);
   const [featuresTarget, setFeaturesTarget] = React.useState<Tenant | null>(null);
+  const [solutionTarget, setSolutionTarget] = React.useState<Tenant | null>(null);
+  // Each visible shop's solution (business pack), fetched for the rows on the current page.
+  const [rowIds, setRowIds] = React.useState<string[]>([]);
+  const solutionsOf = useTenantSolutions(rowIds);
+  const solutions = useSolutions();
+  const solutionName = React.useMemo(() => new Map((solutions.data ?? []).map((s) => [s.id, s.name])), [solutions.data]);
 
   const setStatus = useMutation({
     mutationFn: (tn: Tenant) =>
@@ -158,6 +167,21 @@ function TenantsList() {
         card: "meta",
         cell: (tn) => <span className="font-mono text-xs text-muted-foreground">{tn.appId ?? "—"}</span>,
       },
+      {
+        id: "solution",
+        header: t("admin.solutions.solution"),
+        card: "meta",
+        cell: (tn) => {
+          const sol = solutionsOf.data?.get(tn.id);
+          if (!sol) return <span className="text-xs text-muted-foreground">—</span>;
+          return (
+            <span className="text-sm">
+              {solutionName.get(sol.effective) ?? sol.effective}
+              {!sol.businessType && <span className="text-xs text-muted-foreground"> · {t("admin.solutions.default")}</span>}
+            </span>
+          );
+        },
+      },
       { id: "status", header: t("admin.common.status"), sortable: true, card: "right", cell: (tn) => <StatusBadge status={tn.status} /> },
       {
         id: "created",
@@ -198,6 +222,9 @@ function TenantsList() {
               <DropdownMenuItem onSelect={() => setFeaturesTarget(tn)}>
                 <ToggleRightIcon /> {t("admin.featuresUi.tenantAction")}
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSolutionTarget(tn)}>
+                <BlocksIcon /> {t("admin.solutions.change")}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant={tn.status === "active" ? "destructive" : "default"} onSelect={() => setStatusTarget(tn)}>
                 {tn.status === "active" ? <PauseCircleIcon /> : <PlayCircleIcon />}
@@ -208,7 +235,7 @@ function TenantsList() {
         ),
       },
     ],
-    [t, formatDate, planNames, router, switchTenant],
+    [t, formatDate, planNames, router, switchTenant, solutionsOf.data, solutionName],
   );
 
   const st = useServerTable<Tenant, typeof filters>({
@@ -221,6 +248,8 @@ function TenantsList() {
     storageKey: "admin-platform-tenants",
     getRowId: (tn) => tn.id,
   });
+  const pageIds = (st.query.data?.items ?? []).map((tn) => tn.id).join(",");
+  React.useEffect(() => setRowIds(pageIds ? pageIds.split(",") : []), [pageIds]);
 
   return (
     <Page>
@@ -244,6 +273,11 @@ function TenantsList() {
       />
       <ChangePlanDialog tenant={planTarget} onClose={() => setPlanTarget(null)} />
       <TenantFeaturesSheet tenant={featuresTarget} onClose={() => setFeaturesTarget(null)} />
+      <SolutionDialog
+        tenant={solutionTarget}
+        current={solutionTarget ? (solutionsOf.data?.get(solutionTarget.id)?.effective ?? null) : null}
+        onClose={() => setSolutionTarget(null)}
+      />
     </Page>
   );
 }

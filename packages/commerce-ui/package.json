@@ -16,6 +16,7 @@
     "@srirealtime/gst": "workspace:*",
     "@srirealtime/i18n": "workspace:*",
     "@srirealtime/ui": "workspace:*",
+    "@srirealtime/verticals": "workspace:*",
     "@srirealtime/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "lucide-react": "^0.525.0",

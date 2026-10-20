@@ -13,9 +13,10 @@ export const SHOP_DOMAIN = (process.env.NEXT_PUBLIC_SHOP_DOMAIN || process.env.N
  * Where each product's app opens for a shop, when the API doesn't hand us a URL: "BL=…,EC=…" with `{slug}`
  * (same format as the API's BILLING_PUBLIC_URL).
  */
-const APP_URLS = process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002";
+const APP_URLS = process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008";
 
-export type AppId = "BL" | "EC";
+export type AppId = "BL" | "EC" | "PH" | "RS" | "SV";
+export const APP_IDS: readonly AppId[] = ["BL", "EC", "PH", "RS", "SV"];
 
 export function appUrlFor(appId: string | null | undefined, slug: string): string {
   const map = new Map(
@@ -24,18 +25,22 @@ export function appUrlFor(appId: string | null | undefined, slug: string): strin
       return [k!.trim(), rest.join("=").trim()] as const;
     }),
   );
-  const tpl = map.get(appId === "BL" ? "BL" : "EC") ?? map.get("EC") ?? "http://{slug}.localhost:3002";
+  const tpl = map.get(APP_IDS.includes(appId as AppId) ? (appId as AppId) : "EC") ?? map.get("EC") ?? "http://{slug}.localhost:3002";
   return tpl.replace("{slug}", slug).replace(/\/+$/, "");
 }
 
-/** `?app=` on links: billing | store (also accepts BL / EC). */
+/** `?app=` on links: billing | store | pharmacy | restaurant (also accepts BL / EC / PH / RS). */
 export function parseApp(v: string | null | undefined): AppId | null {
   const s = (v ?? "").trim().toLowerCase();
   if (s === "billing" || s === "bl") return "BL";
   if (s === "store" || s === "online-store" || s === "ec") return "EC";
+  if (s === "pharmacy" || s === "medical" || s === "ph") return "PH";
+  if (s === "restaurant" || s === "rs") return "RS";
+  if (s === "services" || s === "salon" || s === "gym" || s === "sv") return "SV";
   return null;
 }
-export const appParam = (a: AppId) => (a === "BL" ? "billing" : "store");
+const APP_PARAMS: Record<AppId, string> = { BL: "billing", EC: "store", PH: "pharmacy", RS: "restaurant", SV: "services" };
+export const appParam = (a: AppId) => APP_PARAMS[a];
 
 /**
  * Where /login may send a sign-in back after a phone check for another app (`?return=`, docs/firebase-auth.md):
@@ -44,7 +49,7 @@ export const appParam = (a: AppId) => (a === "BL" ? "billing" : "store");
  */
 export const PHONE_RETURN_ORIGINS = (
   process.env.NEXT_PUBLIC_PHONE_RETURN_ORIGINS ||
-  "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3004,http://*.localhost:3004"
+  "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3004,http://*.localhost:3004,http://localhost:3006,http://*.localhost:3006,http://localhost:3007,http://*.localhost:3007,http://localhost:3008,http://*.localhost:3008"
 )
   .split(",")
   .map((s) => s.trim())
@@ -53,4 +58,5 @@ export const PHONE_RETURN_ORIGINS = (
 export const CONTACT_WHATSAPP = process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "";
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@srirealtime.com";
 
-export const BUSINESS_TYPES = ["grocery", "textiles", "jewellery", "electronics", "pharmacy", "hardware", "restaurant", "bakery", "stationery", "other"] as const;
+/** The trades a shop can pick at sign-up: the 15 business packs (@srirealtime/verticals). */
+export { BUSINESS_TYPES, PACKS } from "@srirealtime/verticals";

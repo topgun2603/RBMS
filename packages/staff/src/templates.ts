@@ -58,6 +58,14 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "reports.manage",
       // Counter: open/close the till, cash in/out (credit notes come with invoices.*).
       "pos.*",
+      // Pharmacies: medicine details, batches, write-offs, prescriptions and the H1 register.
+      "medicines.*",
+      // Restaurants: tables, orders, kitchen tickets, bills from orders, table / menu setup.
+      "dining.*",
+      // Services: job cards, appointments, memberships.
+      "jobcards.*",
+      "bookings.*",
+      "memberships.*",
     ],
   },
   {
@@ -66,7 +74,23 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     description: "Creates bills, takes returns, receives payments, adds customers and runs the counter till.",
     // loyalty.redeem: use a customer's points on the bill (quotes need only a staff role). invoices.credit-note: counter
     // returns; pos.till: open/close the till and record cash in/out.
-    permissions: ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till"],
+    // medicines.dispense: batches and prescriptions at a pharmacy counter. dining.serve / dining.bill: restaurant
+    // orders, KOTs and bills from orders.
+    permissions: [
+      "invoices.create",
+      "invoices.credit-note",
+      "payments.receive",
+      "customers.create",
+      "catalogue.view",
+      "loyalty.redeem",
+      "pos.till",
+      "medicines.dispense",
+      "dining.serve",
+      "dining.bill",
+      "jobcards.view",
+      "bookings.desk",
+      "memberships.checkin",
+    ],
   },
   {
     key: "accountant",
@@ -84,7 +108,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     key: "stock-keeper",
     name: "Stock keeper",
     description: "Adds and edits products, adjusts and transfers stock, and records purchases.",
-    permissions: ["catalogue.view", "catalogue.manage", "inventory.adjust", "inventory.transfer", "inventory.purchases"],
+    permissions: ["catalogue.view", "catalogue.manage", "inventory.adjust", "inventory.transfer", "inventory.purchases", "medicines.manage"],
   },
 ];
 
@@ -101,7 +125,15 @@ export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (rea
     ["invoices.create", "payments.receive", "customers.create", "catalogue.view"],
     // Batch 3 to 5, before credit notes and the server till.
     ["invoices.create", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem"],
+    // Before pharmacies added medicines.dispense.
+    ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till"],
+    // Before restaurants added dining.serve and dining.bill.
+    ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till", "medicines.dispense"],
+    // Before services added jobcards.view, bookings.desk and memberships.checkin.
+    ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till", "medicines.dispense", "dining.serve", "dining.bill"],
   ],
+  // Before pharmacies added medicines.manage.
+  "stock-keeper": [["catalogue.view", "catalogue.manage", "inventory.adjust", "inventory.transfer", "inventory.purchases"]],
   // Batch 1 (60011aa, 9ed3d7b): before the online store added cms.* and reviews.*.
   manager: [
     [

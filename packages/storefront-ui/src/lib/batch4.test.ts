@@ -211,6 +211,11 @@ describe("store proxy allow-list", () => {
       "/v1/auth/guest/verify",
       "/v1/features",
       "/v1/store/cart",
+      "/v1/dining/public/menu",
+      "/v1/dining/public/tables/abc123def456/orders",
+      "/v1/bookings/public/slots",
+      "/v1/bookings/public/appointments",
+      "/v1/jobcards/public/track/abc123def456ghi7",
     ]) {
       expect(isProxyAllowed(p, p.includes("quote") || p.includes("verify") || p.includes("token") ? "POST" : "GET"), p).toBe(true);
     }
@@ -229,6 +234,11 @@ describe("store proxy allow-list", () => {
       "/v1/features/registry",
       "/v1/invoices",
       "/v1/chatter",
+      "/v1/dining/orders",
+      "/v1/dining/kitchen",
+      "/v1/dining/publicity",
+      "/v1/bookings/appointments",
+      "/v1/jobcards",
     ]) {
       expect(isProxyAllowed(p, "GET"), p).toBe(false);
     }

@@ -10,6 +10,11 @@ import { createCoupons } from "@srirealtime/coupons";
 import { createDelivery, DELIVERY_TRACK_JOB } from "@srirealtime/delivery";
 import { createDocuments, type DocSeller } from "@srirealtime/documents";
 import { createExpenses } from "@srirealtime/expenses";
+import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
+import { createBookings } from "@srirealtime/bookings";
+import { createJobcards } from "@srirealtime/jobcards";
+import { createMemberships } from "@srirealtime/memberships";
+import { createMedicines } from "@srirealtime/medicines";
 import { createImportExport } from "@srirealtime/importexport";
 import { todayIST } from "@srirealtime/gst";
 import { createOrders, type Order } from "@srirealtime/orders";
@@ -59,6 +64,7 @@ import {
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
+import { createSolutions, createStarter } from "./kit-verticals";
 import { createKitOps } from "./kit-ops";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
@@ -88,6 +94,10 @@ export function createKit(env: Env, log: Logger) {
   let b3: Batch3 | undefined;
   // Batch 5 (kit-batch5.ts): subscriptions, sign-up and the on-tenant-created hooks; also late-bound.
   let b5: Batch5 | undefined;
+  // Pharmacy batches (created after inventory); the bill hooks below reach it lazily.
+  let medicinesRef: ReturnType<typeof createMedicines> | undefined;
+  // Restaurant orders and kitchen tickets (created after invoices and catalogue); the order hooks reach it lazily.
+  let diningRef: ReturnType<typeof createDining> | undefined;
   /** Developer webhooks (EventsPort). Never throws; a no-op until batch 3 exists. */
   const emit = (tenantId: string, type: string, data: unknown) => (b3 ? b3.events.emit(tenantId, type, data) : Promise.resolve());
   const events = { emit };
@@ -287,7 +297,11 @@ export function createKit(env: Env, log: Logger) {
       creditNoteCancelled: (tenantId, e) => b3!.loyalty.service.restoreCreditNote(tenantId, e),
     },
     events: {
-      issued: (tenantId, inv) => emit(tenantId, "invoice.issued", invoiceEvent(inv)),
+      issued: async (tenantId, inv) => {
+        await emit(tenantId, "invoice.issued", invoiceEvent(inv));
+        // Pharmacies: take the sold quantities from the medicine batches, first expiry first.
+        await medicinesRef?.service.onInvoiceIssued(tenantId, inv);
+      },
       creditNoteIssued: (tenantId, cn) => emit(tenantId, "credit_note.issued", creditNoteEvent(cn)),
       creditNoteCancelled: (tenantId, cn) =>
         emit(tenantId, "credit_note.cancelled", { ...creditNoteEvent(cn), reason: cn.cancelReason, cancelledAt: cn.cancelledAt }),
@@ -306,6 +320,7 @@ export function createKit(env: Env, log: Logger) {
       cancelled: async (tenantId, inv) => {
         await emit(tenantId, "invoice.cancelled", invoiceEvent(inv));
         await b3?.loyalty.hooks.invoiceCancelled(tenantId, inv.id);
+        await medicinesRef?.service.onInvoiceCancelled(tenantId, inv.id);
       },
       paymentReceived: (tenantId, e) =>
         emit(tenantId, "payment.received", {
@@ -441,10 +456,31 @@ export function createKit(env: Env, log: Logger) {
         await b3?.marketplace.service.syncOrder(tenantId, o.id);
         if (to === "delivered") await orderEarn(tenantId, o);
         if (to === "cancelled" || to === "returned") await b3?.loyalty.hooks.orderCancelled(tenantId, o.id);
+        await diningOrderSync(tenantId, o, to);
       },
     },
     log,
   });
+
+  /**
+   * Restaurants: a store order the shop confirms goes to the kitchen as a dining order (KOTs per station); cancelling it
+   * cancels the tickets; delivering it closes the dining order.
+   */
+  async function diningOrderSync(tenantId: string, o: Order, to: string) {
+    if (!diningRef || !(await isEnabled(tenantId, "dining"))) return;
+    const ref = `order:${o.id}`;
+    if (to === "confirmed") {
+      await diningRef.service.fromOnlineOrder(tenantId, {
+        ref,
+        number: o.number,
+        customerName: o.customer.name,
+        customerPhone: o.customer.phone,
+        delivery: !!o.shippingAddress,
+        lines: o.lines.map((l) => ({ itemId: l.variantId, name: l.name, qty: l.qty, rate: l.rate, gstRate: l.gstRate })),
+      });
+    } else if (to === "cancelled" || to === "returned") await diningRef.service.onlineOrderCancelled(tenantId, ref);
+    else if (to === "delivered") await diningRef.service.onlineOrderClosed(tenantId, ref);
+  }
 
   /** Loyalty points for a delivered or fully paid order (first of the two; earn is idempotent per order). */
   async function orderEarn(tenantId: string, o: Order) {
@@ -616,7 +652,8 @@ export function createKit(env: Env, log: Logger) {
     branding: {
       get: async (tenantId) => {
         const b = await branding.service.get(tenantId);
-        return { name: await shopName(tenantId), logoUrl: b.logoUrl, css: b.css };
+        const fonts = [...new Set([b.tokens.fontSans, b.tokens.fontHeading].filter((f): f is string => !!f))];
+        return { name: await shopName(tenantId), logoUrl: b.logoUrl, css: b.css, theme: { ...b.tokens.theme }, fonts };
       },
     },
     availability: storeAvailabilityPort(inventory.service, isEnabled, async (tenantId) => (await orderSettings.get({ tenantId })).allowBackorder === true),
@@ -658,7 +695,8 @@ export function createKit(env: Env, log: Logger) {
     shop: {
       info: async (tenantId) => {
         const b = await branding.service.get(tenantId);
-        return { name: (await shopName(tenantId)) ?? "Our store", tagline: null, logoUrl: b.logoUrl };
+        const [store, tenant] = await Promise.all([storeSettings.get({ tenantId }), tenancy.service.getRef(tenantId)]);
+        return { name: (await shopName(tenantId)) ?? "Our store", tagline: null, logoUrl: b.logoUrl, businessType: typeof store.businessType === "string" && store.businessType ? store.businessType : null, appId: tenant?.appId ?? null };
       },
     },
     storeUrl: {
@@ -702,6 +740,88 @@ export function createKit(env: Env, log: Logger) {
         return { taxable: itc.taxable, cgst: itc.cgst, sgst: itc.sgst, igst: itc.igst };
       },
     },
+    log,
+  });
+
+  const medicines = createMedicines({
+    db,
+    stock: {
+      // Batch receipts and write-offs move inventory totals too (shops with stock tracking on).
+      add: async (tenantId, itemId, qty, note, unitCost, userId) => {
+        if (!(await isEnabled(tenantId, "inventory"))) return;
+        await inventory.service.adjust(tenantId, itemId, { mode: "add", qty, note, unitCost: unitCost ?? undefined }, userId);
+      },
+      remove: async (tenantId, itemId, qty, note, userId) => {
+        if (!(await isEnabled(tenantId, "inventory"))) return;
+        await inventory.service.adjust(tenantId, itemId, { mode: "remove", qty, note }, userId);
+      },
+    },
+    featureGate: features.gate,
+    log,
+  });
+  medicinesRef = medicines;
+
+  /**
+   * Issued GST bills from priced lines (GST-exclusive rates) for the vertical modules: dining orders, job cards,
+   * appointments, memberships. Payment is taken on the bill as usual.
+   */
+  const billFromLines: LinesBillingPort = {
+    createBill: async (tenant, input, opts) => {
+      const inv = await invoices.service.create(
+        tenant,
+        {
+          date: todayIST(),
+          issue: true,
+          customer: input.customer ? { name: input.customer.name, phone: input.customer.phone ?? undefined } : undefined,
+          notes: input.notes ?? undefined,
+          tillSessionId: input.tillSessionId ?? undefined,
+          lines: input.lines.map((l) => ({
+            description: l.description,
+            itemId: l.itemId ?? undefined,
+            qty: l.qty,
+            rate: l.rate,
+            gstRate: l.gstRate as never,
+            hsn: l.hsn ?? undefined,
+            unit: l.unit ?? undefined,
+          })),
+        },
+        { branchId: opts.branchId },
+      );
+      return { id: inv.id, number: inv.number, total: inv.total };
+    },
+  };
+
+  const dining = createDining({
+    db,
+    billing: billFromLines,
+    // Rates are the catalogue's GST-exclusive rates (bills add GST on top, as at the counter).
+    menu: {
+      items: (tenantId, ids) => catalogue.service.getItems(tenantId, ids),
+      list: async (tenantId) =>
+        (await catalogue.service.listItems(tenantId, { limit: 500 })).items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          rate: i.rate,
+          gstRate: i.gstRate,
+          categoryId: i.categoryId ?? null,
+          image: i.image,
+        })),
+    },
+    log,
+  });
+  diningRef = dining;
+
+  // Job cards (repair, tailoring, optical orders): bills through the shared adapter.
+  const jobcards = createJobcards({ db, billing: billFromLines, log });
+  // Appointments (salons, spas, eye tests, personal training): service prices from the catalogue, bills through the
+  // shared adapter.
+  const bookings = createBookings({ db, billing: billFromLines, prices: { items: (tenantId, ids) => catalogue.service.getItems(tenantId, ids) }, log });
+  // Memberships and packages (gyms, salons): selling and renewing bill through the shared adapter.
+  const membershipSettings = settings.service.handle("memberships");
+  const memberships = createMemberships({
+    db,
+    billing: billFromLines,
+    settings: { get: (tenantId) => membershipSettings.get({ tenantId }), set: (tenantId, patch) => membershipSettings.setTenant(tenantId, patch) },
     log,
   });
 
@@ -875,6 +995,18 @@ export function createKit(env: Env, log: Logger) {
   });
   b5 = batch5;
 
+  // Business packs (kit-verticals.ts): a new shop gets its trade, the trade's theme preset, starter categories and a
+  // starter home page. Runs after batch 5's "defaults" hook, so the preset replaces the sign-up colour.
+  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, log });
+  const solutions = createSolutions({ db, starter, tenancy: tenancy.service });
+  tenancy.service.onTenantCreated({
+    name: "starter",
+    run: async ({ tenant, details }) => {
+      const signup = (details.signup ?? null) as { businessType?: string | null } | null;
+      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null }, signup?.businessType ?? null);
+    },
+  });
+
   defineJob("audit.purge", async () => {
     await audit.service.purge();
   });
@@ -916,6 +1048,12 @@ export function createKit(env: Env, log: Logger) {
     onboarding.module,
     analytics.module,
     expenses.module,
+    medicines.module,
+    dining.module,
+    jobcards.module,
+    bookings.module,
+    memberships.module,
+    solutions,
     ...batch3.modules,
     ...batch5.modules,
   ];
@@ -950,6 +1088,12 @@ export function createKit(env: Env, log: Logger) {
     onboarding,
     analytics,
     expenses,
+    medicines,
+    dining,
+    jobcards,
+    bookings,
+    memberships,
+    starter,
     ...batch3Parts(batch3),
     subscriptions: batch5.subscriptions,
     modules,

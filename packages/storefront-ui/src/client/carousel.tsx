@@ -105,7 +105,9 @@ const textChild: Variants = {
  * hidden, and is off with reduced motion. Swipe on phones.
  */
 export function HeroSlider({ slides, shopName }: { slides: HeroSlide[]; shopName: string }) {
-  const { t } = useStore();
+  const { t, shell } = useStore();
+  // Theme hero: slider (default) · full (tall, centred text) · compact (short banner) · split (text beside the picture).
+  const variant = shell.theme.hero;
   const reduced = useReducedMotionSafe();
   const [index, setIndex] = React.useState(0);
   const [paused, setPaused] = React.useState(false);
@@ -134,6 +136,9 @@ export function HeroSlider({ slides, shopName }: { slides: HeroSlide[]; shopName
   }, []);
 
   const s = slides[index]!;
+  if (variant === "split") return <SplitHero sectionRef={section} slides={slides} index={index} go={go} shopName={shopName} />;
+  const height =
+    variant === "full" ? "h-[82vh] max-h-[860px] min-h-[520px] sm:h-[88vh]" : variant === "compact" ? "h-[40vh] max-h-[380px] min-h-[260px]" : "h-[68vh] max-h-[680px] min-h-[440px] sm:h-[74vh]";
   return (
     <section
       ref={section}
@@ -158,7 +163,7 @@ export function HeroSlider({ slides, shopName }: { slides: HeroSlide[]; shopName
         go(index + (end < start ? 1 : -1));
       }}
     >
-      <div className="relative h-[68vh] max-h-[680px] min-h-[440px] w-full sm:h-[74vh]">
+      <div className={cn("relative w-full", height)}>
         {slides.map((sl, i) => {
           const img = imageUrl(sl.imageUrl);
           const mob = imageUrl(sl.mobileImageUrl ?? null);
@@ -204,13 +209,26 @@ export function HeroSlider({ slides, shopName }: { slides: HeroSlide[]; shopName
           );
         })}
 
-        <motion.div style={{ opacity: fade }} className="absolute inset-0 z-[2] mx-auto flex w-full max-w-7xl items-end px-4 pb-16 sm:items-center sm:px-6 sm:pb-0 lg:px-8">
+        <motion.div
+          style={{ opacity: fade }}
+          className={cn(
+            "absolute inset-0 z-[2] mx-auto flex w-full max-w-7xl px-4 sm:px-6 lg:px-8",
+            variant === "full" ? "items-center justify-center text-center" : variant === "compact" ? "items-center" : "items-end pb-16 sm:items-center sm:pb-0",
+          )}
+        >
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={index} className="max-w-2xl text-white" variants={reduced ? undefined : textParent} initial="hidden" animate="show" exit="exit">
+            <motion.div
+              key={index}
+              className={cn("text-white", variant === "full" ? "flex max-w-3xl flex-col items-center" : "max-w-2xl")}
+              variants={reduced ? undefined : textParent}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+            >
               {s.heading &&
                 React.createElement(
                   index === 0 ? motion.h1 : motion.h2,
-                  { variants: reduced ? undefined : textChild, className: "text-display text-balance drop-shadow-sm" },
+                  { variants: reduced ? undefined : textChild, className: cn(variant === "compact" ? "text-h1" : "text-display", "sf-hero-title text-balance drop-shadow-sm") },
                   s.heading,
                 )}
               {s.subheading && (
@@ -222,7 +240,10 @@ export function HeroSlider({ slides, shopName }: { slides: HeroSlide[]; shopName
                 <motion.div variants={reduced ? undefined : textChild}>
                   <Link
                     href={s.cta.href}
-                    className="group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-white px-7 text-sm font-semibold text-neutral-900 shadow-lg shadow-black/20 transition-transform hover:scale-[1.03] focus-visible:ring-4 focus-visible:ring-white/50 focus-visible:outline-none active:scale-[0.98] motion-reduce:transition-none"
+                    className={cn(
+                      "sf-btn group inline-flex h-12 items-center gap-2 bg-white px-7 text-sm font-semibold text-neutral-900 shadow-lg shadow-black/20 transition-transform hover:scale-[1.03] focus-visible:ring-4 focus-visible:ring-white/50 focus-visible:outline-none active:scale-[0.98] motion-reduce:transition-none",
+                      variant === "compact" ? "mt-5" : "mt-8",
+                    )}
                   >
                     {s.cta.label}
                     <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />
@@ -339,5 +360,88 @@ export function NewsletterForm({ tone = "brand" }: { tone?: "brand" | "plain" })
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/**
+ * Split hero (theme `hero: split`): the words on a tinted panel, the picture beside them (stacked on phones). Same
+ * slides as the slider; the picture cross-fades and the dots switch slides.
+ */
+function SplitHero({
+  sectionRef,
+  slides,
+  index,
+  go,
+  shopName,
+}: {
+  /** The slider's scroll-tracked section ref (its useScroll needs it attached). */
+  sectionRef: React.RefObject<HTMLElement | null>;
+  slides: HeroSlide[];
+  index: number;
+  go: (i: number) => void;
+  shopName: string;
+}) {
+  const reduced = useReducedMotionSafe();
+  const s = slides[index]!;
+  return (
+    <section ref={sectionRef} aria-roledescription="carousel" aria-label={shopName} className="relative bg-tint-1">
+      <div className="mx-auto grid w-full max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 md:grid-cols-2 md:py-16 lg:gap-14 lg:px-8">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={index} variants={reduced ? undefined : textParent} initial="hidden" animate="show" exit="exit" className="order-2 md:order-1">
+            {s.heading &&
+              React.createElement(
+                index === 0 ? motion.h1 : motion.h2,
+                { variants: reduced ? undefined : textChild, className: "sf-hero-title text-display text-balance text-foreground" },
+                s.heading,
+              )}
+            {s.subheading && (
+              <motion.p variants={reduced ? undefined : textChild} className="mt-4 max-w-md text-base text-muted-foreground sm:text-lg">
+                {s.subheading}
+              </motion.p>
+            )}
+            {s.cta && (
+              <motion.div variants={reduced ? undefined : textChild}>
+                <Link
+                  href={s.cta.href}
+                  className="sf-btn group mt-8 inline-flex h-12 items-center gap-2 bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] focus-ring active:scale-[0.98] motion-reduce:transition-none"
+                >
+                  {s.cta.label}
+                  <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </motion.div>
+            )}
+            {slides.length > 1 && (
+              <div className="mt-8 flex gap-2">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => go(i)}
+                    aria-label={`${i + 1} / ${slides.length}`}
+                    aria-current={i === index}
+                    className={cn("h-1.5 rounded-full transition-all", i === index ? "w-8 bg-primary" : "w-3 bg-primary/30 hover:bg-primary/50")}
+                  />
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+        <div className="relative order-1 aspect-[4/3] overflow-hidden rounded-[var(--sf-radius-card)] bg-muted shadow-card md:order-2">
+          {slides.map((sl, i) => {
+            const img = imageUrl(sl.imageUrl);
+            return (
+              <motion.div key={i} className="absolute inset-0" initial={false} animate={{ opacity: i === index ? 1 : 0 }} transition={{ duration: reduced ? 0 : 0.7 }} aria-hidden={i !== index}>
+                {img ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img} alt="" className="size-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+                ) : (
+                  <div className="sf-brand-hero absolute inset-0 overflow-hidden" />
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }

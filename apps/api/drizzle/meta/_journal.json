@@ -99,6 +99,27 @@
       "when": 1792184937066,
       "tag": "0013_wave_c_data",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792464866615,
+      "tag": "0014_medicines",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792466040880,
+      "tag": "0015_dining",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792475139777,
+      "tag": "0016_services",
+      "breakpoints": true
     }
   ]
 }

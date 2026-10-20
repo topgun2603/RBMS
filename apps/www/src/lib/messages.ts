@@ -60,6 +60,12 @@ export const en: Messages = {
   "products.billing.points": "GST invoices and estimates|Credit book with WhatsApp reminders|POS counter with barcode scanning|Stock and low-stock alerts",
   "products.store.title": "Online Store",
   "products.store.body": "Your own website with a catalogue, cart, UPI checkout and delivery tracking.",
+  "products.pharmacy.title": "Pharmacy",
+  "products.pharmacy.body": "Medicine billing with batches, expiry alerts, prescriptions and the Schedule H1 register.",
+  "products.restaurant.title": "Restaurant",
+  "products.restaurant.body": "Tables, kitchen order tickets, a kitchen screen, split bills and QR menu ordering.",
+  "products.services.title": "Services",
+  "products.services.body": "Appointments, job cards and memberships for salons, gyms, repair shops, tailors and opticals.",
   "products.store.points": "Your shop at your own web address|UPI, card and cash-on-delivery|Orders straight to WhatsApp|Coupons, reviews and loyalty points",
   "products.learnMore": "Learn more",
 
@@ -354,6 +360,9 @@ export const en: Messages = {
 
   "app.BL": "Billing",
   "app.EC": "Online Store",
+  "app.PH": "Pharmacy",
+  "app.RS": "Restaurant",
+  "app.SV": "Services",
 
   "legal.placeholder": "Placeholder text",
   "legal.placeholderBody": "This page is a placeholder and is not yet a legal document. The final version will be published before launch.",
@@ -472,6 +481,12 @@ export const ta: Messages = {
   "products.billing.points": "GST பில்களும் மதிப்பீடுகளும்|WhatsApp நினைவூட்டலுடன் கடன் கணக்கு|பார்கோடு ஸ்கேனுடன் POS கவுண்டர்|இருப்பு மற்றும் குறைந்த இருப்பு எச்சரிக்கை",
   "products.store.title": "ஆன்லைன் ஸ்டோர்",
   "products.store.body": "பொருள் பட்டியல், கார்ட், UPI கட்டணம், டெலிவரி கண்காணிப்புடன் உங்கள் சொந்த இணையதளம்.",
+  "products.pharmacy.title": "மருந்தகம்",
+  "products.pharmacy.body": "பேட்ச், காலாவதி எச்சரிக்கை, மருந்துச் சீட்டு, அட்டவணை H1 பதிவேட்டுடன் மருந்து பில்லிங்.",
+  "products.restaurant.title": "உணவகம்",
+  "products.restaurant.body": "மேசைகள், சமையலறை ஆர்டர் சீட்டுகள், சமையலறைத் திரை, பில் பிரிப்பு, QR மெனு ஆர்டர்.",
+  "products.services.title": "சேவைகள்",
+  "products.services.body": "சலூன், ஜிம், ரிப்பேர் கடை, தையல், கண்ணாடிக் கடைகளுக்கு அப்பாயின்ட்மென்ட், வேலைச் சீட்டு, உறுப்பினர்.",
   "products.store.points": "உங்கள் சொந்த இணைய முகவரியில் கடை|UPI, கார்டு, டெலிவரியில் பணம்|ஆர்டர்கள் நேராக WhatsApp-க்கு|கூப்பன், மதிப்புரை, லாயல்டி புள்ளிகள்",
   "products.learnMore": "மேலும் அறிய",
 
@@ -766,6 +781,9 @@ export const ta: Messages = {
 
   "app.BL": "பில்லிங்",
   "app.EC": "ஆன்லைன் ஸ்டோர்",
+  "app.PH": "மருந்தகம்",
+  "app.RS": "உணவகம்",
+  "app.SV": "சேவைகள்",
 
   "legal.placeholder": "மாதிரி உரை",
   "legal.placeholderBody": "இது ஒரு மாதிரிப் பக்கம், இன்னும் சட்ட ஆவணம் அல்ல. இறுதிப் பதிப்பு தொடக்கத்துக்கு முன் வெளியிடப்படும்.",

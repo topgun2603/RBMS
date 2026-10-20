@@ -81,7 +81,7 @@ jobs:
       fail-fast: true
       max-parallel: 4
       matrix:
-        app: [api, admin, billing, shop, store, seller, www]
+        app: [api, admin, billing, shop, store, seller, www, pharmacy, restaurant, services]
     env:
       CONFIG: ${{ needs.config.outputs.config }}
     steps:

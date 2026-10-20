@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# One image recipe for every Next.js app (docs/deploy-aws.md). APP = admin | billing | shop | store | seller | www.
+# One image recipe for every Next.js app (docs/deploy-aws.md). APP = admin | billing | shop | store | seller | www | pharmacy | restaurant | services.
 #
 #   docker build -f docker/next.Dockerfile --build-arg APP=store \
 #     --build-arg NEXT_PUBLIC_API_URL=https://api.example.in --build-arg NEXT_PUBLIC_ROOT_DOMAIN=example.in \
@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm fetch
 
 FROM fetch AS build
 ARG APP
-RUN test -n "$APP" || (echo "Pass --build-arg APP=<admin|billing|shop|store|seller|www>" && exit 1)
+RUN test -n "$APP" || (echo "Pass --build-arg APP=<admin|billing|shop|store|seller|www|pharmacy|restaurant|services>" && exit 1)
 COPY . .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --offline --filter "@srirealtime/${APP}..."

@@ -1,3 +1,4 @@
+import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
 import { FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
@@ -55,7 +56,7 @@ export function StoreFooter({ config, menu, t, help = false }: { config: StoreCo
   return (
     <footer className="mt-[var(--sf-section)] border-t bg-tint-1">
       <div className="mx-auto w-full max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
-        <TrustBadges t={t} cod={config.codEnabled} returns={!!policies.returns?.trim()} />
+        <TrustBadges t={t} cod={config.codEnabled} returns={!!policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} />
       </div>
 
       {/* Newsletter band */}

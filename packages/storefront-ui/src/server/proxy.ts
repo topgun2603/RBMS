@@ -14,10 +14,12 @@ const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-
  * Only these API areas are reachable from the store (no staff/admin surfaces through the shop's domain). Batch 4 adds
  * shopper chat (every /chat route is scoped to the signed-in viewer by the chat service), the public help desk + FAQ,
  * the shopper's own loyalty (`/loyalty/me`, `/loyalty/quote`), public seller pages and cards, guest OTP verification,
- * and the read-only feature list (`GET /features` itself — never the toggles or registry).
+ * the read-only feature list (`GET /features` itself — never the toggles or registry), and the restaurant QR table menu
+ * (`/dining/public/*`: a table by its QR code, the menu, guests' orders), online booking (`/bookings/public/*`) and job
+ * tracking (`/jobcards/public/*`).
  */
 const ALLOWED =
-  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|features(?=$))(\/|$|\?)/;
+  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|features(?=$))(\/|$|\?)/;
 
 /** Pure: may the browser reach this API path (`/v1/...`, without the query) through the store proxy? */
 export function isProxyAllowed(path: string, method = "GET"): boolean {

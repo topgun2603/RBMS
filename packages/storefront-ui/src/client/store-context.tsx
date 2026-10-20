@@ -73,7 +73,7 @@ export function useT(): Translator {
 
 export function StoreProvider({ shell, locale, children }: { shell: StoreShell; locale: Locale; children: React.ReactNode }) {
   const router = useRouter();
-  const t = React.useMemo(() => translatorFor(locale), [locale]);
+  const t = React.useMemo(() => translatorFor(locale, shell.businessType), [locale, shell.businessType]);
   const [queryClient] = React.useState(() => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } } }));
 
   // ------------------------------------------------------------ auth

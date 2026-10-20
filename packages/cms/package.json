@@ -14,6 +14,7 @@
   "dependencies": {
     "@srirealtime/core": "workspace:*",
     "@srirealtime/db": "workspace:*",
+    "@srirealtime/verticals": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "zod": "^3.25.0"
   },

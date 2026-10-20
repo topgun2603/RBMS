@@ -1,3 +1,4 @@
+import { packOrDefault } from "@srirealtime/verticals";
 import {
   homeSectionSchema,
   type HeroSlide,
@@ -160,29 +161,31 @@ export const DEFAULT_NEW_ARRIVALS = 12;
 /** The generated home for shops that haven't published one: hero with the shop name, categories, newest products. */
 export async function defaultHome(tenantId: string, deps: ResolveDeps & { shop: ShopPort }): Promise<PublicHome> {
   const log = deps.log ?? noopLogger;
-  const info = await deps.shop.info(tenantId).catch((err: unknown) => {
+  const info: Awaited<ReturnType<ShopPort["info"]>> = await deps.shop.info(tenantId).catch((err: unknown) => {
     log.warn({ err, tenantId }, "cms: shop info failed");
     return { name: "Our shop", tagline: null };
   });
+  // The shop's trade words (pharmacy: "Order medicines", restaurant: "Today's specials"…) instead of clothing ones.
+  const copy = packOrDefault(info.businessType, info.appId).copy.en;
   const hero: ResolvedHeroSection = {
     type: "hero",
     slides: [
       {
         imageUrl: null,
         heading: info.name,
-        ...(info.tagline ? { subheading: info.tagline } : {}),
-        cta: { label: "Shop now", href: STORE_PATHS.products },
+        subheading: info.tagline || copy.heroSubheading,
+        cta: { label: copy.cta, href: STORE_PATHS.products },
       },
     ],
   };
-  const categories = resolveSections(tenantId, [{ type: "categories", title: "Shop by category" }], deps);
+  const categories = resolveSections(tenantId, [{ type: "categories", title: copy.categoriesTitle }], deps);
   const newest = deps.catalog.newest(tenantId, DEFAULT_NEW_ARRIVALS).catch((err: unknown) => {
     log.warn({ err, tenantId }, "cms: newest products lookup failed");
     return [] as PublicProductSummary[];
   });
   const [cats, products] = await Promise.all([categories, newest]);
   const sections: ResolvedHomeSection[] = [hero, ...cats];
-  if (products.length) sections.push({ type: "products", title: "New arrivals", href: STORE_PATHS.products, products });
+  if (products.length) sections.push({ type: "products", title: copy.newItems, href: STORE_PATHS.products, products });
   return { sections, seo: null, isDefault: true, publishedAt: null };
 }
 

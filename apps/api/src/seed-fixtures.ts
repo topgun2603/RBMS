@@ -85,6 +85,111 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "subscriptions",
     ],
   },
+  {
+    appId: "PH",
+    name: "Pharmacy",
+    // A medical shop: full counter billing (credit book, purchases from distributors, stock) and its own online store.
+    features: [
+      "invoices.*",
+      "inventory.*",
+      "payments.*",
+      "catalogue",
+      "staff",
+      "audit",
+      "importexport",
+      "documents",
+      "onboarding",
+      "expenses",
+      ...BATCH3_BL,
+      // Medicine details, batches + expiry (FEFO), prescriptions and the Schedule H1 register.
+      "medicines.*",
+      // Online store: the pharmacy's own website on its domain, online orders and delivery.
+      "catalogue.*",
+      "orders.*",
+      "coupons",
+      "storefront.*",
+      "delivery.*",
+      "cms.*",
+      "seo",
+      "reviews",
+      "analytics",
+      "custom-domain",
+      "subscriptions",
+    ],
+  },
+  {
+    appId: "RS",
+    name: "Restaurant",
+    // Dine-in / takeaway billing at the counter plus online ordering through the shop's store (menu = catalogue). No
+    // inventory: dishes are cooked to order, so stock never blocks an order (raw-material stock would be a recipe
+    // feature of its own); without inventory locations there are no branches either.
+    features: [
+      "invoices.*",
+      "payments.*",
+      "catalogue.*",
+      "orders.*",
+      "coupons",
+      "staff",
+      "audit",
+      "importexport",
+      "documents",
+      "storefront.*",
+      "delivery.*",
+      "cms.*",
+      "seo",
+      "reviews",
+      "analytics",
+      "onboarding",
+      "expenses",
+      "custom-domain",
+      "chat",
+      "support.*",
+      "loyalty",
+      "whatsapp.*",
+      "developer",
+      "reports.advanced",
+      // Tables, running orders, KOTs per station, kitchen display, QR table ordering, bills from orders.
+      "dining.*",
+      "subscriptions",
+    ],
+  },
+  {
+    appId: "SV",
+    name: "Services",
+    // Salons, spas, gyms, repair shops, tailors and opticals: appointments, job cards and memberships, counter billing
+    // with stock for parts and retail, and an online store with online booking.
+    features: [
+      "jobcards.*",
+      "bookings.*",
+      "memberships.*",
+      "invoices.*",
+      "inventory.*",
+      "payments.*",
+      "catalogue.*",
+      "orders.*",
+      "coupons",
+      "staff",
+      "audit",
+      "importexport",
+      "documents",
+      "storefront.*",
+      "delivery.*",
+      "cms.*",
+      "seo",
+      "reviews",
+      "analytics",
+      "onboarding",
+      "expenses",
+      "custom-domain",
+      "chat",
+      "support.*",
+      "loyalty",
+      "whatsapp.*",
+      "developer",
+      "reports.advanced",
+      "subscriptions",
+    ],
+  },
 ];
 
 /** Batch-1 and batch-2 features per plan, added to the plans package's defaults (free → starter → pro/enterprise). */
@@ -92,11 +197,30 @@ const STORE_FREE = ["onboarding", "storefront", "delivery", "cms", "seo"];
 const STORE_STARTER = [...STORE_FREE, "reviews", "analytics", "expenses", "storefront.wishlist", "cms.blog"];
 const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo", "reviews.*", "analytics.*", "expenses.*", "custom-domain"];
 // `subscriptions` (Plan & billing) is also a core module of the plans package, so plans made later grant it too.
+// Verticals (pharmacy, restaurant): the app profile decides who sees them; plans only size them. Batches and expiry
+// are the core of a pharmacy, so every plan has them; prescriptions and the H1 register from starter up. Restaurants:
+// tables and KOTs on every plan; the kitchen display and QR table ordering from starter up.
+const VERTICALS_FREE = ["medicines", "dining", "jobcards", "bookings", "memberships"];
+const VERTICALS_PAID = ["medicines.*", "dining.*", "jobcards.*", "bookings.*", "memberships.*"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
-  free: ["catalogue", "orders", "documents", ...STORE_FREE, "subscriptions"],
-  starter: ["catalogue.*", "orders", "documents", "coupons", "importexport", "staff", "audit", ...STORE_STARTER, "support", "chat", "loyalty", "subscriptions"],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, "subscriptions"],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, "subscriptions"],
+  free: ["catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions"],
+  starter: [
+    "catalogue.*",
+    "orders",
+    "documents",
+    "coupons",
+    "importexport",
+    "staff",
+    "audit",
+    ...STORE_STARTER,
+    "support",
+    "chat",
+    "loyalty",
+    ...VERTICALS_PAID,
+    "subscriptions",
+  ],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "subscriptions"],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "subscriptions"],
 };
 const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   ...plan,
@@ -117,7 +241,9 @@ export async function seedPlansAndProfiles(kit: Kit, log: Logger) {
 
 export interface ShopSpec {
   slug: string;
-  appId: "BL" | "EC";
+  appId: "BL" | "EC" | "PH" | "RS" | "SV";
+  /** The shop's trade (@srirealtime/verticals pack); applied with its look and starter content when the shop is created. */
+  businessType?: string;
   planId: string;
   name: string;
   primary: string;
@@ -370,4 +496,24 @@ export async function seedStoreContent(kit: Kit, tenantId: string, spec: StoreCo
     ]);
     log.info(`${label}: menus saved`);
   }
+}
+
+/**
+ * A restaurant's floor and kitchen stations: two areas with tables, and drinks (names matching `beverageWords`) made
+ * at a "beverages" station so their KOTs print separately. Only when the shop has no tables yet.
+ */
+export async function seedRestaurantSetup(kit: Kit, tenantId: string, log: Logger, label: string, beverageWords = /coffee|tea|juice|lassi|soda/i) {
+  const svc = kit.dining.service;
+  if ((await svc.tables(tenantId, { includeInactive: true })).length > 0) return;
+  const floors: [string, string[], number][] = [
+    ["Ground floor", ["T1", "T2", "T3", "T4", "T5", "T6"], 4],
+    ["AC hall", ["A1", "A2", "A3", "A4"], 6],
+  ];
+  for (const [i, [name, tables, seats]] of floors.entries()) {
+    const area = await svc.createArea(tenantId, { name, sort: (i + 1) * 10 });
+    for (const [j, t] of tables.entries()) await svc.createTable(tenantId, { name: t, areaId: area.id, seats, sort: (j + 1) * 10 });
+  }
+  const items = await kit.invoices.service.listItems(tenantId, { limit: 200 } as never);
+  for (const item of items.items) if (beverageWords.test(item.name)) await svc.saveMenuItem(tenantId, item.id, { station: "beverages", veg: true });
+  log.info(`${label}: dining areas, tables and stations seeded`);
 }
