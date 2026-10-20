@@ -7,7 +7,7 @@ import {
   type TenantRef,
 } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeGrants, resolveFeatures, type FeatureState, type Reason } from "./resolve";
 import { appProfiles, tenantFeatureToggles, type AppProfileRow } from "./schema";
@@ -214,6 +214,28 @@ export class FeaturesService {
       });
     this.invalidate(tenant.id);
     return (await this.resolve(tenant)).features;
+  }
+
+  /**
+   * Writes several shop switches at once (a solution preset applied to a shop). Only `shopToggle` features are
+   * written; unlike setToggle, switching on a feature the plan or app doesn't allow is stored without error (it stays
+   * off until it becomes available). Returns how many switches were written.
+   */
+  async applyToggles(tenantId: string, toggles: Readonly<Record<string, boolean>>, userId: string | null = null): Promise<number> {
+    const switchable = new Set(this.registry().filter((d) => d.shopToggle).map((d) => d.key));
+    const rows = Object.entries(toggles)
+      .filter(([key]) => switchable.has(key))
+      .map(([feature, enabled]) => ({ tenantId, feature, enabled, updatedBy: userId }));
+    if (rows.length === 0) return 0;
+    await this.db
+      .insert(tenantFeatureToggles)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: [tenantFeatureToggles.tenantId, tenantFeatureToggles.feature],
+        set: { enabled: sql`excluded.enabled`, updatedBy: userId, updatedAt: new Date() },
+      });
+    this.invalidate(tenantId);
+    return rows.length;
   }
 
   // ---------------------------------------------------------------- app profiles

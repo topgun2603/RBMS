@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
-import { useTenantSlug } from "./session";
 import type { Branding } from "./types";
 
 interface BrandingValue {
@@ -13,18 +12,18 @@ interface BrandingValue {
 
 const BrandingContext = React.createContext<BrandingValue>({ branding: undefined, loading: true });
 
-export const brandingQueryKey = (tenant: string | null) => ["branding", tenant] as const;
+export const brandingQueryKey = ["branding", "platform"] as const;
 
 /**
- * Loads the current tenant's branding (GET /v1/branding with x-tenant) and injects its `css`
- * (overrides of --primary, --radius, fonts... on :root) as an unlayered <style>, which beats the
- * layered defaults from @srirealtime/ui. Also updates the favicon and document title.
+ * Loads the platform's branding (GET /v1/branding without a tenant) and injects its `css` (overrides of --primary,
+ * --radius, fonts... on :root) as an unlayered <style>, which beats the layered defaults from @srirealtime/ui. Also
+ * updates the favicon and document title. The admin is the platform's console, so it keeps the platform look whichever
+ * shop is selected; a shop's own branding is shown only in the Branding page's preview.
  */
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
-  const tenant = useTenantSlug();
   const { data, isLoading } = useQuery({
-    queryKey: brandingQueryKey(tenant),
-    queryFn: () => api<Branding>("/branding"),
+    queryKey: brandingQueryKey,
+    queryFn: () => api.get<Branding>("/branding", undefined, { tenant: null }),
     staleTime: 5 * 60_000,
     retry: 1,
   });

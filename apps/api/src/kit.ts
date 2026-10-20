@@ -67,7 +67,7 @@ import {
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
-import { createCounter, createSolutions, createStarter } from "./kit-verticals";
+import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
 import { createKitOps } from "./kit-ops";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
@@ -765,6 +765,11 @@ export function createKit(env: Env, log: Logger) {
    * Trade-specific engines (scales, serials, jewellery) are in the app profiles of several trades; their features start
    * off for a shop and are switched on by its business pack (kit-verticals.ts `starter`), or by the owner.
    */
+  /** Engines a trade of the app may not use (job cards at a gym): the owner, or the solution preset, can switch them off. */
+  const ownerCanSwitch = (m: SrModule): SrModule => ({
+    ...m,
+    features: (m.features ?? []).map((f) => ({ ...f, shopToggle: true })),
+  });
   const offByDefault = (m: SrModule): SrModule => ({
     ...m,
     features: (m.features ?? []).map((f) => ({ ...f, shopToggle: true, defaultOn: false })),
@@ -1049,8 +1054,15 @@ export function createKit(env: Env, log: Logger) {
 
   // Business packs (kit-verticals.ts): a new shop gets its trade, the trade's theme preset, starter categories and a
   // starter home page. Runs after batch 5's "defaults" hook, so the preset replaces the sign-up colour.
-  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, features: features.service, log });
-  const solutions = createSolutions({ db, starter, tenancy: tenancy.service });
+  // Solution presets: which optional features a shop of each of the 15 solutions starts with (Platform → Apps & features).
+  const solutionSettings = settings.service.handle("solutions");
+  const presets = createSolutionPresets({
+    registry: () => features.service.registry(),
+    profile: (appId) => features.service.getProfile(appId),
+    settings: { get: () => solutionSettings.get(), setApp: (patch) => solutionSettings.setApp(patch) },
+  });
+  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, log });
+  const solutions = createSolutions({ db, starter, presets, features: features.service, tenancy: tenancy.service });
   // POS: scanned codes no item barcode matches (scale labels, serials / IMEIs); engines register resolvers.
   const counter = createCounter({ variants: (tenantId, ids) => catalogue.service.getVariants(tenantId, ids), log });
   // Jewellery: the daily metal rate reprices tagged pieces; old gold taken in is paid onto the bill.
@@ -1133,13 +1145,13 @@ export function createKit(env: Env, log: Logger) {
     expenses.module,
     medicines.module,
     dining.module,
-    jobcards.module,
-    bookings.module,
+    ownerCanSwitch(jobcards.module),
+    ownerCanSwitch(bookings.module),
     counter.module,
     offByDefault(serials.module),
     offByDefault(scales.module),
     offByDefault(jewellery.module),
-    memberships.module,
+    ownerCanSwitch(memberships.module),
     solutions,
     ...batch3.modules,
     ...batch5.modules,

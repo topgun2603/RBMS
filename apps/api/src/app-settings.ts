@@ -1,6 +1,7 @@
 import { LOYALTY_SETTINGS_DEFAULTS, LOYALTY_SETTINGS_SCHEMA } from "@srirealtime/loyalty";
 import { JEWELLERY_SETTINGS_DEFAULTS, JEWELLERY_SETTINGS_SCHEMA } from "@srirealtime/jewellery";
 import { MEMBERSHIPS_SETTINGS_DEFAULTS, MEMBERSHIPS_SETTINGS_SCHEMA } from "@srirealtime/memberships";
+import { SOLUTIONS_SETTINGS_DEFAULTS, SOLUTIONS_SETTINGS_SCHEMA } from "./kit-verticals";
 import { SCALES_SETTINGS_DEFAULTS, SCALES_SETTINGS_SCHEMA } from "@srirealtime/scales";
 import { MARKETPLACE_SETTINGS_DEFAULTS, MARKETPLACE_SETTINGS_PUBLIC_KEYS, MARKETPLACE_SETTINGS_SCHEMA } from "@srirealtime/marketplace";
 import { REVIEW_SETTINGS_DEFAULTS, REVIEW_SETTINGS_SCHEMA } from "@srirealtime/reviews";
@@ -145,6 +146,8 @@ export function defineAppSettings(settings: SettingsService) {
   settings.define("memberships", MEMBERSHIPS_SETTINGS_SCHEMA, MEMBERSHIPS_SETTINGS_DEFAULTS);
   settings.define("scales", SCALES_SETTINGS_SCHEMA, SCALES_SETTINGS_DEFAULTS);
   settings.define("jewellery", JEWELLERY_SETTINGS_SCHEMA, JEWELLERY_SETTINGS_DEFAULTS);
+  // Platform only: each solution's feature preset (kit-verticals.ts createSolutionPresets).
+  settings.define("solutions", SOLUTIONS_SETTINGS_SCHEMA, SOLUTIONS_SETTINGS_DEFAULTS);
   settings.define("whatsapp", WHATSAPP_SETTINGS_SCHEMA, WHATSAPP_SETTINGS_DEFAULTS);
 
   settings.define(

@@ -48,6 +48,11 @@ export interface BusinessPack {
    * applied): weighing scales, serial numbers / warranty, jewellery rates.
    */
   features?: string[];
+  /**
+   * Features (keys, or module ids for a whole module) the trade doesn't use, off in its default solution preset even
+   * though the app turns them on for other trades: e.g. job cards for a gym.
+   */
+  off?: string[];
   /** Where the home page's main button goes: "/search" (shop) by default, "/book" for appointment trades. */
   ctaHref?: string;
   /** Show the clothing size guide next to a "Size" option. */
@@ -219,6 +224,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Delivery-only kitchen: online and aggregator orders straight to the kitchen screen",
     appId: "RS",
     preset: "bistro",
+    off: ["dining.qr-ordering"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -419,6 +425,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "SV",
     preset: "tech",
     features: ["serials", "serials.warranty"],
+    off: ["memberships"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -459,6 +466,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "SV",
     preset: "luxe",
     ctaHref: "/book",
+    off: ["jobcards"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -499,6 +507,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "SV",
     preset: "power",
     ctaHref: "/book",
+    off: ["jobcards"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -618,6 +627,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "SV",
     preset: "care",
     ctaHref: "/book",
+    off: ["memberships"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -658,6 +668,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "SV",
     preset: "atelier",
     ctaHref: "/book",
+    off: ["memberships"],
     sizeGuide: true,
     localMade: true,
     copy: {
