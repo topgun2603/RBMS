@@ -63,43 +63,55 @@ function SettingsSelect({ pages, active, className }: { pages: MountedSettingsPa
   );
 }
 
-/** Desktop: a vertical tab rail, one row per page, dividers between modules, a sliding highlight on the active page. */
+/**
+ * Desktop: a vertical tab rail, one row per page, dividers between modules, a sliding highlight on the active page.
+ * Like the sidebar, the list scrolls inside the card (the title stays put) and the active page is scrolled into view.
+ */
 function SettingsRail({ pages, active }: { pages: MountedSettingsPage[]; active: MountedSettingsPage | null }) {
   const { t } = useI18n();
+  const listRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    listRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+  }, [active?.href]);
   return (
-    <nav aria-label={t("web.settings.tabs")} className="rounded-2xl border bg-card p-2 shadow-xs">
-      <p className="px-3 pt-2 pb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("web.settings.title")}</p>
-      {groupByModule(pages).map((group, i) => (
-        <ul key={group[0]!.href} className={cn("grid gap-0.5", i > 0 && "mt-1.5 border-t pt-1.5")}>
-          {group.map((p) => {
-            const isActive = p.href === active?.href;
-            const Icon = p.icon ?? SettingsIcon;
-            return (
-              <li key={p.href}>
-                <Link
-                  href={p.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                    isActive ? "text-primary" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                  )}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="sr-settings-rail"
-                      className="absolute inset-0 rounded-lg bg-primary/10"
-                      transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                    />
-                  )}
-                  {isActive && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
-                  <Icon className="relative size-4 shrink-0" />
-                  <span className="relative min-w-0 leading-snug">{t(p.label)}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ))}
+    <nav aria-label={t("web.settings.tabs")} className="flex max-h-full min-h-0 flex-col rounded-2xl border bg-card py-2 shadow-xs">
+      <p className="shrink-0 px-5 pt-2 pb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("web.settings.title")}</p>
+      <div
+        ref={listRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 [scrollbar-color:var(--color-border)_transparent] [scrollbar-width:thin]"
+      >
+        {groupByModule(pages).map((group, i) => (
+          <ul key={group[0]!.href} className={cn("grid gap-0.5", i > 0 && "mt-1.5 border-t pt-1.5")}>
+            {group.map((p) => {
+              const isActive = p.href === active?.href;
+              const Icon = p.icon ?? SettingsIcon;
+              return (
+                <li key={p.href}>
+                  <Link
+                    href={p.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                      isActive ? "text-primary" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                    )}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="sr-settings-rail"
+                        className="absolute inset-0 rounded-lg bg-primary/10"
+                        transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                      />
+                    )}
+                    {isActive && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" aria-hidden />}
+                    <Icon className="relative size-4 shrink-0" />
+                    <span className="relative min-w-0 leading-snug">{t(p.label)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ))}
+      </div>
     </nav>
   );
 }
@@ -117,7 +129,8 @@ export function SettingsLayout({ children }: { children: React.ReactNode }) {
       <div className="mx-auto w-full max-w-7xl px-page py-page-y">
         <SettingsSelect pages={pages} active={active} className="mb-section lg:hidden" />
         <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
+          {/* Height leaves room for the header above and a page's sticky save bar below. */}
+          <aside className="hidden lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-11rem)] lg:flex-col">
             <SettingsRail pages={pages} active={active} />
           </aside>
           <div className="min-w-0">{children}</div>

@@ -1,25 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { BriefcaseIcon, CheckIcon, ExternalLinkIcon, LayoutTemplateIcon, PaletteIcon, SlidersHorizontalIcon, SparklesIcon, TypeIcon } from "lucide-react";
-import {
-  Button,
-  ChipGroup,
-  cn,
-  ColorInput,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Skeleton,
-  toast,
-} from "@srirealtime/ui";
-import { STORE_FONTS, THEME_OPTIONS, THEME_PRESETS, themePreset, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
+import { ArrowRightIcon, BriefcaseIcon, CheckIcon, ExternalLinkIcon, LayoutTemplateIcon, PaletteIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
+import { Button, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
+import { THEME_OPTIONS, THEME_PRESETS, themePreset, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
 import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@srirealtime/verticals";
-import { describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useShop, useWebFonts } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
+import { Choice } from "../components/brand-fields";
 import { ThemePreview } from "../components/theme-preview";
 import { useUnsavedGuard } from "../components/unsaved-guard";
 import { useIsManager } from "../lib/access";
@@ -35,9 +23,11 @@ const RADII = [
 ] as const;
 
 /**
- * Settings → Appearance: the shop's trade (business pack) and its store's look. Pick a preset, then change any part:
- * colours, fonts, header, hero, product cards, picture shape, buttons, spacing, section style, pattern and headings.
- * The preview on the right redraws on every change; Save writes the brand tokens (and the trade, when changed).
+ * Settings → Appearance: the shop's trade (business pack) and its store's look. Pick a preset (it brings its own
+ * colours and fonts), then change the layout: header, hero, product cards, picture shape, buttons, spacing, section
+ * style, pattern, headings and corners. Colours, fonts, logo and light / dark mode are the shop's identity and live in
+ * Settings → Branding; this page shows them. The preview redraws on every change; Save writes the brand tokens (and
+ * the trade, when changed).
  */
 export default function AppearancePage() {
   const { t } = useI18n();
@@ -79,7 +69,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
 
   const set = (patch: Partial<AppearanceDraft>) => setDraft((d) => ({ ...d, ...patch, preset: patch.preset !== undefined ? patch.preset : d.preset }));
   const setTheme = <K extends ThemeOptionKey>(k: K, v: StoreTheme[K]) => setDraft((d) => ({ ...d, theme: { ...d.theme, [k]: v } }));
-  const setColor = (k: keyof AppearanceDraft["colors"], v: string | null) => setDraft((d) => ({ ...d, colors: { ...d.colors, [k]: v } }));
+  const settingsHref = useSettingsHref();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,27 +147,31 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
             </div>
           </Section>
 
-          <Section icon={PaletteIcon} title={t("site.appearance.coloursTitle")} description={t("site.appearance.coloursBody")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label={t("site.appearance.primary")} value={draft.colors.primary} onChange={(v) => v && setColor("primary", v)} disabled={!canEdit} />
-              <ColorField label={t("site.appearance.accent")} value={draft.colors.accent} onChange={(v) => setColor("accent", v)} disabled={!canEdit} optional />
-              <ColorField label={t("site.appearance.background")} value={draft.colors.background} onChange={(v) => setColor("background", v)} disabled={!canEdit} optional />
-              <ColorField label={t("site.appearance.text")} value={draft.colors.foreground} onChange={(v) => setColor("foreground", v)} disabled={!canEdit} optional />
+          <Section icon={PaletteIcon} title={t("site.appearance.brandTitle")} description={t("site.appearance.brandBody")}>
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="flex items-center gap-1.5" aria-hidden>
+                {[draft.colors.primary, draft.colors.accent, draft.colors.background, draft.colors.foreground]
+                  .filter((c): c is string => Boolean(c))
+                  .map((c, i) => (
+                    <span key={i} className="size-7 rounded-full ring-1 ring-border" style={{ background: c }} />
+                  ))}
+              </span>
+              <span className="text-sm">
+                <span className="font-semibold" style={{ fontFamily: `"${draft.fontHeading}", serif` }}>
+                  {draft.fontHeading}
+                </span>
+                <span className="text-muted-foreground"> · </span>
+                <span style={{ fontFamily: `"${draft.fontSans}", sans-serif` }}>{draft.fontSans}</span>
+              </span>
+              <Button asChild variant="outline" size="sm" className="ms-auto">
+                <ModuleLink href={settingsHref("branding")}>
+                  {t("site.appearance.editBrand")} <ArrowRightIcon className="rtl:rotate-180" />
+                </ModuleLink>
+              </Button>
             </div>
-            <Choice
-              label={t("site.appearance.mode")}
-              value={draft.mode}
-              onChange={(v) => set({ mode: v })}
-              disabled={!canEdit}
-              options={(["light", "dark", "system"] as const).map((m) => ({ value: m, label: t(`site.appearance.modes.${m}`) }))}
-            />
           </Section>
 
-          <Section icon={TypeIcon} title={t("site.appearance.typeTitle")} description={t("site.appearance.typeBody")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FontField label={t("site.appearance.headingFont")} value={draft.fontHeading} onChange={(v) => set({ fontHeading: v })} disabled={!canEdit} />
-              <FontField label={t("site.appearance.bodyFont")} value={draft.fontSans} onChange={(v) => set({ fontSans: v })} disabled={!canEdit} />
-            </div>
+          <Section icon={SlidersHorizontalIcon} title={t("site.appearance.layoutTitle")} description={t("site.appearance.layoutBody")}>
             <Choice
               label={t("site.appearance.headings")}
               value={draft.theme.headings}
@@ -185,9 +179,6 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
               disabled={!canEdit}
               options={THEME_OPTIONS.headings.map((v) => ({ value: v, label: t(`site.appearance.opt.headings.${v}`) }))}
             />
-          </Section>
-
-          <Section icon={SlidersHorizontalIcon} title={t("site.appearance.layoutTitle")} description={t("site.appearance.layoutBody")}>
             {(["header", "hero", "card", "imageRatio", "buttons", "sections", "motif", "density"] as const).map((k) => (
               <Choice
                 key={k}
@@ -234,64 +225,5 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
         />
       )}
     </form>
-  );
-}
-
-function Choice<V extends string>({
-  label,
-  value,
-  onChange,
-  options,
-  disabled,
-}: {
-  label: string;
-  value: V;
-  onChange: (v: V) => void;
-  options: { value: V; label: string }[];
-  disabled?: boolean;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      <ChipGroup size="sm" aria-label={label} value={value} onChange={(v) => !disabled && onChange(v as V)} options={options} />
-    </div>
-  );
-}
-
-function ColorField({ label, value, onChange, disabled, optional }: { label: string; value: string | null; onChange: (v: string | null) => void; disabled?: boolean; optional?: boolean }) {
-  const { t } = useI18n();
-  return (
-    <div className="grid gap-1.5">
-      <span className="flex items-center justify-between text-sm font-medium">
-        {label}
-        {optional && value && !disabled && (
-          <button type="button" className="text-meta font-normal text-muted-foreground hover:text-foreground" onClick={() => onChange(null)}>
-            {t("site.appearance.auto")}
-          </button>
-        )}
-      </span>
-      <ColorInput value={value ?? ""} placeholder={optional ? t("site.appearance.auto") : "#2563eb"} onChange={(v) => onChange(v)} disabled={disabled} aria-label={label} />
-    </div>
-  );
-}
-
-function FontField({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const fonts = (STORE_FONTS as readonly string[]).includes(value) ? STORE_FONTS : [value, ...STORE_FONTS];
-  return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger className="w-full" aria-label={label}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {fonts.map((f) => (
-            <SelectItem key={f} value={f}>
-              <span style={{ fontFamily: `"${f}", sans-serif` }}>{f}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
   );
 }

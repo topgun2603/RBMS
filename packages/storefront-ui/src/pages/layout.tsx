@@ -9,6 +9,7 @@ import { StoreProvider } from "../client/store-context";
 import { PageViewTracker, StoreHeader, THEME_SCRIPT, type NavCategory, type NavCollection } from "../client/header";
 import { AnnouncementBar, type Announcement } from "../client/announcement";
 import { FloatingActions } from "../client/floating";
+import { StorePageTransition } from "../client/page-transition";
 import { StoreFooter } from "../components/footer";
 import { getCategories } from "./listing";
 import { getHome } from "./home";
@@ -99,7 +100,7 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
         <StoreHeader menu={menus.header} categories={categories} featured={featured} />
         <PageViewTracker />
         <main id="main" className="min-h-[60dvh]">
-          {children}
+          <StorePageTransition>{children}</StorePageTransition>
         </main>
         <StoreFooter config={config} menu={menus.footer} t={t} help={helpCentreOn(shell.features)} />
         <FloatingActions whatsapp={config.shop.social?.whatsapp ?? null} />

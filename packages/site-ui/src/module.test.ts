@@ -35,8 +35,9 @@ describe("siteModule", () => {
     const nav = Object.fromEntries(m.nav[0]!.items.map((i) => [i.href, i.feature]));
     expect(nav).toEqual({ "home-page": "cms", pages: "cms", blog: "cms.blog", menus: "cms", reviews: "reviews", analytics: "analytics" });
     const settings = Object.fromEntries((m.settings ?? []).map((p) => [p.path, p.feature]));
-    expect(settings).toEqual({ store: SITE_FEATURES.storefront, appearance: SITE_FEATURES.storefront, domain: SITE_FEATURES.customDomain });
+    expect(settings).toEqual({ store: SITE_FEATURES.storefront, branding: SITE_FEATURES.storefront, appearance: SITE_FEATURES.storefront, domain: SITE_FEATURES.customDomain });
     expect((m.settings ?? []).find((p) => p.path === "appearance")?.roles).toEqual(["owner", "admin"]);
+    expect((m.settings ?? []).find((p) => p.path === "branding")?.roles).toEqual(["owner", "admin"]);
     expect((m.settings ?? []).find((p) => p.path === "domain")?.roles).toEqual(["owner", "admin"]);
     expect(Object.fromEntries((m.widgets ?? []).map((w) => [w.id, w.feature]))).toEqual({ "site-store": "cms", "site-visitors": "analytics", "site-reviews": "reviews" });
     expect(Object.fromEntries((m.widgets ?? []).map((w) => [w.id, w.zone]))).toEqual({ "site-store": "secondary", "site-visitors": "kpi", "site-reviews": "attention" });

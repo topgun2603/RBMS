@@ -113,8 +113,8 @@ export interface NavModelItem {
 
 export interface NavModelSection {
   id: string;
-  /** Message key. */
-  title: string;
+  /** Message key; none for the Settings link's section. */
+  title?: string;
   items: NavModelItem[];
 }
 
@@ -123,12 +123,17 @@ export interface NavModel {
   primary: { href: string; label: string; icon?: IconType } | null;
 }
 
-/** Sidebar sections of every module (visible items only), then the Settings section; plus the app's primary action. */
+/**
+ * Sidebar sections of every module (visible items only), then one Settings link; plus the app's primary action.
+ * The settings pages themselves are listed by the rail beside the page (SettingsLayout), not in the sidebar: the link
+ * opens the first page the user may open and stays highlighted on every settings page.
+ */
 export function buildNavModel(
-  app: Pick<WebApp, "modules">,
+  app: Pick<WebApp, "modules"> & { settingsPath?: string },
   visible: VisibleFn,
   settings: { href: string; label: string; icon?: IconType }[],
   settingsTitle = "web.nav.settings",
+  settingsIcon?: IconType,
 ): NavModel {
   const sections: NavModelSection[] = [];
   for (const m of app.modules) {
@@ -150,8 +155,7 @@ export function buildNavModel(
   if (settings.length) {
     sections.push({
       id: "settings",
-      title: settingsTitle,
-      items: settings.map((p) => ({ href: p.href, label: p.label, tabLabel: p.label, icon: p.icon, exact: true, tab: false })),
+      items: [{ href: app.settingsPath ?? "/settings", label: settingsTitle, tabLabel: settingsTitle, icon: settingsIcon, exact: false, tab: false }],
     });
   }
   let primary: NavModel["primary"] = null;

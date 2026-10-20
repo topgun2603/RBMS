@@ -101,6 +101,18 @@ describe("buildNavModel", () => {
     expect(nav.sections[0]!.items[0]!.exact).toBe(true);
     expect(nav.primary?.href).toBe("/billing/invoices/new");
   });
+
+  it("settings pages collapse into one Settings link, active on every settings page", () => {
+    const nav = buildNavModel({ modules: [mod], settingsPath: "/settings" }, visible, [
+      { href: "/settings", label: "profile" },
+      { href: "/settings/payments", label: "payments" },
+    ]);
+    const settings = nav.sections.find((s) => s.id === "settings")!;
+    expect(settings.title).toBeUndefined();
+    expect(settings.items).toHaveLength(1);
+    expect(settings.items[0]).toMatchObject({ href: "/settings", label: "web.nav.settings", exact: false });
+    expect(buildNavModel({ modules: [mod] }, visible, []).sections.some((s) => s.id === "settings")).toBe(false);
+  });
 });
 
 describe("permission gating (checkGate / visibleFor)", () => {

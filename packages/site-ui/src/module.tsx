@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BarChart3Icon, FileTextIcon, GlobeIcon, HomeIcon, MenuIcon, NewspaperIcon, PaletteIcon, StarIcon, StoreIcon } from "lucide-react";
+import { BadgeCheckIcon, BarChart3Icon, FileTextIcon, GlobeIcon, HomeIcon, MenuIcon, NewspaperIcon, PaletteIcon, StarIcon, StoreIcon } from "lucide-react";
 import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
 import { PERMS } from "./lib/access";
 import { siteMessages } from "./lib/messages";
@@ -73,6 +73,8 @@ export function siteModule(opts: SiteModuleOptions = {}): WebModule {
 
   const settings: SettingsPage[] = [
     { path: "store", label: "site.nav.storeSettings", icon: StoreIcon, feature: F.storefront, component: page(() => import("./pages/settings-store")) },
+    // Branding: the shop's identity (store, bills, emails, this app); Appearance is the store's layout.
+    { path: "branding", label: "site.nav.branding", icon: BadgeCheckIcon, feature: F.storefront, roles: ["owner", "admin"], component: page(() => import("./pages/settings-branding")) },
     {
       path: "appearance",
       label: "site.nav.appearance",

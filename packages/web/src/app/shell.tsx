@@ -68,11 +68,11 @@ export function useShellNav(): ShellNav {
   const visible = useVisible();
   const settings = useVisibleSettings(BUILT_IN_SETTINGS);
   return React.useMemo(() => {
-    const model = buildNavModel(app, visible, settings.map((p) => ({ href: p.href, label: p.label, icon: p.icon ?? SettingsIcon })));
+    const model = buildNavModel(app, visible, settings, "web.nav.settings", SettingsIcon);
     return {
       sections: model.sections.map((s) => ({
         id: s.id,
-        title: t(s.title),
+        title: s.title ? t(s.title) : undefined,
         items: s.items.map((i) => ({ href: i.href, label: t(i.label), icon: i.icon, exact: i.exact, tab: i.tab, tabLabel: t(i.tabLabel) })),
       })),
       primary: model.primary ? { href: model.primary.href, label: t(model.primary.label), icon: model.primary.icon ?? PlusIcon } : null,
@@ -245,7 +245,7 @@ function BottomTabs({ pathname, sections, primary }: { pathname: string; section
           <div className="grid gap-4 overflow-y-auto px-4">
             {sections.map((s) => (
               <div key={s.id} className="grid gap-2">
-                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>
+                {s.title && <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>}
                 <div className="grid grid-cols-3 gap-2">
                   {s.items.map((item) => {
                     const Icon = item.icon ?? SettingsIcon;
