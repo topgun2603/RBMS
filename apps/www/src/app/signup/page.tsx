@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getT } from "@/lib/i18n-server";
 import { pageMetadata } from "@/lib/seo";
-import { parseInterval, visiblePlans } from "@/lib/plans";
-import { fetchPlans } from "@/lib/plans-server";
-import { parseApp } from "@/lib/site";
+import { parseInterval, visiblePlans, type Plan } from "@/lib/plans";
+import { fetchPlansByApp } from "@/lib/plans-server";
+import { parseApp, type AppId } from "@/lib/site";
 import { SignupWizard } from "@/components/signup-wizard";
 import { HeroBackdrop } from "@/components/hero";
 import { Container } from "@/components/sections";
@@ -19,8 +19,9 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 export default async function SignupPage({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const { t } = await getT();
-  const all = await fetchPlans();
-  const plans = all ? visiblePlans(all) : null;
+  // The wizard picks the app first, so it gets every app's plans up front (five cached requests, no client fetch).
+  const byApp = await fetchPlansByApp();
+  const plans = byApp ? (Object.fromEntries(Object.entries(byApp).map(([app, list]) => [app, visiblePlans(list)])) as Partial<Record<AppId, Plan[]>>) : null;
   return (
     <section className="relative isolate overflow-hidden">
       <HeroBackdrop />

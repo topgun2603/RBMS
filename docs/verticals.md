@@ -152,6 +152,31 @@ Platform → **Solutions** lists the 15 solutions by app with their look, starte
 (`GET /v1/solutions`, super-admin). Platform → Shops shows each shop's solution and **Change solution** applies another
 one (look, starter content, optionally moving the shop to that solution's app: `PUT /v1/solutions/tenants/:id`).
 
+## Solution presets
+
+Each of the 15 solutions has a feature preset: the app's optional (`shopToggle`) features a new shop of that trade
+starts with. The default comes from the business pack (features the app has on by default, plus `pack.features`,
+minus `pack.off`, e.g. no job cards for a gym); super-admins change it in Platform → Apps & features (stored in the
+platform layer of the `solutions` settings, `GET/PUT /v1/solutions/:id/preset`). It is applied as shop switches when a
+shop is created and on "Change solution"; saving can also apply it to the solution's existing shops. Features the shop
+can't switch are the same for every solution of the app.
+
+## Plans per app
+
+Each app has its own plans, one per tier (`free`, `starter`, `pro`, `enterprise`): `plans.app_id` + `plans.tier`, ids
+like `sv-pro`. Prices, wording, features and limits differ per app (seeded as placeholders in `seed-fixtures.ts`
+`APP_PLAN_PRICES` / `APP_PLAN_COPY`; super-admins set them in Platform → Apps & features or Platform → Plans).
+
+- `GET /v1/plans` lists the requesting shop's app's plans, or `?app=XX` (pricing and sign-up pages); nothing without
+  an app. Super-admins: `?all=1` (every plan), `?all=1&app=XX`.
+- A shop can only change to, check out or be comped a plan of its own app; sign-up checks the plan against the app.
+- Shops without a plan get their app's free plan (`PlansService.defaultPlanFor`, subscriptions `freePlanOf`).
+- Moving a shop to another app (`tenancy.setApp`) moves its subscription to the same tier of the new app
+  (`SubscriptionsService.moveToApp`); a Razorpay subscription keeps charging its plan until the next change.
+- Plans without an app are shared templates (private), offered only to apps without plans of their own.
+- Migration `0018_app_plans` copied the four shared plans to every app and moved shops and subscriptions to their
+  app's copy.
+
 ## Not done yet
 
 - A live push channel for the kitchen display (it polls; the WhatsApp SSE in `kit-live.ts` is the pattern to copy).
@@ -164,5 +189,5 @@ one (look, starter content, optionally moving the shop to that solution's app: `
 - Price-embedded scale labels (the scale prints the price, not the weight): the resolver turns the price into a
   quantity at today's unit price; a line amount override at the counter would be exact.
 - A serial number field in the billing app's bill editor (the counter and the API take serials today).
-- Every Services shop sees all three engines; switching off the ones a trade doesn't use (e.g. job cards for a gym) is
-  manual in Settings → Features.
+- `apps/api/test/e2e/batch5.mjs` still uses the shared plan ids (`starter`, `pro`); it needs the app plan ids.
+- Add-ons (extra branches, WhatsApp credits) billed on top of a plan.

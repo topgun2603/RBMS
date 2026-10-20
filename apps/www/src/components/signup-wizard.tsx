@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe } from "@srirealtime/ui/motion";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { api, ApiError, errorMessage, getToken, handoffCode, handoffUrl, type SignupResult, type User } from "@/lib/api";
-import { isFreePlan, maxSavingPct, planDescription, planName, pricePaise, rupees, type Interval, type Plan } from "@/lib/plans";
+import { POPULAR_TIER, isFreePlan, maxSavingPct, planDescription, planForTier, planName, planTier, pricePaise, rupees, tierFromParam, type Interval, type Plan, type PlanTier } from "@/lib/plans";
 import { BUSINESS_TYPES, PACKS, SHOP_DOMAIN, type AppId } from "@/lib/site";
 import { GST_STATES, isGstinShape, slugShapeOk, slugify, stateLabel } from "@/lib/states";
 import { useSite } from "./site-context";
@@ -47,12 +47,15 @@ interface Draft {
   state: string;
   businessType: string;
   gstin: string;
-  planId: string | null;
+  /** The plan is kept as a tier, so changing the app keeps "Pro" and the POST sends that app's plan id. */
+  tier: PlanTier | null;
   interval: Interval;
 }
 
 export interface SignupWizardProps {
-  plans: Plan[] | null;
+  /** Each app's public plans, sorted. */
+  plans: Partial<Record<AppId, Plan[]>> | null;
+  /** `?plan=`: a tier or any app's plan id, mapped to the chosen app's plan of that tier. */
   initialPlan: string | null;
   initialInterval: Interval;
   initialApp: AppId | null;
@@ -64,6 +67,7 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
   const [step, setStep] = React.useState<Step>("need");
   const [dir, setDir] = React.useState(1);
   const [user, setUser] = React.useState<User | null>(null);
+  const wantedTier = tierFromParam(initialPlan, Object.values(plans ?? {}).flat());
   const [draft, setDraft] = React.useState<Draft>(() => ({
     app: initialApp,
     shopName: "",
@@ -72,7 +76,7 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
     state: "33",
     businessType: "",
     gstin: "",
-    planId: initialPlan && plans?.some((p) => p.id === initialPlan) ? initialPlan : (plans?.find((p) => p.id === "starter")?.id ?? plans?.[0]?.id ?? null),
+    tier: wantedTier ?? POPULAR_TIER,
     interval: initialInterval,
   }));
   const [touched, setTouched] = React.useState(false);
@@ -92,7 +96,7 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
           ...d,
           ...saved,
           app: initialApp ?? saved.app ?? d.app,
-          planId: initialPlan && plans?.some((p) => p.id === initialPlan) ? initialPlan : (saved.planId ?? d.planId),
+          tier: wantedTier ?? saved.tier ?? d.tier,
           interval: initialPlan ? initialInterval : (saved.interval ?? d.interval),
         }));
       }
@@ -154,7 +158,8 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
   const nameError = !draft.shopName.trim() ? t("signup.shop.nameRequired") : null;
   const slugError = slugState.status === "invalid" || !draft.slug ? t("signup.shop.slugInvalid") : slugState.status === "taken" ? (slugState.reason ?? t("signup.shop.taken")) : null;
   const shopOk = !nameError && !slugError && !gstinError && slugState.status !== "checking";
-  const plan = plans?.find((p) => p.id === draft.planId) ?? null;
+  const appPlans = draft.app ? (plans?.[draft.app] ?? null) : null;
+  const plan = appPlans ? planForTier(appPlans, draft.tier) : null;
 
   const next = () => {
     if (step === "need" && draft.app) go(user ? "shop" : "signin");
@@ -265,8 +270,8 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
               {step === "plan" && (
                 <div className="space-y-6">
                   <StepTitle title={t("signup.plan.title")} sub={t("signup.plan.sub")} />
-                  {plans && plans.length ? (
-                    <PlanStep plans={plans} planId={draft.planId} interval={draft.interval} onPlan={(id) => set("planId", id)} onInterval={(v) => set("interval", v)} t={t} locale={locale} />
+                  {appPlans && appPlans.length ? (
+                    <PlanStep plans={appPlans} planId={plan?.id ?? null} interval={draft.interval} onPlan={(p) => set("tier", planTier(p))} onInterval={(v) => set("interval", v)} t={t} locale={locale} />
                   ) : (
                     <p role="alert" className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
                       {t("pricing.loadError")}
@@ -616,7 +621,7 @@ function SlugBadge({ state, t }: { state: SlugState; t: (k: string) => string })
   );
 }
 
-function PlanStep({ plans, planId, interval, onPlan, onInterval, t, locale }: { plans: Plan[]; planId: string | null; interval: Interval; onPlan: (id: string) => void; onInterval: (v: Interval) => void; t: Parameters<typeof planName>[0]; locale: string }) {
+function PlanStep({ plans, planId, interval, onPlan, onInterval, t, locale }: { plans: Plan[]; planId: string | null; interval: Interval; onPlan: (p: Plan) => void; onInterval: (v: Interval) => void; t: Parameters<typeof planName>[0]; locale: string }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -633,10 +638,10 @@ function PlanStep({ plans, planId, interval, onPlan, onInterval, t, locale }: { 
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => onPlan(p.id)}
+              onClick={() => onPlan(p)}
               whileTap={{ scale: 0.99 }}
               layout
-              data-testid={`wiz-plan-${p.id}`}
+              data-testid={`wiz-plan-${planTier(p) ?? p.id}`}
               className={cn("relative flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-colors focus-ring sm:p-5", on ? "border-primary bg-primary/5" : "border-border hover:border-primary/40")}
             >
               <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors", on ? "border-primary" : "border-muted-foreground/40")}>
@@ -647,7 +652,7 @@ function PlanStep({ plans, planId, interval, onPlan, onInterval, t, locale }: { 
                   <span className="font-display text-lg font-bold">{planName(t, p)}</span>
                   {!free && <Badge variant="success">{t("signup.plan.trialBadge")}</Badge>}
                 </span>
-                <span className="block text-sm text-muted-foreground">{planDescription(t, p)}</span>
+                <span className="block text-sm text-muted-foreground">{planDescription(t, p, locale)}</span>
               </span>
               <span className="shrink-0 text-right">
                 <span className="block font-display text-lg font-bold tabular-nums">{free ? t("pricing.free") : rupees(locale, pricePaise(p, interval))}</span>

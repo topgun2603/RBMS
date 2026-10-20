@@ -7,10 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FadeIn, Reveal } from "@srirealtime/ui/motion";
 import { getT } from "@/lib/i18n-server";
 import { pageMetadata } from "@/lib/seo";
-import { compareTable, parseInterval, planName, visiblePlans, type Plan } from "@/lib/plans";
+import { compareTable, parseInterval, planName, signupHref, visiblePlans, type Plan } from "@/lib/plans";
 import { fetchPlans } from "@/lib/plans-server";
-import { CONTACT_EMAIL, SITE_URL, parseApp } from "@/lib/site";
-import { PricingCards } from "@/components/pricing-view";
+import { CONTACT_EMAIL, SITE_URL, appParam, parseApp, type AppId } from "@/lib/site";
+import { AppSwitcher, PricingCards } from "@/components/pricing-view";
 import { HeroBackdrop } from "@/components/hero";
 import { JsonLd } from "@/components/json-ld";
 import { Container, CtaBand, Eyebrow, FaqSection, SectionHeading, faqItems } from "@/components/sections";
@@ -27,14 +27,15 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 export default async function PricingPage({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const { t, locale } = await getT();
-  const all = await fetchPlans();
+  // Plans are per app: `?app=` picks one, Billing when none is given.
+  const app: AppId = parseApp(one(sp.app)) ?? "BL";
+  const all = await fetchPlans(app);
   const plans = all ? visiblePlans(all) : null;
-  const app = parseApp(one(sp.app));
   const interval = parseInterval(one(sp.interval));
 
   return (
     <>
-      {plans && <JsonLd data={offersJsonLd(plans, t)} />}
+      {plans && plans.length > 0 && <JsonLd data={offersJsonLd(plans, app, t)} />}
       <section className="relative isolate overflow-hidden">
         <HeroBackdrop />
         <Container className="pt-12 pb-16 sm:pt-20">
@@ -50,15 +51,18 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
           {plans && plans.length ? (
             <PricingCards plans={plans} app={app} initialInterval={interval} />
           ) : (
-            <Card className="mx-auto max-w-md items-center gap-4 rounded-2xl p-8 text-center" role="alert" data-testid="plans-error">
-              <p className="font-medium">{t("pricing.loadError")}</p>
-              <Button asChild variant="outline">
-                <Link href="/pricing">
-                  <RefreshCwIcon />
-                  {t("pricing.retry")}
-                </Link>
-              </Button>
-            </Card>
+            <div className="space-y-10">
+              <AppSwitcher app={app} interval={interval} />
+              <Card className="mx-auto max-w-md items-center gap-4 rounded-2xl p-8 text-center" role="alert" data-testid="plans-error">
+                <p className="font-medium">{t("pricing.loadError")}</p>
+                <Button asChild variant="outline">
+                  <Link href={`/pricing?app=${appParam(app)}`}>
+                    <RefreshCwIcon />
+                    {t("pricing.retry")}
+                  </Link>
+                </Button>
+              </Card>
+            </div>
           )}
           <p className="mt-10 text-center text-sm text-muted-foreground">
             {t("pricing.enterprise")}{" "}
@@ -143,14 +147,14 @@ function GroupRows({ label, rows, cols, t }: { label: string; rows: ReturnType<t
   );
 }
 
-function offersJsonLd(plans: Plan[], t: Translator) {
+function offersJsonLd(plans: Plan[], app: AppId, t: Translator) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: "Srirealtime",
+    name: `Srirealtime ${t(`app.${app}`)}`,
     description: t("brand.tagline"),
     brand: { "@type": "Brand", name: "Srirealtime" },
-    url: `${SITE_URL}/pricing`,
+    url: `${SITE_URL}/pricing?app=${appParam(app)}`,
     offers: plans.flatMap((p) =>
       (["monthly", "yearly"] as const)
         .filter((iv) => iv === "monthly" || p.priceYearlyPaise > 0)
@@ -159,7 +163,7 @@ function offersJsonLd(plans: Plan[], t: Translator) {
           name: `${p.name} (${iv})`,
           price: ((iv === "yearly" ? p.priceYearlyPaise : p.priceMonthlyPaise) / 100).toFixed(2),
           priceCurrency: "INR",
-          url: `${SITE_URL}/signup?plan=${p.id}&interval=${iv}`,
+          url: `${SITE_URL}${signupHref(p.id, iv, app)}`,
           availability: "https://schema.org/InStock",
           priceSpecification: {
             "@type": "UnitPriceSpecification",

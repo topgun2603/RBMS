@@ -30,6 +30,7 @@ import {
 } from "@srirealtime/ui";
 import { api } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";
+import { plansForApp } from "@/lib/plans";
 import { usePlans } from "@/lib/queries";
 import { useSubsT } from "@/lib/subscriptions-messages";
 import type { AdminPlatformInvoice, AdminSubscription } from "@/lib/types";
@@ -209,7 +210,7 @@ export function CompPlanDialog({ sub, onClose }: { sub: AdminSubscription | null
                 </SelectTrigger>
               </FieldControl>
               <SelectContent>
-                {(plans.data ?? []).map((p) => (
+                {plansForApp(plans.data ?? [], s?.tenant?.appId).map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name} · {p.priceMonthlyPaise ? formatCurrency(p.priceMonthlyPaise / 100, { maximumFractionDigits: 0 }) : t("admin.plans.free")}
                     {!p.isPublic && ` · ${t("admin.platform.private")}`}

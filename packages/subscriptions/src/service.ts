@@ -280,6 +280,39 @@ export class SubscriptionsService {
     return p;
   }
 
+  /** The free plan of the tenant's app (each app has its own plans), else `config.freePlanId`. */
+  async freePlanOf(tenantOrId: string | { appId: string | null } | null): Promise<string> {
+    const tenant = typeof tenantOrId === "string" ? await this.deps.tenancy.getTenant(tenantOrId) : tenantOrId;
+    return (tenant && (await this.deps.plans.defaultPlanFor?.(tenant.appId))) || this.freePlanId;
+  }
+
+  /**
+   * The shop moved to another app (tenancy setApp): its plans become the same tiers of the new app — the current plan,
+   * a scheduled downgrade and a pending checkout. A provider subscription keeps charging its plan until the next
+   * change. Plans without a tier, or tiers the new app lacks, are left as they are.
+   */
+  async moveToApp(tenantId: string, appId: string | null, actor: Actor = SYSTEM) {
+    if (!this.deps.plans.planForTier) return null;
+    const sub = await this.ensure(tenantId);
+    const same = async (id: string | null) => {
+      if (!id) return id;
+      const p = await this.deps.plans.getPlan(id);
+      const tier = p?.tier ?? id;
+      return (await this.deps.plans.planForTier!(appId, tier))?.id ?? id;
+    };
+    const [planId, pendingPlanId, checkoutPlanId] = await Promise.all([same(sub.planId), same(sub.pendingPlanId), same(sub.checkoutPlanId)]);
+    if (planId === sub.planId && pendingPlanId === sub.pendingPlanId && checkoutPlanId === sub.checkoutPlanId) return sub;
+    return this.update(sub, { planId: planId!, pendingPlanId, checkoutPlanId }, actor, "subscription.app_moved", `Moved with the shop to ${appId ?? "no app"}: ${sub.planId} → ${planId}`);
+  }
+
+  /** A plan a shop can move to: public and offered to its app (its current plan always is). */
+  private async assertOffered(target: PlanInfo, sub: SubscriptionRow) {
+    if (target.id === sub.planId) return;
+    const tenant = await this.deps.tenancy.getTenant(sub.tenantId);
+    const offered = !this.deps.plans.offeredTo || (await this.deps.plans.offeredTo(target, tenant?.appId ?? null));
+    if (!target.isPublic || !offered) throw badRequest("That plan isn't available");
+  }
+
   /**
    * The tenant's subscription, created on first use for shops that predate subscriptions (their current plan, as a
    * `manual` open-ended subscription, or the free plan). A free/manual subscription follows the tenant's plan when a
@@ -290,7 +323,7 @@ export class SubscriptionsService {
     if (!tenant) throw notFound("Shop");
     let sub = await this.get(tenantId);
     if (!sub) {
-      const planId = tenant.planId ?? this.freePlanId;
+      const planId = tenant.planId ?? (await this.freePlanOf(tenant));
       const paid = isPaid(await this.deps.plans.getPlan(planId));
       await this.db
         .insert(subscriptions)
@@ -299,7 +332,7 @@ export class SubscriptionsService {
       sub = (await this.get(tenantId))!;
       return sub;
     }
-    const tenantPlan = tenant.planId ?? this.freePlanId;
+    const tenantPlan = tenant.planId ?? (await this.freePlanOf(tenant));
     if (sub.status === "active" && (sub.provider === null || sub.provider === "manual") && sub.planId !== tenantPlan && !sub.cancelAtPeriodEnd) {
       const paid = isPaid(await this.deps.plans.getPlan(tenantPlan));
       const [row] = await this.db
@@ -362,7 +395,7 @@ export class SubscriptionsService {
           trialEndsAt: addDays(now, this.trialDays),
           currentPeriodStart: now,
         }
-      : { tenantId: input.tenantId, ownerUserId: input.ownerUserId, planId: this.freePlanId, interval: input.interval, status: "active", currentPeriodStart: now };
+      : { tenantId: input.tenantId, ownerUserId: input.ownerUserId, planId: await this.freePlanOf(input.tenantId), interval: input.interval, status: "active", currentPeriodStart: now };
     await this.db.insert(subscriptions).values(values).onConflictDoNothing();
     const sub = (await this.get(input.tenantId))!;
     await this.syncTenantPlan(sub);
@@ -376,7 +409,7 @@ export class SubscriptionsService {
   async change(tenantId: string, input: { planId: string; interval: BillingInterval }, actor: Actor = SYSTEM) {
     let sub = await this.ensure(tenantId);
     const target = await this.plan(input.planId);
-    if (!target.isPublic && target.id !== sub.planId) throw badRequest("That plan isn't available");
+    await this.assertOffered(target, sub);
     const now = this.now();
     const current = await this.deps.plans.getPlan(sub.planId);
     const result = (applied: "now" | "period_end" | "after_payment" | "none", s: SubscriptionRow, extra: { authUrl?: string | null; requiresCheckout?: boolean } = {}) => ({
@@ -492,7 +525,7 @@ export class SubscriptionsService {
   async preview(tenantId: string, input: { planId: string; interval: BillingInterval }, actor: Actor = SYSTEM): Promise<ChangePreview> {
     const sub = await this.ensure(tenantId);
     const target = await this.plan(input.planId);
-    if (!target.isPublic && target.id !== sub.planId) throw badRequest("That plan isn't available");
+    await this.assertOffered(target, sub);
     const now = this.now();
     const current = await this.deps.plans.getPlan(sub.planId);
     const price = planPrice(target, input.interval);
@@ -669,7 +702,7 @@ export class SubscriptionsService {
     const sub = await this.ensure(tenantId);
     const target = await this.plan(input.planId);
     if (!isPaid(target)) throw badRequest("The free plan needs no payment");
-    if (!target.isPublic && target.id !== sub.planId) throw badRequest("That plan isn't available");
+    await this.assertOffered(target, sub);
     if (planPrice(target, input.interval) <= 0) throw badRequest(`${target.name} has no ${input.interval} price`);
     if (sub.status === "active" && CHARGING(sub.provider) && !sub.authUrl && sub.planId === target.id && sub.interval === input.interval && !sub.cancelAtPeriodEnd) {
       throw conflict("This plan is already paid for");
@@ -721,7 +754,7 @@ export class SubscriptionsService {
   async cancel(tenantId: string, actor: Actor = SYSTEM) {
     let sub = await this.ensure(tenantId);
     const now = this.now();
-    if (sub.status === "cancelled" || sub.status === "expired" || (sub.status === "active" && sub.planId === this.freePlanId)) {
+    if (sub.status === "cancelled" || sub.status === "expired" || (sub.status === "active" && sub.planId === (await this.freePlanOf(tenantId)))) {
       throw badRequest("There is no paid plan to cancel");
     }
     if (isAwaitingPayment(sub)) sub = await this.dropPendingUpgrade(sub, actor, "Upgrade dropped by a cancellation");
@@ -1281,7 +1314,7 @@ export class SubscriptionsService {
     const rows = await this.db.select().from(subscriptions).where(and(...conds)).orderBy(asc(subscriptions.createdAt));
     const summary: Record<string, number> = { checked: rows.length };
     for (const sub of rows) {
-      const action = lifecycleAction(sub, now, { freePlanId: this.freePlanId });
+      const action = lifecycleAction(sub, now, { freePlanId: await this.freePlanOf(sub.tenantId) });
       if (!action) continue;
       try {
         const done = await this.applyLifecycle(sub, action, now);
@@ -1345,6 +1378,7 @@ export class SubscriptionsService {
       }
       case "apply_pending": {
         const target = await this.deps.plans.getPlan(sub.pendingPlanId!);
+        const free = await this.freePlanOf(sub.tenantId);
         const interval = sub.pendingInterval ?? sub.interval;
         const toFree = !target || !isPaid(target);
         if (toFree) await this.cancelProviderNow(sub);
@@ -1353,11 +1387,11 @@ export class SubscriptionsService {
           sub,
           ["active"],
           toFree
-            ? { planId: target?.id ?? this.freePlanId, interval, ...NO_PENDING, provider: null, providerSubscriptionId: null, providerPlanId: null, currentPeriodStart: now, currentPeriodEnd: null }
+            ? { planId: target?.id ?? free, interval, ...NO_PENDING, provider: null, providerSubscriptionId: null, providerPlanId: null, currentPeriodStart: now, currentPeriodEnd: null }
             : { planId: target.id, interval, ...NO_PENDING, currentPeriodStart: start, currentPeriodEnd: addInterval(start, interval) },
           SYSTEM,
           "subscription.downgraded",
-          `Moved to ${target?.id ?? this.freePlanId} at the period end`,
+          `Moved to ${target?.id ?? free} at the period end`,
         );
         return Boolean(row);
       }
@@ -1484,7 +1518,7 @@ export class SubscriptionsService {
       const base = sub.trialEndsAt && sub.trialEndsAt > now ? sub.trialEndsAt : now;
       sub = await this.update(sub, { trialEndsAt: addDays(base, days), reminders: [] }, actor, "subscription.extend_trial", `Trial extended by ${days} days`);
     } else if (sub.status === "expired" || sub.status === "cancelled" || (sub.status === "active" && !CHARGING(sub.provider))) {
-      const plan = await this.plan(sub.planId === this.freePlanId ? (sub.checkoutPlanId ?? sub.planId) : sub.planId);
+      const plan = await this.plan(sub.planId === (await this.freePlanOf(tenantId)) ? (sub.checkoutPlanId ?? sub.planId) : sub.planId);
       if (!isPaid(plan)) throw badRequest("Choose a paid plan for this shop first (comp or change plan)");
       sub = (await this.transition(
         sub,
@@ -1504,6 +1538,9 @@ export class SubscriptionsService {
   async comp(tenantId: string, input: { planId: string; until: Date | null }, actor: Actor) {
     const plan = await this.plan(input.planId);
     let sub = await this.ensure(tenantId);
+    // Private plans can be given; another app's plans can't (the shop's app decides what its plans contain).
+    const tenant = await this.deps.tenancy.getTenant(tenantId);
+    if (this.deps.plans.offeredTo && !(await this.deps.plans.offeredTo(plan, tenant?.appId ?? null))) throw badRequest("That plan belongs to another app");
     const now = this.now();
     if (input.until && input.until <= now) throw badRequest("The end date must be in the future");
     await this.cancelProviderNow(sub);
@@ -1655,10 +1692,10 @@ export class SubscriptionsService {
     return row;
   }
 
-  /** Tenant plan = the subscription's plan while it is live, else the free plan. */
+  /** Tenant plan = the subscription's plan while it is live, else the free plan (of the shop's app). */
   private async syncTenantPlan(sub: SubscriptionRow) {
-    const want = LIVE.includes(sub.status) ? sub.planId : this.freePlanId;
     const tenant = await this.deps.tenancy.getTenant(sub.tenantId);
+    const want = LIVE.includes(sub.status) ? sub.planId : await this.freePlanOf(tenant);
     if (tenant && tenant.planId !== want) await this.deps.tenancy.setPlan(sub.tenantId, want);
   }
 

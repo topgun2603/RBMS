@@ -5,7 +5,11 @@ import type { OverridePatch, PlanInput, PlansService } from "./service";
 
 const idParam = z.object({ id: z.string().min(1).max(40) });
 const tenantParam = z.object({ tenantId: z.string().uuid() });
-const listQuery = z.object({ all: z.enum(["1", "true"]).optional() });
+const listQuery = z.object({
+  all: z.enum(["1", "true"]).optional(),
+  /** The app whose plans to list (pricing pages, sign-up); defaults to the requesting shop's app. */
+  app: z.string().regex(/^[A-Z][A-Z0-9]{1,7}$/).optional(),
+});
 
 /** Super-admin plan routes: plan definitions are platform events (tenant null); overrides belong to their shop. */
 const audited = (action: string, entity: string, idParam: string) => ({ config: { audit: { action, entity, idParam } } });
@@ -16,11 +20,14 @@ const audited = (action: string, entity: string, idParam: string) => ({ config: 
  */
 export function plansRoutes(service: PlansService) {
   return async (app: FastifyInstance) => {
-    // Public plans; super-admins can pass ?all=1 to include private ones.
+    // Public plans of an app (?app=, else the shop's own app); super-admins can pass ?all=1 for every plan of every
+    // app, private ones included (with ?app= too: that app's, private included).
     app.get("/", async (req) => {
-      const { all } = listQuery.parse(req.query);
-      const publicOnly = !(all && isSuperAdmin(req.ctx));
-      return { items: await service.listPlans({ publicOnly }) };
+      const { all, app: appParam } = listQuery.parse(req.query);
+      const admin = Boolean(all && isSuperAdmin(req.ctx));
+      const appId = appParam ?? req.ctx.tenant?.appId ?? undefined;
+      if (admin) return { items: await service.listPlans({ appId: appParam }) };
+      return { items: await service.listPlans({ publicOnly: true, appId: appId ?? null }) };
     });
 
     app.get("/current", async (req) => {

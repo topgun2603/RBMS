@@ -8,20 +8,52 @@ import { Button } from "@srirealtime/ui/components/button";
 import { Card } from "@srirealtime/ui/components/card";
 import { AnimatePresence, AnimatedNumber, motion, RevealGroup, RevealItem } from "@srirealtime/ui/motion";
 import { cn } from "@srirealtime/ui/lib/utils";
-import { POPULAR_PLAN, isFreePlan, maxSavingPct, planDescription, planHighlights, planName, pricePaise, rupees, yearlySavingPaise, yearlySavingPct, type Interval, type Plan } from "@/lib/plans";
-import { appParam, type AppId } from "@/lib/site";
+import { POPULAR_TIER, isFreePlan, maxSavingPct, planDescription, planHighlights, planName, planTier, pricePaise, rupees, signupHref, yearlySavingPaise, yearlySavingPct, type Interval, type Plan } from "@/lib/plans";
+import { APP_IDS, appParam, type AppId } from "@/lib/site";
 import { useSite } from "./site-context";
 import { IntervalToggle } from "./interval-toggle";
 import { Lift } from "./motion-bits";
 
-export function signupHref(planId: string, interval: Interval, app: AppId | null) {
-  const q = new URLSearchParams({ plan: planId, interval });
-  if (app) q.set("app", appParam(app));
-  return `/signup?${q.toString()}`;
+/**
+ * Which app's plans are shown: links that set `?app=` (the server page fetches that app's plans), keeping the interval.
+ * A nav of links rather than a toggle, so it works before hydration and each app's pricing has its own URL.
+ */
+export function AppSwitcher({ app, interval }: { app: AppId; interval: Interval }) {
+  const { t } = useSite();
+  const list = React.useRef<HTMLUListElement>(null);
+  // On narrow screens the row scrolls sideways: bring the current app into view (without moving the page).
+  React.useEffect(() => {
+    const ul = list.current;
+    const cur = ul?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (ul && cur && ul.scrollWidth > ul.clientWidth) ul.scrollLeft = cur.offsetLeft - (ul.clientWidth - cur.offsetWidth) / 2;
+  }, [app]);
+  return (
+    <nav aria-label={t("pricing.forApp")} className="flex w-full justify-center">
+      <ul ref={list} className="relative inline-flex max-w-full overflow-x-auto rounded-full border bg-card p-1 shadow-sm [scrollbar-width:none]" data-testid="pricing-apps">
+        {APP_IDS.map((a) => {
+          const on = a === app;
+          return (
+            <li key={a} className="shrink-0">
+              <Link
+                href={`/pricing?app=${appParam(a)}&interval=${interval}`}
+                scroll={false}
+                aria-current={on ? "page" : undefined}
+                data-testid={`pricing-app-${a}`}
+                className={cn("relative flex h-9 items-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-ring", on ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                {on && <motion.span layoutId="pricing-app-pill" className="absolute inset-0 rounded-full bg-primary shadow-sm" transition={{ type: "spring", stiffness: 480, damping: 34 }} />}
+                <span className="relative">{t(`app.${a}`)}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
 }
 
-/** Interval toggle + plan cards. The interval is mirrored in the URL (?interval=) so a shared link keeps it. */
-export function PricingCards({ plans, app, initialInterval }: { plans: Plan[]; app: AppId | null; initialInterval: Interval }) {
+/** App switcher, interval toggle + plan cards. The interval is mirrored in the URL (?interval=) so a shared link keeps it. */
+export function PricingCards({ plans, app, initialInterval }: { plans: Plan[]; app: AppId; initialInterval: Interval }) {
   const { t, locale } = useSite();
   const [interval, setIntervalState] = React.useState<Interval>(initialInterval);
   const setInterval = (v: Interval) => {
@@ -38,12 +70,14 @@ export function PricingCards({ plans, app, initialInterval }: { plans: Plan[]; a
   return (
     <div className="space-y-10">
       <div className="flex flex-col items-center gap-3">
+        <AppSwitcher app={app} interval={interval} />
         <IntervalToggle value={interval} onChange={setInterval} savePct={save} />
         <p className="text-sm text-muted-foreground">{t("pricing.gstNote")}</p>
       </div>
       <RevealGroup className={cn("mx-auto grid max-w-6xl items-stretch gap-5", plans.length >= 3 ? "lg:grid-cols-3" : "md:grid-cols-2", plans.length === 2 && "max-w-4xl")}>
         {plans.map((p) => {
-          const popular = p.id === POPULAR_PLAN;
+          const tier = planTier(p) ?? p.id;
+          const popular = tier === POPULAR_TIER;
           const free = isFreePlan(p);
           const price = pricePaise(p, interval);
           const pct = yearlySavingPct(p);
@@ -51,7 +85,7 @@ export function PricingCards({ plans, app, initialInterval }: { plans: Plan[]; a
             <RevealItem key={p.id} className="h-full">
               <Lift className="h-full">
                 <Card
-                  data-testid={`plan-${p.id}`}
+                  data-testid={`plan-${tier}`}
                   className={cn(
                     "relative h-full gap-0 rounded-[1.75rem] p-6 sm:p-7",
                     popular && "border-transparent bg-[linear-gradient(var(--card),var(--card))_padding-box,linear-gradient(135deg,var(--primary),var(--www-marigold))_border-box] [border:2px_solid_transparent] shadow-www",
@@ -64,7 +98,7 @@ export function PricingCards({ plans, app, initialInterval }: { plans: Plan[]; a
                     </Badge>
                   )}
                   <h3 className="font-display text-2xl font-bold">{planName(t, p)}</h3>
-                  <p className="mt-1 min-h-10 text-sm text-muted-foreground">{planDescription(t, p)}</p>
+                  <p className="mt-1 min-h-10 text-sm text-muted-foreground">{planDescription(t, p, locale)}</p>
                   <div className="mt-6 flex min-h-[4.5rem] flex-col justify-end">
                     {free ? (
                       <p className="font-display text-4xl font-bold tabular-nums">{rupees(locale, 0)}</p>
@@ -97,7 +131,7 @@ export function PricingCards({ plans, app, initialInterval }: { plans: Plan[]; a
                       )}
                     </AnimatePresence>
                   </div>
-                  <Button asChild size="lg" variant={popular ? "default" : "outline"} className="group mt-4 w-full rounded-full" data-testid={`plan-cta-${p.id}`}>
+                  <Button asChild size="lg" variant={popular ? "default" : "outline"} className="group mt-4 w-full rounded-full" data-testid={`plan-cta-${tier}`}>
                     <Link href={signupHref(p.id, interval, app)}>
                       {free ? t("pricing.ctaFree") : t("pricing.ctaTrial")}
                       <ArrowRightIcon className="transition-transform group-hover:translate-x-0.5" />

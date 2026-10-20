@@ -1,6 +1,6 @@
 import { badRequest, notFound, paymentRequired, type TenantRef } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   CORE_MODULES,
@@ -52,8 +52,18 @@ const featureKey = z.string().regex(/^[a-z][a-z0-9_-]{0,63}(\.[a-z][a-z0-9_-]{0,
 const limitsSchema = z.record(usageKey, z.number().int().min(-1));
 const featuresSchema = z.record(featureKey, z.boolean());
 
+/** Plan tiers, lowest first: a shop moving to another app keeps its tier. */
+export const PLAN_TIERS = ["free", "starter", "pro", "enterprise"] as const;
+export type PlanTier = (typeof PLAN_TIERS)[number];
+
 export const planInputSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "Invalid plan id"),
+  appId: z
+    .string()
+    .regex(/^[A-Z][A-Z0-9]{1,7}$/, "Invalid app id")
+    .nullable()
+    .optional(),
+  tier: z.enum(PLAN_TIERS).nullable().optional(),
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(500).nullable().optional(),
   priceMonthlyPaise: z.number().int().min(0).default(0),
@@ -142,6 +152,8 @@ export class PlansService {
   private readonly defaultPlanId: string | null;
   private readonly ttl: number;
   private readonly cache = new Map<string, CacheEntry>();
+  /** Default (free) plan id per app. */
+  private readonly defaults = new Map<string, { id: string | null; expires: number }>();
   private readonly sources: Record<string, UsageSource>;
   private readonly settleMs: number;
 
@@ -159,12 +171,59 @@ export class PlansService {
 
   // ---------------------------------------------------------------- catalogue
 
-  async listPlans(opts: { publicOnly?: boolean } = {}): Promise<Plan[]> {
-    return this.db
+  /**
+   * The catalogue. With `appId`: that app's plans, or the shared plans (no app) when the app has none of its own.
+   * Without: every plan.
+   */
+  async listPlans(opts: { publicOnly?: boolean; appId?: string | null } = {}): Promise<Plan[]> {
+    const all = await this.db
       .select()
       .from(plans)
       .where(opts.publicOnly ? eq(plans.isPublic, true) : undefined)
       .orderBy(asc(plans.sort), asc(plans.priceMonthlyPaise));
+    if (opts.appId === undefined) return all;
+    const own = opts.appId ? all.filter((p) => p.appId === opts.appId) : [];
+    return own.length ? own : all.filter((p) => p.appId === null);
+  }
+
+  /** Whether a shop of `appId` may be on the plan: the app's own plans, or shared plans when the app has none. */
+  async offeredTo(plan: Pick<Plan, "appId">, appId: string | null | undefined): Promise<boolean> {
+    if (plan.appId) return plan.appId === appId;
+    if (!appId) return true;
+    const [own] = await this.db.select({ id: plans.id }).from(plans).where(eq(plans.appId, appId)).limit(1);
+    return !own;
+  }
+
+  /** The app's plan of a tier (its own, else the shared one of that tier). */
+  async planForTier(appId: string | null | undefined, tier: string): Promise<Plan | null> {
+    if (appId) {
+      const [own] = await this.db
+        .select()
+        .from(plans)
+        .where(and(eq(plans.appId, appId), eq(plans.tier, tier)))
+        .orderBy(asc(plans.sort))
+        .limit(1);
+      if (own) return own;
+    }
+    const [shared] = await this.db
+      .select()
+      .from(plans)
+      .where(and(isNull(plans.appId), or(eq(plans.tier, tier), eq(plans.id, tier))))
+      .orderBy(asc(plans.sort))
+      .limit(1);
+    return shared ?? null;
+  }
+
+  /** Plan id for shops without one: the app's free plan, else the configured default ("free"). */
+  async defaultPlanFor(appId: string | null | undefined): Promise<string | null> {
+    if (this.defaultPlanId === null) return null;
+    const now = Date.now();
+    const key = appId ?? "";
+    const hit = this.defaults.get(key);
+    if (hit && hit.expires > now) return hit.id;
+    const id = appId ? ((await this.planForTier(appId, "free"))?.id ?? this.defaultPlanId) : this.defaultPlanId;
+    this.defaults.set(key, { id, expires: now + this.ttl });
+    return id;
   }
 
   async getPlan(id: string): Promise<Plan | null> {
@@ -215,11 +274,14 @@ export class PlansService {
   /** Drops cached entitlements for one tenant, or all when no id is given. Wire to tenancy's onPlanChange. */
   invalidate(tenantId?: string) {
     if (tenantId) this.cache.delete(tenantId);
-    else this.cache.clear();
+    else {
+      this.cache.clear();
+      this.defaults.clear();
+    }
   }
 
   async entitlements(tenant: TenantRef): Promise<Entitlements> {
-    const planId = tenant.planId ?? this.defaultPlanId;
+    const planId = tenant.planId ?? (await this.defaultPlanFor(tenant.appId));
     const now = Date.now();
     const hit = this.cache.get(tenant.id);
     if (hit && hit.expires > now && hit.planId === planId) return hit.value;

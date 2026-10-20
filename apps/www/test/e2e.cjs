@@ -102,6 +102,13 @@ async function api(method, p, token, body, headers = {}) {
     await step("pricing lists plans with a yearly toggle", async () => {
       await page.goto(`${BASE}/pricing?lang=en`, { waitUntil: "networkidle0", timeout: 120000 });
       await page.waitForSelector('[data-testid="plan-starter"]');
+      // No ?app= → Billing's plans.
+      const billing = await page.$eval('[data-testid="plan-cta-starter"]', (el) => el.getAttribute("href"));
+      assert(billing.includes("plan=bl-starter") && billing.includes("app=billing"), `default pricing isn't Billing: ${billing}`);
+      // The app switcher loads that app's plans (Online Store, the app this test signs up for).
+      await page.click('[data-testid="pricing-app-EC"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="plan-cta-starter"]')?.getAttribute("href")?.includes("plan=ec-starter"), { timeout: 60000 });
+      assert((await page.$eval('[data-testid="pricing-app-EC"]', (el) => el.getAttribute("aria-current"))) === "page", "Online Store tab not current");
       await page.click('[data-testid="interval-yearly"]');
       await page.waitForFunction(() => document.querySelector('[data-testid="plan-cta-starter"]')?.getAttribute("href")?.includes("interval=yearly"));
       assert(await page.$('[data-testid="compare-table"]'), "comparison table missing");
@@ -110,7 +117,7 @@ async function api(method, p, token, body, headers = {}) {
 
     await step("plan CTA opens the wizard with the plan pre-selected", async () => {
       await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click('[data-testid="plan-cta-starter"]')]);
-      assert(page.url().includes("/signup?") && page.url().includes("plan=starter"), `unexpected URL ${page.url()}`);
+      assert(page.url().includes("/signup?") && page.url().includes("plan=ec-starter") && page.url().includes("app=store"), `unexpected URL ${page.url()}`);
       await page.waitForSelector('[data-testid="signup-wizard"][data-step="need"]');
       await page.evaluate(() => sessionStorage.clear());
     });
@@ -184,7 +191,7 @@ async function api(method, p, token, body, headers = {}) {
       const cur = await api("GET", "/v1/subscriptions/current", token, undefined, { "x-tenant": SLUG });
       assert(cur.status === 200, `subscriptions/current ${cur.status}`);
       const s = cur.body.subscription;
-      assert(s.status === "trialing" && s.planId === "starter" && s.interval === "yearly", `subscription ${JSON.stringify(s)}`);
+      assert(s.status === "trialing" && s.planId === "ec-starter" && s.interval === "yearly", `subscription ${JSON.stringify(s)}`);
     });
 
     await step("/login lists the shop and Open hands off to it", async () => {

@@ -138,7 +138,11 @@ export function createKit(env: Env, log: Logger) {
       plans.service.invalidate(tenantId);
       features.service.invalidate(tenantId);
     },
-    onAppChange: (tenantId) => features.service.invalidate(tenantId),
+    onAppChange: async (tenantId, appId) => {
+      features.service.invalidate(tenantId);
+      // Each app has its own plans: the shop keeps its tier on the new app (Pro on Services → Pro on Ecommerce).
+      await b5?.subscriptions.service.moveToApp(tenantId, appId);
+    },
     resolveMemberTarget: (target) => resolveTarget!(target),
     domainVerifier: dnsDomainVerifier(env.CNAME_TARGET),
     cnameTarget: env.CNAME_TARGET,

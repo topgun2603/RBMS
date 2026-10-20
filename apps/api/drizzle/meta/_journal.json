@@ -127,6 +127,13 @@
       "when": 1792492352886,
       "tag": "0017_trades",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792498305590,
+      "tag": "0018_app_plans",
+      "breakpoints": true
     }
   ]
 }

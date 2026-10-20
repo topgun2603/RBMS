@@ -98,6 +98,10 @@ export interface BrandingPreview {
 
 export interface Plan {
   id: string;
+  /** The app whose shops can take the plan; null = shared template. */
+  appId?: string | null;
+  /** free | starter | pro | enterprise. */
+  tier?: string | null;
   name: string;
   description: string | null;
   priceMonthlyPaise: number;

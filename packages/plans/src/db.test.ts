@@ -15,7 +15,7 @@ const T2 = { id: "99999999-9999-4999-8999-999999999999", slug: "t2", planId: "st
 
 const DDL = `
 create table "${SCHEMA}".plans (
-  id text primary key, name text not null, description text, price_monthly_paise integer not null default 0,
+  id text primary key, app_id text, tier text, name text not null, description text, price_monthly_paise integer not null default 0,
   price_yearly_paise integer not null default 0, modules text[] not null default '{}', limits jsonb not null default '{}',
   features jsonb not null default '{}', is_public boolean not null default true, sort integer not null default 0,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now());
@@ -124,5 +124,31 @@ describe.skipIf(!URL_)("plan usage with a usage source, against Postgres", () =>
     seats.set(T.id, 3); // remove
     await s.release(T, "staff");
     expect(await s.usage(T, "staff")).toBe(3);
+  });
+
+  it("plans per app: own plans first, shared ones for apps without, the free tier as the default", async () => {
+    const s = svc();
+    await s.upsertPlan({ id: "free", tier: "free", name: "Free (shared)" });
+    await s.upsertPlan({ id: "sv-free", appId: "SV", tier: "free", name: "Free" });
+    await s.upsertPlan({ id: "sv-pro", appId: "SV", tier: "pro", name: "Pro", priceMonthlyPaise: 179_900 });
+    await s.upsertPlan({ id: "ec-pro", appId: "EC", tier: "pro", name: "Pro", isPublic: false });
+
+    expect((await s.listPlans({ appId: "SV" })).map((p) => p.id)).toEqual(["sv-free", "sv-pro"]);
+    // No plans of its own (public ones): the shared plans
+    expect((await s.listPlans({ appId: "RS", publicOnly: true })).map((p) => p.id)).toEqual(expect.arrayContaining(["free", "starter"]));
+    expect((await s.listPlans({ appId: "RS" })).every((p) => p.appId === null)).toBe(true);
+
+    expect(await s.offeredTo({ appId: "SV" }, "SV")).toBe(true);
+    expect(await s.offeredTo({ appId: "SV" }, "EC")).toBe(false);
+    expect(await s.offeredTo({ appId: null }, "SV")).toBe(false); // SV has its own plans
+    expect(await s.offeredTo({ appId: null }, "RS")).toBe(true);
+
+    expect((await s.planForTier("SV", "pro"))?.id).toBe("sv-pro");
+    expect((await s.planForTier("RS", "free"))?.id).toBe("free");
+    expect(await s.defaultPlanFor("SV")).toBe("sv-free");
+    expect(await s.defaultPlanFor("RS")).toBe("free");
+
+    const shop = { id: "33333333-3333-4333-8333-333333333333", slug: "x", planId: null, appId: "SV" };
+    expect((await s.entitlements(shop)).planId).toBe("sv-free");
   });
 });

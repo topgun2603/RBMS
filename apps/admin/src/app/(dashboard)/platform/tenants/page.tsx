@@ -50,6 +50,7 @@ import { api } from "@/lib/api";
 import { useSwitchTenant } from "@/lib/auth";
 import { useAppProfiles } from "@/lib/features";
 import { describeError, tOr, useI18n } from "@/lib/i18n";
+import { plansForApp } from "@/lib/plans";
 import { usePlans } from "@/lib/queries";
 import { useSolutions, useTenantSolutions } from "@/lib/solutions";
 import type { Tenant } from "@/lib/types";
@@ -315,7 +316,7 @@ function ChangePlanDialog({ tenant, onClose }: { tenant: Tenant | null; onClose:
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__none">{t("admin.platform.defaultPlan")}</SelectItem>
-            {plans.data?.map((p) => (
+            {plansForApp(plans.data ?? [], tenant?.appId).map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.name} · {p.priceMonthlyPaise ? formatCurrency(p.priceMonthlyPaise / 100, { maximumFractionDigits: 0 }) : t("admin.plans.free")}
                 {!p.isPublic && ` · ${t("admin.platform.private")}`}

@@ -1,14 +1,21 @@
 /**
- * Plan maths and the comparison table, built from `GET /v1/plans` (shape: packages/plans). Pure: used by the server
- * pricing page and the client sign-up wizard.
+ * Plan maths and the comparison table, built from `GET /v1/plans?app=XX` (shape: packages/plans). Pure: used by the
+ * server pricing page and the client sign-up wizard. Plans are per app (`bl-starter`, `rs-pro`, …); the UI keys on the
+ * `tier`, which is the same across apps.
  *
  * `modules` hold feature keys and module wildcards (docs/features.md): `inventory` is a module's base feature,
  * `inventory.*` the whole module.
  */
 import { formatCurrencyINR, type Locale, type Translator } from "@srirealtime/i18n/client";
+import { appParam, type AppId } from "./site";
+
+export type PlanTier = "free" | "starter" | "pro" | "enterprise";
+export const PLAN_TIERS: readonly PlanTier[] = ["free", "starter", "pro", "enterprise"];
 
 export interface Plan {
   id: string;
+  appId: string;
+  tier: PlanTier;
   name: string;
   description: string | null;
   priceMonthlyPaise: number;
@@ -25,14 +32,42 @@ export const parseInterval = (v: string | null | undefined): Interval => (v === 
 
 export const isFreePlan = (p: Plan) => p.priceMonthlyPaise <= 0 && p.priceYearlyPaise <= 0;
 
-/** The plan the pricing page highlights. */
-export const POPULAR_PLAN = "starter";
+/** The tier the pricing page highlights (and the sign-up wizard pre-selects). */
+export const POPULAR_TIER: PlanTier = "starter";
+
+const isTier = (v: string | null | undefined): v is PlanTier => PLAN_TIERS.includes(v as PlanTier);
+
+/** A plan's tier; older payloads without `tier` fall back to the id's suffix (`bl-starter` → starter). */
+export const planTier = (p: { id: string; tier?: string | null }): PlanTier | null => (isTier(p.tier) ? p.tier : (PLAN_TIERS.find((tier) => p.id === tier || p.id.endsWith(`-${tier}`)) ?? null));
+
+/**
+ * The tier a `?plan=` asks for: a tier ("starter"), any app's plan id ("bl-pro", looked up in `all` or by suffix).
+ * Lets a link from one app's pricing land on the same tier of the app chosen in the wizard.
+ */
+export function tierFromParam(v: string | null | undefined, all: readonly Plan[] = []): PlanTier | null {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return null;
+  if (isTier(s)) return s;
+  const hit = all.find((p) => p.id === s);
+  return hit ? planTier(hit) : planTier({ id: s });
+}
+
+/** One app's plan of a tier, else its popular tier, else the first. */
+export const planForTier = (plans: readonly Plan[], tier: PlanTier | null) =>
+  plans.find((p) => planTier(p) === tier) ?? plans.find((p) => planTier(p) === POPULAR_TIER) ?? plans[0] ?? null;
 
 /** Does a plan's module list grant this feature key? (`a.b` is granted by `a.b` or `a.*`; `a` by `a` or `a.*`.) */
 export function planHas(modules: readonly string[], key: string): boolean {
   if (modules.includes(key)) return true;
   const base = key.split(".")[0]!;
   return modules.includes(`${base}.*`);
+}
+
+/** The wizard link for a plan card: `/signup?plan=bl-starter&interval=monthly&app=billing`. */
+export function signupHref(planId: string, interval: Interval, app: AppId | null) {
+  const q = new URLSearchParams({ plan: planId, interval });
+  if (app) q.set("app", appParam(app));
+  return `/signup?${q.toString()}`;
 }
 
 /** Price for one period in paise. */
@@ -55,8 +90,21 @@ export function rupees(locale: Locale | string, paise: number): string {
   return formatCurrencyINR(locale, paise / 100, { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
 }
 
-export const planName = (t: Translator, p: Plan) => (t.has(`plan.${p.id}.name`) ? t(`plan.${p.id}.name`) : p.name);
-export const planDescription = (t: Translator, p: Plan) => (t.has(`plan.${p.id}.description`) ? t(`plan.${p.id}.description`) : (p.description ?? ""));
+/** Tier names are translated (`plan.<tier>.name`); the API's name when a tier has no key. */
+export function planName(t: Translator, p: Plan): string {
+  const key = `plan.${planTier(p)}.name`;
+  return t.has(key) ? t(key) : p.name;
+}
+
+/**
+ * The API's description is written per app ("KOTs for one counter"), so English uses it; other locales prefer the
+ * translated, app-neutral `plan.<tier>.description` and fall back to the API text.
+ */
+export function planDescription(t: Translator, p: Plan, locale: Locale | string = "en"): string {
+  const key = `plan.${planTier(p)}.description`;
+  const own = t.has(key) ? t(key) : "";
+  return locale === "en" ? p.description || own : own || (p.description ?? "");
+}
 
 /** Public, priced or free, sorted. Enterprise-style "custom" plans (private, ₹0 but not free) are left out by the API. */
 export const visiblePlans = (plans: readonly Plan[]) => [...plans].filter((p) => p.isPublic !== false).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));

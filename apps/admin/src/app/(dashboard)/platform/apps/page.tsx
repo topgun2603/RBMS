@@ -33,6 +33,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AppEditorSheet, type AppEditing } from "@/components/features/app-editor-sheet";
 import { SolutionPresetSheet, Swatch } from "@/components/features/solution-preset-sheet";
 import { Page } from "@/components/page";
+import { PlansResource } from "@/components/plans/plans-resource";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";
 import { api } from "@/lib/api";
@@ -175,7 +176,7 @@ function LevelsStrip() {
   const steps = [
     { icon: AppWindowIcon, title: t("admin.featuresUi.levelApp"), hint: t("admin.appsUi.levelAppHint") },
     { icon: SparklesIcon, title: t("admin.appsUi.levelSolution"), hint: t("admin.appsUi.levelSolutionHint") },
-    { icon: LayersIcon, title: t("admin.featuresUi.levelPlan"), hint: t("admin.featuresUi.levelPlanHint") },
+    { icon: LayersIcon, title: t("admin.featuresUi.levelPlan"), hint: t("admin.appsUi.levelPlanHint") },
     { icon: ToggleRightIcon, title: t("admin.appsUi.levelOwner"), hint: t("admin.appsUi.levelOwnerHint") },
   ];
   return (
@@ -309,6 +310,14 @@ function AppPanel({
               ))}
             </div>
           )}
+        </div>
+
+        <div className="grid gap-3">
+          <div>
+            <h3 className="font-heading text-base font-semibold">{t("admin.appsUi.plansTitle", { app: profile.name })}</h3>
+            <p className="text-sm text-muted-foreground">{t("admin.appsUi.plansHint")}</p>
+          </div>
+          <PlansResource appId={profile.appId} embedded />
         </div>
 
         <div className="grid gap-3">

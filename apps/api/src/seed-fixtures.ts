@@ -1,4 +1,4 @@
-import { seedPlans } from "@srirealtime/plans";
+import { seedPlans, type PlanTier } from "@srirealtime/plans";
 import type { Logger } from "pino";
 import type { Kit } from "./kit";
 
@@ -236,11 +236,78 @@ const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   modules: [...new Set([...(plan.modules ?? []), ...(PLAN_ADDITIONS[plan.id] ?? [])])],
 });
 
-/** Upserts the default plans (with the batch additions) and the app profiles. */
+type AppId = "BL" | "EC" | "PH" | "RS" | "SV";
+type PaidTier = "starter" | "pro";
+
+/**
+ * Plans per app (docs/verticals.md "Plans per app"): every app has its own Free, Starter, Pro and Enterprise, built on
+ * the shared tier contents (`seedPlans` + batch additions), with the app's own prices and wording. Prices are
+ * placeholders in paise a month (yearly = 10 months); super-admins set the real ones in Platform → Apps & features.
+ */
+const APP_PLAN_PRICES: Record<AppId, Record<PaidTier, number>> = {
+  BL: { starter: 49_900, pro: 149_900 },
+  EC: { starter: 79_900, pro: 199_900 },
+  PH: { starter: 99_900, pro: 249_900 },
+  RS: { starter: 99_900, pro: 249_900 },
+  SV: { starter: 69_900, pro: 179_900 },
+};
+const APP_PLAN_COPY: Record<AppId, Record<"free" | PaidTier, string>> = {
+  BL: {
+    free: "GST billing for one person, up to 50 bills a month.",
+    starter: "Billing with stock, purchases and the credit book for a small team.",
+    pro: "Branches, WhatsApp bills and reminders, e-invoices and reports.",
+  },
+  EC: {
+    free: "Counter billing and a simple online store to start selling.",
+    starter: "Your online store with delivery, coupons, reviews and stock.",
+    pro: "Your own domain, sellers, campaigns, loyalty and advanced reports.",
+  },
+  PH: {
+    free: "Pharmacy billing with batches and expiry for one person.",
+    starter: "Prescriptions, the Schedule H1 register and online orders.",
+    pro: "Branches, distributor purchases, WhatsApp and advanced reports.",
+  },
+  RS: {
+    free: "Dine-in and takeaway billing with KOTs for one counter.",
+    starter: "Kitchen display, QR table ordering and online orders.",
+    pro: "Your own domain, delivery, loyalty, campaigns and reports.",
+  },
+  SV: {
+    free: "Appointments and job cards for one person.",
+    starter: "Memberships, online booking, job tracking and a small team.",
+    pro: "Campaigns, loyalty, your own domain and a bigger team.",
+  },
+};
+
+/** Id of an app's plan of a tier: "sv-pro". */
+export const appPlanId = (appId: string, tier: string) => `${appId.toLowerCase()}-${tier}`;
+
+function appPlans(appId: AppId) {
+  return seedPlans.map(withAdditions).map((p) => {
+    const tier = p.id as "free" | PaidTier | "enterprise";
+    const price = tier === "starter" || tier === "pro" ? APP_PLAN_PRICES[appId][tier] : p.priceMonthlyPaise ?? 0;
+    return {
+      ...p,
+      id: appPlanId(appId, tier),
+      appId,
+      tier,
+      description: tier === "enterprise" ? p.description : APP_PLAN_COPY[appId][tier],
+      priceMonthlyPaise: price,
+      priceYearlyPaise: price * 10,
+    };
+  });
+}
+
+/** Upserts the plans (shared tier templates, then each app's own) and the app profiles. */
 export async function seedPlansAndProfiles(kit: Kit, log: Logger) {
+  // Shared tiers: templates for apps without plans of their own, not offered to shops.
   for (const plan of seedPlans.map(withAdditions)) {
-    await kit.plans.service.upsertPlan(plan);
-    log.info({ plan: plan.id }, "plan upserted");
+    await kit.plans.service.upsertPlan({ ...plan, tier: plan.id as PlanTier, isPublic: false });
+    log.info({ plan: plan.id }, "plan template upserted");
+  }
+  for (const appId of Object.keys(APP_PLAN_PRICES) as AppId[]) {
+    for (const plan of appPlans(appId)) await kit.plans.service.upsertPlan(plan);
+    log.info({ app: appId }, "app plans upserted");
   }
   for (const p of APP_PROFILES) {
     const saved = await kit.features.service.putProfile(p.appId, { name: p.name, features: p.features });
@@ -253,6 +320,7 @@ export interface ShopSpec {
   appId: "BL" | "EC" | "PH" | "RS" | "SV";
   /** The shop's trade (@srirealtime/verticals pack); applied with its look and starter content when the shop is created. */
   businessType?: string;
+  /** Tier ("pro") — the shop gets its app's plan of that tier ("sv-pro") — or a full plan id. */
   planId: string;
   name: string;
   primary: string;
@@ -274,7 +342,8 @@ export async function ensureShop(kit: Kit, shop: ShopSpec, ownerUserId: string) 
     for (const item of shop.items) await kit.invoices.service.createItem(tenant.id, item);
   }
   if (tenant.appId !== shop.appId) tenant = await kit.tenancy.service.setApp(tenant.id, shop.appId);
-  if (tenant.planId !== shop.planId) tenant = await kit.tenancy.service.setPlan(tenant.id, shop.planId);
+  const planId = shop.planId.includes("-") ? shop.planId : appPlanId(shop.appId, shop.planId);
+  if (tenant.planId !== planId) tenant = await kit.tenancy.service.setPlan(tenant.id, planId);
   // Batch 5: the shop's subscription, `active` on its plan (provider `manual`, no period end) so it never expires;
   // an existing free/manual subscription follows the plan set above. Trials and paid subscriptions are left alone.
   await kit.subscriptions.service.ensure(tenant.id);

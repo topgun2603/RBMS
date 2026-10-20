@@ -15,6 +15,10 @@ export interface PlanInfo {
   features: Record<string, boolean>;
   isPublic: boolean;
   sort: number;
+  /** The app whose shops can take the plan (null: shared, for apps without plans of their own). */
+  appId?: string | null;
+  /** free | starter | pro | enterprise. */
+  tier?: string | null;
 }
 
 export interface UsageInfo {
@@ -28,7 +32,13 @@ export interface UsageInfo {
 /** The plans module. */
 export interface PlansPort {
   getPlan(id: string): Promise<PlanInfo | null>;
-  listPlans(opts?: { publicOnly?: boolean }): Promise<PlanInfo[]>;
+  listPlans(opts?: { publicOnly?: boolean; appId?: string | null }): Promise<PlanInfo[]>;
+  /** The free plan of an app (shops of the app fall back to it); null/absent: `config.freePlanId`. */
+  defaultPlanFor?(appId: string | null): Promise<string | null>;
+  /** The app's plan of a tier (a shop that moves to another app keeps its tier). */
+  planForTier?(appId: string | null, tier: string): Promise<PlanInfo | null>;
+  /** Whether a shop of the app may take the plan (absent: every plan is offered to every app). */
+  offeredTo?(plan: PlanInfo, appId: string | null): Promise<boolean>;
   /** Limits and usage of the tenant's current plan. */
   usage(tenantId: string): Promise<UsageInfo[]>;
 }

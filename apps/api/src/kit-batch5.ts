@@ -153,6 +153,9 @@ export function createBatch5(d: Batch5Deps) {
     plans: {
       getPlan: (id) => plans.getPlan(id),
       listPlans: (opts) => plans.listPlans(opts),
+      defaultPlanFor: (appId) => plans.defaultPlanFor(appId),
+      planForTier: (appId, tier) => plans.planForTier(appId, tier),
+      offeredTo: (plan, appId) => plans.offeredTo({ appId: plan.appId ?? null }, appId),
       usage: async (tenantId) => {
         const ref = await tenancy.getRef(tenantId);
         return ref ? plans.usageSummary(ref) : [];
@@ -268,7 +271,7 @@ export function createBatch5(d: Batch5Deps) {
           if (stateFromGstin(gstin) !== state) throw badRequest("The GSTIN belongs to a different state", { field: "gstin" });
         }
         const plan = await plans.getPlan(b.planId);
-        if (!plan || !plan.isPublic) throw badRequest("Choose a plan", { field: "planId" });
+        if (!plan || !plan.isPublic || !(await plans.offeredTo(plan, b.appId))) throw badRequest("Choose a plan", { field: "planId" });
         const check = await tenancy.slugAvailable(b.slug);
         if (!check.available) {
           throw new AppError(check.code === "taken" ? 409 : 400, check.code === "taken" ? "slug_taken" : "invalid_slug", check.reason ?? "Choose another address", {

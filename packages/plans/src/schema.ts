@@ -1,9 +1,18 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
-import { boolean, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 
-/** Platform-wide plan catalogue (not tenant-scoped). */
-export const plans = pgTable("plans", {
+/**
+ * Platform-wide plan catalogue (not tenant-scoped). Each app (Billing, Ecommerce, Pharmacy …) has its own plans
+ * (`app_id`), one per tier; a plan without an app is shared (legacy) and offered only to apps that have none.
+ */
+export const plans = pgTable(
+  "plans",
+  {
   id: text("id").primaryKey(),
+  /** The app (tenants.app_id) whose shops can take this plan; null = any app without plans of its own. */
+  appId: text("app_id"),
+  /** free | starter | pro | enterprise: the same tier of another app is where a shop lands when it moves app. */
+  tier: text("tier"),
   name: text("name").notNull(),
   description: text("description"),
   priceMonthlyPaise: integer("price_monthly_paise").notNull().default(0),
@@ -16,7 +25,9 @@ export const plans = pgTable("plans", {
   isPublic: boolean("is_public").notNull().default(true),
   sort: integer("sort").notNull().default(0),
   ...timestamps(),
-});
+  },
+  (t) => [index("plans_app_idx").on(t.appId, t.tier)],
+);
 
 /** Per-tenant tweaks on top of the plan (deals, add-ons, manual blocks). */
 export const tenantPlanOverrides = pgTable("tenant_plan_overrides", {
