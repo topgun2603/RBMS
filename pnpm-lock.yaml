@@ -159,6 +159,9 @@ importers:
       '@srirealtime/invoices':
         specifier: workspace:*
         version: link:../../packages/invoices
+      '@srirealtime/jewellery':
+        specifier: workspace:*
+        version: link:../../packages/jewellery
       '@srirealtime/jobcards':
         specifier: workspace:*
         version: link:../../packages/jobcards
@@ -204,6 +207,12 @@ importers:
       '@srirealtime/reviews':
         specifier: workspace:*
         version: link:../../packages/reviews
+      '@srirealtime/scales':
+        specifier: workspace:*
+        version: link:../../packages/scales
+      '@srirealtime/serials':
+        specifier: workspace:*
+        version: link:../../packages/serials
       '@srirealtime/settings':
         specifier: workspace:*
         version: link:../../packages/settings
@@ -271,6 +280,9 @@ importers:
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
+      '@srirealtime/scales-ui':
+        specifier: workspace:*
+        version: link:../../packages/scales-ui
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -530,6 +542,9 @@ importers:
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
+      '@srirealtime/serials-ui':
+        specifier: workspace:*
+        version: link:../../packages/serials-ui
       '@srirealtime/site-ui':
         specifier: workspace:*
         version: link:../../packages/site-ui
@@ -591,6 +606,9 @@ importers:
       '@srirealtime/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
+      '@srirealtime/jewellery-ui':
+        specifier: workspace:*
+        version: link:../../packages/jewellery-ui
       '@srirealtime/marketplace-ui':
         specifier: workspace:*
         version: link:../../packages/marketplace-ui
@@ -600,6 +618,12 @@ importers:
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
+      '@srirealtime/scales-ui':
+        specifier: workspace:*
+        version: link:../../packages/scales-ui
+      '@srirealtime/serials-ui':
+        specifier: workspace:*
+        version: link:../../packages/serials-ui
       '@srirealtime/site-ui':
         specifier: workspace:*
         version: link:../../packages/site-ui
@@ -1456,6 +1480,62 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/jewellery:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/jewellery-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
   packages/jobcards:
     dependencies:
       '@srirealtime/core':
@@ -2021,6 +2101,118 @@ importers:
       fastify:
         specifier: ^5.3.0
         version: 5.12.7
+
+  packages/scales:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/scales-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
+  packages/serials:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/serials-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
 
   packages/settings:
     dependencies:

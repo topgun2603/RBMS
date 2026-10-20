@@ -26,6 +26,8 @@ export interface LineInput {
    * followed by `+ 5%` drifts (₹999 → ₹999.01).
    */
   inclusiveTotal?: number;
+  /** Serial numbers / IMEIs of the units sold on this line (electronics); printed on the bill, at most one per unit. */
+  serials?: string[];
 }
 
 export interface LineTotals extends LineInput {

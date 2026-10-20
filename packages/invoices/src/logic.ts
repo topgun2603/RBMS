@@ -129,6 +129,7 @@ const lineInputOf = (l: LineTotals): LineInput => {
   if (l.discount) out.discount = l.discount;
   if (l.itemId) out.itemId = l.itemId;
   if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
+  if (l.serials?.length) out.serials = [...l.serials];
   return out;
 };
 

@@ -20,6 +20,7 @@
     "@srirealtime/memberships-ui": "workspace:*",
     "@srirealtime/orders-ui": "workspace:*",
     "@srirealtime/pos-ui": "workspace:*",
+    "@srirealtime/serials-ui": "workspace:*",
     "@srirealtime/site-ui": "workspace:*",
     "@srirealtime/ui": "workspace:*",
     "@srirealtime/web": "workspace:*",

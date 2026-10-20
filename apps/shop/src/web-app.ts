@@ -1,10 +1,13 @@
 import { growthModule } from "@srirealtime/growth-ui";
+import { jewelleryModule } from "@srirealtime/jewellery-ui";
 import { marketplaceModule } from "@srirealtime/marketplace-ui";
 import { inboxModule } from "@srirealtime/inbox-ui";
 import { posModule } from "@srirealtime/pos-ui";
 import { billingModule } from "@srirealtime/billing-ui";
 import { commerceModule } from "@srirealtime/commerce-ui";
 import { ordersModule } from "@srirealtime/orders-ui";
+import { scalesModule } from "@srirealtime/scales-ui";
+import { serialsModule } from "@srirealtime/serials-ui";
 import { siteModule } from "@srirealtime/site-ui";
 import { createWebApp } from "@srirealtime/web";
 import { workspaceModule } from "@srirealtime/workspace-ui";
@@ -27,6 +30,9 @@ export const webApp = createWebApp({
     siteModule(),
     billingModule({ basePath: "/billing" }),
     posModule(),
+    scalesModule(),
+    serialsModule({ invoiceHref: (id) => `/billing/invoices/${id}` }),
+    jewelleryModule({ invoiceHref: (id) => `/billing/invoices/${id}` }),
     inboxModule({ basePath: "/inbox", links: { invoice: (id) => `/billing/invoices/${id}` } }),
     marketplaceModule({ basePath: "/marketplace" }),
     growthModule(),

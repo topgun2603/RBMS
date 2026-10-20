@@ -555,6 +555,12 @@ export const lineInputSchema = z
     itemId: opt(z.string().uuid()),
     /** GST-inclusive amount charged for the line (orders with tax-inclusive prices): GST is taken out of it. */
     inclusiveTotal: money.optional(),
+    /** Serial numbers / IMEIs of the units on this line (one per unit at most). */
+    serials: z
+      .array(z.string().trim().toUpperCase().regex(/^[A-Z0-9/-]{3,40}$/, "Serial numbers: letters, digits, / and -"))
+      .max(200)
+      .optional()
+      .transform((v) => (v?.length ? [...new Set(v)] : undefined)),
   })
   .superRefine((l, ctx) => {
     if ((l.discount ?? 0) > lineAmount(l.qty, l.rate)) {
@@ -567,6 +573,9 @@ export const lineInputSchema = z
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["inclusiveTotal"], message: "Inclusive total doesn't match the rate and quantity" });
       }
     }
+    if (l.serials && l.serials.length > Math.ceil(l.qty)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["serials"], message: "More serial numbers than units on the line" });
+    }
   })
   .transform((l): LineInput => {
     const out: LineInput = { description: l.description, qty: l.qty, rate: l.rate, gstRate: l.gstRate };
@@ -575,6 +584,7 @@ export const lineInputSchema = z
     if (l.discount) out.discount = l.discount;
     if (l.itemId) out.itemId = l.itemId;
     if (l.inclusiveTotal !== undefined) out.inclusiveTotal = l.inclusiveTotal;
+    if (l.serials?.length) out.serials = l.serials;
     return out;
   });
 
@@ -812,6 +822,7 @@ const toLineInput = (l: LineTotals): LineInput => {
   if (l.discount) out.discount = l.discount;
   if (l.itemId) out.itemId = l.itemId;
   if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
+  if (l.serials?.length) out.serials = [...l.serials];
   return out;
 };
 

@@ -66,6 +66,10 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "jobcards.*",
       "bookings.*",
       "memberships.*",
+      // Trades: scale PLUs and prices, serial numbers / warranty, jewellery rates, pieces and old gold.
+      "scales.*",
+      "serials.*",
+      "jewellery.*",
     ],
   },
   {
@@ -90,6 +94,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "jobcards.view",
       "bookings.desk",
       "memberships.checkin",
+      "serials.view",
+      "jewellery.exchange",
     ],
   },
   {

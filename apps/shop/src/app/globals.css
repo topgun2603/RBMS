@@ -12,6 +12,9 @@
 @source "../../../../packages/orders-ui/src";
 @source "../../../../packages/site-ui/src";
 @source "../../../../packages/workspace-ui/src";
+@source "../../../../packages/serials-ui/src";
+@source "../../../../packages/scales-ui/src";
+@source "../../../../packages/jewellery-ui/src";
 
 /* Number inputs without spinners (qty / rate fields are typed, not clicked). */
 input[type="number"]::-webkit-outer-spin-button,

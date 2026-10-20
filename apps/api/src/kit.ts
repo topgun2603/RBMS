@@ -14,7 +14,10 @@ import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards } from "@srirealtime/jobcards";
 import { createMemberships } from "@srirealtime/memberships";
-import { createMedicines } from "@srirealtime/medicines";
+import { createMedicines, type StockPort as InventoryStockPort } from "@srirealtime/medicines";
+import { createJewellery } from "@srirealtime/jewellery";
+import { createScales } from "@srirealtime/scales";
+import { createSerials } from "@srirealtime/serials";
 import { createImportExport } from "@srirealtime/importexport";
 import { todayIST } from "@srirealtime/gst";
 import { createOrders, type Order } from "@srirealtime/orders";
@@ -64,7 +67,7 @@ import {
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
-import { createSolutions, createStarter } from "./kit-verticals";
+import { createCounter, createSolutions, createStarter } from "./kit-verticals";
 import { createKitOps } from "./kit-ops";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
@@ -96,6 +99,12 @@ export function createKit(env: Env, log: Logger) {
   let b5: Batch5 | undefined;
   // Pharmacy batches (created after inventory); the bill hooks below reach it lazily.
   let medicinesRef: ReturnType<typeof createMedicines> | undefined;
+  // Serial numbers / IMEIs (electronics): sold from bills; reached lazily by the bill hooks.
+  let serialsRef: ReturnType<typeof createSerials> | undefined;
+  // Jewellery: tagged pieces are sold / back in stock with their bills.
+  let jewelleryRef: ReturnType<typeof createJewellery> | undefined;
+  const lineItemIds = (inv: { lines: { itemId?: string | null }[] }) =>
+    inv.lines.map((l) => l.itemId).filter((x): x is string => Boolean(x));
   // Restaurant orders and kitchen tickets (created after invoices and catalogue); the order hooks reach it lazily.
   let diningRef: ReturnType<typeof createDining> | undefined;
   /** Developer webhooks (EventsPort). Never throws; a no-op until batch 3 exists. */
@@ -301,6 +310,11 @@ export function createKit(env: Env, log: Logger) {
         await emit(tenantId, "invoice.issued", invoiceEvent(inv));
         // Pharmacies: take the sold quantities from the medicine batches, first expiry first.
         await medicinesRef?.service.onInvoiceIssued(tenantId, inv);
+        // Electronics: units whose serials / IMEIs are on the bill are sold, with their warranty from the bill date.
+        await serialsRef?.service.onInvoiceIssued(tenantId, inv);
+        if (jewelleryRef && (await isEnabled(tenantId, "jewellery"))) {
+          await jewelleryRef.service.setStatusByItems(tenantId, lineItemIds(inv), "sold");
+        }
       },
       creditNoteIssued: (tenantId, cn) => emit(tenantId, "credit_note.issued", creditNoteEvent(cn)),
       creditNoteCancelled: (tenantId, cn) =>
@@ -321,6 +335,10 @@ export function createKit(env: Env, log: Logger) {
         await emit(tenantId, "invoice.cancelled", invoiceEvent(inv));
         await b3?.loyalty.hooks.invoiceCancelled(tenantId, inv.id);
         await medicinesRef?.service.onInvoiceCancelled(tenantId, inv.id);
+        await serialsRef?.service.onInvoiceCancelled(tenantId, inv.id);
+        if (jewelleryRef && (await isEnabled(tenantId, "jewellery"))) {
+          await jewelleryRef.service.setStatusByItems(tenantId, lineItemIds(inv), "in_stock");
+        }
       },
       paymentReceived: (tenantId, e) =>
         emit(tenantId, "payment.received", {
@@ -743,23 +761,57 @@ export function createKit(env: Env, log: Logger) {
     log,
   });
 
+  /**
+   * Trade-specific engines (scales, serials, jewellery) are in the app profiles of several trades; their features start
+   * off for a shop and are switched on by its business pack (kit-verticals.ts `starter`), or by the owner.
+   */
+  const offByDefault = (m: SrModule): SrModule => ({
+    ...m,
+    features: (m.features ?? []).map((f) => ({ ...f, shopToggle: true, defaultOn: false })),
+  });
+
+  /** Stock receipts and write-offs from the vertical engines (batches, serial units) move inventory totals too. */
+  const inventoryStock: InventoryStockPort = {
+    add: async (tenantId, itemId, qty, note, unitCost, userId) => {
+      if (!(await isEnabled(tenantId, "inventory"))) return;
+      await inventory.service.adjust(tenantId, itemId, { mode: "add", qty, note, unitCost: unitCost ?? undefined }, userId);
+    },
+    remove: async (tenantId, itemId, qty, note, userId) => {
+      if (!(await isEnabled(tenantId, "inventory"))) return;
+      await inventory.service.adjust(tenantId, itemId, { mode: "remove", qty, note }, userId);
+    },
+  };
+
   const medicines = createMedicines({
     db,
-    stock: {
-      // Batch receipts and write-offs move inventory totals too (shops with stock tracking on).
-      add: async (tenantId, itemId, qty, note, unitCost, userId) => {
-        if (!(await isEnabled(tenantId, "inventory"))) return;
-        await inventory.service.adjust(tenantId, itemId, { mode: "add", qty, note, unitCost: unitCost ?? undefined }, userId);
-      },
-      remove: async (tenantId, itemId, qty, note, userId) => {
-        if (!(await isEnabled(tenantId, "inventory"))) return;
-        await inventory.service.adjust(tenantId, itemId, { mode: "remove", qty, note }, userId);
-      },
-    },
+    stock: inventoryStock,
     featureGate: features.gate,
     log,
   });
   medicinesRef = medicines;
+
+  const serials = createSerials({
+    db,
+    stock: inventoryStock,
+    catalog: { variants: async (tenantId, ids) => (await catalogue.service.getVariants(tenantId, ids)).map((v) => ({ id: v.id, name: v.name })) },
+    featureGate: features.gate,
+    log,
+  });
+  serialsRef = serials;
+
+  // Weighing scales (grocery, bakery, fresh produce): PLUs, today's prices (catalogue prices), scale-label scans.
+  const scaleSettings = settings.service.handle("scales");
+  const scales = createScales({
+    db,
+    catalog: {
+      variants: (tenantId, ids) => catalogue.service.getVariants(tenantId, ids),
+      setPrice: async (tenantId, variantId, price) => {
+        await catalogue.service.updateVariant(tenantId, variantId, { price });
+      },
+    },
+    settings: { get: (tenantId) => scaleSettings.get({ tenantId }), set: (tenantId, patch) => scaleSettings.setTenant(tenantId, patch) },
+    log,
+  });
 
   /**
    * Issued GST bills from priced lines (GST-exclusive rates) for the vertical modules: dining orders, job cards,
@@ -997,13 +1049,44 @@ export function createKit(env: Env, log: Logger) {
 
   // Business packs (kit-verticals.ts): a new shop gets its trade, the trade's theme preset, starter categories and a
   // starter home page. Runs after batch 5's "defaults" hook, so the preset replaces the sign-up colour.
-  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, log });
+  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, features: features.service, log });
   const solutions = createSolutions({ db, starter, tenancy: tenancy.service });
+  // POS: scanned codes no item barcode matches (scale labels, serials / IMEIs); engines register resolvers.
+  const counter = createCounter({ variants: (tenantId, ids) => catalogue.service.getVariants(tenantId, ids), log });
+  // Jewellery: the daily metal rate reprices tagged pieces; old gold taken in is paid onto the bill.
+  const jewellerySettings = settings.service.handle("jewellery");
+  const jewellery = createJewellery({
+    db,
+    catalog: {
+      variants: async (tenantId, ids) => (await catalogue.service.getVariants(tenantId, ids)).map((v) => ({ id: v.id, name: v.name })),
+      // The engine prices GST-exclusive; products sold at tax-inclusive prices get the GST added in.
+      setPrice: async (tenantId, variantId, price) => {
+        const [v] = await catalogue.service.getVariants(tenantId, [variantId]);
+        const stored = v?.taxInclusive ? Math.round((price * (100 + v.gstRate)) / 100) : price;
+        await catalogue.service.updateVariant(tenantId, variantId, { price: stored });
+      },
+    },
+    payments: {
+      addPayment: async (tenantId, invoiceId, input) => {
+        await invoices.service.addPayment(tenantId, invoiceId, input);
+      },
+    },
+    settings: { get: (tenantId) => jewellerySettings.get({ tenantId }), set: (tenantId, patch) => jewellerySettings.setTenant(tenantId, patch) },
+    log,
+  });
+  jewelleryRef = jewellery;
+
+  counter.add("scales", async (tenantId, code) => {
+    if (!(await isEnabled(tenantId, "scales"))) return null;
+    const hit = await scales.service.resolveCode(tenantId, code);
+    return hit ? { itemId: hit.itemId, qty: hit.qty } : null;
+  });
+  counter.add("serials", async (tenantId, code) => ((await isEnabled(tenantId, "serials")) ? serials.service.resolveCode(tenantId, code) : null));
   tenancy.service.onTenantCreated({
     name: "starter",
     run: async ({ tenant, details }) => {
       const signup = (details.signup ?? null) as { businessType?: string | null } | null;
-      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null }, signup?.businessType ?? null);
+      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null);
     },
   });
 
@@ -1052,6 +1135,10 @@ export function createKit(env: Env, log: Logger) {
     dining.module,
     jobcards.module,
     bookings.module,
+    counter.module,
+    offByDefault(serials.module),
+    offByDefault(scales.module),
+    offByDefault(jewellery.module),
     memberships.module,
     solutions,
     ...batch3.modules,
@@ -1090,6 +1177,9 @@ export function createKit(env: Env, log: Logger) {
     expenses,
     medicines,
     dining,
+    serials,
+    scales,
+    jewellery,
     jobcards,
     bookings,
     memberships,

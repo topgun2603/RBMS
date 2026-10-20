@@ -33,6 +33,8 @@ export interface CartLine extends CartProduct {
   discount: number;
   /** The catalogue price before a manual price change. */
   listPrice: number;
+  /** Serial numbers / IMEIs scanned onto this line (one per unit); printed on the bill and marked sold. */
+  serials?: string[];
 }
 
 export interface TaxOptions {
@@ -55,8 +57,21 @@ export const clampDiscount = (discount: number, gross: number) => Math.min(Math.
  * Adds a product. The same item at the same price without a discount merges into the existing line (qty + `qty`);
  * returns the new lines and the key of the line that changed (for the scan flash).
  */
-export function addProduct(lines: readonly CartLine[], p: CartProduct, qty = 1): { lines: CartLine[]; key: string } {
+export function addProduct(lines: readonly CartLine[], p: CartProduct, qty = 1, serial?: string | null): { lines: CartLine[]; key: string } {
   const same = lines.find((l) => l.itemId === p.itemId && l.price === p.price && l.discount === 0);
+  if (serial) {
+    // A unit with a serial / IMEI: one unit per scan; the same unit scanned twice is not added again.
+    const holder = lines.find((l) => l.serials?.includes(serial));
+    if (holder) return { lines: [...lines], key: holder.key };
+    if (same) {
+      return {
+        lines: lines.map((l) => (l.key === same.key ? { ...l, qty: roundQty(l.qty + 1), serials: [...(l.serials ?? []), serial] } : l)),
+        key: same.key,
+      };
+    }
+    const line: CartLine = { ...p, key: newKey(), qty: 1, discount: 0, listPrice: p.price, serials: [serial] };
+    return { lines: [...lines, line], key: line.key };
+  }
   if (same) {
     return { lines: lines.map((l) => (l.key === same.key ? { ...l, qty: roundQty(l.qty + qty) } : l)), key: same.key };
   }
@@ -64,13 +79,16 @@ export function addProduct(lines: readonly CartLine[], p: CartProduct, qty = 1):
   return { lines: [...lines, line], key: line.key };
 }
 
+/** Serials beyond the line's units are dropped (the last scanned first). */
+const fitSerials = (serials: string[] | undefined, qty: number) => (serials && serials.length > Math.ceil(qty) ? serials.slice(0, Math.ceil(qty)) : serials);
+
 const roundQty = (q: number) => Math.round(q * 1000) / 1000;
 
 /** Sets the quantity (≥ 0.001, 3 decimals). Discount is clamped to the new gross. */
 export function setQty(lines: readonly CartLine[], key: string, qty: number): CartLine[] {
   const q = roundQty(qty);
   if (!(q > 0)) return [...lines];
-  return lines.map((l) => (l.key === key ? { ...l, qty: q, discount: clampDiscount(l.discount, lineAmount(q, l.price)) } : l));
+  return lines.map((l) => (l.key === key ? { ...l, qty: q, discount: clampDiscount(l.discount, lineAmount(q, l.price)), serials: fitSerials(l.serials, q) } : l));
 }
 
 /** +1 / −1. Never goes to zero (removing is its own action). */
@@ -118,6 +136,7 @@ export function toLineInput(l: CartLine): LineInput {
   }
   if (l.hsn) input.hsn = l.hsn;
   if (l.unit) input.unit = l.unit;
+  if (l.serials?.length) input.serials = [...l.serials];
   return input;
 }
 

@@ -131,6 +131,16 @@ export const fetchProduct = (id: string) => posApi.get<Product>(`/catalog/produc
 /** Barcode or SKU → variant. 404 when nothing matches. */
 export const lookupCode = (code: string) => posApi.get<VariantLookup>("/catalog/variants/lookup", { code });
 
+/** A scanned code no item barcode matched: a weighing-scale label (item + weight) or a serial / IMEI (item + unit). */
+export interface ResolvedCode {
+  variant: VariantLookup;
+  /** Weight / quantity from a scale label. */
+  qty?: number;
+  /** The unit's serial number or IMEI. */
+  serial?: string;
+}
+export const resolveCode = (code: string) => posApi.get<ResolvedCode>("/counter/resolve", { code });
+
 export function useStock(itemIds: string[], enabled: boolean) {
   const ids = [...new Set(itemIds)].sort().join(",");
   return useQuery({

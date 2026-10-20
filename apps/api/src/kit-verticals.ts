@@ -1,5 +1,5 @@
 import { themePreset } from "@srirealtime/branding";
-import { badRequest, defineModule, notFound, requireSuperAdmin, type SrModule } from "@srirealtime/core";
+import { badRequest, defineModule, notFound, requireRole, requireSuperAdmin, requireTenant, type SrModule } from "@srirealtime/core";
 import { and, eq, inArray, isNull, sql, type Db } from "@srirealtime/db";
 import { settingsValues } from "@srirealtime/settings";
 import { tenants } from "@srirealtime/tenancy";
@@ -20,6 +20,8 @@ export interface StarterDeps {
     listCategories(tenantId: string): Promise<{ items: unknown[] }>;
     createCategory(tenantId: string, input: { name: string; sort?: number }): Promise<unknown>;
   };
+  /** Turns the pack's own engines on for the shop (`setToggle` of the features service). */
+  features?: { setToggle(tenant: { id: string; slug: string; planId: string | null; appId: string | null }, key: string, enabled: boolean): Promise<unknown> };
   cms: {
     getHome(tenantId: string): Promise<{ published: unknown | null }>;
     saveHomeDraft(tenantId: string, input: unknown): Promise<unknown>;
@@ -38,12 +40,17 @@ export interface StarterOptions {
 
 export function createStarter(deps: StarterDeps) {
   async function apply(
-    tenant: { id: string; name: string; appId: string | null },
+    tenant: { id: string; name: string; appId: string | null; slug?: string; planId?: string | null },
     businessType: string | null | undefined,
     opts: StarterOptions = {},
   ): Promise<BusinessPack> {
     const pack = packOrDefault(businessType, tenant.appId);
     await deps.storeSettings.setTenant(tenant.id, { businessType: pack.id });
+    for (const key of pack.features ?? []) {
+      await deps.features
+        ?.setToggle({ id: tenant.id, slug: tenant.slug ?? "", planId: tenant.planId ?? null, appId: tenant.appId }, key, true)
+        .catch((err: unknown) => deps.log.warn({ err, tenantId: tenant.id, key }, "starter: could not switch the feature on"));
+    }
 
     const preset = themePreset(pack.preset);
     if (preset && opts.theme !== false) {
@@ -91,7 +98,7 @@ export interface SolutionsDeps {
   db: Db;
   starter: Starter;
   tenancy: {
-    getById(id: string): Promise<{ id: string; name: string; appId: string | null } | null>;
+    getById(id: string): Promise<{ id: string; name: string; slug: string; planId: string | null; appId: string | null } | null>;
     setApp(id: string, appId: string | null): Promise<unknown>;
   };
 }
@@ -165,9 +172,58 @@ export function createSolutions(deps: SolutionsDeps): SrModule {
       const pack = PACKS[b.businessType];
       if (b.switchApp && tenant.appId !== pack.appId) await deps.tenancy.setApp(id, pack.appId);
       else if (!b.switchApp && !tenant.appId) throw badRequest("This shop has no app; switch its app too");
-      await deps.starter.apply({ id, name: tenant.name, appId: b.switchApp ? pack.appId : tenant.appId }, b.businessType, { theme: b.theme, content: b.content });
+      await deps.starter.apply(
+        { id, name: tenant.name, slug: tenant.slug, planId: tenant.planId, appId: b.switchApp ? pack.appId : tenant.appId },
+        b.businessType,
+        { theme: b.theme, content: b.content },
+      );
       return (await typesOf([id]))[0];
     });
   };
   return defineModule({ id: "solutions", routes });
+}
+
+// ---------------------------------------------------------------- counter: scanned codes no item barcode matches
+
+/** A resolver's answer for a scanned code: the catalogue item, plus the weight (scale label) or the unit (serial). */
+export interface ResolvedCode {
+  itemId: string;
+  qty?: number;
+  serial?: string;
+}
+export type CodeResolver = (tenantId: string, code: string) => Promise<ResolvedCode | null>;
+
+/**
+ * `GET /v1/counter/resolve?code=` for the POS: weighing-scale labels, serial numbers / IMEIs… Each engine registers a
+ * resolver (`counter.add`); the first answer wins and comes back with the item as the catalogue's lookup returns it.
+ * 404 when nothing matches. Staff who can make bills.
+ */
+export function createCounter(deps: { variants(tenantId: string, ids: string[]): Promise<unknown[]>; log: Logger }) {
+  const resolvers: { name: string; run: CodeResolver }[] = [];
+  const codeQuery = z.object({ code: z.string().trim().min(3).max(64) });
+  const routes = async (app: FastifyInstance) => {
+    app.get("/resolve", { config: { permission: ["invoices.create", "invoices.view"] } }, async (req) => {
+      requireRole(req.ctx, "owner", "admin", "staff");
+      const tenantId = requireTenant(req.ctx).id;
+      const { code } = codeQuery.parse(req.query ?? {});
+      for (const r of resolvers) {
+        const hit = await r.run(tenantId, code).catch((err: unknown) => {
+          deps.log.warn({ err, resolver: r.name }, "counter: resolver failed");
+          return null;
+        });
+        if (!hit) continue;
+        const [variant] = await deps.variants(tenantId, [hit.itemId]);
+        if (!variant) continue;
+        return { variant, ...(hit.qty !== undefined ? { qty: hit.qty } : {}), ...(hit.serial ? { serial: hit.serial } : {}) };
+      }
+      throw notFound("Code");
+    });
+  };
+  return {
+    module: defineModule({ id: "counter", routes }),
+    /** Registers a resolver (asked in the order added). */
+    add(name: string, run: CodeResolver) {
+      resolvers.push({ name, run });
+    },
+  };
 }

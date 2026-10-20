@@ -60,12 +60,14 @@ describe("built-in templates", () => {
       "dining.serve",
       "invoices.create",
       "invoices.credit-note",
+      "jewellery.exchange",
       "jobcards.view",
       "loyalty.redeem",
       "medicines.dispense",
       "memberships.checkin",
       "payments.receive",
       "pos.till",
+      "serials.view",
     ]);
   });
 

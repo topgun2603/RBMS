@@ -15,8 +15,9 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/marketplace-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "// Only its browser-safe `@srirealtime/tenancy/slug` (shop address rules) is imported", "by the web kit.
-      "@srirealtime/tenancy", "@srirealtime/branding", "@srirealtime/verticals"],
+    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/marketplace-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst",
+      // Only its browser-safe `@srirealtime/tenancy/slug` (shop address rules) is imported by the web kit.
+      "@srirealtime/tenancy", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/serials-ui", "@srirealtime/scales-ui", "@srirealtime/jewellery-ui"],
     poweredByHeader: false,
     // Each shop opens the store admin on its own subdomain (anbu.localhost:3002) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],

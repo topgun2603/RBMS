@@ -163,3 +163,24 @@ describe("loyalty discount", () => {
     expect(payableAfterLoyalty(t, 10_000_000)).toBe(0);
   });
 });
+
+describe("serial-tracked units", () => {
+  const phone = { itemId: "phone", name: "Galaxy A55", unit: "pcs", price: 3_999_900, taxInclusive: true, gstRate: 18 };
+  it("adds one unit per scanned serial, ignores a second scan of the same unit, and bills the serials", () => {
+    let r = addProduct([], phone, 1, "350000000000001");
+    r = addProduct(r.lines, phone, 1, "350000000000002");
+    r = addProduct(r.lines, phone, 1, "350000000000002");
+    expect(r.lines).toHaveLength(1);
+    expect(r.lines[0]).toMatchObject({ qty: 2, serials: ["350000000000001", "350000000000002"] });
+    expect(toLineInput(r.lines[0]!).serials).toEqual(["350000000000001", "350000000000002"]);
+  });
+  it("drops the last serial when the quantity goes down", () => {
+    const r = addProduct(addProduct([], phone, 1, "A1").lines, phone, 1, "A2");
+    expect(stepQty(r.lines, r.key, -1)[0]).toMatchObject({ qty: 1, serials: ["A1"] });
+  });
+  it("weighed quantities add up to three decimals", () => {
+    const tomato = { itemId: "tomato", name: "Tomato", unit: "kg", price: 4_000, taxInclusive: false, gstRate: 0 };
+    const r = addProduct(addProduct([], tomato, 0.755).lines, tomato, 1.25);
+    expect(r.lines[0]!.qty).toBe(2.005);
+  });
+});

@@ -209,6 +209,55 @@ const DEMO_SHOPS: ShopSpec[] = [
       { name: "Whey protein 1 kg", hsn: "2106", unit: "pcs", rate: 320_000, gstRate: 18 },
     ],
   },
+  {
+    slug: "techzone",
+    appId: "EC",
+    businessType: "electronics",
+    planId: "pro",
+    name: "TechZone Mobiles",
+    primary: "#0f766e",
+    billing: {
+      legalName: "TechZone Mobiles",
+      gstin: "33AATFT4826M1ZI",
+      address: "52, Cross Cut Road",
+      city: "Coimbatore",
+      pincode: "641012",
+      stateCode: "33",
+      phone: "+919876500009",
+      invoicePrefix: "TZ",
+      upiId: "techzone@okaxis",
+    },
+    items: [
+      { name: "Galaxy M35 5G 8/128", hsn: "8517", unit: "pcs", rate: 1_699_900, gstRate: 18 },
+      { name: "Redmi Note 13 6/128", hsn: "8517", unit: "pcs", rate: 1_499_900, gstRate: 18 },
+      { name: "boAt Airdopes 141", hsn: "8518", unit: "pcs", rate: 129_900, gstRate: 18 },
+      { name: "20W USB-C charger", hsn: "8504", unit: "pcs", rate: 89_900, gstRate: 18 },
+    ],
+  },
+  {
+    slug: "lakshmi",
+    appId: "EC",
+    businessType: "jewellery",
+    planId: "pro",
+    name: "Lakshmi Jewellers",
+    primary: "#a16207",
+    billing: {
+      legalName: "Lakshmi Jewellers",
+      gstin: "33AALFL7391J1ZU",
+      address: "8, Big Bazaar Street",
+      city: "Coimbatore",
+      pincode: "641001",
+      stateCode: "33",
+      phone: "+919876500010",
+      invoicePrefix: "LJ",
+      upiId: "lakshmijewellers@okhdfcbank",
+    },
+    items: [
+      { name: "22K gold chain 16 g", hsn: "7113", unit: "pcs", rate: 10_000_000, gstRate: 3 },
+      { name: "22K gold ring 4 g", hsn: "7113", unit: "pcs", rate: 2_500_000, gstRate: 3 },
+      { name: "Silver anklet pair", hsn: "7113", unit: "pcs", rate: 450_000, gstRate: 3 },
+    ],
+  },
 ];
 
 /** Where each app is served in development; demo log lines point here. */
@@ -223,7 +272,7 @@ const APP_URLS = {
 async function seedDemoShops(kit: Kit, ownerUserId: string) {
   for (const shop of DEMO_SHOPS) {
     const { tenant, created } = await ensureShop(kit, shop, ownerUserId);
-    if (created && shop.businessType) await kit.starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId }, shop.businessType);
+    if (created && shop.businessType) await kit.starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId, slug: tenant.slug, planId: tenant.planId }, shop.businessType);
     if (created) log.info({ slug: shop.slug }, `demo shop created — open ${APP_URLS[shop.appId](shop.slug)}`);
     else log.info({ slug: shop.slug }, "demo shop exists, data left unchanged");
     log.info({ slug: shop.slug, plan: tenant.planId, app: tenant.appId }, "demo shop plan set");

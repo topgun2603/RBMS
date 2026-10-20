@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/tenancy", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/commerce-ui", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/bookings-ui", "@srirealtime/jobcards-ui", "@srirealtime/memberships-ui"],
+    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/tenancy", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/commerce-ui", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/bookings-ui", "@srirealtime/jobcards-ui", "@srirealtime/memberships-ui", "@srirealtime/serials-ui"],
     poweredByHeader: false,
     // Each shop opens the app on its own subdomain (glow.localhost:3008) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],

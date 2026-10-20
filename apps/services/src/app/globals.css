@@ -14,6 +14,7 @@
 @source "../../../../packages/orders-ui/src";
 @source "../../../../packages/site-ui/src";
 @source "../../../../packages/commerce-ui/src";
+@source "../../../../packages/serials-ui/src";
 
 /* Number inputs without spinners (qty / rate fields are typed, not clicked). */
 input[type="number"]::-webkit-outer-spin-button,

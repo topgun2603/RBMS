@@ -47,6 +47,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       // Batch 3: counter help desk, loyalty points, WhatsApp inbox + campaigns, GST e-invoice / e-way bill, branches,
       // API keys + webhooks and the report builder.
       ...BATCH3_BL,
+      // Trades (off until the business pack or the owner turns them on): weighing scales for grocery / bakery / fresh.
+      "scales.*",
       // Batch 5: Plan & billing (every app and plan).
       "subscriptions",
     ],
@@ -81,6 +83,11 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "custom-domain",
       // Batch 3: sellers (marketplace + KYC), chat, help desk + FAQ, loyalty, WhatsApp, e-invoice, API keys, reports.
       ...BATCH3_EC,
+      // Trades (off until the business pack or the owner turns them on): weighing scales, serial numbers / IMEI +
+      // warranty, jewellery (daily metal rates, making charges, HUID, old gold exchange).
+      "scales.*",
+      "serials.*",
+      "jewellery.*",
       // Batch 5: Plan & billing (every app and plan).
       "subscriptions",
     ],
@@ -162,6 +169,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "jobcards.*",
       "bookings.*",
       "memberships.*",
+      // Repair shops: serial numbers / IMEI + warranty of devices sold (off until the pack or owner turns it on).
+      "serials.*",
       "invoices.*",
       "inventory.*",
       "payments.*",
@@ -200,8 +209,8 @@ const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo",
 // Verticals (pharmacy, restaurant): the app profile decides who sees them; plans only size them. Batches and expiry
 // are the core of a pharmacy, so every plan has them; prescriptions and the H1 register from starter up. Restaurants:
 // tables and KOTs on every plan; the kitchen display and QR table ordering from starter up.
-const VERTICALS_FREE = ["medicines", "dining", "jobcards", "bookings", "memberships"];
-const VERTICALS_PAID = ["medicines.*", "dining.*", "jobcards.*", "bookings.*", "memberships.*"];
+const VERTICALS_FREE = ["medicines", "dining", "jobcards", "bookings", "memberships", "scales", "serials", "jewellery"];
+const VERTICALS_PAID = ["medicines.*", "dining.*", "jobcards.*", "bookings.*", "memberships.*", "scales.*", "serials.*", "jewellery.*"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
   free: ["catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions"],
   starter: [

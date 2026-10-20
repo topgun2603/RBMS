@@ -148,6 +148,7 @@ function LineRow({
       <div className="relative flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm leading-snug font-medium">{line.name}</p>
+          {line.serials?.length ? <p className="truncate font-mono text-[11px] text-muted-foreground">{t("pos.cart.serials", { list: line.serials.join(", ") })}</p> : null}
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
             <span>
               {money(line.price)} / {line.unit}

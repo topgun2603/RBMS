@@ -120,6 +120,32 @@ Permissions: managers get `jobcards.*`, `bookings.*`, `memberships.*`; cashiers 
 subquery like `${lines.jobId} = ${jobs.id}` becomes `job_id = id` and compares a row with itself. Correlated
 subqueries in these packages name their columns in full (`jl.jobcard_id = "jobcards"."id"`).
 
+## Trades: weighing scales, serial numbers, jewellery
+
+Three engines that sit in the app profiles of several trades. Their features start **off** for every shop
+(`offByDefault` in `apps/api/src/kit.ts`); the business pack switches them on (`features` in
+`packages/verticals/src/packs.ts`), or the owner does in Settings → Features.
+
+- **Weighing scales** (`@srirealtime/scales`, `/v1/scales`, UI at `/weighing`; packs grocery, bakery, fresh; apps BL
+  and EC): PLUs per catalogue item (by weight or by count, tare), today's price list (writes catalogue prices), CSV
+  export for the scale, label preview. Scale labels (EAN-13, prefix 20–29, 5-digit PLU, 5-digit weight) scanned at the
+  counter become a weighed line (`qty` = kg).
+- **Serial numbers / IMEI + warranty** (`@srirealtime/serials`, `/v1/serials`; packs electronics, repair; apps EC and
+  SV): tracked items with warranty months and dual IMEI, units received with IMEI check digits, scanning an IMEI at the
+  counter adds that unit, the serial prints on the bill (`serials` on the bill line), issue marks it sold with its
+  warranty from the bill date, cancel puts it back in stock; warranty lookup and claims.
+- **Jewellery** (`@srirealtime/jewellery`, `/v1/jewellery`; pack jewellery; app EC): the day's metal rates (24K / 999
+  entered, other purities derived), pieces with gross / stone weight, wastage %, making (per gram, % or flat), stones,
+  HUID and tag; saving rates reprices every piece in stock into the catalogue (GST-exclusive; tax-inclusive products
+  get GST added by the kit). Bills mark pieces sold (cancel: back in stock). Old gold exchange (OG-0001) values old
+  gold at the buying rate less deduction and is applied to a bill as a payment (method "other"). Public rates at
+  `/v1/jewellery/public/rates`.
+
+The counter resolver (`/v1/counter/resolve`, `createCounter` in `kit-verticals.ts`) tries the scales and serials
+resolvers when a code isn't a catalogue barcode or SKU. Permissions: managers get `scales.*`, `serials.*`,
+`jewellery.*`; cashiers `serials.view` and `jewellery.exchange`. Migration `0017_trades`. Demo shops: `techzone`
+(electronics) and `lakshmi` (jewellery), both EC on localhost:3002.
+
 ## Admin: Solutions
 
 Platform → **Solutions** lists the 15 solutions by app with their look, starter categories and shop counts
@@ -135,5 +161,8 @@ one (look, starter content, optionally moving the shop to that solution's app: `
 - SMS / WhatsApp for the service engines (booking confirmations, "your job is ready", membership expiry reminders):
   the ports exist (`NotifyPort`, `ReminderPort`) but aren't wired to templates yet; `memberships.service
   .remindAllExpiring` is ready for a daily job.
+- Price-embedded scale labels (the scale prints the price, not the weight): the resolver turns the price into a
+  quantity at today's unit price; a line amount override at the counter would be exact.
+- A serial number field in the billing app's bill editor (the counter and the API take serials today).
 - Every Services shop sees all three engines; switching off the ones a trade doesn't use (e.g. job cards for a gym) is
   manual in Settings → Features.

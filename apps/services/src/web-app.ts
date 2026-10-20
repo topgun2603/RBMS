@@ -7,6 +7,7 @@ import { jobcardsModule } from "@srirealtime/jobcards-ui";
 import { membershipsModule } from "@srirealtime/memberships-ui";
 import { ordersModule } from "@srirealtime/orders-ui";
 import { posModule } from "@srirealtime/pos-ui";
+import { serialsModule } from "@srirealtime/serials-ui";
 import { siteModule } from "@srirealtime/site-ui";
 import { createWebApp, currentTenantSlug } from "@srirealtime/web";
 import { workspaceModule } from "@srirealtime/workspace-ui";
@@ -30,6 +31,7 @@ export const webApp = createWebApp({
   modules: [
     bookingsModule(),
     jobcardsModule({ trackUrl }),
+    serialsModule(),
     membershipsModule(),
     billingModule(),
     posModule(),

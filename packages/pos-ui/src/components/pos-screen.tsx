@@ -24,6 +24,7 @@ import {
   isNetworkError,
   lookupCode,
   posApi,
+  resolveCode,
   useLoyaltyQuote,
   useStock,
   type CreateBillInput,
@@ -48,7 +49,7 @@ import type { ShortcutAction } from "../lib/shortcuts";
 import { dropHold, holdBill, pushRecent, storageKey, toggleFavourite, useLocalState, type HeldBill } from "../lib/storage";
 import { migrateLocalDay, useRegisterName, useTillActions, useTillSession } from "../lib/till";
 import { fitPayments, paymentsFor } from "../lib/tender";
-import { customerPhone, NO_CUSTOMER, type BillingItem, type Paged, type PosCustomer } from "../lib/types";
+import { customerPhone, NO_CUSTOMER, type BillingItem, type Paged, type PosCustomer, type VariantLookup } from "../lib/types";
 import { useCounterKeys, useFinePointer, useMediaQuery } from "../lib/use-keys";
 import { CameraScanDialog } from "./camera-scan";
 import { CartPanel } from "./cart-panel";
@@ -77,6 +78,25 @@ const EMPTY_CART: CartState = { lines: [], customer: NO_CUSTOMER, points: 0 };
 type DialogKind = "pay" | "hold" | "holds" | "returns" | "day" | "help" | "camera" | "clear";
 
 /** The full-screen counter (covers the app shell). */
+
+/**
+ * A scanned / typed code: an item barcode or SKU first; when none matches (404), the counter resolvers (weighing-scale
+ * labels with the weight, serial numbers / IMEIs with the unit). Null = nothing matched.
+ */
+async function lookupOrResolve(code: string): Promise<{ variant: VariantLookup; qty?: number; serial?: string } | null> {
+  try {
+    return { variant: await lookupCode(code) };
+  } catch (err) {
+    if (!(err instanceof ApiError && err.status === 404)) throw err;
+  }
+  try {
+    return await resolveCode(code);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 403)) return null;
+    throw err;
+  }
+}
+
 export function PosScreen() {
   return (
     <PosProvider>
@@ -147,10 +167,10 @@ function Counter() {
   }, [finePointer, desktop]);
 
   const add = React.useCallback(
-    (p: CartProduct) => {
+    (p: CartProduct, qty = 1, serial?: string | null) => {
       let key = "";
       setCart((c) => {
-        const r = addProduct(c.lines, p);
+        const r = addProduct(c.lines, p, qty, serial);
         key = r.key;
         return { ...c, lines: r.lines, points: 0 };
       });
@@ -186,9 +206,10 @@ function Counter() {
     async (code: string) => {
       try {
         if (env.has.catalogue) {
-          const v = await lookupCode(code);
+          const hit = await lookupOrResolve(code);
           reportNetwork(true);
-          add(fromLookup(v));
+          if (hit) add(fromLookup(hit.variant), hit.qty ?? 1, hit.serial);
+          else miss(code);
         } else {
           const r = await posApi.get<Paged<BillingItem>>("/invoices/items", { q: code, limit: 2 });
           reportNetwork(true);
@@ -214,10 +235,12 @@ function Counter() {
     if (!q) return;
     if (env.has.catalogue && looksLikeCode(q)) {
       try {
-        const v = await lookupCode(q);
-        add(fromLookup(v));
-        setQuery("");
-        return;
+        const hit = await lookupOrResolve(q);
+        if (hit) {
+          add(fromLookup(hit.variant), hit.qty ?? 1, hit.serial);
+          setQuery("");
+          return;
+        }
       } catch (err) {
         if (isNetworkError(err)) return miss(q, err);
       }

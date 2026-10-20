@@ -43,6 +43,11 @@ export interface BusinessPack {
   /** Theme preset id (@srirealtime/branding THEME_PRESETS). */
   preset: string;
   copy: { en: Copy; ta: Copy };
+  /**
+   * Engines the trade uses that are off for other shops of the same app (switched on for the shop when the pack is
+   * applied): weighing scales, serial numbers / warranty, jewellery rates.
+   */
+  features?: string[];
   /** Where the home page's main button goes: "/search" (shop) by default, "/book" for appointment trades. */
   ctaHref?: string;
   /** Show the clothing size guide next to a "Size" option. */
@@ -253,6 +258,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Fast counter billing, loose items by weight, expiry and home delivery",
     appId: "EC",
     preset: "fresh",
+    features: ["scales"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -292,6 +298,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Counter billing by weight, expiry, custom cake orders and pre-orders",
     appId: "EC",
     preset: "bistro",
+    features: ["scales"],
     sizeGuide: false,
     localMade: true,
     copy: {
@@ -331,6 +338,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Sold by weight with daily prices; fresh stock, quick delivery",
     appId: "EC",
     preset: "fresh",
+    features: ["scales"],
     sizeGuide: false,
     localMade: true,
     copy: {
@@ -370,6 +378,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Serial / IMEI tracking, warranty and EMI on the bill",
     appId: "EC",
     preset: "tech",
+    features: ["serials", "serials.warranty"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -409,6 +418,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Job cards from intake to delivery, parts and service bills",
     appId: "SV",
     preset: "tech",
+    features: ["serials", "serials.warranty"],
     sizeGuide: false,
     localMade: false,
     copy: {
@@ -528,6 +538,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     tagline: "Weight-based pricing with the day's gold rate, making charges, HUID and old-gold exchange",
     appId: "EC",
     preset: "luxe",
+    features: ["jewellery", "jewellery.exchange"],
     sizeGuide: false,
     localMade: true,
     copy: {

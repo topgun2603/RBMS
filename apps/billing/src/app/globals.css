@@ -8,6 +8,7 @@
 @source "../../../../packages/pos-ui/src";
 @source "../../../../packages/billing-ui/src";
 @source "../../../../packages/workspace-ui/src";
+@source "../../../../packages/scales-ui/src";
 
 /* Number inputs without spinners (qty / rate fields are typed, not clicked). */
 input[type="number"]::-webkit-outer-spin-button,
