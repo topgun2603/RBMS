@@ -1293,6 +1293,15 @@ export function createKit(env: Env, log: Logger) {
      * which the catalogue scopes to the seller's own products itself).
      */
     preHandlers: [batch3.developer.apiKeyGuard, featureCheck(features.preHandler), permissionCheck(staff.preHandler)],
+    /** Records every successful mutating request in the audit log; tells the online store to refresh what changed. */
+    onResponse: [
+      audit.onResponse,
+      createStoreRevalidator({
+        config: storeRevalidateConfig(),
+        domains: async (tenantId) => (await tenancy.service.listDomains(tenantId)).filter((d) => d.verified).map((d) => d.domain),
+        log,
+      }).onResponse,
+    ],
     async start() {
       for (const m of modules) await m.start?.();
       // Once per boot, in every process (idempotent; guarded against in-flight reservations).
