@@ -134,6 +134,20 @@
       "when": 1792498305590,
       "tag": "0018_app_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792510379788,
+      "tag": "0019_mobile",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792558866883,
+      "tag": "0020_selling_tools",
+      "breakpoints": true
     }
   ]
 }

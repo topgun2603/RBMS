@@ -65,8 +65,15 @@ export interface OrderLine {
 export interface OrderTotals {
   /** Σ qty × price as charged (what the customer sees in the cart). */
   subtotal: number;
-  /** Coupon discount on the goods, as charged (loyalty points are in `loyalty`, not here). */
+  /**
+   * Coupon and automatic-offer discount on the goods, as charged (loyalty points are in `loyalty`, not here). The
+   * offers' part is `offerDiscount`.
+   */
   discount: number;
+  /** Automatic offers applied (buy X get Y, tiers, free gifts, bundles); absent when none. */
+  offers?: { id: string; kind: string; name: string; label: string; discount: number }[];
+  /** Sum of offers[].discount (paise, as charged); absent when none. */
+  offerDiscount?: number;
   /**
    * Loyalty points redeemed on this order and their discount (paise, as charged), spread over the goods lines'
    * taxable values (a discount at the time of supply, Sec 15(3)(a) CGST Act). Absent when no points were used.

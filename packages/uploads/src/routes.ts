@@ -16,6 +16,22 @@ const signBody = z.object({
 });
 
 const idParams = z.object({ id: z.string().uuid() });
+
+/** Tenant roles that may browse the shop's files. */
+export const STAFF_ROLES = ["owner", "admin", "staff"] as const;
+
+export const listQuery = z.object({
+  purpose: z
+    .string()
+    .regex(/^[a-z0-9_-]{1,40}$/)
+    .optional(),
+  kind: z.enum(["image", "video"]).optional(),
+  visibility: z.enum(["public", "private"]).optional(),
+  q: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  cursor: z.string().max(200).optional(),
+});
 const signedQuery = z.object({ exp: z.string().optional(), sig: z.string().optional(), dl: z.string().optional() });
 
 /** Tenant files when a tenant is resolved; platform files (no tenant) are super-admin only. */
@@ -23,6 +39,24 @@ function scope(ctx: RequestContext): string | null {
   if (ctx.tenant) return ctx.tenant.id;
   requireSuperAdmin(ctx);
   return null;
+}
+
+/** One `bytes=` range of a `size`-byte body: null when absent / not a single range, "invalid" when unsatisfiable. */
+export function byteRange(header: string | undefined, size: number): { start: number; end: number } | null | "invalid" {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? "");
+  if (!m || (!m[1] && !m[2])) return null;
+  let start: number;
+  let end: number;
+  if (!m[1]) {
+    // "bytes=-500": the last 500 bytes.
+    start = Math.max(0, size - Number(m[2]));
+    end = size - 1;
+  } else {
+    start = Number(m[1]);
+    end = m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+  }
+  if (size === 0 || start >= size || start > end) return "invalid";
+  return { start, end };
 }
 
 const wildcardKey = (params: unknown) => {
@@ -50,17 +84,13 @@ export function uploadsRoutes(service: UploadsService) {
       return service.complete(id, { tenantId, userId: user.id });
     });
 
+    // The shop's files, newest first (Files page, the site editor's media library). Staff only: customers who are
+    // signed in on the store never see what the shop has uploaded.
     app.get("/", async (req) => {
-      requireUser(req.ctx);
+      requireRole(req.ctx, ...STAFF_ROLES);
       const tenant = requireTenant(req.ctx);
-      const q = z
-        .object({
-          purpose: z.string().max(40).optional(),
-          limit: z.coerce.number().int().min(1).max(200).default(50),
-          offset: z.coerce.number().int().min(0).default(0),
-        })
-        .parse(req.query);
-      return { items: await service.list({ tenantId: tenant.id, ...q }) };
+      const q = listQuery.parse(req.query);
+      return service.page({ tenantId: tenant.id, ...q });
     });
 
     app.get("/:id", async (req) => {
@@ -108,6 +138,17 @@ export function uploadsRoutes(service: UploadsService) {
           reply.header("x-content-type-options", "nosniff");
           reply.header("cache-control", query.sig ? "private, max-age=600" : "public, max-age=86400");
           if (file.downloadName) reply.header("content-disposition", contentDisposition(file.downloadName));
+          reply.header("accept-ranges", "bytes");
+          // Byte ranges, so browsers can stream and seek a hero video (Safari won't play video without them).
+          const range = byteRange(req.headers.range, file.body.length);
+          if (range === "invalid") {
+            reply.header("content-range", `bytes */${file.body.length}`);
+            return reply.code(416).send();
+          }
+          if (range) {
+            reply.code(206).header("content-range", `bytes ${range.start}-${range.end}/${file.body.length}`);
+            return reply.send(file.body.subarray(range.start, range.end + 1));
+          }
           return reply.send(file.body);
         });
       });

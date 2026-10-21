@@ -29,6 +29,8 @@ import { FreeShippingMeter } from "./cart-view";
 import { CART_BUMP_EVENT } from "./fly-to-cart";
 import { SearchBox } from "./search-box";
 import { MiniCartRecommendations } from "./recommend";
+import { GiftPrompt, OfferNudges } from "./offers";
+import { goodsTotal } from "../lib/offers";
 import { useStore } from "./store-context";
 import { useWishlist } from "./wishlist";
 import { track } from "./analytics";
@@ -853,7 +855,7 @@ function MiniCart() {
   const { t, cart } = useStore();
   const c = cart.cart;
   const close = () => cart.setMiniOpen(false);
-  const goods = c ? c.subtotal - c.discount : 0;
+  const goods = c ? goodsTotal(c) : 0;
   return (
     <Sheet open={cart.miniOpen} onOpenChange={cart.setMiniOpen}>
       <SheetContent
@@ -888,6 +890,12 @@ function MiniCart() {
         ) : (
           <>
             <FreeShippingMeter cart={c} className="border-b px-4 py-3" />
+            {((c.nudges?.length ?? 0) > 0 || (c.gifts ?? []).some((g) => g.unlocked && !g.inCart)) && (
+              <div className="grid gap-2 border-b px-4 py-3 empty:hidden">
+                <GiftPrompt cart={c} />
+                <OfferNudges cart={c} limit={1} compact skipStoreWide onNavigate={close} />
+              </div>
+            )}
             <ul className="flex-1 divide-y overflow-x-hidden overflow-y-auto px-4">
               <AnimatePresence initial={true} mode="popLayout">
                 {c.lines.map((l, i) => (

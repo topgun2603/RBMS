@@ -10,7 +10,23 @@ import { z } from "zod";
  * - cart: co-purchases of everything in the cart first, then products similar to the cart items; never cart items.
  * - home: trending (recent paid orders) blended with the categories the shopper viewed (most recent weighs most),
  *   with a freshness nudge; a new shop without orders or history gets its newest products.
+ *
+ * Stock: the service ranks `REC_STOCK_SLACK`× more ids than it shows and, when the host wires availability
+ * (inventory), `preferInStock` keeps the in-stock ones first — sold-out products only fill a row that would otherwise
+ * be short, at its end.
  */
+
+/** Rank this many times the requested limit, so sold-out products can drop off the end (see `preferInStock`). */
+export const REC_STOCK_SLACK = 2;
+
+/**
+ * In-stock ids first (in their ranked order), then the sold-out ones, cut to `limit`. `inStock` null = stock unknown
+ * (no inventory port, or it failed): the ranked order as is.
+ */
+export function preferInStock(ids: readonly string[], inStock: ReadonlySet<string> | null, limit: number): string[] {
+  if (!inStock) return ids.slice(0, limit);
+  return [...ids.filter((id) => inStock.has(id)), ...ids.filter((id) => !inStock.has(id))].slice(0, limit);
+}
 
 export const RECOMMENDATION_KINDS = ["product", "cart", "home", "bestsellers", "sale"] as const;
 export type RecommendationKind = (typeof RECOMMENDATION_KINDS)[number];

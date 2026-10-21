@@ -2525,7 +2525,7 @@ importers:
         version: 5.12.7
 
   packages/verticals:
-    devDependencies:
+    dependencies:
       '@srirealtime/branding':
         specifier: workspace:*
         version: link:../branding

@@ -191,6 +191,53 @@ describe("placing orders: blocking side effects", () => {
     expect(stock.release).toHaveBeenCalledWith(T, "order", orderId);
   });
 
+  it("prices offers + coupon through priceCart and redeems both; a raced offer releases stock and promotions", async () => {
+    const stock: StockPort = { reserve: vi.fn(async () => undefined), release: vi.fn(async () => undefined), commit: vi.fn() };
+    const raced = new AppError(409, "offer_invalid", "An offer in your cart has been fully used", { offerId: "o1", reason: "usage_limit" });
+    const coupons: CouponPort = {
+      evaluate: vi.fn(),
+      priceCart: vi.fn(async () => ({
+        lineDiscounts: [59880],
+        lines: [{ offerDiscount: 49900, couponDiscount: 9980 }],
+        offers: [{ offerId: "o1", kind: "bxgy", name: "B2G1", label: "Buy 2 get 1 free", discount: 49900, lineDiscounts: [49900] }],
+        offerDiscount: 49900,
+        coupon: { valid: true as const, couponId: "c1", discount: 9980, freeShipping: false, lineDiscounts: [9980] },
+        couponDiscount: 9980,
+        freeShipping: false,
+      })),
+      redeem: vi.fn(async () => undefined),
+      redeemOffers: vi.fn(async () => Promise.reject(raced)),
+      release: vi.fn(async () => undefined),
+    };
+    await expect(build({ stock, coupons }).create(T, { ...manual, lines: [{ variantId: V1, qty: 3 }], couponCode: "save10" })).rejects.toBe(raced);
+    expect(coupons.evaluate).not.toHaveBeenCalled();
+    expect(coupons.priceCart).toHaveBeenCalledWith(T, expect.objectContaining({ channel: "manual", couponCode: "SAVE10", lines: [expect.objectContaining({ variantId: V1, productId: `p-${V1}`, unitPrice: 49900, qty: 3, amount: 149700 })] }));
+    const orderId = ((stock.reserve as ReturnType<typeof vi.fn>).mock.calls[0]![1] as { refId: string }).refId;
+    // The coupon records only its own share; the offer its own.
+    expect(coupons.redeem).toHaveBeenCalledWith(T, "SAVE10", { refType: "order", refId: orderId }, null, 9980);
+    expect(coupons.redeemOffers).toHaveBeenCalledWith(T, { refType: "order", refId: orderId }, null, [{ offerId: "o1", amount: 49900 }]);
+    expect(coupons.release).toHaveBeenCalledWith(T, "order", orderId);
+    expect(stock.release).toHaveBeenCalledWith(T, "order", orderId);
+  });
+
+  it("a coupon beaten by an offer refuses the order with its reason", async () => {
+    const coupons: CouponPort = {
+      evaluate: vi.fn(),
+      priceCart: vi.fn(async () => ({
+        lineDiscounts: [0],
+        lines: [{ offerDiscount: 0, couponDiscount: 0 }],
+        offers: [],
+        offerDiscount: 0,
+        coupon: { valid: false as const, reason: "not_combinable", message: "A better offer is already applied to your cart" },
+        couponDiscount: 0,
+        freeShipping: false,
+      })),
+      redeem: vi.fn(),
+      release: vi.fn(),
+    };
+    await expect(build({ coupons }).create(T, { ...manual, couponCode: "X10" })).rejects.toMatchObject({ status: 400, code: "coupon_invalid", details: { reason: "not_combinable" } });
+  });
+
   it("refuses coupons when the coupons module isn't wired", async () => {
     await expect(build().create(T, { ...manual, couponCode: "X10" })).rejects.toMatchObject({ code: "coupon_invalid" });
   });

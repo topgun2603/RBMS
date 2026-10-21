@@ -1,6 +1,6 @@
 import { badRequest, forbidden, newId, notFound } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { and, desc, eq, isNull, lt, ne, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, like, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { processImage } from "./images";
 import { DEFAULT_ALLOWED_TYPES, buildKey, isAllowedType, normalizeType, thumbKeyFor, withExtension } from "./keys";
 import { files, type FileRow, type FileVisibility } from "./schema";
@@ -17,8 +17,10 @@ const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
 
 export interface UploadsConfig {
   storage: StorageAdapter;
-  /** Max upload size in bytes. Default 25 MB. */
+  /** Max upload size in bytes for everything but video. Default 25 MB. */
   maxBytes?: number;
+  /** Max size for `video/*` uploads (a shop's hero clip). Default 50 MB, and never below `maxBytes`. */
+  videoMaxBytes?: number;
   /** Allowed MIME types; wildcards like "image/*" work. Default: images, pdf, csv, xlsx, mp4, mp3. */
   allowedTypes?: string[];
   /** Thumbnail width in px. Default 400. */
@@ -56,6 +58,45 @@ export interface SignInput {
   purpose?: string | null;
 }
 
+/** `GET /v1/uploads` filters (the media library): newest first, keyset-paginated with `cursor`. */
+export interface ListInput {
+  tenantId: string | null;
+  purpose?: string;
+  ownerUserId?: string;
+  /** "image" → image/*, "video" → video/*. */
+  kind?: "image" | "video";
+  visibility?: FileVisibility;
+  /** Case-insensitive match on the original file name. */
+  q?: string;
+  limit?: number;
+  /** Older offset paging; ignored when `cursor` is set. */
+  offset?: number;
+  /** `nextCursor` of the previous page. */
+  cursor?: string;
+}
+
+export interface FilePage {
+  items: FileDto[];
+  /** Pass back as `cursor` for the next page; null on the last page. */
+  nextCursor: string | null;
+}
+
+/** Opaque keyset cursor: the last row's created-at and id. */
+export function encodeCursor(row: { createdAt: Date; id: string }): string {
+  return Buffer.from(`${row.createdAt.toISOString()}|${row.id}`, "utf8").toString("base64url");
+}
+
+export function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
+  const raw = Buffer.from(cursor, "base64url").toString("utf8");
+  const [at, id, extra] = raw.split("|");
+  const createdAt = new Date(at ?? "");
+  if (extra !== undefined || !id || !/^[0-9a-f-]{36}$/i.test(id) || Number.isNaN(createdAt.getTime())) return null;
+  return { createdAt, id };
+}
+
+/** Escapes LIKE wildcards so a search for "50%_off" matches literally. */
+export const likeEscape = (v: string) => v.replace(/[\\%_]/g, (c) => `\\${c}`);
+
 export interface SignResult {
   fileId: string;
   key: string;
@@ -63,17 +104,27 @@ export interface SignResult {
 }
 
 export const DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
+/** Videos may be larger than other files. */
+export const DEFAULT_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 /** Images larger than this are stored without dimensions/thumbnail. */
 export const THUMBNAIL_MAX_BYTES = 20 * 1024 * 1024;
 const UPLOAD_URL_TTL = 15 * 60;
 const DOWNLOAD_URL_TTL = 15 * 60;
 const THUMBNAIL_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif", "image/tiff"]);
 
+/** created_at at millisecond precision (Postgres keeps microseconds; cursors carry a JS Date). */
+const createdMs = sql<Date>`date_trunc('milliseconds', ${files.createdAt})`;
+
+const sqlTime = (d: Date) => sql`${d.toISOString()}::timestamptz`;
+
 const tenantFilter = (tenantId: string | null): SQL => (tenantId ? eq(files.tenantId, tenantId) : isNull(files.tenantId));
 
 export class UploadsService {
   readonly storage: StorageAdapter;
+  /** The largest size any upload may have (the video limit included): the local driver's body limit. */
   readonly maxBytes: number;
+  private readonly fileMaxBytes: number;
+  private readonly videoMaxBytes: number;
   private readonly allowed: readonly string[];
   private readonly thumbWidth: number;
   private readonly log: LoggerPort;
@@ -84,7 +135,9 @@ export class UploadsService {
     log?: LoggerPort,
   ) {
     this.storage = config.storage;
-    this.maxBytes = config.maxBytes ?? DEFAULT_MAX_BYTES;
+    this.fileMaxBytes = config.maxBytes ?? DEFAULT_MAX_BYTES;
+    this.videoMaxBytes = Math.max(config.videoMaxBytes ?? DEFAULT_VIDEO_MAX_BYTES, this.fileMaxBytes);
+    this.maxBytes = this.videoMaxBytes;
     this.allowed = config.allowedTypes ?? DEFAULT_ALLOWED_TYPES;
     this.thumbWidth = config.thumbnailWidth ?? 400;
     this.log = log ?? noopLogger;
@@ -95,7 +148,8 @@ export class UploadsService {
     const contentType = normalizeType(input.contentType);
     if (!isAllowedType(contentType, this.allowed)) throw badRequest(`File type ${contentType} is not allowed`);
     if (!Number.isInteger(input.size) || input.size <= 0) throw badRequest("File size must be a positive integer");
-    if (input.size > this.maxBytes) throw badRequest(`File is larger than ${Math.floor(this.maxBytes / 1024 / 1024)} MB`);
+    const limit = this.limitFor(contentType);
+    if (input.size > limit) throw badRequest(`File is larger than ${Math.floor(limit / 1024 / 1024)} MB`);
     const originalName = input.filename.trim().slice(0, 255) || "file";
 
     const id = newId();
@@ -130,7 +184,7 @@ export class UploadsService {
 
     const head = await this.storage.head(row.key);
     if (!head) throw badRequest("The file has not been uploaded yet");
-    if (head.size !== row.size || head.size > this.maxBytes) {
+    if (head.size !== row.size || head.size > this.limitFor(row.contentType)) {
       await this.storage.delete(row.key).catch(() => undefined);
       throw badRequest("Uploaded file size does not match the declared size");
     }
@@ -178,7 +232,7 @@ export class UploadsService {
   }): Promise<FileDto> {
     const contentType = normalizeType(input.contentType);
     if (!isAllowedType(contentType, this.allowed)) throw badRequest(`File type ${contentType} is not allowed`);
-    if (input.body.length === 0 || input.body.length > this.maxBytes) throw badRequest("Generated file is empty or too large");
+    if (input.body.length === 0 || input.body.length > this.limitFor(contentType)) throw badRequest("Generated file is empty or too large");
     const originalName = input.filename.trim().slice(0, 255) || "file";
     const id = newId();
     const key = buildKey({ tenantId: input.tenantId, purpose: input.purpose, filename: withExtension(originalName, contentType), id });
@@ -220,7 +274,21 @@ export class UploadsService {
     return this.toDto(row);
   }
 
-  async list(input: { tenantId: string | null; purpose?: string; ownerUserId?: string; limit?: number; offset?: number }): Promise<FileDto[]> {
+  /** Size cap for a content type: videos get the larger video limit. */
+  limitFor(contentType: string): number {
+    return normalizeType(contentType).startsWith("video/") ? this.videoMaxBytes : this.fileMaxBytes;
+  }
+
+  async list(input: ListInput): Promise<FileDto[]> {
+    return (await this.page(input)).items;
+  }
+
+  /** Ready files of one tenant, newest first, filtered by purpose / owner / kind / visibility / name. */
+  async page(input: ListInput): Promise<FilePage> {
+    const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
+    const after = input.cursor ? decodeCursor(input.cursor) : null;
+    if (input.cursor && !after) throw badRequest("Invalid cursor");
+    const q = input.q?.trim();
     const rows = await this.db
       .select()
       .from(files)
@@ -230,12 +298,19 @@ export class UploadsService {
           eq(files.status, "ready"),
           input.purpose ? eq(files.purpose, input.purpose) : undefined,
           input.ownerUserId ? eq(files.ownerUserId, input.ownerUserId) : undefined,
+          input.kind ? like(files.contentType, `${input.kind}/%`) : undefined,
+          input.visibility ? eq(files.visibility, input.visibility) : undefined,
+          q ? ilike(files.originalName, `%${likeEscape(q)}%`) : undefined,
+          after ? or(lt(createdMs, sqlTime(after.createdAt)), and(eq(createdMs, sqlTime(after.createdAt)), lt(files.id, after.id))) : undefined,
         ),
       )
-      .orderBy(desc(files.createdAt))
-      .limit(Math.min(Math.max(input.limit ?? 50, 1), 200))
-      .offset(Math.max(input.offset ?? 0, 0));
-    return Promise.all(rows.map((r) => this.toDto(r)));
+      .orderBy(desc(createdMs), desc(files.id))
+      .limit(limit + 1)
+      .offset(after ? 0 : Math.max(input.offset ?? 0, 0));
+    const more = rows.length > limit;
+    const pageRows = more ? rows.slice(0, limit) : rows;
+    const last = pageRows[pageRows.length - 1];
+    return { items: await Promise.all(pageRows.map((r) => this.toDto(r))), nextCursor: more && last ? encodeCursor(last) : null };
   }
 
   /** Deletes the stored objects and marks the row deleted. */
@@ -279,7 +354,7 @@ export class UploadsService {
     if (!storage.verify(key, query, "PUT")) throw forbidden("Invalid or expired upload URL");
     const [row] = await this.db.select().from(files).where(eq(files.key, key)).limit(1);
     if (!row || row.status !== "pending") throw notFound("Upload");
-    if (body.length > this.maxBytes || body.length !== row.size) throw badRequest("Body size does not match the signed size");
+    if (body.length > this.limitFor(row.contentType) || body.length !== row.size) throw badRequest("Body size does not match the signed size");
     await storage.put(key, body, row.contentType);
   }
 

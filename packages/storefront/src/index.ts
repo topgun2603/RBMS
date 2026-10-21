@@ -7,6 +7,7 @@ import { StorefrontService, type StorefrontDeps } from "./service";
 export * from "./schema";
 export * from "./ports";
 export * from "./pricing";
+export * from "./promotions";
 export * from "./address";
 export * from "./checkout";
 export * from "./features";

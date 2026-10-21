@@ -16,7 +16,7 @@ import { percentOff } from "../lib/format";
 import { freshIds } from "../lib/cards";
 import { Markdown } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
-import type { Availability, CmsPage, List, Product, ProductSummary, Recommendations, ReviewList, SearchResult, SellerCard, SellerLookup, StoreThemeView } from "../types";
+import type { Availability, CmsPage, List, Product, ProductSummary, Promotions, Recommendations, ReviewList, SearchResult, SellerCard, SellerLookup, StoreThemeView } from "../types";
 import { Breadcrumbs, Container, JsonLd, SectionTitle, Stars } from "../components/bits";
 import { ProductCard, ProductGrid, ProductGridSkeleton } from "../components/product-card";
 import { RailSkeleton } from "../components/skeletons";
@@ -29,6 +29,8 @@ import { RecentlyViewedStrip, RecordRecentlyViewed } from "../client/recently-vi
 import { ReviewsSection } from "../client/reviews";
 import { CompareToggle } from "../client/compare";
 import { BoughtTogether } from "../client/recommend";
+import { ProductBundles } from "../client/offers";
+import { OfferBadgeList } from "../components/offer-badges";
 import { ProductViewTracker } from "../client/trackers";
 import { Blocks } from "./content";
 
@@ -56,11 +58,13 @@ export async function ProductPage({ slug }: { slug: string }) {
   const emptyReviews: ReviewList = { items: [], total: 0, summary: { average: 0, count: 0, distribution: {} } };
   // The clothing size guide only for trades that use it (a pizza or pack "Size" is not a bust/waist chart).
   const hasSizes = !!packFor(config.shop.businessType)?.sizeGuide && product.options.some((o) => /size|அளவு/i.test(o.name) && o.values.length > 0);
-  const [avail, reviews, guidePage, seller] = await Promise.all([
+  const [avail, reviews, guidePage, seller, promos] = await Promise.all([
     apiGetSafe<List<Availability>>("/inventory/public/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } }),
     apiGetSafe<ReviewList>(`/reviews/public/products/${product.id}/reviews`, emptyReviews, { revalidate: 60, query: { limit: 5 } }),
     hasSizes ? apiGetSafe<CmsPage | null>("/cms/public/pages/size-guide", null, { revalidate: 300 }) : Promise.resolve(null),
     getSeller(product.vendorId),
+    // Offer badges and combos with this product (selling tools; empty when the shop has none or coupons are off).
+    apiGetSafe<Promotions>("/store/promotions", { offers: [], bundles: [] }, { revalidate: 60, query: { productId: product.id } }),
   ]);
   const availability: AvailabilityMap = Object.fromEntries(avail.items.map((a) => [a.itemId, { inStock: a.inStock, lowStock: a.lowStock }]));
   const anyInStock = avail.items.length === 0 || avail.items.some((a) => a.inStock);
@@ -99,6 +103,7 @@ export async function ProductPage({ slug }: { slug: string }) {
   );
   const buy = (
     <>
+      <OfferBadgeList offers={promos.offers} t={t} locale={info.locale} />
       <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} stickyBar={theme.stickyBuy === "on"} />
       {theme.compare === "on" && <CompareToggle product={{ id: product.id, slug: product.slug, name: product.name, image: product.images[0]?.url ?? null }} variant="page" className="justify-self-start" />}
       {theme.productTrust === "on" && <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />}
@@ -170,6 +175,8 @@ export async function ProductPage({ slug }: { slug: string }) {
             </div>
           </div>
         )}
+
+        <ProductBundles bundles={promos.bundles} />
 
         <div className="mt-16 border-t pt-12">
           <ReviewsSection productId={product.id} productSlug={product.slug} initial={reviews} />

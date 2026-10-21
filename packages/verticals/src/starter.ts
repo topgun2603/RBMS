@@ -1,3 +1,4 @@
+import { stockArtFor } from "@srirealtime/branding/stock-art";
 import type { BusinessPack, BusinessType } from "./packs";
 
 /**
@@ -227,12 +228,16 @@ export function starterHome(pack: BusinessPack, shopName: string, locale: Locale
   const build = (part: Part) => {
     switch (part) {
       case "hero":
-        return { type: "hero" as const, id: id("hero"), slides: [{ imageUrl: null, heading, subheading: c.heroSubheading, cta: { label: c.cta, href: ctaHref } }] };
+        // Stock artwork for the trade (drawn in its theme colours) until the owner adds photos; the tall picture on phones.
+        return {
+          type: "hero" as const,
+          id: id("hero"),
+          slides: [{ imageUrl: stockArtFor(pack.id, "hero-1"), mobileImageUrl: stockArtFor(pack.id, "split-1"), heading, subheading: c.heroSubheading, cta: { label: c.cta, href: ctaHref } }] };
       case "hero-split":
         return {
           type: "hero-split" as const,
           id: id("hero-split"),
-          imageUrl: null,
+          imageUrl: stockArtFor(pack.id, "split-1"),
           imageSide: "right" as const,
           eyebrow: (shopName || t(W.welcome)).slice(0, 60),
           heading: c.heroHeading,

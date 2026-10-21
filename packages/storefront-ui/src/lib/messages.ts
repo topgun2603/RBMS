@@ -5,6 +5,7 @@ import { servicesEn, servicesTa } from "./messages-services";
 import { sectionsEn, sectionsTa } from "./messages-sections";
 import { themeEn, themeTa } from "./messages-theme";
 import { shelvesEn, shelvesTa } from "./messages-shelves";
+import { offersEn, offersTa } from "./messages-offers";
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
 
 /** Storefront UI strings. Shop content (product names, CMS text) stays as the shop entered it. */
@@ -15,6 +16,7 @@ export const en: Messages = {
   ...sectionsEn,
   ...themeEn,
   ...shelvesEn,
+  ...offersEn,
   "nav.home": "Home",
   "nav.shopAll": "Shop all",
   "nav.menu": "Menu",
@@ -435,6 +437,7 @@ export const ta: Messages = {
   ...sectionsTa,
   ...themeTa,
   ...shelvesTa,
+  ...offersTa,
   "nav.home": "முகப்பு",
   "nav.shopAll": "அனைத்தும்",
   "nav.menu": "பட்டியல்",

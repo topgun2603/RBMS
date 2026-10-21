@@ -43,10 +43,16 @@ export interface JobSummary {
   trackToken: string;
 }
 
-/** Told when a job becomes ready or is delivered (SMS / WhatsApp to the customer). Optional; failures are logged. */
+/**
+ * Told when a job is taken in (`received`), waits for the customer's approval of the estimate, becomes ready or is
+ * delivered (SMS / WhatsApp to the customer). Optional; failures are logged.
+ */
 export interface NotifyPort {
   statusChanged(tenantId: string, job: JobSummary): void | Promise<void>;
 }
+
+/** Statuses the notify port hears about. */
+export const NOTIFY_STATUSES: readonly JobStatus[] = ["received", "awaiting_approval", "ready", "delivered"];
 
 export interface LoggerPort {
   info(o: unknown, m?: string): void;

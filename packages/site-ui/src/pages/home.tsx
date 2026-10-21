@@ -184,9 +184,10 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
   const checks = React.useMemo(() => new Map(items.map((it) => [it.key, checkSection(it.form)])), [items]);
   // Hidden sections are saved too, so they must be valid as well.
   const invalid = items.filter((it) => !checks.get(it.key)?.ok);
-  // Live preview: the real store in a frame. Unsaved sections are sent to it as you type (null = the saved draft), and a
-  // section clicked in the frame opens its form here.
-  const liveSections = React.useMemo(() => (dirty ? draftSections(items) : null), [dirty, items]);
+  // Live preview: the real store in a frame. The editor's sections are sent to it as you type — always, not only once
+  // something changed: saved sections from before section ids existed carry none, and the ids the preview gets here
+  // (`previewSections`: the section id, else the editor key) are what click-to-select and the outline map back to.
+  const liveSections = React.useMemo(() => draftSections(items), [items]);
   const openItem = items.find((i) => i.key === open);
 
   const sort = useDragSort(items, (i) => i.key, setItems);

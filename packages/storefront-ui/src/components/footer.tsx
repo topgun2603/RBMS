@@ -82,11 +82,35 @@ function FooterLogo({ name, logoUrl, className }: { name: string; logoUrl?: stri
   );
 }
 
+const norm = (v: string) => v.trim().toLowerCase();
+const linksTo = (items: MenuItem[], href: string) => items.some((m) => m.href === href || m.children?.some((c) => c.href === href));
+
+/**
+ * The footer's link groups, with the built-in help links folded in. When the shop's footer menu already has a help
+ * group (same title as ours — "Help" / "உதவி" — or a group that links /track or /help), the help-centre and
+ * order-tracking links join that group instead of a second "Help" column; otherwise `extraHelp` asks for our column.
+ */
+export function footerColumns(menu: MenuItem[], help: boolean, t: Translator): { groups: MenuItem[]; extraHelp: boolean } {
+  const groups = menu.filter((m) => m.children?.length);
+  const linksHelp = linksTo(menu, "/help");
+  const titles = new Set([t("footer.help"), t("nav.help"), "help", "support", "help & support", "customer care"].map(norm));
+  const own = groups.findIndex((g) => titles.has(norm(g.label)) || g.children!.some((c) => c.href === "/track" || c.href === "/help"));
+  if (own < 0) return { groups, extraHelp: groups.length > 0 && help && !linksHelp };
+  const g = groups[own]!;
+  const children = [
+    ...g.children!,
+    ...(help && !linksHelp ? [{ label: t("help.title"), type: "url", href: "/help" }] : []),
+    ...(!linksTo(menu, "/track") ? [{ label: t("nav.track"), type: "url", href: "/track" }] : []),
+  ];
+  return { groups: groups.map((x, i) => (i === own ? { ...g, children } : x)), extraHelp: false };
+}
+
 /**
  * Store footer. Theme `footer`: columns (trust row, newsletter card, link columns) · centered (logo, one row of links,
  * socials) · newsletter (a big signup band on the brand colour, then the columns) · minimal (one line). Every variant
  * keeps the payment marks, socials (when the shop set them) and a "back to top" link; colours come from the theme
- * tokens, so dark shops stay readable.
+ * tokens, so dark shops stay readable. The signup band / card carries `data-footer-signup`: styles.css hides it on a
+ * page that already shows a newsletter section (the home page's own signup), so shoppers never see two.
  */
 export function StoreFooter({
   config,
@@ -111,7 +135,7 @@ export function StoreFooter({
     shop.social.whatsapp && { href: whatsappUrl(shop.social.whatsapp), label: "WhatsApp", icon: MessageCircleIcon },
   ].filter(Boolean) as Social[];
 
-  const groups = menu.filter((m) => m.children?.length);
+  const { groups, extraHelp } = footerColumns(menu, help, t);
   const loose = menu.filter((m) => !m.children?.length && m.href);
   const policyLinks = POLICY_KINDS.filter((k) => policies[k]?.trim());
   const rights = t("footer.rights", { year: new Date().getFullYear(), name: shop.name });
@@ -145,8 +169,8 @@ export function StoreFooter({
       { href: "/products", label: t("nav.shopAll") },
       ...loose.map((m) => ({ href: m.href!, label: m.label })),
       ...groups.flatMap((g) => g.children!.filter((c) => c.href).map((c) => ({ href: c.href!, label: c.label }))),
-      ...(help && !menu.some((m) => m.href === "/help" || m.children?.some((c) => c.href === "/help")) ? [{ href: "/help", label: t("help.title") }] : []),
-      { href: "/track", label: t("nav.track") },
+      ...(help && !groups.some((g) => g.children!.some((c) => c.href === "/help")) && !linksTo(menu, "/help") ? [{ href: "/help", label: t("help.title") }] : []),
+      ...(groups.some((g) => g.children!.some((c) => c.href === "/track")) || linksTo(menu, "/track") ? [] : [{ href: "/track", label: t("nav.track") }]),
       ...policyLinks.map((k) => ({ href: `/policies/${k}`, label: t(`policy.${k}`) })),
     ];
     return (
@@ -196,7 +220,6 @@ export function StoreFooter({
     { href: "/cart", label: t("nav.cart"), icon: ShoppingBagIcon },
   ];
   const bigBand = variant === "newsletter";
-  const extraHelp = groups.length > 0 && help && !menu.some((m) => m.href === "/help" || m.children?.some((c) => c.href === "/help"));
   // Contact + shop + the menu's groups (or help) + extra help + policies: one row on desktop (up to five columns).
   const columns = Math.min(5, 2 + Math.max(groups.length, 1) + (extraHelp ? 1 : 0) + (policyLinks.length ? 1 : 0));
 
@@ -204,7 +227,7 @@ export function StoreFooter({
     <footer className={cn("mt-[var(--sf-section)] bg-tint-1", !bigBand && "border-t")} data-footer={variant}>
       {bigBand && (
         // Newsletter look: the signup is the footer's headline, on the brand colour (with the theme's pattern).
-        <div className="sf-brand-hero relative isolate overflow-hidden text-primary-foreground">
+        <div className="sf-brand-hero relative isolate overflow-hidden text-primary-foreground" data-footer-signup="band">
           <div className="relative z-[1] mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 sm:py-16 lg:flex-row lg:items-center lg:px-8">
             <div className="max-w-xl">
               <p className="font-display text-h1 font-semibold text-balance">{t("footer.newsletterTitle")}</p>
@@ -221,7 +244,7 @@ export function StoreFooter({
 
       {!bigBand && (
         // Newsletter card
-        <div className="mx-auto w-full max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-10 sm:px-6 lg:px-8" data-footer-signup="card">
           <div className="kolam flex flex-col items-start justify-between gap-5 rounded-[var(--sf-radius-card)] border bg-card p-6 shadow-xs sm:p-8 md:flex-row md:items-center">
             <div className="max-w-md">
               <p className="font-display text-h3 font-semibold">{t("footer.newsletterTitle")}</p>

@@ -100,7 +100,7 @@ import { StoreImage } from "./bits";
 /*
  * Category art: the category's photo, or — when a shop hasn't added one — a designed fallback instead of initials: an
  * icon picked from the category name/slug (`categoryIconKey`, keyword rules covering the trades we serve) on a brand
- * tint that rotates per tile (`tone`, six hue-shifted shades of --primary, see styles.css `.sf-cat-art`), with a soft
+ * tint that rotates per tile (`tone`, six analogous shades of --primary, see styles.css `.sf-cat-art`), with a soft
  * halo + dot pattern. `bold` is the saturated version for tiles that carry white text on top.
  */
 

@@ -69,6 +69,7 @@ import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
 import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
 import { createKitOps } from "./kit-ops";
+import { createMessages } from "./kit-messages";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
@@ -172,6 +173,26 @@ export function createKit(env: Env, log: Logger) {
         return { phone: user?.phone, email: user?.email, locale: user?.locale };
       },
     },
+  });
+
+  // Customer messages (kit-messages.ts): the bookings / job cards / memberships / orders notifiers, reminders and
+  // abandoned carts, per the shop's `messages` settings. Its deps are read lazily (they are created further down).
+  const messages = createMessages({
+    log,
+    db,
+    settings: settings.service,
+    notify: notify.service,
+    features: features.service,
+    auth: { getUser: (id) => auth.service.getUser(id) },
+    shopName: (tenantId) => shopName(tenantId),
+    storeUrl: async (tenantId) => {
+      const tenant = await tenancy.service.getById(tenantId);
+      const custom = (await tenancy.service.listDomains(tenantId)).find((d) => d.verified)?.domain ?? null;
+      return storeBaseUrl((appId) => billingUrlFor(env.STORE_PUBLIC_URL, appId), { slug: tenant?.slug ?? "", appId: tenant?.appId ?? null }, custom);
+    },
+    defineJob,
+    schedule: (name, cron) => jobs.service.schedule(name, cron),
+    engines: () => ({ bookings: bookings.service, memberships: memberships.service }),
   });
 
   // Fixed OTP for test identities (e2e scripts); never in production (testOtpConfig drops it there).
@@ -399,7 +420,8 @@ export function createKit(env: Env, log: Logger) {
     },
   });
 
-  const coupons = createCoupons({ db });
+  // Collection-scoped automatic offers ask the catalogue which products are in which collections.
+  const coupons = createCoupons({ db, collections: { membership: (tenantId, cols, products) => catalogue.service.collectionMembership(tenantId, cols, products) } });
   const orderSettings = settings.service.handle("orders");
 
   // The storefront keeps shopper stats (total spent) from order payments; it is created further down.
@@ -435,11 +457,8 @@ export function createKit(env: Env, log: Logger) {
       },
     },
     coupons: coupons.service,
-    notifier: {
-      send: async ({ tenantId, channel, to, template, vars, locale }) => ({
-        logId: (await notify.service.send({ tenantId, channel, to, template, vars, locale })).logId,
-      }),
-    },
+    // Customer order messages go through the shop's messages settings (on/off, WhatsApp/SMS, quiet hours, once).
+    notifier: messages.orderNotifier,
     shopContacts: {
       ownerContacts: async (tenantId) => {
         const members = await tenancy.service.listMembers(tenantId);
@@ -683,7 +702,10 @@ export function createKit(env: Env, log: Logger) {
     availability: storeAvailabilityPort(inventory.service, isEnabled, async (tenantId) => (await orderSettings.get({ tenantId })).allowBackorder === true),
     coupons: coupons.service,
     // A shop without zones gets delivery's implicit "All India" free rate, so checkout works out of the box.
-    delivery: { quote: (tenantId, input) => delivery.service.quote(tenantId, input) },
+    delivery: {
+      quote: (tenantId, input) => delivery.service.quote(tenantId, input),
+      freeShipping: (tenantId, input) => delivery.service.freeShipping(tenantId, input),
+    },
     featureGate: features.gate,
     profiles: { get: (userId) => auth.service.getUser(userId) },
     log,
@@ -875,16 +897,24 @@ export function createKit(env: Env, log: Logger) {
   diningRef = dining;
 
   // Job cards (repair, tailoring, optical orders): bills through the shared adapter.
-  const jobcards = createJobcards({ db, billing: billFromLines, log });
+  const jobcards = createJobcards({ db, billing: billFromLines, notify: messages.jobcards, log });
   // Appointments (salons, spas, eye tests, personal training): service prices from the catalogue, bills through the
   // shared adapter.
-  const bookings = createBookings({ db, billing: billFromLines, prices: { items: (tenantId, ids) => catalogue.service.getItems(tenantId, ids) }, log });
+  const bookings = createBookings({
+    db,
+    billing: billFromLines,
+    prices: { items: (tenantId, ids) => catalogue.service.getItems(tenantId, ids) },
+    notify: messages.bookings,
+    log,
+  });
   // Memberships and packages (gyms, salons): selling and renewing bill through the shared adapter.
   const membershipSettings = settings.service.handle("memberships");
   const memberships = createMemberships({
     db,
     billing: billFromLines,
     settings: { get: (tenantId) => membershipSettings.get({ tenantId }), set: (tenantId, patch) => membershipSettings.setTenant(tenantId, patch) },
+    reminders: messages.memberships.reminders,
+    notify: messages.memberships.notify,
     log,
   });
 
@@ -1130,6 +1160,7 @@ export function createKit(env: Env, log: Logger) {
     features.module,
     branding.module,
     notify.module,
+    messages.module,
     uploads.module,
     consent.module,
     invoices.module,
@@ -1233,8 +1264,6 @@ export function createKit(env: Env, log: Logger) {
      * which the catalogue scopes to the seller's own products itself).
      */
     preHandlers: [batch3.developer.apiKeyGuard, featureCheck(features.preHandler), permissionCheck(staff.preHandler)],
-    /** Records every successful mutating request in the audit log. */
-    onResponse: [audit.onResponse],
     async start() {
       for (const m of modules) await m.start?.();
       // Once per boot, in every process (idempotent; guarded against in-flight reservations).
@@ -1259,6 +1288,7 @@ export function createKit(env: Env, log: Logger) {
       await jobs.service.schedule(TENANCY_JOBS.verifyDomains, "*/30 * * * *");
       await jobs.service.schedule(PLANS_RECONCILE_JOB, "40 * * * *");
       await batch5.schedule();
+      await messages.schedule();
     },
     async stop() {
       for (const m of [...modules].reverse()) await m.stop?.();

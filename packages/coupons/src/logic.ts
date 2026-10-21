@@ -12,6 +12,7 @@ export const COUPON_REASONS = [
   "first_order_only",
   "not_applicable",
   "wrong_channel",
+  "not_combinable",
 ] as const;
 export type CouponReason = (typeof COUPON_REASONS)[number];
 
@@ -27,6 +28,7 @@ export const REASON_MESSAGES: Record<CouponReason, string> = {
   first_order_only: "This coupon is only for your first order",
   not_applicable: "This coupon doesn't apply to the items in your cart",
   wrong_channel: "This coupon can't be used here",
+  not_combinable: "A better offer is already applied to your cart",
 };
 
 export interface EvaluationLine {

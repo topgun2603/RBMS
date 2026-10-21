@@ -73,8 +73,48 @@ export type CouponEvaluationResult =
     }
   | { valid: false; reason: string; message?: string };
 
+/** One applied automatic offer (buy X get Y, tier, free gift, bundle), as `priceCart` reports it. */
+export interface AppliedOfferResult {
+  offerId: string;
+  kind: string;
+  name: string;
+  label: string;
+  discount: number;
+  /** Same order as the lines. */
+  lineDiscounts: number[];
+}
+
+/** `priceCart` result: offers and the coupon combined (best for the customer). */
+export interface CartPricingResult {
+  /** Offers + coupon per line, as charged (same order as the lines). */
+  lineDiscounts: number[];
+  lines: { offerDiscount: number; couponDiscount: number }[];
+  offers: AppliedOfferResult[];
+  offerDiscount: number;
+  coupon: CouponEvaluationResult | null;
+  couponDiscount: number;
+  freeShipping: boolean;
+}
+
 /** Implemented by the coupons service (same shape). */
 export interface CouponPort {
+  /**
+   * Automatic offers + the coupon in one go (the coupons module's `priceCart`). Optional: without it only the coupon
+   * is evaluated (`evaluate`).
+   */
+  priceCart?(
+    tenantId: string,
+    input: {
+      channel: string;
+      lines: { variantId: string; productId: string; categoryId?: string | null; unitPrice: number; qty: number; amount?: number }[];
+      shipping?: number;
+      couponCode?: string | null;
+      customerKey?: string | null;
+      isFirstOrder?: boolean;
+    },
+  ): Promise<CartPricingResult>;
+  /** Records the offers an order used; throws 409 offer_invalid when one ran out. `release` frees them too. */
+  redeemOffers?(tenantId: string, ref: { refType: "order"; refId: string }, customerKey: string | null | undefined, used: { offerId: string; amount: number }[]): Promise<unknown>;
   evaluate(
     tenantId: string,
     code: string,

@@ -1,0 +1,126 @@
+import type { Messages } from "@srirealtime/i18n/client";
+
+/** Selling tools: automatic offers, bundles, nudges, free gifts, free-delivery bar. Merged into lib/messages. */
+export const offersEn: Messages = {
+  // offer summaries (from kind + numbers)
+  "offer.bxgy.free": "Buy {buy} get {get} free",
+  "offer.bxgy.percent": "Buy {buy} get {get} at {pct}% off",
+  "offer.tier.qtyPercent": "Buy {min}+ get {value}% off",
+  "offer.tier.qtyFlat": "Buy {min}+ get {amount} off",
+  "offer.tier.amountPercent": "Spend {min} get {value}% off",
+  "offer.tier.amountFlat": "Spend {min} get {amount} off",
+  "offer.gift": "Free gift on orders above {amount}",
+  "offer.bundleFixed": "Combo for {amount}",
+  "offer.bundlePercent": "{pct}% off the combo",
+  "offer.cheapestFree": "The lowest-priced item is free",
+  "offer.endsOn": "Ends {date}",
+  "offer.badgesTitle": "Offers on this item",
+  "offer.applied": "Offer applied",
+  "offer.lineSaved": "{name}: −{amount}",
+  "offer.row": "Offers",
+  "offer.free": "FREE",
+
+  // nudges
+  "nudge.unitsFree": "{qty, plural, one {Add # more item} other {Add # more items}} to get {get} free",
+  "nudge.unitsPercent": "{qty, plural, one {Add # more item} other {Add # more items}} to get {get} at {pct}% off",
+  "nudge.qtyPercent": "{qty, plural, one {Add # more item} other {Add # more items}} for {value}% off",
+  "nudge.qtyFlat": "{qty, plural, one {Add # more item} other {Add # more items}} for {amount} off",
+  "nudge.amountPercent": "You're {amount} away from {value}% off",
+  "nudge.amountFlat": "You're {amount} away from {value} off",
+  "nudge.gift": "You're {amount} away from a free gift",
+  "nudge.bundle": "Complete the {name} and save",
+  "nudge.title": "You're close to a deal",
+  "nudge.progress": "Progress towards {name}",
+  "nudge.shopOffer": "Shop the offer",
+
+  // free gift
+  "gift.unlocked": "You've unlocked a free gift: {name}",
+  "gift.add": "Add free gift",
+  "gift.added": "Free gift added",
+  "gift.inCart": "Free gift",
+
+  // bundles
+  "bundle.title": "Buy together and save",
+  "bundle.eyebrow": "Combo offer",
+  "bundle.save": "Save {amount}",
+  "bundle.price": "Combo price",
+  "bundle.regular": "Bought separately",
+  "bundle.add": "Add combo to cart",
+  "bundle.added": "Combo added to your cart",
+  "bundle.choose": "Choose {name}",
+  "bundle.chooseFirst": "Choose an option for each item",
+  "bundle.unavailable": "Part of this combo is out of stock",
+  "bundle.pageTitle": "Combos & bundles",
+  "bundle.pageEyebrow": "Better together",
+  "bundle.pageBody": "Hand-picked sets at a special price. Add the whole combo in one tap — the saving shows in your cart.",
+  "bundle.empty": "No combos right now",
+  "bundle.emptyBody": "Check back soon for new combo offers.",
+  "bundle.items": "{count, plural, one {# item} other {# items}}",
+  "bundle.viewAll": "All combos",
+  "bundle.option": "Option",
+
+  // coupons vs offers
+  "coupon.not_combinable": "A better offer is already applied to your cart, so this coupon wasn't used.",
+
+  // free delivery
+  "cart.freeMoreArea": "Add {amount} more for free delivery to your area",
+};
+
+export const offersTa: Messages = {
+  "offer.bxgy.free": "{buy} வாங்கினால் {get} இலவசம்",
+  "offer.bxgy.percent": "{buy} வாங்கினால் {get} {pct}% தள்ளுபடியில்",
+  "offer.tier.qtyPercent": "{min}+ வாங்கினால் {value}% தள்ளுபடி",
+  "offer.tier.qtyFlat": "{min}+ வாங்கினால் {amount} தள்ளுபடி",
+  "offer.tier.amountPercent": "{min} செலவழித்தால் {value}% தள்ளுபடி",
+  "offer.tier.amountFlat": "{min} செலவழித்தால் {amount} தள்ளுபடி",
+  "offer.gift": "{amount}க்கு மேல் ஆர்டர்களுக்கு இலவசப் பரிசு",
+  "offer.bundleFixed": "காம்போ {amount} மட்டும்",
+  "offer.bundlePercent": "காம்போவுக்கு {pct}% தள்ளுபடி",
+  "offer.cheapestFree": "குறைந்த விலைப் பொருள் இலவசம்",
+  "offer.endsOn": "{date} வரை",
+  "offer.badgesTitle": "இந்தப் பொருளுக்கான சலுகைகள்",
+  "offer.applied": "சலுகை பயன்படுத்தப்பட்டது",
+  "offer.lineSaved": "{name}: −{amount}",
+  "offer.row": "சலுகைகள்",
+  "offer.free": "இலவசம்",
+
+  "nudge.unitsFree": "{get} இலவசமாகப் பெற இன்னும் {qty, plural, one {# பொருள்} other {# பொருட்கள்}} சேர்க்கவும்",
+  "nudge.unitsPercent": "{get} பொருளை {pct}% தள்ளுபடியில் பெற இன்னும் {qty, plural, one {# பொருள்} other {# பொருட்கள்}} சேர்க்கவும்",
+  "nudge.qtyPercent": "{value}% தள்ளுபடிக்கு இன்னும் {qty, plural, one {# பொருள்} other {# பொருட்கள்}} சேர்க்கவும்",
+  "nudge.qtyFlat": "{amount} தள்ளுபடிக்கு இன்னும் {qty, plural, one {# பொருள்} other {# பொருட்கள்}} சேர்க்கவும்",
+  "nudge.amountPercent": "{value}% தள்ளுபடிக்கு இன்னும் {amount} மட்டுமே",
+  "nudge.amountFlat": "{value} தள்ளுபடிக்கு இன்னும் {amount} மட்டுமே",
+  "nudge.gift": "இலவசப் பரிசுக்கு இன்னும் {amount} மட்டுமே",
+  "nudge.bundle": "{name} காம்போவை முழுமையாக்கிச் சேமியுங்கள்",
+  "nudge.title": "சலுகைக்கு மிக அருகில் இருக்கிறீர்கள்",
+  "nudge.progress": "{name} சலுகைக்கான முன்னேற்றம்",
+  "nudge.shopOffer": "சலுகைப் பொருட்களைப் பாருங்கள்",
+
+  "gift.unlocked": "இலவசப் பரிசு கிடைத்துவிட்டது: {name}",
+  "gift.add": "இலவசப் பரிசைச் சேர்க்கவும்",
+  "gift.added": "இலவசப் பரிசு சேர்க்கப்பட்டது",
+  "gift.inCart": "இலவசப் பரிசு",
+
+  "bundle.title": "சேர்த்து வாங்கி சேமியுங்கள்",
+  "bundle.eyebrow": "காம்போ சலுகை",
+  "bundle.save": "{amount} சேமிப்பு",
+  "bundle.price": "காம்போ விலை",
+  "bundle.regular": "தனித்தனியாக வாங்கினால்",
+  "bundle.add": "காம்போவை கார்ட்டில் சேர்க்கவும்",
+  "bundle.added": "காம்போ உங்கள் கார்ட்டில் சேர்க்கப்பட்டது",
+  "bundle.choose": "{name} தேர்வு செய்யவும்",
+  "bundle.chooseFirst": "ஒவ்வொரு பொருளுக்கும் ஒரு தேர்வைச் செய்யவும்",
+  "bundle.unavailable": "இந்தக் காம்போவின் ஒரு பகுதி கையிருப்பில் இல்லை",
+  "bundle.pageTitle": "காம்போக்கள் & தொகுப்புகள்",
+  "bundle.pageEyebrow": "சேர்ந்தால் சிறப்பு",
+  "bundle.pageBody": "சிறப்பு விலையில் தேர்ந்தெடுத்த தொகுப்புகள். முழு காம்போவையும் ஒரே தட்டில் சேர்க்கவும் — சேமிப்பு உங்கள் கார்ட்டில் தெரியும்.",
+  "bundle.empty": "தற்போது காம்போக்கள் இல்லை",
+  "bundle.emptyBody": "புதிய காம்போ சலுகைகளுக்கு விரைவில் வாருங்கள்.",
+  "bundle.items": "{count, plural, one {# பொருள்} other {# பொருட்கள்}}",
+  "bundle.viewAll": "அனைத்து காம்போக்கள்",
+  "bundle.option": "தேர்வு",
+
+  "coupon.not_combinable": "இதைவிடச் சிறந்த சலுகை ஏற்கனவே உங்கள் கார்ட்டில் உள்ளது, அதனால் இந்தக் கூப்பன் பயன்படுத்தப்படவில்லை.",
+
+  "cart.freeMoreArea": "உங்கள் பகுதிக்கு இலவச டெலிவரிக்கு இன்னும் {amount} சேர்க்கவும்",
+};

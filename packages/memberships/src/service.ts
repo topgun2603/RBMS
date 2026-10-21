@@ -29,7 +29,16 @@ import {
   type MemberStatus,
   type SubscriptionState,
 } from "./logic";
-import { noopLogger, type BillingPort, type BillResult, type ExpiringMembership, type LoggerPort, type MembershipsSettingsPort, type ReminderPort } from "./ports";
+import {
+  noopLogger,
+  type BillingPort,
+  type BillResult,
+  type ExpiringMembership,
+  type LoggerPort,
+  type MembershipNotifyPort,
+  type MembershipsSettingsPort,
+  type ReminderPort,
+} from "./ports";
 import {
   membershipCheckins,
   membershipMembers,
@@ -47,6 +56,8 @@ export interface MembershipsDeps {
   billing?: BillingPort;
   /** Expiry reminders (WhatsApp / SMS) for `remindExpiring`. Optional. */
   reminders?: ReminderPort;
+  /** "Welcome" / "renewed" messages when a plan is sold. Optional. */
+  notify?: MembershipNotifyPort;
   /** Settings namespace `memberships`. Without it the defaults apply and `PUT /settings` is refused. */
   settings?: MembershipsSettingsPort;
   log?: LoggerPort;
@@ -660,7 +671,31 @@ export class MembershipsService {
   async sell(tenant: TenantRef, memberId: string, input: unknown, opts: { branchId?: string | null; userId?: string | null } = {}): Promise<SubscriptionView> {
     const b = sellInput.parse(input);
     const [member, plan] = await Promise.all([this.memberRow(tenant.id, memberId), this.plan(tenant.id, b.planId)]);
-    return this.createSubscription(tenant, member, plan, b.startDate ?? this.today(), { ...b, ...opts });
+    const sub = await this.createSubscription(tenant, member, plan, b.startDate ?? this.today(), { ...b, ...opts });
+    this.notifySold(tenant.id, member, sub, false);
+    return sub;
+  }
+
+  /** Tells the notify port about a sold / renewed plan. Never throws. */
+  private notifySold(tenantId: string, member: MembershipMemberRow, sub: SubscriptionView, renewal: boolean) {
+    const n = this.deps.notify;
+    if (!n) return;
+    const notice = {
+      memberId: member.id,
+      memberCode: member.memberCode,
+      name: member.name,
+      phone: member.phone,
+      subscriptionId: sub.id,
+      planName: sub.planName,
+      startDate: sub.startDate,
+      endDate: sub.endDate,
+      renewal,
+    };
+    try {
+      void Promise.resolve(n.sold(tenantId, notice)).catch((err: unknown) => this.log.warn({ err, tenantId, memberId: member.id }, "memberships: notify failed"));
+    } catch (err) {
+      this.log.warn({ err, tenantId, memberId: member.id }, "memberships: notify failed");
+    }
   }
 
   /**
@@ -680,7 +715,9 @@ export class MembershipsService {
       .limit(1);
     if (later) throw new AppError(409, "already_renewed", "This plan has already been renewed", { subscriptionId: later.id });
     const [member, plan] = await Promise.all([this.memberRow(tenantId, prev.memberId), this.plan(tenantId, b.planId ?? prev.planId)]);
-    return this.createSubscription(tenant, member, plan, renewalStart(prev.endDate, this.today()), { ...b, ...opts, renewedFromId: prev.id });
+    const sub = await this.createSubscription(tenant, member, plan, renewalStart(prev.endDate, this.today()), { ...b, ...opts, renewedFromId: prev.id });
+    this.notifySold(tenantId, member, sub, true);
+    return sub;
   }
 
   /** Bills a plan sold without a bill. */
@@ -967,6 +1004,15 @@ export class MembershipsService {
       this.log.error({ err, tenantId, days }, "memberships: expiry reminders failed");
       return 0;
     }
+  }
+
+  /** Shops with a (not cancelled) plan ending between `from` and `to` (YYYY-MM-DD), for the host's daily job. */
+  async tenantsWithPlansEnding(from: string, to: string): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ tenantId: S.tenantId })
+      .from(S)
+      .where(and(gte(S.endDate, from), lte(S.endDate, to), ne(S.status, "cancelled")));
+    return rows.map((r) => r.tenantId);
   }
 
   /** `remindExpiring` for every shop with a plan ending on that day (for the host's daily job). Never throws. */

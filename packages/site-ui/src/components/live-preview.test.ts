@@ -1,7 +1,7 @@
 import { DEFAULT_STORE_THEME } from "@srirealtime/branding/theme";
 import { describe, expect, it } from "vitest";
 import type { EditorItem } from "../lib/hidden";
-import { appearanceTokens, brandTokens, itemKeyForSection, previewSections } from "./live-preview-drafts";
+import { appearanceTokens, brandTokens, itemKeyForSection, previewSections, previewViewOfPath } from "./live-preview-drafts";
 import { liveMessages, liveEn, liveTa } from "./live-preview-messages";
 import { cleanPath, editorMessage, enterUrl, fitScale, originOf, PREVIEW_DEVICES, readStoreMessage } from "./live-preview-protocol";
 
@@ -86,5 +86,30 @@ describe("labels", () => {
     expect(Object.keys(liveTa).sort()).toEqual(Object.keys(liveEn).sort());
     expect(liveMessages("en")("updated", { ms: 120 })).toBe("Updated in 120 ms");
     expect(liveMessages("ta")("updated", { ms: 120 })).toContain("120");
+  });
+});
+
+describe("appearance preview chips follow the frame", () => {
+  it("maps store paths to the home / listing / product chip; other pages keep the current chip", () => {
+    expect(previewViewOfPath("/")).toBe("home");
+    expect(previewViewOfPath("/?utm=x")).toBe("home");
+    expect(previewViewOfPath("/p/silk-saree")).toBe("product");
+    expect(previewViewOfPath("/products?sort=new")).toBe("listing");
+    expect(previewViewOfPath("/c/sarees")).toBe("listing");
+    expect(previewViewOfPath("/collections/new-arrivals")).toBe("listing");
+    expect(previewViewOfPath("/search?q=kurti")).toBe("listing");
+    expect(previewViewOfPath("/pages/about")).toBeNull();
+    expect(previewViewOfPath("/cart")).toBeNull();
+  });
+});
+
+describe("store probe", () => {
+  it("is up on any answer, down on a network failure, up (let the ready timeout decide) when slow", async () => {
+    const { probeStore } = await import("./live-preview");
+    const seen: string[] = [];
+    expect(await probeStore(STORE, (async (u: string) => (seen.push(u), new Response(null, { status: 404 }))) as unknown as typeof fetch)).toBe(true);
+    expect(seen).toEqual([`${STORE}/favicon.svg`]);
+    expect(await probeStore(STORE, (async () => Promise.reject(new TypeError("Failed to fetch"))) as unknown as typeof fetch)).toBe(false);
+    expect(await probeStore(STORE, (async () => Promise.reject(new DOMException("aborted", "AbortError"))) as unknown as typeof fetch)).toBe(true);
   });
 });

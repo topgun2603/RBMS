@@ -538,6 +538,19 @@ html {
   text-align: start;
 }
 
+/*
+ * One signup per page: the footer's newsletter band / card (components/footer.tsx, `data-footer-signup`) steps aside on
+ * a page that already shows a newsletter section (the home page's own; pages/home.tsx tags section wrappers with
+ * `data-section-type`). Other pages keep the footer signup. Works in the live preview too (sections re-render).
+ */
+.sf-root:has([data-section-type="newsletter"]) [data-footer-signup] {
+  display: none;
+}
+/* The newsletter footer leans on its band for the top edge; without it, draw the usual border. */
+.sf-root:has([data-section-type="newsletter"]) footer[data-footer="newsletter"] {
+  border-top-width: 1px;
+}
+
 /* ------------------------------------------------------------------ category art (components/category-art.tsx)
  * The no-photo fallback of a category tile: an icon on a brand tint. `data-tone` rotates through six shades derived
  * from --primary (hue-shifted with relative colour syntax; older browsers keep the plain brand tint), so a row of
@@ -621,25 +634,31 @@ html {
   width: 52cqmin;
   height: 52cqmin;
 }
+/*
+ * Tones stay in an analogous band around the brand hue: at most 8° "up" and 24° "down" the oklch wheel, the rest of
+ * the variety comes from lightness / chroma. Up is the risky way for warm brands (gold h≈85 + 25° is olive, + 50° is
+ * sage green); down moves gold → amber → orange, red → rose, blue → indigo-ish blue, green → yellow-green — all
+ * neighbours of the brand. lib/storefront-polish.test.tsx parses these rules and holds them to that band.
+ */
 .sf-cat-art[data-tone="1"] {
-  --cat: oklch(from var(--primary) l c calc(h + 25));
+  --cat: oklch(from var(--primary) calc(l * 1.06) calc(c * 0.85) calc(h - 12));
 }
 .sf-cat-art[data-tone="2"] {
-  --cat: oklch(from var(--primary) l c calc(h - 25));
+  --cat: oklch(from var(--primary) l c calc(h + 8));
 }
 .sf-cat-art[data-tone="3"] {
-  --cat: oklch(from var(--primary) calc(l * 0.92) c calc(h + 50));
+  --cat: oklch(from var(--primary) calc(l * 0.9) c calc(h - 24));
 }
 .sf-cat-art[data-tone="4"] {
-  --cat: oklch(from var(--primary) l c calc(h - 50));
+  --cat: oklch(from var(--primary) calc(l * 1.1) calc(c * 0.7) calc(h + 4));
 }
 .sf-cat-art[data-tone="5"] {
   --cat: oklch(from var(--primary) calc(l * 0.8) calc(c * 0.75) h);
 }
-/* Brand gradient ring of the "story rings" layout (hue-shifted brand colours, like the tints). */
+/* Brand gradient ring of the "story rings" layout (analogous brand shades, like the tints). */
 .sf-story-ring {
   background: var(--sf-gradient);
-  background: conic-gradient(from 210deg, var(--primary), oklch(from var(--primary) l c calc(h + 40)), oklch(from var(--primary) calc(l * 1.05) c calc(h + 80)), oklch(from var(--primary) l c calc(h - 30)), var(--primary));
+  background: conic-gradient(from 210deg, var(--primary), oklch(from var(--primary) calc(l * 1.08) c calc(h - 14)), oklch(from var(--primary) calc(l * 0.9) c calc(h - 24)), oklch(from var(--primary) l c calc(h + 8)), var(--primary));
 }
 @media (prefers-reduced-motion: reduce) {
   .sf-cat-art-icon {

@@ -93,6 +93,8 @@ export function storeCatalogPort(catalogue: Catalogue): StoreCatalogPort {
         mrp: p.mrp,
         status: p.status,
         channels: p.channels,
+        categoryId: p.categoryId,
+        variantIds: p.variantIds,
       })),
   };
 }

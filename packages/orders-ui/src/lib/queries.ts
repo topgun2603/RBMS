@@ -8,10 +8,14 @@ import type {
   CarrierAccount,
   CarrierAccountInput,
   CategoryLite,
+  CollectionLite,
   Coupon,
   CouponEvaluation,
   CouponInput,
   ManualOrderInput,
+  Offer,
+  OfferInput,
+  OfferKind,
   Order,
   OrderListFilters,
   OrderListResult,
@@ -49,6 +53,12 @@ export const ok = {
   couponTable: ["coupons", "list", "table"] as const,
   coupon: (id: string) => ["coupons", "detail", id] as const,
   redemptions: (id: string) => ["coupons", "redemptions", id] as const,
+  /** Every offer list. */
+  offerLists: ["coupons", "offers", "list"] as const,
+  offerList: (kind: string) => ["coupons", "offers", "list", kind] as const,
+  offer: (id: string) => ["coupons", "offers", "detail", id] as const,
+  collections: ["catalog", "collections"] as const,
+  variantsByIds: (ids: string[]) => ["catalog", "variants-by-ids", [...ids].sort()] as const,
   zones: ["delivery", "zones"] as const,
   account: ["delivery", "account"] as const,
   shipments: (orderId: string) => ["delivery", "shipments", orderId] as const,
@@ -415,6 +425,82 @@ export function useProductsByIds(ids: string[]) {
       }
       return found;
     },
+    staleTime: 60_000,
+  });
+}
+
+// ---------------------------------------------------------------- automatic offers and bundles
+
+export function useOffers(kind: OfferKind | "all") {
+  return useQuery({
+    queryKey: ok.offerList(kind),
+    queryFn: ({ signal }) => api.get<Paged<Offer>>("/coupons/offers", { kind: kind === "all" ? undefined : kind, limit: 200 }, { signal }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useOffer(id: string | null) {
+  return useQuery({ queryKey: ok.offer(id ?? ""), enabled: !!id, queryFn: () => api.get<Offer>(`/coupons/offers/${id}`) });
+}
+
+export function useSaveOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: Partial<OfferInput> }) => (id ? api.patch<Offer>(`/coupons/offers/${id}`, body) : api.post<Offer>("/coupons/offers", body)),
+    onSuccess: (o) => {
+      qc.setQueryData(ok.offer(o.id), o);
+      void qc.invalidateQueries({ queryKey: ok.offerLists });
+    },
+  });
+}
+
+/** Active switch with an optimistic update in the cached offer lists. */
+export function useToggleOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) => api.patch<Offer>(`/coupons/offers/${id}`, { active }),
+    onMutate: async ({ id, active }) => {
+      await qc.cancelQueries({ queryKey: ok.offerLists });
+      const prev = qc.getQueriesData<Paged<Offer>>({ queryKey: ok.offerLists });
+      for (const [key, data] of prev) {
+        if (data && Array.isArray(data.items)) qc.setQueryData<Paged<Offer>>(key, { ...data, items: data.items.map((o) => (o.id === id ? { ...o, active } : o)) });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      for (const [key, data] of ctx?.prev ?? []) qc.setQueryData(key, data);
+    },
+    onSuccess: (o) => qc.setQueryData(ok.offer(o.id), o),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ok.offerLists }),
+  });
+}
+
+export function useDeleteOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<{ ok: true }>(`/coupons/offers/${id}`),
+    onSuccess: (_r, id) => {
+      qc.removeQueries({ queryKey: ok.offer(id) });
+      void qc.invalidateQueries({ queryKey: ok.offerLists });
+    },
+  });
+}
+
+export function useCollections(enabled = true) {
+  return useQuery({
+    queryKey: ok.collections,
+    enabled,
+    queryFn: () => api.get<Paged<CollectionLite>>("/catalog/collections", { limit: 200 }).then((r) => r.items),
+    staleTime: 60_000,
+  });
+}
+
+/** Variant names / prices for ids already on an offer (gift, fixed bundle items). */
+export function useVariantsByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ok.variantsByIds(ids),
+    enabled: ids.length > 0,
+    queryFn: () => api.get<{ items: VariantLookup[] }>("/catalog/variants", { ids: ids.join(",") }).then((r) => new Map(r.items.map((v) => [v.id, v]))),
     staleTime: 60_000,
   });
 }

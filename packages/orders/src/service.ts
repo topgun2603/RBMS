@@ -57,6 +57,7 @@ import {
 import {
   noopLogger,
   type CatalogPort,
+  type CartPricingResult,
   type CouponPort,
   type InvoicingPort,
   type LoggerPort,
@@ -471,6 +472,7 @@ const stateOf = (r: OrderRow): TransitionState => ({
   paid: r.paid - r.refunded,
   stockState: r.stockState,
   couponCode: r.couponCode,
+  hasOffers: (r.totals.offers?.length ?? 0) > 0,
   invoiceId: r.invoiceId,
 });
 
@@ -547,6 +549,8 @@ interface EffectContext {
   reason?: string | null;
   /** Placement only: what the coupon redeem records. */
   couponAmount?: number;
+  /** Placement only: the automatic offers to record. */
+  offers?: { offerId: string; amount: number }[];
   allowBackorder?: boolean;
 }
 
@@ -942,11 +946,38 @@ export class OrdersService {
     const customerKey = customerKeyOf(draft.customer);
     const id = newId();
 
-    // Coupon: evaluated here (pure rules in the coupons module), redeemed as a blocking effect below.
+    // Automatic offers + coupon: priced by the coupons module (best for the customer), redeemed as a blocking effect below.
     let couponCode: string | null = null;
     let lineDiscounts: number[] | undefined;
     let freeShipping = false;
-    if (draft.couponCode) {
+    let applied: CartPricingResult["offers"] = [];
+    let couponGoods: number | null = null;
+    const pricing =
+      this.coupons?.priceCart && (await this.featureOn(tenantId, "coupons"))
+        ? await this.coupons.priceCart(tenantId, {
+            channel: draft.channel,
+            lines: base.map((l) => ({ variantId: l.variantId, productId: l.productId, categoryId: l.categoryId ?? null, unitPrice: l.price, qty: l.qty, amount: l.gross })),
+            shipping: draft.shipping,
+            couponCode: draft.couponCode ? draft.couponCode.trim().toUpperCase() : null,
+            customerKey,
+            isFirstOrder: draft.couponCode ? await this.isFirstOrder(tenantId, draft.customer) : undefined,
+          })
+        : null;
+    if (pricing) {
+      if (draft.couponCode) {
+        const result = pricing.coupon;
+        if (!result || !result.valid) {
+          const reason = result && !result.valid ? result.reason : "not_found";
+          const message = result && !result.valid ? result.message : undefined;
+          throw new AppError(400, "coupon_invalid", message ?? "This coupon can't be used", { reason });
+        }
+        couponCode = draft.couponCode.trim().toUpperCase();
+        freeShipping = result.freeShipping;
+        couponGoods = pricing.couponDiscount;
+      }
+      applied = pricing.offers.filter((o) => o.discount > 0);
+      if (pricing.lineDiscounts.length === base.length && pricing.lineDiscounts.some((d) => d > 0)) lineDiscounts = pricing.lineDiscounts;
+    } else if (draft.couponCode) {
       const code = draft.couponCode.trim().toUpperCase();
       if (!this.coupons || !(await this.featureOn(tenantId, "coupons"))) {
         throw new AppError(400, "coupon_invalid", "Coupons can't be used in this shop", { reason: "not_found" });
@@ -1007,6 +1038,10 @@ export class OrdersService {
         sellerState,
         placeOfSupply,
       });
+      if (applied.length) {
+        totals.offers = applied.map((o) => ({ id: o.offerId, kind: o.kind, name: o.name, label: o.label, discount: o.discount }));
+        totals.offerDiscount = applied.reduce((s, o) => s + o.discount, 0);
+      }
 
       const now = this.now();
       const fy = financialYear(todayIST(now));
@@ -1052,10 +1087,11 @@ export class OrdersService {
         updatedAt: now,
       };
 
-      effects = planPlacement({ couponCode, notifyOwner: settings.notifyOwner });
+      effects = planPlacement({ couponCode, hasOffers: applied.length > 0, notifyOwner: settings.notifyOwner });
       ctx = {
         actorUserId: draft.createdBy,
-        couponAmount: totals.discount + totals.shippingWaived,
+        couponAmount: (couponGoods ?? totals.discount) + totals.shippingWaived,
+        offers: applied.map((o) => ({ offerId: o.offerId, amount: o.discount })),
         allowBackorder: draft.allowBackorder ?? settings.allowBackorder,
       };
       const blocking = effects.filter(isBlocking);
@@ -1256,8 +1292,17 @@ export class OrdersService {
         return;
       }
       case "coupon.redeem": {
-        if (!this.coupons || !row.couponCode) return;
-        await this.coupons.redeem(tenantId, row.couponCode, { refType: "order", refId: id }, customerKeyOf(row.customer), ctx.couponAmount ?? 0);
+        if (!this.coupons) return;
+        if (row.couponCode) await this.coupons.redeem(tenantId, row.couponCode, { refType: "order", refId: id }, customerKeyOf(row.customer), ctx.couponAmount ?? 0);
+        if (ctx.offers?.length && this.coupons.redeemOffers) {
+          try {
+            await this.coupons.redeemOffers(tenantId, { refType: "order", refId: id }, customerKeyOf(row.customer), ctx.offers);
+          } catch (err) {
+            // This effect isn't undone by the runner when it fails: give the coupon (and any offers) back here.
+            await this.coupons.release(tenantId, "order", id).catch(() => undefined);
+            throw err;
+          }
+        }
         return;
       }
       case "stock.release": {

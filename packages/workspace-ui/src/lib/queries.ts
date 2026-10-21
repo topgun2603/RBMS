@@ -9,13 +9,17 @@ import type {
   InviteInput,
   Mapping,
   MemberPatch,
+  MessagesSettings,
+  MessagesSettingsView,
   OnboardingStatus,
   Paged,
   PermissionGroup,
   PreviewResult,
   Role,
   RoleInput,
+  SentMessage,
   StaffMember,
+  TestSendResult,
 } from "./types";
 
 export const wk = {
@@ -30,6 +34,8 @@ export const wk = {
   jobs: ["import", "jobs"] as const,
   job: (id: string) => ["import", "job", id] as const,
   onboarding: ["onboarding"] as const,
+  messages: ["messages", "settings"] as const,
+  sentMessages: ["messages", "log"] as const,
 };
 
 // ---------------------------------------------------------------- staff
@@ -191,5 +197,36 @@ export function useOnboardingAction() {
       if (s && typeof s === "object" && "steps" in s) qc.setQueryData(wk.onboarding, s);
       else void qc.invalidateQueries({ queryKey: wk.onboarding });
     },
+  });
+}
+
+// ---------------------------------------------------------------- customer messages
+
+export function useMessagesSettings(enabled = true) {
+  return useQuery({ queryKey: wk.messages, queryFn: () => api.get<MessagesSettingsView>("/messages/settings"), enabled });
+}
+
+export function useSaveMessagesSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<MessagesSettings>) => api.put<MessagesSettingsView>("/messages/settings", body),
+    onSuccess: (v) => qc.setQueryData(wk.messages, v),
+  });
+}
+
+export function useSendTestMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { event: string; channel?: "whatsapp" | "sms" | "email" }) => api.post<{ results: TestSendResult[] }>("/messages/test", body),
+    onSettled: () => qc.invalidateQueries({ queryKey: wk.sentMessages }),
+  });
+}
+
+export function useSentMessages(limit: number, enabled = true) {
+  return useQuery({
+    queryKey: [...wk.sentMessages, limit],
+    queryFn: () => api.get<{ items: SentMessage[] }>("/messages/log", { limit }).then((r) => r.items),
+    enabled,
+    refetchInterval: 30_000,
   });
 }

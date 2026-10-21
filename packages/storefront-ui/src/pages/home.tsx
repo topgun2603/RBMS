@@ -132,7 +132,9 @@ async function loadShelves(sections: HomeSection[], t: Translator): Promise<Map<
 async function categoryCounts(sections: HomeSection[]): Promise<Map<string, number> | undefined> {
   if (!sections.some((s) => s.type === "categories" && s.showCounts)) return undefined;
   const r = await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 300, query: { limit: 1 } });
-  return new Map((r?.facets.categories ?? []).map((c) => [c.id, c.count]));
+  // No answer → no counts at all (rather than "Coming soon" on every tile); an empty facet list means no products yet.
+  if (!r?.facets) return undefined;
+  return new Map((r.facets.categories ?? []).map((c) => [c.id, c.count]));
 }
 
 /** Product ids a section shows (for one ratings call per page). */
@@ -166,8 +168,9 @@ export async function HomePage() {
       {!heroHeading && <h1 className="sr-only">{config.shop.name}</h1>}
       <div className="sf-home flex flex-col gap-[var(--sf-section)] pb-4">
         {sections.map((s, i) => (
-          // `display: contents` keeps the flex gaps; the id lets the live preview select, outline and scroll to it.
-          <div key={s.id ?? i} data-section-id={s.id} className="contents">
+          // `display: contents` keeps the flex gaps; the id lets the live preview select, outline and scroll to it; the
+          // type lets styles.css drop the footer signup when the page has its own newsletter section.
+          <div key={s.id ?? i} data-section-id={s.id} data-section-type={s.type} className="contents">
             {s.type === "offer" || s.type === "deal" ? (
               <ExpiryGate endsAt={s.endsAt}>
                 <SectionFrame section={s}>

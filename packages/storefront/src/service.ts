@@ -10,6 +10,7 @@ import {
   type AvailabilityPort,
   type BrandingPort,
   type CatalogPort,
+  type CartPricingResult,
   type CheckoutOrderAddress,
   type CouponEvaluationResult,
   type CouponPort,
@@ -20,9 +21,12 @@ import {
   type ShopperProfilePort,
   type StoreOrder,
   type StoreOrderSummary,
+  type StoreProductSummary,
   type StoreSettings,
   type StoreSettingsPort,
+  type StoreVariant,
 } from "./ports";
+import { buildBundleView, bundleLines, bundleRefs, toBadge, type BundleView, type OfferBadge } from "./promotions";
 import {
   buildPricedCart,
   clampQty,
@@ -31,9 +35,13 @@ import {
   MAX_CART_LINES,
   maxQtyFor,
   mergeCartLines,
+  offerLines,
   priceLines,
   setCartLine,
   type CartDelivery,
+  type CartGift,
+  type CartNudge,
+  type CartProductRef,
   type PricedCart,
 } from "./pricing";
 import { RateLimiter } from "./ratelimit";
@@ -180,6 +188,14 @@ const lineBodySchema = z.object({
   qty: z.number().int("Whole units only").min(0).max(1000),
 });
 const couponBodySchema = z.object({ code: z.string().trim().min(1).max(64) });
+const bundleBodySchema = z.object({
+  bundleId: z.string().trim().min(1).max(80),
+  /** productId → variantId for items that take any variant. */
+  variants: z.record(z.string().uuid(), z.string().uuid()).default({}),
+  sets: z.number().int().min(1).max(10).default(1),
+});
+const promotionsQuerySchema = z.object({ productId: z.string().uuid() });
+const bundlesQuerySchema = z.object({ productId: z.string().uuid().optional(), limit: z.coerce.number().int().min(1).max(50).default(24) });
 const pincodeBodySchema = z.object({ pincode: pincodeSchema });
 const meBodySchema = z.object({
   name: z.string().trim().max(120).optional(),
@@ -554,7 +570,71 @@ export class StorefrontService {
     }
   }
 
-  /** Prices a stored cart against the live catalogue, stock, coupon and (with a pincode) delivery. */
+  /** Automatic offers + the coupon over the available lines (coupons' priceCart). Null when not wired or it failed. */
+  private async priceOffers(
+    tenantId: string,
+    calcs: Parameters<typeof offerLines>[0],
+    couponCode: string | null,
+    customer: StoreCustomerRow | null,
+  ): Promise<CartPricingResult | null> {
+    const lines = offerLines(calcs);
+    if (!lines.length || !this.deps.coupons?.priceCart || !(await this.featureOn(tenantId, "coupons"))) return null;
+    try {
+      return await this.deps.coupons.priceCart(tenantId, {
+        channel: "store",
+        lines,
+        couponCode,
+        customerKey: customer ? `acct:${customer.id}` : null,
+        isFirstOrder: customer ? customer.ordersCount === 0 : undefined,
+      });
+    } catch (err) {
+      this.log.warn({ err, tenantId }, "storefront: offer pricing failed");
+      return null;
+    }
+  }
+
+  private async freeShippingInfo(tenantId: string, pincode: string | null) {
+    if (!this.deps.delivery) return { threshold: 0, scope: "shop" as const };
+    if (!this.deps.delivery.freeShipping) return null;
+    try {
+      return await this.deps.delivery.freeShipping(tenantId, { pincode });
+    } catch (err) {
+      this.log.warn({ err, tenantId }, "storefront: free-shipping threshold failed");
+      return null;
+    }
+  }
+
+  /** Product cards (with a one-tap variant when there is exactly one) for nudges, gifts and bundles. */
+  private async productRefs(tenantId: string, productIds: string[]): Promise<Map<string, CartProductRef>> {
+    const ids = [...new Set(productIds)].slice(0, 24);
+    const out = new Map<string, CartProductRef>();
+    if (!ids.length) return out;
+    try {
+      const products = (await this.deps.catalog.getProducts(tenantId, ids)).filter((p) => p.status === "active" && p.channels.includes("store"));
+      for (const p of products) {
+        const single = p.variantIds && p.variantIds.length === 1 ? p.variantIds[0]! : null;
+        out.set(p.id, { id: p.id, name: p.name, slug: p.slug, image: p.image, price: p.priceMin, variantId: single });
+      }
+    } catch (err) {
+      this.log.warn({ err, tenantId }, "storefront: offer product lookup failed");
+    }
+    return out;
+  }
+
+  /** Nudges and gifts with their product cards (cart upsell: "Add 1 more to get 1 free", "Add your free gift"). */
+  private async decorateOffers(tenantId: string, pricing: CartPricingResult | null): Promise<{ nudges: CartNudge[]; gifts: CartGift[] }> {
+    if (!pricing || (!pricing.nudges.length && !pricing.gifts.length)) return { nudges: pricing?.nudges ?? [], gifts: pricing?.gifts ?? [] };
+    const refs = await this.productRefs(tenantId, [...pricing.nudges.flatMap((n) => n.productIds ?? []), ...pricing.gifts.map((g) => g.productId)]);
+    return {
+      nudges: pricing.nudges.map((n) => ({ ...n, products: (n.productIds ?? []).map((id) => refs.get(id)).filter((x): x is CartProductRef => !!x).slice(0, 6) })),
+      gifts: pricing.gifts.map((g) => {
+        const p = refs.get(g.productId);
+        return { ...g, product: p ? { ...p, variantId: g.variantId } : null };
+      }),
+    };
+  }
+
+  /** Prices a stored cart against the live catalogue, stock, offers, coupon and (with a pincode) delivery. */
   private async price(
     row: StoreCartRow,
     opts: { pincode?: string | null; requested?: Map<string, number>; customer?: StoreCustomerRow | null; withDelivery?: boolean } = {},
@@ -567,7 +647,7 @@ export class StorefrontService {
     const priced = priceLines(row.lines, variants, availability, { requested: opts.requested });
 
     let customer = opts.customer ?? null;
-    if (!customer && row.customerId && row.couponCode) {
+    if (!customer && row.customerId) {
       const [c] = await this.db
         .select()
         .from(storeCustomers)
@@ -576,18 +656,25 @@ export class StorefrontService {
       customer = c ?? null;
     }
     const ctx = couponContext(priced.calcs);
-    const coupon = row.couponCode ? { code: row.couponCode, result: await this.evaluateCoupon(tenantId, row.couponCode, ctx, customer) } : null;
+    const pricing = await this.priceOffers(tenantId, priced.calcs, row.couponCode, customer);
+    const coupon = row.couponCode
+      ? { code: row.couponCode, result: pricing ? (pricing.coupon ?? null) : await this.evaluateCoupon(tenantId, row.couponCode, ctx, customer) }
+      : null;
 
     const pincode = opts.pincode !== undefined && opts.pincode !== null && PINCODE_RE.test(opts.pincode) ? opts.pincode : row.pincode;
     let delivery: CartDelivery | null = null;
     let deliveryFailed = false;
-    const draft = buildPricedCart({ token: row.token, priced, coupon, pincode, delivery: null });
+    const draft = buildPricedCart({ token: row.token, priced, coupon, pincode, delivery: null, pricing });
     if (pincode && opts.withDelivery !== false && draft.itemCount > 0) {
       const q = await this.quote(tenantId, { pincode, weightGrams: draft.weightGrams, subtotal: draft.total, cod: false });
       if (q) delivery = { serviceable: q.serviceable, options: q.options };
       else deliveryFailed = true;
     }
-    return buildPricedCart({ token: row.token, priced, coupon, pincode, delivery, deliveryFailed });
+    const [freeShipping, decorated] =
+      draft.itemCount > 0 && opts.withDelivery !== false
+        ? await Promise.all([this.freeShippingInfo(tenantId, pincode), this.decorateOffers(tenantId, pricing)])
+        : [null, { nudges: pricing?.nudges ?? [], gifts: pricing?.gifts ?? [] }];
+    return buildPricedCart({ token: row.token, priced, coupon, pincode, delivery, deliveryFailed, pricing, freeShipping, ...decorated });
   }
 
   /** New cart; a signed-in shopper gets their existing live cart back instead. */
@@ -637,6 +724,89 @@ export class StorefrontService {
   async removeCoupon(tenantId: string, token: string): Promise<PricedCart> {
     const row = await this.cartRow(tenantId, token);
     return this.price(await this.saveCart(row, { couponCode: null }));
+  }
+
+  /**
+   * Adds a bundle's items to the cart in one go (`variants` picks the variant of "any variant" items; one choice is
+   * picked for the shopper). Quantities add to what's in the cart. 404 for an unknown / ended bundle, 409
+   * bundle_unavailable when an item can't be sold, 400 choose_variant when a pick is missing.
+   */
+  async addBundle(tenantId: string, token: string, body: unknown): Promise<PricedCart> {
+    const b = bundleBodySchema.parse(body ?? {});
+    const row = await this.cartRow(tenantId, token);
+    const view = await this.bundleView(tenantId, b.bundleId);
+    const picked = bundleLines(view, b.variants, b.sets);
+    if (!picked.ok) {
+      if (picked.error.code === "choose_variant") throw new AppError(400, "choose_variant", "Choose an option for every item of the bundle", { productId: picked.error.productId });
+      throw new AppError(409, "bundle_unavailable", "Part of this bundle isn't available right now", { productId: picked.error.productId });
+    }
+    const ids = picked.lines.map((l) => l.variantId);
+    const [variants, availability] = await Promise.all([
+      this.deps.catalog.getVariants(tenantId, ids),
+      this.deps.availability?.availability(tenantId, ids) ?? Promise.resolve([]),
+    ]);
+    let lines = row.lines;
+    const requested = new Map<string, number>();
+    for (const l of picked.lines) {
+      const v = variants.find((x) => x.id === l.variantId);
+      const max = maxQtyFor(v, availability.find((a) => a.itemId === l.variantId));
+      if (!v || max <= 0) throw new AppError(409, "bundle_unavailable", "Part of this bundle is out of stock", { variantId: l.variantId });
+      const isNew = !lines.some((x) => x.variantId === v.id);
+      if (isNew && lines.length >= MAX_CART_LINES) throw badRequest(`A cart can hold up to ${MAX_CART_LINES} different items`);
+      const wanted = clampQty((lines.find((x) => x.variantId === v.id)?.qty ?? 0) + l.qty);
+      requested.set(v.id, wanted);
+      lines = setCartLine(lines, { variantId: v.id, qty: Math.min(wanted, max), price: v.price });
+    }
+    return this.price(await this.saveCart(row, { lines }), { requested });
+  }
+
+  // ================================================================ offers and bundles (store pages)
+
+  private async bundleViews(tenantId: string, offers: Awaited<ReturnType<NonNullable<NonNullable<StorefrontDeps["coupons"]>["offers"]>["bundles"]>>): Promise<BundleView[]> {
+    if (!offers.length) return [];
+    const refs = bundleRefs(offers);
+    const products = await this.deps.catalog.getProducts(tenantId, refs.productIds);
+    const anyVariantIds = products.flatMap((p) => (p.variantIds ?? []).slice(0, 30));
+    const variants = await this.deps.catalog.getVariants(tenantId, [...new Set([...refs.variantIds, ...anyVariantIds])]);
+    const pMap = new Map<string, StoreProductSummary>(products.map((p) => [p.id, p]));
+    const vMap = new Map<string, StoreVariant>(variants.map((v) => [v.id, v]));
+    return offers.map((o) => buildBundleView(o, pMap, vMap));
+  }
+
+  private async offersOn(tenantId: string): Promise<boolean> {
+    return !!this.deps.coupons?.offers && (await this.featureOn(tenantId, "coupons"));
+  }
+
+  private async bundleView(tenantId: string, idOrSlug: string): Promise<BundleView> {
+    if (!(await this.offersOn(tenantId))) throw notFound("Bundle");
+    const offer = await this.deps.coupons!.offers!.bundle(tenantId, idOrSlug);
+    const [view] = await this.bundleViews(tenantId, [offer]);
+    return view!;
+  }
+
+  /** Product page: the live offers that concern it (badges) and the bundles it is part of (only buyable ones). */
+  async promotions(tenantId: string, query: unknown): Promise<{ offers: OfferBadge[]; bundles: BundleView[] }> {
+    const q = promotionsQuerySchema.parse(query ?? {});
+    if (!(await this.offersOn(tenantId))) return { offers: [], bundles: [] };
+    const [product] = await this.deps.catalog.getProducts(tenantId, [q.productId]);
+    if (!product || product.status !== "active" || !product.channels.includes("store")) return { offers: [], bundles: [] };
+    const offers = await this.deps.coupons!.offers!.forProduct(tenantId, { productId: q.productId, categoryId: product.categoryId ?? null });
+    const bundles = await this.bundleViews(tenantId, offers.filter((o) => o.kind === "bundle"));
+    return { offers: offers.filter((o) => o.kind !== "bundle").map(toBadge), bundles: bundles.filter((b) => b.available && b.save > 0) };
+  }
+
+  /** The store's live bundles ("Combos" page / home), buyable ones only. */
+  async listBundles(tenantId: string, query: unknown = {}): Promise<{ items: BundleView[]; total: number }> {
+    const q = bundlesQuerySchema.parse(query ?? {});
+    if (!(await this.offersOn(tenantId))) return { items: [], total: 0 };
+    const offers = await this.deps.coupons!.offers!.bundles(tenantId, { productId: q.productId, limit: q.limit });
+    const items = (await this.bundleViews(tenantId, offers)).filter((b) => b.available);
+    return { items, total: items.length };
+  }
+
+  /** One live bundle by id or slug (404 when ended or unknown). */
+  async getBundle(tenantId: string, idOrSlug: string): Promise<BundleView> {
+    return this.bundleView(tenantId, idOrSlug);
   }
 
   async setPincode(tenantId: string, token: string, body: unknown): Promise<PricedCart> {

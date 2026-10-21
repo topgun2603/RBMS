@@ -29,7 +29,7 @@ export default function BrandingPage() {
       {brand.isError ? (
         <QueryError error={brand.error} onRetry={() => void brand.refetch()} />
       ) : !brand.data ? (
-        <div className="grid gap-section 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid gap-section xl:grid-cols-[minmax(0,1fr)_380px]">
           <Skeleton className="h-96 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
         </div>
@@ -67,7 +67,7 @@ function Editor({ initial, saved, canEdit }: { initial: BrandDraft; saved: Saved
 
   return (
     <form onSubmit={submit} className="grid gap-section">
-      <div className="grid items-start gap-section 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+      <div className="grid items-start gap-section xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
         <div className="grid min-w-0 gap-section">
           <Section icon={BadgeCheckIcon} title={t("site.brand.identityTitle")} description={t("site.brand.identityBody")}>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -110,7 +110,7 @@ function Editor({ initial, saved, canEdit }: { initial: BrandDraft; saved: Saved
           </Section>
         </div>
 
-        <aside className="order-first grid w-full max-w-2xl gap-3 2xl:sticky 2xl:top-4 2xl:order-none 2xl:max-w-none">
+        <aside className="order-first grid w-full max-w-2xl gap-3 xl:sticky xl:top-4 xl:order-none xl:max-w-none">
           <Label>{t("site.appearance.preview")}</Label>
           <BrandCard draft={draft} />
           {/* The real store with the unsaved colours and fonts (the logo shows there once saved). */}

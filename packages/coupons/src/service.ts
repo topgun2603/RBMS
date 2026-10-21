@@ -25,6 +25,8 @@ import {
   type CouponRule,
   type EvaluationContext,
 } from "./logic";
+import type { CartPricing } from "./offers";
+import { OffersService, type CollectionMembershipPort, type PriceCartInput } from "./offers-service";
 import {
   COUPON_APPLIES_TO,
   COUPON_CHANNELS,
@@ -51,6 +53,8 @@ export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
 export interface CouponsDeps {
   db: Db;
   log?: LoggerPort;
+  /** Catalogue collections, for offers scoped to collections. Without it those offers match nothing. */
+  collections?: CollectionMembershipPort;
   /** Clock override for tests. */
   now?: () => Date;
 }
@@ -339,11 +343,24 @@ export class CouponsService {
   private readonly db: Db;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
+  /** Automatic offers and bundles (same tables module). */
+  readonly offers: OffersService;
 
   constructor(deps: CouponsDeps) {
     this.db = deps.db;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
+    this.offers = new OffersService({ db: deps.db, collections: deps.collections, now: this.now });
+  }
+
+  /** Cart / order pricing with automatic offers and the coupon (orders' and the storefront's `priceCart`). */
+  priceCart(tenantId: string, input: PriceCartInput): Promise<CartPricing> {
+    return this.offers.priceCart(tenantId, input);
+  }
+
+  /** Records the automatic offers an order used (409 offer_invalid when one ran out). */
+  redeemOffers(tenantId: string, ref: { refType: RedemptionRefType; refId: string }, customerKey: string | null | undefined, used: { offerId: string; amount: number }[]) {
+    return this.offers.redeem(tenantId, ref, customerKey, used);
   }
 
   // ================================================================ CRUD
@@ -568,9 +585,10 @@ export class CouponsService {
     });
   }
 
-  /** Frees the redemptions of a ref (order cancelled). Idempotent. */
+  /** Frees the coupon and offer redemptions of a ref (order cancelled). Idempotent. */
   async release(tenantId: string, refType: RedemptionRefType, refId: string): Promise<{ released: number }> {
     const r = refSchema.parse({ refType, refId });
+    const offersReleased = (await this.offers.release(tenantId, r.refType, r.refId)).released;
     const rows = await this.db
       .update(couponRedemptions)
       .set({ status: "released" })
@@ -583,7 +601,7 @@ export class CouponsService {
         ),
       )
       .returning({ id: couponRedemptions.id });
-    return { released: rows.length };
+    return { released: rows.length + offersReleased };
   }
 }
 

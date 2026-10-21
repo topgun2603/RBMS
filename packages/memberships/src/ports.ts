@@ -42,6 +42,26 @@ export interface ExpiringMembership {
   daysLeft: number;
 }
 
+/** A plan just sold or renewed, as handed to the notifier ("welcome" / "renewed" message). */
+export interface SoldMembership {
+  memberId: string;
+  memberCode: string;
+  name: string;
+  /** E.164 ("+919876543210") or null. */
+  phone: string | null;
+  subscriptionId: string;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  /** True for a renewal of an earlier plan. */
+  renewal: boolean;
+}
+
+/** Tells the customer about a plan sold or renewed (WhatsApp / SMS). Optional; fire-and-forget, failures are logged. */
+export interface MembershipNotifyPort {
+  sold(tenantId: string, plan: SoldMembership): void | Promise<void>;
+}
+
 /** Sends "your membership ends on …" reminders (WhatsApp / SMS). Optional; failures are logged, never thrown. */
 export interface ReminderPort {
   expiring(tenantId: string, list: ExpiringMembership[]): Promise<void>;

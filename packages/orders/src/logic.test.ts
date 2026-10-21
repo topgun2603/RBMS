@@ -146,6 +146,8 @@ describe("planPlacement / auto-confirm", () => {
       "notify:order.received:owner",
     ]);
     expect(types(planPlacement({ couponCode: null, notifyOwner: false }))).toEqual(["stock.reserve", "notify:order.placed:customer"]);
+    // Automatic offers redeem (usage limits) in the same blocking step, even without a coupon.
+    expect(types(planPlacement({ couponCode: null, hasOffers: true, notifyOwner: false }))).toEqual(["stock.reserve", "coupon.redeem", "notify:order.placed:customer"]);
     expect(BLOCKING_EFFECTS).toEqual(["stock.reserve", "coupon.redeem"]);
     expect(ORDER_TEMPLATES.placed).toBe("order.placed");
   });
@@ -287,6 +289,18 @@ describe("computeOrderTotals", () => {
       placeOfSupply: "29",
     });
     expect(totals).toMatchObject({ taxable: 10000, igst: 1800, cgst: 0, sgst: 0, total: 11800, interState: true });
+  });
+
+  it("offer discounts are taxed per line: a free buy-2-get-1 unit and a coupon on the rest", () => {
+    // 3 sarees at Rs.499 (5% inclusive) + a Rs.100 exclusive 18% item; the cheapest unit (Rs.100 line) is free, the
+    // sarees carry a Rs.149.70 coupon share. Each line keeps its own GST rate and taxable value.
+    const base = [...lines([item()], 3), ...lines([item({ id: "v2", productId: "p2", taxInclusive: false, price: 10000, rate: 10000, gstRate: 18, hsn: "6302" })])];
+    const { lines: l, totals } = computeOrderTotals(base, { lineDiscounts: [14970, 10000], shipping: 0, sellerState: "33", placeOfSupply: "33" });
+    expect(l[1]).toMatchObject({ discount: 10000, taxable: 0, cgst: 0, sgst: 0, total: 0, gstRate: 18 });
+    expect(l[0]).toMatchObject({ gstRate: 5, total: 149700 - 14970 });
+    expect(l[0]!.cgst + l[0]!.sgst).toBe(149700 - 14970 - l[0]!.taxable);
+    expect(totals.discount).toBe(24970);
+    expect(totals.total).toBe(Math.round((149700 - 14970) / 100) * 100);
   });
 
   it("coupon shares are converted to the exclusive basis on tax-inclusive lines", () => {

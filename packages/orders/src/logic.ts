@@ -64,6 +64,8 @@ export interface TransitionState {
   paid: number;
   stockState: StockState;
   couponCode: string | null;
+  /** The order used automatic offers (their redemptions are released with the coupon's). */
+  hasOffers?: boolean;
   invoiceId: string | null;
 }
 
@@ -121,7 +123,7 @@ export function planTransition(state: TransitionState, to: OrderStatus, opts: Tr
 
   if (to === "cancelled") {
     if (state.stockState === "reserved") effects.push({ type: "stock.release" });
-    if (state.couponCode) effects.push({ type: "coupon.release" });
+    if (state.couponCode || state.hasOffers) effects.push({ type: "coupon.release" });
     if (state.invoiceId) effects.push({ type: "invoice.cancel" });
     notify(NOTIFY_ON.cancelled);
     return { ok: true, from, to, path: [to], effects: effects.sort(byExecutionOrder) };
@@ -154,10 +156,13 @@ export function planTransition(state: TransitionState, to: OrderStatus, opts: Tr
   return { ok: true, from, to, path, effects: effects.sort(byExecutionOrder) };
 }
 
-/** Side effects of placing an order: reserve stock and redeem the coupon (blocking), then tell the customer and owner. */
-export function planPlacement(input: { couponCode: string | null; notifyOwner: boolean }): OrderEffect[] {
+/**
+ * Side effects of placing an order: reserve stock and redeem the coupon and automatic offers (blocking), then tell the
+ * customer and owner.
+ */
+export function planPlacement(input: { couponCode: string | null; hasOffers?: boolean; notifyOwner: boolean }): OrderEffect[] {
   const effects: OrderEffect[] = [{ type: "stock.reserve" }];
-  if (input.couponCode) effects.push({ type: "coupon.redeem" });
+  if (input.couponCode || input.hasOffers) effects.push({ type: "coupon.redeem" });
   effects.push({ type: "notify", template: ORDER_TEMPLATES.placed, audience: "customer" });
   if (input.notifyOwner) effects.push({ type: "notify", template: ORDER_TEMPLATES.received, audience: "owner" });
   return effects;

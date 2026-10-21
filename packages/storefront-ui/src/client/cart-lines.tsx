@@ -14,6 +14,7 @@ import { errorMessage } from "./api";
 import { QtyStepper } from "./qty-stepper";
 import { SoldBy, useCartSellers } from "./sellers";
 import { useStore } from "./store-context";
+import { LineOfferTag } from "./offers";
 
 /**
  * One cart line with image, problem badge, qty stepper and remove. Render inside <AnimatePresence mode="popLayout">:
@@ -79,6 +80,7 @@ export const CartLineRow = React.forwardRef<HTMLLIElement, { line: CartLine; com
           <div className="text-right">
             <AnimatedNumber value={line.available ? line.lineTotal : line.price * line.qty} format={(n) => money(Math.round(n))} className="sf-price block text-sm font-bold" />
             {line.mrp && line.mrp > line.price && <p className="text-xs text-muted-foreground tabular-nums line-through">{money(line.mrp * line.qty)}</p>}
+            {line.available && <LineOfferTag discount={line.offerDiscount} lineTotal={line.lineTotal} />}
           </div>
         </div>
       </div>

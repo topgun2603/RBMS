@@ -38,6 +38,10 @@ export interface StoreProductSummary {
   mrp: number | null;
   status: "active" | "draft" | "archived";
   channels: string[];
+  /** For offer badges on the product page (category-scoped offers). Optional for older ports. */
+  categoryId?: string | null;
+  /** Live variant ids (bundle items that take any variant list their choices). Optional for older ports. */
+  variantIds?: string[];
 }
 
 /** Implemented by the catalogue (kit). Unknown or deleted ids are simply missing from the result. */
@@ -73,8 +77,91 @@ export type CouponEvaluationResult =
   | { valid: true; couponId: string; discount: number; freeShipping: boolean; lineDiscounts?: number[] }
   | { valid: false; reason: string; message?: string };
 
+/** A cart line as automatic offers see it. */
+export interface OfferPricingLine {
+  variantId: string;
+  productId: string;
+  categoryId?: string | null;
+  unitPrice: number;
+  qty: number;
+  amount?: number;
+}
+
+export type OfferRewardView =
+  | { type: "units"; qty: number; percent: number }
+  | { type: "percent"; value: number }
+  | { type: "flat"; value: number }
+  | { type: "gift"; productId: string; variantId: string; qty: number }
+  | { type: "bundle" };
+
+/** "Add 1 more to get 1 free" (coupons' OfferNudge). */
+export interface OfferNudge {
+  offerId: string;
+  kind: string;
+  name: string;
+  label: string;
+  addQty?: number;
+  addAmount?: number;
+  reward: OfferRewardView;
+  /** "all" = anything in the shop counts towards it. */
+  scope?: string;
+  productIds?: string[];
+}
+
+export interface OfferGift {
+  offerId: string;
+  name: string;
+  productId: string;
+  variantId: string;
+  qty: number;
+  unlocked: boolean;
+  inCart: boolean;
+  remaining: number;
+}
+
+/** coupons' `priceCart` result (the parts the store reads). */
+export interface CartPricingResult {
+  /** Same order as the lines sent. */
+  lines: { offerDiscount: number; couponDiscount: number; discount: number; offerIds: string[] }[];
+  offers: { offerId: string; kind: string; name: string; label: string; discount: number; applications: number }[];
+  offerDiscount: number;
+  coupon: CouponEvaluationResult | null;
+  couponDiscount: number;
+  freeShipping: boolean;
+  nudges: OfferNudge[];
+  gifts: OfferGift[];
+}
+
+/** A live offer as the store shows it (coupons' PublicOffer). `config` depends on `kind`. */
+export interface PublicOfferView {
+  id: string;
+  kind: string;
+  name: string;
+  description: string | null;
+  slug: string | null;
+  imageUrl: string | null;
+  label: string;
+  config: unknown;
+  appliesTo: string;
+  endsAt: Date | null;
+}
+
+/** Implemented by the coupons service (`offers`). */
+export interface OffersViewPort {
+  forProduct(tenantId: string, p: { productId: string; categoryId?: string | null }): Promise<PublicOfferView[]>;
+  bundles(tenantId: string, opts?: { productId?: string; limit?: number }): Promise<PublicOfferView[]>;
+  bundle(tenantId: string, idOrSlug: string): Promise<PublicOfferView>;
+}
+
 /** Implemented by the coupons service (`evaluate`, same shape). */
 export interface CouponPort {
+  /** Automatic offers + the coupon (coupons' `priceCart`). Without it only the coupon is evaluated. */
+  priceCart?(
+    tenantId: string,
+    input: { channel: string; lines: OfferPricingLine[]; couponCode?: string | null; customerKey?: string | null; isFirstOrder?: boolean },
+  ): Promise<CartPricingResult>;
+  /** Offer badges and bundles for the store pages. */
+  offers?: OffersViewPort;
   evaluate(
     tenantId: string,
     code: string,
@@ -108,6 +195,8 @@ export interface DeliveryQuote {
 
 /** Implemented by the delivery module (docs/commerce-batch2.md §2). */
 export interface DeliveryPort {
+  /** Free-delivery threshold (paise of goods after discounts) for the cart bar: this pincode's zone, or everywhere. */
+  freeShipping?(tenantId: string, input: { pincode?: string | null }): Promise<{ threshold: number | null; scope: "zone" | "shop" }>;
   quote(
     tenantId: string,
     input: { pincode: string; stateCode?: string; weightGrams: number; subtotal: number; cod: boolean },

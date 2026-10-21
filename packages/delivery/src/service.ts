@@ -55,7 +55,7 @@ import {
   type ShipmentStatus,
 } from "./schema";
 import { isStateCode } from "./states";
-import { DEFAULT_ZONE, matchZone, needsState, quoteFromRules, type Quote } from "./zones";
+import { DEFAULT_ZONE, freeShippingFromRules, matchZone, needsState, quoteFromRules, type FreeShippingInfo, type Quote } from "./zones";
 
 export interface DeliveryConfig {
   /** Any length; a 32-byte AES key is derived with sha256 (may be the same secret payments uses). */
@@ -453,6 +453,26 @@ export class DeliveryService {
       .from(deliveryRates)
       .where(and(eq(deliveryRates.tenantId, tenantId), eq(deliveryRates.zoneId, match.zone.id), eq(deliveryRates.active, true)));
     return quoteFromRules(zones, rates, { ...base, stateCode });
+  }
+
+  /**
+   * The free-delivery threshold for the cart bar (`freeShippingFromRules`): for the pincode's zone, or one that holds
+   * everywhere the shop delivers.
+   */
+  async freeShipping(tenantId: string, input: { pincode?: string | null; stateCode?: string | null } = {}): Promise<FreeShippingInfo> {
+    const pincode = input.pincode ? normalizePincode(input.pincode) : null;
+    const zones = await this.db
+      .select()
+      .from(deliveryZones)
+      .where(and(eq(deliveryZones.tenantId, tenantId), eq(deliveryZones.active, true)));
+    if (zones.length === 0) return freeShippingFromRules([], [], { pincode });
+    const rates = await this.db
+      .select()
+      .from(deliveryRates)
+      .where(and(eq(deliveryRates.tenantId, tenantId), eq(deliveryRates.active, true)));
+    let stateCode = input.stateCode && isStateCode(input.stateCode) ? input.stateCode : null;
+    if (pincode && !stateCode && needsState(zones, pincode)) stateCode = await this.stateFor(pincode);
+    return freeShippingFromRules(zones, rates, { pincode, stateCode });
   }
 
   /** State code for zone matching: cached API answer when we have one, else the prefix table. */

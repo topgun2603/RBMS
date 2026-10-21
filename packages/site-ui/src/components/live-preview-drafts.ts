@@ -69,3 +69,12 @@ export function itemKeyForSection(items: readonly EditorItem[], sectionId: strin
 
 /** The preview section id of an editor item. */
 export const sectionIdForItem = (it: EditorItem): string => it.form.id ?? it.key;
+
+/** Which Appearance preview chip a store path belongs to (home · listing · product), or null for other pages. */
+export function previewViewOfPath(path: string): "home" | "listing" | "product" | null {
+  const p = path.split(/[?#]/)[0]!;
+  if (p === "/" || p === "") return "home";
+  if (p.startsWith("/p/")) return "product";
+  if (p === "/products" || p.startsWith("/products/") || p.startsWith("/c/") || p.startsWith("/collections/") || p.startsWith("/search")) return "listing";
+  return null;
+}

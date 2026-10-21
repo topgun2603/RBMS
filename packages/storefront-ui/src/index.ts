@@ -22,6 +22,7 @@ export {
 } from "./pages/listing";
 export { ProductPage, productMetadata } from "./pages/product";
 export { ComparePage, compareMetadata } from "./pages/compare";
+export { BundlesPage, bundlesMetadata } from "./pages/bundles";
 export { OrderConfirmationPage, TrackPage, TrackLookupPage, orderMetadata, trackMetadata } from "./pages/order";
 export {
   CmsPageView,

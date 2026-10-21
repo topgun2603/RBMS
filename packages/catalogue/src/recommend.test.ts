@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Db } from "@srirealtime/db";
 import {
   freshness,
+  preferInStock,
   priceAffinity,
   rankBestsellers,
   rankForCart,
@@ -12,6 +14,7 @@ import {
   trendScore,
   type RecCandidate,
 } from "./recommend";
+import { CatalogueService } from "./service";
 
 const NOW = new Date("2026-10-20T00:00:00Z");
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * 86_400_000);
@@ -140,5 +143,37 @@ describe("query", () => {
     expect(recommendationQuerySchema.safeParse({ kind: "magic" }).success).toBe(false);
     expect(recommendationQuerySchema.safeParse({ productIds: "nope" }).success).toBe(false);
     expect(recommendationQuerySchema.safeParse({ limit: 99 }).success).toBe(false);
+  });
+});
+
+describe("stock", () => {
+  it("keeps in-stock products first in ranked order, sold-out ones only to fill the row", () => {
+    const ranked = ["a", "b", "c", "d", "e", "f"];
+    expect(preferInStock(ranked, new Set(["b", "d", "e", "f"]), 3)).toEqual(["b", "d", "e"]);
+    expect(preferInStock(ranked, new Set(["c"]), 3)).toEqual(["c", "a", "b"]);
+    expect(preferInStock(ranked, new Set(), 2)).toEqual(["a", "b"]);
+    // Stock unknown (no inventory port / it failed): ranked order as is.
+    expect(preferInStock(ranked, null, 4)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  /** A db whose one select (variants of the ranked products) answers `rows`. */
+  const fakeDb = (rows: { id: string; productId: string }[]) => ({ select: () => ({ from: () => ({ where: async () => rows }) }) }) as unknown as Db;
+  const inStockProducts = (svc: CatalogueService, ids: string[]) => (svc as unknown as { inStockProducts(t: string, ids: string[]): Promise<Set<string> | null> }).inStockProducts("t1", ids);
+
+  it("maps the availability port's in-stock variants back to products; unknown without the port or when it fails", async () => {
+    const rows = [
+      { id: "v1", productId: "p1" },
+      { id: "v2", productId: "p1" },
+      { id: "v3", productId: "p2" },
+      { id: "v4", productId: "p3" },
+    ];
+    const asked: string[][] = [];
+    const svc = new CatalogueService({ db: fakeDb(rows), availability: { inStock: async (_t, ids) => (asked.push(ids), ids.filter((id) => id === "v2" || id === "v4")) } });
+    expect([...(await inStockProducts(svc, ["p1", "p2", "p3"]))!].sort()).toEqual(["p1", "p3"]);
+    expect(asked[0]).toEqual(["v1", "v2", "v3", "v4"]);
+    expect(await inStockProducts(svc, [])).toBeNull();
+    expect(await inStockProducts(new CatalogueService({ db: fakeDb(rows) }), ["p1"])).toBeNull();
+    const broken = new CatalogueService({ db: fakeDb(rows), availability: { inStock: async () => Promise.reject(new Error("down")) } });
+    expect(await inStockProducts(broken, ["p1"])).toBeNull();
   });
 });

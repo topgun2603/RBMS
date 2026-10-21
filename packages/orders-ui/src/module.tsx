@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusIcon, SettingsIcon, ShoppingBagIcon, TicketPercentIcon, TruckIcon } from "lucide-react";
+import { PlusIcon, SettingsIcon, ShoppingBagIcon, SparklesIcon, TicketPercentIcon, TruckIcon } from "lucide-react";
 import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
 import { PERMS } from "./lib/access";
 import { ordersMessages } from "./lib/messages";
@@ -37,6 +37,7 @@ export function ordersModule(opts: OrdersModuleOptions = {}): WebModule {
       items: [
         { href: "orders", label: "orders.nav.orders", icon: ShoppingBagIcon, feature: F.orders, mobile: "tab", exact: false },
         { href: "coupons", label: "orders.nav.coupons", icon: TicketPercentIcon, feature: F.coupons, exact: false },
+        { href: "offers", label: "orders.nav.offers", icon: SparklesIcon, feature: F.coupons, exact: false },
       ],
     },
   ];
@@ -50,6 +51,11 @@ export function ordersModule(opts: OrdersModuleOptions = {}): WebModule {
     // Creating is a pure write; the list and an existing coupon stay readable (the editor is read-only without coupons.manage).
     { path: "coupons/new", component: page(() => import("./pages/coupon-edit")), feature: F.coupons, permission: PERMS.coupons, immersive: true },
     { path: "coupons/:id", component: page(() => import("./pages/coupon-edit")), feature: F.coupons, immersive: true },
+    // Automatic offers (buy X get Y, tiers, free gifts) and combos; "offers/new/bundle" starts a combo.
+    { path: "offers", component: page(() => import("./pages/offers")), feature: F.coupons },
+    { path: "offers/new", component: page(() => import("./pages/offer-edit")), feature: F.coupons, permission: PERMS.coupons, immersive: true },
+    { path: "offers/new/:kind", component: page(() => import("./pages/offer-edit")), feature: F.coupons, permission: PERMS.coupons, immersive: true },
+    { path: "offers/:id", component: page(() => import("./pages/offer-edit")), feature: F.coupons, immersive: true },
   ];
 
   const settings: SettingsPage[] = [

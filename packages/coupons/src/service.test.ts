@@ -175,6 +175,14 @@ describe("routes", () => {
       remove: vi.fn(async () => undefined),
       redemptions: vi.fn(async () => ({ items: [], total: 0 })),
       validatePublic: vi.fn(async () => ({ valid: false, reason: "not_found", message: "x" })),
+      priceCart: vi.fn(async () => ({ discount: 0 })),
+      offers: {
+        list: vi.fn(async () => ({ items: [], total: 0 })),
+        create: vi.fn(async () => ({ id: "o1" })),
+        get: vi.fn(async () => ({ id: "o1" })),
+        update: vi.fn(async () => ({ id: "o1" })),
+        remove: vi.fn(async () => undefined),
+      },
     } as unknown as CouponsService;
     const features: unknown[] = [];
     const app = Fastify();
@@ -208,6 +216,25 @@ describe("routes", () => {
     expect(new Set(features)).toEqual(new Set(["coupons"]));
   });
 
+  it("serves offer CRUD and the staff pricing preview under the coupons feature", async () => {
+    expect((await (await build(ctx({ tenant }))).app.inject({ url: "/v1/coupons/offers" })).statusCode).toBe(401);
+    const { app, service, features } = await build(ctx({ tenant, user: staffUser }));
+    expect((await app.inject({ url: "/v1/coupons/offers?kind=bundle" })).statusCode).toBe(200);
+    expect(service.offers.list).toHaveBeenCalledWith(tenant.id, { kind: "bundle" });
+    await app.inject({ method: "POST", url: "/v1/coupons/offers", payload: { kind: "bxgy" } });
+    expect(service.offers.create).toHaveBeenCalledWith(tenant.id, { kind: "bxgy" });
+    await app.inject({ url: `/v1/coupons/offers/${id}` });
+    expect(service.offers.get).toHaveBeenCalledWith(tenant.id, id);
+    await app.inject({ method: "PATCH", url: `/v1/coupons/offers/${id}`, payload: { active: false } });
+    expect(service.offers.update).toHaveBeenCalledWith(tenant.id, id, { active: false });
+    expect((await app.inject({ method: "DELETE", url: `/v1/coupons/offers/${id}` })).json()).toEqual({ ok: true });
+    await app.inject({ method: "POST", url: "/v1/coupons/offers/preview", payload: { channel: "store", lines: [] } });
+    expect(service.priceCart).toHaveBeenCalledWith(tenant.id, { channel: "store", lines: [] });
+    expect(new Set(features)).toEqual(new Set(["coupons"]));
+    const cashier = await build(ctx({ tenant, user: { ...staffUser, permissions: ["invoices.create"] } }));
+    expect((await cashier.app.inject({ method: "POST", url: "/v1/coupons/offers", payload: {} })).statusCode).toBe(403);
+  });
+
   it("enforces coupons.manage once permissions are present", async () => {
     const cashier = { ...staffUser, permissions: ["invoices.create"] };
     const { app, service } = await build(ctx({ tenant, user: cashier }));
@@ -239,7 +266,7 @@ describe("createCoupons", () => {
   it("returns the module with tables, features and permissions", () => {
     const { module, service } = createCoupons({ db });
     expect(module.id).toBe("coupons");
-    expect(Object.keys(module.tables ?? {}).sort()).toEqual(["couponRedemptions", "coupons"]);
+    expect(Object.keys(module.tables ?? {}).sort()).toEqual(["couponRedemptions", "coupons", "offerRedemptions", "offers"]);
     expect(module.features?.map((f) => f.key)).toEqual(["coupons"]);
     expect(module.permissions.map((p) => p.key)).toEqual(["coupons.manage"]);
     expect(typeof service.redeem).toBe("function");

@@ -345,14 +345,16 @@ export function NewsletterForm({ tone = "brand" }: { tone?: "brand" | "plain" })
               minLength={5}
               placeholder={t("home.newsletterPlaceholder")}
               className={cn(
-                "h-11 flex-1 rounded-full px-5 text-sm outline-none",
+                // Phones stack the field over the button: `flex-1` there would mean a zero basis in the column and the
+                // field collapses to a sliver, so it only grows in the row (sm+).
+                "h-11 w-full min-w-0 shrink-0 rounded-full px-5 text-sm outline-none sm:w-auto sm:flex-1",
                 brand ? "border border-white/30 bg-white/95 text-neutral-900 placeholder:text-neutral-500 focus:ring-4 focus:ring-white/40" : "border border-input bg-card focus:ring-[3px] focus:ring-ring/30",
               )}
             />
             <motion.button
               type="submit"
               whileTap={{ scale: 0.96 }}
-              className={cn("h-11 rounded-full px-6 text-sm font-semibold focus-ring", brand ? "bg-neutral-900 text-white hover:bg-neutral-800" : "bg-primary text-primary-foreground hover:bg-primary/90")}
+              className={cn("h-11 w-full shrink-0 rounded-full px-6 text-sm font-semibold focus-ring sm:w-auto", brand ? "bg-neutral-900 text-white hover:bg-neutral-800" : "bg-primary text-primary-foreground hover:bg-primary/90")}
             >
               {t("home.subscribe")}
             </motion.button>

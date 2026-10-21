@@ -19,6 +19,10 @@ function stubService() {
     applyCoupon: vi.fn(ok),
     removeCoupon: vi.fn(ok),
     setPincode: vi.fn(ok),
+    addBundle: vi.fn(ok),
+    promotions: vi.fn(ok),
+    listBundles: vi.fn(ok),
+    getBundle: vi.fn(ok),
     mergeCart: vi.fn(ok),
     track: vi.fn(ok),
     checkout: vi.fn(ok),
@@ -77,6 +81,10 @@ const PUBLIC: Inject[] = [
   { method: "DELETE", url: `/v1/store/cart/${TOKEN}/coupon` },
   { method: "POST", url: `/v1/store/cart/${TOKEN}/pincode`, payload: { pincode: "600001" } },
   { method: "GET", url: `/v1/store/track/${TOKEN}` },
+  { method: "POST", url: `/v1/store/cart/${TOKEN}/bundle`, payload: { bundleId: "pooja-combo" } },
+  { method: "GET", url: `/v1/store/promotions?productId=${ID}` },
+  { method: "GET", url: "/v1/store/bundles?limit=4" },
+  { method: "GET", url: "/v1/store/bundles/pooja-combo" },
 ];
 
 const SHOPPER: Inject[] = [
@@ -114,6 +122,14 @@ describe("storefront routes", () => {
     expect(service.createCart).toHaveBeenCalledWith(TENANT.id, null);
     await app.inject(PUBLIC[7]!);
     expect(service.track).toHaveBeenCalledWith(TENANT.id, TOKEN);
+    await app.inject(PUBLIC[8]!);
+    expect(service.addBundle).toHaveBeenCalledWith(TENANT.id, TOKEN, { bundleId: "pooja-combo" });
+    await app.inject(PUBLIC[9]!);
+    expect(service.promotions).toHaveBeenCalledWith(TENANT.id, { productId: ID });
+    await app.inject(PUBLIC[10]!);
+    expect(service.listBundles).toHaveBeenCalledWith(TENANT.id, { limit: "4" });
+    await app.inject(PUBLIC[11]!);
+    expect(service.getBundle).toHaveBeenCalledWith(TENANT.id, "pooja-combo");
   });
 
   it("a signed-in shopper's new cart is bound to them", async () => {

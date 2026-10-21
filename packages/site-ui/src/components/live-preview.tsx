@@ -54,6 +54,24 @@ export interface LivePreviewProps {
 }
 
 const READY_TIMEOUT_MS = 20_000;
+const PROBE_TIMEOUT_MS = 8_000;
+
+/**
+ * Whether anything answers at the store origin (an opaque no-cors GET: any HTTP answer counts, only a network failure
+ * doesn't). A slow answer counts as up — the ready timeout covers that case.
+ */
+export async function probeStore(origin: string, fetcher: typeof fetch = fetch): Promise<boolean> {
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const tm = setTimeout(() => ctl?.abort(), PROBE_TIMEOUT_MS);
+  try {
+    await fetcher(`${origin}/favicon.svg`, { mode: "no-cors", cache: "no-store", credentials: "omit", signal: ctl?.signal });
+    return true;
+  } catch (err) {
+    return err instanceof DOMException && err.name === "AbortError";
+  } finally {
+    clearTimeout(tm);
+  }
+}
 
 interface TokenResponse {
   token: string;
@@ -235,6 +253,18 @@ export function LivePreview({
     const tm = setTimeout(() => setProblem((p) => p ?? "error"), READY_TIMEOUT_MS);
     return () => clearTimeout(tm);
   }, [src, ready]);
+  // A store that isn't answering at all (server down, wrong address) shows the browser's error page in the frame, which
+  // never says `ready`: probe the origin once so the editor says so at once instead of spinning for 20 s.
+  React.useEffect(() => {
+    if (!src || !storeOrigin) return;
+    let live = true;
+    void probeStore(storeOrigin).then((up) => {
+      if (live && !up) setProblem((p) => p ?? "error");
+    });
+    return () => {
+      live = false;
+    };
+  }, [src, storeOrigin]);
 
   const reload = () => {
     setReloadKey((k) => k + 1);

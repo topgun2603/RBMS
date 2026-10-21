@@ -50,6 +50,14 @@ export interface BookingNotice {
 export interface NotifyPort {
   booked(tenantId: string, notice: BookingNotice): void | Promise<void>;
   cancelled(tenantId: string, notice: BookingNotice & { by: "shop" | "customer"; reason: string | null }): void | Promise<void>;
+  /** The desk moved it to another time and/or person (`previousStart` is the old start). */
+  rescheduled?(tenantId: string, notice: BookingNotice & { previousStart: Date }): void | Promise<void>;
+}
+
+/** An upcoming appointment for the reminder job (`BookingsService.remindable`). */
+export interface RemindableAppointment extends BookingNotice {
+  tenantId: string;
+  createdAt: Date;
 }
 
 export interface LoggerPort {

@@ -3,6 +3,7 @@ import {
   buildOptions,
   DEFAULT_RATE,
   findOption,
+  freeShippingFromRules,
   matchZone,
   needsState,
   quoteFromRules,
@@ -10,6 +11,7 @@ import {
   type QuoteInput,
   type RateRule,
   type ZoneRule,
+  zoneFreeThreshold,
 } from "./zones";
 
 const zone = (id: string, over: Partial<ZoneRule> = {}): ZoneRule => ({
@@ -194,5 +196,36 @@ describe("quoteFromRules", () => {
     const q = quoteFromRules([], [], input());
     expect(findOption(q, "default")?.amount).toBe(0);
     expect(findOption(q, "nope")).toBeNull();
+  });
+});
+
+describe("free-shipping threshold (cart bar)", () => {
+  const tn = zone("tn", { states: ["33"] });
+  const rest = zone("rest");
+  const rates = [
+    rate("tn-std", "tn", { freeAbove: 49900 }),
+    rate("tn-exp", "tn", { amount: 9000, freeAbove: 149900 }),
+    rate("rest-std", "rest", { amount: 8000, freeAbove: 99900 }),
+  ];
+
+  it("a zone's lowest threshold; a ₹0 flat rate is free from 0; weight slabs never", () => {
+    expect(zoneFreeThreshold(rates.filter((r) => r.zoneId === "tn"))).toBe(49900);
+    expect(zoneFreeThreshold([rate("z", "x", { amount: 0 })])).toBe(0);
+    expect(zoneFreeThreshold([rate("w", "x", { type: "weight", amount: 0, weightSlabs: [{ upToGrams: 1000, amount: 4000 }] })])).toBeNull();
+    expect(zoneFreeThreshold([rate("off", "x", { freeAbove: 100, active: false })])).toBeNull();
+  });
+
+  it("with a pincode: that zone; without: the highest zone threshold", () => {
+    expect(freeShippingFromRules([tn, rest], rates, { pincode: "600001", stateCode: "33" })).toEqual({ threshold: 49900, scope: "zone" });
+    expect(freeShippingFromRules([tn, rest], rates, { pincode: "110001", stateCode: "07" })).toEqual({ threshold: 99900, scope: "zone" });
+    expect(freeShippingFromRules([tn, rest], rates)).toEqual({ threshold: 99900, scope: "shop" });
+  });
+
+  it("null when some zone never ships free; 0 for shops without zones", () => {
+    const paid = [...rates.slice(0, 2), rate("rest-std", "rest", { amount: 8000 })];
+    expect(freeShippingFromRules([tn, rest], paid).threshold).toBeNull();
+    expect(freeShippingFromRules([tn, rest], paid, { pincode: "600001", stateCode: "33" }).threshold).toBe(49900);
+    expect(freeShippingFromRules([], [])).toEqual({ threshold: 0, scope: "shop" });
+    expect(DEFAULT_RATE.amount).toBe(0);
   });
 });

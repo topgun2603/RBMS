@@ -41,6 +41,8 @@ export interface SendInput {
   body?: string;
   /** Email only (base64 content); any other channel is rejected with a 400. */
   attachments?: EmailAttachment[];
+  /** Deliver no earlier than this (quiet hours). Needs the queue; without one the message goes out now. */
+  sendAt?: Date;
 }
 
 export interface SendResult {
@@ -246,7 +248,8 @@ export class NotifyService {
     const job: DeliverJob = { logId, channel: input.channel, message, secrets: opts.secrets };
 
     if (this.deps.queue && !opts.inline) {
-      await this.deps.queue.enqueue(DELIVER_JOB, job, { jobId: `notify-${logId}` });
+      const delayMs = input.sendAt ? Math.max(0, input.sendAt.getTime() - Date.now()) : 0;
+      await this.deps.queue.enqueue(DELIVER_JOB, job, { jobId: `notify-${logId}`, ...(delayMs > 0 ? { delayMs } : {}) });
       return { logId, status: "queued" };
     }
     return this.deliver(job, { rethrow: false });
@@ -400,11 +403,24 @@ export class NotifyService {
 
   // ---------------------------------------------------------------- log
 
-  async log(input: { tenantId: string | null; limit?: number; offset?: number; status?: "queued" | "sent" | "failed" }): Promise<NotifyLogRow[]> {
+  async log(input: {
+    tenantId: string | null;
+    limit?: number;
+    offset?: number;
+    status?: "queued" | "sent" | "failed";
+    /** Only these template keys (e.g. the customer messages). */
+    templateKeys?: readonly string[];
+  }): Promise<NotifyLogRow[]> {
     return this.db
       .select()
       .from(notifyLog)
-      .where(and(tenantFilter(notifyLog.tenantId, input.tenantId), input.status ? eq(notifyLog.status, input.status) : undefined))
+      .where(
+        and(
+          tenantFilter(notifyLog.tenantId, input.tenantId),
+          input.status ? eq(notifyLog.status, input.status) : undefined,
+          input.templateKeys ? inArray(notifyLog.templateKey, input.templateKeys.length ? [...input.templateKeys] : [""]) : undefined,
+        ),
+      )
       .orderBy(desc(notifyLog.createdAt))
       .limit(Math.min(Math.max(input.limit ?? 50, 1), 200))
       .offset(Math.max(input.offset ?? 0, 0));

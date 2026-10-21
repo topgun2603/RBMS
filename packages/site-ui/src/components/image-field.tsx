@@ -1,20 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeftIcon, ArrowRightIcon, ImagePlusIcon, Link2Icon, Loader2Icon, Trash2Icon, UploadCloudIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, ImagePlusIcon, ImagesIcon, Link2Icon, Loader2Icon, Trash2Icon, UploadCloudIcon } from "lucide-react";
 import { AnimatePresence, Button, cn, Input, motion, Progress, toast } from "@srirealtime/ui";
 import { absoluteUrl, describeError, useI18n } from "@srirealtime/web";
 import type { ImageForm } from "../lib/blocks";
+import { checkMediaFile, MEDIA_LIMITS, useRefreshMedia } from "../lib/media-library";
 import { uploadImage } from "../lib/queries";
+import { MediaLibraryDialog } from "./media-library";
 import { useDragSort } from "./sortable";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = MEDIA_LIMITS.image;
 
 function useUploader(onDone: (url: string) => void) {
   const { t } = useI18n();
+  const refresh = useRefreshMedia();
   const [pending, setPending] = React.useState<{ key: string; preview: string; progress: number }[]>([]);
   const upload = async (files: FileList | File[], max = Infinity) => {
-    const list = [...files].filter((f) => f.type.startsWith("image/"));
+    const list = [...files].filter((f) => checkMediaFile(f, "image") !== "type");
     if (list.length === 0) {
       toast.error(t("site.media.notImage"));
       return;
@@ -33,6 +36,7 @@ function useUploader(onDone: (url: string) => void) {
           onProgress: (progress) => setPending((p) => p.map((x) => (x.key === key ? { ...x, progress } : x))),
         });
         onDone(done.url);
+        refresh();
       } catch (err) {
         toast.error(t("site.media.failed", { name: file.name, reason: describeError(err, t) }));
       } finally {
@@ -91,8 +95,23 @@ function UrlAdder({ onAdd, disabled }: { onAdd: (url: string) => void; disabled?
   );
 }
 
+/** "Choose from library": earlier uploads and stock artwork in the shop's colours. */
+export function LibraryButton({ onPick, disabled, kind = "image" }: { onPick: (url: string) => void; disabled?: boolean; kind?: "image" | "video" }) {
+  const { t } = useI18n();
+  const [open, setOpen] = React.useState(false);
+  return (
+    <>
+      <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setOpen(true)} disabled={disabled} data-media-open>
+        <ImagesIcon /> {t("site.media.library")}
+      </Button>
+      {open && <MediaLibraryDialog open={open} onOpenChange={setOpen} kind={kind} onPick={(p) => onPick(p.url)} />}
+    </>
+  );
+}
+
 /**
- * One image: upload (sign → PUT → complete), paste a URL, replace, remove. `aspect` sets the frame
+ * One image: upload (sign → PUT → complete; drop, pick or paste a file), choose from the media library (earlier
+ * uploads, stock artwork), paste a URL, replace, remove. `aspect` sets the frame
  * ("aspect-[16/6]" for hero banners, "aspect-[4/5]" for phone images …).
  */
 export function ImageField({
@@ -153,6 +172,7 @@ export function ImageField({
             <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={disabled}>
               <ImagePlusIcon /> {t("site.media.replace")}
             </Button>
+            <LibraryButton onPick={onChange} disabled={disabled} />
             <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => onChange("")} disabled={disabled}>
               <Trash2Icon /> {t("site.media.remove")}
             </Button>
@@ -172,6 +192,11 @@ export function ImageField({
             setOver(false);
             void upload(e.dataTransfer.files, 1);
           }}
+          onPaste={(e) => {
+            if (disabled || !e.clipboardData.files.length) return;
+            e.preventDefault();
+            void upload(e.clipboardData.files, 1);
+          }}
           className={cn(
             "flex w-full max-w-md flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-4 py-6 text-center transition-colors",
             over && "border-primary bg-primary/5",
@@ -189,6 +214,7 @@ export function ImageField({
       )}
       {!value && !busy && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <LibraryButton onPick={onChange} disabled={disabled} />
           <UrlAdder onAdd={onChange} disabled={disabled} />
         </div>
       )}
@@ -288,6 +314,7 @@ export function GalleryField({
       </ul>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>{t("site.media.galleryHint", { max })}</span>
+        {!full && <LibraryButton onPick={(url) => onChange([...latest.current, { url, alt: "", caption: "" }])} disabled={disabled} />}
         {!full && <UrlAdder onAdd={(url) => onChange([...value, { url, alt: "", caption: "" }])} disabled={disabled} />}
       </div>
     </div>

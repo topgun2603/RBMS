@@ -60,10 +60,12 @@ export function CategoriesSectionView({ s, t, counts }: { s: CategoriesSection; 
   const start = s.style?.align === "start";
   const cats = s.categories;
   const n = cats.length;
-  const countOf = (id: string) => (s.showCounts ? counts?.get(id) : undefined);
+  // The facet list only names categories that have products: a missing id means 0 (when the counts loaded at all).
+  const countOf = (id: string) => (s.showCounts && counts ? (counts.get(id) ?? 0) : undefined);
   const countText = (id: string) => {
     const c = countOf(id);
-    return c !== undefined ? t("sections.productsCount", { count: c }) : undefined;
+    if (c === undefined) return undefined;
+    return c > 0 ? t("sections.productsCount", { count: c }) : t("sections.comingSoon");
   };
   const countLine = (id: string, cls = "text-xs text-muted-foreground") => {
     const text = countText(id);
@@ -148,8 +150,8 @@ export function CategoriesSectionView({ s, t, counts }: { s: CategoriesSection; 
                 </span>
                 <span className="text-sm font-semibold whitespace-nowrap transition-colors group-hover:text-primary">{c.name}</span>
                 {count !== undefined && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums" title={t("sections.productsCount", { count })}>
-                    {count}
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground tabular-nums" title={countText(c.id)} data-count={count}>
+                    {count > 0 ? count : t("sections.comingSoon")}
                   </span>
                 )}
               </Link>

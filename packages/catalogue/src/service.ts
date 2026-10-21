@@ -100,12 +100,14 @@ import {
   type SearchSort,
 } from "./search";
 import {
+  preferInStock,
   rankBestsellers,
   rankForCart,
   rankForHome,
   rankSimilar,
   rankTogether,
   recommendationQuerySchema,
+  REC_STOCK_SLACK,
   type RecCandidate,
   type RecommendationKind,
   type RecommendationQuery,
@@ -1828,6 +1830,27 @@ export class CatalogueService {
     return [...out.values()];
   }
 
+  /**
+   * Which of these products have a variant in stock (the availability port; shops without inventory count as in stock).
+   * null when stock is unknown — no port, nothing to check, or the port failed — so callers keep their ranked order.
+   */
+  private async inStockProducts(tenantId: string, productIds: readonly string[]): Promise<Set<string> | null> {
+    const port = this.deps.availability;
+    if (!port || productIds.length === 0) return null;
+    try {
+      const variants = await this.db
+        .select({ id: catalogVariants.id, productId: catalogVariants.productId })
+        .from(catalogVariants)
+        .where(and(eq(catalogVariants.tenantId, tenantId), isNull(catalogVariants.deletedAt), inArray(catalogVariants.productId, [...new Set(productIds)])));
+      if (variants.length === 0) return null;
+      const ok = new Set(await port.inStock(tenantId, variants.map((v) => v.id)));
+      return new Set(variants.filter((v) => ok.has(v.id)).map((v) => v.productId));
+    } catch (err) {
+      this.log.warn({ err, tenantId }, "catalogue: availability unavailable, recommending without stock");
+      return null;
+    }
+  }
+
   /** Manual collections per product (for "shares a collection"). */
   private async collectionsOf(tenantId: string): Promise<Map<string, string[]>> {
     const rows = await this.db
@@ -1843,7 +1866,8 @@ export class CatalogueService {
    * `GET /public/recommendations` (scoring: ./recommend.ts). kind=product (`productIds`: the product): similar
    * products + bought together; cart (`productIds`: the cart's products): complementary items, never the cart's own;
    * home (`categoryIds`: categories the shopper viewed, most recent first): trending blended with those; bestsellers:
-   * by recent paid orders; sale: the biggest discounts. New shops (no orders) get catalogue-only lists.
+   * by recent paid orders; sale: the biggest discounts. New shops (no orders) get catalogue-only lists. Every list
+   * prefers in-stock products (availability port): sold-out ones only top up a short row, at its end.
    */
   async recommendations(tenantId: string, raw: RecommendationQuery = {}): Promise<PublicRecommendations> {
     const q = recommendationQuerySchema.parse(raw);
@@ -1873,21 +1897,25 @@ export class CatalogueService {
       for (const c of [...pool, ...anchorRows]) (c as { collections?: string[] }).collections = cols.get(c.id) ?? [];
     }
 
+    // Ranked with slack, so sold-out products can fall off the end (preferInStock below).
+    const limit = q.limit * REC_STOCK_SLACK;
     let ids: string[] = [];
     let bought: string[] = [];
     if (q.kind === "product") {
       const anchor = anchorRows[0];
       if (anchor) {
-        bought = rankTogether(together, new Set([anchor.id, ...exclude]), 3, new Set(pool.map((c) => c.id)));
-        ids = rankSimilar(anchor, pool, signals, { parentOf, now, limit: q.limit, skip: new Set([...exclude, ...bought]) });
+        const together3 = rankTogether(together, new Set([anchor.id, ...exclude]), 3 * REC_STOCK_SLACK, new Set(pool.map((c) => c.id)));
+        bought = preferInStock(together3, await this.inStockProducts(tenantId, together3), 3);
+        ids = rankSimilar(anchor, pool, signals, { parentOf, now, limit, skip: new Set([...exclude, ...bought]) });
       }
     } else if (q.kind === "cart") {
-      ids = rankForCart(anchorRows, pool, signals, { parentOf, now, limit: q.limit, skip: new Set([...exclude, ...anchors]) });
+      ids = rankForCart(anchorRows, pool, signals, { parentOf, now, limit, skip: new Set([...exclude, ...anchors]) });
     } else if (q.kind === "bestsellers") {
-      ids = rankBestsellers(pool, signals, { limit: q.limit, skip: exclude, now });
+      ids = rankBestsellers(pool, signals, { limit, skip: exclude, now });
     } else {
-      ids = rankForHome(pool, signals, q.categoryIds, { parentOf, now, limit: q.limit, skip: exclude });
+      ids = rankForHome(pool, signals, q.categoryIds, { parentOf, now, limit, skip: exclude });
     }
+    ids = preferInStock(ids, await this.inStockProducts(tenantId, ids), q.limit);
     const [items, boughtTogether] = await Promise.all([this.publicSummaries(tenantId, ids), this.publicSummaries(tenantId, bought)]);
     const usedOrders = (sales?.size ?? 0) > 0 || (together?.size ?? 0) > 0;
     return { kind: q.kind, items, boughtTogether, source: usedOrders ? "orders" : "catalogue" };
@@ -1911,10 +1939,14 @@ export class CatalogueService {
       i,
       off: p.mrp && p.mrp > p.priceMin ? (p.mrp - p.priceMin) / p.mrp : 0,
     }));
-    return list
-      .sort((a, b) => b.off - a.off || a.i - b.i)
-      .slice(0, limit)
-      .map((x) => x.p);
+    const ranked = list.sort((a, b) => b.off - a.off || a.i - b.i).slice(0, limit * REC_STOCK_SLACK);
+    const byId = new Map(ranked.map((x) => [x.p.id, x.p]));
+    const ids = preferInStock(
+      ranked.map((x) => x.p.id),
+      await this.inStockProducts(tenantId, ranked.map((x) => x.p.id)),
+      limit,
+    );
+    return ids.map((id) => byId.get(id)!);
   }
 
   // ================================================================ search text (maintained on every write)
@@ -2433,6 +2465,30 @@ export class CatalogueService {
    * Variants for the online store's cart and the orders port: the staff lookup plus product slug and category. Any
    * product status or channel (the store flags what it can't sell); deleted or unknown ids are left out.
    */
+  /**
+   * Which of `productIds` are in which of `collectionIds` (active collections; manual lists or rule matches), as
+   * productId → collection ids. For collection-scoped offers (coupons' CollectionMembershipPort).
+   */
+  async collectionMembership(tenantId: string, collectionIds: string[], productIds: string[]): Promise<Record<string, string[]>> {
+    const cols = [...new Set(collectionIds)].filter((id) => uuid.safeParse(id).success);
+    const pids = [...new Set(productIds)].filter((id) => uuid.safeParse(id).success);
+    const out: Record<string, string[]> = {};
+    if (!cols.length || !pids.length) return out;
+    const rows = await this.db
+      .select({ id: catalogCollections.id, type: catalogCollections.type })
+      .from(catalogCollections)
+      .where(and(eq(catalogCollections.tenantId, tenantId), inArray(catalogCollections.id, cols), eq(catalogCollections.active, true)));
+    for (const c of rows) {
+      const cond = await this.collectionCondition(tenantId, c.id);
+      const hits = await this.db
+        .select({ id: catalogProducts.id })
+        .from(catalogProducts)
+        .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, pids), isNull(catalogProducts.deletedAt), cond));
+      for (const h of hits) (out[h.id] ??= []).push(c.id);
+    }
+    return out;
+  }
+
   async storeVariants(tenantId: string, ids: string[]): Promise<StoreVariantLookup[]> {
     const unique = [...new Set(ids)].filter((id) => uuid.safeParse(id).success);
     if (unique.length === 0) return [];

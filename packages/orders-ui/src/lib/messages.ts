@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/web";
+import { promosEn, promosTa } from "./messages-promos";
 
 /** orders.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
@@ -528,6 +529,7 @@ const en: Messages = {
   "orders.coupons.reason.first_order_only": "Only for a customer's first order",
   "orders.coupons.reason.not_applicable": "It doesn't apply to these items",
   "orders.coupons.reason.wrong_channel": "It isn't set up for this kind of order",
+  "orders.coupons.reason.not_combinable": "An automatic offer on these items gives more, and it doesn't combine with coupons",
 
   // delivery settings
   "orders.delivery.title": "Delivery",
@@ -1210,6 +1212,7 @@ const ta: Messages = {
   "orders.coupons.reason.first_order_only": "வாடிக்கையாளரின் முதல் ஆர்டருக்கு மட்டும்",
   "orders.coupons.reason.not_applicable": "இந்தப் பொருட்களுக்குப் பொருந்தாது",
   "orders.coupons.reason.wrong_channel": "இந்த வகை ஆர்டருக்கு அமைக்கப்படவில்லை",
+  "orders.coupons.reason.not_combinable": "இந்தப் பொருட்களுக்கான தானியங்கு சலுகை அதிகம் தருகிறது; அது கூப்பன்களுடன் சேராது",
 
   // delivery settings
   "orders.delivery.title": "டெலிவரி",
@@ -1365,4 +1368,4 @@ const ta: Messages = {
   "orders.widget.viewAll": "எல்லாம் பார்",
 };
 
-export const ordersMessages = { en, ta } as const;
+export const ordersMessages = { en: { ...en, ...promosEn }, ta: { ...ta, ...promosTa } } as const;

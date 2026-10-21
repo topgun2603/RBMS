@@ -188,3 +188,52 @@ export interface OnboardingStatus {
   total: number;
   dismissed: boolean;
 }
+
+// ---------------------------------------------------------------- customer messages (GET /messages/settings)
+
+export type MessageChannelMode = "whatsapp" | "sms" | "both";
+export type MessageGroup = "bookings" | "jobcards" | "memberships" | "orders" | "store";
+
+export interface MessagesSettings {
+  language: "en" | "ta";
+  email: boolean;
+  bookingReminderHours: number;
+  membershipRenewalDays: number;
+  abandonedCartHours: number;
+  events: Record<string, { on: boolean; channel: MessageChannelMode }>;
+}
+
+export interface MessageEventInfo {
+  key: string;
+  group: MessageGroup;
+  marketing: boolean;
+  /** The event's feature is on for this shop. */
+  available: boolean;
+  /** WhatsApp text with sample values, in the shop's message language. */
+  preview: string;
+}
+
+export interface MessagesSettingsView {
+  values: MessagesSettings;
+  events: MessageEventInfo[];
+  quietHours: { from: number; to: number };
+}
+
+export interface SentMessage {
+  id: string;
+  channel: "sms" | "email" | "whatsapp" | "push";
+  /** Masked. */
+  to: string;
+  templateKey: string | null;
+  status: "queued" | "sent" | "failed";
+  error: string | null;
+  createdAt: string;
+  sentAt: string | null;
+}
+
+export interface TestSendResult {
+  channel: string;
+  status: "queued" | "sent" | "failed" | "skipped";
+  reason?: string;
+  to?: string;
+}

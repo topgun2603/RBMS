@@ -11,7 +11,7 @@ import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice } from "../components/brand-fields";
 import type { PreviewView } from "../components/theme-preview";
 import { LivePreview } from "../components/live-preview";
-import { appearanceTokens } from "../components/live-preview-drafts";
+import { appearanceTokens, previewViewOfPath } from "../components/live-preview-drafts";
 import { useUnsavedGuard } from "../components/unsaved-guard";
 import { useIsManager } from "../lib/access";
 import { draftFrom, draftFromPreset, useBrandingTokens, useSaveAppearance, useSaveBusinessType, type AppearanceDraft } from "../lib/appearance";
@@ -56,7 +56,7 @@ export default function AppearancePage() {
       {branding.isError ? (
         <QueryError error={branding.error} onRetry={() => void branding.refetch()} />
       ) : !branding.data || !store.data ? (
-        <div className="grid gap-section 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="grid gap-section xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
           <Skeleton className="h-96 rounded-2xl" />
           <Skeleton className="h-96 rounded-2xl" />
         </div>
@@ -83,12 +83,24 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
 
   const set = (patch: Partial<AppearanceDraft>) => setDraft((d) => ({ ...d, ...patch, preset: patch.preset !== undefined ? patch.preset : d.preset }));
   const [view, setView] = React.useState<PreviewView>("home");
+  // Where the shopper-style browsing inside the frame went (null = the chip's page). Tracking it keeps the frame
+  // controlled: a chip (or an option change) brings the frame back to its page even when the chip is already active.
+  const [framePath, setFramePath] = React.useState<string | null>(null);
   const sampleProduct = useSampleProductSlug();
-  const previewPath = view === "product" ? (sampleProduct ? `/p/${sampleProduct}` : "/products") : view === "listing" ? "/products" : "/";
+  const previewPath = framePath ?? (view === "product" ? (sampleProduct ? `/p/${sampleProduct}` : "/products") : view === "listing" ? "/products" : "/");
+  const showView = (v: PreviewView) => {
+    setView(v);
+    setFramePath(null);
+  };
+  const onFrameNavigate = (path: string) => {
+    setFramePath(path);
+    const v = previewViewOfPath(path);
+    if (v) setView(v);
+  };
   const setTheme = <K extends ThemeOptionKey>(k: K, v: StoreTheme[K]) => {
     setDraft((d) => ({ ...d, theme: { ...d.theme, [k]: v } }));
     // Show the page the change is on.
-    setView(PRODUCT_PAGE_KEYS.has(k) ? "product" : LISTING_PAGE_KEYS.has(k) ? "listing" : "home");
+    showView(PRODUCT_PAGE_KEYS.has(k) ? "product" : LISTING_PAGE_KEYS.has(k) ? "listing" : "home");
   };
   const settingsHref = useSettingsHref();
   const choices = (keys: readonly ThemeOptionKey[]) =>
@@ -120,7 +132,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
   const recommended = themePreset(pack.preset);
   return (
     <form onSubmit={submit} className="grid gap-section">
-      <div className="grid items-start gap-section 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
+      <div className="grid items-start gap-section xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         <div className="grid min-w-0 gap-section">
           <Section icon={BriefcaseIcon} title={t("site.appearance.businessTitle")} description={t("site.appearance.businessBody")}>
             <Select value={type || pack.id} onValueChange={setType} disabled={!canEdit}>
@@ -239,14 +251,14 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
           </Section>
         </div>
 
-        <aside className="order-first grid w-full max-w-2xl gap-3 2xl:sticky 2xl:top-4 2xl:order-none 2xl:max-w-none">
+        <aside className="order-first grid w-full max-w-2xl gap-3 xl:sticky xl:top-4 xl:order-none xl:max-w-none">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Label>{t("site.appearance.preview")}</Label>
             <ChipGroup
               size="sm"
               aria-label={t("site.appearance.preview")}
               value={view}
-              onChange={(v) => setView(v as PreviewView)}
+              onChange={(v) => showView(v as PreviewView)}
               options={[
                 { value: "home", label: t("site.appearance.previewHome") },
                 { value: "listing", label: t("site.appearance.previewListing") },
@@ -262,7 +274,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
             )}
           </div>
           {/* The real store, restyled live with the unsaved look; the page chips jump to a listing or a product. */}
-          <LivePreview tokens={appearanceTokens(draft)} mode="browse" path={previewPath} onNavigate={() => {}} className="h-[78dvh]" />
+          <LivePreview tokens={appearanceTokens(draft)} mode="browse" path={previewPath} onNavigate={onFrameNavigate} className="h-[78dvh]" />
           <p className="text-meta text-muted-foreground">{t("site.appearance.previewNote")}</p>
         </aside>
       </div>

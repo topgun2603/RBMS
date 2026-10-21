@@ -50,7 +50,16 @@ import {
   type DayHours,
   type Interval,
 } from "./logic";
-import { noopLogger, type BillingPort, type BillResult, type BookingNotice, type LoggerPort, type NotifyPort, type ServicePricePort } from "./ports";
+import {
+  noopLogger,
+  type BillingPort,
+  type BillResult,
+  type BookingNotice,
+  type LoggerPort,
+  type NotifyPort,
+  type RemindableAppointment,
+  type ServicePricePort,
+} from "./ports";
 import {
   APPOINTMENT_SOURCES,
   APPOINTMENT_STATUSES,
@@ -1070,7 +1079,11 @@ export class BookingsService {
         .set({ start: b.start, end: new Date(b.start.getTime() + durationMin * MIN_MS), businessDate: date, number, staffId, updatedAt: new Date() })
         .where(eq(bookingAppointments.id, id));
     });
-    return this.get(tenantId, id);
+    const view = await this.get(tenantId, id);
+    if (view.start.getTime() !== current.start.getTime() || view.staffId !== current.staffId) {
+      this.notify("rescheduled", tenantId, view, { previousStart: current.start });
+    }
+    return view;
   }
 
   /** Desk status change, by the flow in `canMoveStatus` (409 `status_move` otherwise). */
@@ -1227,10 +1240,28 @@ export class BookingsService {
 
   // ---------------------------------------------------------------- notices
 
-  private notify(kind: "booked" | "cancelled", tenantId: string, v: AppointmentView, extra?: { by: "shop" | "customer"; reason: string | null }) {
-    const n = this.deps.notify;
-    if (!n) return;
-    const notice: BookingNotice = {
+  /**
+   * Booked / confirmed appointments of every shop starting in (from, to], soonest first, for the host's reminder job
+   * (it decides per shop how far ahead to remind). At most `limit` rows.
+   */
+  async remindable(from: Date, to: Date, limit = 2000): Promise<RemindableAppointment[]> {
+    const rows = await this.db
+      .select()
+      .from(bookingAppointments)
+      .where(and(gt(bookingAppointments.start, from), lte(bookingAppointments.start, to), inArray(bookingAppointments.status, ["booked", "confirmed"])))
+      .orderBy(asc(bookingAppointments.start))
+      .limit(limit);
+    const byTenant = new Map<string, BookingAppointmentRow[]>();
+    for (const r of rows) byTenant.set(r.tenantId, [...(byTenant.get(r.tenantId) ?? []), r]);
+    const out: RemindableAppointment[] = [];
+    for (const [tenantId, list] of byTenant) {
+      for (const v of await this.views(tenantId, list)) out.push({ ...this.noticeOf(v), tenantId, createdAt: v.createdAt });
+    }
+    return out.sort((a, b) => a.start.getTime() - b.start.getTime());
+  }
+
+  private noticeOf(v: AppointmentView): BookingNotice {
+    return {
       appointmentId: v.id,
       number: v.number,
       status: v.status,
@@ -1242,8 +1273,24 @@ export class BookingsService {
       customer: { name: v.customerName, phone: v.customerPhone },
       manageToken: v.manageToken,
     };
+  }
+
+  private notify(
+    kind: "booked" | "cancelled" | "rescheduled",
+    tenantId: string,
+    v: AppointmentView,
+    extra?: { by?: "shop" | "customer"; reason?: string | null; previousStart?: Date },
+  ) {
+    const n = this.deps.notify;
+    if (!n) return;
+    const notice = this.noticeOf(v);
     try {
-      const p = kind === "booked" ? n.booked(tenantId, notice) : n.cancelled(tenantId, { ...notice, by: extra?.by ?? "shop", reason: extra?.reason ?? null });
+      const p =
+        kind === "booked"
+          ? n.booked(tenantId, notice)
+          : kind === "rescheduled"
+            ? n.rescheduled?.(tenantId, { ...notice, previousStart: extra?.previousStart ?? notice.start })
+            : n.cancelled(tenantId, { ...notice, by: extra?.by ?? "shop", reason: extra?.reason ?? null });
       void Promise.resolve(p).catch((err: unknown) => this.log.warn({ err, tenantId, appointmentId: v.id }, `bookings: ${kind} notice failed`));
     } catch (err) {
       this.log.warn({ err, tenantId, appointmentId: v.id }, `bookings: ${kind} notice failed`);

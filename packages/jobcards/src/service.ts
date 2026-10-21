@@ -5,7 +5,7 @@ import { todayIST } from "@srirealtime/gst";
 import { and, asc, count, eq, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { allowedMoves, formatJobNumber, isClosed, isOverdue, jobTotals, lineAmount, lineTax, moveBlock, nextSteps, parseJobNumber, roundQty, type JobTotals } from "./logic";
-import { noopLogger, type BillingPort, type BillResult, type JobSummary, type LoggerPort, type NotifyPort } from "./ports";
+import { NOTIFY_STATUSES, noopLogger, type BillingPort, type BillResult, type JobSummary, type LoggerPort, type NotifyPort } from "./ports";
 import {
   CLOSED_STATUSES,
   JOB_PRIORITIES,
@@ -391,7 +391,9 @@ export class JobcardsService {
       await this.event(tx, tenantId, row!.id, "created", { to: "received", userId });
       return row!.id;
     });
-    return this.get(tenantId, id);
+    const job = await this.get(tenantId, id);
+    this.notify(tenantId, job);
+    return job;
   }
 
   private assertOpen(row: JobcardRow) {
@@ -447,9 +449,9 @@ export class JobcardsService {
     };
   }
 
-  /** Tells the notify port (ready / delivered). Never throws. */
+  /** Tells the notify port (received at intake, awaiting approval, ready, delivered). Never throws. */
   private notify(tenantId: string, job: JobView) {
-    if (!this.deps.notify || (job.status !== "ready" && job.status !== "delivered")) return;
+    if (!this.deps.notify || !NOTIFY_STATUSES.includes(job.status)) return;
     try {
       void Promise.resolve(this.deps.notify.statusChanged(tenantId, this.summaryFor(job, job.totals))).catch((err) =>
         this.log.warn({ err, tenantId, jobId: job.id }, "jobcards: notify failed"),
@@ -472,7 +474,7 @@ export class JobcardsService {
     await this.event(tx, tenantId, row.id, "status", { from: row.status, to, note, userId });
   }
 
-  /** Moves a job along the flow (see `moveBlock` for what's allowed). Ready / delivered tell the notify port. */
+  /** Moves a job along the flow (see `moveBlock` for what's allowed). Approval, ready and delivered tell the notify port. */
   async moveStatus(tenantId: string, id: string, input: unknown, userId: string | null = null): Promise<JobView> {
     const b = moveInput.parse(input);
     if (b.status === "cancelled") return this.cancel(tenantId, id, { reason: b.note ?? "" }, userId);

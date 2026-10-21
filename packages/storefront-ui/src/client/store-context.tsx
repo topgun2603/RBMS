@@ -22,6 +22,8 @@ interface CartApi {
   add(variantId: string, qty: number, opts?: { silent?: boolean; productId?: string; value?: number }): Promise<PricedCart | null>;
   /** Sets a line's qty (0 removes). */
   setQty(variantId: string, qty: number): Promise<void>;
+  /** Adds a combo's items as a group (`variants`: productId → variantId for items with options). Opens the mini cart unless `silent`. */
+  addBundle(bundleId: string, variants: Record<string, string>, opts?: { silent?: boolean }): Promise<PricedCart | null>;
   applyCoupon(code: string): Promise<PricedCart | null>;
   removeCoupon(): Promise<void>;
   setPincode(pincode: string): Promise<PricedCart | null>;
@@ -199,6 +201,16 @@ export function StoreProvider({ shell, locale, children }: { shell: StoreShell; 
     [cart, mutate],
   );
 
+  const addBundle = React.useCallback<CartApi["addBundle"]>(
+    async (bundleId, variants, opts) => {
+      const c = await mutate((tk) => call<PricedCart>(`/store/cart/${tk}/bundle`, { body: { bundleId, variants } }));
+      track({ type: "add_to_cart", value: c.total });
+      if (!opts?.silent) setMiniOpen(true);
+      return c;
+    },
+    [mutate],
+  );
+
   const applyCoupon = React.useCallback((code: string) => mutate((tk) => call<PricedCart>(`/store/cart/${tk}/coupon`, { body: { code } })), [mutate]);
   const removeCoupon = React.useCallback(async () => {
     await mutate((tk) => call<PricedCart>(`/store/cart/${tk}/coupon`, { method: "DELETE" }));
@@ -261,11 +273,11 @@ export function StoreProvider({ shell, locale, children }: { shell: StoreShell; 
       locale,
       t,
       setLocale,
-      cart: { cart, count, token: cartToken, loading, ready: cartReady, add, setQty, applyCoupon, removeCoupon, setPincode, refresh, reset, replace, miniOpen, setMiniOpen },
+      cart: { cart, count, token: cartToken, loading, ready: cartReady, add, setQty, addBundle, applyCoupon, removeCoupon, setPincode, refresh, reset, replace, miniOpen, setMiniOpen },
       auth: { token, user, ready, signIn, signOut },
       quickView,
     }),
-    [shell, locale, t, setLocale, cart, count, cartToken, loading, cartReady, add, setQty, applyCoupon, removeCoupon, setPincode, refresh, reset, replace, miniOpen, token, user, ready, signIn, signOut, quickView],
+    [shell, locale, t, setLocale, cart, count, cartToken, loading, cartReady, add, setQty, addBundle, applyCoupon, removeCoupon, setPincode, refresh, reset, replace, miniOpen, token, user, ready, signIn, signOut, quickView],
   );
 
   return (

@@ -20,6 +20,7 @@ import {
 import { FieldError, Optional, TextField } from "../bits";
 import { ImageField } from "../image-field";
 import { MarkdownField } from "../markdown-field";
+import { VideoField } from "../media-video-field";
 import { CategoryPicker } from "../pickers";
 import { CtaFields, ItemTools, moveIn } from "./form-parts";
 
@@ -243,7 +244,7 @@ export function HeroVideoFields({ form, onChange, errors, disabled, idp }: Props
   const { t } = useI18n();
   return (
     <div className="grid gap-4">
-      <TextField id={`${idp}-v`} label={t("site.home.video")} hint={t("site.home.videoHint")} placeholder="https://…/shop.mp4" value={form.videoUrl} disabled={disabled} error={errors.videoUrl} onChange={(videoUrl) => onChange({ ...form, videoUrl })} />
+      <VideoField id={`${idp}-v`} label={t("site.media.videoSelected")} hint={t("site.home.videoHint")} value={form.videoUrl} disabled={disabled} error={errors.videoUrl} onChange={(videoUrl) => onChange({ ...form, videoUrl })} />
       <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Img label={t("site.home.poster")} optional value={form.posterUrl} onChange={(posterUrl) => onChange({ ...form, posterUrl })} aspect="aspect-[16/9]" hint={t("site.home.posterHint")} disabled={disabled} error={errors.posterUrl} />
         <TextField

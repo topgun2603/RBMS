@@ -2,6 +2,7 @@ import { badRequest, isSuperAdmin, permissionDenied, permissionsAllow, requireRo
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { COUPONS_FEATURE } from "./features";
+import type { OfferInput, OfferListQuery } from "./offers-service";
 import type { CouponInput, CouponListQuery, CouponsService, PublicValidateInput, RedemptionsQuery } from "./service";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -63,6 +64,30 @@ export function couponsRoutes(service: CouponsService) {
         const { id } = idParam.parse(req.params);
         return service.redemptions(requireTenant(req.ctx).id, id, req.query as RedemptionsQuery);
       });
+
+      // Automatic offers and bundles (same permission as coupons).
+      staff.get("/offers", FEATURE, async (req) => service.offers.list(requireTenant(req.ctx).id, req.query as OfferListQuery));
+      staff.post("/offers", FEATURE, async (req) => {
+        manage(req);
+        return service.offers.create(requireTenant(req.ctx).id, body(req) as OfferInput);
+      });
+      staff.get(`/offers${ID}`, FEATURE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.offers.get(requireTenant(req.ctx).id, id);
+      });
+      staff.patch(`/offers${ID}`, FEATURE, async (req) => {
+        manage(req);
+        const { id } = idParam.parse(req.params);
+        return service.offers.update(requireTenant(req.ctx).id, id, body(req) as Partial<OfferInput>);
+      });
+      staff.delete(`/offers${ID}`, FEATURE, async (req) => {
+        manage(req);
+        const { id } = idParam.parse(req.params);
+        await service.offers.remove(requireTenant(req.ctx).id, id);
+        return { ok: true };
+      });
+      /** Staff "test a cart": prices lines as the checkout would (no usage recorded). */
+      staff.post("/offers/preview", FEATURE, async (req) => service.priceCart(requireTenant(req.ctx).id, body(req) as never));
     });
   };
 }

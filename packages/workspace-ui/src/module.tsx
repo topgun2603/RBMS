@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileUpIcon, HistoryIcon, ListChecksIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
+import { FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
 import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { workspaceMessages } from "./lib/messages";
 
@@ -24,7 +24,7 @@ export const WORKSPACE_PERMISSIONS = {
 } as const;
 
 /** Settings paths the module claims under the app's /settings. */
-export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", plan: PLAN_SETTINGS_PATH } as const;
+export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", plan: PLAN_SETTINGS_PATH } as const;
 
 export interface WorkspaceModuleOptions {
   /** Where module-relative links resolve. Everything lives under /settings, so the default "/" is right for any app. */
@@ -51,6 +51,8 @@ export function workspaceModule(opts: WorkspaceModuleOptions = {}): WebModule {
     { path: P.team, label: "workspace.nav.team", icon: UsersRoundIcon, feature: F.staff, permission: WORKSPACE_PERMISSIONS.staff, component: page(() => import("./pages/team")) },
     { path: P.audit, label: "workspace.nav.audit", icon: HistoryIcon, feature: F.audit, permission: WORKSPACE_PERMISSIONS.audit, permissionExplicit: true, component: page(() => import("./pages/audit")) },
     { path: P.import, label: "workspace.nav.import", icon: FileUpIcon, feature: F.importexport, permission: WORKSPACE_PERMISSIONS.importexport, component: page(() => import("./pages/import")) },
+    // Customer messages (WhatsApp / SMS to the shop's customers): owners/admins; the page lists only the events of features that are on.
+    { path: P.messages, label: "workspace.nav.messages", icon: MessageSquareTextIcon, roles: ["owner", "admin"], component: page(() => import("./pages/messages")) },
   ];
   // Plan & billing (the platform's subscription, not a shop feature): owners/admins via subscriptions.manage.
   if (opts.planBilling !== false) {

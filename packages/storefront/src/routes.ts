@@ -11,6 +11,7 @@ const tokenParam = z.object({ token: z.string().min(1).max(64) });
 const idParam = z.object({ id: z.string().uuid() });
 const productParam = z.object({ productId: z.string().uuid() });
 const accessParam = z.object({ accessToken: z.string().min(1).max(64) });
+const slugParam = z.object({ slug: z.string().trim().min(1).max(80) });
 const cartQuery = z.object({ pincode: z.string().trim().max(10).optional() });
 
 /** The store is the request's tenant (host / `x-tenant`); a request without one has no store → 404. */
@@ -54,6 +55,18 @@ export function storefrontRoutes(service: StorefrontService) {
     app.post("/cart/:token/pincode", BASE, async (req) => {
       const { token } = tokenParam.parse(req.params);
       return service.setPincode(storeOf(req.ctx).id, token, req.body);
+    });
+    /** Adds a bundle's items as a group (offers price it). */
+    app.post("/cart/:token/bundle", BASE, async (req) => {
+      const { token } = tokenParam.parse(req.params);
+      return service.addBundle(storeOf(req.ctx).id, token, req.body);
+    });
+    /** Offer badges and bundles of a product (`productId`). */
+    app.get("/promotions", BASE, async (req) => service.promotions(storeOf(req.ctx).id, req.query));
+    app.get("/bundles", BASE, async (req) => service.listBundles(storeOf(req.ctx).id, req.query));
+    app.get("/bundles/:slug", BASE, async (req) => {
+      const { slug } = slugParam.parse(req.params);
+      return service.getBundle(storeOf(req.ctx).id, slug);
     });
     app.get("/track/:accessToken", BASE, async (req) => {
       const { accessToken } = accessParam.parse(req.params);

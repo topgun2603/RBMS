@@ -232,6 +232,7 @@ export const COUPON_REASONS = [
   "first_order_only",
   "not_applicable",
   "wrong_channel",
+  "not_combinable",
 ] as const;
 export type CouponReason = (typeof COUPON_REASONS)[number];
 
@@ -459,4 +460,95 @@ export interface ProductLite {
   image: string | null;
   priceMin?: number;
   priceMax?: number;
+}
+
+// ------------------------------------------------------------------ automatic offers and bundles (coupons module)
+
+export const OFFER_KINDS = ["bxgy", "tiered", "free_gift", "bundle"] as const;
+export type OfferKind = (typeof OFFER_KINDS)[number];
+export const OFFER_APPLIES_TO = ["all", "categories", "collections", "products"] as const;
+export type OfferAppliesTo = (typeof OFFER_APPLIES_TO)[number];
+
+export interface BxgyConfig {
+  buyQty: number;
+  getQty: number;
+  getPercent: number;
+  maxApplications?: number | null;
+}
+export interface OfferTier {
+  min: number;
+  type: "percent" | "flat";
+  value: number;
+}
+export interface TieredConfig {
+  basis: "qty" | "amount";
+  tiers: OfferTier[];
+}
+export interface FreeGiftConfig {
+  minAmount: number;
+  giftProductId: string;
+  giftVariantId: string;
+  giftQty: number;
+}
+export interface BundleItemConfig {
+  productId: string;
+  variantId: string | null;
+  qty: number;
+}
+export interface BundleConfig {
+  items: BundleItemConfig[];
+  priceType: "fixed" | "percent";
+  value: number;
+}
+export type OfferConfig = BxgyConfig | TieredConfig | FreeGiftConfig | BundleConfig;
+
+export interface Offer {
+  id: string;
+  kind: OfferKind;
+  name: string;
+  description: string | null;
+  slug: string | null;
+  imageUrl: string | null;
+  appliesTo: OfferAppliesTo;
+  targetIds: string[];
+  config: OfferConfig;
+  startsAt: ISODate | null;
+  endsAt: ISODate | null;
+  usageLimit: number | null;
+  perCustomerLimit: number | null;
+  channels: CouponChannel[];
+  stackable: boolean;
+  combinesWithCoupons: boolean;
+  active: boolean;
+  /** English summary from the API ("Buy 2 get 1 free"). */
+  label: string;
+  usedCount: number;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+export interface OfferInput {
+  kind: OfferKind;
+  name: string;
+  description?: string | null;
+  slug?: string | null;
+  imageUrl?: string | null;
+  appliesTo?: OfferAppliesTo;
+  targetIds?: string[];
+  config: OfferConfig;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  usageLimit?: number | null;
+  perCustomerLimit?: number | null;
+  channels?: CouponChannel[];
+  stackable?: boolean;
+  combinesWithCoupons?: boolean;
+  active?: boolean;
+}
+
+export interface CollectionLite {
+  id: string;
+  name: string;
+  type: "manual" | "rule";
+  active: boolean;
 }

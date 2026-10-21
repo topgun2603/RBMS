@@ -23,7 +23,7 @@ const EXT: Record<string, string> = {
 };
 
 /**
- * Default allow-list: common raster images, PDF, CSV, XLSX, MP4, MP3.
+ * Default allow-list: common raster images, PDF, CSV, XLSX, MP4 / WebM video, MP3.
  * SVG is deliberately excluded (it can carry scripts when served from your own origin).
  */
 export const DEFAULT_ALLOWED_TYPES: readonly string[] = [
@@ -38,6 +38,7 @@ export const DEFAULT_ALLOWED_TYPES: readonly string[] = [
   "text/csv",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "video/mp4",
+  "video/webm",
   "audio/mpeg",
 ];
 

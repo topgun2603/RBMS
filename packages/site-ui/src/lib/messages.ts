@@ -1,9 +1,11 @@
 import type { Messages } from "@srirealtime/web";
+import { mediaEn, mediaTa } from "./media-messages";
 import { moreEn, moreTa } from "./messages-more";
 
 /** site.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
   ...moreEn,
+  ...mediaEn,
   // nav
   "site.nav.section": "Online store",
   "site.nav.home": "Home page",
@@ -494,7 +496,7 @@ const en: Messages = {
   "site.home.eyebrowHint": "e.g. New collection, Since 1985",
   "site.home.cta2Label": "Second button text",
   "site.home.video": "Video link",
-  "site.home.videoHint": "An .mp4 or .webm file (under 10 MB, no sound). It plays muted and on repeat.",
+  "site.home.videoHint": "Upload an .mp4 or .webm (up to 50 MB, no sound) or paste a link. It plays muted and on repeat.",
   "site.home.poster": "Picture before the video plays",
   "site.home.posterHint": "Also shown when a visitor prefers less motion.",
   "site.home.overlay": "Darkening (%)",
@@ -1023,6 +1025,7 @@ const en: Messages = {
 
 const ta: Messages = {
   ...moreTa,
+  ...mediaTa,
   // nav
   "site.nav.section": "இணையக் கடை",
   "site.nav.home": "முகப்புப் பக்கம்",
@@ -1513,7 +1516,7 @@ const ta: Messages = {
   "site.home.eyebrowHint": "எ.கா. புதிய கலெக்‌ஷன், 1985 முதல்",
   "site.home.cta2Label": "இரண்டாவது பொத்தான் உரை",
   "site.home.video": "வீடியோ இணைப்பு",
-  "site.home.videoHint": ".mp4 அல்லது .webm கோப்பு (10 MB-க்குக் கீழ், ஒலி இல்லாமல்). ஒலியின்றி மீண்டும் மீண்டும் ஓடும்.",
+  "site.home.videoHint": ".mp4 அல்லது .webm கோப்பைப் பதிவேற்றுங்கள் (50 MB வரை, ஒலி இல்லாமல்) அல்லது இணைப்பை ஒட்டுங்கள். ஒலியின்றி மீண்டும் மீண்டும் ஓடும்.",
   "site.home.poster": "வீடியோ ஓடும் முன் படம்",
   "site.home.posterHint": "குறைந்த அசைவை விரும்புவோருக்கும் இது காட்டப்படும்.",
   "site.home.overlay": "இருட்டு (%)",

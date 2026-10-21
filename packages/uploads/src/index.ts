@@ -25,8 +25,8 @@ export function createUploads(deps: UploadsDeps) {
 }
 
 export * from "./schema";
-export { UploadsService, DEFAULT_MAX_BYTES, THUMBNAIL_MAX_BYTES } from "./service";
-export type { FileDto, LoggerPort, SignInput, SignResult, UploadsConfig } from "./service";
+export { UploadsService, DEFAULT_MAX_BYTES, DEFAULT_VIDEO_MAX_BYTES, THUMBNAIL_MAX_BYTES, decodeCursor, encodeCursor } from "./service";
+export type { FileDto, FilePage, ListInput, LoggerPort, SignInput, SignResult, UploadsConfig } from "./service";
 export type { StorageAdapter } from "./storage/types";
 export { S3Storage, contentDisposition, type S3StorageConfig } from "./storage/s3";
 export {
@@ -48,5 +48,5 @@ export {
   thumbKeyFor,
   withExtension,
 } from "./keys";
-export { uploadsRoutes } from "./routes";
+export { STAFF_ROLES, byteRange, listQuery, uploadsRoutes } from "./routes";
 export { rasterizeSvg } from "./images";

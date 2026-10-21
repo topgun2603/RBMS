@@ -17,6 +17,14 @@ import { ProductCardView, useQuickAdd } from "./product-card";
 import { readRecent } from "./recently-viewed";
 import { useStore } from "./store-context";
 import { toastAddedToCart } from "./toasts";
+import { nudgeText, sortNudges } from "../lib/offers";
+import type { CartNudge } from "../types";
+
+/** A store-wide "add N more" nudge the suggestions below can complete (offers scoped to everything). */
+function useStoreWideNudge(): CartNudge | null {
+  const { cart } = useStore();
+  return sortNudges((cart.cart?.nudges ?? []).filter((n) => n.scope === "all" && (n.reward.type === "units" || n.reward.type === "percent" || n.reward.type === "flat")))[0] ?? null;
+}
 
 /*
  * Recommendation blocks that need the browser: "frequently bought together" (a checkbox bundle), the cart's "you
@@ -189,10 +197,11 @@ function useCartRecs(limit: number) {
 export function CartRecommendations({ className }: { className?: string }) {
   const { t } = useStore();
   const items = useCartRecs(10);
+  const nudge = useStoreWideNudge();
   if (!items.length) return null;
   return (
     <Reveal as="section" className={cn("mt-14 border-t pt-10", className)} aria-label={t("rec.cartTitle")} data-testid="cart-recs">
-      <SectionTitle title={t("rec.cartTitle")} eyebrow={t("product.relatedEyebrow")} />
+      <SectionTitle title={t("rec.cartTitle")} eyebrow={nudge ? nudgeText(t, nudge) : t("product.relatedEyebrow")} />
       <Carousel label={t("rec.cartTitle")}>
         {items.map((p) => (
           <ProductCardView key={p.id} product={p} />
@@ -235,10 +244,16 @@ function MiniRow({ product, onNavigate }: { product: ProductSummary; onNavigate?
 export function MiniCartRecommendations({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useStore();
   const items = useCartRecs(6);
+  const nudge = useStoreWideNudge();
   if (!items.length) return null;
   return (
     <section className="border-t px-4 py-3" aria-label={t("rec.cartTitle")} data-testid="mini-cart-recs">
       <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{t("rec.cartTitle")}</h3>
+      {nudge && (
+        <p className="-mt-1 mb-2 text-xs font-medium text-primary" data-testid="recs-nudge">
+          {nudgeText(t, nudge)}
+        </p>
+      )}
       <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
         {items.map((p) => (
           <MiniRow key={p.id} product={p} onNavigate={onNavigate} />

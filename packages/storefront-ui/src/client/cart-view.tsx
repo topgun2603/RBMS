@@ -16,6 +16,8 @@ import { PaymentIcons } from "../components/trust";
 import { errorMessage } from "./api";
 import { CartLineRow } from "./cart-lines";
 import { CartRecommendations } from "./recommend";
+import { CartOfferRows, GiftPrompt, OfferNudges } from "./offers";
+import { freeDeliveryState, goodsTotal } from "../lib/offers";
 import { useStore } from "./store-context";
 
 export function couponMessage(t: (k: string) => string, reason: string | undefined): string {
@@ -45,9 +47,9 @@ export function CartView() {
     );
   }
   const blocked = c.lines.some((l) => !l.available || l.problem === "qty_reduced");
-  const goods = c.subtotal - c.discount;
+  const goods = goodsTotal(c);
   const belowMin = shell.minOrderValue > 0 && goods < shell.minOrderValue;
-  const savings = c.lines.reduce((s, l) => s + (l.available && l.mrp && l.mrp > l.price ? (l.mrp - l.price) * l.qty : 0), 0) + c.discount;
+  const savings = c.lines.reduce((s, l) => s + (l.available && l.mrp && l.mrp > l.price ? (l.mrp - l.price) * l.qty : 0), 0) + c.discount + (c.offerDiscount ?? 0);
 
   return (
     <>
@@ -69,6 +71,8 @@ export function CartView() {
       <aside className="lg:sticky lg:top-24 lg:self-start" aria-label={t("checkout.summary")}>
         <div className="grid gap-5 rounded-3xl border bg-card p-5 shadow-[var(--elevation-1)] sm:p-6">
           <FreeShippingMeter cart={c} />
+          <GiftPrompt cart={c} />
+          <OfferNudges cart={c} limit={3} />
           <CouponForm cart={c} />
           <DeliveryOptions cart={c} />
           <Totals cart={c} />
@@ -259,19 +263,18 @@ export function CouponForm({ cart: c }: { cart: PricedCart }) {
 export function FreeShippingMeter({ cart: c, className }: { cart: PricedCart; className?: string }) {
   const { t } = useStore();
   const reduced = useReducedMotionSafe();
-  const goods = c.subtotal - c.discount;
-  const thresholds = (c.delivery?.options ?? []).map((o) => o.freeAbove).filter((n): n is number => typeof n === "number" && n > 0);
-  const freeAbove = thresholds.length ? Math.min(...thresholds) : null;
-  // A serviceable quote whose cheapest option is ₹0 also means delivery is free for this cart.
-  const quotedFree = !!c.delivery?.serviceable && (c.delivery.options.length ?? 0) > 0 && Math.min(...c.delivery.options.map((o) => o.amount)) === 0;
-  const unlocked = (!!c.coupon?.valid && c.coupon.freeShipping) || (freeAbove !== null && goods >= freeAbove) || quotedFree;
-  if (!unlocked && freeAbove === null) return null;
-  const pct = unlocked ? 1 : Math.max(0.04, goods / (freeAbove ?? 1));
+  // The server's threshold (delivery zones; the pincode's zone once known), else the older quote-based rule.
+  const st = freeDeliveryState(c);
+  if (!st) return null;
+  const goods = goodsTotal(c);
+  const unlocked = st.unlocked;
+  const freeAbove = st.threshold;
+  const pct = unlocked ? 1 : Math.max(0.04, Math.min(1, goods / Math.max(1, freeAbove ?? goods + st.remaining)));
   return (
     <div className={cn("grid gap-2", className)} data-testid="free-shipping">
       <p className={cn("flex items-center gap-2 text-sm font-medium", unlocked ? "text-success-ink" : "text-foreground/85")}>
         {unlocked ? <CheckCircle2Icon className="size-4 shrink-0" /> : <TruckIcon className="size-4 shrink-0 text-primary" />}
-        {unlocked ? t("cart.freeUnlocked") : t("cart.freeMore", { amount: money((freeAbove ?? 0) - goods) })}
+        {unlocked ? t("cart.freeUnlocked") : t(st.area ? "cart.freeMoreArea" : "cart.freeMore", { amount: money(st.remaining) })}
       </p>
       <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("cart.freeProgress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}>
         <motion.div
@@ -355,6 +358,7 @@ export function Totals({ cart: c, shipping, codFee, loyalty }: { cart: PricedCar
           <AnimatedNumber value={c.subtotal} format={(n) => money(Math.round(n))} />
         </dd>
       </div>
+      <CartOfferRows cart={c} />
       {c.discount > 0 && (
         <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="flex justify-between text-success-ink">
           <dt>

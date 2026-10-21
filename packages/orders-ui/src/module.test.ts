@@ -42,6 +42,8 @@ import {
   COUPON_REASONS,
   COUPON_TYPES,
   MANUAL_PAYMENT_METHODS,
+  OFFER_APPLIES_TO,
+  OFFER_KINDS,
   ORDER_CHANNELS,
   ORDER_PAYMENT_METHODS,
   ORDER_STATUSES,
@@ -84,6 +86,7 @@ describe("ordersModule", () => {
     expect(m.nav[0]!.items.map((i) => [i.href, i.feature])).toEqual([
       ["orders", "orders"],
       ["coupons", "coupons"],
+      ["offers", "coupons"],
     ]);
   });
 
@@ -95,6 +98,9 @@ describe("ordersModule", () => {
       expect(matchRoute(app, p(`/orders/${UUID}`), (m) => m.routes)?.params).toEqual({ id: UUID });
       expect(matchRoute(app, p("/coupons/new"), (m) => m.routes)?.route.path).toBe("coupons/new");
       expect(matchRoute(app, p(`/coupons/${UUID}`), (m) => m.routes)?.route.path).toBe("coupons/:id");
+      expect(matchRoute(app, p("/offers/new"), (m) => m.routes)?.route.path).toBe("offers/new");
+      expect(matchRoute(app, p("/offers/new/bundle"), (m) => m.routes)?.params).toEqual({ kind: "bundle" });
+      expect(matchRoute(app, p(`/offers/${UUID}`), (m) => m.routes)?.route.path).toBe("offers/:id");
     }
   });
 
@@ -136,6 +142,11 @@ describe("messages", () => {
       ["orders.coupons.applies.", COUPON_APPLIES_TO],
       ["orders.coupons.channel.", COUPON_CHANNELS],
       ["orders.coupons.reason.", COUPON_REASONS],
+      ["orders.offers.kind.", OFFER_KINDS],
+      ["orders.offers.kindHint.", OFFER_KINDS],
+      ["orders.offers.namePlaceholder.", OFFER_KINDS],
+      ["orders.offers.applies.", OFFER_APPLIES_TO],
+      ["orders.offers.collectionType.", ["manual", "rule"]],
       ["orders.coupons.state.", ["active", "scheduled", "expired", "used_up", "off"]],
       ["orders.coupons.redemption.", ["active", "released"]],
       ["orders.delivery.type.", RATE_TYPES],

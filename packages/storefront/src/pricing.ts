@@ -1,4 +1,4 @@
-import type { CouponContextLine, CouponEvaluationResult, DeliveryOption, StoreVariant, VariantAvailability } from "./ports";
+import type { CartPricingResult, CouponContextLine, CouponEvaluationResult, DeliveryOption, OfferGift, OfferNudge, StoreVariant, VariantAvailability } from "./ports";
 import type { StoredCartLine } from "./schema";
 
 /** Per-line quantity bounds (whole units). */
@@ -37,6 +37,46 @@ export interface PricedLine {
   /** Most the shopper can buy now (0 when unavailable). */
   maxQty: number;
   problem?: LineProblem;
+  /** Paise off this line by automatic offers (as charged); absent when none. */
+  offerDiscount?: number;
+  /** The offers behind `offerDiscount` (ids of `PricedCart.offers`). */
+  offerIds?: string[];
+}
+
+/** An automatic offer applied to the cart (buy X get Y, tier, free gift, bundle). */
+export interface CartOffer {
+  id: string;
+  kind: string;
+  name: string;
+  /** English summary ("Buy 2 get 1 free"); the store translates from `kind`. */
+  label: string;
+  discount: number;
+  /** Sets / repeats applied. */
+  applications: number;
+}
+
+/** A product suggested next to a nudge or gift (cart upsell). */
+export interface CartProductRef {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  price: number;
+  /** The only sellable variant (one-tap add), else null (choose options on the product page). */
+  variantId: string | null;
+}
+
+export type CartNudge = OfferNudge & { products?: CartProductRef[] };
+export type CartGift = OfferGift & { product?: CartProductRef | null };
+
+export interface CartFreeShipping {
+  /** Paise of goods (after discounts) from which delivery is free; null = none (no bar). */
+  threshold: number | null;
+  /** Paise still to add (0 when unlocked). */
+  remaining: number;
+  unlocked: boolean;
+  /** "zone": for the cart's pincode; "shop": everywhere the shop delivers. */
+  scope: "zone" | "shop";
 }
 
 export interface CartCoupon {
@@ -61,9 +101,18 @@ export interface PricedCart {
   /** Coupon discount on the goods, as charged. */
   discount: number;
   coupon: CartCoupon | null;
+  /** Automatic offers' discount on the goods, as charged (on top of `discount`). */
+  offerDiscount: number;
+  offers: CartOffer[];
+  /** "Add 1 more to get 1 free", "Add ₹200 more for 10% off". */
+  nudges: CartNudge[];
+  /** Free-gift offers in reach or unlocked. */
+  gifts: CartGift[];
+  /** Free-delivery progress; null while unknown. */
+  freeShipping: CartFreeShipping | null;
   pincode: string | null;
   delivery: CartDelivery | null;
-  /** subtotal − discount (shipping is chosen at checkout). */
+  /** subtotal − offerDiscount − discount (shipping is chosen at checkout). */
   total: number;
   /** Estimated GST added on top for tax-exclusive products (0 when every price includes GST). */
   taxExtra: number;
@@ -164,18 +213,36 @@ export function couponContext(calcs: readonly LineCalc[]): { subtotal: number; l
   };
 }
 
-/** GST added on top of tax-exclusive lines, after their share of the discount (estimate for display). */
-export function estimateTaxExtra(calcs: readonly LineCalc[], discount: number): number {
+/**
+ * GST added on top of tax-exclusive lines, after their share of the discount (estimate for display). With
+ * `lineDiscounts` (same order as `calcs`) each line's own discount is used instead of a proportional share.
+ */
+export function estimateTaxExtra(calcs: readonly LineCalc[], discount: number, lineDiscounts?: readonly number[]): number {
   const avail = calcs.filter((c) => c.line.available);
   const subtotal = avail.reduce((s, c) => s + c.line.lineTotal, 0);
   if (subtotal <= 0) return 0;
   let tax = 0;
-  for (const c of avail) {
-    if (c.taxInclusive || !c.gstRate) continue;
-    const share = Math.round((discount * c.line.lineTotal) / subtotal);
+  calcs.forEach((c, i) => {
+    if (!c.line.available || c.taxInclusive || !c.gstRate) return;
+    const share = lineDiscounts ? Math.min(lineDiscounts[i] ?? 0, c.line.lineTotal) : Math.round((discount * c.line.lineTotal) / subtotal);
     tax += Math.round(((c.line.lineTotal - share) * c.gstRate) / 100);
-  }
+  });
   return Math.max(0, tax);
+}
+
+/** The `priceCart` lines for the available cart lines (same order as `couponContext`). */
+export function offerLines(calcs: readonly LineCalc[]) {
+  return calcs
+    .filter((c) => c.line.available)
+    .map((c) => ({ variantId: c.line.variantId, productId: c.line.productId, categoryId: c.categoryId, unitPrice: c.line.price, qty: c.line.qty, amount: c.line.lineTotal }));
+}
+
+/** Free-delivery progress for the cart total (goods after discounts). A free-shipping coupon unlocks it. */
+export function freeShippingState(info: { threshold: number | null; scope: "zone" | "shop" } | null, total: number, freeCoupon: boolean): CartFreeShipping | null {
+  if (freeCoupon) return { threshold: info?.threshold ?? null, remaining: 0, unlocked: true, scope: info?.scope ?? "shop" };
+  if (!info || info.threshold === null) return null;
+  const remaining = Math.max(0, info.threshold - Math.max(0, total));
+  return { threshold: info.threshold, remaining, unlocked: remaining === 0, scope: info.scope };
 }
 
 export interface BuildCartInput {
@@ -187,6 +254,16 @@ export interface BuildCartInput {
   delivery: CartDelivery | null;
   /** Delivery was asked for (pincode set) but the quote failed. */
   deliveryFailed?: boolean;
+  /**
+   * Automatic offers + coupon (coupons' `priceCart` over the available lines, in order). When given, the coupon's
+   * result is read from it (`coupon.result` may then be null).
+   */
+  pricing?: CartPricingResult | null;
+  /** Decorated nudges / gifts (product cards); default: `pricing`'s own. */
+  nudges?: CartNudge[];
+  gifts?: CartGift[];
+  /** Free-delivery threshold from the delivery module; null when unknown. */
+  freeShipping?: { threshold: number | null; scope: "zone" | "shop" } | null;
 }
 
 /** Assembles the PricedCart (pure): subtotal and discount in charged prices, coupon reasons surfaced, warnings. */
@@ -200,10 +277,29 @@ export function buildPricedCart(input: BuildCartInput): PricedCart {
 
   let coupon: CartCoupon | null = null;
   let discount = 0;
+  const pricing = input.pricing ?? null;
+  // Offers are worked out over the available lines only, in order: map them back onto the cart's lines.
+  const perLine = calcs.map(() => 0);
+  let offerDiscount = 0;
+  if (pricing) {
+    let k = 0;
+    calcs.forEach((c, i) => {
+      if (!c.line.available) return;
+      const p = pricing.lines[k++];
+      if (!p) return;
+      const off = Math.max(0, Math.min(Math.round(p.offerDiscount), c.line.lineTotal));
+      perLine[i] = Math.min(Math.max(0, Math.round(p.discount)), c.line.lineTotal);
+      if (off > 0) {
+        c.line.offerDiscount = off;
+        c.line.offerIds = p.offerIds;
+        offerDiscount += off;
+      }
+    });
+  }
   if (input.coupon) {
-    const r = input.coupon.result;
+    const r = pricing ? (pricing.coupon ?? input.coupon.result) : input.coupon.result;
     if (r && r.valid) {
-      discount = Math.max(0, Math.min(Math.round(r.discount), subtotal));
+      discount = Math.max(0, Math.min(Math.round(pricing ? pricing.couponDiscount : r.discount), subtotal - offerDiscount));
       coupon = { code: input.coupon.code, valid: true, freeShipping: r.freeShipping };
     } else {
       coupon = { code: input.coupon.code, valid: false, reason: r ? r.reason : subtotal > 0 ? "not_found" : "empty_cart", freeShipping: false };
@@ -226,10 +322,17 @@ export function buildPricedCart(input: BuildCartInput): PricedCart {
     subtotal,
     discount,
     coupon,
+    offerDiscount,
+    offers: (pricing?.offers ?? [])
+      .filter((o) => o.discount > 0)
+      .map((o) => ({ id: o.offerId, kind: o.kind, name: o.name, label: o.label, discount: o.discount, applications: o.applications })),
+    nudges: input.nudges ?? pricing?.nudges ?? [],
+    gifts: input.gifts ?? pricing?.gifts ?? [],
+    freeShipping: itemCount > 0 ? freeShippingState(input.freeShipping ?? null, subtotal - offerDiscount - discount, !!coupon?.valid && coupon.freeShipping) : null,
     pincode: input.pincode,
     delivery: input.delivery,
-    total: subtotal - discount,
-    taxExtra: estimateTaxExtra(calcs, discount),
+    total: subtotal - offerDiscount - discount,
+    taxExtra: pricing ? estimateTaxExtra(calcs, 0, perLine) : estimateTaxExtra(calcs, discount),
     weightGrams,
     warnings,
   };

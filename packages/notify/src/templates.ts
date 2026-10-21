@@ -1,3 +1,4 @@
+import { customerTemplates } from "./customer-templates";
 import type { ProviderRef } from "./schema";
 import type { Channel } from "./types";
 
@@ -379,6 +380,7 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...orderTemplates(),
   ...batch3Templates(),
   ...batch5Templates(),
+  ...customerTemplates(),
 ];
 
 /**

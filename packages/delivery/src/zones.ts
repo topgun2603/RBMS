@@ -209,3 +209,48 @@ export function quoteFromRules(zones: readonly ZoneRule[], rates: readonly RateR
 export function findOption(quote: Quote, optionId: string): DeliveryOption | null {
   return quote.options.find((o) => o.id === optionId) ?? null;
 }
+
+/**
+ * The lowest order amount (paise) at which a zone ships free: a `freeAbove` threshold, or 0 when a rate is already
+ * free (flat ₹0). Null when no active rate of the zone ever gets free.
+ */
+export function zoneFreeThreshold(rates: readonly RateRule[]): number | null {
+  let best: number | null = null;
+  for (const r of rates) {
+    if (!r.active) continue;
+    let t: number | null = null;
+    if (r.type !== "weight" && Math.round(r.amount) <= 0) t = 0;
+    else if (r.freeAbove !== null && r.freeAbove !== undefined) t = Math.max(0, r.freeAbove);
+    if (t !== null && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+
+export interface FreeShippingInfo {
+  /** Paise of goods (after discounts) from which delivery is free; null = no free delivery. */
+  threshold: number | null;
+  /** "zone": for this pincode; "shop": everywhere the shop delivers (the highest zone threshold). */
+  scope: "zone" | "shop";
+}
+
+/**
+ * Free-delivery threshold for the cart's "Add ₹X more for free delivery" bar (pure). With a pincode: its zone's
+ * threshold. Without: a threshold that holds in every active zone (the highest), or null when some zone never ships
+ * free. No active zones = the implicit free All India rate (0).
+ */
+export function freeShippingFromRules(zones: readonly ZoneRule[], rates: readonly RateRule[], input: { pincode?: string | null; stateCode?: string | null } = {}): FreeShippingInfo {
+  const active = zones.filter((z) => z.active);
+  if (active.length === 0) return { threshold: zoneFreeThreshold([DEFAULT_RATE]), scope: input.pincode ? "zone" : "shop" };
+  if (input.pincode && normalizePincode(input.pincode)) {
+    const match = matchZone(active, input.pincode, input.stateCode);
+    if (!match) return { threshold: null, scope: "zone" };
+    return { threshold: zoneFreeThreshold(rates.filter((r) => r.zoneId === match.zone.id)), scope: "zone" };
+  }
+  let worst = 0;
+  for (const z of active) {
+    const t = zoneFreeThreshold(rates.filter((r) => r.zoneId === z.id));
+    if (t === null) return { threshold: null, scope: "shop" };
+    worst = Math.max(worst, t);
+  }
+  return { threshold: worst, scope: "shop" };
+}

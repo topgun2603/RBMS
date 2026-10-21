@@ -63,6 +63,17 @@ describe("local driver routes", () => {
     expect(service.localFileHandler.mock.calls[0]![0]).toBe("t/x/a.png");
   });
 
+  it("answers byte ranges with 206 (video seeking)", async () => {
+    const app = await build(stubService());
+    const res = await app.inject({ method: "GET", url: "/v1/uploads/files/t/x/a.png", headers: { range: "bytes=3-5" } });
+    expect(res.statusCode).toBe(206);
+    expect(res.headers["content-range"]).toBe("bytes 3-5/7");
+    expect(res.headers["accept-ranges"]).toBe("bytes");
+    expect(res.body).toBe("DAT");
+    const bad = await app.inject({ method: "GET", url: "/v1/uploads/files/t/x/a.png", headers: { range: "bytes=50-" } });
+    expect(bad.statusCode).toBe(416);
+  });
+
   it("does not register local routes for other drivers", async () => {
     const service = stubService();
     (service.storage as { driver: string }).driver = "s3";

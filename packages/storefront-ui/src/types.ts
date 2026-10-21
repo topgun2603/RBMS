@@ -413,6 +413,128 @@ export interface CartLine {
   available: boolean;
   maxQty: number;
   problem?: LineProblem;
+  /** Paise off this line by automatic offers (as charged). */
+  offerDiscount?: number;
+  /** Ids of `PricedCart.offers` behind `offerDiscount`. */
+  offerIds?: string[];
+}
+
+// ------------------------------------------------------------------ automatic offers and bundles
+
+export type OfferKind = "bxgy" | "tiered" | "free_gift" | "bundle";
+
+/** Kind-specific numbers (paise for money), as the API stores them. */
+export type OfferConfig =
+  | { buyQty: number; getQty: number; getPercent: number; maxApplications?: number | null }
+  | { basis: "qty" | "amount"; tiers: { min: number; type: "percent" | "flat"; value: number }[] }
+  | { minAmount: number; giftProductId: string; giftVariantId: string; giftQty: number }
+  | { items: { productId: string; variantId: string | null; qty: number }[]; priceType: "fixed" | "percent"; value: number };
+
+/** An offer badge on a product page (GET /store/promotions). */
+export interface OfferBadge {
+  id: string;
+  kind: OfferKind | string;
+  name: string;
+  /** English fallback ("Buy 2 get 1 free"). */
+  label: string;
+  description: string | null;
+  config: OfferConfig | Record<string, unknown>;
+  endsAt: string | null;
+}
+
+export interface CartOffer {
+  id: string;
+  kind: OfferKind | string;
+  name: string;
+  label: string;
+  discount: number;
+  applications: number;
+}
+
+export type OfferReward =
+  | { type: "units"; qty: number; percent: number }
+  | { type: "percent"; value: number }
+  | { type: "flat"; value: number }
+  | { type: "gift"; productId: string; variantId: string; qty: number }
+  | { type: "bundle" };
+
+export interface CartProductRef {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  price: number;
+  /** One-tap add (single variant), else null. */
+  variantId: string | null;
+}
+
+export interface CartNudge {
+  offerId: string;
+  kind: OfferKind | string;
+  name: string;
+  label: string;
+  addQty?: number;
+  addAmount?: number;
+  reward: OfferReward;
+  /** "all" = anything in the shop counts towards it. */
+  scope?: string;
+  productIds?: string[];
+  products?: CartProductRef[];
+}
+
+export interface CartGift {
+  offerId: string;
+  name: string;
+  productId: string;
+  variantId: string;
+  qty: number;
+  unlocked: boolean;
+  inCart: boolean;
+  remaining: number;
+  product?: CartProductRef | null;
+}
+
+export interface CartFreeShipping {
+  threshold: number | null;
+  remaining: number;
+  unlocked: boolean;
+  scope: "zone" | "shop";
+}
+
+export interface BundleItem {
+  productId: string;
+  variantId: string | null;
+  qty: number;
+  name: string;
+  slug: string;
+  image: string | null;
+  variantTitle: string;
+  price: number;
+  options: { variantId: string; title: string; price: number }[];
+  available: boolean;
+}
+
+/** A combo (GET /store/bundles, /store/promotions). */
+export interface BundleView {
+  id: string;
+  slug: string | null;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  label: string;
+  priceType: "fixed" | "percent";
+  value: number;
+  endsAt: string | null;
+  items: BundleItem[];
+  regular: number;
+  price: number;
+  save: number;
+  available: boolean;
+}
+
+export interface Promotions {
+  offers: OfferBadge[];
+  bundles: BundleView[];
 }
 
 export interface PricedCart {
@@ -420,10 +542,18 @@ export interface PricedCart {
   lines: CartLine[];
   itemCount: number;
   subtotal: number;
+  /** Coupon discount (offers are in `offerDiscount`). */
   discount: number;
   coupon: { code: string; valid: boolean; reason?: string; freeShipping: boolean } | null;
+  /** Automatic offers' discount (older APIs: absent). */
+  offerDiscount?: number;
+  offers?: CartOffer[];
+  nudges?: CartNudge[];
+  gifts?: CartGift[];
+  freeShipping?: CartFreeShipping | null;
   pincode: string | null;
   delivery: DeliveryQuote | null;
+  /** subtotal − offers − coupon. */
   total: number;
   taxExtra?: number;
   weightGrams?: number;
