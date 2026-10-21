@@ -9,6 +9,7 @@ export * from "./logic";
 export * from "./ports";
 export * from "./service";
 export * from "./features";
+export * from "./staff";
 export { reviewsRoutes } from "./routes";
 
 /**

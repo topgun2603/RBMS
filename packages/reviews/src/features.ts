@@ -21,6 +21,6 @@ export const REVIEW_PERMISSIONS: PermissionDef[] = [
     key: REVIEW_PERMISSION_KEYS.manage,
     module: REVIEWS_MODULE,
     label: "Moderate reviews",
-    description: "See all product reviews, approve or reject them, reply publicly and delete them.",
+    description: "See all product reviews, approve or reject them, reply publicly, delete them, add or import reviews customers gave elsewhere and ask customers for a review.",
   },
 ];

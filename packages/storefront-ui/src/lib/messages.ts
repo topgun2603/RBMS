@@ -6,6 +6,7 @@ import { sectionsEn, sectionsTa } from "./messages-sections";
 import { themeEn, themeTa } from "./messages-theme";
 import { shelvesEn, shelvesTa } from "./messages-shelves";
 import { offersEn, offersTa } from "./messages-offers";
+import { reviewsEn, reviewsTa } from "./messages-reviews";
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
 
 /** Storefront UI strings. Shop content (product names, CMS text) stays as the shop entered it. */
@@ -17,6 +18,7 @@ export const en: Messages = {
   ...themeEn,
   ...shelvesEn,
   ...offersEn,
+  ...reviewsEn,
   "nav.home": "Home",
   "nav.shopAll": "Shop all",
   "nav.menu": "Menu",
@@ -311,6 +313,7 @@ export const en: Messages = {
   "footer.shop": "Shop",
   "footer.help": "Help",
   "footer.policies": "Policies",
+  "footer.more": "More",
   "footer.contact": "Contact us",
   "footer.follow": "Follow us",
   "footer.rights": "© {year} {name}. All rights reserved.",
@@ -438,6 +441,7 @@ export const ta: Messages = {
   ...themeTa,
   ...shelvesTa,
   ...offersTa,
+  ...reviewsTa,
   "nav.home": "முகப்பு",
   "nav.shopAll": "அனைத்தும்",
   "nav.menu": "பட்டியல்",
@@ -732,6 +736,7 @@ export const ta: Messages = {
   "footer.shop": "ஷாப்பிங்",
   "footer.help": "உதவி",
   "footer.policies": "கொள்கைகள்",
+  "footer.more": "மேலும்",
   "footer.contact": "தொடர்பு கொள்ள",
   "footer.follow": "எங்களைப் பின்தொடருங்கள்",
   "footer.rights": "© {year} {name}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",

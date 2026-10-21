@@ -82,6 +82,15 @@ describe("bundle views", () => {
     expect(bundleRefs([bundleOffer()])).toEqual({ productIds: [P1, P2], variantIds: [V1] });
   });
 
+  it("labels an item's pick with the product's option names (not a generic \"Option\")", () => {
+    const named = new Map(products).set(P2, product(P2, { variantIds: [V2, V3], optionNames: ["Size"] }));
+    expect(buildBundleView(bundleOffer(), named, variants).items[1]!.optionLabel).toBe("Size");
+    const two = new Map(products).set(P2, product(P2, { variantIds: [V2, V3], optionNames: ["Size", " Colour "] }));
+    expect(buildBundleView(bundleOffer(), two, variants).items[1]!.optionLabel).toBe("Size / Colour");
+    // Older ports / no options: empty (the store falls back to its generic label).
+    expect(buildBundleView(bundleOffer(), products, variants).items.map((i) => i.optionLabel)).toEqual(["", ""]);
+  });
+
   it("percent bundles and prices that can't go above the regular price", () => {
     expect(bundlePrice({ priceType: "percent", value: 15 }, 90000)).toBe(76500);
     expect(bundlePrice({ priceType: "fixed", value: 999999 }, 90000)).toBe(90000);

@@ -148,11 +148,25 @@ export type { Block, HomeDoc, HomeSection, MenuItem, MenuKey, MenuItemType, SeoF
 export const REVIEW_STATUSES = ["pending", "approved", "rejected"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
+/** Where a review came from: written on the store, or entered by staff (counter feedback, another platform, a reply to a review request). */
+export const REVIEW_SOURCES = ["customer", "in_store", "imported", "invited"] as const;
+export type ReviewSource = (typeof REVIEW_SOURCES)[number];
+export const STAFF_REVIEW_SOURCES = ["in_store", "imported", "invited"] as const;
+export type StaffReviewSource = (typeof STAFF_REVIEW_SOURCES)[number];
+export const REVIEW_PLATFORMS = ["google", "amazon", "flipkart", "meesho", "instagram", "other"] as const;
+export type ReviewPlatform = (typeof REVIEW_PLATFORMS)[number];
+
 export interface Review {
   id: string;
   productId: string;
-  userId: string;
+  /** Null for staff-entered reviews. */
+  userId: string | null;
   authorName: string;
+  authorCity?: string | null;
+  source?: ReviewSource;
+  sourcePlatform?: ReviewPlatform | null;
+  sourceUrl?: string | null;
+  createdBy?: string | null;
   orderId: string | null;
   rating: number;
   title: string | null;
@@ -165,6 +179,34 @@ export interface Review {
   repliedAt: ISODate | null;
   createdAt: ISODate;
   updatedAt: ISODate;
+}
+
+/** `POST /reviews` (staff). */
+export interface StaffReviewInput {
+  productId: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  authorName: string;
+  city?: string;
+  date?: string;
+  photos: string[];
+  source: StaffReviewSource;
+  platform?: ReviewPlatform;
+  sourceUrl?: string;
+  orderNumber?: string;
+  status: "approved" | "pending";
+}
+
+/** `POST /reviews/import/check` and `/reviews/import`. */
+export interface ReviewImportResult {
+  dryRun: boolean;
+  error?: string;
+  total: number;
+  valid: number;
+  invalid: number;
+  imported: number;
+  rows: { line: number; product: string; rating: string; name: string; errors: string[] }[];
 }
 
 export const AUTO_APPROVE = ["none", "verified", "all"] as const;

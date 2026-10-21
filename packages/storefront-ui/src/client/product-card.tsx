@@ -160,7 +160,11 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
             </motion.div>
           )}
           <CardBadges badges={badges} />
-          <WishlistHeart productId={product.id} size="sm" className="absolute end-2.5 top-2.5 z-[3]" />
+          {/* Photo corner: compare (subtle until hover / when in use) beside the wishlist heart. */}
+          <div className="absolute end-2.5 top-2.5 z-[3] flex items-center gap-1.5">
+            <CompareToggle product={product} />
+            <WishlistHeart productId={product.id} size="sm" />
+          </div>
           {cardButton !== "none" && (
             // Quick view (desktop hover / keyboard focus): gallery, options and add to cart in a dialog.
             <motion.button
@@ -239,7 +243,6 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
         <Price price={product.priceMin} priceMax={product.priceMax} mrp={product.mrp} t={t} size="sm" className={editorial ? "justify-center" : undefined} />
         {rating && rating.count > 0 && <Stars value={rating.average} count={rating.count} t={t} />}
       </div>
-      <CompareToggle product={product} className={cn(boxed && "mx-3 mb-2", editorial && "self-center", overlay && "mt-0.5")} />
       {overlay && (
         // The stretched link of the (visually hidden) title still covers the tile; keep one visible link target for keyboards.
         <Link href={href} aria-hidden tabIndex={-1} className="absolute inset-0 z-[1] rounded-[var(--sf-radius-card)]" />
@@ -313,7 +316,7 @@ export function ProductRowView({ product, rating, eager, fresh = false }: { prod
           >
             <EyeIcon className="size-4" />
           </button>
-          <CompareToggle product={product} />
+          <CompareToggle product={product} variant="inline" />
           <WishlistHeart productId={product.id} size="sm" className="relative z-[2] ms-auto" />
         </div>
       </div>

@@ -18,6 +18,7 @@ import type { Channel } from "./types";
  *   membership.renewal_due: shop, customer, plan, code, endDate, days
  *   membership.expired: shop, customer, plan, code, endDate
  *   cart.abandoned: shop, customer, count, link (the store's /cart)
+ *   review.request: shop, customer, number (order), link (the product's review form, or the order page)
  */
 type Copy = { body: string; subject: string };
 
@@ -150,6 +151,16 @@ export const CUSTOMER_TEMPLATES: Record<string, { en: Copy; ta: Copy }> = {
     ta: {
       body: "{{shop}}: வணக்கம் {{customer}}, உங்கள் கூடையில் {{count}} பொருள்(கள்) உள்ளன. அது உங்களுக்காகச் சேமிக்கப்பட்டுள்ளது: {{link}}",
       subject: "உங்கள் கூடை சேமிக்கப்பட்டுள்ளது - {{shop}}",
+    },
+  },
+  "review.request": {
+    en: {
+      body: "{{shop}}: Hi {{customer}}, thank you for your order {{number}}. How did you like it? Please share a short review: {{link}}",
+      subject: "How was your order {{number}}? - {{shop}}",
+    },
+    ta: {
+      body: "{{shop}}: வணக்கம் {{customer}}, உங்கள் ஆர்டர் {{number}}-க்கு நன்றி. பொருள் எப்படி இருந்தது? ஒரு சிறு விமர்சனம் எழுதுங்கள்: {{link}}",
+      subject: "உங்கள் ஆர்டர் {{number}} எப்படி இருந்தது? - {{shop}}",
     },
   },
 };

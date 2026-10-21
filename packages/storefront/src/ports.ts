@@ -42,6 +42,8 @@ export interface StoreProductSummary {
   categoryId?: string | null;
   /** Live variant ids (bundle items that take any variant list their choices). Optional for older ports. */
   variantIds?: string[];
+  /** The product's option names in order ("Size", "Length"): labels the variant pick of a bundle item. Optional for older ports. */
+  optionNames?: string[];
 }
 
 /** Implemented by the catalogue (kit). Unknown or deleted ids are simply missing from the result. */

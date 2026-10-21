@@ -187,7 +187,8 @@ describe("bundles", () => {
   it("fixed price: the saving is spread over the set by price", () => {
     const o = evaluateBundle(combo("fixed", 100000), [line(1, P1, 80000, 1), line(2, P2, 40000, 1)]);
     expect(o.discount).toBe(20000);
-    expect(o.lineDiscounts).toEqual([13333, 6667]);
+    // ₹200 split 2:1 in whole rupees (₹133.33 / ₹66.67 would show odd paise on the lines).
+    expect(o.lineDiscounts).toEqual([13300, 6700]);
     expect(o.applications).toBe(1);
   });
 

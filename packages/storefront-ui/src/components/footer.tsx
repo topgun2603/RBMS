@@ -1,7 +1,7 @@
 import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
-import { ArrowUpIcon, FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
+import { ArrowUpIcon, ChevronDownIcon, FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { NewsletterForm } from "../client/carousel";
 import { PaymentIcons, TrustBadges } from "./trust";
@@ -35,11 +35,14 @@ function whatsappUrl(v: string): string {
 
 type Social = { href: string; label: string; icon: typeof InstagramIcon };
 
-const FOOTER_COLS: Record<number, string> = {
-  2: "lg:grid-cols-[1.3fr_1fr]",
-  3: "lg:grid-cols-[1.3fr_1fr_1fr]",
-  4: "lg:grid-cols-[1.3fr_1fr_1fr_1fr]",
-  5: "lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]",
+/** Desktop grid: the brand block, then 1–6 equal link columns, all in one row. Static classes for Tailwind. */
+const FOOTER_GRID: Record<number, string> = {
+  1: "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]",
+  2: "lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))]",
+  3: "lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]",
+  4: "lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]",
+  5: "lg:grid-cols-[minmax(0,1.3fr)_repeat(5,minmax(0,1fr))]",
+  6: "lg:grid-cols-[minmax(0,1.25fr)_repeat(6,minmax(0,1fr))]",
 };
 
 function SocialLinks({ social, t, className }: { social: Social[]; t: Translator; className?: string }) {
@@ -85,24 +88,94 @@ function FooterLogo({ name, logoUrl, className }: { name: string; logoUrl?: stri
 const norm = (v: string) => v.trim().toLowerCase();
 const linksTo = (items: MenuItem[], href: string) => items.some((m) => m.href === href || m.children?.some((c) => c.href === href));
 
+export interface FooterLink {
+  label: string;
+  href: string;
+}
+/** One footer link column. `kind` says where it came from: the shop's menu group, or one of ours. */
+export interface FooterColumn {
+  kind: "group" | "shop" | "more" | "help" | "policies";
+  label: string;
+  links: FooterLink[];
+}
+
+/** Desktop shows the brand block plus at most this many link columns in one row. */
+export const FOOTER_MAX_COLUMNS = 6;
+
+const CATALOG_TYPES = new Set(["category", "collection", "product", "brand"]);
+const CATALOG_HREF = /^\/(products|c|collections|bundles|search|p|offers)(\/|\?|$)/;
+/** A link into the catalogue (a category, collection, product, the bundles page, a search …). */
+export const isCatalogLink = (m: Pick<MenuItem, "type" | "href">) => CATALOG_TYPES.has(m.type) || (!!m.href && CATALOG_HREF.test(m.href));
+
+const SHOP_TITLES = ["shop", "shop by", "shop by category", "categories", "collections", "products", "catalogue", "catalog"];
+const HELP_TITLES = ["help", "support", "help & support", "customer care", "customer service"];
+const POLICY_TITLES = ["policies", "policy", "legal", "information"];
+
+const toLinks = (items: MenuItem[]): FooterLink[] => items.filter((c) => !!c.href).map((c) => ({ label: c.label, href: c.href! }));
+const hasHref = (links: FooterLink[], href: string) => links.some((l) => l.href === href);
+
 /**
- * The footer's link groups, with the built-in help links folded in. When the shop's footer menu already has a help
- * group (same title as ours — "Help" / "உதவி" — or a group that links /track or /help), the help-centre and
- * order-tracking links join that group instead of a second "Help" column; otherwise `extraHelp` asks for our column.
+ * The footer's link columns. The shop's footer menu groups define the columns (in menu order); ours only fill gaps:
+ *
+ * - **Shop** — a group titled like "Shop"/"Categories", or one that mostly links the catalogue, *is* the shop column
+ *   ("Shop all" is added when it doesn't link /products). Without one we add our own Shop column.
+ * - **Loose top-level links** (no group): catalogue links join the shop column; the rest go to a "More" column (or,
+ *   when the menu has exactly one non-shop group, into that group) — never into a column whose title doesn't fit.
+ * - **Help** — the help centre (when on) and order tracking join the shop's own help group (same title as ours, or a
+ *   group that links /track or /help); otherwise we add a Help column.
+ * - **Policies** — the shop's policies (those with text) join a "Policies"/"Legal" group, or get our column.
  */
-export function footerColumns(menu: MenuItem[], help: boolean, t: Translator): { groups: MenuItem[]; extraHelp: boolean } {
+export function footerColumns(menu: MenuItem[], help: boolean, t: Translator, policyLinks: readonly FooterLink[] = []): FooterColumn[] {
   const groups = menu.filter((m) => m.children?.length);
-  const linksHelp = linksTo(menu, "/help");
-  const titles = new Set([t("footer.help"), t("nav.help"), "help", "support", "help & support", "customer care"].map(norm));
-  const own = groups.findIndex((g) => titles.has(norm(g.label)) || g.children!.some((c) => c.href === "/track" || c.href === "/help"));
-  if (own < 0) return { groups, extraHelp: groups.length > 0 && help && !linksHelp };
-  const g = groups[own]!;
-  const children = [
-    ...g.children!,
-    ...(help && !linksHelp ? [{ label: t("help.title"), type: "url", href: "/help" }] : []),
-    ...(!linksTo(menu, "/track") ? [{ label: t("nav.track"), type: "url", href: "/track" }] : []),
+  const loose = menu.filter((m) => !m.children?.length && m.href);
+  const titleIs = (g: MenuItem, list: string[]) => list.includes(norm(g.label));
+
+  const cols: FooterColumn[] = groups.map((g) => ({ kind: "group", label: g.label, links: toLinks(g.children!) }));
+  const kids = (i: number) => groups[i]!.children!;
+
+  const shopTitles = [...SHOP_TITLES, norm(t("footer.shop"))];
+  const shopIdx = groups.findIndex((g, i) => titleIs(g, shopTitles) || kids(i).filter(isCatalogLink).length * 2 > kids(i).length);
+  const helpTitles = [...HELP_TITLES, norm(t("footer.help")), norm(t("nav.help"))];
+  const helpIdx = groups.findIndex((g, i) => i !== shopIdx && (titleIs(g, helpTitles) || kids(i).some((c) => c.href === "/track" || c.href === "/help")));
+  const policyTitles = [...POLICY_TITLES, norm(t("footer.policies"))];
+  const policyIdx = groups.findIndex((g, i) => i !== shopIdx && i !== helpIdx && (titleIs(g, policyTitles) || kids(i).some((c) => !!c.href?.startsWith("/policies/"))));
+  const helpCol = helpIdx >= 0 ? cols[helpIdx]! : null;
+  const policyCol = policyIdx >= 0 ? cols[policyIdx]! : null;
+
+  // Shop: the shop's own shop-like group, else ours (first).
+  let shopCol = shopIdx >= 0 ? cols[shopIdx]! : null;
+  if (!shopCol) {
+    shopCol = { kind: "shop", label: t("footer.shop"), links: [] };
+    cols.unshift(shopCol);
+  }
+  if (!linksTo(menu, "/products")) shopCol.links.unshift({ label: t("nav.shopAll"), href: "/products" });
+  for (const l of toLinks(loose.filter(isCatalogLink))) if (!hasHref(shopCol.links, l.href)) shopCol.links.push(l);
+
+  // Loose non-catalogue links: the menu's only other group takes them; otherwise a "More" column.
+  const otherLoose = toLinks(loose.filter((m) => !isCatalogLink(m)));
+  if (otherLoose.length) {
+    const others = cols.filter((c) => c.kind === "group" && c !== shopCol && c !== helpCol && c !== policyCol);
+    if (others.length === 1) others[0]!.links.push(...otherLoose.filter((l) => !hasHref(others[0]!.links, l.href)));
+    else cols.push({ kind: "more", label: t("footer.more"), links: otherLoose });
+  }
+
+  // Help: the help centre (when on) and tracking join the shop's help group, else our Help column.
+  const helpLinks: FooterLink[] = [
+    ...(help && !linksTo(menu, "/help") ? [{ label: t("help.title"), href: "/help" }] : []),
+    ...(!linksTo(menu, "/track") ? [{ label: t("nav.track"), href: "/track" }] : []),
   ];
-  return { groups: groups.map((x, i) => (i === own ? { ...g, children } : x)), extraHelp: false };
+  if (helpCol) helpCol.links.push(...helpLinks);
+  else if (helpLinks.length) {
+    // A shop with no menu groups at all also gets "My account" here (as before).
+    cols.push({ kind: "help", label: t("footer.help"), links: [...helpLinks, ...(groups.length === 0 ? [{ label: t("nav.account"), href: "/account" }] : [])] });
+  }
+
+  // Policies (those with text): into the shop's policies group, else our column.
+  const missingPolicies = policyLinks.filter((l) => !linksTo(menu, l.href));
+  if (policyCol) policyCol.links.push(...missingPolicies);
+  else if (missingPolicies.length) cols.push({ kind: "policies", label: t("footer.policies"), links: [...missingPolicies] });
+
+  return cols.filter((c) => c.links.length > 0);
 }
 
 /**
@@ -135,9 +208,13 @@ export function StoreFooter({
     shop.social.whatsapp && { href: whatsappUrl(shop.social.whatsapp), label: "WhatsApp", icon: MessageCircleIcon },
   ].filter(Boolean) as Social[];
 
-  const { groups, extraHelp } = footerColumns(menu, help, t);
-  const loose = menu.filter((m) => !m.children?.length && m.href);
   const policyLinks = POLICY_KINDS.filter((k) => policies[k]?.trim());
+  const columns = footerColumns(
+    menu,
+    help,
+    t,
+    policyLinks.map((k) => ({ label: t(`policy.${k}`), href: `/policies/${k}` })),
+  );
   const rights = t("footer.rights", { year: new Date().getFullYear(), name: shop.name });
 
   if (variant === "minimal") {
@@ -164,15 +241,9 @@ export function StoreFooter({
   }
 
   if (variant === "centered") {
-    // Every link in one wrapping row: the shop's menu (groups flattened), help, policies.
-    const links = [
-      { href: "/products", label: t("nav.shopAll") },
-      ...loose.map((m) => ({ href: m.href!, label: m.label })),
-      ...groups.flatMap((g) => g.children!.filter((c) => c.href).map((c) => ({ href: c.href!, label: c.label }))),
-      ...(help && !groups.some((g) => g.children!.some((c) => c.href === "/help")) && !linksTo(menu, "/help") ? [{ href: "/help", label: t("help.title") }] : []),
-      ...(groups.some((g) => g.children!.some((c) => c.href === "/track")) || linksTo(menu, "/track") ? [] : [{ href: "/track", label: t("nav.track") }]),
-      ...policyLinks.map((k) => ({ href: `/policies/${k}`, label: t(`policy.${k}`) })),
-    ];
+    // Every link in one wrapping row: the same columns, flattened (each link once).
+    const seen = new Set<string>();
+    const links = columns.flatMap((c) => c.links).filter((l) => !seen.has(l.href) && !!seen.add(l.href));
     return (
       <footer className="mt-[var(--sf-section)] border-t bg-tint-1" data-footer="centered">
         <div className="mx-auto grid w-full max-w-5xl justify-items-center gap-7 px-4 pt-14 pb-10 text-center sm:px-6 lg:px-8">
@@ -220,8 +291,9 @@ export function StoreFooter({
     { href: "/cart", label: t("nav.cart"), icon: ShoppingBagIcon },
   ];
   const bigBand = variant === "newsletter";
-  // Contact + shop + the menu's groups (or help) + extra help + policies: one row on desktop (up to five columns).
-  const columns = Math.min(5, 2 + Math.max(groups.length, 1) + (extraHelp ? 1 : 0) + (policyLinks.length ? 1 : 0));
+  // Brand block + the link columns in one row on desktop (up to FOOTER_MAX_COLUMNS; more wrap), two columns on tablets,
+  // an accordion on phones.
+  const desktopCols = Math.max(1, Math.min(FOOTER_MAX_COLUMNS, columns.length));
 
   return (
     <footer className={cn("mt-[var(--sf-section)] bg-tint-1", !bigBand && "border-t")} data-footer={variant}>
@@ -255,7 +327,7 @@ export function StoreFooter({
         </div>
       )}
 
-      <div className={cn("mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:px-8", FOOTER_COLS[columns])}>
+      <div className={cn("mx-auto grid w-full max-w-7xl gap-x-8 gap-y-10 px-4 py-12 sm:px-6 lg:px-8", FOOTER_GRID[desktopCols])} data-footer-columns={columns.length}>
         <div className="grid content-start gap-4">
           <FooterLogo name={shop.name} logoUrl={bigBand ? logoUrl : null} />
           <div className="grid gap-2 text-sm text-foreground/70">
@@ -286,55 +358,39 @@ export function StoreFooter({
           </ul>
         </div>
 
-        <div className="grid content-start gap-3">
-          <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t("footer.shop")}</p>
-          <FLink href="/products">{t("nav.shopAll")}</FLink>
-          {loose.map((m, i) => (
-            <FLink key={i} href={m.href!}>
-              {m.label}
-            </FLink>
+        {/* Phones: one accordion (native <details>, no JS). */}
+        <div className="divide-y border-y md:hidden" data-footer-accordion>
+          {columns.map((c, i) => (
+            <details key={i} className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3.5 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase focus-ring [&::-webkit-details-marker]:hidden">
+                {c.label}
+                <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+              </summary>
+              <ul className="grid gap-3 pb-4">
+                {c.links.map((l, j) => (
+                  <li key={j}>
+                    <FLink href={l.href}>{l.label}</FLink>
+                  </li>
+                ))}
+              </ul>
+            </details>
           ))}
         </div>
-
-        {groups.map((g, i) => (
-          <div key={i} className="grid content-start gap-3">
-            <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{g.label}</p>
-            {g.children!.map((c, j) =>
-              c.href ? (
-                <FLink key={j} href={c.href}>
-                  {c.label}
-                </FLink>
-              ) : null,
-            )}
-          </div>
-        ))}
-
-        {groups.length === 0 && (
-          <div className="grid content-start gap-3">
-            <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t("footer.help")}</p>
-            <FLink href="/track">{t("nav.track")}</FLink>
-            {help && <FLink href="/help">{t("help.title")}</FLink>}
-            <FLink href="/account">{t("nav.account")}</FLink>
-          </div>
-        )}
-        {extraHelp && (
-          <div className="grid content-start gap-3">
-            <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t("footer.help")}</p>
-            <FLink href="/help">{t("help.title")}</FLink>
-            <FLink href="/track">{t("nav.track")}</FLink>
-          </div>
-        )}
-
-        {policyLinks.length > 0 && (
-          <div className="grid content-start gap-3">
-            <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{t("footer.policies")}</p>
-            {policyLinks.map((k) => (
-              <FLink key={k} href={`/policies/${k}`}>
-                {t(`policy.${k}`)}
-              </FLink>
-            ))}
-          </div>
-        )}
+        {/* Tablets: two columns; desktop: every column in the brand block's row. */}
+        <div className={cn("hidden gap-x-8 gap-y-10 md:grid md:grid-cols-2 lg:contents")}>
+          {columns.map((c, i) => (
+            <nav key={i} aria-label={c.label} className="grid min-w-0 content-start gap-3" data-footer-column={c.kind}>
+              <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{c.label}</p>
+              <ul className="grid gap-3">
+                {c.links.map((l, j) => (
+                  <li key={j}>
+                    <FLink href={l.href}>{l.label}</FLink>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
       </div>
       <div className="border-t">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">

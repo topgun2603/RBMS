@@ -305,3 +305,17 @@ describe("batch 3 templates", () => {
     }
   });
 });
+
+describe("review request template", () => {
+  it("ships sms, whatsapp and email in English and Tamil, with the shop, order number and link", () => {
+    for (const channel of ["sms", "whatsapp", "email"] as const) {
+      for (const locale of ["en", "ta"]) {
+        const t = BUILTIN_TEMPLATES.find((b) => b.key === "review.request" && b.channel === channel && b.locale === locale);
+        expect(t, `${channel}/${locale}`).toBeDefined();
+        expect(placeholders(t!.body)).toEqual(expect.arrayContaining(["shop", "customer", "number", "link"]));
+        for (const name of [...placeholders(t!.body), ...placeholders(t!.subject ?? "")]) expect(["shop", "customer", "number", "link"]).toContain(name);
+        if (locale === "ta") expect(t!.body).toMatch(/[஀-௿]{3,}/);
+      }
+    }
+  });
+});

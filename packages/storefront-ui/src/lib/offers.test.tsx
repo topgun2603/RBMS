@@ -162,6 +162,12 @@ describe("offer components", () => {
     expect(out).toContain("₹1,399");
     expect(out).toContain("Save ₹199");
     expect(out).toContain("Add combo to cart");
+    // The pick is labelled with the product's option name when the API sends it.
+    expect(out).toMatch(/<option value="" disabled=""[^>]*>Option<\/option>/);
+    const named = html(<BundleCard bundle={{ ...b, items: b.items.map((i, k) => (k === 0 ? { ...i, optionLabel: "Size" } : i)) }} />);
+    expect(named).toMatch(/<option value="" disabled=""[^>]*>Size<\/option>/);
+    expect(named).toContain("Choose Size for Anarkali Kurti");
+    expect(named).not.toContain(">Option<");
   });
 
   it("product badges (server-rendered)", () => {

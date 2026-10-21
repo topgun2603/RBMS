@@ -4,10 +4,12 @@ import { z } from "zod";
 import { REVIEW_FEATURE_KEYS, REVIEW_PERMISSION_KEYS } from "./features";
 import { productIdsQuerySchema, type PublicReviewQuery, type ReplyInput, type ReviewInput, type StaffReviewQuery } from "./logic";
 import type { ReviewsService } from "./service";
+import type { ImportInput, StaffReviewInput } from "./staff";
 
 /** Staff routes only match UUID-shaped ids, so `/public/*` never reaches them. */
 const ID = "/:id([0-9a-fA-F-]{36})";
 const idParam = z.object({ id: z.string().uuid() });
+const requestBody = z.object({ orderId: z.string().uuid() });
 const productParam = z.object({ productId: z.string().uuid() });
 const body = (req: { body: unknown }) => (req.body ?? {}) as Record<string, unknown>;
 const query = (req: { query: unknown }) => (req.query ?? {}) as Record<string, string | undefined>;
@@ -75,6 +77,26 @@ export function reviewsRoutes(service: ReviewsService) {
         requirePermission(req.ctx, REVIEW_PERMISSION_KEYS.manage);
       });
       staff.get("/", staffRoute(), async (req) => service.list(tid(req), query(req) as StaffReviewQuery));
+      // Staff-entered reviews (in store, imported, invited) and CSV import; review requests from an order.
+      staff.post("/", staffRoute("review.create"), async (req) => {
+        const review = await service.createStaff(tid(req), req.ctx.user?.id ?? null, body(req) as unknown as StaffReviewInput);
+        req.auditDetail = { entityId: review.id };
+        return review;
+      });
+      // Check (dry run, not audited) and import: the same CSV checks; import saves the valid rows.
+      const IMPORT = { bodyLimit: 5 * 1024 * 1024 };
+      staff.post("/import/check", { ...IMPORT, config: { feature, permission: REVIEW_PERMISSION_KEYS.manage, audit: false as const } }, async (req) =>
+        service.importCsv(tid(req), req.ctx.user?.id ?? null, { ...(body(req) as unknown as ImportInput), dryRun: true }),
+      );
+      staff.post("/import", { ...IMPORT, ...staffRoute("review.import") }, async (req) => {
+        const result = await service.importCsv(tid(req), req.ctx.user?.id ?? null, { ...(body(req) as unknown as ImportInput), dryRun: false });
+        req.auditSummary = `${result.imported} imported, ${result.invalid} skipped`;
+        return result;
+      });
+      staff.post("/requests", staffRoute("review.request"), async (req) => {
+        const { orderId } = requestBody.parse(body(req));
+        return service.requestReview(tid(req), orderId);
+      });
       staff.get(ID, staffRoute(), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.get(tid(req), id);

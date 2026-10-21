@@ -289,7 +289,7 @@ export function BundleCard({ bundle: b, className, headingLevel = 3 }: { bundle:
               {!i.variantId && i.options.length > 1 && (
                 <>
                   <label htmlFor={`${id}-${i.productId}`} className="sr-only">
-                    {t("bundle.choose", { name: i.name })}
+                    {i.optionLabel ? t("bundle.chooseOption", { option: i.optionLabel, name: i.name }) : t("bundle.choose", { name: i.name })}
                   </label>
                   <select
                     id={`${id}-${i.productId}`}
@@ -298,7 +298,7 @@ export function BundleCard({ bundle: b, className, headingLevel = 3 }: { bundle:
                     className="h-9 max-w-[10rem] rounded-lg border border-input bg-background px-2 text-sm outline-none focus:ring-[3px] focus:ring-ring/30"
                   >
                     <option value="" disabled>
-                      {t("bundle.option")}
+                      {i.optionLabel || t("bundle.option")}
                     </option>
                     {i.options.map((o) => (
                       <option key={o.variantId} value={o.variantId}>

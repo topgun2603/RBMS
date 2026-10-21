@@ -44,6 +44,8 @@ export const CUSTOMER_EVENTS = [
   { key: "order.delivered", group: "orders", feature: "orders" },
   { key: "order.cancelled", group: "orders", feature: "orders" },
   { key: "cart.abandoned", group: "store", feature: "storefront", marketing: true },
+  // Sent only when staff press "Ask for a review" on a delivered order (once per order).
+  { key: "review.request", group: "store", feature: "reviews" },
 ] as const satisfies readonly CustomerEventDef[];
 
 export type CustomerEventKey = (typeof CUSTOMER_EVENTS)[number]["key"];
@@ -218,6 +220,7 @@ export function sampleVars(event: CustomerEventKey, locale: MessageLocale, shop:
     return { ...common, plan: locale === "ta" ? "மாதாந்திர திட்டம்" : "Monthly plan", code: "M-0042", startDate: formatMessageDate(new Date(), locale), endDate: formatMessageDate(day, locale), days: "3" };
   }
   if (group === "orders") return { ...common, number: "ORD-1042", amount: moneyText(124950), items: "2 items", tracking: "Delhivery 1234567890", link: `${base}/account/orders` };
+  if (event === "review.request") return { ...common, number: "ORD-1042", link: `${base}/p/sample?review=1#reviews` };
   return { ...common, count: "2", link: `${base}/cart` };
 }
 

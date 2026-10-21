@@ -1,11 +1,13 @@
 import type { Messages } from "@srirealtime/web";
 import { mediaEn, mediaTa } from "./media-messages";
 import { moreEn, moreTa } from "./messages-more";
+import { reviewsEn, reviewsTa } from "./messages-reviews";
 
 /** site.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
   ...moreEn,
   ...mediaEn,
+  ...reviewsEn,
   // nav
   "site.nav.section": "Online store",
   "site.nav.home": "Home page",
@@ -1026,6 +1028,7 @@ const en: Messages = {
 const ta: Messages = {
   ...moreTa,
   ...mediaTa,
+  ...reviewsTa,
   // nav
   "site.nav.section": "இணையக் கடை",
   "site.nav.home": "முகப்புப் பக்கம்",

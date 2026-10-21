@@ -178,13 +178,39 @@ describe("helpers", () => {
     expect(eligibleMask({ appliesTo: "products", targetIds: [P1] }, lines)).toEqual([true, false]);
     expect(eligibleMask({ appliesTo: "products", targetIds: [P1] }, [{ amount: 1 }])).toEqual([false]);
   });
-  it("allocates exactly, by largest remainder, never above a line", () => {
-    expect(allocateDiscount(100, [100, 100, 100], [true, true, true])).toEqual([34, 33, 33]);
+  it("allocates exactly, by largest remainder on whole rupees, never above a line", () => {
+    // ₹1 can't be split in rupees three ways: it goes whole to one line.
+    expect(allocateDiscount(100, [100, 100, 100], [true, true, true])).toEqual([100, 0, 0]);
     expect(allocateDiscount(100, [1, 1, 1], [true, true, true])).toEqual([1, 1, 1]);
     expect(allocateDiscount(1000, [300, 200], [true, true])).toEqual([300, 200]);
     expect(allocateDiscount(10, [100, 100], [false, true])).toEqual([0, 10]);
     expect(allocateDiscount(0, [100], [true])).toEqual([0]);
     const parts = allocateDiscount(9_999, [33_333, 33_333, 33_334], [true, true, true]);
     expect(parts.reduce((s, p) => s + p, 0)).toBe(9_999);
+  });
+
+  it("splits a whole-rupee discount in whole rupees (anbu's ₹400 combo: ₹8,500 saree + ₹890 jhumkas)", () => {
+    expect(allocateDiscount(40_000, [850_000, 89_000], [true, true])).toEqual([36_200, 3_800]);
+    // Order-wide ₹300 over three lines: no paise on any line, total exact.
+    const parts = allocateDiscount(30_000, [370_000, 99_900, 89_000], [true, true, true]);
+    expect(parts.every((p) => p % 100 === 0)).toBe(true);
+    expect(parts.reduce((s, p) => s + p, 0)).toBe(30_000);
+    expect(parts).toEqual([19_800, 5_400, 4_800]);
+  });
+
+  it("puts a total's paise on the largest line; the rest stays in rupees", () => {
+    // 10% of ₹1,598.00 + ₹999.50 … = paise in the total.
+    const parts = allocateDiscount(15_985, [99_900, 59_950], [true, true]);
+    expect(parts).toEqual([9_985, 6_000]);
+    expect(parts[1]! % 100).toBe(0);
+  });
+
+  it("falls back to paise for lines too small for whole rupees, and never exceeds a line", () => {
+    expect(allocateDiscount(250, [150, 150], [true, true])).toEqual([150, 100]);
+    expect(allocateDiscount(299, [150, 150], [true, true])).toEqual([150, 149]);
+    expect(allocateDiscount(5_000, [99, 20_000], [true, true])).toEqual([0, 5_000]);
+    const odd = allocateDiscount(12_345, [10_001, 7_777, 3_333], [true, true, true]);
+    expect(odd.reduce((s, p) => s + p, 0)).toBe(12_345);
+    odd.forEach((p, i) => expect(p).toBeLessThanOrEqual([10_001, 7_777, 3_333][i]!));
   });
 });

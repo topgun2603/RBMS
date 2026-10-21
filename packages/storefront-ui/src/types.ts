@@ -178,10 +178,17 @@ export interface Review {
   id: string;
   productId: string;
   authorName: string;
+  /** Staff-entered reviews may name the reviewer's town. */
+  authorCity?: string | null;
+  /** "customer" (written on this store) or where the shop got it: "in_store", "imported" (+ platform), "invited". */
+  source?: "customer" | "in_store" | "imported" | "invited";
+  sourcePlatform?: "google" | "amazon" | "flipkart" | "meesho" | "instagram" | "other" | null;
+  sourceUrl?: string | null;
   rating: number;
   title: string | null;
   body: string | null;
   photos: string[];
+  /** Only a delivered order of the product makes a review verified (shopper's own, or linked by the shop). */
   verified: boolean;
   helpfulCount: number;
   reply: string | null;
@@ -511,6 +518,8 @@ export interface BundleItem {
   variantTitle: string;
   price: number;
   options: { variantId: string; title: string; price: number }[];
+  /** The product's option names ("Size", "Size / Colour") — labels the pick; "" / missing → generic "Option". */
+  optionLabel?: string;
   available: boolean;
 }
 

@@ -33,6 +33,9 @@ async function build(reqCtx: RequestContext) {
     reject: vi.fn(async () => ({ id, status: "rejected" })),
     reply: vi.fn(async () => ({ id })),
     remove: vi.fn(async () => undefined),
+    createStaff: vi.fn(async () => ({ id })),
+    importCsv: vi.fn(async (_t: string, _u: string | null, input: { dryRun: boolean }) => ({ dryRun: input.dryRun, total: 1, valid: 1, invalid: 0, imported: input.dryRun ? 0 : 1, rows: [] })),
+    requestReview: vi.fn(async () => ({ status: "sent", channels: ["whatsapp"] })),
   } as unknown as ReviewsService;
   const seen: Seen[] = [];
   const app = Fastify();
@@ -66,10 +69,14 @@ describe("routes", () => {
       ["POST", `/v1/reviews/${id}/reject`, true],
       ["POST", `/v1/reviews/${id}/reply`, true],
       ["DELETE", `/v1/reviews/${id}`, true],
+      ["POST", "/v1/reviews/", true],
+      ["POST", "/v1/reviews/import/check", true],
+      ["POST", "/v1/reviews/import", true],
+      ["POST", "/v1/reviews/requests", true],
     ];
     for (const [method, url, isStaff] of cases) {
       seen.length = 0;
-      const res = await app.inject({ method: method as "GET", url, payload: method === "POST" ? {} : undefined });
+      const res = await app.inject({ method: method as "GET", url, payload: method === "POST" ? (url.endsWith("/requests") ? { orderId: id } : {}) : undefined });
       expect([method, url, res.statusCode]).toEqual([method, url, 200]);
       expect([url, seen[0]?.feature, seen[0]?.permission]).toEqual([url, "reviews", isStaff ? ["reviews.manage"].join() : null]);
     }
@@ -122,6 +129,77 @@ describe("routes", () => {
     expect((await app.inject({ method: "DELETE", url: `/v1/reviews/${id}` })).json()).toEqual({ ok: true });
     expect(service.remove).toHaveBeenCalledWith(tenant.id, id);
     expect((await app.inject({ method: "POST", url: "/v1/reviews/nope/approve" })).statusCode).toBe(404);
+  });
+});
+
+describe("staff-entered reviews: routes", () => {
+  it("add, import and review requests need reviews.manage; shoppers and staff without it are refused", async () => {
+    for (const user of [shopperUser, { ...staffUser, permissions: ["orders.manage"] }]) {
+      const { app, service } = await build(ctx({ tenant, user }));
+      expect((await app.inject({ method: "POST", url: "/v1/reviews/", payload: { rating: 5 } })).statusCode).toBe(403);
+      expect((await app.inject({ method: "POST", url: "/v1/reviews/import", payload: { csv: "x" } })).statusCode).toBe(403);
+      expect((await app.inject({ method: "POST", url: "/v1/reviews/import/check", payload: { csv: "x" } })).statusCode).toBe(403);
+      expect((await app.inject({ method: "POST", url: "/v1/reviews/requests", payload: { orderId: id } })).statusCode).toBe(403);
+      expect(service.createStaff).not.toHaveBeenCalled();
+      expect(service.importCsv).not.toHaveBeenCalled();
+    }
+  });
+
+  it("passes the staff user, forces dry run on check, audits create/import/request but not the check", async () => {
+    const { app, service, seen } = await build(ctx({ tenant, user: staffUser }));
+    seen.length = 0;
+    await app.inject({ method: "POST", url: "/v1/reviews/", payload: { productId, rating: 5 } });
+    expect(service.createStaff).toHaveBeenCalledWith(tenant.id, staffUser.id, { productId, rating: 5 });
+    expect(seen[0]?.audit).toEqual({ action: "review.create", entity: "review", idParam: "id" });
+    seen.length = 0;
+    const check = await app.inject({ method: "POST", url: "/v1/reviews/import/check", payload: { csv: "a", dryRun: false } });
+    expect(check.json()).toMatchObject({ dryRun: true, imported: 0 });
+    expect(seen[0]?.audit).toBe(false);
+    seen.length = 0;
+    const done = await app.inject({ method: "POST", url: "/v1/reviews/import", payload: { csv: "a", dryRun: true, status: "pending" } });
+    expect(done.json()).toMatchObject({ dryRun: false, imported: 1 });
+    expect(service.importCsv).toHaveBeenLastCalledWith(tenant.id, staffUser.id, { csv: "a", dryRun: false, status: "pending" });
+    expect(seen[0]?.audit).toMatchObject({ action: "review.import" });
+    expect((await app.inject({ method: "POST", url: "/v1/reviews/requests", payload: { orderId: "bad" } })).statusCode).toBe(400);
+    expect((await app.inject({ method: "POST", url: "/v1/reviews/requests", payload: { orderId: id } })).json()).toEqual({ status: "sent", channels: ["whatsapp"] });
+    expect(service.requestReview).toHaveBeenCalledWith(tenant.id, id);
+  });
+});
+
+describe("staff-entered reviews: service rules (checked before anything is saved)", () => {
+  const input = { productId, rating: 5, authorName: "Priya Sharma", source: "in_store" as const };
+
+  it("validates first, 404s unknown products, refuses future dates", async () => {
+    const products = { exists: vi.fn(async (_t: string, p: string) => p === productId) };
+    const { service } = createReviews({ db, products });
+    await expect(service.createStaff(tenant.id, "u1", { ...input, rating: 0 })).rejects.toBeInstanceOf(ZodError);
+    expect(products.exists).not.toHaveBeenCalled();
+    await expect(service.createStaff(tenant.id, "u1", { ...input, productId: id })).rejects.toMatchObject({ status: 404 });
+    await expect(service.createStaff(tenant.id, "u1", { ...input, date: "2999-01-01" })).rejects.toMatchObject({ status: 400, message: "The date can't be in the future" });
+  });
+
+  it("an order number must be a delivered order of this product; never verified on staff's word", async () => {
+    const products = { exists: async () => true };
+    const noLink = createReviews({ db, products, orders: { hasDelivered: async () => null } });
+    await expect(noLink.service.createStaff(tenant.id, "u1", { ...input, orderNumber: "ORD/1" })).rejects.toMatchObject({ status: 400 });
+    const find = vi.fn(async () => ({ orderId: id, delivered: false, hasProduct: true }));
+    const { service } = createReviews({ db, products, orders: { hasDelivered: async () => null, findForReview: find } });
+    await expect(service.createStaff(tenant.id, "u1", { ...input, orderNumber: "ORD/1" })).rejects.toMatchObject({ status: 400, message: "Order ORD/1 isn't delivered yet" });
+    expect(find).toHaveBeenCalledWith(tenant.id, "ORD/1", productId);
+    find.mockResolvedValueOnce({ orderId: id, delivered: true, hasProduct: false });
+    await expect(service.createStaff(tenant.id, "u1", { ...input, orderNumber: "ORD/1" })).rejects.toMatchObject({ message: "Order ORD/1 doesn't include this product" });
+    find.mockResolvedValueOnce(null as never);
+    await expect(service.createStaff(tenant.id, "u1", { ...input, orderNumber: "ORD/9" })).rejects.toMatchObject({ message: "No order ORD/9 in this shop" });
+  });
+
+  it("CSV import reports file errors without touching the database; review requests need the port", async () => {
+    const { service } = createReviews({ db, products: { exists: async () => true } });
+    expect(await service.importCsv(tenant.id, "u1", { csv: "sku,title\nx,y" })).toMatchObject({ error: "Missing columns: rating, name", imported: 0 });
+    await expect(service.importCsv(tenant.id, "u1", { csv: 'sku,rating,name\n"open' })).rejects.toMatchObject({ status: 400 });
+    await expect(service.requestReview(tenant.id, id)).rejects.toMatchObject({ status: 400 });
+    const send = vi.fn(async () => ({ status: "skipped" as const, reason: "duplicate", channels: [] }));
+    const withPort = createReviews({ db, products: { exists: async () => true }, requests: { send } });
+    expect(await withPort.service.requestReview(tenant.id, id)).toEqual({ status: "skipped", reason: "duplicate", channels: [] });
   });
 });
 

@@ -2518,6 +2518,7 @@ export class CatalogueService {
           status: r.p.status,
           channels: r.p.channels ?? [],
           updatedAt: r.p.updatedAt,
+          optionNames: (r.p.options ?? []).map((o) => o.name),
         },
       ]),
     );

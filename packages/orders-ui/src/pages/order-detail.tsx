@@ -17,6 +17,7 @@ import { LinesCard } from "../components/order/lines-card";
 import { PaymentsCard } from "../components/order/payments-card";
 import { OrderProgress } from "../components/order/progress";
 import { ShippingCard } from "../components/order/shipping-card";
+import { ReviewRequestCard } from "../components/order/review-request-card";
 import { AddressCard, CustomerCard, DocumentsCard } from "../components/order/side-cards";
 import { TimelineCard } from "../components/order/timeline-card";
 import { ORDER_STATUS_META, OrderStatusPill, PaymentPill } from "../components/pills";
@@ -149,6 +150,7 @@ function OrderView({ order }: { order: Order }) {
           <CustomerCard order={order} />
           <AddressCard order={order} />
           <DocumentsCard order={order} />
+          <ReviewRequestCard order={order} />
         </div>
       </div>
       {mover.dialogs}

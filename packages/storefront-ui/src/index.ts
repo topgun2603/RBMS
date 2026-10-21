@@ -51,6 +51,8 @@ export { StoreErrorView } from "./client/error-view";
 // route handlers
 export { proxyHandler, seoFileHandler, faviconHandler } from "./server/proxy";
 export { previewEnterHandler, previewExitHandler } from "./server/preview-routes";
+export { revalidateHandler, revalidateSecret, REVALIDATE_HEADER } from "./server/revalidate";
+export { cacheResource, cacheTags, tagsToRevalidate, STORE_CACHE_RESOURCES, type StoreCacheResource } from "./lib/cache-tags";
 export { getPreviewSession, getPreviewHome, isPreview, type PreviewSession } from "./server/preview";
 export { PreviewMount } from "./pages/preview";
 

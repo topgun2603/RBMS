@@ -1,4 +1,5 @@
-import { API_ORIGIN, upstreamTenantHeaders } from "../lib/tenant";
+import { API_ORIGIN, tenantFromHost, upstreamTenantHeaders } from "../lib/tenant";
+import { cacheTags } from "../lib/cache-tags";
 
 /**
  * Same-origin API proxy for the browser: `/api/v1/*` on the store host → `${API}/v1/*` with the shop resolved from the
@@ -74,7 +75,7 @@ export function seoFileHandler(file: "sitemap.xml" | "robots.txt") {
     const headers = new Headers(upstreamTenantHeaders(host));
     if (!headers.has("x-forwarded-host")) headers.set("x-forwarded-host", host);
     try {
-      const res = await fetch(`${API_ORIGIN}/v1/cms/public/seo/${file}`, { headers, next: { revalidate: 600 } });
+      const res = await fetch(`${API_ORIGIN}/v1/cms/public/seo/${file}`, { headers, next: { revalidate: 600, tags: cacheTags(tenantFromHost(host) ?? host, "/cms/public/seo") } });
       if (!res.ok) {
         if (file === "robots.txt") return new Response("User-agent: *\nDisallow: /\n", { status: 200, headers: { "content-type": "text/plain; charset=utf-8" } });
         return new Response("Not found", { status: 404 });
@@ -102,7 +103,7 @@ export async function faviconHandler(req: Request): Promise<Response> {
   let name = "S";
   let color = "#7c3aed";
   try {
-    const res = await fetch(`${API_ORIGIN}/v1/branding`, { headers, next: { revalidate: 600 } });
+    const res = await fetch(`${API_ORIGIN}/v1/branding`, { headers, next: { revalidate: 600, tags: cacheTags(tenantFromHost(host) ?? host, "/branding") } });
     if (res.ok) {
       const b = (await res.json()) as { appName?: string; tokens?: { colors?: { primary?: string } } };
       name = b.appName?.trim() || name;

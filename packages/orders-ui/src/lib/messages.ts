@@ -1,5 +1,6 @@
 import type { Messages } from "@srirealtime/web";
 import { promosEn, promosTa } from "./messages-promos";
+import { reviewRequestEn, reviewRequestTa } from "./messages-reviews";
 
 /** orders.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
@@ -1368,4 +1369,4 @@ const ta: Messages = {
   "orders.widget.viewAll": "எல்லாம் பார்",
 };
 
-export const ordersMessages = { en: { ...en, ...promosEn }, ta: { ...ta, ...promosTa } } as const;
+export const ordersMessages = { en: { ...en, ...promosEn, ...reviewRequestEn }, ta: { ...ta, ...promosTa, ...reviewRequestTa } } as const;

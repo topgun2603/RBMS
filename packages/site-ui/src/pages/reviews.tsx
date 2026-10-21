@@ -6,15 +6,22 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  ExternalLinkIcon,
+  GlobeIcon,
   ImageIcon,
   Loader2Icon,
   MessageSquareReplyIcon,
   PackageIcon,
+  PlusIcon,
   SearchIcon,
   SettingsIcon,
   StarIcon,
+  StoreIcon,
   ThumbsUpIcon,
   Trash2Icon,
+  UploadIcon,
+  MailQuestionIcon,
+  UserIcon,
   XCircleIcon,
   XIcon,
 } from "lucide-react";
@@ -53,15 +60,18 @@ import {
   type ServerFilterDefs,
 } from "@srirealtime/web";
 import { Thumb } from "../components/bits";
+import { AddReviewSheet } from "../components/review-add";
+import { ImportReviewsSheet } from "../components/review-import";
 import { ReviewsIllustration } from "../components/illustrations";
 import { Stars } from "../components/stars";
 import { PERMS, useCan, useIsManager } from "../lib/access";
 import { sk, useProductSearch, useProductsByIds, useReviewAction, useReviewSettings, useSaveReviewSettings, type ReviewAction } from "../lib/queries";
-import { AUTO_APPROVE, REVIEW_STATUSES, type AutoApprove, type ProductSummary, type Review, type ReviewStatus } from "../lib/types";
+import { AUTO_APPROVE, REVIEW_SOURCES, REVIEW_STATUSES, type AutoApprove, type ProductSummary, type Review, type ReviewSource, type ReviewStatus } from "../lib/types";
 
 const RATINGS = ["5", "4", "3", "2", "1"] as const;
 const STATUS_ICON = { pending: ClockIcon, approved: CheckIcon, rejected: XCircleIcon } as const;
 const STATUS_TONE = { pending: "warning", approved: "success", rejected: "danger" } as const;
+const SOURCE_ICON = { customer: UserIcon, in_store: StoreIcon, imported: GlobeIcon, invited: MailQuestionIcon } as const;
 
 export default function ReviewsPage() {
   // useServerTable reads the search params, which needs a Suspense boundary.
@@ -92,6 +102,11 @@ function ReviewsList() {
           kind: "options",
           label: t("site.reviews.filterRating"),
           options: RATINGS.map((r) => ({ value: r, label: t("site.reviews.stars", { count: Number(r) }), icon: StarIcon })),
+        },
+        source: {
+          kind: "options",
+          label: t("site.reviews.filterSource"),
+          options: REVIEW_SOURCES.map((s) => ({ value: s, label: t(`site.reviews.source.${s}`), icon: SOURCE_ICON[s] })),
         },
         hasPhotos: {
           kind: "options",
@@ -175,14 +190,17 @@ function ReviewsList() {
         header: t("site.reviews.col.author"),
         hideBelow: "md",
         cell: (r) => (
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            {r.authorName}
-            {r.verified && (
-              <span title={t("site.reviews.verified")} className="inline-flex">
-                <BadgeCheckIcon className="size-4 text-success" aria-hidden />
-                <span className="sr-only">{t("site.reviews.verified")}</span>
-              </span>
-            )}
+          <span className="grid gap-0.5">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              {r.authorName}
+              {r.verified && (
+                <span title={t("site.reviews.verified")} className="inline-flex">
+                  <BadgeCheckIcon className="size-4 text-success" aria-hidden />
+                  <span className="sr-only">{t("site.reviews.verified")}</span>
+                </span>
+              )}
+            </span>
+            <SourceTag review={r} />
           </span>
         ),
       },
@@ -293,6 +311,8 @@ function ReviewsList() {
   const onlyStatus = status.value.length === 1 && st.table.activeFilterCount === 1 && !productId.value ? (status.value[0] as ReviewStatus) : null;
   const filtered = st.table.activeFilterCount > 0 || !!productId.value;
 
+  const [adding, setAdding] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
   const [bulkBusy, setBulkBusy] = React.useState(false);
   const bulk = async (rows: Review[], kind: "approve" | "reject", clear: () => void) => {
     const target = kind === "approve" ? "approved" : "rejected";
@@ -314,8 +334,28 @@ function ReviewsList() {
         icon={StarIcon}
         title={t("site.reviews.title")}
         description={allCount !== undefined ? t("site.reviews.count", { count: allCount }) : t("site.reviews.subtitle")}
-        actions={<ModerationSettings />}
+        actions={
+          <>
+            {canManage && (
+              <>
+                <Button size="lg" onClick={() => setAdding(true)}>
+                  <PlusIcon /> {t("site.reviews.add")}
+                </Button>
+                <Button size="lg" variant="outline" onClick={() => setImporting(true)}>
+                  <UploadIcon /> {t("site.reviews.import")}
+                </Button>
+              </>
+            )}
+            <ModerationSettings />
+          </>
+        }
       />
+      {canManage && (
+        <>
+          <AddReviewSheet open={adding} onOpenChange={setAdding} productId={productId.value} />
+          <ImportReviewsSheet open={importing} onOpenChange={setImporting} />
+        </>
+      )}
 
       <DataTableToolbar
         table={st.table}
@@ -394,6 +434,28 @@ function ReviewsList() {
   );
 }
 
+/** "Shared in store", "From Google", "Invited" (nothing for reviews written on the store unless `pill`). */
+function SourceTag({ review: r, pill }: { review: Review; pill?: boolean }) {
+  const { t } = useI18n();
+  const source: ReviewSource = r.source ?? "customer";
+  if (source === "customer" && !pill) return null;
+  const Icon = SOURCE_ICON[source];
+  const label =
+    source === "imported" ? t("site.reviews.fromPlatform", { platform: t(`site.reviews.platform.${r.sourcePlatform ?? "other"}`) }) : t(`site.reviews.source.${source}`);
+  if (pill) {
+    return (
+      <StatusPill tone="neutral" icon={Icon}>
+        {label}
+      </StatusPill>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
+      <Icon className="size-3" aria-hidden /> {label}
+    </span>
+  );
+}
+
 const excerpt = (body: string | null) => (body ? body.replace(/\s+/g, " ").trim().slice(0, 120) : "");
 
 function ReviewStatusPill({ status }: { status: ReviewStatus }) {
@@ -454,6 +516,7 @@ function ReviewDetail({
             {t("site.reviews.verified")}
           </StatusPill>
         )}
+        <SourceTag review={r} pill />
       </div>
       <ProductCell product={product} loading={productLoading} />
       {r.title && <p className="font-medium">{r.title}</p>}
@@ -471,7 +534,14 @@ function ReviewDetail({
       )}
       <p className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
         <span className="font-medium text-foreground">{r.authorName}</span>
+        {r.authorCity && <span>· {r.authorCity}</span>}
         <span>· {formatDate(r.createdAt, { day: "numeric", month: "short", year: "numeric" })}</span>
+        {r.source && r.source !== "customer" && <span>· {t("site.reviews.enteredByStaff")}</span>}
+        {r.sourceUrl && (
+          <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            · {t("site.reviews.openSource")} <ExternalLinkIcon className="size-3" />
+          </a>
+        )}
         {r.helpfulCount > 0 && (
           <span className="inline-flex items-center gap-1">
             · <ThumbsUpIcon className="size-3" /> {t("site.reviews.helpful", { count: r.helpfulCount })}

@@ -70,12 +70,14 @@ import { createBatch5, type Batch5 } from "./kit-batch5";
 import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
 import { createKitOps } from "./kit-ops";
 import { createMessages } from "./kit-messages";
+import { findOrderForReview, resolveReviewProducts, reviewRequestsPort } from "./kit-reviews";
 import { createAggregatorsWiring } from "./kit-aggregators";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
 import type { CreditNote, Invoice } from "@srirealtime/invoices";
 import { and, eq } from "@srirealtime/db";
+import { createStoreRevalidator, storeRevalidateConfig } from "./kit-store-revalidate";
 
 /**
  * Composition root: builds every module and connects them through their ports.
@@ -720,8 +722,12 @@ export function createKit(env: Env, log: Logger) {
 
   const reviews = createReviews({
     db,
-    products: { exists: async (tenantId, productId) => (await catalogue.service.productRefs(tenantId, [productId])).some(isPublicRef) },
+    products: {
+      exists: async (tenantId, productId) => (await catalogue.service.productRefs(tenantId, [productId])).some(isPublicRef),
+      resolve: (tenantId, keys) => resolveReviewProducts(db, tenantId, keys),
+    },
     orders: {
+      findForReview: (tenantId, orderNumber, productId) => findOrderForReview(db, tenantId, orderNumber, productId),
       // Verified buyer: a delivered store order of this shopper (store customer id = the order's accountId) with the product.
       hasDelivered: async (tenantId, userId, productId) => {
         const customer = await storefront.service.ensureCustomer(tenantId, userId);
@@ -737,6 +743,17 @@ export function createKit(env: Env, log: Logger) {
     settings: { get: (tenantId) => reviewSettings.get({ tenantId }) },
     featureGate: features.gate,
     events,
+    // "Ask for a review" on a delivered order: the review.request customer message (kit-reviews.ts).
+    requests: reviewRequestsPort({
+      db,
+      messages: messages.messages,
+      storeUrl: async (tenantId) => {
+        const tenant = await tenancy.service.getById(tenantId);
+        const custom = (await tenancy.service.listDomains(tenantId)).find((d) => d.verified)?.domain ?? null;
+        return storeBaseUrl((appId) => billingUrlFor(env.STORE_PUBLIC_URL, appId), { slug: tenant?.slug ?? "", appId: tenant?.appId ?? null }, custom);
+      },
+      productSlugs: async (tenantId, ids) => new Map((await catalogue.service.productRefs(tenantId, ids)).filter(isPublicRef).map((p) => [p.id, p.slug])),
+    }),
     log,
   });
   reviewsRef = reviews;

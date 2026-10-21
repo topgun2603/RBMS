@@ -121,8 +121,10 @@ describe("input schemas", () => {
   it("parses replies and queries", () => {
     expect(replyInputSchema.parse({ reply: " Thank you! " })).toEqual({ reply: "Thank you!" });
     expect(replyInputSchema.parse({ reply: "" })).toEqual({ reply: null });
-    expect(publicReviewQuerySchema.parse({})).toEqual({ sort: "recent", limit: 10, offset: 0 });
-    expect(publicReviewQuerySchema.parse({ sort: "helpful", rating: "5", limit: "20" })).toEqual({ sort: "helpful", rating: 5, limit: 20, offset: 0 });
+    expect(publicReviewQuerySchema.parse({})).toEqual({ sort: "recent", photos: false, limit: 10, offset: 0 });
+    expect(publicReviewQuerySchema.parse({ sort: "helpful", rating: "5", limit: "20" })).toEqual({ sort: "helpful", rating: 5, photos: false, limit: 20, offset: 0 });
+    expect(publicReviewQuerySchema.parse({ photos: "true" }).photos).toBe(true);
+    expect(staffReviewQuerySchema.parse({ source: "imported,in_store" }).source).toEqual(["imported", "in_store"]);
     expect(() => publicReviewQuerySchema.parse({ sort: "random" })).toThrow(ZodError);
     expect(() => publicReviewQuerySchema.parse({ rating: "6" })).toThrow(ZodError);
     expect(staffReviewQuerySchema.parse({ status: "pending", productId: A })).toMatchObject({ status: ["pending"], productId: A, limit: 50 });
@@ -140,6 +142,11 @@ describe("output", () => {
       productId: B,
       userId: A,
       authorName: "Priya S.",
+      authorCity: null,
+      source: "customer",
+      sourcePlatform: null,
+      sourceUrl: null,
+      createdBy: null,
       orderId: B,
       rating: 5,
       title: null,
@@ -160,6 +167,8 @@ describe("output", () => {
     expect(pub).not.toHaveProperty("orderId");
     expect(pub).not.toHaveProperty("status");
     expect(pub).not.toHaveProperty("tenantId");
+    expect(pub).not.toHaveProperty("createdBy");
+    expect(pub).toMatchObject({ source: "customer", sourcePlatform: null, authorCity: null });
     expect(pub).toMatchObject({ authorName: "Priya S.", verified: true, helpfulCount: 2 });
   });
 });

@@ -95,6 +95,7 @@ export function storeCatalogPort(catalogue: Catalogue): StoreCatalogPort {
         channels: p.channels,
         categoryId: p.categoryId,
         variantIds: p.variantIds,
+        optionNames: p.optionNames,
       })),
   };
 }

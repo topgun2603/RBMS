@@ -538,6 +538,11 @@ export interface StoreContentSpec {
  * ₹40, free above ₹999, COD fee ₹30; Rest of India by weight), a "New arrivals" collection, a published home page, an
  * About page and header/footer menus. Each part is only created when missing, so owners' edits survive re-runs.
  */
+/** True when the shop has never had a home page (no draft, nothing published) — the only case a seed may write one. */
+export function homeMissing(home: { draft: unknown; published: unknown; publishedAt: Date | null }): boolean {
+  return !home.draft && !home.published && !home.publishedAt;
+}
+
 export async function seedStoreContent(kit: Kit, tenantId: string, spec: StoreContentSpec, log: Logger, label: string) {
   const store = kit.settings.service.handle("store");
   const current = await store.get({ tenantId });
@@ -606,8 +611,11 @@ export async function seedStoreContent(kit: Kit, tenantId: string, spec: StoreCo
     log.info(`${label}: collection new-arrivals created`);
   }
 
+  // Only a shop with no home page at all gets the demo one: a published home, or a draft the owner is still working
+  // on, is never overwritten by a re-run.
   const home = await kit.cms.service.getHome(tenantId);
-  if (!home.publishedAt) {
+  if (!homeMissing(home)) log.info(`${label}: home page exists, left unchanged`);
+  else {
     await kit.cms.service.saveHomeDraft(tenantId, {
       sections: [
         {
@@ -646,7 +654,8 @@ export async function seedStoreContent(kit: Kit, tenantId: string, spec: StoreCo
     log.info(`${label}: home page published`);
   }
 
-  const pages = await kit.cms.service.listPages(tenantId, {});
+  // Look the slug up (a shop with many pages may not have "about" on the first list page; a miss would add "about-2").
+  const pages = await kit.cms.service.listPages(tenantId, { q: "about", limit: 100 });
   if (!pages.items.some((p) => p.slug === "about")) {
     const about = await kit.cms.service.createPage(tenantId, {
       title: "About us",

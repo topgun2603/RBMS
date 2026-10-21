@@ -669,3 +669,19 @@ html {
     transform: none;
   }
 }
+
+/*
+ * Compare toggle on product tiles (client/compare.tsx, `.sf-compare-chip`): on devices that hover it waits for the
+ * tile's hover / keyboard focus, so cards stay clean; it stays visible when picked (aria-pressed) or while the compare
+ * tray has items (`data-tray`). Touch screens always show it (they can't hover).
+ */
+@media (hover: hover) {
+  .sf-compare-chip:not([aria-pressed="true"]):not([data-tray]) {
+    opacity: 0;
+  }
+  .group\/card:hover .sf-compare-chip,
+  .group\/card:focus-within .sf-compare-chip,
+  .sf-compare-chip:focus-visible {
+    opacity: 1;
+  }
+}

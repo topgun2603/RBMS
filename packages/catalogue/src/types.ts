@@ -216,6 +216,8 @@ export interface ProductRef extends PublicProductSummary {
   status: ProductStatus;
   channels: Channel[];
   updatedAt: Date;
+  /** The product's option names in order ("Size", "Colour"); empty for a single-variant product. */
+  optionNames: string[];
 }
 
 /** Shown in the online store: active and sold on the "store" channel. */

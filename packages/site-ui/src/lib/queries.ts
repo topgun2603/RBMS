@@ -19,7 +19,9 @@ import type {
   PublicCollectionPage,
   ResolvedHomeSection,
   Review,
+  ReviewImportResult,
   ReviewSettings,
+  StaffReviewInput,
   SettingsValues,
   StaffHome,
   StaffMenu,
@@ -340,6 +342,27 @@ export function useSaveReviewSettings() {
   return useMutation({
     mutationFn: (v: ReviewSettings) => api.put<SettingsValues<ReviewSettings>>("/settings/reviews/tenant", v).then((r) => r.values),
     onSuccess: (v) => qc.setQueryData(sk.reviewSettings, v),
+  });
+}
+
+/** Staff adds a review a customer gave elsewhere (at the counter, on Google, in reply to a request). */
+export function useCreateReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: StaffReviewInput) => api.post<Review>("/reviews", v),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: sk.reviews }),
+  });
+}
+
+/** CSV import: `check` is a dry run (nothing saved); `import` saves the valid rows. */
+export function useImportReviews() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { mode: "check" | "import"; csv: string; status: "approved" | "pending" }) =>
+      api.post<ReviewImportResult>(v.mode === "check" ? "/reviews/import/check" : "/reviews/import", { csv: v.csv, status: v.status }),
+    onSuccess: (r) => {
+      if (!r.dryRun && r.imported > 0) void qc.invalidateQueries({ queryKey: sk.reviews });
+    },
   });
 }
 

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { normalizeLocale, LOCALE_COOKIE, translatorFor, type Locale, type Translator } from "../lib/messages";
 import { API_ORIGIN, tenantFromHost, upstreamTenantHeaders } from "../lib/tenant";
 import { previewTransform } from "./preview";
+import { cacheTags } from "../lib/cache-tags";
 import type { Branding, Menus, PricedCart, StoreConfig, StoreShell, StoreThemeView } from "../types";
 
 /** Cookie holding the anonymous / shopper cart token (read on the server for the header count). */
@@ -77,7 +78,9 @@ export async function apiGet<T>(path: string, opts: GetOptions = {}): Promise<T>
   try {
     res = await fetch(buildUrl(path, opts.query), {
       headers: { accept: "application/json", "accept-language": info.locale, ...info.tenantHeaders },
-      ...(revalidate > 0 ? { next: { revalidate, tags: [`store:${info.slug ?? info.host}`] } } : { cache: "no-store" as const }),
+      // Tagged per shop and resource: the API asks app/api/revalidate to clear them right after staff changes (lib/cache-tags);
+      // `revalidate` stays the fallback.
+      ...(revalidate > 0 ? { next: { revalidate, tags: cacheTags(info.slug ?? info.host, path) } } : { cache: "no-store" as const }),
     });
   } catch (err) {
     throw new UpstreamError(503, "network_error", err instanceof Error ? err.message : "API unreachable");

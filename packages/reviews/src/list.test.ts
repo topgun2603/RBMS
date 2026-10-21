@@ -46,6 +46,10 @@ describe("staff review list query", () => {
     expect(q.params).toEqual(expect.arrayContaining([T, "pending", 4, 5, P, "%50\\%\\_off%"]));
     expect(where({ hasPhotos: "false" }).sql).toContain('jsonb_array_length("product_reviews"."photos") = 0');
     expect(where({}).params).toEqual([T]);
+    const bySource = where({ source: "in_store,imported" });
+    expect(bySource.sql).toContain('"product_reviews"."source" in ($2, $3)');
+    expect(bySource.params).toEqual([T, "in_store", "imported"]);
+    expect(() => where({ source: "fake" })).toThrow(ZodError);
   });
 
   it("facet WHEREs leave out their own filter only", () => {

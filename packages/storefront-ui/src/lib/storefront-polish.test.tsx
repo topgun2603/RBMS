@@ -25,12 +25,14 @@ const anbuMenu: MenuItem[] = [
   { label: "About us", type: "url", href: "/pages/about" },
 ];
 
-describe("footer help column", () => {
+const hrefs = (c: { links: { href: string }[] } | undefined) => c?.links.map((l) => l.href);
+const labels = (cols: { label: string }[]) => cols.map((c) => c.label);
+
+describe("footer columns", () => {
   it("folds the help centre into the shop's own Help group instead of a second Help column", () => {
-    const { groups, extraHelp } = footerColumns(anbuMenu, true, t);
-    expect(extraHelp).toBe(false);
-    expect(groups).toHaveLength(1);
-    expect(groups[0]!.children!.map((c) => c.href)).toEqual(["/track", "tel:+919876500003", "/help"]);
+    const cols = footerColumns(anbuMenu, true, t);
+    expect(labels(cols)).toEqual(["Shop", "Help", "More"]);
+    expect(hrefs(cols[1])).toEqual(["/track", "tel:+919876500003", "/help"]);
     const out = html(<StoreFooter config={config} menu={anbuMenu} t={t} help variant="columns" />);
     expect(out.match(/>Help<\/p>/g)).toHaveLength(1);
     expect(out.match(/href="\/help"/g)?.length).toBeGreaterThanOrEqual(1);
@@ -38,13 +40,76 @@ describe("footer help column", () => {
 
   it("matches the group by title alone (adds tracking) and keeps our column when the shop has an unrelated group", () => {
     const byTitle = footerColumns([{ label: " help ", type: "url", href: null, children: [{ label: "FAQ", type: "url", href: "/pages/faq" }] }], true, t);
-    expect(byTitle.extraHelp).toBe(false);
-    expect(byTitle.groups[0]!.children!.map((c) => c.href)).toEqual(["/pages/faq", "/help", "/track"]);
+    expect(labels(byTitle)).toEqual(["Shop", " help "]);
+    expect(hrefs(byTitle[1])).toEqual(["/pages/faq", "/help", "/track"]);
     const other = footerColumns([{ label: "Company", type: "url", href: null, children: [{ label: "About", type: "url", href: "/pages/about" }] }], true, t);
-    expect(other.extraHelp).toBe(true);
-    expect(other.groups[0]!.children).toHaveLength(1);
+    expect(labels(other)).toEqual(["Shop", "Company", "Help"]);
+    expect(hrefs(other[1])).toEqual(["/pages/about"]);
     // Help centre off: no /help link is invented.
-    expect(footerColumns(anbuMenu, false, t).groups[0]!.children!.map((c) => c.href)).not.toContain("/help");
+    expect(footerColumns(anbuMenu, false, t).flatMap((c) => hrefs(c))).not.toContain("/help");
+  });
+
+  /** anbu's real footer menu (2026-10): loose category links + /bundles, then Help and Company groups. */
+  const realAnbu: MenuItem[] = [
+    { label: "Silk Sarees", type: "category", href: "/c/silk-sarees" },
+    { label: "Kurtis", type: "category", href: "/c/kurtis" },
+    { label: "Combos & offers", type: "url", href: "/bundles" },
+    { label: "Help", type: "url", href: null, children: [{ label: "Track your order", type: "url", href: "/track" }, { label: "Size guide", type: "page", href: "/pages/size-guide" }] },
+    { label: "Company", type: "url", href: null, children: [{ label: "About us", type: "page", href: "/pages/about" }, { label: "Journal", type: "url", href: "/blog" }] },
+  ];
+  const policies = [{ label: "Returns & refunds", href: "/policies/returns" }];
+
+  it("puts loose catalogue links in the shop column and keeps the shop's groups as columns, in order", () => {
+    const cols = footerColumns(realAnbu, true, t, policies);
+    expect(cols.map((c) => c.kind)).toEqual(["shop", "group", "group", "policies"]);
+    expect(hrefs(cols[0])).toEqual(["/products", "/c/silk-sarees", "/c/kurtis", "/bundles"]);
+    expect(hrefs(cols[1])).toEqual(["/track", "/pages/size-guide", "/help"]);
+  });
+
+  it("uses the shop's own shop-like group instead of ours, and never files loose page links under Shop", () => {
+    const menu: MenuItem[] = [
+      { label: "Categories", type: "url", href: null, children: [{ label: "Sarees", type: "category", href: "/c/sarees" }] },
+      { label: "About us", type: "page", href: "/pages/about" },
+      { label: "Blog", type: "url", href: "/blog" },
+      { label: "Bundles", type: "url", href: "/bundles" },
+    ];
+    const cols = footerColumns(menu, false, t);
+    expect(cols.map((c) => c.kind)).toEqual(["group", "more", "help"]);
+    expect(hrefs(cols[0])).toEqual(["/products", "/c/sarees", "/bundles"]);
+    expect(hrefs(cols[1])).toEqual(["/pages/about", "/blog"]);
+    // A group that mostly links the catalogue counts as the shop column too.
+    const bySpread = footerColumns([{ label: "Women", type: "url", href: null, children: [{ label: "Kurtis", type: "category", href: "/c/kurtis" }, { label: "Sale", type: "url", href: "/collections/sale" }] }], false, t);
+    expect(bySpread.map((c) => c.kind)).toEqual(["group", "help"]);
+  });
+
+  it("loose page links join the menu's only other group; policies fold into a Policies group", () => {
+    const menu: MenuItem[] = [
+      { label: "Company", type: "url", href: null, children: [{ label: "Story", type: "page", href: "/pages/story" }] },
+      { label: "Legal", type: "url", href: null, children: [{ label: "Terms", type: "url", href: "/policies/terms" }] },
+      { label: "Contact", type: "page", href: "/pages/contact" },
+    ];
+    const cols = footerColumns(menu, false, t, [{ label: "Terms", href: "/policies/terms" }, { label: "Returns", href: "/policies/returns" }]);
+    expect(labels(cols)).toEqual(["Shop", "Company", "Legal", "Help"]);
+    expect(hrefs(cols[1])).toEqual(["/pages/story", "/pages/contact"]);
+    expect(hrefs(cols[2])).toEqual(["/policies/terms", "/policies/returns"]);
+  });
+
+  it("a shop without a footer menu gets Shop, Help (with account) and Policies", () => {
+    const cols = footerColumns([], true, t, policies);
+    expect(labels(cols)).toEqual(["Shop", "Help", "Policies"]);
+    expect(hrefs(cols[1])).toEqual(["/help", "/track", "/account"]);
+  });
+
+  it("lays out up to six columns in one desktop row, two on tablets, an accordion on phones", () => {
+    const many: MenuItem[] = ["A", "B", "C", "D", "E", "F", "G"].map((l) => ({ label: l, type: "url", href: null, children: [{ label: `${l}1`, type: "page", href: `/pages/${l}` }] }));
+    const out = html(<StoreFooter config={config} menu={many} t={t} help variant="columns" />);
+    expect(out).toContain("lg:grid-cols-[minmax(0,1.25fr)_repeat(6,minmax(0,1fr))]");
+    expect(out).toContain("md:grid-cols-2");
+    expect(out).toContain("data-footer-accordion");
+    expect(out.match(/<details/g)!.length).toBe(out.match(/data-footer-column=/g)!.length);
+    const anbu = html(<StoreFooter config={config} menu={realAnbu} t={t} help variant="columns" />);
+    expect(anbu).toContain('data-footer-columns="4"');
+    expect(anbu).toContain("lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]");
   });
 
   it("centered footer lists tracking once when the menu already links it", () => {

@@ -1,6 +1,6 @@
 import { listFilter, listQuerySchema } from "@srirealtime/core";
 import { z } from "zod";
-import { REVIEW_STATUSES, type ReviewRow, type ReviewStatus } from "./schema";
+import { REVIEW_SOURCES, REVIEW_STATUSES, type ReviewPlatform, type ReviewRow, type ReviewSource, type ReviewStatus } from "./schema";
 
 // ------------------------------------------------------------------ settings
 
@@ -66,6 +66,8 @@ export type PublicReviewSort = (typeof PUBLIC_REVIEW_SORTS)[number];
 export const publicReviewQuerySchema = z.object({
   sort: z.enum(PUBLIC_REVIEW_SORTS).default("recent"),
   rating: ratingFilter,
+  /** `photos=true`: only reviews with photos. */
+  photos: z.preprocess((v) => v === "true" || v === true || v === "1", z.boolean()).default(false),
   limit: limit(50, 10),
   offset,
 });
@@ -80,6 +82,7 @@ export const staffReviewQuerySchema = listQuerySchema({ defaultLimit: 50, maxLim
   status: listFilter.oneOf(REVIEW_STATUSES),
   rating: listFilter.oneOf(["1", "2", "3", "4", "5"]).transform((v) => v?.map(Number)),
   hasPhotos: listFilter.bool(),
+  source: listFilter.oneOf(REVIEW_SOURCES),
   productId: listFilter.id(),
 });
 export type StaffReviewQuery = z.input<typeof staffReviewQuerySchema>;
@@ -186,6 +189,12 @@ export interface PublicReview {
   id: string;
   productId: string;
   authorName: string;
+  /** Staff-entered reviews may carry the reviewer's town. */
+  authorCity: string | null;
+  /** Where it came from; the storefront labels non-customer reviews ("Shared in store", "From Google"). */
+  source: ReviewSource;
+  sourcePlatform: ReviewPlatform | null;
+  sourceUrl: string | null;
   rating: number;
   title: string | null;
   body: string | null;
@@ -200,8 +209,11 @@ export interface PublicReview {
 
 /** Staff view, and the author's own view of their review. */
 export interface Review extends PublicReview {
-  userId: string;
+  /** Null for staff-entered reviews. */
+  userId: string | null;
   orderId: string | null;
+  /** Staff member who entered or imported it. */
+  createdBy: string | null;
   status: ReviewStatus;
 }
 
@@ -210,6 +222,11 @@ export const toReview = (r: ReviewRow): Review => ({
   productId: r.productId,
   userId: r.userId,
   authorName: r.authorName,
+  authorCity: r.authorCity ?? null,
+  source: r.source ?? "customer",
+  sourcePlatform: r.sourcePlatform ?? null,
+  sourceUrl: r.sourceUrl ?? null,
+  createdBy: r.createdBy ?? null,
   orderId: r.orderId,
   rating: r.rating,
   title: r.title,
@@ -225,6 +242,6 @@ export const toReview = (r: ReviewRow): Review => ({
 });
 
 export function toPublicReview(r: Review): PublicReview {
-  const { userId: _u, orderId: _o, status: _s, ...rest } = r;
+  const { userId: _u, orderId: _o, status: _s, createdBy: _c, ...rest } = r;
   return rest;
 }

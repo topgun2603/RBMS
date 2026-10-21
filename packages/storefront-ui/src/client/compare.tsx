@@ -76,12 +76,15 @@ export function useCompare() {
 }
 
 /**
- * "Compare" checkbox-style toggle (aria-pressed). `card`: a small chip on product tiles (above the tile's link);
- * `page`: a full button on the product page. Renders nothing when the shop has compare off.
+ * "Compare" toggle (aria-pressed). `card`: a small round icon button for a product tile's photo corner, next to the
+ * wishlist heart — on devices that hover it stays out of the way until the tile is hovered or focused (styles.css,
+ * `.sf-compare-chip`), and it shows on every tile once something is in the compare tray (or this one is picked); on
+ * touch screens it is always there. `inline`: the same icon button, always visible (list rows). `page`: a full button
+ * on the product page. Renders nothing when the shop has compare off.
  */
-export function CompareToggle({ product, variant = "card", className }: { product: CompareItem; variant?: "card" | "page"; className?: string }) {
+export function CompareToggle({ product, variant = "card", className }: { product: CompareItem; variant?: "card" | "inline" | "page"; className?: string }) {
   const { t, shell } = useStore();
-  const { has, toggle, ready } = useCompare();
+  const { has, toggle, ready, items } = useCompare();
   if (shell.theme.compare !== "on") return null;
   const on = ready && has(product.id);
   const click = (e: React.MouseEvent) => {
@@ -108,23 +111,25 @@ export function CompareToggle({ product, variant = "card", className }: { produc
       </button>
     );
   }
+  const label = t("compare.toggle", { name: product.name });
   return (
     <button
       type="button"
       onClick={click}
       aria-pressed={on}
-      aria-label={t("compare.toggle", { name: product.name })}
+      aria-label={label}
+      title={t("compare.add")}
       data-testid="compare-toggle"
+      // The tray has items: every tile shows its toggle, so adding the next one is one tap away.
+      data-tray={ready && items.length > 0 ? "" : undefined}
       className={cn(
-        "relative z-[2] inline-flex h-8 items-center gap-1.5 self-start rounded-full px-2 text-xs font-semibold transition-colors focus-ring",
-        on ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        "relative z-[2] flex size-9 shrink-0 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-[color,background-color,border-color,opacity] duration-200 focus-ring",
+        variant === "card" && "sf-compare-chip",
+        on ? "border-primary bg-primary text-primary-foreground" : "bg-card/95 text-foreground/70 hover:border-primary/50 hover:text-primary",
         className,
       )}
     >
-      <span className={cn("flex size-4 items-center justify-center rounded border transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-current/50")}>
-        {on && <CheckIcon className="size-3" />}
-      </span>
-      {t("compare.add")}
+      {on ? <CheckIcon className="size-4" aria-hidden /> : <ArrowLeftRightIcon className="size-4" aria-hidden />}
     </button>
   );
 }

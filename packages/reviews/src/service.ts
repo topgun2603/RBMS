@@ -24,8 +24,32 @@ import {
   type StaffReviewParams,
   type StaffReviewQuery,
 } from "./logic";
-import { noopLogger, type EventsPort, type LoggerPort, type OrdersPort, type ProductsPort, type ReviewSettings, type ReviewSettingsPort, type ShopperPort } from "./ports";
+import {
+  noopLogger,
+  type EventsPort,
+  type LoggerPort,
+  type OrdersPort,
+  type ProductsPort,
+  type ReviewRequestResult,
+  type ReviewRequestsPort,
+  type ReviewSettings,
+  type ReviewSettingsPort,
+  type ShopperPort,
+} from "./ports";
 import { productReviews, reviewVotes, type ReviewStatus } from "./schema";
+import {
+  DATE_MESSAGES,
+  duplicateKey,
+  importInputSchema,
+  parseCsv,
+  parseReviewDate,
+  planImport,
+  staffReviewInputSchema,
+  verifyLinkedOrder,
+  type ImportInput,
+  type ImportRowResult,
+  type StaffReviewInput,
+} from "./staff";
 
 export interface ReviewsDeps {
   db: Db;
@@ -41,6 +65,8 @@ export interface ReviewsDeps {
   featureGate?: FeatureGatePort;
   /** Webhook events (developer module). Without it nothing is emitted. */
   events?: EventsPort;
+  /** "Ask for a review" messages (customer messages). Without it review requests are unavailable. */
+  requests?: ReviewRequestsPort;
   log?: LoggerPort;
   now?: () => Date;
 }
@@ -120,6 +146,7 @@ export class ReviewsService {
       eq(productReviews.productId, productId),
       eq(productReviews.status, "approved"),
       q.rating ? eq(productReviews.rating, q.rating) : undefined,
+      q.photos ? sql`jsonb_array_length(${productReviews.photos}) > 0` : undefined,
     );
     const order: SQL[] =
       q.sort === "helpful"
@@ -156,7 +183,13 @@ export class ReviewsService {
     const where = and(eq(productReviews.tenantId, tenantId), eq(productReviews.status, "approved"));
     const [rows, latest] = await Promise.all([
       this.db.select({ rating: productReviews.rating, count: count() }).from(productReviews).where(where).groupBy(productReviews.rating),
-      this.db.select().from(productReviews).where(where).orderBy(desc(productReviews.createdAt), asc(productReviews.id)).limit(limit),
+      // Reviews with words read better on the home page than bare star ratings; then newest first.
+      this.db
+        .select()
+        .from(productReviews)
+        .where(where)
+        .orderBy(sql`(coalesce(${productReviews.body}, '') <> '') desc`, desc(productReviews.createdAt), asc(productReviews.id))
+        .limit(limit),
     ]);
     return { ...ratingSummary(rows), items: latest.map((r) => toPublicReview(toReview(r))) };
   }
@@ -288,6 +321,7 @@ export class ReviewsService {
       eq(productReviews.tenantId, tenantId),
       without !== "status" && p.status?.length ? inArray(productReviews.status, p.status) : undefined,
       without !== "rating" && p.rating?.length ? inArray(productReviews.rating, p.rating) : undefined,
+      p.source?.length ? inArray(productReviews.source, p.source) : undefined,
       p.productId ? eq(productReviews.productId, p.productId) : undefined,
       p.hasPhotos === undefined
         ? undefined
@@ -358,6 +392,138 @@ export class ReviewsService {
       .returning();
     if (!row) throw notFound("Review");
     return toReview(row);
+  }
+
+  // ================================================================ staff-entered reviews
+
+  /**
+   * `POST /` (staff): a review the shop received elsewhere (at the counter, on Google, in reply to a review request).
+   * The source is required and shown publicly. Verified only when `orderNumber` names a delivered order of this
+   * product; status `approved` unless staff hold it as `pending`.
+   */
+  async createStaff(tenantId: string, staffUserId: string | null, input: StaffReviewInput): Promise<Review> {
+    const b = staffReviewInputSchema.parse(input);
+    if (!(await this.deps.products.exists(tenantId, b.productId))) throw notFound("Product");
+    const now = this.now();
+    let createdAt = now;
+    if (b.date) {
+      const d = parseReviewDate(b.date, now);
+      if (!d.ok) throw badRequest(DATE_MESSAGES[d.error]);
+      createdAt = d.date;
+    }
+    let link: { verified: boolean; orderId: string | null; error?: string } = { verified: false, orderId: null };
+    if (b.orderNumber) {
+      if (!this.deps.orders?.findForReview) throw badRequest("Orders can't be linked in this shop");
+      link = verifyLinkedOrder(b.orderNumber, await this.deps.orders.findForReview(tenantId, b.orderNumber, b.productId));
+      if (link.error) throw badRequest(link.error);
+    }
+    const [row] = await this.db
+      .insert(productReviews)
+      .values({
+        tenantId,
+        productId: b.productId,
+        userId: null,
+        authorName: formatAuthorName(b.authorName),
+        authorCity: b.city ?? null,
+        source: b.source,
+        sourcePlatform: b.source === "imported" ? (b.platform ?? "other") : null,
+        sourceUrl: b.source === "imported" ? (b.sourceUrl ?? null) : null,
+        createdBy: staffUserId,
+        orderId: link.orderId,
+        verified: link.verified,
+        rating: b.rating,
+        title: b.title ?? null,
+        body: b.body ?? null,
+        photos: b.photos,
+        status: b.status,
+        createdAt,
+        updatedAt: now,
+      })
+      .returning();
+    const review = toReview(row!);
+    await this.emit(tenantId, "review.created", {
+      id: review.id,
+      productId: review.productId,
+      rating: review.rating,
+      title: review.title,
+      status: review.status,
+      createdAt: review.createdAt,
+    });
+    return review;
+  }
+
+  /**
+   * `POST /import` (staff): CSV of reviews (product SKU or slug, rating, title, text, name, city, date, source,
+   * source_url, photos). `dryRun` (default) only checks: unknown products, bad ratings and dates, missing sources,
+   * duplicates (same product, name, day and text, in the file or already saved). Otherwise saves the valid rows (never
+   * verified) with the chosen status and reports the rest.
+   */
+  async importCsv(
+    tenantId: string,
+    staffUserId: string | null,
+    input: ImportInput,
+  ): Promise<{ dryRun: boolean; error?: string; total: number; valid: number; invalid: number; imported: number; rows: Omit<ImportRowResult, "values">[] }> {
+    const b = importInputSchema.parse(input);
+    let table: string[][];
+    try {
+      table = parseCsv(b.csv);
+    } catch (err) {
+      throw badRequest(`Couldn't read the CSV: ${(err as Error).message}`);
+    }
+    const now = this.now();
+    // A first pass without products finds the file-level errors and the product keys to look up.
+    const first = planImport(table, { products: new Map(), existing: new Set(), now });
+    if (first.error) return { dryRun: b.dryRun, error: first.error, total: 0, valid: 0, invalid: 0, imported: 0, rows: [] };
+    const productKeys = [...new Set(first.rows.map((r) => r.product.toLowerCase()).filter(Boolean))];
+    const products = productKeys.length && this.deps.products.resolve ? await this.deps.products.resolve(tenantId, productKeys) : new Map<string, string>();
+    const productIds = [...new Set(products.values())];
+    const existing = new Set<string>();
+    for (let i = 0; i < productIds.length; i += 500) {
+      const rows = await this.db
+        .select({ productId: productReviews.productId, authorName: productReviews.authorName, createdAt: productReviews.createdAt, body: productReviews.body })
+        .from(productReviews)
+        .where(and(eq(productReviews.tenantId, tenantId), inArray(productReviews.productId, productIds.slice(i, i + 500))));
+      for (const r of rows) existing.add(duplicateKey(r.productId, r.authorName, r.createdAt, r.body));
+    }
+    const plan = planImport(table, { products, existing, now });
+    const report = plan.rows.map(({ values: _v, ...r }) => r);
+    const result = { dryRun: b.dryRun, error: plan.error, total: plan.rows.length, valid: plan.valid, invalid: plan.invalid, imported: 0, rows: report };
+    if (b.dryRun || plan.valid === 0) return result;
+    const values = plan.rows.flatMap((r) => (r.values ? [r.values] : []));
+    await this.db.transaction(async (tx) => {
+      for (let i = 0; i < values.length; i += 200) {
+        await tx.insert(productReviews).values(
+          values.slice(i, i + 200).map((v) => ({
+            tenantId,
+            productId: v.productId,
+            userId: null,
+            authorName: v.authorName,
+            authorCity: v.authorCity,
+            source: v.source,
+            sourcePlatform: v.platform,
+            sourceUrl: v.sourceUrl,
+            createdBy: staffUserId,
+            orderId: null,
+            verified: false,
+            rating: v.rating,
+            title: v.title,
+            body: v.body,
+            photos: v.photos,
+            status: b.status,
+            createdAt: v.date,
+            updatedAt: now,
+          })),
+        );
+      }
+    });
+    this.log.info({ tenantId, imported: values.length, skipped: plan.invalid }, "reviews: CSV import");
+    return { ...result, imported: values.length };
+  }
+
+  /** `POST /requests` (staff): asks the customer of a delivered order to review what they bought (once per order). */
+  async requestReview(tenantId: string, orderId: string): Promise<ReviewRequestResult> {
+    if (!this.deps.requests) throw badRequest("Review requests aren't available in this shop");
+    return this.deps.requests.send(tenantId, orderId);
   }
 
   /** Deletes the review and its votes. */

@@ -29,6 +29,8 @@ export interface BundleItemView {
   price: number;
   /** Sellable variants to pick from (any-variant items); one entry = picked for the shopper. */
   options: BundleOption[];
+  /** What the pick chooses: the product's option names ("Size", "Size / Colour"); "" when the product has none. */
+  optionLabel: string;
   available: boolean;
 }
 
@@ -74,6 +76,9 @@ export function bundlePrice(cfg: Pick<BundleConfigView, "priceType" | "value">, 
   return regular - Math.round((regular * Math.min(100, Math.max(0, cfg.value))) / 100);
 }
 
+/** The label of a bundle item's variant pick: the product's option names ("Size", "Size / Colour"). */
+const optionLabel = (p: StoreProductSummary | undefined): string => (p?.optionNames ?? []).map((n) => n.trim()).filter(Boolean).join(" / ");
+
 /**
  * A bundle with its products: names, images, prices, the choices for any-variant items, and the saving. Items whose
  * product isn't on sale any more make the bundle unavailable (it is still returned so callers can decide).
@@ -96,6 +101,7 @@ export function buildBundleView(offer: PublicOfferView, products: ReadonlyMap<st
         variantTitle: v?.title ?? "",
         price: v?.price ?? p?.priceMin ?? 0,
         options: v && ok ? [{ variantId: v.id, title: v.title, price: v.price }] : [],
+        optionLabel: optionLabel(p),
         available: ok,
       };
     }
@@ -114,6 +120,7 @@ export function buildBundleView(offer: PublicOfferView, products: ReadonlyMap<st
       variantTitle: options.length === 1 ? options[0]!.title : "",
       price: cheapest,
       options,
+      optionLabel: optionLabel(p),
       available: onSale && options.length > 0,
     };
   });

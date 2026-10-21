@@ -30,6 +30,7 @@ import { RecentlyViewedStrip } from "../client/recently-viewed";
 import { RecommendedShelf } from "../client/recommend";
 import { Container, Price, SectionTitle, Stars, StoreImage } from "../components/bits";
 import { ProductCard, ProductGrid } from "../components/product-card";
+import { ReviewSource, VerifiedBadge } from "../components/review-source";
 import { freshIds } from "../lib/cards";
 import { formatDate, imageUrl, money, percentOff } from "../lib/format";
 import { safeHref } from "../lib/markdown";
@@ -606,13 +607,20 @@ export function ReviewsSummarySection({ s, t, data, locale }: { s: HomeSectionOf
                 </div>
                 {r.title && <p className="mt-3 font-semibold">{r.title}</p>}
                 {r.body && <p className="mt-1.5 line-clamp-4 text-sm text-foreground/80">{r.body}</p>}
-                <div className="mt-auto flex items-center gap-2 pt-4 text-xs">
-                  <span className="font-semibold">{r.authorName}</span>
-                  {r.verified && (
-                    <span className="inline-flex items-center gap-1 text-success-ink">
-                      <BadgeCheckIcon className="size-3.5" aria-hidden /> {t("sections.verified")}
-                    </span>
-                  )}
+                {r.photos?.length > 0 && (
+                  <ul className="mt-3 flex gap-2">
+                    {r.photos.slice(0, 3).map((src, i) => (
+                      <li key={i} className="size-14 overflow-hidden rounded-lg bg-muted">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={t("reviews.photo", { n: i + 1, name: r.authorName })} className="size-full object-cover" loading="lazy" />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-4 text-xs">
+                  <span className="font-semibold">{r.authorCity ? t("reviews.from", { name: r.authorName, city: r.authorCity }) : r.authorName}</span>
+                  {r.verified && <VerifiedBadge t={t} label={t("sections.verified")} />}
+                  <ReviewSource review={r} t={t} />
                 </div>
                 {p && (
                   <Link href={STORE_PATHS.product(p.slug)} className="mt-3 flex items-center gap-2 rounded-xl bg-muted/60 p-2 text-xs font-medium hover:bg-muted focus-ring">

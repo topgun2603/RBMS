@@ -126,27 +126,65 @@ export function eligibleMask(rule: Pick<CouponRule, "appliesTo" | "targetIds">, 
   });
 }
 
-/**
- * Splits `total` over the masked lines in proportion to their amounts (largest remainder, so the parts add up
- * exactly and no line gets more than its amount).
- */
-export function allocateDiscount(total: number, amounts: readonly number[], mask: readonly boolean[]): number[] {
-  const base = amounts.reduce((s, a, i) => s + (mask[i] ? Math.max(a, 0) : 0), 0);
-  const out = amounts.map(() => 0);
-  if (total <= 0 || base <= 0) return out;
-  const t = Math.min(total, base);
+/** Largest-remainder split of `units` over `weights`, with each part capped at `caps[i]` units. */
+function splitUnits(units: number, weights: readonly number[], caps: readonly number[]): number[] {
+  const out = weights.map(() => 0);
+  const base = weights.reduce((s, w) => s + w, 0);
+  if (units <= 0 || base <= 0) return out;
   const rem: { i: number; frac: number }[] = [];
   let given = 0;
-  amounts.forEach((a, i) => {
-    if (!mask[i] || a <= 0) return;
-    const exact = (t * a) / base;
-    const whole = Math.floor(exact);
+  weights.forEach((w, i) => {
+    if (w <= 0) return;
+    const exact = (units * w) / base;
+    const whole = Math.min(Math.floor(exact), caps[i]!);
     out[i] = whole;
     given += whole;
     rem.push({ i, frac: exact - whole });
   });
-  rem.sort((x, y) => y.frac - x.frac || x.i - y.i);
-  for (let k = 0; given < t && k < rem.length; k++, given++) out[rem[k]!.i]! += 1;
+  rem.sort((x, y) => y.frac - x.frac || weights[y.i]! - weights[x.i]! || x.i - y.i);
+  // Usually one pass; more only when caps push units back (tiny lines).
+  while (given < units) {
+    let placed = false;
+    for (const r of rem) {
+      if (given >= units) break;
+      if (out[r.i]! < caps[r.i]!) {
+        out[r.i]! += 1;
+        given++;
+        placed = true;
+      }
+    }
+    if (!placed) break;
+  }
+  return out;
+}
+
+/**
+ * Splits `total` (paise) over the masked lines in proportion to their amounts. The parts add up exactly and no line
+ * gets more than its amount. The split is in **whole rupees** (largest remainder on rupees), so an order-wide "₹300
+ * off" shows ₹271 + ₹29 on the lines rather than ₹271.57 + ₹28.43; any paise the total carries (a percent offer on
+ * paise prices) go to the largest line. A line too small to take whole rupees falls back to paise.
+ */
+export function allocateDiscount(total: number, amounts: readonly number[], mask: readonly boolean[]): number[] {
+  const weights = amounts.map((a, i) => (mask[i] ? Math.max(a, 0) : 0));
+  const base = weights.reduce((s, a) => s + a, 0);
+  const out = amounts.map(() => 0);
+  if (total <= 0 || base <= 0) return out;
+  const t = Math.min(Math.round(total), base);
+  // Rupees first (each line capped at the rupees it can take), then the leftover paise.
+  const rupees = splitUnits(Math.floor(t / 100), weights, weights.map((w) => Math.floor(w / 100)));
+  rupees.forEach((r, i) => (out[i] = r * 100));
+  let left = t - out.reduce((s, v) => s + v, 0);
+  if (left > 0) {
+    // Largest line first (ties: earlier line); a line takes paise up to its amount.
+    const order = weights.map((w, i) => ({ w, i })).filter((x) => x.w > 0).sort((x, y) => y.w - x.w || x.i - y.i);
+    for (const { w, i } of order) {
+      if (left <= 0) break;
+      const room = w - out[i]!;
+      const take = Math.min(room, left);
+      out[i]! += take;
+      left -= take;
+    }
+  }
   return out;
 }
 

@@ -313,6 +313,17 @@ describe("computeOrderTotals", () => {
     expect(totals.total).toBe(44900);
   });
 
+  it("an order-wide offer split in whole rupees keeps each line's GST and the order total exact", () => {
+    // anbu's ₹400 combo: ₹8,500 saree (5%) + ₹890 jhumkas (3%), shared ₹362 / ₹38 (coupons' allocateDiscount).
+    const base = [...lines([item({ price: 850000, rate: exclusiveOf(850000, 5, true) })]), ...lines([item({ id: "v2", productId: "p2", price: 89000, rate: exclusiveOf(89000, 3, true), gstRate: 3, hsn: "7117" })])];
+    const { lines: l, totals } = computeOrderTotals(base, { lineDiscounts: [36200, 3800], shipping: 0, sellerState: "33", placeOfSupply: "33" });
+    expect(l.map((x) => x.total)).toEqual([850000 - 36200, 89000 - 3800]);
+    for (const x of l) expect(x.cgst + x.sgst).toBe(x.total - x.taxable);
+    expect(l[1]!.gstRate).toBe(3);
+    expect(totals.discount).toBe(40000);
+    expect(totals.total).toBe(939000 - 40000);
+  });
+
   describe("tax-inclusive line totals equal the charged price (regression: ₹999 showed as ₹999.01)", () => {
     const invoiceOf = (l: ReturnType<typeof computeOrderTotals>, inter = false) =>
       computeInvoice(

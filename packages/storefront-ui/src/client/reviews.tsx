@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BadgeCheckIcon, Loader2Icon, MessageSquareReplyIcon, StarIcon, ThumbsUpIcon } from "lucide-react";
+import { Loader2Icon, MessageSquareReplyIcon, StarIcon, ThumbsUpIcon } from "lucide-react";
 import { Button } from "@srirealtime/ui/components/button";
 import { toast } from "@srirealtime/ui/components/sonner";
 import { cn } from "@srirealtime/ui/lib/utils";
@@ -10,10 +10,13 @@ import { AnimatePresence, motion, useInView, useReducedMotionSafe } from "@srire
 import { formatDate } from "../lib/format";
 import type { Review, ReviewList } from "../types";
 import { Stars } from "../components/bits";
+import { ReviewSource, VerifiedBadge } from "../components/review-source";
 import { call, errorMessage } from "./api";
 import { useStore } from "./store-context";
 
-const SORTS = ["recent", "helpful", "rating-desc", "rating-asc"] as const;
+/** "photos" filters to reviews with photos (newest first); the rest are sort orders. */
+const SORTS = ["recent", "rating-desc", "rating-asc", "photos", "helpful"] as const;
+const sortQuery = (s: (typeof SORTS)[number]) => (s === "photos" ? { sort: "recent", photos: "true" } : { sort: s });
 const PAGE = 5;
 
 /** Summary + list (server-rendered first page) + sort/load more + write/edit for signed-in shoppers. */
@@ -31,7 +34,7 @@ export function ReviewsSection({ productId, productSlug, initial }: { productId:
     async (s: (typeof SORTS)[number], offset: number) => {
       setLoading(true);
       try {
-        const r = await call<ReviewList>(`/reviews/public/products/${productId}/reviews`, { query: { sort: s, limit: PAGE, offset }, auth: false });
+        const r = await call<ReviewList>(`/reviews/public/products/${productId}/reviews`, { query: { ...sortQuery(s), limit: PAGE, offset }, auth: false });
         setData((d) => (offset === 0 ? r : { ...r, items: [...d.items, ...r.items] }));
       } catch (err) {
         toast.error(errorMessage(err, t));
@@ -48,6 +51,16 @@ export function ReviewsSection({ productId, productSlug, initial }: { productId:
       .then((r) => setMine(r.review))
       .catch(() => undefined);
   }, [auth.token, productId]);
+
+  // A review request link (`?review=1#reviews`) opens the form for signed-in shoppers.
+  const askedToReview = React.useRef(false);
+  React.useEffect(() => {
+    if (askedToReview.current || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("review") !== "1") return;
+    askedToReview.current = true;
+    if (auth.token) setWriting(true);
+    document.getElementById("reviews")?.scrollIntoView({ block: "start" });
+  }, [auth.token]);
 
   const max = Math.max(1, ...Object.values(summary.distribution ?? {}));
 
@@ -106,8 +119,8 @@ export function ReviewsSection({ productId, productSlug, initial }: { productId:
               }}
             />
           )}
-          {data.items.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
+          {(data.items.length > 0 || sort !== "recent") && (
+            <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label={t("reviews.title")}>
               {SORTS.map((s) => (
                 <button
                   key={s}
@@ -125,7 +138,7 @@ export function ReviewsSection({ productId, productSlug, initial }: { productId:
             </div>
           )}
           {data.items.length === 0 ? (
-            <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">{t("reviews.none")}</p>
+            <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">{sort === "photos" ? t("reviews.count", { count: 0 }) : t("reviews.none")}</p>
           ) : (
             <ul className="divide-y">
               <AnimatePresence initial={false}>
@@ -137,23 +150,21 @@ export function ReviewsSection({ productId, productSlug, initial }: { productId:
                   </div>
                   {r.body && <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/85">{r.body}</p>}
                   {r.photos?.length > 0 && (
-                    <ul className="mt-3 flex gap-2">
-                      {r.photos.slice(0, 4).map((p, i) => (
-                        <li key={i} className="size-16 overflow-hidden rounded-lg bg-muted">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={p} alt="" className="size-full object-cover" loading="lazy" />
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {r.photos.slice(0, 5).map((p, i) => (
+                        <li key={i}>
+                          <a href={p} target="_blank" rel="noopener noreferrer" className="block size-20 overflow-hidden rounded-lg bg-muted focus-ring sm:size-24">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p} alt={t("reviews.photo", { n: i + 1, name: r.authorName })} className="size-full object-cover transition-transform hover:scale-105" loading="lazy" />
+                          </a>
                         </li>
                       ))}
                     </ul>
                   )}
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground/80">{r.authorName}</span>
-                    {r.verified && (
-                      <span className="inline-flex items-center gap-1 text-success-ink">
-                        <BadgeCheckIcon className="size-3.5" />
-                        {t("reviews.verified")}
-                      </span>
-                    )}
+                    <span className="font-medium text-foreground/80">{r.authorCity ? t("reviews.from", { name: r.authorName, city: r.authorCity }) : r.authorName}</span>
+                    {r.verified && <VerifiedBadge t={t} />}
+                    <ReviewSource review={r} t={t} />
                     <span>{formatDate(r.createdAt, locale)}</span>
                     <button
                       type="button"
