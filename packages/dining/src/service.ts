@@ -159,6 +159,10 @@ export interface KitchenTicket extends DiningKotRow {
   orderNumber: number;
   orderType: DiningOrderRow["type"];
   orderSource: DiningOrderSource;
+  /** Delivery platform of an aggregator order ("zomato", "swiggy"…), for the badge. */
+  platform: string | null;
+  /** When the order must be ready (rider pickup): the ticket counts down to it. */
+  dueAt: Date | null;
   tableName: string | null;
   customerName: string | null;
   orderNote: string | null;
@@ -171,6 +175,30 @@ const qrToken = () => randomBytes(12).toString("base64url");
 function isUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
   return e?.code === "23505" || e?.cause?.code === "23505";
+}
+
+/** Extra fields of an order from outside the restaurant (delivery platforms). */
+export interface ExternalExtra {
+  platform?: string | null;
+  dueAt?: Date | null;
+  taxByOperator?: boolean;
+  /** The platform already took the order: a sold-out item still goes to the kitchen (staff can reject the order). */
+  allowSoldOut?: boolean;
+}
+
+/** A delivery-platform order for the kitchen (rates in paise; lines without an item are shown by name). */
+export interface ExternalOrderInput {
+  ref: string;
+  type: "delivery" | "takeaway";
+  platform: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  note: string | null;
+  dueAt: Date | null;
+  taxByOperator: boolean;
+  lines: { itemId: string | null; name: string; qty: number; rate: number; gstRate?: number; note: string | null }[];
+  /** Send the KOTs now (accepted orders); otherwise the lines wait until the order is accepted. */
+  send: boolean;
 }
 
 export class DiningService {
@@ -448,7 +476,7 @@ export class DiningService {
   }
 
   /** Resolves input lines to priced lines with their station (items from the menu source, free text as given). */
-  private async priceLines(tenantId: string, lines: z.output<typeof lineInput>[]) {
+  private async priceLines(tenantId: string, lines: z.output<typeof lineInput>[], opts: { allowSoldOut?: boolean } = {}) {
     const ids = [...new Set(lines.map((l) => l.itemId).filter((v): v is string => !!v))];
     const [items, settings] = await Promise.all([
       ids.length && this.deps.menu ? this.deps.menu.items(tenantId, ids) : Promise.resolve([]),
@@ -460,7 +488,7 @@ export class DiningService {
       const item = l.itemId ? byId.get(l.itemId) : undefined;
       if (l.itemId && !item && (!l.name || l.rate === undefined)) throw badRequest("Unknown item");
       const s = l.itemId ? stationOf.get(l.itemId) : undefined;
-      if (s && !s.available) throw new AppError(409, "sold_out", `${item?.name ?? l.name} is sold out`);
+      if (s && !s.available && !opts.allowSoldOut) throw new AppError(409, "sold_out", `${item?.name ?? l.name} is sold out`);
       return {
         itemId: l.itemId ?? null,
         name: l.name ?? item!.name,
@@ -476,13 +504,20 @@ export class DiningService {
   }
 
   /** Opens an order. A dine-in table can have one open order: 409 `table_busy` (with its id) otherwise. */
-  async open(tenantId: string, input: unknown, userId: string | null, source: DiningOrderSource = "staff", externalRef: string | null = null): Promise<OrderView> {
+  async open(
+    tenantId: string,
+    input: unknown,
+    userId: string | null,
+    source: DiningOrderSource = "staff",
+    externalRef: string | null = null,
+    extra: ExternalExtra = {},
+  ): Promise<OrderView> {
     const b = openInput.parse(input);
     if (b.tableId) {
       const t = await this.table(tenantId, b.tableId);
       if (!t.active) throw badRequest("This table is switched off");
     }
-    const priced = b.items?.length ? await this.priceLines(tenantId, b.items.map((l) => lineInput.parse(l))) : [];
+    const priced = b.items?.length ? await this.priceLines(tenantId, b.items.map((l) => lineInput.parse(l)), { allowSoldOut: extra.allowSoldOut }) : [];
     const date = this.today();
     const id = await this.db.transaction(async (tx) => {
       if (b.tableId) {
@@ -509,6 +544,9 @@ export class DiningService {
           customerPhone: b.customerPhone,
           note: b.note,
           externalRef,
+          platform: extra.platform ?? null,
+          dueAt: extra.dueAt ?? null,
+          taxByOperator: extra.taxByOperator ?? false,
           openedBy: userId,
         })
         .returning();
@@ -740,6 +778,9 @@ export class DiningService {
     const claimed = await this.db.transaction(async (tx) => {
       const o = await this.orderRow(tenantId, id, tx, true);
       this.assertOpen(o);
+      if (o.taxByOperator) {
+        throw new AppError(409, "tax_by_operator", "GST on this order is paid by the delivery platform (section 9(5)): settle it from Online orders, no tax bill is made");
+      }
       await this.sendKotTx(tx, tenantId, id, opts.userId ?? null);
       const lines = await tx
         .select()
@@ -844,6 +885,8 @@ export class DiningService {
         orderNumber: r.order.number,
         orderType: r.order.type,
         orderSource: r.order.source,
+        platform: r.order.platform,
+        dueAt: r.order.dueAt,
         tableName: r.tableName,
         customerName: r.order.customerName,
         orderNote: r.order.note,
@@ -982,5 +1025,78 @@ export class DiningService {
       .update(diningOrders)
       .set({ status: "billed", closedAt: this.now(), updatedAt: new Date() })
       .where(and(eq(diningOrders.tenantId, tenantId), eq(diningOrders.externalRef, ref), eq(diningOrders.status, "open"), isNull(diningOrders.tableId)));
+  }
+
+  // ---------------------------------------------------------------- delivery platforms (aggregators)
+
+  /**
+   * A delivery-platform order (Zomato / Swiggy through an aggregator): one dining order per `ref`, idempotent (the
+   * existing order is returned). Lines wait as "pending" until `send` (accepted), so a rejected order never reaches
+   * the kitchen.
+   */
+  async openExternal(tenantId: string, e: ExternalOrderInput): Promise<OrderView> {
+    const [done] = await this.db
+      .select({ id: diningOrders.id })
+      .from(diningOrders)
+      .where(and(eq(diningOrders.tenantId, tenantId), eq(diningOrders.externalRef, e.ref)))
+      .limit(1);
+    if (done) return this.get(tenantId, done.id);
+    const clip = (v: string | null, n: number) => (v ? v.slice(0, n) : null);
+    return this.open(
+      tenantId,
+      {
+        type: e.type,
+        customerName: clip(e.customerName, 120),
+        customerPhone: clip(e.customerPhone, 20),
+        note: clip(e.note, 500),
+        items: e.lines.map((l) => ({
+          itemId: l.itemId,
+          name: l.name.slice(0, 200) || "Item",
+          rate: Math.max(0, Math.round(l.rate)),
+          ...(l.gstRate !== undefined ? { gstRate: l.gstRate } : {}),
+          qty: l.qty,
+          note: clip(l.note, 200),
+        })),
+        sendKot: e.send,
+      },
+      null,
+      "aggregator",
+      e.ref,
+      { platform: e.platform, dueAt: e.dueAt, taxByOperator: e.taxByOperator, allowSoldOut: true },
+    );
+  }
+
+  /** The time the order must be ready by (accepting with a prep time moves it). */
+  async setDue(tenantId: string, id: string, dueAt: Date | null): Promise<void> {
+    await this.db
+      .update(diningOrders)
+      .set({ dueAt, updatedAt: new Date() })
+      .where(and(eq(diningOrders.tenantId, tenantId), eq(diningOrders.id, id)));
+    this.changed(tenantId, "order", id);
+  }
+
+  /**
+   * Closes an open order without a bill: for delivery-platform orders whose GST the platform pays (section 9(5)),
+   * the shop issues no tax invoice. Unsent lines go to the kitchen first so nothing is lost.
+   */
+  async settleWithoutBill(tenantId: string, id: string): Promise<OrderView> {
+    await this.db.transaction(async (tx) => {
+      const o = await this.orderRow(tenantId, id, tx, true);
+      if (o.status !== "open") return;
+      await this.sendKotTx(tx, tenantId, id, null);
+      await tx.update(diningOrders).set({ status: "billed", closedAt: this.now(), updatedAt: new Date() }).where(eq(diningOrders.id, id));
+    });
+    this.changed(tenantId, "order", id);
+    return this.get(tenantId, id);
+  }
+
+  /** The order of a kitchen ticket (null when unknown). */
+  async orderOfKot(tenantId: string, kotId: string): Promise<string | null> {
+    const [k] = await this.db
+      .select({ orderId: diningKots.orderId })
+      .from(diningKots)
+      .where(and(eq(diningKots.tenantId, tenantId), eq(diningKots.id, kotId)))
+      .limit(1);
+    return k?.orderId ?? null;
   }
 }

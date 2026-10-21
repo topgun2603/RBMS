@@ -8,7 +8,7 @@ export * from "./schema";
 export * from "./logic";
 export * from "./ports";
 export { DiningService, openInput, lineInput, billInput, tableInput, areaInput, menuItemInput } from "./service";
-export type { BillInput, DiningDeps, FloorTable, KitchenTicket, LineInput, OpenInput, OrderLine, OrderView } from "./service";
+export type { BillInput, DiningDeps, ExternalExtra, ExternalOrderInput, FloorTable, KitchenTicket, LineInput, OpenInput, OrderLine, OrderView } from "./service";
 export { diningRoutes } from "./routes";
 
 /**

@@ -46,7 +46,7 @@ export interface PlatformInvoiceDocData {
 
 /** A line of a platform invoice (paise; a credit line is negative). */
 export interface PlatformInvoiceLine {
-  kind: "plan" | "credit";
+  kind: "plan" | "addon" | "credit";
   description: string;
   taxablePaise: number;
   cgstPaise: number;
@@ -85,8 +85,12 @@ export function platformInvoiceDoc(p: PlatformInvoiceDocData): InvoiceDocData {
   });
   const totalsLine = { taxablePaise: p.subtotalPaise, cgstPaise: p.cgstPaise, sgstPaise: p.sgstPaise, igstPaise: p.igstPaise, totalPaise: p.totalPaise };
   const lines =
-    p.lines && p.lines.length > 1
-      ? p.lines.map((l) => (l.kind === "plan" ? toLine(l, from && to ? `${l.description}: ${from} to ${to}` : l.description, "plan") : toLine(l, l.description, "credit")))
+    p.lines && (p.lines.length > 1 || (p.lines.length === 1 && p.lines[0]!.kind !== "plan"))
+      ? p.lines.map((l) =>
+          l.kind === "plan"
+            ? toLine(l, from && to ? `${l.description}: ${from} to ${to}` : l.description, "plan")
+            : toLine(l, l.description, l.kind === "addon" ? "add-on" : "credit"),
+        )
       : [toLine(totalsLine, description, "plan")];
   const paid = p.status === "paid";
   return {

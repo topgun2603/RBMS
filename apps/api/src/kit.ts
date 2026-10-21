@@ -70,6 +70,7 @@ import { createBatch5, type Batch5 } from "./kit-batch5";
 import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
 import { createKitOps } from "./kit-ops";
 import { createMessages } from "./kit-messages";
+import { createAggregatorsWiring } from "./kit-aggregators";
 import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
 import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
@@ -128,6 +129,11 @@ export function createKit(env: Env, log: Logger) {
         countAll: () => tenancy.service.seatCounts(),
       },
     },
+    // Plan add-ons (docs/verticals.md "Plan add-ons"): the shop's active add-ons come from subscriptions (batch 5,
+    // created later); feature add-ons only unlock what the app profile offers; add-on changes drop feature caches too.
+    addons: async (tenantId) => (b5 ? b5.subscriptions.service.effectiveAddons(tenantId) : []),
+    appFeatures: async (appId) => (await features.service.getProfile(appId))?.features ?? null,
+    onInvalidate: (tenantId) => features.service.invalidate(tenantId),
   });
 
   // Auth is created after tenancy but tenancy needs auth to invite by phone/email: late-bound.
@@ -892,9 +898,13 @@ export function createKit(env: Env, log: Logger) {
           image: i.image,
         })),
     },
+    // Kitchen display changes: a delivery-platform order whose tickets are all ready is reported ready.
+    events: { changed: (tenantId, e) => aggregators.service.kitchenChanged(tenantId, e) },
     log,
   });
   diningRef = dining;
+  // Zomato / Swiggy / ONDC orders through an aggregator (kit-aggregators.ts): webhooks → dining orders and KOTs.
+  const aggregators = createAggregatorsWiring({ db, dining, catalogue, features: { isEnabled }, encryptionKey: env.APP_SECRET, publicBaseUrl: env.API_PUBLIC_URL, log });
 
   // Job cards (repair, tailoring, optical orders): bills through the shared adapter.
   const jobcards = createJobcards({ db, billing: billFromLines, notify: messages.jobcards, log });
@@ -1182,6 +1192,7 @@ export function createKit(env: Env, log: Logger) {
     expenses.module,
     medicines.module,
     dining.module,
+    aggregators.module,
     ownerCanSwitch(jobcards.module),
     ownerCanSwitch(bookings.module),
     counter.module,
@@ -1226,6 +1237,7 @@ export function createKit(env: Env, log: Logger) {
     expenses,
     medicines,
     dining,
+    aggregators,
     serials,
     scales,
     jewellery,

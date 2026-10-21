@@ -148,6 +148,20 @@
       "when": 1792558866883,
       "tag": "0020_selling_tools",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792563378862,
+      "tag": "0021_aggregators",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792565856721,
+      "tag": "0022_plan_addons",
+      "breakpoints": true
     }
   ]
 }

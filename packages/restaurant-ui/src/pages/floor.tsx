@@ -6,6 +6,7 @@ import { Button, ChipGroup, cn, EmptyState, Skeleton } from "@srirealtime/ui";
 import { describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, usePermission, useSettingsHref } from "@srirealtime/web";
 import { InlineError } from "../components/bits";
 import { OpenDialog } from "../components/open-dialog";
+import { PlatformBadge } from "../components/platform";
 import { RESTAURANT_FEATURES, RESTAURANT_PERMISSIONS } from "../lib/access";
 import { elapsed, minutesSince, money } from "../lib/format";
 import { useFloor } from "../lib/queries";
@@ -183,7 +184,7 @@ function OrderCard({ order: o, onOpen }: { order: OrderSummary; onOpen: () => vo
     <button type="button" onClick={onOpen} className="grid gap-1 rounded-xl border bg-card p-3 text-left transition-colors outline-none hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring">
         <span className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-2 font-semibold">
-            <Icon className="size-4 text-primary" /> #{o.number} · {t(`restaurant.type.${o.type}`)}
+            {o.platform ? <PlatformBadge platform={o.platform} /> : <Icon className="size-4 text-primary" />} #{o.number} · {t(`restaurant.type.${o.type}`)}
           </span>
           <span className="font-semibold tabular-nums">{money(o.amount)}</span>
         </span>

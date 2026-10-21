@@ -1,4 +1,5 @@
 import { AppError, badRequest, conflict, facetCounts, notFound, runList, sha256 } from "@srirealtime/core";
+import { taxableOfInclusive } from "@srirealtime/gst";
 import {
   NO_PROVIDER,
   PLATFORM_INVOICE_SORT,
@@ -11,7 +12,7 @@ import {
   type SubscriptionListQuery,
 } from "./list";
 import type { Db } from "@srirealtime/db";
-import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import {
   addDays,
   addInterval,
@@ -55,13 +56,32 @@ import {
 } from "./ports";
 import type { SubscriptionProvider } from "./provider";
 import {
+  addonBlock,
+  addonLineText,
+  addonProration,
+  addonsRecurringPaise,
+  addonUnitPrice,
+  creditsFor,
+  effectiveQuantity,
+  isRecurringAddon,
+  renewQuantity,
+  type AddonBlock,
+} from "./addons";
+import type { AddonInfo } from "./ports";
+import {
+  addonPayments,
   platformInvoices,
   platformInvoiceSeries,
   providerPlans,
+  subscriptionAddons,
   subscriptionEvents,
   subscriptions,
+  type AddonEndReason,
+  type AddonInvoiceLine,
+  type AddonPaymentRow,
   type BillingInterval,
   type PlatformInvoiceRow,
+  type SubscriptionAddonRow,
   type SubscriptionRow,
   type SubscriptionStatus,
 } from "./schema";
@@ -149,6 +169,85 @@ export interface ChangePreview {
   startsAt: Date | null;
   /** The next recurring charge after today's. */
   nextChargeAt: Date | null;
+  /** Of `planPricePaise`, the add-ons that carry on with the new plan (an upgrade restarts their period too). */
+  addonsPricePaise?: number;
+  /** Add-ons the new plan can't have: they end when it starts (names). */
+  endingAddons?: string[];
+}
+
+/** A shop's add-on as the API returns it. */
+export interface SubscriptionAddonView {
+  id: string;
+  addonId: string;
+  name: string;
+  kind: AddonInfo["kind"] | null;
+  source: SubscriptionAddonRow["source"];
+  status: SubscriptionAddonRow["status"];
+  quantity: number;
+  /** From the next period (null = renews as is; 0 = ends at the period end). */
+  nextQuantity: number | null;
+  /** What counts right now (see `effectiveQuantity`). */
+  activeQuantity: number;
+  interval: BillingInterval;
+  /** One unit for the interval, GST-exclusive. */
+  unitPricePaise: number;
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+  endsAtPeriodEnd: boolean;
+  endReason: AddonEndReason | null;
+  notice: string | null;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
+/** A one-time add-on payment as the API returns it. */
+export interface AddonPaymentView {
+  id: string;
+  addonId: string;
+  kind: AddonPaymentRow["kind"];
+  fromQuantity: number;
+  toQuantity: number;
+  taxablePaise: number;
+  chargePaise: number;
+  label: string;
+  status: AddonPaymentRow["status"];
+  authUrl: string | null;
+  providerPaymentId: string | null;
+  createdAt: Date;
+  expiresAt: Date;
+  paidAt: Date | null;
+  invoiceId: string | null;
+}
+
+/** Why the shop can't add recurring add-ons right now (they ride a paid, authorised plan). */
+export type AddonBillingBlock = "trial" | "free" | "manual" | "past_due" | "payment_setup" | "cancelling" | "upgrade_pending" | "ended" | "no_provider";
+
+/** `POST /addons/preview` answer. Money in paise. */
+export interface AddonPreview {
+  addonId: string;
+  quantity: number;
+  fromQuantity: number;
+  /** buy / increase (pay the rest of the period now), decrease / cancel (period end), resume, credits (a pack), same. */
+  kind: "buy" | "increase" | "decrease" | "cancel" | "resume" | "credits" | "same";
+  applies: "after_payment" | "period_end" | "now" | "none";
+  interval: BillingInterval | null;
+  unitPricePaise: number;
+  unusedDays: number;
+  periodDays: number;
+  /** Taxable value charged now, and the amount with GST. */
+  taxablePaise: number;
+  chargeTodayPaise: number;
+  gst: GstSplit & { ratePercent: number };
+  /** When the change applies (now/after payment: null). */
+  startsAt: Date | null;
+  /** The next renewal and what it will charge for the plan + every add-on (taxable). */
+  nextChargeAt: Date | null;
+  nextRenewalPaise: number;
+  /** This add-on's part of each renewal from then on (taxable). */
+  recurringPaise: number;
+  /** Credits the pack adds, by key. */
+  credits?: Record<string, number>;
+  block: AddonBlock | AddonBillingBlock | null;
 }
 
 export const toView = (s: SubscriptionRow): SubscriptionView => ({
@@ -183,6 +282,26 @@ export const toView = (s: SubscriptionRow): SubscriptionView => ({
   updatedAt: s.updatedAt,
 });
 
+const ADDON_PAYMENT_HOURS = 48;
+
+const toAddonPaymentView = (p: AddonPaymentRow, hours: number): AddonPaymentView => ({
+  id: p.id,
+  addonId: p.addonId,
+  kind: p.kind,
+  fromQuantity: p.fromQuantity,
+  toQuantity: p.toQuantity,
+  taxablePaise: p.taxablePaise,
+  chargePaise: p.chargePaise,
+  label: p.label,
+  status: p.status,
+  authUrl: p.status === "pending" ? p.authUrl : null,
+  providerPaymentId: p.providerPaymentId,
+  createdAt: p.createdAt,
+  expiresAt: new Date(p.createdAt.getTime() + hours * 3_600_000),
+  paidAt: p.paidAt,
+  invoiceId: p.invoiceId,
+});
+
 /** A platform invoice as the API returns it: the row plus its plan and credit lines. */
 export type PlatformInvoiceView = PlatformInvoiceRow & { lines: InvoiceLine[] };
 
@@ -208,6 +327,8 @@ export interface ProviderEvent {
   payload?: {
     subscription?: { entity?: Record<string, unknown> };
     payment?: { entity?: Record<string, unknown> };
+    /** Payment Links (add-on proration, credits packs). */
+    payment_link?: { entity?: Record<string, unknown> };
   };
   created_at?: number;
 }
@@ -234,8 +355,10 @@ export class SubscriptionsService {
   private readonly trialDays: number;
   private readonly graceDays: number;
   private readonly prefix: string;
+  private readonly addonHours: number;
 
   constructor(private readonly deps: SubscriptionsDeps) {
+    this.addonHours = deps.config.addonPaymentHours ?? ADDON_PAYMENT_HOURS;
     this.db = deps.db;
     this.log = deps.log ?? noopLogger;
     this.now = deps.clock ?? (() => new Date());
@@ -361,6 +484,7 @@ export class SubscriptionsService {
     const [plan, usage] = await Promise.all([this.deps.plans.getPlan(sub.planId), this.deps.plans.usage(tenantId)]);
     const pendingPlan = sub.pendingPlanId ? await this.deps.plans.getPlan(sub.pendingPlanId) : null;
     const canTrial = !sub.trialStartedAt && (await this.canTrial(sub.ownerUserId ?? userId, tenantId));
+    const [addons, credits] = await Promise.all([this.addonViews(tenantId), this.deps.plans.credits?.(tenantId) ?? Promise.resolve({})]);
     return {
       subscription: toView(sub),
       plan,
@@ -369,6 +493,8 @@ export class SubscriptionsService {
       graceDaysLeft: sub.status === "past_due" ? daysLeft(sub.graceEndsAt, now) : null,
       usage,
       canTrial,
+      addons,
+      credits,
     };
   }
 
@@ -427,6 +553,8 @@ export class SubscriptionsService {
         // Paid until the period end: the free plan starts then.
         await this.providerCall(() => this.deps.provider.cancel(sub.providerSubscriptionId!, true));
         sub = await this.update(sub, { pendingPlanId: target.id, pendingInterval: input.interval, pendingReason: "downgrade" }, actor, "subscription.downgrade", `Moves to ${target.id} at the period end`);
+        // Add-ons ride the paid plan: they end with it.
+        await this.scheduleAddonEnds(sub, null, actor);
         return result("period_end", sub);
       }
       await this.cancelProviderNow(sub);
@@ -483,11 +611,13 @@ export class SubscriptionsService {
       }
       if (kind === "downgrade" && sub.status === "active") {
         if (isAwaitingPayment(sub)) sub = await this.dropPendingUpgrade(sub, actor, "Upgrade replaced by a downgrade");
-        const providerPlanId = await this.ensureProviderPlan(target, input.interval);
+        // The next cycle charges the new plan plus the add-ons it can have; the others end at the period end.
+        const providerPlanId = await this.ensureProviderPlan(target, input.interval, await this.recurringExtra(sub.tenantId, target, input.interval));
         const id = sub.providerSubscriptionId;
         const change = this.deps.provider.changePlan;
         if (id && change) await this.providerCall(() => change.call(this.deps.provider, id, providerPlanId));
         sub = await this.update(sub, { pendingPlanId: target.id, pendingInterval: input.interval, pendingReason: "downgrade" }, actor, "subscription.downgrade", `Moves to ${target.id} at the period end`);
+        await this.scheduleAddonEnds(sub, target, actor);
         return result("period_end", sub);
       }
       // Upgrade (or any change while past due): pending until the new mandate is authorised / its first charge
@@ -556,12 +686,13 @@ export class SubscriptionsService {
       nextChargeAt: addInterval(now, input.interval),
     });
 
+    const ending = await this.endingAddonNames(sub.tenantId, isPaid(target) ? target : null);
     if (!isPaid(target)) {
       if (sub.planId === target.id && sub.status === "active" && !sub.pendingPlanId) return out({ kind: "same", applies: "none" });
       if (sub.status === "active" && CHARGING(sub.provider) && !sub.authUrl && sub.currentPeriodEnd && sub.currentPeriodEnd > now) {
-        return out({ kind: "free", applies: "period_end", startsAt: sub.currentPeriodEnd });
+        return out({ kind: "free", applies: "period_end", startsAt: sub.currentPeriodEnd, endingAddons: ending });
       }
-      return out({ kind: "free", applies: "now", startsAt: now });
+      return out({ kind: "free", applies: "now", startsAt: now, endingAddons: ending });
     }
     if (sub.status === "trialing") {
       return out({ kind: "trial", applies: "now", startsAt: now, nextChargeAt: hasMandateRow(sub) ? sub.trialEndsAt : null });
@@ -569,11 +700,14 @@ export class SubscriptionsService {
     if ((sub.status === "active" || sub.status === "past_due") && CHARGING(sub.provider) && current && isPaid(current)) {
       const kind = changeKind(current, sub.interval, target, input.interval);
       if (kind === "same") return out({ kind, applies: "none", nextChargeAt: sub.currentPeriodEnd });
-      if (kind === "downgrade" && sub.status === "active") return out({ kind, applies: "period_end", startsAt: sub.currentPeriodEnd, nextChargeAt: sub.currentPeriodEnd });
+      if (kind === "downgrade" && sub.status === "active") return out({ kind, applies: "period_end", startsAt: sub.currentPeriodEnd, nextChargeAt: sub.currentPeriodEnd, endingAddons: ending });
       const q = await this.quoteUpgrade(sub, target, input.interval, now);
       return out({
         kind,
         applies: "after_payment",
+        planPricePaise: q.quote.planPricePaise,
+        addonsPricePaise: q.addonsPaise,
+        endingAddons: ending,
         creditPaise: q.quote.creditPaise,
         unusedDays: q.unusedDays,
         periodDays: q.periodDays,
@@ -599,7 +733,23 @@ export class SubscriptionsService {
       .where(and(eq(platformInvoices.subscriptionId, sub.id), eq(platformInvoices.status, "paid")))
       .orderBy(desc(platformInvoices.createdAt))
       .limit(5);
-    return rows.find((r) => r.periodStart && r.periodEnd && r.periodStart <= now && r.periodEnd > now) ?? null;
+    return rows.find((r) => r.kind === "plan" && r.periodStart && r.periodEnd && r.periodStart <= now && r.periodEnd > now) ?? null;
+  }
+
+  /** Credit for the unused part of add-ons bought mid-period (their own invoices) in the plan invoice's period. */
+  private async addonInvoicesCredit(sub: SubscriptionRow, planInvoice: PlatformInvoiceRow, now: Date): Promise<number> {
+    const rows = await this.db
+      .select()
+      .from(platformInvoices)
+      .where(and(eq(platformInvoices.subscriptionId, sub.id), eq(platformInvoices.status, "paid"), eq(platformInvoices.kind, "addon")))
+      .orderBy(desc(platformInvoices.createdAt))
+      .limit(50);
+    let credit = 0;
+    for (const r of rows) {
+      if (!r.periodStart || !r.periodEnd || r.periodEnd <= now || r.periodStart < planInvoice.periodStart!) continue;
+      credit += prorationCredit({ periodStart: r.periodStart, periodEnd: r.periodEnd, now, paidTaxablePaise: r.subtotalPaise }).creditPaise;
+    }
+    return credit;
   }
 
   /**
@@ -609,9 +759,12 @@ export class SubscriptionsService {
   private async quoteUpgrade(sub: SubscriptionRow, target: PlanInfo, interval: BillingInterval, now: Date) {
     const paid = sub.status === "active" ? await this.paidInvoiceNow(sub, now) : null;
     const pro = paid ? prorationCredit({ periodStart: paid.periodStart!, periodEnd: paid.periodEnd!, now, paidTaxablePaise: paid.subtotalPaise }) : { creditPaise: 0, unusedDays: 0, periodDays: 0 };
+    // Add-ons bought mid-period are credited too; the add-ons that carry on restart with the new plan's period.
+    if (paid) pro.creditPaise += await this.addonInvoicesCredit(sub, paid, now);
+    const addonsPaise = await this.recurringExtra(sub.tenantId, target, interval);
     const buyerState = (await this.deps.shop.buyer(sub.tenantId)).stateCode;
     const quote = upgradeQuote({
-      planPricePaise: planPrice(target, interval),
+      planPricePaise: planPrice(target, interval) + addonsPaise,
       creditPaise: pro.creditPaise + Math.max(0, sub.creditBalancePaise),
       sellerState: this.deps.config.seller.stateCode,
       buyerState,
@@ -622,7 +775,7 @@ export class SubscriptionsService {
     if (pro.creditPaise > 0 && from) parts.push(`${pro.unusedDays} unused of ${pro.periodDays} days of ${from} (${paid!.interval})`);
     if (sub.creditBalancePaise > 0) parts.push("earlier credit");
     const label = parts.length ? `Credit: ${parts.join(" and ")}` : null;
-    return { quote, label, unusedDays: pro.unusedDays, periodDays: pro.periodDays };
+    return { quote, label, unusedDays: pro.unusedDays, periodDays: pro.periodDays, addonsPaise };
   }
 
   /**
@@ -633,8 +786,8 @@ export class SubscriptionsService {
   private async startUpgrade(sub: SubscriptionRow, target: PlanInfo, interval: BillingInterval, actor: Actor) {
     if (planPrice(target, interval) <= 0) throw badRequest(`${target.name} has no ${interval} price`);
     const now = this.now();
-    const { quote, label } = await this.quoteUpgrade(sub, target, interval, now);
-    const providerPlanId = await this.ensureProviderPlan(target, interval);
+    const { quote, label, addonsPaise } = await this.quoteUpgrade(sub, target, interval, now);
+    const providerPlanId = await this.ensureProviderPlan(target, interval, addonsPaise);
     const upfront = !!this.deps.provider.supportsUpfront;
     const periodEnd = addInterval(now, interval);
     const created = await this.providerCall(() =>
@@ -643,7 +796,10 @@ export class SubscriptionsService {
         interval,
         startAt: upfront ? periodEnd : now,
         notes: { tenantId: sub.tenantId, planId: target.id, interval, kind: "upgrade" },
-        upfront: upfront && quote.chargeTodayPaise > 0 ? { amountPaise: quote.chargeTodayPaise, name: `${target.name} (${interval}), first period${quote.appliedCreditPaise ? " less credit" : ""}` } : null,
+        upfront:
+          upfront && quote.chargeTodayPaise > 0
+            ? { amountPaise: quote.chargeTodayPaise, name: `${target.name} (${interval})${addonsPaise ? " + add-ons" : ""}, first period${quote.appliedCreditPaise ? " less credit" : ""}` }
+            : null,
       }),
     );
     // A previous unpaid upgrade is replaced; a scheduled downgrade of the current mandate is undone.
@@ -689,11 +845,13 @@ export class SubscriptionsService {
 
   /** Undoes a downgrade scheduled on the provider (back to the current plan at the next cycle). */
   private async revertScheduledChange(sub: SubscriptionRow) {
+    // Add-ons that were to end because of the downgrade carry on.
+    await this.restoreAddons(sub, "plan_change");
     const change = this.deps.provider.changePlan;
     if (!change || !sub.providerSubscriptionId || !CHARGING(sub.provider)) return;
     const plan = await this.deps.plans.getPlan(sub.planId);
     if (!plan || !isPaid(plan)) return;
-    const providerPlanId = await this.ensureProviderPlan(plan, sub.interval);
+    const providerPlanId = await this.ensureProviderPlan(plan, sub.interval, await this.recurringExtra(sub.tenantId, plan, sub.interval));
     await this.providerCall(() => change.call(this.deps.provider, sub.providerSubscriptionId!, providerPlanId));
   }
 
@@ -722,7 +880,7 @@ export class SubscriptionsService {
     opts: { applyNow: boolean },
   ) {
     if (planPrice(target, interval) <= 0) throw badRequest(`${target.name} has no ${interval} price`);
-    const providerPlanId = await this.ensureProviderPlan(target, interval);
+    const providerPlanId = await this.ensureProviderPlan(target, interval, await this.recurringExtra(sub.tenantId, target, interval));
     const created = await this.providerCall(() =>
       this.deps.provider.createSubscription({
         providerPlanId,
@@ -759,6 +917,7 @@ export class SubscriptionsService {
     }
     if (isAwaitingPayment(sub)) sub = await this.dropPendingUpgrade(sub, actor, "Upgrade dropped by a cancellation");
     if (sub.cancelAtPeriodEnd) return { subscription: toView(sub) };
+    await this.cancelAddonPayments(tenantId, { kind: "proration" });
     if (sub.status === "trialing") {
       if (sub.providerSubscriptionId) await this.cancelProviderNow(sub);
       sub = await this.update(sub, { cancelAtPeriodEnd: true, providerSubscriptionId: null, authUrl: null, checkoutPlanId: null, checkoutInterval: null }, actor, "subscription.cancel", "Cancels at the trial end");
@@ -774,6 +933,7 @@ export class SubscriptionsService {
       await this.providerCall(() => this.deps.provider.cancel(sub.providerSubscriptionId!, true));
     }
     sub = await this.update(sub, { cancelAtPeriodEnd: true }, actor, "subscription.cancel", "Cancels at the period end");
+    await this.scheduleAddonEnds(sub, null, actor, "plan_ended");
     return { subscription: toView(sub) };
   }
 
@@ -787,6 +947,9 @@ export class SubscriptionsService {
     if (!sub.cancelAtPeriodEnd && !downgrade) throw badRequest("Nothing to resume");
     let authUrl: string | null = null;
     const wasCancelled = sub.cancelAtPeriodEnd;
+    // Add-ons that were to end with the plan carry on with it.
+    if (wasCancelled) await this.restoreAddons(sub, "plan_ended");
+    if (downgrade) await this.restoreAddons(sub, "plan_change");
     if (sub.status === "active" && CHARGING(sub.provider) && wasCancelled && sub.providerSubscriptionId) {
       const plan = await this.plan(sub.planId);
       const startAt = sub.currentPeriodEnd && sub.currentPeriodEnd > this.now() ? sub.currentPeriodEnd : this.now();
@@ -819,6 +982,7 @@ export class SubscriptionsService {
       ...row,
       lines: platformInvoiceLines({
         ...row,
+        addonLines: row.addonLines,
         description: `${planName ?? row.planId} plan (${row.interval})`,
         sellerState: row.seller?.stateCode ?? this.deps.config.seller.stateCode,
       }),
@@ -868,6 +1032,10 @@ export class SubscriptionsService {
       /** Credit balance still owed: taken off this invoice (what the provider charged above it is a refund due). */
       balancePaise?: number;
       creditLabel?: string | null;
+      /** `addon` / `credits`: a one-time add-on payment (its one line is the whole taxable value). */
+      kind?: PlatformInvoiceRow["kind"];
+      /** Add-on lines (plan invoices: the add-ons renewed with the plan). */
+      addonLines?: AddonInvoiceLine[];
     },
   ): Promise<{ invoice: PlatformInvoiceRow; created: boolean; balanceUsedPaise: number }> {
     const [existing] = await this.db
@@ -887,6 +1055,10 @@ export class SubscriptionsService {
     });
     const split = amounts.split;
     const creditLabel = amounts.creditPaise ? (input.creditLabel ?? (amounts.balanceUsedPaise ? "Credit carried over from a plan change" : null)) : null;
+    const kind = input.kind ?? "plan";
+    let addonLines = input.addonLines ?? [];
+    // A one-time add-on invoice is one line: the whole taxable value.
+    if (kind !== "plan" && addonLines.length === 1) addonLines = [{ ...addonLines[0]!, taxablePaise: split.subtotalPaise + amounts.creditPaise }];
     const date = istDate(this.now());
     const invoice = await this.db.transaction(async (tx) => {
       const n = await this.nextNumber(tx, date);
@@ -913,6 +1085,8 @@ export class SubscriptionsService {
           creditPaise: amounts.creditPaise,
           creditLabel,
           refundDuePaise: amounts.refundDuePaise,
+          kind,
+          addonLines,
           status: "paid",
           provider: sub.provider ?? "manual",
           providerPaymentId: input.paymentId,
@@ -957,17 +1131,24 @@ export class SubscriptionsService {
   async processEvent(provider: string, eventId: string, event: ProviderEvent) {
     const subEntity = event.payload?.subscription?.entity ?? {};
     const payEntity = event.payload?.payment?.entity ?? {};
-    const providerSubId = str(subEntity.id) ?? str(payEntity.subscription_id) ?? str((payEntity.notes as Record<string, unknown> | undefined)?.subscription_id);
+    // Payment Links (add-on proration, credits packs) carry no subscription.
+    const linkId = event.event.startsWith("payment_link.") ? str(event.payload?.payment_link?.entity?.id) : null;
+    const addonPayment = linkId ? await this.addonPaymentByProviderId(linkId) : null;
+    const providerSubId = linkId ? null : (str(subEntity.id) ?? str(payEntity.subscription_id) ?? str((payEntity.notes as Record<string, unknown> | undefined)?.subscription_id));
     const sub = providerSubId ? await this.getByProviderId(providerSubId) : null;
     const [rec] = await this.db
       .insert(subscriptionEvents)
-      .values({ provider, eventId, type: event.event, tenantId: sub?.tenantId ?? null, providerSubscriptionId: providerSubId, payload: event as unknown })
+      .values({ provider, eventId, type: event.event, tenantId: addonPayment?.tenantId ?? sub?.tenantId ?? null, providerSubscriptionId: providerSubId ?? linkId, payload: event as unknown })
       .onConflictDoNothing()
       .returning({ id: subscriptionEvents.id });
     if (!rec) return { ok: true, duplicate: true, outcome: "duplicate" };
     let outcome: string;
     try {
-      outcome = !sub
+      outcome = linkId
+        ? addonPayment
+          ? await this.applyPaymentLinkEvent(addonPayment, event, payEntity)
+          : "ignored: unknown payment link"
+        : !sub
         ? "ignored: unknown subscription"
         : this.isPendingMandate(sub, providerSubId)
           ? await this.applyPendingEvent(sub, providerSubId!, event, payEntity)
@@ -1053,11 +1234,15 @@ export class SubscriptionsService {
     if (sub.providerSubscriptionId && sub.providerSubscriptionId !== providerSubId && CHARGING(sub.provider)) await this.cancelProviderId(sub, sub.providerSubscriptionId);
     await this.audit(row, SYSTEM, "subscription.upgraded", `Upgrade to ${planId} (${interval}) paid (${event.event})`, sub);
     await this.syncTenantPlan(row);
+    // The add-ons the new plan can have restart with its period (their unused part was credited); the others end.
+    const newPlan = await this.plan(planId);
+    const addonLines = await this.rollAddons(row, newPlan, interval, row.currentPeriodStart ?? now, row.currentPeriodEnd ?? end, "plan_change");
     let outcome = "applied: upgraded";
     if (charged) {
-      const amount = typeof payEntity.amount === "number" ? payEntity.amount : upfront ? sub.pendingChargePaise : chargeAmount(planPrice(await this.plan(planId), interval));
+      const amount = typeof payEntity.amount === "number" ? payEntity.amount : upfront ? sub.pendingChargePaise : chargeAmount(planPrice(newPlan, interval) + addonsTaxable(addonLines));
       if (amount > 0) {
         const r = await this.createInvoice(row, {
+          addonLines: this.coveredLines(amount + chargeAmount(upfront ? sub.pendingCreditPaise : 0), planPrice(newPlan, interval), addonLines, row.tenantId),
           amountPaise: amount,
           paymentId: paymentId ?? `upfront_${providerSubId}`,
           periodStart: row.currentPeriodStart ?? now,
@@ -1125,6 +1310,9 @@ export class SubscriptionsService {
         // An upgrade's upfront payment was invoiced when it applied (under a placeholder id when the provider's event
         // carried none); the same payment delivered again as a charge isn't a second invoice.
         if (paymentId && (await this.adoptUpfrontInvoice(sub, paymentId, amount, now))) return "ignored: upfront payment already invoiced";
+        // A renewal carries the add-ons into the new period (scheduled changes apply, ended ones stop) and invoices them.
+        const chargedPlan = await this.plan(planId);
+        const rolled = await this.rollAddons(sub, chargedPlan, interval, start, end, "plan_change");
         const { invoice, created, balanceUsedPaise } = await this.createInvoice(sub, {
           amountPaise: amount,
           paymentId,
@@ -1133,6 +1321,7 @@ export class SubscriptionsService {
           planId,
           interval,
           balancePaise: sub.creditBalancePaise,
+          addonLines: this.coveredLines(amount, planPrice(chargedPlan, interval), rolled, sub.tenantId),
         });
         if (!created) return `ignored: payment already invoiced (${invoice.number})`;
         if (balanceUsedPaise > 0) {
@@ -1259,7 +1448,8 @@ export class SubscriptionsService {
     const lastEnd = fromUnix((last?.payload as ProviderEvent | undefined)?.payload?.subscription?.entity?.current_end);
     const start = lastEnd ?? sub.currentPeriodStart ?? this.now();
     const end = addInterval(start, interval);
-    const amount = opts.amountPaise ?? chargeAmount(planPrice(plan, interval));
+    // Like Razorpay after a re-price: the plan plus the add-ons that renew with it.
+    const amount = opts.amountPaise ?? chargeAmount(planPrice(plan, interval) + (await this.recurringExtra(sub.tenantId, plan, interval)));
     const paymentId = `pay_mock_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
     const r = await this.processEvent("mock", this.mockEventId("charge"), {
       event: "subscription.charged",
@@ -1323,6 +1513,12 @@ export class SubscriptionsService {
         summary.errors = (summary.errors ?? 0) + 1;
         this.log.error({ err, tenantId: sub.tenantId, action: action.kind }, "subscriptions: lifecycle step failed");
       }
+    }
+    try {
+      Object.assign(summary, await this.runAddonLifecycle(now, opts.tenantId));
+    } catch (err) {
+      summary.errors = (summary.errors ?? 0) + 1;
+      this.log.error({ err }, "subscriptions: add-on lifecycle failed");
     }
     return summary;
   }
@@ -1440,32 +1636,57 @@ export class SubscriptionsService {
     const tenants = await this.deps.tenancy.getTenants(page.items.map((r) => r.tenantId));
     const tenantBy = new Map(tenants.map((t) => [t.id, t]));
     const planBy = new Map(plans.map((pl) => [pl.id, pl]));
+    const addons = await this.activeAddonsOf(page.items.map((r) => r.tenantId));
     return {
       ...page,
       items: page.items.map((r) => {
         const t: TenantInfo | undefined = tenantBy.get(r.tenantId);
         const pl = planBy.get(r.planId);
+        const own = addons.filter((a) => a.row.tenantId === r.tenantId);
         return {
           ...toView(r),
           tenant: t ? { id: t.id, slug: t.slug, name: t.name, appId: t.appId, status: t.status } : null,
           plan: pl ? { id: pl.id, name: pl.name } : { id: r.planId, name: r.planId },
-          mrrPaise: this.mrrOf(r, pl),
+          addons: own.map((a) => ({ addonId: a.row.addonId, name: a.addon?.name ?? a.row.addonId, quantity: a.row.quantity, source: a.row.source, endsAtPeriodEnd: a.row.nextQuantity === 0 })),
+          mrrPaise: this.mrrOf(r, pl, own),
         };
       }),
       facets: { status: facetCounts(byStatus), plan: facetCounts(byPlan), provider: facetCounts(byProvider) },
     };
   }
 
-  /** MRR contribution (GST-exclusive): paying subscriptions (active or past due, Razorpay or mock) only. */
-  private mrrOf(r: SubscriptionRow, p: PlanInfo | undefined) {
+  /** MRR contribution (GST-exclusive): paying subscriptions (active or past due, Razorpay or mock) only, with their paid add-ons. */
+  private mrrOf(r: SubscriptionRow, p: PlanInfo | undefined, addons: { row: SubscriptionAddonRow; addon: AddonInfo | null }[] = []) {
     if (!p || !CHARGING(r.provider) || (r.status !== "active" && r.status !== "past_due") || r.authUrl) return 0;
-    return monthlyValue(p, r.interval);
+    const extra = addons.reduce((s, a) => {
+      if (!a.addon || a.row.source !== "plan" || a.row.tenantId !== r.tenantId) return s;
+      const per = addonUnitPrice(a.addon, r.interval) * a.row.quantity;
+      return s + (r.interval === "yearly" ? Math.round(per / 12) : per);
+    }, 0);
+    return monthlyValue(p, r.interval) + extra;
+  }
+
+  /** Active add-on rows of some tenants (all tenants when `tenantIds` is undefined) with their catalogue entries. */
+  private async activeAddonsOf(tenantIds?: string[]) {
+    if (tenantIds && !tenantIds.length) return [];
+    const conds: SQL[] = [eq(subscriptionAddons.status, "active")];
+    if (tenantIds) conds.push(inArray(subscriptionAddons.tenantId, tenantIds));
+    const rows = await this.db.select().from(subscriptionAddons).where(and(...conds));
+    if (!rows.length) return [];
+    const catalogue = new Map(((await this.deps.plans.listAddons?.(null, { publicOnly: false })) ?? []).map((a) => [a.id, a]));
+    const missing = [...new Set(rows.map((r) => r.addonId).filter((id) => !catalogue.has(id)))];
+    for (const id of missing) {
+      const a = await this.deps.plans.getAddon?.(id);
+      if (a) catalogue.set(id, a);
+    }
+    return rows.map((row) => ({ row, addon: catalogue.get(row.addonId) ?? null }));
   }
 
   async adminStats() {
     const now = this.now();
     const rows = await this.db.select().from(subscriptions);
     const plans = new Map((await this.deps.plans.listPlans()).map((p) => [p.id, p]));
+    const allAddons = await this.activeAddonsOf();
     const paidPlan = (id: string) => isPaid(plans.get(id));
     let mrr = 0;
     const counts = { active: 0, trialing: 0, pastDue: 0, cancelled: 0, expired: 0, free: 0, comp: 0 };
@@ -1474,7 +1695,7 @@ export class SubscriptionsService {
     let trialsConverted = 0;
     const since = addDays(now, -30);
     for (const r of rows) {
-      mrr += this.mrrOf(r, plans.get(r.planId));
+      mrr += this.mrrOf(r, plans.get(r.planId), allAddons);
       if (r.status === "trialing") counts.trialing++;
       else if (r.status === "past_due") counts.pastDue++;
       else if (r.status === "cancelled") counts.cancelled++;
@@ -1623,16 +1844,745 @@ export class SubscriptionsService {
     return row ?? (await this.getInvoice(id));
   }
 
+  // ================================================================ add-ons (docs/verticals.md "Plan add-ons")
+
+  private async addonInfo(id: string): Promise<AddonInfo | null> {
+    return (await this.deps.plans.getAddon?.(id)) ?? null;
+  }
+
+  /** What decides whether a plan can have an add-on: its tier and modules, and what the shop's app offers. */
+  private async addonCtx(tenantId: string, plan: PlanInfo | null) {
+    const tenant = await this.deps.tenancy.getTenant(tenantId);
+    const appId = tenant?.appId ?? null;
+    const appFeatures = appId && this.deps.plans.appFeatures ? await this.deps.plans.appFeatures(appId) : null;
+    const offered = new Set(((await this.deps.plans.listAddons?.(appId, { publicOnly: false })) ?? []).map((a) => a.id));
+    return { appId, tier: plan?.tier ?? plan?.id ?? null, planModules: plan?.modules ?? [], appFeatures, offered };
+  }
+
+  /** Why `addon` can't go with the plan of `ctx` (also "app" when the shop's app has no such add-on). */
+  private blockOf(addon: AddonInfo, ctx: Awaited<ReturnType<SubscriptionsService["addonCtx"]>>): AddonBlock | null {
+    if (!ctx.offered.has(addon.id)) return "app";
+    return addonBlock(addon, ctx);
+  }
+
+  private async addonRows(tenantId: string, opts: { source?: "plan" | "comp"; activeOnly?: boolean } = {}): Promise<SubscriptionAddonRow[]> {
+    const conds: SQL[] = [eq(subscriptionAddons.tenantId, tenantId)];
+    if (opts.activeOnly !== false) conds.push(eq(subscriptionAddons.status, "active"));
+    if (opts.source) conds.push(eq(subscriptionAddons.source, opts.source));
+    return this.db.select().from(subscriptionAddons).where(and(...conds)).orderBy(asc(subscriptionAddons.createdAt));
+  }
+
+  private invalidateEntitlements(tenantId: string) {
+    this.deps.plans.invalidate?.(tenantId);
+  }
+
+  /** The tenant's add-ons with what counts now: the plans module's entitlement source (kit wiring). */
+  async effectiveAddons(tenantId: string): Promise<{ addonId: string; quantity: number }[]> {
+    const now = this.now();
+    return (await this.addonRows(tenantId)).map((r) => ({ addonId: r.addonId, quantity: effectiveQuantity(r, now) })).filter((a) => a.quantity > 0);
+  }
+
+  private addonView(row: SubscriptionAddonRow, addon: AddonInfo | null): SubscriptionAddonView {
+    return {
+      id: row.id,
+      addonId: row.addonId,
+      name: addon?.name ?? row.addonId,
+      kind: addon?.kind ?? null,
+      source: row.source,
+      status: row.status,
+      quantity: row.quantity,
+      nextQuantity: row.nextQuantity,
+      activeQuantity: effectiveQuantity(row, this.now()),
+      interval: row.interval,
+      unitPricePaise: addon ? addonUnitPrice(addon, row.interval) : 0,
+      currentPeriodStart: row.currentPeriodStart,
+      currentPeriodEnd: row.currentPeriodEnd,
+      endsAtPeriodEnd: row.status === "active" && row.nextQuantity === 0,
+      endReason: row.endReason,
+      notice: row.notice,
+      startedAt: row.startedAt,
+      endedAt: row.endedAt,
+    };
+  }
+
+  /** The shop's active add-ons. */
+  async addonViews(tenantId: string): Promise<SubscriptionAddonView[]> {
+    const rows = await this.addonRows(tenantId);
+    return Promise.all(rows.map(async (r) => this.addonView(r, await this.addonInfo(r.addonId))));
+  }
+
+  /**
+   * Plan add-ons that renew into the next period with `plan` (renew quantity > 0 and allowed with it), joined with the
+   * catalogue. Comps are never charged.
+   */
+  private async renewingAddons(tenantId: string, plan: PlanInfo) {
+    const rows = await this.addonRows(tenantId, { source: "plan" });
+    if (!rows.length) return [];
+    const ctx = await this.addonCtx(tenantId, plan);
+    const out: { row: SubscriptionAddonRow; addon: AddonInfo; quantity: number }[] = [];
+    for (const row of rows) {
+      const addon = await this.addonInfo(row.addonId);
+      const quantity = renewQuantity(row);
+      if (!addon || !isRecurringAddon(addon) || quantity === 0 || this.blockOf(addon, ctx)) continue;
+      out.push({ row, addon, quantity });
+    }
+    return out;
+  }
+
+  /** Taxable value of the add-ons that renew with `plan` for one `interval` period. */
+  private async recurringExtra(tenantId: string, plan: PlanInfo, interval: BillingInterval): Promise<number> {
+    return addonsRecurringPaise(await this.renewingAddons(tenantId, plan), interval);
+  }
+
+  /**
+   * Re-prices the plan's provider subscription from the next cycle (plan + renewing add-ons): Razorpay
+   * `PATCH /subscriptions/:id { plan_id, schedule_change_at: cycle_end }`. Nothing to do without an authorised mandate.
+   */
+  private async rescheduleRecurring(sub: SubscriptionRow) {
+    const change = this.deps.provider.changePlan;
+    if (!change || !sub.providerSubscriptionId || sub.authUrl || !CHARGING(sub.provider) || sub.cancelAtPeriodEnd) return;
+    const downgrade = !!sub.pendingPlanId && !isAwaitingPayment(sub);
+    const plan = await this.deps.plans.getPlan(downgrade ? sub.pendingPlanId! : sub.planId);
+    if (!plan || !isPaid(plan)) return;
+    const interval = (downgrade ? sub.pendingInterval : null) ?? sub.interval;
+    const providerPlanId = await this.ensureProviderPlan(plan, interval, await this.recurringExtra(sub.tenantId, plan, interval));
+    await this.providerCall(() => change.call(this.deps.provider, sub.providerSubscriptionId!, providerPlanId));
+  }
+
+  /** Add-on lines a charge covers: only when it is at least the plan plus the add-ons (else the charge is the plan's alone). */
+  private coveredLines(chargedPaise: number, planPricePaise: number, lines: AddonInvoiceLine[], tenantId: string): AddonInvoiceLine[] {
+    if (!lines.length) return [];
+    const taxable = taxableOfInclusive(chargedPaise, PLATFORM_GST_RATE);
+    if (taxable + 3 >= planPricePaise + addonsTaxable(lines)) return lines;
+    this.log.warn({ tenantId, chargedPaise, planPricePaise, addonsPaise: addonsTaxable(lines) }, "subscriptions: charge doesn't cover the add-ons; invoiced as the plan");
+    return [];
+  }
+
+  /**
+   * Moves plan add-ons into a new period: scheduled quantities apply, add-ons that end or that `plan` can't have stop
+   * (reason `blockedReason` for the latter). Returns their invoice lines for the period.
+   */
+  private async rollAddons(sub: SubscriptionRow, plan: PlanInfo, interval: BillingInterval, start: Date, end: Date, blockedReason: AddonEndReason): Promise<AddonInvoiceLine[]> {
+    const rows = await this.addonRows(sub.tenantId, { source: "plan" });
+    if (!rows.length) return [];
+    const ctx = await this.addonCtx(sub.tenantId, plan);
+    const lines: AddonInvoiceLine[] = [];
+    const now = this.now();
+    for (const row of rows) {
+      const addon = await this.addonInfo(row.addonId);
+      const quantity = renewQuantity(row);
+      const block = addon ? this.blockOf(addon, ctx) : "app";
+      if (!addon || quantity === 0 || block) {
+        await this.endAddonRow(row, block ? blockedReason : (row.endReason ?? "cancelled"), now, block ? `Not available on ${plan.name}` : row.notice);
+        continue;
+      }
+      await this.db
+        .update(subscriptionAddons)
+        .set({ quantity, nextQuantity: null, interval, subscriptionId: sub.id, currentPeriodStart: start, currentPeriodEnd: end, endReason: null, notice: null })
+        .where(eq(subscriptionAddons.id, row.id));
+      lines.push({ addonId: addon.id, description: addonLineText(addon, quantity, interval), quantity, taxablePaise: addonUnitPrice(addon, interval) * quantity });
+    }
+    this.invalidateEntitlements(sub.tenantId);
+    return lines;
+  }
+
+  private async endAddonRow(row: SubscriptionAddonRow, reason: AddonEndReason, now: Date, notice?: string | null) {
+    await this.db
+      .update(subscriptionAddons)
+      .set({ status: "ended", endReason: reason, endedAt: now, nextQuantity: null, notice: notice ?? null })
+      .where(and(eq(subscriptionAddons.id, row.id), eq(subscriptionAddons.status, "active")));
+  }
+
+  /**
+   * After a subscription change: a subscription that stopped (or no longer has a paying mandate) ends its plan add-ons
+   * now; a plan or interval that changed ends the add-ons it can't have and moves the others to its interval.
+   */
+  private async syncAddons(row: SubscriptionRow, before?: SubscriptionRow) {
+    const rows = await this.addonRows(row.tenantId, { source: "plan" });
+    if (!rows.length) return;
+    const now = this.now();
+    if (!LIVE.includes(row.status) || !CHARGING(row.provider)) {
+      for (const r of rows) await this.endAddonRow(r, r.nextQuantity === 0 && r.endReason ? r.endReason : LIVE.includes(row.status) ? "plan_change" : "plan_ended", now, r.notice);
+      await this.cancelAddonPayments(row.tenantId, { kind: "proration" });
+      this.invalidateEntitlements(row.tenantId);
+      return;
+    }
+    if (!before || (before.planId === row.planId && before.interval === row.interval)) return;
+    const plan = await this.deps.plans.getPlan(row.planId);
+    const ctx = await this.addonCtx(row.tenantId, plan);
+    for (const r of rows) {
+      const addon = await this.addonInfo(r.addonId);
+      if (!addon || this.blockOf(addon, ctx)) await this.endAddonRow(r, "plan_change", now, `Not available on ${plan?.name ?? row.planId}`);
+      else if (r.interval !== row.interval) await this.db.update(subscriptionAddons).set({ interval: row.interval }).where(eq(subscriptionAddons.id, r.id));
+    }
+    this.invalidateEntitlements(row.tenantId);
+  }
+
+  /**
+   * A plan change (or the end of the paid plan: `target` null) scheduled for the period end: plan add-ons the new plan
+   * can't have are set to end then, with a notice on the page and a message to the owners.
+   */
+  private async scheduleAddonEnds(sub: SubscriptionRow, target: PlanInfo | null, actor: Actor, reason: AddonEndReason = "plan_change") {
+    const rows = await this.addonRows(sub.tenantId, { source: "plan" });
+    if (!rows.length) return;
+    const ctx = target ? await this.addonCtx(sub.tenantId, target) : null;
+    const ending: string[] = [];
+    const date = dateText(sub.currentPeriodEnd);
+    for (const r of rows) {
+      if (r.nextQuantity === 0) continue;
+      const addon = await this.addonInfo(r.addonId);
+      if (addon && ctx && !this.blockOf(addon, ctx)) continue;
+      const notice = target ? `Not available on ${target.name}: ends on ${date}` : `Ends with the plan on ${date}`;
+      await this.db.update(subscriptionAddons).set({ nextQuantity: 0, endReason: reason, notice }).where(eq(subscriptionAddons.id, r.id));
+      ending.push(addon?.name ?? r.addonId);
+    }
+    if (!ending.length) return;
+    await this.audit(sub, actor, "subscription.addons_ending", `Add-ons end on ${date}: ${ending.join(", ")}`);
+    await this.notifyOwners(sub, "subscription.addon_ending", { addons: ending.join(", "), date });
+  }
+
+  /** Undoes `scheduleAddonEnds` (a downgrade or cancel that was taken back). */
+  private async restoreAddons(sub: SubscriptionRow, reason: AddonEndReason) {
+    const rows = await this.db
+      .update(subscriptionAddons)
+      .set({ nextQuantity: null, endReason: null, notice: null })
+      .where(and(eq(subscriptionAddons.tenantId, sub.tenantId), eq(subscriptionAddons.status, "active"), eq(subscriptionAddons.endReason, reason), eq(subscriptionAddons.nextQuantity, 0)))
+      .returning({ id: subscriptionAddons.id });
+    if (rows.length) this.invalidateEntitlements(sub.tenantId);
+  }
+
+  /** Names of plan add-ons that a change to `target` (null: the free plan / no paid plan) would end. */
+  private async endingAddonNames(tenantId: string, target: PlanInfo | null): Promise<string[]> {
+    const rows = await this.addonRows(tenantId, { source: "plan" });
+    if (!rows.length) return [];
+    const ctx = target ? await this.addonCtx(tenantId, target) : null;
+    const out: string[] = [];
+    for (const r of rows) {
+      const addon = await this.addonInfo(r.addonId);
+      if (!addon || !ctx || this.blockOf(addon, ctx)) out.push(addon?.name ?? r.addonId);
+    }
+    return out;
+  }
+
+  /** Why the shop can't take recurring add-ons now (they're billed with an authorised, paid plan); null when it can. */
+  private async billingBlock(sub: SubscriptionRow, plan: PlanInfo | null): Promise<AddonBillingBlock | null> {
+    if (!this.deps.provider.createPayment) return "no_provider";
+    if (sub.status === "trialing") return "trial";
+    if (sub.status === "past_due") return "past_due";
+    if (sub.status !== "active") return "ended";
+    if (!plan || !isPaid(plan)) return "free";
+    if (!CHARGING(sub.provider)) return "manual";
+    if (sub.authUrl || !sub.providerSubscriptionId || !sub.currentPeriodEnd || sub.currentPeriodEnd <= this.now()) return "payment_setup";
+    if (sub.cancelAtPeriodEnd) return "cancelling";
+    if (isAwaitingPayment(sub)) return "upgrade_pending";
+    // Moving to the free plan at the period end: the paid plan (and its add-ons) end then.
+    if (sub.pendingPlanId && !isPaid(await this.deps.plans.getPlan(sub.pendingPlanId))) return "cancelling";
+    return null;
+  }
+
+  private async pendingAddonPayments(tenantId: string): Promise<AddonPaymentRow[]> {
+    return this.db
+      .select()
+      .from(addonPayments)
+      .where(and(eq(addonPayments.tenantId, tenantId), eq(addonPayments.status, "pending")))
+      .orderBy(desc(addonPayments.createdAt));
+  }
+
+  private async addonPaymentByProviderId(providerPaymentId: string): Promise<AddonPaymentRow | null> {
+    const [row] = await this.db.select().from(addonPayments).where(eq(addonPayments.providerPaymentId, providerPaymentId)).limit(1);
+    return row ?? null;
+  }
+
+  /** Cancels pending add-on payments (all, one add-on's, or one kind) and their links. */
+  private async cancelAddonPayments(tenantId: string, filter: { addonId?: string; kind?: AddonPaymentRow["kind"] } = {}) {
+    const conds: SQL[] = [eq(addonPayments.tenantId, tenantId), eq(addonPayments.status, "pending")];
+    if (filter.addonId) conds.push(eq(addonPayments.addonId, filter.addonId));
+    if (filter.kind) conds.push(eq(addonPayments.kind, filter.kind));
+    const rows = await this.db.update(addonPayments).set({ status: "cancelled" }).where(and(...conds)).returning();
+    for (const r of rows) await this.cancelPaymentLink(r);
+  }
+
+  private async cancelPaymentLink(p: AddonPaymentRow) {
+    if (!p.providerPaymentId || !this.deps.provider.cancelPayment) return;
+    try {
+      await this.deps.provider.cancelPayment(p.providerPaymentId);
+    } catch (err) {
+      this.log.warn({ err, tenantId: p.tenantId, paymentId: p.providerPaymentId }, "subscriptions: payment link cancel failed");
+    }
+  }
+
+  /**
+   * `GET /addons`: the add-ons of the shop's app with their price for the plan's interval, whether the plan can have
+   * them (`block`: tier / app / included) and can be billed now (`billing`), the shop's own add-ons (`current`), unpaid
+   * payments, credit balances and usage.
+   */
+  async addons(tenantId: string) {
+    const sub = await this.ensure(tenantId);
+    const plan = await this.deps.plans.getPlan(sub.planId);
+    const ctx = await this.addonCtx(tenantId, plan);
+    const catalogue = (await this.deps.plans.listAddons?.(ctx.appId, { publicOnly: true })) ?? [];
+    const rows = await this.addonRows(tenantId);
+    const payments = await this.pendingAddonPayments(tenantId);
+    const billing = await this.billingBlock(sub, plan);
+    const items = catalogue.map((addon) => {
+      const row = rows.find((r) => r.addonId === addon.id);
+      return {
+        addon,
+        interval: isRecurringAddon(addon) ? sub.interval : null,
+        unitPricePaise: addonUnitPrice(addon, sub.interval),
+        block: this.blockOf(addon, ctx),
+        billing: isRecurringAddon(addon) ? billing : this.deps.provider.createPayment ? null : ("no_provider" as const),
+        current: row ? this.addonView(row, addon) : null,
+        pendingPayment: payments.find((p) => p.addonId === addon.id) ? toAddonPaymentView(payments.find((p) => p.addonId === addon.id)!, this.addonHours) : null,
+      };
+    });
+    // Add-ons the shop has that aren't in the public catalogue (a private one given by the platform).
+    const extra = await Promise.all(rows.filter((r) => !catalogue.some((a) => a.id === r.addonId)).map(async (r) => this.addonView(r, await this.addonInfo(r.addonId))));
+    const [credits, usage] = await Promise.all([this.deps.plans.credits?.(tenantId) ?? Promise.resolve({}), this.deps.plans.usage(tenantId)]);
+    return {
+      interval: sub.interval,
+      periodEnd: sub.currentPeriodEnd,
+      billing,
+      items,
+      other: extra,
+      payments: payments.map((p) => toAddonPaymentView(p, this.addonHours)),
+      credits,
+      usage,
+    };
+  }
+
+  /** What setting `addonId` to `quantity` would do and charge (shared by preview and the change itself). */
+  private async quoteAddon(tenantId: string, input: { addonId: string; quantity: number }) {
+    const sub = await this.ensure(tenantId);
+    const plan = await this.deps.plans.getPlan(sub.planId);
+    const ctx = await this.addonCtx(tenantId, plan);
+    const addon = await this.addonInfo(input.addonId);
+    if (!addon || !addon.isPublic || !ctx.offered.has(addon.id)) throw notFound("Add-on");
+    const q = input.quantity;
+    if (!Number.isInteger(q) || q < 0) throw badRequest("Quantity must be a whole number");
+    const now = this.now();
+    const buyerState = (await this.deps.shop.buyer(tenantId)).stateCode;
+    const gstOf = (charge: number) => ({ ...gstSplit(charge, this.deps.config.seller.stateCode, buyerState), ratePercent: PLATFORM_GST_RATE });
+    const block = this.blockOf(addon, ctx);
+    const unit = addonUnitPrice(addon, sub.interval);
+    const base: AddonPreview = {
+      addonId: addon.id,
+      quantity: q,
+      fromQuantity: 0,
+      kind: "same",
+      applies: "none",
+      interval: isRecurringAddon(addon) ? sub.interval : null,
+      unitPricePaise: unit,
+      unusedDays: 0,
+      periodDays: 0,
+      taxablePaise: 0,
+      chargeTodayPaise: 0,
+      gst: gstOf(0),
+      startsAt: null,
+      nextChargeAt: null,
+      nextRenewalPaise: 0,
+      recurringPaise: 0,
+      block,
+    };
+
+    if (addon.kind === "credits") {
+      if (q < addon.minQuantity || q > addon.maxQuantity) throw badRequest(`Choose ${addon.minQuantity} to ${addon.maxQuantity} packs`);
+      if (block) return { sub, addon, plan, preview: base };
+      if (!this.deps.provider.createPayment) return { sub, addon, plan, preview: { ...base, block: "no_provider" as const } };
+      const taxable = addon.priceOncePaise * q;
+      const charge = chargeAmount(taxable);
+      return { sub, addon, plan, preview: { ...base, kind: "credits" as const, applies: "after_payment" as const, taxablePaise: taxable, chargeTodayPaise: charge, gst: gstOf(charge), credits: creditsFor(addon, q) } };
+    }
+
+    if (q !== 0 && (q < addon.minQuantity || q > addon.maxQuantity)) throw badRequest(`Choose ${addon.minQuantity} to ${addon.maxQuantity}`);
+    const [row] = (await this.addonRows(tenantId)).filter((r) => r.addonId === addon.id);
+    if (row?.source === "comp") throw conflict("This add-on is complimentary for your shop; ask support to change it");
+    const cur = row ? row.quantity : 0;
+    const renew = row ? renewQuantity(row) : 0;
+    const renewing = plan ? await this.renewingAddons(tenantId, plan) : [];
+    const othersPaise = addonsRecurringPaise(renewing.filter((r) => r.addon.id !== addon.id), sub.interval);
+    const planPaise = plan ? planPrice(plan, sub.interval) : 0;
+    const withQuantity = (n: number): Partial<AddonPreview> => ({
+      recurringPaise: unit * n,
+      nextRenewalPaise: planPaise + othersPaise + unit * n,
+      nextChargeAt: sub.currentPeriodEnd,
+    });
+    base.fromQuantity = cur;
+
+    if (q > cur) {
+      if (block) return { sub, addon, plan, preview: base };
+      const billing = await this.billingBlock(sub, plan);
+      if (billing) return { sub, addon, plan, preview: { ...base, block: billing } };
+      const pro = addonProration({ periodStart: sub.currentPeriodStart ?? now, periodEnd: sub.currentPeriodEnd!, now, unitPricePaise: unit, quantity: q - cur });
+      const charge = chargeAmount(pro.taxablePaise);
+      return {
+        sub,
+        addon,
+        plan,
+        preview: {
+          ...base,
+          ...withQuantity(q),
+          kind: cur === 0 ? ("buy" as const) : ("increase" as const),
+          applies: pro.taxablePaise > 0 ? ("after_payment" as const) : ("now" as const),
+          unusedDays: pro.unusedDays,
+          periodDays: pro.periodDays,
+          taxablePaise: pro.taxablePaise,
+          chargeTodayPaise: charge,
+          gst: gstOf(charge),
+        },
+      };
+    }
+    if (q < cur) {
+      if (q === renew) return { sub, addon, plan, preview: { ...base, ...withQuantity(q), kind: q === 0 ? ("cancel" as const) : ("decrease" as const), startsAt: sub.currentPeriodEnd } };
+      return {
+        sub,
+        addon,
+        plan,
+        preview: { ...base, ...withQuantity(q), kind: q === 0 ? ("cancel" as const) : ("decrease" as const), applies: "period_end" as const, startsAt: sub.currentPeriodEnd },
+      };
+    }
+    // Same as now: takes back a scheduled decrease or cancel (unless the plan change it comes from can't have it).
+    if (row && renew !== cur) {
+      if (row.endReason === "plan_change" || row.endReason === "plan_ended") return { sub, addon, plan, preview: { ...base, block: block ?? ("cancelling" as const) } };
+      return { sub, addon, plan, preview: { ...base, ...withQuantity(q), kind: "resume" as const, applies: "now" as const } };
+    }
+    return { sub, addon, plan, preview: { ...base, ...withQuantity(q) } };
+  }
+
+  /** `POST /addons/preview`. */
+  async addonPreview(tenantId: string, input: { addonId: string; quantity: number }): Promise<AddonPreview> {
+    return (await this.quoteAddon(tenantId, input)).preview;
+  }
+
+  /**
+   * `POST /addons`: sets an add-on to `quantity`. More (or a new one): a payment link for the prorated rest of the
+   * period, applied once paid (`after_payment`); from the next cycle the plan's subscription charges it. Fewer or 0: at
+   * the period end. The same quantity takes back a scheduled decrease. Credits: `quantity` packs, paid once.
+   */
+  async setAddon(tenantId: string, input: { addonId: string; quantity: number }, actor: Actor = SYSTEM) {
+    const { sub, addon, preview: p } = await this.quoteAddon(tenantId, input);
+    if (p.block) throw badRequest(blockMessage(p.block, addon.name), { addonId: addon.id, reason: p.block });
+    const now = this.now();
+    const result = async (applied: AddonPreview["applies"], payment: AddonPaymentRow | null = null) => ({
+      applied,
+      preview: p,
+      payment: payment ? toAddonPaymentView(payment, this.addonHours) : null,
+      authUrl: payment?.authUrl ?? null,
+      addons: await this.addonViews(tenantId),
+    });
+
+    if (p.kind === "credits") {
+      const pay = await this.createAddonPayment(sub, addon, {
+        kind: "credits",
+        fromQuantity: 0,
+        toQuantity: p.quantity,
+        taxablePaise: p.taxablePaise,
+        label: addonLineText(addon, p.quantity, "credits pack"),
+        periodStart: null,
+        periodEnd: null,
+      }, actor);
+      return result("after_payment", pay);
+    }
+    const [row] = (await this.addonRows(tenantId)).filter((r) => r.addonId === addon.id);
+    // A new choice replaces an unpaid one.
+    await this.cancelAddonPayments(tenantId, { addonId: addon.id });
+
+    if (p.kind === "buy" || p.kind === "increase") {
+      if (p.applies === "now") {
+        await this.activateAddon(sub, addon, p.quantity, actor, "No charge for the rest of the period");
+        return result("now");
+      }
+      const pay = await this.createAddonPayment(sub, addon, {
+        kind: "proration",
+        fromQuantity: p.fromQuantity,
+        toQuantity: p.quantity,
+        taxablePaise: p.taxablePaise,
+        label: addonLineText(addon, p.quantity - p.fromQuantity, `${p.unusedDays} of ${p.periodDays} days to ${dateText(sub.currentPeriodEnd)}`),
+        periodStart: now,
+        periodEnd: sub.currentPeriodEnd,
+      }, actor);
+      return result("after_payment", pay);
+    }
+    if ((p.kind === "decrease" || p.kind === "cancel") && row) {
+      if (p.applies === "none") return result("none");
+      await this.db
+        .update(subscriptionAddons)
+        .set({ nextQuantity: p.quantity, endReason: p.quantity === 0 ? "cancelled" : null, notice: null })
+        .where(eq(subscriptionAddons.id, row.id));
+      await this.rescheduleRecurring(sub);
+      await this.audit(sub, actor, p.quantity === 0 ? "subscription.addon_cancel" : "subscription.addon_decrease", `${addon.name}: ${p.fromQuantity} → ${p.quantity} at the period end`);
+      return result("period_end");
+    }
+    if (p.kind === "resume" && row) {
+      await this.db.update(subscriptionAddons).set({ nextQuantity: null, endReason: null, notice: null }).where(eq(subscriptionAddons.id, row.id));
+      await this.rescheduleRecurring(sub);
+      await this.audit(sub, actor, "subscription.addon_resume", `${addon.name} renews as ${row.quantity}`);
+      return result("now");
+    }
+    return result("none");
+  }
+
+  /** `POST /addons/:addonId/cancel`: ends a plan add-on at the period end. */
+  async cancelAddon(tenantId: string, addonId: string, actor: Actor = SYSTEM) {
+    return this.setAddon(tenantId, { addonId, quantity: 0 }, actor);
+  }
+
+  /** `POST /addons/payments/:id/cancel`: drops an unpaid add-on payment. */
+  async cancelAddonPayment(tenantId: string, paymentId: string, actor: Actor = SYSTEM) {
+    const [row] = await this.db
+      .update(addonPayments)
+      .set({ status: "cancelled" })
+      .where(and(eq(addonPayments.id, paymentId), eq(addonPayments.tenantId, tenantId), eq(addonPayments.status, "pending")))
+      .returning();
+    if (!row) throw notFound("Payment");
+    await this.cancelPaymentLink(row);
+    const sub = await this.ensure(tenantId);
+    await this.audit(sub, actor, "subscription.addon_payment_cancelled", `${row.label}: payment cancelled`);
+    return { payment: toAddonPaymentView(row, this.addonHours) };
+  }
+
+  private async createAddonPayment(
+    sub: SubscriptionRow,
+    addon: AddonInfo,
+    input: Pick<AddonPaymentRow, "kind" | "fromQuantity" | "toQuantity" | "taxablePaise" | "label" | "periodStart" | "periodEnd">,
+    actor: Actor,
+  ): Promise<AddonPaymentRow> {
+    const create = this.deps.provider.createPayment;
+    if (!create) throw new AppError(503, "not_configured", "Add-on payments are not available");
+    const now = this.now();
+    const chargePaise = chargeAmount(input.taxablePaise);
+    const [row] = await this.db
+      .insert(addonPayments)
+      .values({ tenantId: sub.tenantId, subscriptionId: sub.id, addonId: addon.id, ...input, chargePaise, provider: this.deps.provider.name, status: "pending", createdAt: now })
+      .returning();
+    const link = await this.providerCall(() =>
+      create.call(this.deps.provider, {
+        amountPaise: chargePaise,
+        description: `${input.label} (GST included)`,
+        notes: { tenantId: sub.tenantId, addonPaymentId: row!.id, addonId: addon.id, kind: input.kind },
+        expireBy: new Date(now.getTime() + this.addonHours * 3_600_000),
+      }),
+    );
+    const [saved] = await this.db.update(addonPayments).set({ providerPaymentId: link.id, authUrl: link.shortUrl }).where(eq(addonPayments.id, row!.id)).returning();
+    await this.audit(sub, actor, "subscription.addon_payment", `${input.label}: ${rupees(chargePaise)} to pay`);
+    return saved!;
+  }
+
+  /** Sets a plan add-on to `quantity` for the current period (after its payment, or when nothing was due). */
+  private async activateAddon(sub: SubscriptionRow, addon: AddonInfo, quantity: number, actor: Actor, summary: string) {
+    const now = this.now();
+    const values = {
+      tenantId: sub.tenantId,
+      subscriptionId: sub.id,
+      addonId: addon.id,
+      source: "plan" as const,
+      status: "active" as const,
+      quantity,
+      nextQuantity: null,
+      interval: sub.interval,
+      currentPeriodStart: sub.currentPeriodStart ?? now,
+      currentPeriodEnd: sub.currentPeriodEnd,
+      endReason: null,
+      notice: null,
+      endedAt: null,
+    };
+    const [existing] = await this.db.select().from(subscriptionAddons).where(and(eq(subscriptionAddons.tenantId, sub.tenantId), eq(subscriptionAddons.addonId, addon.id))).limit(1);
+    if (existing) {
+      await this.db
+        .update(subscriptionAddons)
+        .set({ ...values, startedAt: existing.status === "active" ? existing.startedAt : now })
+        .where(eq(subscriptionAddons.id, existing.id));
+    } else {
+      await this.db.insert(subscriptionAddons).values({ ...values, startedAt: now }).onConflictDoNothing();
+    }
+    this.invalidateEntitlements(sub.tenantId);
+    await this.rescheduleRecurring(sub);
+    await this.audit(sub, actor, "subscription.addon_active", `${addon.name} × ${quantity}: ${summary}`);
+  }
+
+  /** A payment link event: paid applies the add-on (or grants the credits) and invoices it; cancelled/expired drop it. */
+  private async applyPaymentLinkEvent(pay: AddonPaymentRow, event: ProviderEvent, payEntity: Record<string, unknown>): Promise<string> {
+    switch (event.event) {
+      case "payment_link.paid":
+        return this.applyAddonPayment(pay, payEntity);
+      case "payment_link.cancelled":
+      case "payment_link.expired": {
+        const [row] = await this.db
+          .update(addonPayments)
+          .set({ status: event.event === "payment_link.expired" ? "expired" : "cancelled" })
+          .where(and(eq(addonPayments.id, pay.id), eq(addonPayments.status, "pending")))
+          .returning({ id: addonPayments.id });
+        return row ? `applied: payment ${event.event.slice(13)}` : `ignored: ${pay.status}`;
+      }
+      default:
+        return `ignored: ${event.event}`;
+    }
+  }
+
+  /**
+   * A paid add-on payment, once: its platform invoice (one add-on line, 18% GST), then the credits or the add-on's new
+   * quantity for the rest of the period. A link paid after it was cancelled or lapsed is honoured (the money arrived).
+   */
+  private async applyAddonPayment(pay: AddonPaymentRow, payEntity: Record<string, unknown>): Promise<string> {
+    const now = this.now();
+    const [row] = await this.db
+      .update(addonPayments)
+      .set({ status: "paid", paidAt: now })
+      .where(and(eq(addonPayments.id, pay.id), ne(addonPayments.status, "paid")))
+      .returning();
+    if (!row) return "ignored: already paid";
+    const sub = await this.ensure(pay.tenantId);
+    const addon = await this.addonInfo(pay.addonId);
+    const amount = typeof payEntity.amount === "number" ? payEntity.amount : pay.chargePaise;
+    const { invoice, created } = await this.createInvoice(sub, {
+      amountPaise: amount,
+      paymentId: str(payEntity.id) ?? `link_${pay.providerPaymentId ?? pay.id}`,
+      periodStart: pay.periodStart ?? now,
+      periodEnd: pay.periodEnd ?? now,
+      planId: sub.planId,
+      interval: sub.interval,
+      kind: pay.kind === "credits" ? "credits" : "addon",
+      addonLines: [{ addonId: pay.addonId, description: pay.label, quantity: pay.kind === "credits" ? pay.toQuantity : pay.toQuantity - pay.fromQuantity, taxablePaise: pay.taxablePaise }],
+    });
+    await this.db.update(addonPayments).set({ invoiceId: invoice.id }).where(eq(addonPayments.id, pay.id));
+    if (pay.kind === "credits") {
+      if (addon && this.deps.plans.grantCredits) await this.deps.plans.grantCredits(pay.tenantId, creditsFor(addon, pay.toQuantity));
+      await this.audit(sub, SYSTEM, "subscription.credits_paid", `${pay.label}: paid (${invoice.number})`);
+    } else if (addon) {
+      await this.activateAddon(sub, addon, pay.toQuantity, SYSTEM, `paid (${invoice.number})`);
+    }
+    if (created) await this.sendInvoice(sub, invoice);
+    return `applied: ${pay.kind} ${pay.addonId}, invoice ${invoice.number}`;
+  }
+
+  /** Mock provider: the customer paid an add-on payment link (`payment_link.paid`). */
+  async mockPay(paymentId: string) {
+    this.assertMock();
+    const pay = (await this.addonPaymentByProviderId(paymentId)) ?? (/^[0-9a-f-]{36}$/i.test(paymentId) ? ((await this.db.select().from(addonPayments).where(eq(addonPayments.id, paymentId)).limit(1))[0] ?? null) : null);
+    if (!pay) throw notFound("Payment");
+    const provider = this.deps.provider as SubscriptionProvider & { markPaid?: (id: string) => boolean };
+    if (pay.status === "cancelled" || (pay.providerPaymentId && provider.markPaid && !provider.markPaid(pay.providerPaymentId))) throw conflict("This payment link was cancelled");
+    const paymentEntityId = `pay_mock_link_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const r = await this.processEvent("mock", this.mockEventId("link"), {
+      event: "payment_link.paid",
+      payload: {
+        payment_link: { entity: { id: pay.providerPaymentId, status: "paid", amount_paid: pay.chargePaise, notes: { tenantId: pay.tenantId, addonPaymentId: pay.id } } },
+        payment: { entity: { id: paymentEntityId, amount: pay.chargePaise, currency: "INR", status: "captured", method: "upi" } },
+      },
+    });
+    const [invoice] = await this.db.select().from(platformInvoices).where(eq(platformInvoices.providerPaymentId, paymentEntityId)).limit(1);
+    return { ...r, invoice: invoice ? this.invoiceView(invoice) : null, addons: await this.addonViews(pay.tenantId) };
+  }
+
+  /** Daily add-on upkeep: unpaid links lapse; comps that ran out and add-ons set to end whose period is over end. */
+  private async runAddonLifecycle(now: Date, tenantId?: string): Promise<Record<string, number>> {
+    const out: Record<string, number> = {};
+    const payConds: SQL[] = [eq(addonPayments.status, "pending"), lt(addonPayments.createdAt, new Date(now.getTime() - this.addonHours * 3_600_000))];
+    if (tenantId) payConds.push(eq(addonPayments.tenantId, tenantId));
+    const lapsed = await this.db.update(addonPayments).set({ status: "expired" }).where(and(...payConds)).returning();
+    for (const p of lapsed) await this.cancelPaymentLink(p);
+    if (lapsed.length) out.addon_payment_expired = lapsed.length;
+
+    const rowConds: SQL[] = [
+      eq(subscriptionAddons.status, "active"),
+      lte(subscriptionAddons.currentPeriodEnd, now),
+      or(eq(subscriptionAddons.source, "comp"), eq(subscriptionAddons.nextQuantity, 0))!,
+    ];
+    if (tenantId) rowConds.push(eq(subscriptionAddons.tenantId, tenantId));
+    const due = await this.db.select().from(subscriptionAddons).where(and(...rowConds));
+    for (const r of due) {
+      await this.endAddonRow(r, r.source === "comp" ? "comp_ended" : (r.endReason ?? "cancelled"), now, r.notice);
+      this.invalidateEntitlements(r.tenantId);
+    }
+    if (due.length) out.addon_ended = due.length;
+    return out;
+  }
+
+  // ---------------------------------------------------------------- add-ons: super-admin
+
+  /** A shop's add-ons (ended ones too), unpaid payments and credit balances. */
+  async adminAddons(tenantId: string) {
+    await this.ensure(tenantId);
+    const rows = await this.addonRows(tenantId, { activeOnly: false });
+    const payments = await this.db.select().from(addonPayments).where(eq(addonPayments.tenantId, tenantId)).orderBy(desc(addonPayments.createdAt)).limit(50);
+    return {
+      items: await Promise.all(rows.map(async (r) => this.addonView(r, await this.addonInfo(r.addonId)))),
+      payments: payments.map((p) => toAddonPaymentView(p, this.addonHours)),
+      credits: (await this.deps.plans.credits?.(tenantId)) ?? {},
+    };
+  }
+
+  /**
+   * Complimentary add-on (no charge) until a date (null = open-ended): any add-on of the shop's app, private ones too,
+   * whatever the tier (feature add-ons still only unlock what the app offers). Credits: grants `quantity` packs.
+   * Replaces a paid add-on of the same kind (no longer charged from the next cycle).
+   */
+  async compAddon(tenantId: string, input: { addonId: string; quantity: number; until: Date | null }, actor: Actor) {
+    const sub = await this.ensure(tenantId);
+    const addon = await this.addonInfo(input.addonId);
+    if (!addon) throw notFound("Add-on");
+    const tenant = await this.deps.tenancy.getTenant(tenantId);
+    if (addon.appId && addon.appId !== (tenant?.appId ?? null)) throw badRequest("That add-on belongs to another app");
+    if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 1000) throw badRequest("Quantity must be 1 to 1000");
+    const now = this.now();
+    if (input.until && input.until <= now) throw badRequest("The end date must be in the future");
+    if (addon.kind === "credits") {
+      const credits = (await this.deps.plans.grantCredits?.(tenantId, creditsFor(addon, input.quantity))) ?? {};
+      await this.audit(sub, actor, "subscription.credits_comp", `${addonLineText(addon, input.quantity)} given`);
+      return { credits, addons: await this.addonViews(tenantId) };
+    }
+    await this.cancelAddonPayments(tenantId, { addonId: addon.id });
+    const values = {
+      subscriptionId: sub.id,
+      source: "comp" as const,
+      status: "active" as const,
+      quantity: input.quantity,
+      nextQuantity: null,
+      interval: sub.interval,
+      currentPeriodStart: now,
+      currentPeriodEnd: input.until,
+      endReason: null,
+      notice: null,
+      endedAt: null,
+      startedAt: now,
+    };
+    await this.db
+      .insert(subscriptionAddons)
+      .values({ tenantId, addonId: addon.id, ...values })
+      .onConflictDoUpdate({ target: [subscriptionAddons.tenantId, subscriptionAddons.addonId], set: { ...values, updatedAt: now } });
+    this.invalidateEntitlements(tenantId);
+    await this.rescheduleRecurring(sub);
+    await this.audit(sub, actor, "subscription.addon_comp", `Complimentary ${addonLineText(addon, input.quantity)}${input.until ? ` until ${istDate(input.until)}` : ""}`);
+    return { credits: (await this.deps.plans.credits?.(tenantId)) ?? {}, addons: await this.addonViews(tenantId) };
+  }
+
+  /** Ends a shop's add-on now (comp or paid; no refund) and drops its unpaid payments. */
+  async endAddon(tenantId: string, addonId: string, actor: Actor) {
+    const sub = await this.ensure(tenantId);
+    const [row] = (await this.addonRows(tenantId)).filter((r) => r.addonId === addonId);
+    await this.cancelAddonPayments(tenantId, { addonId });
+    if (!row) throw notFound("Add-on");
+    await this.endAddonRow(row, "removed", this.now());
+    this.invalidateEntitlements(tenantId);
+    await this.rescheduleRecurring(sub);
+    await this.audit(sub, actor, "subscription.addon_removed", `${addonId} ended by the platform`);
+    return { addons: await this.addonViews(tenantId) };
+  }
+
   // ================================================================ internals
 
-  /** Cached provider plan id for (plan, interval, GST-inclusive amount). */
-  private async ensureProviderPlan(plan: PlanInfo, interval: BillingInterval): Promise<string> {
+  /**
+   * Cached provider plan id for (plan, interval, GST-inclusive amount). `addonsPaise` (taxable) is the recurring add-ons
+   * that ride the plan's subscription: the provider plan charges plan + add-ons each cycle.
+   */
+  private async ensureProviderPlan(plan: PlanInfo, interval: BillingInterval, addonsPaise = 0): Promise<string> {
     const provider = this.deps.provider.name;
-    const amountPaise = chargeAmount(planPrice(plan, interval));
+    const amountPaise = chargeAmount(planPrice(plan, interval) + Math.max(0, addonsPaise));
     const key = and(eq(providerPlans.provider, provider), eq(providerPlans.planId, plan.id), eq(providerPlans.interval, interval), eq(providerPlans.amountPaise, amountPaise));
     const [hit] = await this.db.select().from(providerPlans).where(key).limit(1);
     if (hit) return hit.providerPlanId;
-    const created = await this.providerCall(() => this.deps.provider.createPlan({ planId: plan.id, name: `${plan.name} (${interval})`, interval, amountPaise }));
+    const name = `${plan.name} (${interval})${addonsPaise > 0 ? " + add-ons" : ""}`;
+    const created = await this.providerCall(() => this.deps.provider.createPlan({ planId: plan.id, name, interval, amountPaise }));
     await this.db.insert(providerPlans).values({ provider, planId: plan.id, interval, amountPaise, providerPlanId: created.id }).onConflictDoNothing();
     const [row] = await this.db.select().from(providerPlans).where(key).limit(1);
     return row?.providerPlanId ?? created.id;
@@ -1669,6 +2619,7 @@ export class SubscriptionsService {
     if (!row) throw notFound("Subscription");
     await this.audit(row, actor, action, summary, sub);
     await this.syncTenantPlan(row);
+    await this.syncAddons(row, sub);
     return row;
   }
 
@@ -1689,6 +2640,7 @@ export class SubscriptionsService {
     if (!row) return null;
     await this.audit(row, actor, action, summary, sub);
     await this.syncTenantPlan(row);
+    await this.syncAddons(row, sub);
     return row;
   }
 
@@ -1779,3 +2731,36 @@ export const isTerminal = (s: SubscriptionStatus) => s === "cancelled" || s === 
 
 /** A mandate that is authorised (not waiting at its URL). */
 const hasMandateRow = (s: SubscriptionRow) => !!s.providerSubscriptionId && !s.authUrl && CHARGING(s.provider);
+
+/** Taxable value of add-on lines. */
+const addonsTaxable = (lines: readonly AddonInvoiceLine[]) => lines.reduce((s, l) => s + l.taxablePaise, 0);
+
+/** The error text when an add-on can't be bought now. */
+function blockMessage(block: AddonBlock | AddonBillingBlock, name: string): string {
+  switch (block) {
+    case "tier":
+      return `${name} isn't available on your plan`;
+    case "app":
+      return `${name} isn't available for your app`;
+    case "included":
+      return `${name} is already included in your plan`;
+    case "trial":
+      return "Add-ons can be bought once your plan is paid (after the trial)";
+    case "free":
+      return "Add-ons need a paid plan";
+    case "manual":
+      return "Your plan is billed by the platform team; ask support for add-ons";
+    case "past_due":
+      return "Pay the overdue amount before adding add-ons";
+    case "payment_setup":
+      return "Finish setting up payment for your plan first";
+    case "cancelling":
+      return "Your plan ends at the period end; resume it to add add-ons";
+    case "upgrade_pending":
+      return "Finish or cancel the plan upgrade first";
+    case "ended":
+      return "Your plan has ended";
+    case "no_provider":
+      return "Add-on payments are not available";
+  }
+}

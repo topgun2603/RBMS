@@ -4,7 +4,9 @@ import * as React from "react";
 import { ArrowLeftIcon, BellIcon, BellOffIcon, BikeIcon, CheckIcon, FlameIcon, GlobeIcon, QrCodeIcon, ShoppingBagIcon, Undo2Icon, UtensilsIcon } from "lucide-react";
 import { Button, ChipGroup, cn, Skeleton } from "@srirealtime/ui";
 import { describeError, ModuleLink, useI18n, useStored, writeStored } from "@srirealtime/web";
+import { DueChip, PlatformBadge } from "../components/platform";
 import { elapsed, minutesSince, qty } from "../lib/format";
+import { minutesUntil } from "../lib/online";
 import { useKitchen, useMoveKot } from "../lib/queries";
 import type { KitchenTicket, KotStatus } from "../lib/types";
 
@@ -114,7 +116,7 @@ export default function KitchenPage() {
 
 const stationLabel = (s: string, t: (k: string) => string) => (s === "kitchen" ? t("restaurant.kitchen.mainKitchen") : s.charAt(0).toUpperCase() + s.slice(1));
 
-const SOURCE_ICON = { qr: QrCodeIcon, online: GlobeIcon, staff: UtensilsIcon } as const;
+const SOURCE_ICON = { qr: QrCodeIcon, online: GlobeIcon, staff: UtensilsIcon, aggregator: BikeIcon } as const;
 
 function Ticket({
   ticket: x,
@@ -133,8 +135,10 @@ function Ticket({
 }) {
   const { t } = useI18n();
   const age = minutesSince(x.createdAt, now);
-  const late = x.status !== "ready" && age >= LATE_MIN;
-  const warn = x.status !== "ready" && age >= WARN_MIN;
+  // Platform orders are late against the promised pickup time, others against the ticket's age.
+  const left = x.dueAt ? minutesUntil(x.dueAt, now) : null;
+  const late = x.status !== "ready" && (left !== null ? left < 0 : age >= LATE_MIN);
+  const warn = x.status !== "ready" && (left !== null ? left <= 5 : age >= WARN_MIN);
   const Icon = x.orderType === "takeaway" ? ShoppingBagIcon : x.orderType === "delivery" ? BikeIcon : SOURCE_ICON[x.orderSource];
   return (
     <article
@@ -146,7 +150,7 @@ function Ticket({
       <header className="flex items-start justify-between gap-2">
         <div className="grid">
           <span className="flex items-center gap-1.5 text-lg font-bold">
-            <Icon className="size-4 text-muted-foreground" />
+            {x.platform ? <PlatformBadge platform={x.platform} /> : <Icon className="size-4 text-muted-foreground" />}
             {x.tableName ? t("restaurant.kitchen.table", { table: x.tableName }) : t(`restaurant.type.${x.orderType}`)}
           </span>
           <span className="text-meta text-muted-foreground">
@@ -155,9 +159,14 @@ function Ticket({
             {x.station !== "kitchen" ? ` · ${x.station}` : ""}
           </span>
         </div>
-        <span className={cn("rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums", late ? "bg-destructive text-white" : warn ? "bg-warning/20 text-warning" : "bg-muted")}>
-          {elapsed(age)}
-        </span>
+        {x.dueAt && x.status !== "ready" ? (
+          // Platform orders count down to the rider's pickup instead of up from the ticket.
+          <DueChip dueAt={x.dueAt} now={now} />
+        ) : (
+          <span className={cn("rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums", late ? "bg-destructive text-white" : warn ? "bg-warning/20 text-warning" : "bg-muted")}>
+            {elapsed(age)}
+          </span>
+        )}
       </header>
       <ul className="grid gap-1">
         {x.items.map((i) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangleIcon, GaugeIcon, InfinityIcon, RotateCcwIcon } from "lucide-react";
+import { AlertTriangleIcon, CoinsIcon, GaugeIcon, InfinityIcon, PuzzleIcon, RotateCcwIcon } from "lucide-react";
 import { cn, Meter, motion, StatusPill, useReducedMotionSafe } from "@srirealtime/ui";
 import { isUnlimited, limitName, useI18n, type UsageItem } from "@srirealtime/web";
 import { SectionCard } from "./section-card";
@@ -72,6 +72,17 @@ export function UsageMeters({ usage }: { usage: UsageItem[] }) {
                     <span className="inline-flex items-center gap-1">
                       <RotateCcwIcon className="size-3" aria-hidden /> {t("workspace.plan.usage.resets")}
                     </span>
+                  )}
+                  {!unlimited && (u.addon ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <PuzzleIcon className="size-3 text-primary" aria-hidden />
+                      {t("workspace.plan.usage.breakdown", { base: value(u.key, u.base ?? u.limit - (u.addon ?? 0)), addon: value(u.key, u.addon ?? 0) })}
+                    </span>
+                  )}
+                  {(u.credits ?? 0) > 0 && (
+                    <StatusPill tone="brand" icon={CoinsIcon}>
+                      {t("workspace.plan.usage.credits", { count: value(u.key, u.credits ?? 0) })}
+                    </StatusPill>
                   )}
                   {!unlimited && !none && ratio >= 1 && (
                     <StatusPill tone="danger" icon={AlertTriangleIcon}>

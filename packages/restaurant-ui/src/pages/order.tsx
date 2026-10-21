@@ -34,7 +34,7 @@ import {
   Skeleton,
   toast,
 } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useDebounced, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, useDebounced, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@srirealtime/web";
 import { BillDialog } from "../components/bill-dialog";
 import { InlineError, KotPill, ReasonDialog, VegMark } from "../components/bits";
 import { RESTAURANT_PERMISSIONS } from "../lib/access";
@@ -235,7 +235,12 @@ function OrderScreen({ order }: { order: Order }) {
                   {actions.addItems.isPending || actions.sendKot.isPending ? <Loader2Icon className="animate-spin" /> : <ChefHatIcon />}
                   {toSend ? t("restaurant.order.sendN", { count: toSend }) : t("restaurant.order.allSent")}
                 </Button>
-                {canBill && (
+                {order.taxByOperator ? (
+                  // GST paid by the platform (section 9(5)): no tax bill; it closes from Online orders.
+                  <Button size="lg" variant="outline" asChild>
+                    <ModuleLink to="online">{t("restaurant.online.title")}</ModuleLink>
+                  </Button>
+                ) : canBill && (
                   <Button size="lg" variant={toSend ? "outline" : "default"} disabled={draft.length > 0 || order.items.every((l) => l.status === "cancelled")} onClick={() => setBilling(true)}>
                     <ReceiptIcon /> {t("restaurant.order.bill")}
                   </Button>
@@ -243,6 +248,7 @@ function OrderScreen({ order }: { order: Order }) {
               </div>
             )}
             {open && draft.length > 0 && canBill && <p className="text-meta text-muted-foreground">{t("restaurant.order.sendBeforeBill")}</p>}
+            {order.taxByOperator && <p className="text-meta text-muted-foreground">{t("restaurant.online.noBill95")}</p>}
           </div>
         </Card>
       </div>

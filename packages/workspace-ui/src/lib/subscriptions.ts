@@ -148,3 +148,147 @@ export function openAuthUrl(url: string): "same" | "new" {
     return "same";
   }
 }
+
+// ---------------------------------------------------------------- add-ons (GET/POST /v1/subscriptions/addons*)
+
+/** A catalogue add-on. Prices are GST-exclusive paise. */
+export interface AddonInfo {
+  id: string;
+  code: string;
+  kind: "limit" | "feature" | "credits";
+  name: string;
+  description: string | null;
+  /** Per unit: limits added (limit) or credits granted per pack (credits). */
+  limits: Record<string, number>;
+  modules: string[];
+  priceMonthlyPaise: number;
+  priceYearlyPaise: number;
+  priceOncePaise: number;
+  minQuantity: number;
+  maxQuantity: number;
+  tiers: string[];
+}
+
+/** The shop's own add-on. */
+export interface ShopAddon {
+  id: string;
+  addonId: string;
+  name: string;
+  kind: AddonInfo["kind"] | null;
+  source: "plan" | "comp";
+  status: "active" | "ended";
+  quantity: number;
+  nextQuantity: number | null;
+  activeQuantity: number;
+  interval: BillingInterval;
+  unitPricePaise: number;
+  currentPeriodEnd: string | null;
+  endsAtPeriodEnd: boolean;
+  endReason: "cancelled" | "plan_change" | "plan_ended" | "comp_ended" | "removed" | null;
+  notice: string | null;
+}
+
+export interface AddonPayment {
+  id: string;
+  addonId: string;
+  kind: "proration" | "credits";
+  fromQuantity: number;
+  toQuantity: number;
+  taxablePaise: number;
+  chargePaise: number;
+  label: string;
+  status: "pending" | "paid" | "cancelled" | "expired";
+  authUrl: string | null;
+  providerPaymentId: string | null;
+  expiresAt: string;
+}
+
+export type AddonBlock = "tier" | "app" | "included";
+export type AddonBillingBlock = "trial" | "free" | "manual" | "past_due" | "payment_setup" | "cancelling" | "upgrade_pending" | "ended" | "no_provider";
+
+export interface AddonOffer {
+  addon: AddonInfo;
+  interval: BillingInterval | null;
+  unitPricePaise: number;
+  block: AddonBlock | null;
+  billing: AddonBillingBlock | null;
+  current: ShopAddon | null;
+  pendingPayment: AddonPayment | null;
+}
+
+export interface AddonsState {
+  interval: BillingInterval;
+  periodEnd: string | null;
+  billing: AddonBillingBlock | null;
+  items: AddonOffer[];
+  other: ShopAddon[];
+  payments: AddonPayment[];
+  credits: Record<string, number>;
+}
+
+/** POST /addons/preview. Money in paise. */
+export interface AddonPreview {
+  addonId: string;
+  quantity: number;
+  fromQuantity: number;
+  kind: "buy" | "increase" | "decrease" | "cancel" | "resume" | "credits" | "same";
+  applies: "after_payment" | "period_end" | "now" | "none";
+  interval: BillingInterval | null;
+  unitPricePaise: number;
+  unusedDays: number;
+  periodDays: number;
+  taxablePaise: number;
+  chargeTodayPaise: number;
+  gst: ChangePreview["gst"];
+  startsAt: string | null;
+  nextChargeAt: string | null;
+  nextRenewalPaise: number;
+  recurringPaise: number;
+  credits?: Record<string, number>;
+  block: AddonBlock | AddonBillingBlock | null;
+}
+
+const addonKeys = { all: [...subscriptionKeys.all, "addons"] as const };
+
+export function useAddons(enabled = true) {
+  return useQuery<AddonsState>({
+    queryKey: addonKeys.all,
+    queryFn: ({ signal }) => api.get<AddonsState>("/subscriptions/addons", undefined, { signal }),
+    enabled,
+    retry: (n, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && n < 1,
+  });
+}
+
+/** What setting an add-on to `quantity` would do and charge; off while `enabled` is false (dialog closed). */
+export function useAddonPreview(target: { addonId: string; quantity: number } | null, enabled = true) {
+  return useQuery<AddonPreview>({
+    queryKey: [...addonKeys.all, "preview", target?.addonId ?? "", target?.quantity ?? -1],
+    queryFn: ({ signal }) => api.post<AddonPreview>("/subscriptions/addons/preview", target, { signal }),
+    enabled: enabled && !!target,
+    staleTime: 30_000,
+    retry: (n, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && n < 1,
+  });
+}
+
+export function useSetAddon() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (body: { addonId: string; quantity: number }) =>
+      api.post<{ applied: AddonPreview["applies"]; authUrl?: string | null; payment?: AddonPayment | null }>("/subscriptions/addons", body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCancelAddonPayment() {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (id: string) => api.post(`/subscriptions/addons/payments/${id}/cancel`), onSuccess: invalidate });
+}
+
+/** The mock provider's `?mockPay=<link id>` (non-production only). */
+export const MOCK_PAY_PARAM = "mockPay";
+
+/** Mock provider only: pays an add-on payment link. */
+export function useMockPay() {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (paymentId: string) => api.post("/subscriptions/mock/pay", { paymentId }), onSuccess: invalidate });
+}

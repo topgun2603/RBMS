@@ -33,6 +33,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AppEditorSheet, type AppEditing } from "@/components/features/app-editor-sheet";
 import { SolutionPresetSheet, Swatch } from "@/components/features/solution-preset-sheet";
 import { Page } from "@/components/page";
+import { AddonsResource } from "@/components/plans/addons-resource";
 import { PlansResource } from "@/components/plans/plans-resource";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";
@@ -318,6 +319,14 @@ function AppPanel({
             <p className="text-sm text-muted-foreground">{t("admin.appsUi.plansHint")}</p>
           </div>
           <PlansResource appId={profile.appId} embedded />
+        </div>
+
+        <div className="grid gap-3">
+          <div>
+            <h3 className="font-heading text-base font-semibold">{t("admin.addonsUi.appTitle", { app: profile.name })}</h3>
+            <p className="text-sm text-muted-foreground">{t("admin.addonsUi.appHint")}</p>
+          </div>
+          <AddonsResource appId={profile.appId} embedded />
         </div>
 
         <div className="grid gap-3">

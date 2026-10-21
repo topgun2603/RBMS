@@ -1,4 +1,4 @@
-import { seedPlans, type PlanTier } from "@srirealtime/plans";
+import { seedPlans, type AddonInput, type PlanTier } from "@srirealtime/plans";
 import type { Logger } from "pino";
 import type { Kit } from "./kit";
 
@@ -298,8 +298,91 @@ function appPlans(appId: AppId) {
   });
 }
 
-/** Upserts the plans (shared tier templates, then each app's own) and the app profiles. */
+/**
+ * Plan add-ons per app (docs/verticals.md "Plan add-ons"). PLACEHOLDER prices and sizes (paise; yearly = 10 months),
+ * not commercial decisions: super-admins edit them in Platform → Apps & features → <app> → Add-ons. Recurring add-ons
+ * are for paid tiers; credits packs for every tier. Custom domain only where the app offers it and Pro doesn't include it.
+ */
+const ADDON_TEMPLATES: (Omit<AddonInput, "id" | "appId"> & { apps?: AppId[] })[] = [
+  {
+    code: "extra-staff",
+    kind: "limit",
+    name: "Extra staff (+5)",
+    description: "Five more team members on top of your plan.",
+    limits: { staff: 5 },
+    priceMonthlyPaise: 19_900,
+    priceYearlyPaise: 199_000,
+    maxQuantity: 10,
+    tiers: ["starter", "pro"],
+    sort: 10,
+  },
+  {
+    code: "extra-branch",
+    kind: "limit",
+    name: "Extra branch",
+    description: "One more branch or location with its own GSTIN, bill series and stock.",
+    limits: { branches: 1 },
+    priceMonthlyPaise: 49_900,
+    priceYearlyPaise: 499_000,
+    maxQuantity: 20,
+    tiers: ["starter", "pro"],
+    sort: 20,
+  },
+  {
+    code: "whatsapp-1000",
+    kind: "limit",
+    name: "WhatsApp 1,000",
+    description: "1,000 more WhatsApp messages every month.",
+    limits: { whatsapp_per_month: 1_000 },
+    priceMonthlyPaise: 29_900,
+    priceYearlyPaise: 299_000,
+    maxQuantity: 20,
+    tiers: ["starter", "pro"],
+    sort: 30,
+  },
+  {
+    code: "storage-10gb",
+    kind: "limit",
+    name: "Extra storage (+10 GB)",
+    description: "10 GB more for photos, documents and backups.",
+    limits: { storage_mb: 10_000 },
+    priceMonthlyPaise: 9_900,
+    priceYearlyPaise: 99_000,
+    maxQuantity: 10,
+    tiers: ["starter", "pro"],
+    sort: 40,
+  },
+  {
+    code: "custom-domain",
+    kind: "feature",
+    name: "Custom domain",
+    description: "Your store on your own domain (www.yourshop.in) with free SSL.",
+    modules: ["custom-domain"],
+    priceMonthlyPaise: 14_900,
+    priceYearlyPaise: 149_000,
+    // Pro already includes it.
+    tiers: ["starter"],
+    apps: ["EC", "RS", "SV"],
+    sort: 50,
+  },
+  {
+    code: "sms-5000",
+    kind: "credits",
+    name: "SMS pack (5,000)",
+    description: "5,000 SMS credits, used after your monthly SMS; they never expire.",
+    limits: { sms_per_month: 5_000 },
+    priceOncePaise: 99_900,
+    maxQuantity: 10,
+    sort: 60,
+  },
+];
+
+/** An app's add-on id: "ec-extra-staff". */
+export const appAddonId = (appId: string, code: string) => `${appId.toLowerCase()}-${code}`;
+
+/** Upserts the plans (shared tier templates, then each app's own), the app profiles and the add-ons. */
 export async function seedPlansAndProfiles(kit: Kit, log: Logger) {
+  await seedAddons(kit, log);
   // Shared tiers: templates for apps without plans of their own, not offered to shops.
   for (const plan of seedPlans.map(withAdditions)) {
     await kit.plans.service.upsertPlan({ ...plan, tier: plan.id as PlanTier, isPublic: false });
@@ -313,6 +396,25 @@ export async function seedPlansAndProfiles(kit: Kit, log: Logger) {
     const saved = await kit.features.service.putProfile(p.appId, { name: p.name, features: p.features });
     log.info({ app: saved.appId, features: saved.features }, "app profile upserted");
   }
+}
+
+/**
+ * Each app's placeholder add-ons, created only when missing so a super-admin's edits (prices, tiers, hidden) survive
+ * re-seeding.
+ */
+async function seedAddons(kit: Kit, log: Logger) {
+  const existing = new Set((await kit.plans.service.listAddons()).map((a) => a.id));
+  let created = 0;
+  for (const appId of Object.keys(APP_PLAN_PRICES) as AppId[]) {
+    for (const { apps, ...t } of ADDON_TEMPLATES) {
+      if (apps && !apps.includes(appId)) continue;
+      const id = appAddonId(appId, t.code);
+      if (existing.has(id)) continue;
+      await kit.plans.service.upsertAddon({ ...t, id, appId });
+      created++;
+    }
+  }
+  log.info({ created }, "plan add-ons seeded (placeholders)");
 }
 
 export interface ShopSpec {

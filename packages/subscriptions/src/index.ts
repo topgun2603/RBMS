@@ -1,10 +1,11 @@
 ﻿import { defineModule, type FeatureDef, type PermissionDef } from "@srirealtime/core";
 import { subscriptionsRoutes, SUBSCRIPTIONS_PERMISSION } from "./routes";
-import { platformInvoices, platformInvoiceSeries, providerPlans, subscriptionEvents, subscriptions } from "./schema";
+import { addonPayments, platformInvoices, platformInvoiceSeries, providerPlans, subscriptionAddons, subscriptionEvents, subscriptions } from "./schema";
 import { SubscriptionsService, type SubscriptionsDeps } from "./service";
 
 export * from "./schema";
 export * from "./logic";
+export * from "./addons";
 export * from "./ports";
 export * from "./provider";
 export * from "./service";
@@ -44,7 +45,7 @@ export function createSubscriptions(deps: SubscriptionsDeps) {
   const service = new SubscriptionsService(deps);
   const module = defineModule({
     id: SUBSCRIPTIONS_MODULE,
-    tables: { subscriptions, subscriptionEvents, platformInvoices, platformInvoiceSeries, providerPlans },
+    tables: { subscriptions, subscriptionEvents, platformInvoices, platformInvoiceSeries, providerPlans, subscriptionAddons, addonPayments },
     routes: subscriptionsRoutes(service),
     features: SUBSCRIPTIONS_FEATURES,
     permissions: SUBSCRIPTIONS_PERMISSIONS,

@@ -1,7 +1,7 @@
 import { isSuperAdmin, notFound, requireRole, requireSuperAdmin, requireTenant } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { OverridePatch, PlanInput, PlansService } from "./service";
+import type { AddonInput, OverridePatch, PlanInput, PlansService } from "./service";
 
 const idParam = z.object({ id: z.string().min(1).max(40) });
 const tenantParam = z.object({ tenantId: z.string().uuid() });
@@ -30,12 +30,51 @@ export function plansRoutes(service: PlansService) {
       return { items: await service.listPlans({ publicOnly: true, appId: appId ?? null }) };
     });
 
+    // Add-ons of an app (?app=, else the shop's own app): public ones; super-admins with ?all=1 get every add-on (with
+    // ?app= that app's own add-ons only, private included, so the per-app editor shows what it owns).
+    app.get("/addons", async (req) => {
+      const { all, app: appParam } = listQuery.parse(req.query);
+      if (all && isSuperAdmin(req.ctx)) {
+        const items = await service.listAddons();
+        return { items: appParam ? items.filter((a) => a.appId === appParam || a.appId === null) : items };
+      }
+      return { items: await service.listAddons({ publicOnly: true, appId: appParam ?? req.ctx.tenant?.appId ?? null }) };
+    });
+
+    app.put("/addons/:id", audited("plans.addon.upsert", "plan_addon", "id"), async (req) => {
+      requireSuperAdmin(req.ctx);
+      const { id } = idParam.parse(req.params);
+      const body = z.record(z.unknown()).parse(req.body ?? {});
+      const before = await service.getAddon(id);
+      // upsertAddon validates the full shape with addonInputSchema.
+      const addon = await service.upsertAddon({ ...body, id } as AddonInput);
+      req.auditSummary = before ? `Add-on ${id} updated` : `Add-on ${id} created`;
+      req.auditDetail = { tenantId: null, before, after: addon };
+      return addon;
+    });
+
+    app.delete("/addons/:id", audited("plans.addon.delete", "plan_addon", "id"), async (req) => {
+      requireSuperAdmin(req.ctx);
+      const { id } = idParam.parse(req.params);
+      const before = await service.getAddon(id);
+      await service.deleteAddon(id);
+      req.auditSummary = `Add-on ${id} deleted`;
+      req.auditDetail = { tenantId: null, before, after: null };
+      return { ok: true };
+    });
+
+    app.get("/credits/:tenantId", async (req) => {
+      requireSuperAdmin(req.ctx);
+      const { tenantId } = tenantParam.parse(req.params);
+      return { tenantId, credits: await service.credits(tenantId) };
+    });
+
     app.get("/current", async (req) => {
       requireRole(req.ctx, "owner", "admin");
       const tenant = requireTenant(req.ctx);
       const [entitlements, usage] = await Promise.all([service.entitlements(tenant), service.usageSummary(tenant)]);
       const plan = entitlements.planId ? await service.getPlan(entitlements.planId) : null;
-      return { plan, entitlements, usage: { items: usage } };
+      return { plan, entitlements, usage: { items: usage }, credits: await service.credits(tenant.id) };
     });
 
     app.get("/:id", async (req) => {

@@ -37,6 +37,12 @@ export interface UsageItem {
   limit: number;
   period?: string;
   remaining?: number | null;
+  /** The plan's own limit before add-ons (absent from older APIs: same as limit). */
+  base?: number;
+  /** What active add-ons add. */
+  addon?: number;
+  /** Credits left from packs (used after the monthly allowance). */
+  credits?: number;
 }
 
 export interface Subscription {
@@ -120,6 +126,10 @@ export interface ChangePreview {
   gst: { subtotalPaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number; totalPaise: number; interState: boolean; ratePercent: number };
   startsAt: string | null;
   nextChargeAt: string | null;
+  /** Of planPricePaise, the add-ons that carry on with the new plan (an upgrade restarts their period too). */
+  addonsPricePaise?: number;
+  /** Add-ons the new plan can't have: they end when it starts. */
+  endingAddons?: string[];
 }
 
 /** An upgrade waiting for its payment (the current plan is still on). */
@@ -141,6 +151,10 @@ export interface PlatformInvoice {
   /** Proration credit (taxable paise), shown as its own line. */
   creditPaise: number;
   status: "paid" | "void";
+  /** plan (a plan period, add-ons included), addon (more of an add-on mid-period) or credits (a pack). */
+  kind: "plan" | "addon" | "credits";
+  /** Add-on lines' text (one-time add-on invoices show them instead of the plan). */
+  addonDescriptions: string[];
   createdAt: string;
 }
 
@@ -151,7 +165,16 @@ function usageList(raw: unknown): UsageItem[] {
   const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as { items?: unknown }).items) ? (raw as { items: unknown[] }).items : [];
   return list
     .filter((u): u is Record<string, unknown> => !!u && typeof u === "object" && typeof (u as { key?: unknown }).key === "string")
-    .map((u) => ({ key: u.key as string, used: num(u.used), limit: num(u.limit, -1), period: str(u.period) ?? undefined, remaining: (u.remaining as number | null | undefined) ?? null }));
+    .map((u) => ({
+      key: u.key as string,
+      used: num(u.used),
+      limit: num(u.limit, -1),
+      period: str(u.period) ?? undefined,
+      remaining: (u.remaining as number | null | undefined) ?? null,
+      ...(typeof u.base === "number" ? { base: u.base } : {}),
+      ...(typeof u.addon === "number" ? { addon: u.addon } : {}),
+      ...(typeof u.credits === "number" ? { credits: u.credits } : {}),
+    }));
 }
 
 /** Tolerant reader for `/subscriptions/current` (usage as an array or `{ items }`). */
@@ -185,6 +208,8 @@ export function normalizeInvoice(raw: Record<string, unknown>): PlatformInvoice 
     totalPaise: num(raw.totalPaise),
     creditPaise: num(raw.creditPaise),
     status: raw.status === "void" ? "void" : "paid",
+    kind: raw.kind === "addon" || raw.kind === "credits" ? raw.kind : "plan",
+    addonDescriptions: Array.isArray(raw.addonLines) ? raw.addonLines.map((l) => String((l as { description?: unknown }).description ?? "")).filter(Boolean) : [],
     createdAt: String(raw.createdAt ?? raw.periodStart ?? ""),
   };
 }

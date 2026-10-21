@@ -63,7 +63,11 @@ export function PlatformInvoices({ planName }: { planName: (id: string) => strin
                     </StatusPill>
                   </div>
                   <p className="mt-0.5 truncate text-meta text-muted-foreground">
-                    {planName(inv.planId)} · {t("workspace.plan.invoices.period", { from: d(inv.periodStart ?? inv.createdAt), to: d(inv.periodEnd) })}
+                    {inv.kind === "credits"
+                      ? `${inv.addonDescriptions.join(", ") || t("workspace.plan.addons.credits")} · ${d(inv.createdAt)}`
+                      : inv.kind === "addon"
+                        ? `${inv.addonDescriptions.join(", ") || t("workspace.plan.addons.title")} · ${t("workspace.plan.invoices.period", { from: d(inv.periodStart ?? inv.createdAt), to: d(inv.periodEnd) })}`
+                        : `${planName(inv.planId)} · ${t("workspace.plan.invoices.period", { from: d(inv.periodStart ?? inv.createdAt), to: d(inv.periodEnd) })}`}
                     {inv.creditPaise > 0 && <span className="text-success-ink"> · {t("workspace.plan.invoices.credit", { amount: formatPaise(inv.creditPaise) })}</span>}
                   </p>
                 </div>

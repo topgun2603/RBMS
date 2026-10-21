@@ -52,6 +52,7 @@ import {
   type SubscriptionStatus,
 } from "@srirealtime/web";
 import { NoPermission } from "../components/bits";
+import { AddonsSection } from "../components/plan/addons";
 import { PlatformInvoices } from "../components/plan/invoices";
 import { MockAuthDialog } from "../components/plan/mock-auth-dialog";
 import { PlanPicker } from "../components/plan/plan-picker";
@@ -107,6 +108,7 @@ function PlanBody() {
       ) : (
         <PlanPicker cur={cur} plans={planList} readOnly={state.readOnly} />
       )}
+      <AddonsSection readOnly={state.readOnly} />
       {!state.readOnly && <PlatformInvoices planName={planName} />}
       {!state.readOnly && canCancel(cur) && <CancelSection cur={cur} plan={currentPlanOf(cur, planList)} />}
       {!state.readOnly && <MockAuthDialog cur={cur} plans={planList} />}

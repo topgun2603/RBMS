@@ -112,6 +112,14 @@ export interface InvoiceParty {
   address: string | null;
 }
 
+/** An add-on on a platform invoice (taxable paise, before GST). */
+export interface AddonInvoiceLine {
+  addonId: string;
+  description: string;
+  quantity: number;
+  taxablePaise: number;
+}
+
 /** Tax invoices the platform issues to shops for their plan (18% GST, SAC 998314). */
 export const platformInvoices = pgTable(
   "platform_invoices",
@@ -144,6 +152,10 @@ export const platformInvoices = pgTable(
     igstPaise: integer("igst_paise").notNull().default(0),
     totalPaise: integer("total_paise").notNull(),
     status: text("status", { enum: ["paid", "void"] }).notNull().default("paid"),
+    /** `plan` (a plan period, add-ons included), `addon` (more of an add-on for the rest of a period), `credits` (a pack). */
+    kind: text("kind", { enum: ["plan", "addon", "credits"] }).notNull().default("plan"),
+    /** Add-on lines (taxable paise each); the plan line is the rest of the taxable value. */
+    addonLines: jsonb("addon_lines").$type<AddonInvoiceLine[]>().notNull().default([]),
     provider: text("provider"),
     providerPaymentId: text("provider_payment_id"),
     buyer: jsonb("buyer").$type<InvoiceParty>().notNull(),
@@ -182,7 +194,84 @@ export const providerPlans = pgTable(
   (t) => [unique("provider_plans_key_uq").on(t.provider, t.planId, t.interval, t.amountPaise)],
 );
 
+/**
+ * A shop's add-ons (docs/verticals.md "Plan add-ons"): one row per tenant and add-on. `plan` rows are billed with the
+ * plan's mandate (same interval and period); `comp` rows are complimentary (super-admin), until `currentPeriodEnd`.
+ */
+export const ADDON_SOURCES = ["plan", "comp"] as const;
+export type AddonSource = (typeof ADDON_SOURCES)[number];
+export const ADDON_STATUSES = ["active", "ended"] as const;
+export type AddonStatus = (typeof ADDON_STATUSES)[number];
+/** Why an add-on ends (or ended): the shop's cancel, a plan change it can't go with, the plan ending, a comp ending, removed by the platform. */
+export const ADDON_END_REASONS = ["cancelled", "plan_change", "plan_ended", "comp_ended", "removed"] as const;
+export type AddonEndReason = (typeof ADDON_END_REASONS)[number];
+
+export const subscriptionAddons = pgTable(
+  "subscription_addons",
+  {
+    id: pk(),
+    tenantId: uuid("tenant_id").notNull(),
+    subscriptionId: uuid("subscription_id"),
+    addonId: text("addon_id").notNull(),
+    source: text("source", { enum: ADDON_SOURCES }).notNull().default("plan"),
+    status: text("status", { enum: ADDON_STATUSES }).notNull().default("active"),
+    /** Paid (or given) quantity in the current period. */
+    quantity: integer("quantity").notNull().default(0),
+    /** The quantity from the next period: null = renews as is, 0 = ends at the period end. */
+    nextQuantity: integer("next_quantity"),
+    interval: text("interval", { enum: BILLING_INTERVALS }).notNull().default("monthly"),
+    currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
+    /** The plan's period end (`plan`), the comp's end (`comp`, null = open-ended). */
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    endReason: text("end_reason", { enum: ADDON_END_REASONS }),
+    /** A note for the shop's page, e.g. "Not available on Starter: ends on 16 Nov". */
+    notice: text("notice"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [unique("subscription_addons_tenant_addon_uq").on(t.tenantId, t.addonId), index("subscription_addons_status_idx").on(t.status)],
+);
+
+/** One-time add-on payments: the prorated rest of the period for more of an add-on, or a credits pack. */
+export const ADDON_PAYMENT_KINDS = ["proration", "credits"] as const;
+export type AddonPaymentKind = (typeof ADDON_PAYMENT_KINDS)[number];
+export const ADDON_PAYMENT_STATUSES = ["pending", "paid", "cancelled", "expired"] as const;
+export type AddonPaymentStatus = (typeof ADDON_PAYMENT_STATUSES)[number];
+
+export const addonPayments = pgTable(
+  "subscription_addon_payments",
+  {
+    id: pk(),
+    tenantId: uuid("tenant_id").notNull(),
+    subscriptionId: uuid("subscription_id"),
+    addonId: text("addon_id").notNull(),
+    kind: text("kind", { enum: ADDON_PAYMENT_KINDS }).notNull(),
+    /** proration: the active quantity before and after; credits: packs bought in `toQuantity`. */
+    fromQuantity: integer("from_quantity").notNull().default(0),
+    toQuantity: integer("to_quantity").notNull(),
+    /** Taxable value and what is charged (GST included). */
+    taxablePaise: integer("taxable_paise").notNull(),
+    chargePaise: integer("charge_paise").notNull(),
+    label: text("label").notNull(),
+    /** proration: today → the plan's period end. */
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    provider: text("provider"),
+    /** Payment link id (Razorpay `plink_…`, the mock's `plink_mock_…`). */
+    providerPaymentId: text("provider_payment_id"),
+    authUrl: text("auth_url"),
+    status: text("status", { enum: ADDON_PAYMENT_STATUSES }).notNull().default("pending"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    invoiceId: uuid("invoice_id"),
+    ...timestamps(),
+  },
+  (t) => [index("subscription_addon_payments_tenant_idx").on(t.tenantId), index("subscription_addon_payments_provider_idx").on(t.providerPaymentId)],
+);
+
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
+export type SubscriptionAddonRow = typeof subscriptionAddons.$inferSelect;
+export type AddonPaymentRow = typeof addonPayments.$inferSelect;
 export type SubscriptionEventRow = typeof subscriptionEvents.$inferSelect;
 export type PlatformInvoiceRow = typeof platformInvoices.$inferSelect;
 export type ProviderPlanRow = typeof providerPlans.$inferSelect;

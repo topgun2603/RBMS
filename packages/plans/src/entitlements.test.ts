@@ -4,6 +4,7 @@ import {
   hasModuleIn,
   isMonthlyKey,
   limitIn,
+  offeredBy,
   periodFor,
   resolveEntitlements,
   UNLIMITED,
@@ -100,5 +101,55 @@ describe("periodFor", () => {
     expect(periodFor("sms_per_month", new Date("2026-10-31T19:00:00Z"), 0)).toBe("2026-10");
     // Year boundary.
     expect(periodFor("sms_per_month", new Date("2026-12-31T20:00:00Z"))).toBe("2027-01");
+  });
+});
+
+describe("add-ons in entitlements", () => {
+  const extraStaff = { id: "extra-staff", kind: "limit" as const, quantity: 2, limits: { staff: 5 }, modules: [] };
+  const storage = { id: "storage", kind: "limit" as const, quantity: 1, limits: { storage_mb: 10_000 }, modules: [] };
+  const marketplace = { id: "marketplace", kind: "feature" as const, quantity: 1, limits: {}, modules: ["marketplace.*", "kyc"] };
+  const smsPack = { id: "sms", kind: "credits" as const, quantity: 3, limits: { sms_per_month: 5000 }, modules: [] };
+
+  it("limit add-ons add per unit × quantity; an unlimited limit stays unlimited; a missing key starts from 0", () => {
+    const e = resolveEntitlements(starter, null, CORE_MODULES, { addons: [extraStaff, storage, { ...extraStaff, id: "wa", limits: { whatsapp_per_month: 1000 }, quantity: 1 }] });
+    expect(e.limits.staff).toBe(15);
+    expect(e.limits.storage_mb).toBe(-1);
+    expect(e.limits.whatsapp_per_month).toBe(1000);
+    expect(e.addonLimits).toEqual({ staff: 10, whatsapp_per_month: 1000 });
+    expect(e.addons).toEqual([
+      { id: "extra-staff", quantity: 2 },
+      { id: "storage", quantity: 1 },
+      { id: "wa", quantity: 1 },
+    ]);
+  });
+
+  it("adds on top of an override limit", () => {
+    const override: OverrideLike = { addModules: [], removeModules: [], limits: { staff: 8 }, features: {} };
+    expect(resolveEntitlements(starter, override, CORE_MODULES, { addons: [extraStaff] }).limits.staff).toBe(18);
+  });
+
+  it("feature add-ons unlock only what the app offers; a manual block still wins", () => {
+    const offered = (k: string) => k === "kyc";
+    const e = resolveEntitlements(starter, null, CORE_MODULES, { addons: [marketplace], offered });
+    expect(hasModuleIn(e, "kyc")).toBe(true);
+    expect(hasModuleIn(e, "marketplace.*")).toBe(false);
+    const blocked = resolveEntitlements(starter, { addModules: [], removeModules: ["kyc"], limits: {}, features: {} }, CORE_MODULES, { addons: [marketplace] });
+    expect(hasModuleIn(blocked, "kyc")).toBe(false);
+    expect(hasModuleIn(blocked, "marketplace.*")).toBe(true);
+  });
+
+  it("credits packs and zero quantities change nothing", () => {
+    const e = resolveEntitlements(starter, null, CORE_MODULES, { addons: [smsPack, { ...extraStaff, quantity: 0 }] });
+    expect(e).toEqual(resolveEntitlements(starter, null));
+    expect(e.addons).toBeUndefined();
+  });
+
+  it("offeredBy: exact keys, module wildcards, wildcards only through wildcards, no profile offers all", () => {
+    expect(offeredBy(["marketplace.*", "chat"], "marketplace.sellers")).toBe(true);
+    expect(offeredBy(["marketplace.*"], "marketplace")).toBe(true);
+    expect(offeredBy(["marketplace"], "marketplace.*")).toBe(false);
+    expect(offeredBy(["marketplace.*"], "marketplace.*")).toBe(true);
+    expect(offeredBy(["chat"], "custom-domain")).toBe(false);
+    expect(offeredBy(null, "anything")).toBe(true);
   });
 });

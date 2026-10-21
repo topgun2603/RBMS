@@ -7,8 +7,11 @@ export type DiningOrderType = (typeof ORDER_TYPES)[number];
 export const ORDER_STATUSES = ["open", "billed", "cancelled"] as const;
 export type DiningOrderStatus = (typeof ORDER_STATUSES)[number];
 
-/** Where an order came from: the restaurant's own staff, a guest at the table (QR menu) or the online store. */
-export const ORDER_SOURCES = ["staff", "qr", "online"] as const;
+/**
+ * Where an order came from: the restaurant's own staff, a guest at the table (QR menu), the online store, or a food
+ * delivery platform (Zomato, Swiggy, ONDC… through an aggregator such as UrbanPiper; `platform` says which).
+ */
+export const ORDER_SOURCES = ["staff", "qr", "online", "aggregator"] as const;
 export type DiningOrderSource = (typeof ORDER_SOURCES)[number];
 
 /** Line status: `pending` is on the order but not sent to the kitchen yet; the rest follow its KOT. */
@@ -95,8 +98,17 @@ export const diningOrders = pgTable(
     note: text("note"),
     /** The bill(s) made from this order. */
     invoiceIds: uuid("invoice_ids").array().notNull().default([]),
-    /** Online store order this came from. */
+    /** Online store order this came from (or `agg:<id>` for a delivery-platform order). */
     externalRef: text("external_ref"),
+    /** Delivery platform of an aggregator order: "zomato", "swiggy", "ondc", "other". Null otherwise. */
+    platform: text("platform"),
+    /** When the food must be ready (rider pickup / promised time): the kitchen display counts down to it. */
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    /**
+     * GST on this supply is paid by the e-commerce operator under section 9(5) of the CGST Act (restaurant service
+     * through Zomato / Swiggy): the shop issues no tax invoice for it, so billing it is refused and it is settled instead.
+     */
+    taxByOperator: boolean("tax_by_operator").notNull().default(false),
     openedBy: uuid("opened_by"),
     closedAt: timestamp("closed_at", { withTimezone: true }),
     ...timestamps(),

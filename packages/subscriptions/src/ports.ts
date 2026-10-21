@@ -41,6 +41,36 @@ export interface PlansPort {
   offeredTo?(plan: PlanInfo, appId: string | null): Promise<boolean>;
   /** Limits and usage of the tenant's current plan. */
   usage(tenantId: string): Promise<UsageInfo[]>;
+  /** Add-ons offered to the app's shops (own + shared not replaced); without it there are no add-ons. */
+  listAddons?(appId: string | null, opts?: { publicOnly?: boolean }): Promise<AddonInfo[]>;
+  getAddon?(id: string): Promise<AddonInfo | null>;
+  /** The app profile's grant list (null = no profile): feature add-ons only unlock what the app offers. */
+  appFeatures?(appId: string): Promise<readonly string[] | null>;
+  /** Drops the tenant's cached entitlements (an add-on started, changed or ended). */
+  invalidate?(tenantId: string): void;
+  /** Adds credits (a pack was paid for or given); returns the balances. */
+  grantCredits?(tenantId: string, grants: Record<string, number>): Promise<Record<string, number>>;
+  credits?(tenantId: string): Promise<Record<string, number>>;
+}
+
+/** A catalogue add-on (the plans module's `plan_addons`). Prices are GST-exclusive paise. */
+export interface AddonInfo {
+  id: string;
+  code: string;
+  appId: string | null;
+  kind: "limit" | "feature" | "credits";
+  name: string;
+  description: string | null;
+  limits: Record<string, number>;
+  modules: string[];
+  priceMonthlyPaise: number;
+  priceYearlyPaise: number;
+  priceOncePaise: number;
+  minQuantity: number;
+  maxQuantity: number;
+  tiers: string[];
+  isPublic: boolean;
+  sort: number;
 }
 
 export interface TenantInfo {
@@ -114,6 +144,8 @@ export interface SubscriptionsConfig {
   freePlanId?: string;
   /** Mock provider and `/mock/*` routes (never in production). */
   allowMock: boolean;
+  /** Hours an add-on payment link stays payable, default 48. */
+  addonPaymentHours?: number;
   /** Link to the shop's Plan & billing page for messages. */
   billingPageUrl?: (tenantId: string) => Promise<string>;
 }

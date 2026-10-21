@@ -1,5 +1,5 @@
 import { computeInvoice, normalizeStateCode, taxableOfInclusive } from "@srirealtime/gst";
-import type { BillingInterval, SubscriptionRow } from "./schema";
+import type { AddonInvoiceLine, BillingInterval, SubscriptionRow } from "./schema";
 
 /** Pure subscription rules (no database). Money is integer paise; dates are Date objects (UTC instants). */
 
@@ -216,7 +216,7 @@ export function invoiceAmounts(input: { chargedPaise: number; creditInChargePais
 }
 
 export interface InvoiceLine {
-  kind: "plan" | "credit";
+  kind: "plan" | "addon" | "credit";
   description: string;
   taxablePaise: number;
   cgstPaise: number;
@@ -226,9 +226,10 @@ export interface InvoiceLine {
 }
 
 /**
- * The lines of a platform invoice: the plan at its full taxable value and, when there is a credit, a negative credit
- * line. The plan line's GST is 18% of its value (split like the invoice: IGST when the place of supply is another
- * state); the credit line carries the difference, so the lines add up to the stored totals exactly.
+ * The lines of a platform invoice: the plan at its full taxable value, one line per add-on and, when there is a
+ * credit, a negative credit line. Each line's GST is 18% of its value (split like the invoice: IGST when the place of
+ * supply is another state); one line carries the rounding difference — the credit line when there is one, else the
+ * plan line (the last add-on line on an add-on-only invoice) — so the lines add up to the stored totals exactly.
  */
 export function platformInvoiceLines(inv: {
   subtotalPaise: number;
@@ -241,29 +242,43 @@ export function platformInvoiceLines(inv: {
   placeOfSupply?: string | null;
   sellerState?: string | null;
   description: string;
+  addonLines?: readonly AddonInvoiceLine[] | null;
 }): InvoiceLine[] {
   const credit = Math.max(0, inv.creditPaise ?? 0);
+  const addons = (inv.addonLines ?? []).filter((l) => l.taxablePaise > 0);
   const totals = { taxablePaise: inv.subtotalPaise, cgstPaise: inv.cgstPaise, sgstPaise: inv.sgstPaise, igstPaise: inv.igstPaise, totalPaise: inv.totalPaise };
-  if (!credit) return [{ kind: "plan", description: inv.description, ...totals }];
-  const gross = inv.subtotalPaise + credit;
-  const tax = chargeAmount(gross) - gross;
+  if (!credit && !addons.length) return [{ kind: "plan", description: inv.description, ...totals }];
   const inter =
     inv.igstPaise > 0 ||
     (inv.cgstPaise === 0 && inv.sgstPaise === 0 && !!inv.placeOfSupply && !!inv.sellerState && normalizeStateCode(inv.placeOfSupply) !== normalizeStateCode(inv.sellerState));
-  const cgst = inter ? 0 : Math.round(tax / 2);
-  const sgst = inter ? 0 : tax - cgst;
-  const igst = inter ? tax : 0;
-  const plan: InvoiceLine = { kind: "plan", description: inv.description, taxablePaise: gross, cgstPaise: cgst, sgstPaise: sgst, igstPaise: igst, totalPaise: gross + tax };
-  const creditLine: InvoiceLine = {
-    kind: "credit",
-    description: inv.creditLabel || "Credit for the unused part of the previous plan",
-    taxablePaise: -credit,
-    cgstPaise: inv.cgstPaise - cgst,
-    sgstPaise: inv.sgstPaise - sgst,
-    igstPaise: inv.igstPaise - igst,
-    totalPaise: inv.totalPaise - plan.totalPaise,
+  const line = (kind: InvoiceLine["kind"], description: string, taxable: number): InvoiceLine => {
+    const tax = chargeAmount(taxable) - taxable;
+    const cgst = inter ? 0 : Math.round(tax / 2);
+    const sgst = inter ? 0 : tax - cgst;
+    return { kind, description, taxablePaise: taxable, cgstPaise: cgst, sgstPaise: sgst, igstPaise: inter ? tax : 0, totalPaise: taxable + tax };
   };
-  return [plan, creditLine];
+  /** `base` with the totals' remainder after `others`. */
+  const residual = (base: Pick<InvoiceLine, "kind" | "description">, others: InvoiceLine[]): InvoiceLine => {
+    const sum = (k: "taxablePaise" | "cgstPaise" | "sgstPaise" | "igstPaise" | "totalPaise") => others.reduce((s, l) => s + l[k], 0);
+    return {
+      ...base,
+      taxablePaise: totals.taxablePaise - sum("taxablePaise"),
+      cgstPaise: totals.cgstPaise - sum("cgstPaise"),
+      sgstPaise: totals.sgstPaise - sum("sgstPaise"),
+      igstPaise: totals.igstPaise - sum("igstPaise"),
+      totalPaise: totals.totalPaise - sum("totalPaise"),
+    };
+  };
+  const addonOut = addons.map((a) => line("addon", a.description, a.taxablePaise));
+  const planTaxable = inv.subtotalPaise + credit - addons.reduce((s, a) => s + a.taxablePaise, 0);
+  if (credit) {
+    const plan = planTaxable > 0 ? [line("plan", inv.description, planTaxable)] : [];
+    const creditLine = residual({ kind: "credit", description: inv.creditLabel || "Credit for the unused part of the previous plan" }, [...plan, ...addonOut]);
+    return [...plan, ...addonOut, creditLine];
+  }
+  if (planTaxable > 0) return [residual({ kind: "plan", description: inv.description }, addonOut), ...addonOut];
+  const last = addonOut.pop()!;
+  return [...addonOut, residual({ kind: "addon", description: last.description }, addonOut)];
 }
 
 // ---------------------------------------------------------------- lifecycle

@@ -15,7 +15,7 @@ import { SubscriptionsService } from "./service";
 
 const URL_ = process.env.SUBSCRIPTIONS_TEST_DATABASE_URL;
 const SCHEMA = `subs_it_${Math.random().toString(36).slice(2, 10)}`;
-const TABLES = ["subscriptions", "subscription_events", "platform_invoices", "platform_invoice_series", "provider_plans"];
+const TABLES = ["subscriptions", "subscription_events", "platform_invoices", "platform_invoice_series", "provider_plans", "subscription_addons", "subscription_addon_payments"];
 const HOUR = 3_600_000;
 
 const plan = (id: string, monthly: number, yearly: number, sort: number): PlanInfo => ({

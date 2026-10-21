@@ -1,0 +1,8 @@
+{
+  "order_id": 812345601,
+  "delivery_info": {
+    "current_state": "out-for-delivery",
+    "delivery_person_details": { "name": "Arun", "phone": "+919000012345", "alt_phone": "" },
+    "status_updates": [{ "status": "assigned", "created": 1792560300000 }]
+  }
+}

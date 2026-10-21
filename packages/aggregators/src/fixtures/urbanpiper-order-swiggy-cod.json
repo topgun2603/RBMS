@@ -1,0 +1,21 @@
+{
+  "customer": { "name": "Meena", "phone": "08045678901" },
+  "order": {
+    "details": {
+      "id": "SW-778899",
+      "channel": "Swiggy",
+      "order_type": "pickup",
+      "created": "2026-10-21T13:05:00+05:30",
+      "expected_pickup_time": "2026-10-21T13:25:00+05:30",
+      "order_subtotal": "150.50",
+      "charges": [{ "title": "Packing", "value": "10" }],
+      "taxes": [],
+      "ext_platforms": [{ "name": "swiggy", "id": "SWG-1001" }]
+    },
+    "items": [
+      { "id": "771", "title": "Filter Coffee", "quantity": "2", "price": "40.25" },
+      { "id": "772", "title": "Masala Dosa", "quantity": 1, "price": 70 }
+    ],
+    "payment": [{ "option": "cash", "amount": "160.50" }]
+  }
+}

@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/i18n/client";
+import { onlineEn, onlineTa } from "./messages-online";
 
 const en: Messages = {
   "restaurant.nav.section": "Restaurant",
@@ -296,4 +297,4 @@ const ta: Messages = {
   "restaurant.widget.other": "{count, plural, one {# பார்சல் / ஆன்லைன்} other {# பார்சல் / ஆன்லைன்}}",
 };
 
-export const restaurantMessages = { en, ta } as const;
+export const restaurantMessages = { en: { ...en, ...onlineEn }, ta: { ...ta, ...onlineTa } } as const;

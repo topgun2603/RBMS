@@ -177,6 +177,28 @@ like `sv-pro`. Prices, wording, features and limits differ per app (seeded as pl
 - Migration `0018_app_plans` copied the four shared plans to every app and moved shops and subscriptions to their
   app's copy.
 
+## Plan add-ons
+
+Paid extras on top of a plan (migration `0022_plan_addons`). Catalogue `plan_addons` (plans module): per app
+(`<app>-<code>`, e.g. `ec-extra-staff`); an app's add-on replaces the shared one (no app) with the same `code`.
+Kinds: `limit` (adds `limits` per unit × quantity), `feature` (unlocks `modules`, only what the app profile offers),
+`credits` (a one-time pack of credits for a `_per_month` key). `tiers` (empty = all), min/max quantity, monthly /
+yearly / once prices (GST-exclusive). Placeholders seeded by `seed-fixtures.ts` (`ADDON_TEMPLATES`), edited in
+Platform → Apps & features → app → Add-ons.
+
+- Entitlements: plan → override limits → + add-on limits (unlimited stays unlimited) → feature add-ons → override
+  `removeModules` last. Monthly keys: the allowance first, then credits (`usage_credits`, never reset).
+- A shop's add-ons: `subscription_addons` (subscriptions module), `plan` (billed with the plan) or `comp`
+  (super-admin). Recurring add-ons ride the plan's provider subscription: its provider plan is re-priced to plan +
+  add-ons from the next cycle (Razorpay `PATCH /subscriptions/:id`, `schedule_change_at: cycle_end`). More of one
+  mid-period is a one-time payment (Razorpay Payment Link) for the prorated rest of the period, applied once paid;
+  fewer or none apply at the period end. Credits packs are payment links too. Invoices carry add-on lines.
+- Plan changes: an upgrade restarts the add-ons it can keep with the new period (their unused part credited); a
+  downgrade or cancel ends the ones the new plan can't have at the period end (notice + `subscription.addon_ending`).
+- Routes: `GET/PUT/DELETE /v1/plans/addons[/:id]`; shop `GET /v1/subscriptions/addons`, `POST /addons`,
+  `/addons/preview`, `/addons/:addonId/cancel`, `/addons/payments/:id/cancel`; super-admin
+  `/v1/subscriptions/admin/:tenantId/addons` (+ `/comp`, `/:addonId/end`); mock `POST /mock/pay`.
+
 ## Not done yet
 
 - A live push channel for the kitchen display (it polls; the WhatsApp SSE in `kit-live.ts` is the pattern to copy).

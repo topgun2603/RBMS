@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
+    "@srirealtime/aggregators": "workspace:*",
     "@srirealtime/analytics": "workspace:*",
     "@srirealtime/audit": "workspace:*",
     "@srirealtime/auth": "workspace:*",

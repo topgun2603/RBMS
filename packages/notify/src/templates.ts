@@ -291,6 +291,16 @@ const BATCH5: Record<string, { en: Copy; ta: Copy }> = {
       subject: "பணம் பெறப்பட்டது - விலைப்பட்டியல் {{number}} - {{app}}",
     },
   },
+  "subscription.addon_ending": {
+    en: {
+      body: "{{app}}: {{shop}}, these add-ons end on {{date}} with your plan change: {{addons}}. Plan & billing: {{link}}",
+      subject: "Add-ons ending on {{date}} - {{app}}",
+    },
+    ta: {
+      body: "{{app}}: {{shop}}, உங்கள் திட்ட மாற்றத்துடன் இந்த கூடுதல் வசதிகள் {{date}} அன்று முடிவடையும்: {{addons}}. திட்டம் & கட்டணம்: {{link}}",
+      subject: "கூடுதல் வசதிகள் {{date}} அன்று முடிவடையும் - {{app}}",
+    },
+  },
   "subscription.payment_failed": {
     en: {
       body: "{{app}}: {{shop}}, we could not collect {{amount}} for {{plan}}. Please update your payment method by {{grace}} to keep your plan: {{link}}",

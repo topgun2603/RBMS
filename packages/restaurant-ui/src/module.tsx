@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ChefHatIcon, LayoutGridIcon, UtensilsIcon } from "lucide-react";
+import { BikeIcon, ChefHatIcon, LayoutGridIcon, PlugIcon, UtensilsIcon } from "lucide-react";
 import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
-import { FLOOR_ACCESS, KITCHEN_ACCESS, RESTAURANT_FEATURES, RESTAURANT_PERMISSIONS } from "./lib/access";
+import { FLOOR_ACCESS, KITCHEN_ACCESS, ONLINE_ACCESS, RESTAURANT_FEATURES, RESTAURANT_PERMISSIONS } from "./lib/access";
 import { setRestaurantConfig } from "./lib/config";
 import { restaurantMessages } from "./lib/messages";
 
@@ -29,8 +29,9 @@ const widget = <K extends string>(name: K, load: () => Promise<Record<K, React.C
 
 /**
  * Restaurant pages: the floor (tables with running orders, takeaway / delivery), the order screen (menu → KOT →
- * bill, split bills, move / merge tables), the full-screen kitchen display, and Settings → Restaurant (areas, tables,
- * QR links, kitchen stations, veg marks, sold-out items). createWebApp({ modules: [restaurantModule(), posModule(),
+ * bill, split bills, move / merge tables), the full-screen kitchen display, Online orders (Zomato / Swiggy through an
+ * aggregator: accept, reject, ready, handed to rider), Settings → Restaurant (areas, tables, QR links, kitchen stations,
+ * veg marks, sold-out items) and Settings → Online platforms. createWebApp({ modules: [restaurantModule(), posModule(),
  * billingModule({ basePath: "/billing" }), …] }).
  */
 export function restaurantModule(opts: RestaurantModuleOptions = {}): WebModule {
@@ -44,6 +45,7 @@ export function restaurantModule(opts: RestaurantModuleOptions = {}): WebModule 
       items: [
         { href: "", label: "restaurant.nav.floor", tabLabel: "restaurant.nav.floorTab", icon: LayoutGridIcon, mobile: "tab", exact: true, feature: F.dining, permission: FLOOR_ACCESS },
         { href: "kitchen", label: "restaurant.nav.kitchen", icon: ChefHatIcon, mobile: "more", feature: F.kitchen, permission: KITCHEN_ACCESS },
+        { href: "online", label: "restaurant.nav.online", icon: BikeIcon, mobile: "more", feature: F.platforms, permission: ONLINE_ACCESS },
       ],
     },
   ];
@@ -52,15 +54,25 @@ export function restaurantModule(opts: RestaurantModuleOptions = {}): WebModule 
   const routes: RouteDef[] = [
     { path: "", component: page(() => import("./pages/floor")), feature: F.dining, permission: FLOOR_ACCESS },
     { path: "kitchen", component: page(() => import("./pages/kitchen")), feature: F.kitchen, permission: KITCHEN_ACCESS, immersive: true },
+    { path: "online", component: page(() => import("./pages/online")), feature: F.platforms, permission: ONLINE_ACCESS },
     { path: "orders/:id", component: page(() => import("./pages/order")), feature: F.dining, permission: FLOOR_ACCESS },
   ];
 
   const settings: SettingsPage[] = [
     { path: "restaurant", label: "restaurant.nav.setup", icon: UtensilsIcon, feature: F.dining, permission: P.manage, component: page(() => import("./pages/setup")) },
+    {
+      path: "online-platforms",
+      label: "restaurant.nav.platforms",
+      icon: PlugIcon,
+      feature: F.platforms,
+      permission: P.manage,
+      component: page(() => import("./pages/online-setup")),
+    },
   ];
 
   const actions: QuickAction[] = [
     { id: "restaurant-kitchen", label: "restaurant.nav.kitchen", href: "kitchen", icon: ChefHatIcon, feature: F.kitchen, permission: KITCHEN_ACCESS },
+    { id: "restaurant-online", label: "restaurant.nav.online", href: "online", icon: BikeIcon, feature: F.platforms, permission: ONLINE_ACCESS },
   ];
 
   const widgets: WidgetDef[] =

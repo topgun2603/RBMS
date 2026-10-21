@@ -6,6 +6,7 @@ describe("batch 5 subscription templates", () => {
     expect([...BATCH5_TEMPLATE_KEYS].sort()).toEqual(
       [
         "subscription.activated",
+        "subscription.addon_ending",
         "subscription.cancelled",
         "subscription.charged",
         "subscription.expired",

@@ -5,14 +5,27 @@ import { z } from "zod";
 import {
   CORE_MODULES,
   hasModuleIn,
+  isMonthlyKey,
   isUnlimited,
   LIFETIME,
   limitIn,
+  offeredBy,
   periodFor,
   resolveEntitlements,
+  type AddonGrant,
   type Entitlements,
 } from "./entitlements";
-import { plans, tenantPlanOverrides, usageCounters, type Plan, type TenantPlanOverride } from "./schema";
+import {
+  ADDON_KINDS,
+  planAddons,
+  plans,
+  tenantPlanOverrides,
+  usageCounters,
+  usageCredits,
+  type Plan,
+  type PlanAddon,
+  type TenantPlanOverride,
+} from "./schema";
 
 export interface PlansDeps {
   db: Db;
@@ -31,6 +44,15 @@ export interface PlansDeps {
   usageSources?: Record<string, UsageSource>;
   /** A counter touched within this window may hold an in-flight reservation; reconcile leaves it alone. Default 60 s. */
   reconcileSettleMs?: number;
+  /**
+   * The tenant's active add-ons (subscriptions module: effective quantity now, paid or complimentary). Absent: no
+   * add-ons. Called when entitlements are resolved (cached with them; `invalidate(tenantId)` when they change).
+   */
+  addons?: (tenantId: string) => Promise<{ addonId: string; quantity: number }[]>;
+  /** The app profile's grant list (null: no profile, everything offered). Feature add-ons only unlock what it offers. */
+  appFeatures?: (appId: string) => Promise<readonly string[] | null>;
+  /** Called after `invalidate` (e.g. the features module drops its cached resolution too). */
+  onInvalidate?: (tenantId?: string) => void;
 }
 
 /** The real usage of a lifetime key. */
@@ -85,6 +107,44 @@ export const overridePatchSchema = z.object({
 });
 export type OverridePatch = z.input<typeof overridePatchSchema>;
 
+/** A plan add-on (docs/verticals.md "Plan add-ons"). */
+export const addonInputSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "Invalid add-on id"),
+    code: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "Invalid add-on code"),
+    appId: z
+      .string()
+      .regex(/^[A-Z][A-Z0-9]{1,7}$/, "Invalid app id")
+      .nullable()
+      .optional(),
+    kind: z.enum(ADDON_KINDS),
+    name: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(500).nullable().optional(),
+    limits: z.record(usageKey, z.number().int().min(1)).default({}),
+    modules: z.array(moduleId).max(50).default([]),
+    priceMonthlyPaise: z.number().int().min(0).default(0),
+    priceYearlyPaise: z.number().int().min(0).default(0),
+    priceOncePaise: z.number().int().min(0).default(0),
+    minQuantity: z.number().int().min(1).max(1000).default(1),
+    maxQuantity: z.number().int().min(1).max(1000).default(1),
+    tiers: z.array(z.enum(PLAN_TIERS)).max(PLAN_TIERS.length).default([]),
+    isPublic: z.boolean().default(true),
+    sort: z.number().int().default(0),
+  })
+  .superRefine((a, ctx) => {
+    const issue = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
+    if (a.minQuantity > a.maxQuantity) issue("maxQuantity", "Max quantity must be at least the min quantity");
+    if (a.kind === "limit" && Object.keys(a.limits).length === 0) issue("limits", "A limit add-on adds at least one limit");
+    if (a.kind === "feature" && a.modules.length === 0) issue("modules", "A feature add-on unlocks at least one feature");
+    if (a.kind !== "feature" && a.modules.length) issue("modules", "Only feature add-ons unlock features");
+    if (a.kind === "feature" && Object.keys(a.limits).length) issue("limits", "Feature add-ons don't add limits");
+    if (a.kind === "credits") {
+      if (Object.keys(a.limits).length === 0) issue("limits", "A credits pack grants credits for at least one monthly key");
+      for (const k of Object.keys(a.limits)) if (!isMonthlyKey(k)) issue("limits", `Credits are for monthly keys (…_per_month), not "${k}"`);
+    }
+  });
+export type AddonInput = z.input<typeof addonInputSchema>;
+
 export interface UsageItem {
   key: string;
   period: string;
@@ -92,7 +152,16 @@ export interface UsageItem {
   used: number;
   /** null when unlimited. */
   remaining: number | null;
+  /** The plan's own limit (plan + override), before add-ons; equals `limit` without add-ons. */
+  base?: number;
+  /** What active add-ons add to the limit. */
+  addon?: number;
+  /** Credits left (packs): used once the monthly allowance is used up; they never reset. */
+  credits?: number;
 }
+
+/** Add-on as stored, with the per-app selection (`listAddons({ appId })`) applied. */
+export type AddonRow = PlanAddon;
 
 interface CacheEntry {
   planId: string | null;
@@ -156,8 +225,10 @@ export class PlansService {
   private readonly defaults = new Map<string, { id: string | null; expires: number }>();
   private readonly sources: Record<string, UsageSource>;
   private readonly settleMs: number;
+  private readonly deps: PlansDeps;
 
   constructor(deps: PlansDeps) {
+    this.deps = deps;
     this.db = deps.db;
     this.sources = deps.usageSources ?? {};
     for (const key of Object.keys(this.sources)) {
@@ -251,6 +322,90 @@ export class PlansService {
     this.invalidate();
   }
 
+  // ---------------------------------------------------------------- add-ons (catalogue)
+
+  /**
+   * The add-on catalogue. With `appId`: the app's own add-ons plus the shared ones (no app) whose `code` the app has
+   * not replaced. Without: every add-on.
+   */
+  async listAddons(opts: { publicOnly?: boolean; appId?: string | null } = {}): Promise<PlanAddon[]> {
+    const all = await this.db
+      .select()
+      .from(planAddons)
+      .where(opts.publicOnly ? eq(planAddons.isPublic, true) : undefined)
+      .orderBy(asc(planAddons.sort), asc(planAddons.id));
+    if (opts.appId === undefined) return all;
+    const own = opts.appId ? all.filter((a) => a.appId === opts.appId) : [];
+    const codes = new Set(own.map((a) => a.code));
+    return [...own, ...all.filter((a) => a.appId === null && !codes.has(a.code))].sort((a, b) => a.sort - b.sort || a.id.localeCompare(b.id));
+  }
+
+  async getAddon(id: string): Promise<PlanAddon | null> {
+    const [a] = await this.db.select().from(planAddons).where(eq(planAddons.id, id)).limit(1);
+    return a ?? null;
+  }
+
+  async upsertAddon(input: AddonInput): Promise<PlanAddon> {
+    const a = addonInputSchema.parse(input);
+    const values = { ...a, appId: a.appId ?? null, description: a.description ?? null };
+    const { id: _id, ...set } = values;
+    const [row] = await this.db
+      .insert(planAddons)
+      .values(values)
+      .onConflictDoUpdate({ target: planAddons.id, set: { ...set, updatedAt: new Date() } })
+      .returning();
+    this.invalidate();
+    return row!;
+  }
+
+  /** Deletes an add-on from the catalogue. Shops that have it stop getting what it adds (their rows stay). */
+  async deleteAddon(id: string): Promise<void> {
+    const rows = await this.db.delete(planAddons).where(eq(planAddons.id, id)).returning({ id: planAddons.id });
+    if (rows.length === 0) throw notFound("Add-on");
+    this.invalidate();
+  }
+
+  // ---------------------------------------------------------------- credits
+
+  /** Credit balances by key (keys never bought are absent). */
+  async credits(tenantId: string): Promise<Record<string, number>> {
+    const rows = await this.db.select({ key: usageCredits.key, balance: usageCredits.balance }).from(usageCredits).where(eq(usageCredits.tenantId, tenantId));
+    return Object.fromEntries(rows.map((r) => [r.key, r.balance]));
+  }
+
+  /** Adds credits (a pack was paid for, or the platform gave them). Returns the new balances. */
+  async grantCredits(tenantId: string, grants: Record<string, number>): Promise<Record<string, number>> {
+    for (const [key, n] of Object.entries(grants)) {
+      if (!Number.isInteger(n) || n <= 0) continue;
+      usageKey.parse(key);
+      await this.db
+        .insert(usageCredits)
+        .values({ tenantId, key, balance: n, granted: n })
+        .onConflictDoUpdate({
+          target: [usageCredits.tenantId, usageCredits.key],
+          set: { balance: sql`${usageCredits.balance} + ${n}`, granted: sql`${usageCredits.granted} + ${n}`, updatedAt: sql`now()` },
+        });
+    }
+    return this.credits(tenantId);
+  }
+
+  /** Takes `amount` credits if the balance has them (atomic). */
+  private async takeCredits(tenantId: string, key: string, amount: number): Promise<boolean> {
+    const rows = await this.db
+      .update(usageCredits)
+      .set({ balance: sql`${usageCredits.balance} - ${amount}`, used: sql`${usageCredits.used} + ${amount}`, updatedAt: sql`now()` })
+      .where(and(eq(usageCredits.tenantId, tenantId), eq(usageCredits.key, key), sql`${usageCredits.balance} >= ${amount}`))
+      .returning({ balance: usageCredits.balance });
+    return rows.length > 0;
+  }
+
+  private async returnCredits(tenantId: string, key: string, amount: number) {
+    await this.db
+      .update(usageCredits)
+      .set({ balance: sql`${usageCredits.balance} + ${amount}`, used: sql`greatest(${usageCredits.used} - ${amount}, 0)` })
+      .where(and(eq(usageCredits.tenantId, tenantId), eq(usageCredits.key, key)));
+  }
+
   // ---------------------------------------------------------------- overrides
 
   async getOverride(tenantId: string): Promise<TenantPlanOverride | null> {
@@ -278,18 +433,43 @@ export class PlansService {
       this.cache.clear();
       this.defaults.clear();
     }
+    this.deps.onInvalidate?.(tenantId);
   }
 
+  /** Plan + override + active add-ons (limits add up × quantity; feature add-ons only unlock what the app offers). */
   async entitlements(tenant: TenantRef): Promise<Entitlements> {
     const planId = tenant.planId ?? (await this.defaultPlanFor(tenant.appId));
     const now = Date.now();
     const hit = this.cache.get(tenant.id);
     if (hit && hit.expires > now && hit.planId === planId) return hit.value;
 
-    const [plan, override] = await Promise.all([planId ? this.getPlan(planId) : null, this.getOverride(tenant.id)]);
-    const value = resolveEntitlements(plan, override, this.core);
+    const [plan, override, grants] = await Promise.all([planId ? this.getPlan(planId) : null, this.getOverride(tenant.id), this.addonGrants(tenant.id)]);
+    let offered: ((key: string) => boolean) | undefined;
+    if (grants.some((g) => g.kind === "feature") && tenant.appId && this.deps.appFeatures) {
+      const list = await this.deps.appFeatures(tenant.appId);
+      offered = (key) => offeredBy(list, key);
+    }
+    const value = resolveEntitlements(plan, override, this.core, { addons: grants, offered });
     this.cache.set(tenant.id, { planId, value, expires: now + this.ttl });
     return value;
+  }
+
+  /** The app profile's grant list (`deps.appFeatures`; null = no profile or not wired, everything offered). */
+  async appFeatures(appId: string): Promise<readonly string[] | null> {
+    return this.deps.appFeatures ? this.deps.appFeatures(appId) : null;
+  }
+
+  /** The tenant's active add-ons joined with the catalogue (unknown add-on ids are skipped). */
+  private async addonGrants(tenantId: string): Promise<AddonGrant[]> {
+    if (!this.deps.addons) return [];
+    const active = (await this.deps.addons(tenantId)).filter((a) => a.quantity > 0);
+    if (!active.length) return [];
+    const rows = await this.db.select().from(planAddons).where(inArray(planAddons.id, [...new Set(active.map((a) => a.addonId))]));
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return active.flatMap((a) => {
+      const r = byId.get(a.addonId);
+      return r ? [{ id: r.id, kind: r.kind, quantity: a.quantity, limits: r.limits, modules: r.modules }] : [];
+    });
   }
 
   async hasModule(tenant: TenantRef, moduleId: string): Promise<boolean> {
@@ -335,20 +515,24 @@ export class PlansService {
   }
 
   /**
-   * Atomically adds `amount` to the counter if it stays within the plan limit; throws paymentRequired
-   * otherwise. Returns the new usage. Safe under concurrency (single conditional upsert).
+   * Atomically adds `amount` to the counter if it stays within the plan limit (add-ons included). For monthly keys,
+   * what the allowance can't take comes from the tenant's credits (packs): the monthly allowance first, then credits;
+   * the counter only counts the allowance part. Throws paymentRequired when neither covers it. Returns the counter
+   * value. Safe under concurrency (conditional upserts / updates).
    */
   async consume(tenant: TenantRef, key: string, amount = 1): Promise<number> {
     if (!Number.isInteger(amount) || amount <= 0) throw badRequest("Amount must be a positive integer");
     const limit = await this.limit(tenant, key);
     const now = new Date();
-    const exceeded = async () => {
-      const used = await this.usage(tenant, key, now);
-      return paymentRequired(`Your plan's limit for ${key} has been reached`, { key, limit, used });
-    };
-    if (!isUnlimited(limit) && amount > limit) throw await exceeded();
-
     const source = this.sources[key];
+    // Credits only stand behind finite monthly allowances (lifetime keys like staff are sized by limit add-ons).
+    const creditable = !source && !isUnlimited(limit) && isMonthlyKey(key);
+    const exceeded = async () => {
+      const [used, credits] = await Promise.all([this.usage(tenant, key, now), creditable ? this.credits(tenant.id) : Promise.resolve({} as Record<string, number>)]);
+      return paymentRequired(`Your plan's limit for ${key} has been reached`, { key, limit, used, credits: credits[key] ?? 0 });
+    };
+    if (!isUnlimited(limit) && amount > limit && !creditable) throw await exceeded();
+
     const attempt = async () => {
       const floor = source ? await source.count(tenant.id) : undefined;
       // The insert branch of the upsert has no limit check, so a real count already at the limit stops here.
@@ -358,6 +542,18 @@ export class PlansService {
     let rows = await attempt();
     // The counter may be stale-high (rows removed without `release`): settle it to the real count and try once more.
     if (rows.length === 0 && source && (await this.reconcileUsage(key, tenant.id)).fixed > 0) rows = await attempt();
+    if (rows.length === 0 && creditable) {
+      // Allowance left this month, then credits for the rest; a race on the counter gives the credits back and retries.
+      for (let i = 0; i < 2; i++) {
+        const used = await this.storedUsage(tenant.id, key, now);
+        const inAllowance = Math.max(0, Math.min(amount, limit - used));
+        if (!(await this.takeCredits(tenant.id, key, amount - inAllowance))) break;
+        if (inAllowance === 0) return used;
+        const r = await consumeStatement(this.db, { tenantId: tenant.id, key, period: periodFor(key, now), amount: inAllowance, limit });
+        if (r.length) return r[0]!.value;
+        await this.returnCredits(tenant.id, key, amount - inAllowance);
+      }
+    }
     if (rows.length === 0) throw await exceeded();
     return rows[0]!.value;
   }
@@ -406,10 +602,13 @@ export class PlansService {
       );
   }
 
-  /** Limit and current usage for every limit key in the tenant's entitlements. */
+  /**
+   * Limit and current usage for every limit key in the tenant's entitlements (and keys that only have credits): the
+   * plan's own limit (`base`), what add-ons add (`addon`) and credits left (`credits`).
+   */
   async usageSummary(tenant: TenantRef): Promise<UsageItem[]> {
-    const ent = await this.entitlements(tenant);
-    const keys = Object.keys(ent.limits).sort();
+    const [ent, credits] = await Promise.all([this.entitlements(tenant), this.credits(tenant.id)]);
+    const keys = [...new Set([...Object.keys(ent.limits), ...Object.keys(credits).filter((k) => (credits[k] ?? 0) > 0)])].sort();
     if (keys.length === 0) return [];
     const now = new Date();
     const rows = await this.db
@@ -432,7 +631,10 @@ export class PlansService {
       const stored = rows.find((r) => r.key === key && r.period === period)?.value ?? 0;
       const used = Math.max(stored, real.get(key) ?? 0);
       const limit = limitIn(ent, key);
-      return { key, period, limit, used, remaining: isUnlimited(limit) ? null : Math.max(limit - used, 0) };
+      const addon = isUnlimited(limit) ? 0 : (ent.addonLimits?.[key] ?? 0);
+      const item: UsageItem = { key, period, limit, used, remaining: isUnlimited(limit) ? null : Math.max(limit - used, 0), base: isUnlimited(limit) ? limit : limit - addon, addon };
+      if (credits[key] !== undefined) item.credits = credits[key];
+      return item;
     });
   }
 }

@@ -279,8 +279,15 @@ function PreviewBreakdown({
     );
   }
   if (failed) return <p className="text-meta text-muted-foreground">{t("workspace.plan.preview.unavailable")}</p>;
-  if (!preview || preview.applies !== "after_payment") return null;
+  const ending = preview?.endingAddons?.length ? (
+    <p className="flex items-start gap-1.5 rounded-lg bg-warning/10 px-2.5 py-2 text-meta text-foreground" role="note">
+      <CalendarClockIcon className="mt-0.5 size-3.5 shrink-0 text-warning-ink" aria-hidden />
+      {t("workspace.plan.preview.addonsEnd", { addons: preview.endingAddons.join(", ") })}
+    </p>
+  ) : null;
+  if (!preview || preview.applies !== "after_payment") return ending;
   const applied = preview.creditPaise - preview.carryoverPaise;
+  const addonsPaise = preview.addonsPricePaise ?? 0;
   const g = preview.gst;
   const half = g.ratePercent / 2;
   return (
@@ -291,7 +298,8 @@ function PreviewBreakdown({
       className="grid gap-2"
     >
       <dl className="rounded-xl border py-1 text-sm" aria-label={t("workspace.plan.preview.title")}>
-        <MoneyRow label={t("workspace.plan.preview.planPrice")} value={formatPaise(preview.planPricePaise)} />
+        <MoneyRow label={t("workspace.plan.preview.planPrice")} value={formatPaise(preview.planPricePaise - addonsPaise)} />
+        {addonsPaise > 0 && <MoneyRow label={t("workspace.plan.preview.addons")} value={formatPaise(addonsPaise)} />}
         {applied > 0 && (
           <MoneyRow
             credit
@@ -321,6 +329,7 @@ function PreviewBreakdown({
           ? t("workspace.plan.preview.startsAfterPayment", { date: date(preview.nextChargeAt), price: formatPaise(preview.planPricePaise) })
           : t("workspace.plan.preview.startsAfterPaymentOnly")}
       </p>
+      {ending}
     </motion.div>
   );
 }

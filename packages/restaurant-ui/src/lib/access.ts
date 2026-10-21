@@ -3,6 +3,8 @@ export const RESTAURANT_FEATURES = {
   dining: "dining",
   kitchen: "dining.kitchen-display",
   qr: "dining.qr-ordering",
+  /** Zomato / Swiggy / ONDC orders through an aggregator (@srirealtime/aggregators). */
+  platforms: "dining.aggregators",
 } as const;
 
 /** Permissions of @srirealtime/dining. Owners and admins hold all of them. */
@@ -18,3 +20,5 @@ const P = RESTAURANT_PERMISSIONS;
 export const FLOOR_ACCESS = [P.serve, P.bill];
 /** The kitchen display: cooks, and floor staff who want to see what's ready. */
 export const KITCHEN_ACCESS = [P.kitchen, P.serve];
+/** The online-orders queue: whoever takes, cooks or bills orders. */
+export const ONLINE_ACCESS = [P.serve, P.bill, P.kitchen];

@@ -60,6 +60,8 @@ export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
 export const DINING_FEATURE = "dining";
 export const DINING_KDS_FEATURE = "dining.kitchen-display";
 export const DINING_QR_FEATURE = "dining.qr-ordering";
+/** Zomato / Swiggy / ONDC orders through an aggregator (routes in @srirealtime/aggregators). */
+export const DINING_PLATFORMS_FEATURE = "dining.aggregators";
 
 export const DINING_SERVE = "dining.serve";
 export const DINING_KITCHEN = "dining.kitchen";
@@ -86,6 +88,14 @@ export const DINING_FEATURES: FeatureDef[] = [
     module: "dining",
     label: "QR table ordering",
     description: "Guests scan the table's QR code, see the menu and send their order to the kitchen.",
+    dependsOn: [DINING_FEATURE],
+    shopToggle: true,
+  },
+  {
+    key: DINING_PLATFORMS_FEATURE,
+    module: "dining",
+    label: "Zomato & Swiggy orders",
+    description: "Delivery-platform orders (through an aggregator such as UrbanPiper) arrive on the kitchen display: accept, reject, mark ready.",
     dependsOn: [DINING_FEATURE],
     shopToggle: true,
   },

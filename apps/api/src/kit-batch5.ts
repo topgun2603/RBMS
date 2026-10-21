@@ -126,7 +126,11 @@ export function createBatch5(d: Batch5Deps) {
       webhookSecret: env.PLATFORM_RAZORPAY_WEBHOOK_SECRET!,
     });
   } else if (dev) {
-    provider = new MockSubscriptionProvider({ authUrl: async (id, notes) => `${await planPageUrl(notes.tenantId ?? "")}?mockAuth=${encodeURIComponent(id)}` });
+    provider = new MockSubscriptionProvider({
+      authUrl: async (id, notes) => `${await planPageUrl(notes.tenantId ?? "")}?mockAuth=${encodeURIComponent(id)}`,
+      // Add-on payment links (prorated add-ons, credits packs): the Plan & billing page's ?mockPay= dialog pays them.
+      payUrl: async (id, notes) => `${await planPageUrl(notes.tenantId ?? "")}?mockPay=${encodeURIComponent(id)}`,
+    });
     log.warn("subscriptions: PLATFORM_RAZORPAY_* not set, using the mock provider (development only)");
   } else {
     provider = disabledProvider();
@@ -160,6 +164,13 @@ export function createBatch5(d: Batch5Deps) {
         const ref = await tenancy.getRef(tenantId);
         return ref ? plans.usageSummary(ref) : [];
       },
+      // Plan add-ons: the app's catalogue, credits packs and entitlement cache invalidation (plans module).
+      listAddons: (appId, opts) => plans.listAddons({ appId, publicOnly: opts?.publicOnly }),
+      getAddon: (id) => plans.getAddon(id),
+      appFeatures: (appId) => plans.appFeatures(appId),
+      invalidate: (tenantId) => plans.invalidate(tenantId),
+      credits: (tenantId) => plans.credits(tenantId),
+      grantCredits: (tenantId, grants) => plans.grantCredits(tenantId, grants),
     },
     tenancy: {
       getTenant: (id) => tenancy.getById(id),

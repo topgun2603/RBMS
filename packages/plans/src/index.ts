@@ -1,21 +1,21 @@
 import { defineModule, requireTenant } from "@srirealtime/core";
 import type { FastifyRequest } from "fastify";
 import { plansRoutes } from "./routes";
-import { plans, tenantPlanOverrides, usageCounters } from "./schema";
+import { planAddons, plans, tenantPlanOverrides, usageCounters, usageCredits } from "./schema";
 import { PlansService, type PlansDeps } from "./service";
 
 export * from "./schema";
 export * from "./entitlements";
 export { seedPlans } from "./seed";
-export { PLAN_TIERS, PlansService, consumeStatement, overridePatchSchema, planInputSchema, reconcileStatement } from "./service";
-export type { OverridePatch, PlanInput, PlanTier, PlansDeps, UsageItem, UsageSource } from "./service";
+export { PLAN_TIERS, PlansService, addonInputSchema, consumeStatement, overridePatchSchema, planInputSchema, reconcileStatement } from "./service";
+export type { AddonInput, AddonRow, OverridePatch, PlanInput, PlanTier, PlansDeps, UsageItem, UsageSource } from "./service";
 export { plansRoutes } from "./routes";
 
 export function createPlans(deps: PlansDeps) {
   const service = new PlansService(deps);
   const module = defineModule({
     id: "plans",
-    tables: { plans, tenantPlanOverrides, usageCounters },
+    tables: { plans, tenantPlanOverrides, usageCounters, planAddons, usageCredits },
     routes: plansRoutes(service),
   });
 

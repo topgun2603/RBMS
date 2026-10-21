@@ -11,6 +11,7 @@ import {
   HourglassIcon,
   LayoutDashboardIcon,
   MoreHorizontalIcon,
+  PuzzleIcon,
   ShieldCheckIcon,
 } from "lucide-react";
 import {
@@ -36,6 +37,7 @@ import { usePlans } from "@/lib/queries";
 import { useSubsT } from "@/lib/subscriptions-messages";
 import type { AdminSubscription, SubscriptionStatus } from "@/lib/types";
 import { useServerTable, type ServerFilterDefs } from "@/lib/use-server-table";
+import { ShopAddonsDialog } from "./addons-dialog";
 import { CompPlanDialog, ExtendTrialDialog, SUBS_KEY } from "./dialogs";
 
 export const STATUSES: SubscriptionStatus[] = ["trialing", "active", "past_due", "cancelled", "expired"];
@@ -75,6 +77,7 @@ export function SubscriptionsTable() {
   const plans = usePlans(true);
   const [extend, setExtend] = React.useState<AdminSubscription | null>(null);
   const [comp, setComp] = React.useState<AdminSubscription | null>(null);
+  const [addons, setAddons] = React.useState<AdminSubscription | null>(null);
 
   const filters = React.useMemo(
     () =>
@@ -131,6 +134,11 @@ export function SubscriptionsTable() {
             <div className="mt-0.5 text-xs text-muted-foreground">
               {tOr(k, `admin.subs.interval.${s.interval}`, s.interval)}
               {s.pendingPlanId && <span className="block truncate">{k("admin.subs.when.pending", { plan: s.pendingPlanId })}</span>}
+              {!!s.addons?.length && (
+                <span className="block max-w-[14rem] truncate" title={s.addons.map((a) => `${a.name} × ${a.quantity}`).join(", ")}>
+                  + {s.addons.map((a) => (a.quantity > 1 ? `${a.name} × ${a.quantity}` : a.name)).join(", ")}
+                </span>
+              )}
             </div>
           </div>
         ),
@@ -190,6 +198,9 @@ export function SubscriptionsTable() {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setComp(s)}>
                 <GiftIcon /> {k("admin.subs.action.comp")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAddons(s)}>
+                <PuzzleIcon /> {t("admin.addonsUi.shopAction")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {s.tenant && (
@@ -256,6 +267,7 @@ export function SubscriptionsTable() {
       />
       <ExtendTrialDialog sub={extend} onClose={() => setExtend(null)} />
       <CompPlanDialog sub={comp} onClose={() => setComp(null)} />
+      <ShopAddonsDialog sub={addons} onClose={() => setAddons(null)} />
     </>
   );
 }

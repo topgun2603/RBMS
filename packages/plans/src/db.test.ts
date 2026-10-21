@@ -26,6 +26,16 @@ create table "${SCHEMA}".usage_counters (
   id uuid primary key default gen_random_uuid(), tenant_id uuid not null, key text not null, period text not null,
   value integer not null default 0, created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
   constraint usage_counters_tenant_key_period_uq unique (tenant_id, key, period));
+create table "${SCHEMA}".plan_addons (
+  id text primary key, code text not null, app_id text, kind text not null, name text not null, description text,
+  limits jsonb not null default '{}', modules text[] not null default '{}', price_monthly_paise integer not null default 0,
+  price_yearly_paise integer not null default 0, price_once_paise integer not null default 0, min_quantity integer not null default 1,
+  max_quantity integer not null default 1, tiers text[] not null default '{}', is_public boolean not null default true,
+  sort integer not null default 0, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table "${SCHEMA}".usage_credits (
+  id uuid primary key default gen_random_uuid(), tenant_id uuid not null, key text not null, balance integer not null default 0,
+  granted integer not null default 0, used integer not null default 0, created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(), constraint usage_credits_tenant_key_uq unique (tenant_id, key));
 `;
 
 describe.skipIf(!URL_)("plan usage with a usage source, against Postgres", () => {
@@ -150,5 +160,48 @@ describe.skipIf(!URL_)("plan usage with a usage source, against Postgres", () =>
 
     const shop = { id: "33333333-3333-4333-8333-333333333333", slug: "x", planId: null, appId: "SV" };
     expect((await s.entitlements(shop)).planId).toBe("sv-free");
+  });
+
+  it("add-ons: an app's own add-on replaces the shared one of the same code; active add-ons raise limits", async () => {
+    const active = new Map<string, { addonId: string; quantity: number }[]>();
+    const invalidated: (string | undefined)[] = [];
+    const s = new PlansService({ db, usageSources: { staff: source }, addons: async (id) => active.get(id) ?? [], onInvalidate: (id) => invalidated.push(id) });
+    await s.upsertAddon({ id: "extra-staff", code: "extra-staff", kind: "limit", name: "Extra staff", limits: { staff: 5 }, priceMonthlyPaise: 19_900, maxQuantity: 10 });
+    await s.upsertAddon({ id: "sv-extra-staff", code: "extra-staff", appId: "SV", kind: "limit", name: "Extra staff (SV)", limits: { staff: 3 }, priceMonthlyPaise: 14_900 });
+    await s.upsertAddon({ id: "sms-5000", code: "sms-5000", kind: "credits", name: "SMS pack", limits: { sms_per_month: 5000 }, priceOncePaise: 99_900 });
+    await expect(s.upsertAddon({ id: "bad", code: "bad", kind: "credits", name: "Bad", limits: { staff: 5 } })).rejects.toThrow();
+    expect((await s.listAddons({ appId: "SV" })).map((a) => a.id)).toEqual(["sms-5000", "sv-extra-staff"]);
+    expect((await s.listAddons({ appId: "EC" })).map((a) => a.id).sort()).toEqual(["extra-staff", "sms-5000"]);
+
+    seats.set(T.id, 4);
+    expect((await s.usageSummary(T)).find((u) => u.key === "staff")).toMatchObject({ limit: 5, base: 5, addon: 0 });
+    active.set(T.id, [{ addonId: "extra-staff", quantity: 2 }]);
+    s.invalidate(T.id);
+    expect(invalidated).toContain(T.id);
+    expect(await s.limit(T, "staff")).toBe(15);
+    expect((await s.usageSummary(T)).find((u) => u.key === "staff")).toMatchObject({ limit: 15, base: 5, addon: 10, used: 4, remaining: 11 });
+    // Unknown add-on ids are ignored.
+    active.set(T.id, [{ addonId: "gone", quantity: 3 }]);
+    s.invalidate(T.id);
+    expect(await s.limit(T, "staff")).toBe(5);
+  });
+
+  it("credits: the monthly allowance first, then credits (split across both), never below zero", async () => {
+    const s = svc();
+    await s.upsertPlan({ id: "smsplan", name: "SMS", limits: { sms_per_month: 10 } });
+    const shop = { id: "44444444-4444-4444-8444-444444444444", slug: "sms", planId: "smsplan", appId: null };
+    await db.execute(sql.raw(`delete from "${SCHEMA}".usage_credits`));
+    expect(await s.consume(shop, "sms_per_month", 8)).toBe(8);
+    await expect(s.consume(shop, "sms_per_month", 5)).rejects.toMatchObject({ status: 402, details: expect.objectContaining({ credits: 0 }) });
+    expect(await s.grantCredits(shop.id, { sms_per_month: 20 })).toEqual({ sms_per_month: 20 });
+    // 2 left this month + 3 from credits.
+    expect(await s.consume(shop, "sms_per_month", 5)).toBe(10);
+    expect(await s.credits(shop.id)).toEqual({ sms_per_month: 17 });
+    // Allowance used up: credits only; more than the allowance in one go works from credits too.
+    await s.consume(shop, "sms_per_month", 15);
+    expect(await s.credits(shop.id)).toEqual({ sms_per_month: 2 });
+    await expect(s.consume(shop, "sms_per_month", 3)).rejects.toMatchObject({ status: 402 });
+    expect(await s.credits(shop.id)).toEqual({ sms_per_month: 2 });
+    expect((await s.usageSummary(shop)).find((u) => u.key === "sms_per_month")).toMatchObject({ limit: 10, used: 10, credits: 2 });
   });
 });

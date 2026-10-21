@@ -31,6 +31,13 @@ export interface SubscriptionProvider {
   changePlan?(id: string, providerPlanId: string): Promise<void>;
   fetch(id: string): Promise<ProviderSubscription>;
   verifyWebhook(rawBody: Buffer | string, signature: string | undefined): boolean;
+  /**
+   * A one-time payment (add-on proration, credits packs): Razorpay Payment Links. `amountPaise` is GST included; the
+   * customer pays at `shortUrl`; `payment_link.paid` reports it. Optional: without it add-ons can't be bought.
+   */
+  createPayment?(input: { amountPaise: number; description: string; notes: Record<string, string>; expireBy?: Date | null }): Promise<{ id: string; shortUrl: string }>;
+  /** Cancels an unpaid payment link (best effort). */
+  cancelPayment?(id: string): Promise<void>;
 }
 
 export interface ProviderSubscription {
@@ -153,6 +160,25 @@ export class RazorpaySubscriptionProvider implements SubscriptionProvider {
     return verifyHmac(rawBody, signature, this.opts.webhookSecret);
   }
 
+  /** Razorpay Payment Link (`POST /v1/payment_links`); `payment_link.paid` arrives on the same webhook. */
+  async createPayment(input: { amountPaise: number; description: string; notes: Record<string, string>; expireBy?: Date | null }) {
+    const body: Record<string, unknown> = {
+      amount: input.amountPaise,
+      currency: "INR",
+      description: input.description.slice(0, 2048),
+      notes: input.notes,
+      reminder_enable: true,
+    };
+    // Razorpay wants expire_by at least 15 minutes ahead.
+    if (input.expireBy && input.expireBy.getTime() > Date.now() + 16 * 60_000) body.expire_by = unix(input.expireBy);
+    const r = await this.request<{ id: string; short_url: string }>("POST", "/payment_links", body);
+    return { id: r.id, shortUrl: r.short_url };
+  }
+
+  async cancelPayment(id: string) {
+    await this.request("POST", `/payment_links/${encodeURIComponent(id)}/cancel`);
+  }
+
   private async request<T>(method: "GET" | "POST" | "PATCH", path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { authorization: this.auth, accept: "application/json" };
     if (body !== undefined) headers["content-type"] = "application/json";
@@ -195,7 +221,36 @@ export class MockSubscriptionProvider implements SubscriptionProvider {
   readonly supportsUpfront = true;
   private readonly subs = new Map<string, ProviderSubscription & { upfrontPaise?: number; startAt?: Date | null }>();
 
-  constructor(private readonly opts: { authUrl: (subscriptionId: string, notes: Record<string, string>) => Promise<string> | string; webhookSecret?: string }) {}
+  private readonly payments = new Map<string, { id: string; amountPaise: number; status: "created" | "paid" | "cancelled"; notes: Record<string, string> }>();
+
+  constructor(
+    private readonly opts: {
+      authUrl: (subscriptionId: string, notes: Record<string, string>) => Promise<string> | string;
+      /** Where a payment link points (default `authUrl`); the shop app's `?mockPay=<id>` dialog pays it. */
+      payUrl?: (paymentId: string, notes: Record<string, string>) => Promise<string> | string;
+      webhookSecret?: string;
+    },
+  ) {}
+
+  async createPayment(input: { amountPaise: number; notes: Record<string, string> }) {
+    const id = `plink_mock_${randomBytes(8).toString("hex")}`;
+    this.payments.set(id, { id, amountPaise: input.amountPaise, status: "created", notes: input.notes });
+    const shortUrl = await (this.opts.payUrl ?? this.opts.authUrl)(id, input.notes);
+    return { id, shortUrl };
+  }
+
+  async cancelPayment(id: string) {
+    const p = this.payments.get(id);
+    if (p && p.status === "created") p.status = "cancelled";
+  }
+
+  /** Marks a link paid (the `/mock/pay` route); false when it was cancelled. Unknown ids (after a restart) pass. */
+  markPaid(id: string): boolean {
+    const p = this.payments.get(id);
+    if (p?.status === "cancelled") return false;
+    if (p) p.status = "paid";
+    return true;
+  }
 
   async createPlan(input: { planId: string; interval: BillingInterval; amountPaise: number }) {
     return { id: `plan_mock_${input.planId}_${input.interval}_${input.amountPaise}` };

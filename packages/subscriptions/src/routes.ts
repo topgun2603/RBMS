@@ -17,6 +17,11 @@ const idParam = z.object({ id: z.string().uuid() });
 const extendBody = z.object({ days: z.number().int().min(1).max(365) });
 const compBody = z.object({ planId: z.string().trim().min(1).max(40), until: z.string().max(40).nullable().optional() });
 const voidBody = z.object({ reason: z.string().trim().max(300).optional() });
+const addonBody = z.object({ addonId: z.string().trim().min(1).max(40), quantity: z.number().int().min(0).max(1000) });
+const addonParam = z.object({ addonId: z.string().trim().min(1).max(40) });
+const tenantAddonParam = tenantParam.extend({ addonId: z.string().trim().min(1).max(40) });
+const addonCompBody = z.object({ addonId: z.string().trim().min(1).max(40), quantity: z.number().int().min(1).max(1000).default(1), until: z.string().max(40).nullable().optional() });
+const mockPayBody = z.object({ paymentId: z.string().trim().min(1).max(100) });
 const WEBHOOK_BODY_LIMIT = 1024 * 1024;
 const header = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
@@ -37,10 +42,11 @@ function sendPdf(reply: FastifyReply, doc: { pdf: Buffer; filename: string }) {
  * Routes under /v1/subscriptions (docs/batch5.md):
  * - shop (tenant + `subscriptions.manage`, owners/admins): GET /current, POST /change, /change/preview,
  *   /change/cancel, /checkout, /cancel, /resume,
- *   GET /invoices, GET /invoices/:id.pdf
+ *   GET /invoices, GET /invoices/:id.pdf, GET /addons, POST /addons, /addons/preview, /addons/:addonId/cancel,
+ *   /addons/payments/:id/cancel
  * - public: POST /webhooks/razorpay (raw body, HMAC, dedup); non-production: POST /mock/authorize, /mock/charge,
- *   /mock/fail, /mock/lifecycle
- * - super-admin: /admin/subscriptions, /admin/stats, /admin/:tenantId/extend-trial, /admin/:tenantId/comp,
+ *   /mock/fail, /mock/pay, /mock/lifecycle
+ * - super-admin: /admin/subscriptions, /admin/stats, /admin/:tenantId/extend-trial, /admin/:tenantId/comp, /admin/:tenantId/addons (+ /comp, /:addonId/end),
  *   /admin/invoices, /admin/invoices/:id.pdf, /admin/invoices/:id/void
  */
 export function subscriptionsRoutes(service: SubscriptionsService) {
@@ -62,6 +68,12 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
       shop.post("/cancel", SELF_AUDITED, async (req) => service.cancel(tenantOf(req.ctx), actorOf(req.ctx)));
       shop.post("/resume", SELF_AUDITED, async (req) => service.resume(tenantOf(req.ctx), actorOf(req.ctx)));
       shop.get("/invoices", async (req) => service.listInvoices(tenantOf(req.ctx)));
+      // Add-ons: the app's catalogue for this plan, the shop's own, unpaid payments, credits and usage.
+      shop.get("/addons", async (req) => service.addons(tenantOf(req.ctx)));
+      shop.post("/addons/preview", { config: { audit: false as const } }, async (req) => service.addonPreview(tenantOf(req.ctx), addonBody.parse(req.body ?? {})));
+      shop.post("/addons", SELF_AUDITED, async (req) => service.setAddon(tenantOf(req.ctx), addonBody.parse(req.body ?? {}), actorOf(req.ctx)));
+      shop.post("/addons/:addonId/cancel", SELF_AUDITED, async (req) => service.cancelAddon(tenantOf(req.ctx), addonParam.parse(req.params).addonId, actorOf(req.ctx)));
+      shop.post("/addons/payments/:id/cancel", SELF_AUDITED, async (req) => service.cancelAddonPayment(tenantOf(req.ctx), idParam.parse(req.params).id, actorOf(req.ctx)));
       shop.get("/invoices/:file", async (req, reply) => {
         const { file } = fileParam.parse(req.params);
         return sendPdf(reply, await service.invoicePdf(file.slice(0, -4), tenantOf(req.ctx)));
@@ -86,6 +98,8 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
         return service.mockCharge(b.subscriptionId, { amountPaise: b.amountPaise });
       });
       app.post("/mock/fail", async (req) => service.mockFail(providerSubBody.parse(req.body ?? {}).subscriptionId));
+      // Pays an add-on payment link (the shop's ?mockPay=<id> dialog).
+      app.post("/mock/pay", async (req) => service.mockPay(mockPayBody.parse(req.body ?? {}).paymentId));
       // Runs the daily job for one shop with a clock override (tests; super-admin).
       app.post("/mock/lifecycle", SELF_AUDITED, async (req) => {
         requireSuperAdmin(req.ctx);
@@ -109,6 +123,16 @@ export function subscriptionsRoutes(service: SubscriptionsService) {
         const { tenantId } = tenantParam.parse(req.params);
         const b = compBody.parse(req.body ?? {});
         return service.comp(tenantId, { planId: b.planId, until: parseUntil(b.until) }, actorOf(req.ctx));
+      });
+      admin.get("/admin/:tenantId/addons", async (req) => service.adminAddons(tenantParam.parse(req.params).tenantId));
+      admin.post("/admin/:tenantId/addons/comp", SELF_AUDITED, async (req) => {
+        const { tenantId } = tenantParam.parse(req.params);
+        const b = addonCompBody.parse(req.body ?? {});
+        return service.compAddon(tenantId, { addonId: b.addonId, quantity: b.quantity, until: parseUntil(b.until) }, actorOf(req.ctx));
+      });
+      admin.post("/admin/:tenantId/addons/:addonId/end", SELF_AUDITED, async (req) => {
+        const { tenantId, addonId } = tenantAddonParam.parse(req.params);
+        return service.endAddon(tenantId, addonId, actorOf(req.ctx));
       });
       admin.get("/admin/invoices", async (req) => service.adminInvoices((req.query ?? {}) as PlatformInvoiceListQuery));
       admin.get("/admin/invoices/:file", async (req, reply) => {

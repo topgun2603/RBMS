@@ -1,7 +1,10 @@
 export const ORDER_TYPES = ["dine_in", "takeaway", "delivery", "online"] as const;
 export type OrderType = (typeof ORDER_TYPES)[number];
 export type OrderStatus = "open" | "billed" | "cancelled";
-export type OrderSource = "staff" | "qr" | "online";
+export type OrderSource = "staff" | "qr" | "online" | "aggregator";
+/** Delivery platforms of aggregator orders. */
+export const PLATFORMS = ["zomato", "swiggy", "ondc", "other"] as const;
+export type Platform = (typeof PLATFORMS)[number];
 export type LineStatus = "pending" | "sent" | "cancelled";
 export const KOT_STATUSES = ["new", "preparing", "ready", "served", "cancelled"] as const;
 export type KotStatus = (typeof KOT_STATUSES)[number];
@@ -43,6 +46,11 @@ export interface OrderSummary {
   readyKots: number;
   pendingCount: number;
   createdAt: string;
+  /** Aggregator orders: the platform and the time the food must be ready. */
+  platform?: Platform | null;
+  dueAt?: string | null;
+  /** GST paid by the platform (section 9(5)): settled from Online orders, never billed. */
+  taxByOperator?: boolean;
 }
 
 export interface Floor {
@@ -91,6 +99,8 @@ export interface KitchenTicket extends Kot {
   orderNumber: number;
   orderType: OrderType;
   orderSource: OrderSource;
+  platform: Platform | null;
+  dueAt: string | null;
   tableName: string | null;
   customerName: string | null;
   orderNote: string | null;

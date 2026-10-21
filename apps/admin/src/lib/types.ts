@@ -311,8 +311,63 @@ export interface AdminSubscription {
   updatedAt: ISODate;
   tenant: { id: string; slug: string; name: string; appId: string | null; status: TenantStatus } | null;
   plan: { id: string; name: string };
-  /** MRR contribution (GST-exclusive paise); 0 unless paying. */
+  /** MRR contribution (GST-exclusive paise, paid add-ons included); 0 unless paying. */
   mrrPaise: number;
+  /** Active add-ons (absent from older APIs). */
+  addons?: { addonId: string; name: string; quantity: number; source: "plan" | "comp"; endsAtPeriodEnd: boolean }[];
+}
+
+/** A plan add-on (GET /v1/plans/addons?all=1). Prices in paise, GST-exclusive. */
+export interface PlanAddon {
+  id: string;
+  code: string;
+  appId: string | null;
+  kind: "limit" | "feature" | "credits";
+  name: string;
+  description: string | null;
+  limits: Record<string, number>;
+  modules: string[];
+  priceMonthlyPaise: number;
+  priceYearlyPaise: number;
+  priceOncePaise: number;
+  minQuantity: number;
+  maxQuantity: number;
+  tiers: string[];
+  isPublic: boolean;
+  sort: number;
+}
+
+/** A shop's add-on (GET /v1/subscriptions/admin/:tenantId/addons). */
+export interface AdminShopAddon {
+  id: string;
+  addonId: string;
+  name: string;
+  kind: PlanAddon["kind"] | null;
+  source: "plan" | "comp";
+  status: "active" | "ended";
+  quantity: number;
+  nextQuantity: number | null;
+  activeQuantity: number;
+  interval: BillingInterval;
+  unitPricePaise: number;
+  currentPeriodEnd: ISODate | null;
+  endsAtPeriodEnd: boolean;
+  endReason: string | null;
+  notice: string | null;
+  startedAt: ISODate;
+  endedAt: ISODate | null;
+}
+
+export interface AdminAddonPayment {
+  id: string;
+  addonId: string;
+  kind: "proration" | "credits";
+  toQuantity: number;
+  chargePaise: number;
+  label: string;
+  status: "pending" | "paid" | "cancelled" | "expired";
+  createdAt: ISODate;
+  paidAt: ISODate | null;
 }
 
 /** GET /v1/subscriptions/admin/stats. */
