@@ -20,7 +20,7 @@ import { createScales } from "@srirealtime/scales";
 import { createSerials } from "@srirealtime/serials";
 import { createImportExport } from "@srirealtime/importexport";
 import { todayIST } from "@srirealtime/gst";
-import { createOrders, type Order } from "@srirealtime/orders";
+import { createOrders, orderPurchaseStats, type Order } from "@srirealtime/orders";
 import { createOnboarding } from "@srirealtime/onboarding";
 import { createReviews } from "@srirealtime/reviews";
 import { createStaff } from "@srirealtime/staff";
@@ -256,6 +256,8 @@ export function createKit(env: Env, log: Logger) {
       onListing: (tenantId, e) => b3!.marketplace.service.onListing(tenantId, e),
     },
     events,
+    // Recommendations: paid-order counts and products bought together.
+    purchases: orderPurchaseStats(db),
     log,
   });
 

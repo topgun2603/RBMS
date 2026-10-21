@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { EyeOffIcon, ImageIcon, MonitorIcon, SmartphoneIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ClockIcon, CopyIcon, EyeOffIcon, HistoryIcon, ImageIcon, InstagramIcon, MapPinIcon, MonitorIcon, PlayIcon, SmartphoneIcon, StarIcon } from "lucide-react";
 import { cn, Skeleton } from "@srirealtime/ui";
 import { absoluteUrl, useI18n } from "@srirealtime/web";
 import { money } from "../../lib/format";
+import type { SectionStyle } from "../../lib/content";
 import type { PublicProductSummary, ResolvedHomeSection } from "../../lib/types";
 import { Markdown } from "../markdown";
 import { uspIcon } from "./section-meta";
@@ -88,7 +89,9 @@ export function HomePreview({
                       </span>
                     )}
                     <div className={cn(hidden && "opacity-40 grayscale-[60%]")}>
-                      <PreviewSection s={s} />
+                      <StyleBand style={s.style} device={device}>
+                        <PreviewSection s={s} />
+                      </StyleBand>
                     </div>
                   </div>
                 );
@@ -167,6 +170,21 @@ function ProductCard({ p }: { p: PublicProductSummary }) {
   );
 }
 
+/** Product tiles the preview can't know yet (best sellers, recommended, recently viewed: filled on the storefront). */
+function ShelfSketch({ n, row, faded }: { n: number; row?: boolean; faded?: boolean }) {
+  return (
+    <div className={cn("gap-3 px-4", row ? "flex overflow-hidden" : "grid grid-cols-2 @lg:grid-cols-4")}>
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className={cn("grid gap-1.5", row && "w-[42%] shrink-0 @lg:w-[22%]")} style={faded ? { opacity: 1 - i * 0.15 } : undefined}>
+          <span className="aspect-[4/5] rounded-lg bg-primary/8 ring-1 ring-border" />
+          <span className="h-2.5 w-4/5 rounded-full bg-muted" />
+          <span className="h-2.5 w-2/5 rounded-full bg-primary/25" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProductRow({ products, layout }: { products: PublicProductSummary[]; layout: "carousel" | "grid" }) {
   return layout === "carousel" ? (
     <div className="flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
@@ -182,6 +200,77 @@ function ProductRow({ products, layout }: { products: PublicProductSummary[]; la
         <ProductCard key={p.id} p={p} />
       ))}
     </div>
+  );
+}
+
+const BAND: Record<string, string> = {
+  brand: "bg-primary text-primary-foreground",
+  gradient: "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground",
+  dark: "bg-neutral-900 text-white",
+  image: "bg-neutral-800 text-white",
+  muted: "bg-primary/8",
+};
+
+/**
+ * The section's style, roughly: its background band, spacing and alignment. "Hidden on phones / larger screens" shows
+ * as a badge (and dims the section in that device frame), so the owner sees the rule without losing the section.
+ */
+function StyleBand({ style: st, device, children }: { style?: SectionStyle; device: "phone" | "desktop"; children: React.ReactNode }) {
+  const { t } = useI18n();
+  if (!st) return <>{children}</>;
+  const bg = st.background && st.background !== "none" ? st.background : null;
+  const off = (device === "phone" && st.hideOnMobile) || (device === "desktop" && st.hideOnDesktop);
+  const photo = bg === "image" ? absoluteUrl(st.imageUrl ?? null) : null;
+  return (
+    <div
+      data-style-band={bg ?? undefined}
+      className={cn(
+        "relative isolate overflow-hidden",
+        bg && BAND[bg],
+        bg && (st.padding === "compact" ? "py-3" : st.padding === "spacious" ? "py-10" : "py-6"),
+        bg && st.width === "contained" && "mx-3 rounded-xl",
+        st.align === "center" && "text-center",
+        off && "opacity-40",
+      )}
+    >
+      {photo && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- preview */}
+          <img src={photo} alt="" className="absolute inset-0 -z-20 size-full object-cover" />
+          <span className="absolute inset-0 -z-10 bg-black" style={{ opacity: (st.overlay ?? 45) / 100 }} />
+        </>
+      )}
+      {(st.hideOnMobile || st.hideOnDesktop) && (
+        <span className="absolute top-1 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-foreground/85 px-2 py-0.5 text-[10px] font-medium text-background">
+          <EyeOffIcon className="size-3" aria-hidden /> {st.hideOnMobile ? t("site.style.hideOnMobile") : t("site.style.hideOnDesktop")}
+        </span>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Stars({ n }: { n: number }) {
+  return (
+    <span className="flex gap-0.5" aria-hidden>
+      {[1, 2, 3, 4, 5].map((k) => (
+        <StarIcon key={k} className={cn("size-3", k <= n ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
+      ))}
+    </span>
+  );
+}
+
+function Btn({ children, outline }: { children: React.ReactNode; outline?: boolean }) {
+  return <span className={cn("inline-flex h-9 w-fit items-center rounded-full px-4 text-xs font-semibold", outline ? "border-2 border-current/30" : "bg-primary text-primary-foreground")}>{children}</span>;
+}
+
+function DietDot({ diet }: { diet?: string }) {
+  if (!diet) return null;
+  const color = diet === "veg" ? "#15803d" : diet === "nonveg" ? "#9a3412" : "#d97706";
+  return (
+    <span className="inline-flex size-3 shrink-0 items-center justify-center rounded-[2px] border bg-white" style={{ borderColor: color }} aria-hidden>
+      <span className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
+    </span>
   );
 }
 
@@ -226,6 +315,24 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
           <Title>{s.title}</Title>
           {s.categories.length === 0 ? (
             <Placeholder>{t("site.preview.noCategories")}</Placeholder>
+          ) : s.layout === "icon-list" ? (
+            <div className="flex flex-wrap gap-2 px-4">
+              {s.categories.map((c) => (
+                <span key={c.id} className="inline-flex items-center gap-2 rounded-full border bg-card py-1 ps-1 pe-3 text-xs font-medium">
+                  <Img src={c.image} className="size-7 rounded-full" />
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          ) : s.layout === "cards" || s.layout === "big-grid" || s.layout === "slider" ? (
+            <div className={cn("gap-3 px-4", s.layout === "slider" ? "flex overflow-x-auto [scrollbar-width:none]" : s.layout === "big-grid" ? "grid grid-cols-1 @lg:grid-cols-3" : "grid grid-cols-2 @lg:grid-cols-4")}>
+              {s.categories.map((c) => (
+                <div key={c.id} className={cn("relative overflow-hidden rounded-xl border bg-card", s.layout === "slider" && "w-[46%] shrink-0 @lg:w-[23%]")}>
+                  <Img src={c.image} className={cn("w-full", s.layout === "cards" ? "aspect-square" : s.layout === "slider" ? "aspect-[3/4]" : "aspect-[4/3]")} />
+                  <span className={cn("block truncate text-xs font-semibold", s.layout === "cards" ? "px-2 py-1.5 text-center" : "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pt-6 pb-2 text-sm text-white")}>{c.name}</span>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="flex gap-4 overflow-x-auto px-4 [scrollbar-width:none]">
               {s.categories.map((c) => (
@@ -283,23 +390,46 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
           </div>
         </div>
       );
-    case "testimonials":
+    case "testimonials": {
+      const card = (it: (typeof s.items)[number], i: number, cls?: string) => (
+        <figure key={i} className={cn("rounded-xl border bg-card p-4 text-card-foreground", cls)}>
+          {it.rating ? <Stars n={it.rating} /> : null}
+          <blockquote className="mt-1 text-sm leading-relaxed">“{it.quote}”</blockquote>
+          <figcaption className="mt-2 text-xs font-medium text-primary">
+            — {it.name}
+            {it.role && <span className="font-normal text-muted-foreground"> · {it.role}</span>}
+          </figcaption>
+        </figure>
+      );
+      const layout = s.layout ?? "carousel";
+      const first = s.items[0];
       return (
         <div className="grid gap-3">
           <Title>{s.title}</Title>
-          <div className="flex snap-x gap-3 overflow-x-auto px-4 [scrollbar-width:none]">
-            {s.items.map((it, i) => (
-              <figure key={i} className="w-[80%] shrink-0 snap-start rounded-xl border bg-card p-4 @lg:w-[32%]">
-                <blockquote className="text-sm leading-relaxed">“{it.quote}”</blockquote>
-                <figcaption className="mt-2 text-xs font-medium text-primary">— {it.name}</figcaption>
-              </figure>
-            ))}
-          </div>
+          {layout === "single" && first ? (
+            <div className="mx-auto grid max-w-md justify-items-center gap-2 px-4 text-center">
+              {first.rating ? <Stars n={first.rating} /> : null}
+              <p className="font-heading text-lg leading-snug">“{first.quote}”</p>
+              <p className="text-xs font-medium">{first.name}</p>
+            </div>
+          ) : layout === "cards" ? (
+            <div className="grid gap-3 px-4 @lg:grid-cols-3">{s.items.map((it, i) => card(it, i))}</div>
+          ) : (
+            <div className="flex snap-x gap-3 overflow-x-auto px-4 [scrollbar-width:none]">{s.items.map((it, i) => card(it, i, "w-[80%] shrink-0 snap-start @lg:w-[32%]"))}</div>
+          )}
         </div>
       );
+    }
     case "usp":
       return (
-        <div className="mx-4 grid grid-cols-2 gap-3 rounded-xl bg-muted/50 p-4 @lg:grid-cols-4">
+        <div className="grid gap-2">
+          {(s.title || s.text) && (s.layout === "centered" || s.layout === "split") && (
+            <div className="px-4">
+              <Title>{s.title}</Title>
+              {s.text && <p className="text-sm text-muted-foreground">{s.text}</p>}
+            </div>
+          )}
+        <div className={cn("mx-4 grid grid-cols-2 gap-3 p-4 @lg:grid-cols-4", s.layout === "inline" ? "rounded-xl border bg-card py-2" : s.layout === "centered" || s.layout === "split" ? "" : "rounded-xl bg-muted/50")}>
           {s.items.map((it, i) => {
             const Icon = uspIcon(it.icon);
             return (
@@ -313,10 +443,12 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
             );
           })}
         </div>
+        </div>
       );
     case "newsletter":
       return (
-        <div className="mx-4 grid gap-2 rounded-xl bg-primary/10 p-5 text-center">
+        <div className={cn("mx-4 grid gap-2 rounded-xl p-5 text-center", s.layout === "card" || s.layout === "inline" ? "border bg-card" : s.layout === "split" ? "border bg-card @lg:grid-cols-2 @lg:text-left" : "bg-primary/10")}>
+          {s.layout === "split" && <Img src={s.imageUrl ?? null} className="aspect-[4/3] w-full rounded-lg @lg:row-span-3" />}
           <p className="font-heading text-lg font-semibold">{s.heading}</p>
           {s.text && <p className="text-sm text-muted-foreground">{s.text}</p>}
           <div className="mx-auto mt-1 flex w-full max-w-sm gap-2">
@@ -325,5 +457,419 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
           </div>
         </div>
       );
+    case "hero-split":
+      return (
+        <div className={cn("grid items-center gap-4 px-4 py-4 @lg:grid-cols-2", s.imageSide === "left" && "@lg:[&>*:first-child]:order-2")}>
+          <div className="grid gap-2">
+            {s.eyebrow && <p className="text-[10px] font-semibold tracking-widest text-primary uppercase">{s.eyebrow}</p>}
+            <p className="font-heading text-2xl leading-tight font-bold">{s.heading}</p>
+            {s.text && <p className="text-sm opacity-80">{s.text}</p>}
+            <div className="mt-1 flex flex-wrap gap-2">
+              {s.cta?.label && <Btn>{s.cta.label}</Btn>}
+              {s.cta2?.label && <Btn outline>{s.cta2.label}</Btn>}
+            </div>
+          </div>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-xl @lg:aspect-[4/5]">{s.imageUrl ? <Img src={s.imageUrl} className="absolute inset-0 size-full" /> : <BrandBackdrop />}</div>
+        </div>
+      );
+    case "hero-video":
+      return (
+        <div className="relative aspect-[4/5] overflow-hidden bg-neutral-900 text-white @lg:aspect-[16/7]">
+          {s.posterUrl && <Img src={s.posterUrl} className="absolute inset-0 size-full" />}
+          <span className="absolute inset-0 bg-black" style={{ opacity: (s.overlay ?? 45) / 100 }} />
+          <div className="absolute inset-0 grid content-center justify-items-center gap-2 p-5 text-center">
+            <span className="flex size-10 items-center justify-center rounded-full bg-white/20">
+              <PlayIcon className="size-4" />
+            </span>
+            <p className="font-heading text-2xl leading-tight font-bold">{s.heading}</p>
+            {s.text && <p className="text-sm opacity-85">{s.text}</p>}
+            {s.cta?.label && <span className="inline-flex h-9 items-center rounded-full bg-white px-4 text-xs font-semibold text-neutral-900">{s.cta.label}</span>}
+          </div>
+        </div>
+      );
+    case "offer":
+      return (
+        <div className={cn("mx-4 grid gap-2 rounded-xl p-5", !s.style?.background && "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground")}>
+          {s.eyebrow && <p className="text-[10px] font-bold tracking-widest uppercase opacity-90">{s.eyebrow}</p>}
+          <p className="font-heading text-xl font-bold">{s.heading}</p>
+          {s.text && <p className="text-sm opacity-85">{s.text}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            {s.code && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-current/60 px-2.5 py-1 font-mono text-sm font-bold">
+                {s.code} <CopyIcon className="size-3" />
+              </span>
+            )}
+            {s.endsAt && <span className="text-xs opacity-85">{t("site.preview.endsAt", { date: new Date(s.endsAt).toLocaleString() })}</span>}
+          </div>
+        </div>
+      );
+    case "gallery": {
+      const imgs = s.images ?? [];
+      if (!imgs.length) return <Placeholder>{t("site.preview.addImages")}</Placeholder>;
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className={cn("px-4", s.layout === "carousel" ? "flex gap-2 overflow-x-auto [scrollbar-width:none]" : s.layout === "masonry" ? "columns-2 gap-2 @lg:columns-3 [&>*]:mb-2" : "grid grid-cols-2 gap-2 @lg:grid-cols-4")}>
+            {imgs.map((im, i) => (
+              <Img
+                key={i}
+                src={im.url}
+                alt={im.alt}
+                className={cn("w-full rounded-lg", s.layout === "carousel" ? "aspect-[4/5] w-[60%] shrink-0 @lg:w-[30%]" : s.layout === "masonry" ? (i % 2 ? "aspect-square" : "aspect-[3/4]") : "aspect-square")}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+    case "logos":
+      return (
+        <div className="grid gap-3 px-4">
+          {s.title && <p className="text-center text-[10px] font-semibold tracking-widest uppercase opacity-70">{s.title}</p>}
+          <div className="flex flex-wrap items-center justify-center gap-5">
+            {(s.items ?? []).map((l, i) =>
+              l.imageUrl ? (
+                <Img key={i} src={l.imageUrl} alt={l.name} className={cn("h-7 w-auto max-w-24 object-contain", s.grayscale && "opacity-60 grayscale")} />
+              ) : (
+                <span key={i} className="text-sm font-semibold opacity-70">
+                  {l.name}
+                </span>
+              ),
+            )}
+          </div>
+        </div>
+      );
+    case "category-mosaic":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          {s.categories.length === 0 ? (
+            <Placeholder>{t("site.preview.noCategories")}</Placeholder>
+          ) : (
+            <div className="grid auto-rows-[80px] grid-cols-2 gap-2 px-4 @lg:auto-rows-[100px] @lg:grid-cols-4">
+              {s.categories.map((c, i) => (
+                <div key={c.id} className={cn("relative overflow-hidden rounded-lg bg-muted", i === 0 && s.categories.length > 2 && "col-span-2 row-span-2")}>
+                  <Img src={c.image} className="absolute inset-0 size-full" />
+                  <span className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <span className="absolute bottom-2 left-2 text-xs font-semibold text-white">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    case "faq":
+      return (
+        <div className="mx-auto grid max-w-2xl gap-2 px-4">
+          <Title>{s.title}</Title>
+          <div className="divide-y rounded-xl border bg-card text-card-foreground">
+            {(s.items ?? []).map((it, i) => (
+              <div key={i} className="px-3 py-2.5">
+                <p className="flex items-center justify-between gap-2 text-sm font-medium">
+                  {it.q} <ChevronDownIcon className={cn("size-4 shrink-0 text-primary", i === 0 && "rotate-180")} />
+                </p>
+                {i === 0 && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    <Markdown source={it.a} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "location":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className="mx-4 grid overflow-hidden rounded-xl border bg-card text-card-foreground @lg:grid-cols-2">
+            <div className="grid content-start gap-2 p-4 text-sm">
+              {s.address ? (
+                <p className="flex gap-2">
+                  <MapPinIcon className="mt-0.5 size-4 shrink-0 text-primary" /> <span className="whitespace-pre-line">{s.address}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t("site.preview.shopContact")}</p>
+              )}
+              {(s.hours ?? []).map((h, i) => (
+                <p key={i} className="flex gap-2 text-xs">
+                  <ClockIcon className="size-3.5 text-primary" /> <span className="text-muted-foreground">{h.label}</span> <span className="font-medium">{h.value}</span>
+                </p>
+              ))}
+            </div>
+            <div className="relative min-h-28 bg-primary/10">
+              <MapPinIcon className="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 text-primary" />
+              {s.coords && <span className="absolute right-2 bottom-2 rounded bg-background/80 px-1.5 text-[10px] text-muted-foreground">{s.coords}</span>}
+            </div>
+          </div>
+        </div>
+      );
+    case "menu-board":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className="grid gap-3 px-4 @lg:grid-cols-2">
+            {(s.groups ?? []).map((g, gi) => (
+              <div key={gi} className="rounded-xl border bg-card p-3 text-card-foreground">
+                <p className="mb-2 border-b pb-1.5 font-heading text-sm font-semibold">{g.name}</p>
+                {(g.items ?? []).map((d, di) => (
+                  <p key={di} className="flex items-center gap-1.5 py-0.5 text-xs">
+                    <DietDot diet={d.diet} />
+                    <span className="font-medium">{d.name}</span>
+                    <span className="flex-1 border-b border-dotted border-muted-foreground/40" />
+                    {d.price !== undefined && <span className="font-semibold text-primary tabular-nums">{money(d.price)}</span>}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "appointment":
+      return (
+        <div className={cn("mx-4 grid gap-3 rounded-xl p-4 @lg:grid-cols-2", !s.style?.background && "bg-primary/8")}>
+          <div className="grid content-start gap-2">
+            <p className="font-heading text-lg leading-tight font-bold">{s.heading}</p>
+            {s.text && <p className="text-sm opacity-80">{s.text}</p>}
+            <span className={cn("inline-flex h-9 w-fit items-center rounded-full px-4 text-xs font-semibold", s.style?.background ? "bg-white text-neutral-900" : "bg-primary text-primary-foreground")}>
+              {s.cta?.label || t("site.samples.book")}
+            </span>
+          </div>
+          <div className="grid gap-1.5">
+            {(s.services ?? []).map((v, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-xs text-card-foreground">
+                <span className="font-medium">{v.name}</span>
+                <span className="text-muted-foreground">{[v.duration, v.price !== undefined ? money(v.price) : ""].filter(Boolean).join(" · ")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "before-after":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className="relative mx-4 grid aspect-[16/9] grid-cols-2 overflow-hidden rounded-xl">
+            <Img src={s.beforeUrl || null} className="size-full" />
+            <Img src={s.afterUrl || null} className="size-full" />
+            <span className="absolute inset-y-0 left-1/2 w-0.5 bg-white" />
+          </div>
+        </div>
+      );
+    case "gold-rates":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className={cn("grid gap-2 px-4", s.showSilver ? "grid-cols-3" : "grid-cols-2")}>
+            {["22K", "24K", ...(s.showSilver ? [t("site.preview.silver")] : [])].map((k, i) => (
+              <div key={k} className={cn("rounded-xl p-3", i === 0 ? "bg-primary text-primary-foreground" : "border bg-card text-card-foreground")}>
+                <p className="text-[10px] font-semibold opacity-80">{k}</p>
+                <p className="font-heading text-base font-bold">₹ ••••</p>
+              </div>
+            ))}
+          </div>
+          <p className="px-4 text-[11px] text-muted-foreground">{t("site.preview.goldNote")}</p>
+        </div>
+      );
+    case "product-tabs":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className="flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
+            {s.tabs.map((tab, i) => (
+              <span key={i} className={cn("rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap", i === 0 ? "bg-primary text-primary-foreground" : "border text-muted-foreground")}>
+                {tab.label || t(`site.home.tabSource.${tab.source}`)}
+              </span>
+            ))}
+          </div>
+          <ShelfSketch n={s.layout === "grid" ? 4 : 5} row={s.layout !== "grid"} />
+        </div>
+      );
+    case "bestsellers":
+    case "recommended":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t(`site.home.type.${s.type}`)}</Title>
+          <ShelfSketch n={s.layout === "grid" ? 4 : 5} row={s.layout !== "grid"} />
+          <p className="px-4 text-[11px] text-muted-foreground">{t(s.type === "bestsellers" ? "site.home.bestsellersHint" : "site.home.recommendedHint")}</p>
+        </div>
+      );
+    case "recently-viewed":
+      return (
+        <div className="grid gap-3">
+          <Title>
+            <span className="inline-flex items-center gap-2">
+              {s.title || t("site.home.type.recently-viewed")} <HistoryIcon className="size-4 text-muted-foreground" />
+            </span>
+          </Title>
+          <ShelfSketch n={5} row faded />
+          <p className="px-4 text-[11px] text-muted-foreground">{t("site.home.recentHint")}</p>
+        </div>
+      );
+    case "deal":
+      return (
+        <div className="mx-4 grid gap-3 overflow-hidden rounded-xl bg-primary/8 @lg:grid-cols-2">
+          <Img src={s.product.image} alt={s.product.name} className="aspect-square w-full" />
+          <div className="grid content-center gap-2 p-4">
+            <p className="text-[11px] font-bold tracking-wider text-primary uppercase">{s.title || t("site.home.type.deal")}</p>
+            {s.product.id ? <p className="font-heading text-lg font-semibold">{s.product.name}</p> : <Placeholder>{t("site.home.dealPick")}</Placeholder>}
+            {s.product.id && <p className="text-sm font-semibold tabular-nums">{money(s.product.priceMin)}</p>}
+            <div className="flex gap-1.5">
+              {["00", "12", "34", "56"].map((n, i) => (
+                <span key={i} className="rounded-md bg-primary px-2 py-1 font-heading text-sm font-bold text-primary-foreground tabular-nums">
+                  {n}
+                </span>
+              ))}
+            </div>
+            <Btn>{t("site.preview.addToCart")}</Btn>
+          </div>
+        </div>
+      );
+    case "shop-the-look":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.home.type.shop-the-look")}</Title>
+          <div className="relative mx-4 overflow-hidden rounded-xl">
+            <Img src={s.imageUrl || null} alt={s.alt} className="aspect-[4/3] w-full" />
+            {s.hotspots.map((h, i) => (
+              <span key={i} className="absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[11px] font-bold text-neutral-900 shadow ring-2 ring-white/50" style={{ left: `${h.x}%`, top: `${h.y}%` }}>
+                {i + 1}
+              </span>
+            ))}
+          </div>
+          {s.hotspots.length === 0 && <Placeholder>{t("site.home.placeDotsHint")}</Placeholder>}
+        </div>
+      );
+    case "stats":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className="grid grid-cols-2 gap-2 px-4 @lg:grid-cols-4">
+            {s.items.map((it, i) => (
+              <div key={i} className="rounded-xl border bg-card p-3 text-center">
+                <p className="font-heading text-xl font-bold text-primary tabular-nums">
+                  {it.prefix}
+                  {Number(it.value).toLocaleString("en-IN")}
+                  {it.suffix}
+                </p>
+                <p className="text-[11px] text-muted-foreground">{it.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "timeline":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.home.type.timeline")}</Title>
+          <ol className="mx-4 grid gap-3 border-s-2 border-primary/25 ps-4">
+            {s.items.map((it, i) => (
+              <li key={i} className="relative">
+                <span className="absolute -start-[1.4rem] top-1 size-3 rounded-full bg-primary ring-2 ring-background" />
+                <p className="font-heading text-sm font-bold text-primary">{it.when}</p>
+                <p className="text-sm font-semibold">{it.title}</p>
+                {it.text && <p className="line-clamp-2 text-xs text-muted-foreground">{it.text}</p>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      );
+    case "team":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.home.type.team")}</Title>
+          <div className="grid grid-cols-2 gap-3 px-4 @lg:grid-cols-4">
+            {s.members.map((m, i) => (
+              <div key={i} className="overflow-hidden rounded-xl border bg-card">
+                <Img src={m.photoUrl ?? null} alt={m.name} className="aspect-[4/5] w-full" />
+                <div className="p-2">
+                  <p className="truncate text-xs font-semibold">{m.name}</p>
+                  {m.role && <p className="truncate text-[11px] text-primary">{m.role}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "pricing-table":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.home.type.pricing-table")}</Title>
+          <div className="grid gap-3 px-4 @lg:grid-cols-3">
+            {s.plans.map((p, i) => (
+              <div key={i} className={cn("grid gap-1.5 rounded-xl p-4", p.highlight ? "bg-primary text-primary-foreground" : "border bg-card")}>
+                <p className="text-sm font-semibold">{p.name}</p>
+                <p className="font-heading text-xl font-bold tabular-nums">
+                  {p.price !== undefined ? money(p.price) : t("site.home.askPrice")}
+                  {p.period && <span className="ms-1 text-xs font-normal opacity-75">{p.period}</span>}
+                </p>
+                {(p.features ?? []).slice(0, 4).map((f, j) => (
+                  <p key={j} className="flex items-center gap-1.5 text-xs">
+                    <CheckIcon className="size-3" /> {f}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "blog-posts":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.home.type.blog-posts")}</Title>
+          <div className="grid gap-3 px-4 @lg:grid-cols-3">
+            {Array.from({ length: Math.min(3, s.limit || 3) }, (_, i) => (
+              <div key={i} className="grid gap-1.5 rounded-xl border bg-card p-2">
+                <span className="aspect-[16/10] rounded-lg bg-primary/10" />
+                <span className="h-2.5 w-4/5 rounded-full bg-muted" />
+                <span className="h-2 w-3/5 rounded-full bg-muted" />
+              </div>
+            ))}
+          </div>
+          <p className="px-4 text-[11px] text-muted-foreground">{t("site.home.blogHint")}</p>
+        </div>
+      );
+    case "reviews-summary":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.home.type.reviews-summary")}</Title>
+          <div className="mx-4 grid gap-3 @lg:grid-cols-[1fr_2fr]">
+            <div className="rounded-xl border bg-card p-4">
+              <p className="font-heading text-3xl font-bold">4.8</p>
+              <Stars n={5} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[0, 1].map((i) => (
+                <div key={i} className="grid gap-1.5 rounded-xl border bg-card p-3">
+                  <Stars n={5} />
+                  <span className="h-2 w-4/5 rounded-full bg-muted" />
+                  <span className="h-2 w-3/5 rounded-full bg-muted" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="px-4 text-[11px] text-muted-foreground">{t("site.home.reviewsHint")}</p>
+        </div>
+      );
+    case "instagram": {
+      const imgs = s.images ?? [];
+      return (
+        <div className="grid gap-3 px-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <InstagramIcon className="size-4" /> @{s.handle || "…"}
+          </p>
+          {s.title && <p className="font-heading text-lg font-semibold">{s.title}</p>}
+          {imgs.length ? (
+            <div className="grid grid-cols-3 gap-1 @lg:grid-cols-6">
+              {imgs.map((im, i) => (
+                <Img key={i} src={im.url} alt={im.alt} className="aspect-square w-full rounded" />
+              ))}
+            </div>
+          ) : (
+            <Placeholder>{t("site.preview.addImages")}</Placeholder>
+          )}
+        </div>
+      );
+    }
   }
 }

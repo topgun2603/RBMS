@@ -244,7 +244,7 @@ export function toPublicProduct(
 
 export function toPublicSummary(
   p: Omit<Product, "variants">,
-  variants: readonly Pick<Variant, "price" | "mrp">[],
+  variants: readonly Pick<Variant, "id" | "price" | "mrp">[],
   categoryName: string | null,
 ): PublicProductSummary {
   const range = priceRange(variants);
@@ -256,10 +256,14 @@ export function toPublicSummary(
     categoryId: p.categoryId,
     categoryName,
     image: p.images[0]?.url ?? null,
+    // The second photo lets store cards swap pictures on hover.
+    ...(p.images.length > 1 ? { images: p.images.slice(0, 2).map((i) => i.url) } : {}),
     ...range,
     mrp: cheapest?.mrp ?? null,
     variantCount: variants.length,
+    variantIds: variants.map((v) => v.id),
     taxInclusive: p.taxInclusive,
+    createdAt: p.createdAt,
   };
 }
 

@@ -17,7 +17,7 @@ export interface StoreConfig {
     css: string;
     /** The shop's trade (@srirealtime/verticals pack id). Older APIs leave it out. */
     businessType?: string;
-    /** Theme variants (header, hero, card, imageRatio, buttons, density, sections, motif, headings). */
+    /** Theme variants (header, hero, card, imageRatio, … see StoreThemeView). */
     theme?: Record<string, string>;
     /** Font families the shop's CSS uses (loaded from Google Fonts). */
     fonts?: string[];
@@ -66,6 +66,10 @@ export interface ProductSummary {
   image: string | null;
   /** Extra photos when the API sends them (cards cross-fade to the second one on hover). */
   images?: string[] | null;
+  /** When the product was added (cards show "New" for a few weeks). Older APIs leave it out. */
+  createdAt?: string;
+  /** Variant ids, for the cards' stock badges (one availability call per grid). Older APIs leave it out. */
+  variantIds?: string[];
   priceMin: number;
   priceMax: number;
   mrp: number | null;
@@ -202,6 +206,22 @@ export interface Rating {
   count: number;
 }
 
+/** `GET /reviews/public/summary`: the whole shop's rating and its latest approved reviews. */
+export interface ShopReviewSummary extends ReviewSummary {
+  items: Review[];
+}
+
+// ------------------------------------------------------------------ recommendations
+
+/** `GET /catalog/public/recommendations`. `source` = "orders" when paid orders shaped the list. */
+export interface Recommendations {
+  kind: "product" | "cart" | "home" | "bestsellers" | "sale";
+  items: ProductSummary[];
+  /** kind=product: bought in the same orders (empty while the shop has no order history). */
+  boughtTogether: ProductSummary[];
+  source: "orders" | "catalogue";
+}
+
 // ------------------------------------------------------------------ cms
 
 export interface Cta {
@@ -209,17 +229,96 @@ export interface Cta {
   href: string;
 }
 
-export type HomeSection =
-  | { type: "hero"; id?: string; slides: { imageUrl: string | null; mobileImageUrl?: string; heading?: string; subheading?: string; cta?: Cta }[] }
-  | { type: "categories"; id?: string; title: string; categories: { id: string; name: string; slug: string; image: string | null }[] }
-  | { type: "collection"; id?: string; title: string; layout: "carousel" | "grid"; collection: { name: string; slug: string }; products: ProductSummary[] }
-  | { type: "products"; id?: string; title: string; href?: string; products: ProductSummary[] }
-  | { type: "banner"; id?: string; imageUrl: string; mobileImageUrl?: string; href?: string; alt: string }
-  | { type: "text"; id?: string; heading?: string; markdown: string }
-  | { type: "image-text"; id?: string; imageUrl: string; heading: string; markdown: string; cta?: Cta; imageSide: "left" | "right" }
-  | { type: "testimonials"; id?: string; title?: string; items: { quote: string; name: string }[] }
-  | { type: "usp"; id?: string; items: { icon: string; title: string; text: string }[] }
-  | { type: "newsletter"; id?: string; heading: string; text: string };
+/** A home section's optional look (cms `sectionStyleSchema`); anything left out = the theme's default. */
+export interface SectionStyle {
+  background?: "none" | "brand" | "muted" | "dark" | "image" | "gradient";
+  imageUrl?: string;
+  /** Darkening over a background image, 0–90 %. */
+  overlay?: number;
+  padding?: "compact" | "normal" | "spacious";
+  width?: "contained" | "full";
+  align?: "start" | "center";
+  animation?: "none" | "fade" | "rise";
+  hideOnMobile?: boolean;
+  hideOnDesktop?: boolean;
+}
+
+type CategoryRef = { id: string; name: string; slug: string; image: string | null };
+export type Diet = "veg" | "nonveg" | "egg";
+
+type Sections =
+  | { type: "hero"; slides: { imageUrl: string | null; mobileImageUrl?: string; heading?: string; subheading?: string; cta?: Cta }[] }
+  | {
+      type: "categories";
+      title: string;
+      /** Older APIs leave these out (= circles, no counts). */
+      layout?: CategoryLayout;
+      showCounts?: boolean;
+      categories: CategoryRef[];
+    }
+  | { type: "collection"; title: string; layout: "carousel" | "grid"; collection: { name: string; slug: string }; products: ProductSummary[] }
+  | { type: "products"; title: string; href?: string; products: ProductSummary[] }
+  | { type: "banner"; imageUrl: string; mobileImageUrl?: string; href?: string; alt: string }
+  | { type: "text"; heading?: string; markdown: string }
+  | { type: "image-text"; imageUrl: string; heading: string; markdown: string; cta?: Cta; imageSide: "left" | "right" }
+  | {
+      type: "testimonials";
+      title?: string;
+      /** Older APIs leave it out (= carousel). */
+      layout?: "carousel" | "cards" | "single";
+      items: { quote: string; name: string; role?: string; rating?: number; photoUrl?: string }[];
+    }
+  | { type: "usp"; title?: string; text?: string; layout?: "cards" | "inline" | "centered" | "split"; items: { icon: string; title: string; text: string }[] }
+  | { type: "newsletter"; heading: string; text: string; layout?: "band" | "split" | "card" | "inline"; imageUrl?: string }
+  | { type: "hero-split"; imageUrl: string | null; imageSide: "left" | "right"; eyebrow?: string; heading: string; text?: string; cta?: Cta; cta2?: Cta }
+  | { type: "hero-video"; videoUrl: string; posterUrl?: string; overlay: number; heading: string; text?: string; cta?: Cta }
+  | { type: "offer"; eyebrow?: string; heading: string; text?: string; code?: string; endsAt?: string; cta?: Cta }
+  | { type: "gallery"; title?: string; layout: "grid" | "masonry" | "carousel"; images: { url: string; alt: string; caption?: string; href?: string }[] }
+  | { type: "logos"; title?: string; grayscale: boolean; items: { imageUrl: string; name: string; href?: string }[] }
+  | { type: "category-mosaic"; title: string; categories: CategoryRef[] }
+  | { type: "faq"; title?: string; items: { q: string; a: string }[] }
+  | { type: "location"; title?: string; address?: string; hours: { label: string; value: string }[]; phone?: string; whatsapp?: string; coords?: string; mapLink?: string }
+  | { type: "menu-board"; title?: string; groups: { name: string; items: { name: string; description?: string; price?: number; diet?: Diet }[] }[]; cta?: Cta }
+  | { type: "appointment"; heading: string; text?: string; services: { name: string; duration?: string; price?: number }[]; cta?: Cta }
+  | { type: "before-after"; title?: string; text?: string; beforeUrl: string; afterUrl: string; beforeLabel?: string; afterLabel?: string }
+  | { type: "gold-rates"; title?: string; text?: string; showSilver: boolean }
+  | { type: "instagram"; title?: string; handle: string; images: { url: string; alt: string; href?: string }[] }
+  | { type: "product-tabs"; title: string; layout: ShelfLayout; limit: number; tabs: { label?: string; source: ProductTabSource; collectionSlug?: string }[] }
+  | { type: "deal"; title?: string; text?: string; endsAt?: string; product: ProductSummary }
+  | { type: "shop-the-look"; title?: string; text?: string; imageUrl: string; alt: string; hotspots: { x: number; y: number; product: ProductSummary }[] }
+  | { type: "bestsellers"; title: string; layout: ShelfLayout; limit: number }
+  | { type: "recently-viewed"; title?: string }
+  | { type: "recommended"; title: string; layout: ShelfLayout; limit: number }
+  | { type: "stats"; title?: string; text?: string; items: { value: number; prefix?: string; suffix?: string; label: string }[] }
+  | { type: "timeline"; title?: string; text?: string; items: { when: string; title: string; text: string; imageUrl?: string }[] }
+  | {
+      type: "team";
+      title?: string;
+      text?: string;
+      members: { name: string; role?: string; photoUrl?: string; bio?: string; instagram?: string; facebook?: string; linkedin?: string; website?: string }[];
+    }
+  | {
+      type: "pricing-table";
+      title?: string;
+      text?: string;
+      plans: { name: string; price?: number; period?: string; description?: string; features: string[]; highlight: boolean; badge?: string; cta?: Cta }[];
+    }
+  | { type: "blog-posts"; title?: string; limit: number; tag?: string }
+  | { type: "reviews-summary"; title?: string; limit: number };
+
+export type CategoryLayout = "circles" | "cards" | "slider" | "icon-list" | "big-grid";
+export type ShelfLayout = "grid" | "carousel";
+export type ProductTabSource = "new" | "bestsellers" | "sale" | "collection";
+
+export type HomeSection = Sections & { id?: string; style?: SectionStyle };
+export type HomeSectionOf<T extends HomeSection["type"]> = Extract<Sections, { type: T }> & { id?: string; style?: SectionStyle };
+
+/** `GET /jewellery/public/rates`: today's rate board (paise per gram). */
+export interface PublicMetalRates {
+  date: string | null;
+  setToday: boolean;
+  rates: { metal: "gold" | "silver" | "platinum"; purity: string; ratePerGram: number; date: string | null }[];
+}
 
 export interface PublicHome {
   sections: HomeSection[];
@@ -480,15 +579,34 @@ export interface StoreShell {
 
 /** The storefront's theme variants (mirrors @srirealtime/branding StoreTheme). */
 export interface StoreThemeView {
-  header: "classic" | "centered" | "minimal" | "bold";
+  header: "classic" | "centered" | "minimal" | "bold" | "split";
   hero: "slider" | "split" | "full" | "compact";
-  card: "standard" | "minimal" | "framed" | "overlay";
+  card: "standard" | "minimal" | "framed" | "overlay" | "boxed" | "editorial";
   imageRatio: "portrait" | "square" | "landscape";
   buttons: "rounded" | "pill" | "square";
   density: "comfortable" | "compact";
   sections: "plain" | "tinted" | "boxed";
   motif: "none" | "kolam" | "dots" | "waves" | "grid";
   headings: "display" | "uppercase" | "underline";
+  headerStyle: "glass" | "solid" | "transparent";
+  sticky: "always" | "scroll-up" | "never";
+  megaMenu: "images" | "columns" | "off";
+  announcement: "dismissible" | "bar" | "ticker";
+  footer: "columns" | "centered" | "newsletter" | "minimal";
+  cardHover: "rich" | "zoom" | "swap" | "lift" | "none";
+  cardButton: "hover" | "always" | "none";
+  productLayout: "thumbs-side" | "thumbs-below" | "grid" | "slider";
+  productDetails: "accordion" | "tabs" | "open";
+  stickyBuy: "on" | "off";
+  productTrust: "on" | "off";
+  related: "rail" | "grid" | "off";
+  listingFilters: "sidebar" | "top-bar" | "drawer";
+  listingColumns: "2" | "3" | "4" | "5";
+  listingView: "grid" | "list";
+  listingPaging: "pages" | "load-more" | "infinite";
+  categoryHeader: "simple" | "banner" | "none";
+  subcategories: "chips" | "off";
+  compare: "on" | "off";
 }
 
 // ------------------------------------------------------------------ batch 4: chat, help centre, sellers, loyalty

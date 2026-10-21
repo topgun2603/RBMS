@@ -16,9 +16,9 @@ describe("slugify", () => {
 
 describe("reserved and unique slugs", () => {
   it("reserves storefront paths", () => {
-    for (const s of ["cart", "checkout", "account", "search", "products", "p", "c", "collections", "blog", "track", "i", "s", "api"])
+    for (const s of ["cart", "checkout", "account", "search", "products", "p", "c", "collections", "blog", "track", "compare", "i", "s", "api"])
       expect(isReservedSlug(s)).toBe(true);
-    expect(RESERVED_SLUGS.size).toBe(13);
+    expect(RESERVED_SLUGS.size).toBe(14);
     expect(isReservedSlug("about")).toBe(false);
   });
   it("suffixes taken or reserved generated slugs", () => {

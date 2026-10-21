@@ -4,18 +4,21 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FileTextIcon, ListChecksIcon, TruckIcon } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@srirealtime/ui/components/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui/components/tabs";
+import { cn } from "@srirealtime/ui/lib/utils";
 import { breadcrumbJsonLd, productJsonLd, STORE_PATHS } from "@srirealtime/cms/seo";
-import { apiGetOrNull, apiGetSafe, getFeatures, getRequestInfo, requireStore } from "../server/api";
+import { apiGetOrNull, apiGetSafe, getFeatures, getRequestInfo, requireStore, themeView } from "../server/api";
 import { featureOn, STORE_FEATURES } from "../lib/features";
 import { SoldBy } from "../client/sellers";
 import { getRatings } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { percentOff } from "../lib/format";
+import { freshIds } from "../lib/cards";
 import { Markdown } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
-import type { Availability, CmsPage, List, Product, ReviewList, SearchResult, SellerCard, SellerLookup } from "../types";
+import type { Availability, CmsPage, List, Product, ProductSummary, Recommendations, ReviewList, SearchResult, SellerCard, SellerLookup, StoreThemeView } from "../types";
 import { Breadcrumbs, Container, JsonLd, SectionTitle, Stars } from "../components/bits";
-import { ProductCard } from "../components/product-card";
+import { ProductCard, ProductGrid, ProductGridSkeleton } from "../components/product-card";
 import { RailSkeleton } from "../components/skeletons";
 import { SizeChart, sizeKindFor } from "../components/size-guide";
 import { TrustBadges } from "../components/trust";
@@ -24,6 +27,8 @@ import { ProductGallery } from "../client/product-gallery";
 import { PurchasePanel, type AvailabilityMap } from "../client/purchase-panel";
 import { RecentlyViewedStrip, RecordRecentlyViewed } from "../client/recently-viewed";
 import { ReviewsSection } from "../client/reviews";
+import { CompareToggle } from "../client/compare";
+import { BoughtTogether } from "../client/recommend";
 import { ProductViewTracker } from "../client/trackers";
 import { Blocks } from "./content";
 
@@ -70,6 +75,36 @@ export async function ProductPage({ slug }: { slug: string }) {
     { name: product.name },
   ];
   const attrs = Object.entries(product.attributes ?? {}).filter(([, v]) => v !== "" && v !== null);
+  // Theme: gallery layout, how the details open, the phone buy bar, trust badges and the related products.
+  const theme = themeView(config.shop.theme);
+  // A slider needs a few photos to slide; with one or two the usual gallery looks better.
+  const layout = theme.productLayout === "slider" && product.images.length < 3 ? "thumbs-side" : theme.productLayout;
+
+  const gallery = <ProductGallery images={product.images} name={product.name} badge={pct > 0 ? t("product.off", { pct }) : undefined} layout={layout} />;
+  const heading = (
+    <div>
+      {(product.brand || product.categoryName) && <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{product.brand ?? product.categoryName}</p>}
+      <h1 className="mt-2 font-display text-h1 font-semibold text-balance" data-testid="product-name">
+        {product.name}
+      </h1>
+      {reviews.summary.count > 0 && (
+        <a href="#reviews" className="mt-3 inline-flex items-center gap-2 rounded-full bg-tint-1 py-1 ps-2 pe-3 text-sm focus-ring hover:bg-tint-2">
+          <Stars value={reviews.summary.average} t={t} size="md" />
+          <span className="font-semibold">{reviews.summary.average.toFixed(1)}</span>
+          <span className="text-muted-foreground">· {t("reviews.count", { count: reviews.summary.count })}</span>
+        </a>
+      )}
+      {seller && <SoldBy seller={seller} className="mt-3 text-sm [&_svg]:size-4" />}
+    </div>
+  );
+  const buy = (
+    <>
+      <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} stickyBar={theme.stickyBuy === "on"} />
+      {theme.compare === "on" && <CompareToggle product={{ id: product.id, slug: product.slug, name: product.name, image: product.images[0]?.url ?? null }} variant="page" className="justify-self-start" />}
+      {theme.productTrust === "on" && <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />}
+    </>
+  );
+  const details = <ProductInfo product={product} attrs={attrs} t={t} shipping={config.policies.shipping ?? ""} returns={config.policies.returns ?? ""} mode={theme.productDetails} />;
 
   return (
     <>
@@ -106,35 +141,35 @@ export async function ProductPage({ slug }: { slug: string }) {
           mrp: def?.mrp ?? null,
           variantCount: product.variants.length,
           categoryName: product.categoryName,
+          categoryId: product.categoryId,
           taxInclusive: product.taxInclusive,
         }}
       />
-      <Container className="pt-4 pb-8 sm:pt-6">
+      <Container className="pt-4 pb-8 sm:pt-6" data-product-layout={layout}>
         <Breadcrumbs items={crumbs} className="mb-5" />
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-14">
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <ProductGallery images={product.images} name={product.name} badge={pct > 0 ? t("product.off", { pct }) : undefined} />
-          </div>
-          <div className="grid content-start gap-6">
-            <div>
-              {(product.brand || product.categoryName) && <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{product.brand ?? product.categoryName}</p>}
-              <h1 className="mt-2 font-display text-h1 font-semibold text-balance" data-testid="product-name">
-                {product.name}
-              </h1>
-              {reviews.summary.count > 0 && (
-                <a href="#reviews" className="mt-3 inline-flex items-center gap-2 rounded-full bg-tint-1 py-1 ps-2 pe-3 text-sm focus-ring hover:bg-tint-2">
-                  <Stars value={reviews.summary.average} t={t} size="md" />
-                  <span className="font-semibold">{reviews.summary.average.toFixed(1)}</span>
-                  <span className="text-muted-foreground">· {t("reviews.count", { count: reviews.summary.count })}</span>
-                </a>
-              )}
-              {seller && <SoldBy seller={seller} className="mt-3 text-sm [&_svg]:size-4" />}
+        {layout === "slider" ? (
+          // Slider: the photos run the full width, the details sit below in two columns.
+          <div className="grid gap-8 lg:gap-12">
+            {gallery}
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+              <div className="grid content-start gap-6">
+                {heading}
+                {buy}
+              </div>
+              <div className="grid content-start gap-6">{details}</div>
             </div>
-            <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} />
-            <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />
-            <ProductInfo product={product} attrs={attrs} t={t} shipping={config.policies.shipping ?? ""} returns={config.policies.returns ?? ""} />
           </div>
-        </div>
+        ) : (
+          <div className={cn("grid gap-8 lg:gap-14", layout === "grid" ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]")}>
+            {/* Grid: the photos scroll and the details stay in view; otherwise the gallery stays in view. */}
+            <div className={cn(layout !== "grid" && "lg:sticky lg:top-24 lg:self-start")}>{gallery}</div>
+            <div className={cn("grid content-start gap-6", layout === "grid" && "lg:sticky lg:top-24 lg:self-start")}>
+              {heading}
+              {buy}
+              {details}
+            </div>
+          </div>
+        )}
 
         <div className="mt-16 border-t pt-12">
           <ReviewsSection productId={product.id} productSlug={product.slug} initial={reviews} />
@@ -142,13 +177,15 @@ export async function ProductPage({ slug }: { slug: string }) {
 
         <React.Suspense
           fallback={
-            <section className="mt-16 border-t pt-12">
-              <div className="sf-shimmer mb-8 h-8 w-56 rounded-xl" />
-              <RailSkeleton />
-            </section>
+            theme.related === "off" ? null : (
+              <section className="mt-16 border-t pt-12">
+                <div className="sf-shimmer mb-8 h-8 w-56 rounded-xl" />
+                {theme.related === "grid" ? <ProductGridSkeleton count={4} /> : <RailSkeleton />}
+              </section>
+            )
           }
         >
-          <RelatedRail product={product} t={t} />
+          <ProductRecommendations product={product} t={t} as={theme.related} />
         </React.Suspense>
 
         <RecentlyViewedStrip excludeId={product.id} className="mt-16 border-t pt-12" />
@@ -157,8 +194,25 @@ export async function ProductPage({ slug }: { slug: string }) {
   );
 }
 
-/** Description, details and shipping & returns as accordions (all server-rendered, so crawlable when closed). */
-function ProductInfo({ product, attrs, t, shipping, returns }: { product: Product; attrs: [string, string][]; t: Translator; shipping: string; returns: string }) {
+/**
+ * Description, details and shipping & returns (theme `productDetails`): accordion · tabs · open (every section shown).
+ * All server-rendered and kept in the HTML when closed, so they stay crawlable.
+ */
+function ProductInfo({
+  product,
+  attrs,
+  t,
+  shipping,
+  returns,
+  mode = "accordion",
+}: {
+  product: Product;
+  attrs: [string, string][];
+  t: Translator;
+  shipping: string;
+  returns: string;
+  mode?: StoreThemeView["productDetails"];
+}) {
   const sections = [
     product.description && {
       id: "description",
@@ -204,15 +258,52 @@ function ProductInfo({ product, attrs, t, shipping, returns }: { product: Produc
     },
   ].filter(Boolean) as { id: string; icon: typeof TruckIcon; title: string; body: React.ReactNode }[];
   if (!sections.length) return null;
+  const chip = (x: (typeof sections)[number]) => (
+    <span className="icon-chip size-8 text-primary">
+      <x.icon className="size-4" />
+    </span>
+  );
+  if (mode === "open") {
+    return (
+      <div className="grid gap-4" data-details="open">
+        {sections.map((x) => (
+          <section key={x.id} aria-labelledby={`pd-${x.id}`} className="rounded-2xl border bg-card p-4 text-card-foreground shadow-xs sm:p-5">
+            <h2 id={`pd-${x.id}`} className="mb-3 flex items-center gap-3 text-base font-semibold">
+              {chip(x)}
+              {x.title}
+            </h2>
+            {x.body}
+          </section>
+        ))}
+      </div>
+    );
+  }
+  if (mode === "tabs") {
+    return (
+      <Tabs defaultValue={sections[0]!.id} className="gap-0 rounded-2xl border bg-card text-card-foreground shadow-xs" data-details="tabs">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none rounded-t-2xl border-b bg-transparent p-1.5 scrollbar-none">
+          {sections.map((x) => (
+            <TabsTrigger key={x.id} value={x.id} className="h-10 flex-none rounded-xl px-3.5 text-sm font-semibold data-[state=active]:bg-tint-2 data-[state=active]:text-foreground data-[state=active]:shadow-none">
+              <x.icon className="size-4 text-primary" />
+              {x.title}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {sections.map((x) => (
+          <TabsContent key={x.id} value={x.id} forceMount className="p-4 data-[state=inactive]:hidden sm:p-5">
+            {x.body}
+          </TabsContent>
+        ))}
+      </Tabs>
+    );
+  }
   return (
     <Accordion type="multiple" defaultValue={[sections[0]!.id]} className="rounded-2xl border bg-card px-4 shadow-xs">
       {sections.map((x) => (
         <AccordionItem key={x.id} value={x.id} className="[&_[data-slot=accordion-content][data-state=closed]]:hidden">
           <AccordionTrigger className="items-center py-4 text-base font-semibold hover:no-underline">
             <span className="flex items-center gap-3">
-              <span className="icon-chip size-8 text-primary">
-                <x.icon className="size-4" />
-              </span>
+              {chip(x)}
               <span>{x.title}</span>
             </span>
           </AccordionTrigger>
@@ -225,28 +316,55 @@ function ProductInfo({ product, attrs, t, shipping, returns }: { product: Produc
   );
 }
 
-/** "You may also like" — streams in after the product (its own Suspense boundary, skeleton meanwhile). */
-async function RelatedRail({ product, t }: { product: Product; t: Translator }) {
+/**
+ * "Frequently bought together" (from paid orders; hidden while the shop has none) and "You may also like" (theme
+ * `related`: rail · grid · off): one recommendations call, streamed after the product (own Suspense boundary). Older
+ * APIs without recommendations fall back to the product's category, topped up with the newest products.
+ */
+async function ProductRecommendations({ product, t, as = "rail" }: { product: Product; t: Translator; as?: StoreThemeView["related"] }) {
+  const limit = as === "grid" ? 8 : 10;
+  const rec = await apiGetSafe<Recommendations | null>("/catalog/public/recommendations", null, { revalidate: 300, query: { kind: "product", productIds: product.id, limit } });
+  const items = rec ? rec.items : await relatedFallback(product, limit);
+  const together = rec?.boughtTogether ?? [];
+  const ratings = await getRatings([...items, ...together].map((p) => p.id));
+  const fresh = freshIds(items);
+  const single = product.variants.length === 1 ? product.variants[0]! : null;
+  const def = product.variants.find((v) => v.isDefault) ?? product.variants[0];
+  return (
+    <>
+      {together.length > 0 && (
+        <BoughtTogether
+          base={{ id: product.id, slug: product.slug, name: product.name, image: product.images[0]?.url ?? null, price: def?.price ?? product.priceMin, variantId: single?.id ?? null }}
+          items={together}
+        />
+      )}
+      {as !== "off" && items.length > 0 && (
+        <section className="mt-16 border-t pt-12" data-related={as}>
+          <SectionTitle title={t("product.related")} eyebrow={t("product.relatedEyebrow")} href={product.categorySlug ? STORE_PATHS.category(product.categorySlug) : STORE_PATHS.products} linkLabel={t("list.viewAll")} />
+          {as === "grid" ? (
+            <ProductGrid products={items} ratings={ratings} t={t} />
+          ) : (
+            <Carousel label={t("product.related")}>
+              {items.map((p) => (
+                <ProductCard key={p.id} product={p} rating={ratings.get(p.id)} t={t} fresh={fresh.has(p.id)} />
+              ))}
+            </Carousel>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
+
+/** The product's category (topped up with the newest products), for APIs without recommendations. */
+async function relatedFallback(product: Product, limit: number): Promise<ProductSummary[]> {
   const related = product.categoryId
-    ? await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { categoryId: product.categoryId, limit: 11 } })
-    : await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { sort: "new", limit: 11 } });
-  let items = (related?.items ?? []).filter((p) => p.id !== product.id);
+    ? await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { categoryId: product.categoryId, limit: limit + 1 } })
+    : await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { sort: "new", limit: limit + 1 } });
+  const items = (related?.items ?? []).filter((p) => p.id !== product.id);
   if (items.length < 4 && product.categoryId) {
-    // Small category: top up with the newest products so the rail is worth showing.
-    const more = await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { sort: "new", limit: 11 } });
+    const more = await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { sort: "new", limit: limit + 1 } });
     for (const p of more?.items ?? []) if (p.id !== product.id && !items.some((x) => x.id === p.id)) items.push(p);
   }
-  items = items.slice(0, 10);
-  if (!items.length) return null;
-  const ratings = await getRatings(items.map((p) => p.id));
-  return (
-    <section className="mt-16 border-t pt-12">
-      <SectionTitle title={t("product.related")} eyebrow={t("product.relatedEyebrow")} href={product.categorySlug ? STORE_PATHS.category(product.categorySlug) : STORE_PATHS.products} linkLabel={t("list.viewAll")} />
-      <Carousel label={t("product.related")}>
-        {items.map((p) => (
-          <ProductCard key={p.id} product={p} rating={ratings.get(p.id)} t={t} />
-        ))}
-      </Carousel>
-    </section>
-  );
+  return items.slice(0, limit);
 }

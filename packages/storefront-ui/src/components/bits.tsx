@@ -147,7 +147,7 @@ export function Breadcrumbs({ items, className }: { items: { name: string; href?
 
 export function SectionTitle({ title, eyebrow, href, linkLabel, badge, className }: { title: string; eyebrow?: string; href?: string; linkLabel?: string; badge?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("mb-6 flex items-end justify-between gap-4 sm:mb-8", className)}>
+    <div className={cn("sf-section-title mb-6 flex items-end justify-between gap-4 sm:mb-8", className)}>
       <div className="min-w-0">
         {eyebrow && <p className="mb-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">{eyebrow}</p>}
         <h2 className="sf-heading flex flex-wrap items-center gap-3 font-display text-h2 font-semibold">
@@ -183,7 +183,7 @@ export function Empty({ icon, illustration, title, body, action, className }: { 
 /** Page container. */
 export function Container({ className, children, ...rest }: React.ComponentProps<"div">) {
   return (
-    <div className={cn("mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8", className)} {...rest}>
+    <div className={cn("sf-container mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8", className)} {...rest}>
       {children}
     </div>
   );

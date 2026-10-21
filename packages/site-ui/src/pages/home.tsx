@@ -16,6 +16,7 @@ import {
   LayoutTemplateIcon,
   Loader2Icon,
   MoreVerticalIcon,
+  PaintbrushIcon,
   PlusIcon,
   RocketIcon,
   Trash2Icon,
@@ -37,21 +38,24 @@ import {
   StatusPill,
   toast,
 } from "@srirealtime/ui";
+import { packOrDefault, starterHome } from "@srirealtime/verticals";
 import { describeError, Page, PageHeading, QueryError, useI18n, useOptionalShop, useTenantSlug, type Translator } from "@srirealtime/web";
 import { SaveBar, ReadOnlyNote } from "../components/bits";
-import { HomePreview } from "../components/home/home-preview";
+import { LivePreview } from "../components/live-preview";
+import type { PreviewDevice } from "../components/live-preview-protocol";
+import { itemKeyForSection, previewSections as draftSections, sectionIdForItem } from "../components/live-preview-drafts";
 import { SectionFields, sectionSummary } from "../components/home/section-forms";
+import { StyleFields } from "../components/home/section-forms-extra";
 import { SectionGallery } from "../components/home/section-gallery";
 import { SECTION_ICONS } from "../components/home/section-meta";
-import { usePreviewLookups } from "../components/home/use-preview-lookups";
 import { fromSeoForm, SeoPanel, toSeoForm, type SeoForm } from "../components/seo-panel";
 import { useDragSort } from "../components/sortable";
 import { useUnsavedGuard } from "../components/unsaved-guard";
 import { PERMS, useCan } from "../lib/access";
 import { CMS_LIMITS, type HomeSectionType } from "../lib/content";
-import { flagHidden, itemsFromSections, sectionsFromItems, type EditorItem } from "../lib/hidden";
-import { useHome, useHomePreview, usePublishHome, useSaveHome } from "../lib/queries";
-import { checkSection, duplicateSectionForm, newSectionForm, resolvePreview, type SectionSamples } from "../lib/sections";
+import { itemsFromSections, sectionsFromItems, type EditorItem } from "../lib/hidden";
+import { useHome, usePublishHome, useSaveHome, useStoreSettings } from "../lib/queries";
+import { checkSection, duplicateSectionForm, isDefaultStyle, newSectionForm, type SectionSamples } from "../lib/sections";
 import { useStoreUrl } from "../lib/store-url";
 import type { StaffHome } from "../lib/types";
 
@@ -103,17 +107,57 @@ const samplesFrom = (t: Translator, shop: string): SectionSamples => ({
   uspReturnsText: t("site.samples.uspReturnsText"),
   newsletterHeading: t("site.samples.newsletterHeading"),
   newsletterText: t("site.samples.newsletterText"),
+  newArrivals: t("site.samples.newArrivals"),
+  offerEyebrow: t("site.samples.offerEyebrow"),
+  offerHeading: t("site.samples.offerHeading"),
+  offerText: t("site.samples.offerText"),
+  galleryTitle: t("site.samples.galleryTitle"),
+  logosTitle: t("site.samples.logosTitle"),
+  faqTitle: t("site.samples.faqTitle"),
+  faqQ: t("site.samples.faqQ"),
+  faqA: t("site.samples.faqA"),
+  locationTitle: t("site.samples.locationTitle"),
+  hoursWeek: t("site.samples.hoursWeek"),
+  hoursWeekValue: t("site.samples.hoursWeekValue"),
+  menuTitle: t("site.samples.menuTitle"),
+  menuGroup: t("site.samples.menuGroup"),
+  menuDish: t("site.samples.menuDish"),
+  appointmentHeading: t("site.samples.appointmentHeading"),
+  appointmentText: t("site.samples.appointmentText"),
+  serviceName: t("site.samples.serviceName"),
+  book: t("site.samples.book"),
+  beforeAfterTitle: t("site.samples.beforeAfterTitle"),
+  goldTitle: t("site.samples.goldTitle"),
+  goldText: t("site.samples.goldText"),
+  instagramTitle: t("site.samples.instagramTitle"),
+  tabsTitle: t("site.samples.tabsTitle"),
+  lookTitle: t("site.samples.lookTitle"),
+  bestsellersTitle: t("site.samples.bestsellersTitle"),
+  recommendedTitle: t("site.samples.recommendedTitle"),
+  statsTitle: t("site.samples.statsTitle"),
+  statYears: t("site.samples.statYears"),
+  statCustomers: t("site.samples.statCustomers"),
+  timelineTitle: t("site.samples.timelineTitle"),
+  timelineFirst: t("site.samples.timelineFirst"),
+  timelineToday: t("site.samples.timelineToday"),
+  teamTitle: t("site.samples.teamTitle"),
+  memberRole: t("site.samples.memberRole"),
+  pricingTitle: t("site.samples.pricingTitle"),
+  planBasic: t("site.samples.planBasic"),
+  planPopular: t("site.samples.planPopular"),
+  planFeature: t("site.samples.planFeature"),
+  blogTitle: t("site.samples.blogTitle"),
+  reviewsTitle: t("site.samples.reviewsTitle"),
 });
-
-const STARTER: HomeSectionType[] = ["hero", "categories", "usp", "testimonials", "newsletter"];
 
 function snapshot(items: EditorItem[], seo: SeoForm) {
   return JSON.stringify({ sections: sectionsFromItems(items), seo: fromSeoForm(seo) });
 }
 
 function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null }) {
-  const { t, formatDate } = useI18n();
+  const { t, formatDate, locale } = useI18n();
   const shop = useOptionalShop();
+  const settings = useStoreSettings();
   const shopName = shop?.shopName ?? slug ?? "";
   const canEdit = useCan(PERMS.cms);
   const storeUrl = useStoreUrl();
@@ -129,7 +173,7 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
   const [open, setOpen] = React.useState<string | null>(null);
   const [showErrors, setShowErrors] = React.useState(false);
   const [gallery, setGallery] = React.useState<{ at: number } | null>(null);
-  const [device, setDevice] = React.useState<"phone" | "desktop">("phone");
+  const [device, setDevice] = React.useState<PreviewDevice>("phone");
   const [armed, setArmed] = React.useState<string | null>(null);
 
   const current = snapshot(items, seo);
@@ -140,15 +184,10 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
   const checks = React.useMemo(() => new Map(items.map((it) => [it.key, checkSection(it.form)])), [items]);
   // Hidden sections are saved too, so they must be valid as well.
   const invalid = items.filter((it) => !checks.get(it.key)?.ok);
-  const forms = React.useMemo(() => items.map((i) => i.form), [items]);
-
-  // Preview: the server's exact rendering of the saved draft when nothing is unsaved, otherwise a local approximation.
-  const serverPreview = useHomePreview(!dirty && !!server.draft);
-  const { lookups, loading: lookupsLoading } = usePreviewLookups(forms);
-  const exact = !dirty && !!server.draft && !!serverPreview.data;
-  // Hidden sections show in the preview too, dimmed (the server preview flags them the same way).
-  const previewSections = exact ? serverPreview.data!.sections : flagHidden(resolvePreview(forms, lookups), items);
-  const openForm = items.find((i) => i.key === open)?.form;
+  // Live preview: the real store in a frame. Unsaved sections are sent to it as you type (null = the saved draft), and a
+  // section clicked in the frame opens its form here.
+  const liveSections = React.useMemo(() => (dirty ? draftSections(items) : null), [dirty, items]);
+  const openItem = items.find((i) => i.key === open);
 
   const sort = useDragSort(items, (i) => i.key, setItems);
   const patch = (key: string, p: Partial<EditorItem>) => setItems((list) => list.map((it) => (it.key === key ? { ...it, ...p } : it)));
@@ -166,9 +205,11 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
     requestAnimationFrame(() => document.getElementById(`sec-${item.key}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  // The template is the shop's own trade starter (jewellery: gold rates + mosaic; gym: booking + FAQ …), the same one
+  // a new shop gets. Sections with words only the owner can vouch for (reviews, prices, answers) come in hidden.
   const startWithTemplate = () => {
-    const s = samplesFrom(t, shopName);
-    setItems(STARTER.map((type) => ({ key: nextKey(), hidden: false, form: newSectionForm(type, s) })));
+    const pack = packOrDefault(settings.data?.businessType, shop?.tenant.appId ?? null);
+    setItems(itemsFromSections(starterHome(pack, shopName, locale === "ta" ? "ta" : "en"), nextKey));
     toast.success(t("site.home.templateAdded"));
   };
 
@@ -409,6 +450,25 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
                                   disabled={!canEdit}
                                   idp={`h-${it.key}`}
                                 />
+                                <details className="group/style mt-5 rounded-xl border bg-muted/20" open={!isDefaultStyle(it.form.style) || (showErrors && !!check && !check.ok && Object.keys(check.errors).some((k) => k.startsWith("style.")))}>
+                                  <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                                    <PaintbrushIcon className="size-4 text-primary" aria-hidden />
+                                    {t("site.style.title")}
+                                    {!isDefaultStyle(it.form.style) && (
+                                      <StatusPill tone="info">{t("site.style.custom")}</StatusPill>
+                                    )}
+                                    <ChevronDownIcon className="ml-auto size-4 text-muted-foreground transition-transform group-open/style:rotate-180" aria-hidden />
+                                  </summary>
+                                  <div className="border-t border-border/60 px-3 py-4">
+                                    <StyleFields
+                                      value={it.form.style}
+                                      onChange={(style) => patch(it.key, { form: { ...it.form, style } })}
+                                      errors={showErrors && check && !check.ok ? check.errors : {}}
+                                      disabled={!canEdit}
+                                      idp={`st-${it.key}`}
+                                    />
+                                  </div>
+                                </details>
                               </div>
                             </motion.div>
                           )}
@@ -444,14 +504,17 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
             <EyeIcon className="size-4 text-primary" /> {t("site.preview.label")}
           </h2>
           <Card className="gap-0 p-3">
-            <HomePreview
-              sections={previewSections}
-              shopName={shopName}
-              loading={(!exact && lookupsLoading && previewSections.length === 0) || (!dirty && !!server.draft && serverPreview.isPending)}
+            <LivePreview
+              sections={liveSections}
+              seo={fromSeoForm(seo) as Record<string, unknown> | undefined}
               device={device}
               onDevice={setDevice}
-              selectedId={openForm?.id ?? null}
-              note={exact ? t("site.preview.exact") : t("site.preview.live")}
+              selectedId={openItem ? sectionIdForItem(openItem) : null}
+              onSelect={(id) => {
+                const key = itemKeyForSection(items, id);
+                if (key) setOpen(key);
+              }}
+              className="h-[calc(100dvh-10rem)]"
             />
           </Card>
         </aside>

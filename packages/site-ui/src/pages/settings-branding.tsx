@@ -7,6 +7,8 @@ import { describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, 
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice, ColorField, FontField } from "../components/brand-fields";
 import { ImageField } from "../components/image-field";
+import { LivePreview } from "../components/live-preview";
+import { brandTokens, type SavedTokens } from "../components/live-preview-drafts";
 import { useUnsavedGuard } from "../components/unsaved-guard";
 import { useIsManager } from "../lib/access";
 import { brandDraftFrom, useBrand, useSaveBrand, type BrandDraft } from "../lib/brand";
@@ -32,13 +34,13 @@ export default function BrandingPage() {
           <Skeleton className="h-64 rounded-2xl" />
         </div>
       ) : (
-        <Editor initial={brandDraftFrom(brand.data)} canEdit={canEdit} />
+        <Editor initial={brandDraftFrom(brand.data)} saved={brand.data.tokens as SavedTokens} canEdit={canEdit} />
       )}
     </Page>
   );
 }
 
-function Editor({ initial, canEdit }: { initial: BrandDraft; canEdit: boolean }) {
+function Editor({ initial, saved, canEdit }: { initial: BrandDraft; saved: SavedTokens; canEdit: boolean }) {
   const { t } = useI18n();
   const settingsHref = useSettingsHref();
   const save = useSaveBrand();
@@ -111,6 +113,8 @@ function Editor({ initial, canEdit }: { initial: BrandDraft; canEdit: boolean })
         <aside className="order-first grid w-full max-w-2xl gap-3 2xl:sticky 2xl:top-4 2xl:order-none 2xl:max-w-none">
           <Label>{t("site.appearance.preview")}</Label>
           <BrandCard draft={draft} />
+          {/* The real store with the unsaved colours and fonts (the logo shows there once saved). */}
+          <LivePreview tokens={brandTokens(draft, saved)} mode="browse" className="h-[60dvh]" />
           <p className="text-meta text-muted-foreground">{t("site.brand.previewNote")}</p>
           <div>
             <Button asChild variant="outline" size="sm">

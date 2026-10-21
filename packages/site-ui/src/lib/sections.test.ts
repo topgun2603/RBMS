@@ -5,6 +5,12 @@ import { flagHidden, itemsFromSections, sectionsFromItems } from "./hidden";
 import {
   checkSection,
   duplicateSectionForm,
+  emptyDish,
+  emptyStyle,
+  fromStyleForm,
+  isDefaultStyle,
+  isoToLocalInput,
+  localInputToIso,
   formPath,
   fromSectionForm,
   newSectionForm,
@@ -37,6 +43,47 @@ const samples = Object.fromEntries(
     "uspReturnsText",
     "newsletterHeading",
     "newsletterText",
+    "newArrivals",
+    "offerEyebrow",
+    "offerHeading",
+    "offerText",
+    "galleryTitle",
+    "logosTitle",
+    "faqTitle",
+    "faqQ",
+    "faqA",
+    "locationTitle",
+    "hoursWeek",
+    "hoursWeekValue",
+    "menuTitle",
+    "menuGroup",
+    "menuDish",
+    "appointmentHeading",
+    "appointmentText",
+    "serviceName",
+    "book",
+    "beforeAfterTitle",
+    "goldTitle",
+    "goldText",
+    "instagramTitle",
+    "tabsTitle",
+    "lookTitle",
+    "bestsellersTitle",
+    "recommendedTitle",
+    "statsTitle",
+    "statYears",
+    "statCustomers",
+    "timelineTitle",
+    "timelineFirst",
+    "timelineToday",
+    "teamTitle",
+    "memberRole",
+    "pricingTitle",
+    "planBasic",
+    "planPopular",
+    "planFeature",
+    "blogTitle",
+    "reviewsTitle",
   ].map((k) => [k, `sample ${k}`]),
 ) as unknown as SectionSamples;
 
@@ -64,9 +111,9 @@ describe("section form ↔ schema round-trips", () => {
   });
 
   it("'All categories' drops picked ids; 'Choose' keeps their order", () => {
-    const all = fromSectionForm({ type: "categories", title: "", mode: "all", categoryIds: [IDS.C1] });
-    expect(all).toEqual({ type: "categories", title: "" });
-    const pick = fromSectionForm({ type: "categories", title: "", mode: "pick", categoryIds: [IDS.C2, IDS.C1] });
+    const all = fromSectionForm({ type: "categories", title: "", mode: "all", categoryIds: [IDS.C1], layout: "circles", showCounts: false });
+    expect(all).toEqual({ type: "categories", title: "", layout: "circles", showCounts: false });
+    const pick = fromSectionForm({ type: "categories", title: "", mode: "pick", categoryIds: [IDS.C2, IDS.C1], layout: "cards", showCounts: true });
     expect(pick).toMatchObject({ categoryIds: [IDS.C2, IDS.C1] });
   });
 
@@ -84,6 +131,13 @@ describe("new sections", () => {
     if (f.type === "banner" || f.type === "image-text") return { ...f, imageUrl: img };
     if (f.type === "collection") return { ...f, collectionSlug: "new-arrivals" };
     if (f.type === "products") return { ...f, productIds: [IDS.P1] };
+    if (f.type === "hero-video") return { ...f, videoUrl: "https://cdn.example.in/v.mp4" };
+    if (f.type === "gallery") return { ...f, images: [{ url: img, alt: "", caption: "", href: "" }] };
+    if (f.type === "logos") return { ...f, items: [{ imageUrl: img, name: "Brand", href: "" }] };
+    if (f.type === "before-after") return { ...f, beforeUrl: img, afterUrl: img };
+    if (f.type === "instagram") return { ...f, handle: "@shop", images: [{ url: img, alt: "", href: "" }] };
+    if (f.type === "deal") return { ...f, productId: IDS.P1 };
+    if (f.type === "shop-the-look") return { ...f, imageUrl: img, hotspots: [{ x: "40", y: "60.5", productId: IDS.P1 }] };
     return f;
   };
 
@@ -134,6 +188,70 @@ describe("validation errors map to form fields", () => {
     expect(formPath(["slides", 0, "cta", "href"])).toBe("slides.0.ctaHref");
     expect(formPath(["cta", "label"])).toBe("ctaLabel");
     expect(formPath(["items", 2, "quote"])).toBe("items.2.quote");
+    expect(formPath(["cta2", "href"])).toBe("cta2Href");
+  });
+
+  it("reports style, price and pin problems on their fields", () => {
+    const base = newSectionForm("text", samples, "t");
+    const r = checkSection({ ...base, style: { ...emptyStyle(), background: "image" } });
+    expect(r.errors["style.imageUrl"]).toBe("required");
+    const menu = newSectionForm("menu-board", samples, "m") as Extract<SectionForm, { type: "menu-board" }>;
+    const bad = { ...menu, groups: [{ name: "Tiffin", items: [{ ...emptyDish(), name: "Idli", price: "abc" }] }] };
+    expect(checkSection(bad).errors["groups.0.items.0.price"]).toBeTruthy();
+    const loc = newSectionForm("location", samples, "l") as Extract<SectionForm, { type: "location" }>;
+    expect(checkSection({ ...loc, coords: "Madurai" }).errors.coords).toBe("invalid");
+    expect(checkSection({ ...loc, coords: "9.9252, 78.1198" }).ok).toBe(true);
+  });
+});
+
+describe("section style form", () => {
+  it("sends only what differs from the theme; picture + overlay only for a picture background", () => {
+    expect(fromStyleForm(emptyStyle())).toBeUndefined();
+    expect(fromSectionForm({ ...newSectionForm("text", samples, "t"), style: emptyStyle() })).not.toHaveProperty("style");
+    expect(fromStyleForm({ ...emptyStyle(), background: "dark", imageUrl: "/left-over.jpg", overlay: "30", padding: "spacious", hideOnMobile: true })).toEqual({
+      background: "dark",
+      padding: "spacious",
+      hideOnMobile: true,
+    });
+    expect(fromStyleForm({ ...emptyStyle(), background: "image", imageUrl: "/bg.jpg", overlay: "30" })).toEqual({ background: "image", imageUrl: "/bg.jpg", overlay: 30 });
+    expect(isDefaultStyle(undefined)).toBe(true);
+  });
+
+  it("round-trips through the schema on every section type", () => {
+    const style = { background: "gradient", padding: "compact", width: "contained", align: "center", animation: "fade", hideOnDesktop: true } as const;
+    for (const fx of SECTION_FIXTURES) {
+      const parsed = homeSectionSchema.parse({ ...fx, style });
+      const form = toSectionForm(parsed);
+      expect(form.style).toMatchObject({ background: "gradient", padding: "compact", hideOnDesktop: true, hideOnMobile: false });
+      expect(homeSectionSchema.parse(fromSectionForm(form))).toEqual(parsed);
+    }
+  });
+
+  it("the preview carries the style", () => {
+    const f = { ...newSectionForm("faq", samples, "f"), style: { ...emptyStyle(), background: "muted" as const } };
+    expect(resolvePreview([f], { products: new Map(), collections: new Map() })[0]).toMatchObject({ type: "faq", style: { background: "muted" } });
+  });
+});
+
+describe("new section form details", () => {
+  it("prices are typed in rupees and stored in paise", () => {
+    const f = newSectionForm("appointment", samples, "a") as Extract<SectionForm, { type: "appointment" }>;
+    const out = fromSectionForm({ ...f, services: [{ name: "Haircut", duration: "45 min", price: "₹1,250.50" }] }) as { services: { price: number }[] };
+    expect(out.services[0]!.price).toBe(125050);
+    const back = toSectionForm(homeSectionSchema.parse(out)) as Extract<SectionForm, { type: "appointment" }>;
+    expect(back.services[0]!.price).toBe("1250.5");
+  });
+
+  it("the offer end time is edited in local time and saved as ISO", () => {
+    const iso = "2026-11-01T18:30:00.000Z";
+    const local = isoToLocalInput(iso);
+    expect(local).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(localInputToIso(local)).toBe(iso);
+    expect(isoToLocalInput("nonsense")).toBe("");
+  });
+
+  it("a category mosaic needs categories loaded for the preview", () => {
+    expect(referencedIds([newSectionForm("category-mosaic", samples, "c")]).categories).toBe(true);
   });
 });
 
@@ -236,11 +354,45 @@ describe("hidden sections (saved in the draft)", () => {
     const out = flagHidden(
       [
         { type: "text", markdown: "a" },
-        { type: "newsletter", heading: "b", text: "" },
+        { type: "newsletter", heading: "b", text: "", layout: "band" },
       ],
       [{ hidden: false }, { hidden: true }],
     );
     expect(out[0]).not.toHaveProperty("hidden");
     expect(out[1]).toMatchObject({ type: "newsletter", hidden: true });
+  });
+});
+
+describe("shelf, story and layout forms", () => {
+  it("pricing features are one per line; one highlighted plan; prices in rupees", () => {
+    const f = toSectionForm({ type: "pricing-table", plans: [{ name: "Gold", price: 250050, features: ["Locker", "Steam"], highlight: true }] });
+    expect(f).toMatchObject({ plans: [{ price: "2500.5", features: "Locker\nSteam", highlight: true }] });
+    const back = fromSectionForm({ ...(f as Extract<SectionForm, { type: "pricing-table" }>), plans: [{ ...(f as Extract<SectionForm, { type: "pricing-table" }>).plans[0]!, features: " Locker \n\n Steam\n" }] });
+    expect(back).toMatchObject({ plans: [{ price: 250050, features: ["Locker", "Steam"] }] });
+    const two = checkSection(toSectionForm({ type: "pricing-table", plans: [{ name: "A", highlight: true }, { name: "B", highlight: true }] } as never));
+    expect(two.ok).toBe(false);
+  });
+
+  it("stats accept typed thousands separators; hotspots and limits go back as numbers", () => {
+    const stats = fromSectionForm({ type: "stats", title: "", text: "", items: [{ value: "10,000", prefix: "", suffix: "+", label: "Customers" }] });
+    expect(stats).toMatchObject({ items: [{ value: 10000, suffix: "+" }] });
+    const look = fromSectionForm({ type: "shop-the-look", title: "", text: "", imageUrl: "/l.jpg", alt: "", hotspots: [{ x: "12.5", y: "80", productId: IDS.P1 }] });
+    expect(look).toMatchObject({ hotspots: [{ x: 12.5, y: 80, productId: IDS.P1 }] });
+    expect(checkSection({ type: "bestsellers", title: "", layout: "grid", limit: "40" }).ok).toBe(false);
+  });
+
+  it("the preview attaches loaded products to a deal and to look dots", () => {
+    const p = { id: IDS.P1, name: "Saree", slug: "saree", categoryId: null, categoryName: null, image: null, priceMin: 100, priceMax: 100, mrp: null, variantCount: 1, taxInclusive: true };
+    const [deal, look] = resolvePreview(
+      [
+        { type: "deal", id: "d", title: "", text: "", productId: IDS.P1, endsAt: "" },
+        { type: "shop-the-look", id: "l", title: "", text: "", imageUrl: "/l.jpg", alt: "", hotspots: [{ x: "10", y: "20", productId: IDS.P1 }, { x: "1", y: "1", productId: IDS.P2 }] },
+      ],
+      { products: new Map([[IDS.P1, p]]), collections: new Map() },
+    );
+    expect(deal).toMatchObject({ type: "deal", product: { id: IDS.P1 } });
+    expect(look).toMatchObject({ hotspots: [{ x: 10, y: 20, product: { id: IDS.P1 } }] });
+    expect((look as { hotspots: unknown[] }).hotspots).toHaveLength(1);
+    expect(referencedIds([{ type: "deal", title: "", text: "", productId: IDS.P2, endsAt: "" }]).products).toEqual([IDS.P2]);
   });
 });

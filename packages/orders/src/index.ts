@@ -11,6 +11,7 @@ export * from "./logic";
 export * from "./service";
 export * from "./features";
 export * from "./csv";
+export { orderPurchaseStats } from "./stats";
 export { ordersRoutes, requirePermission } from "./routes";
 
 /**

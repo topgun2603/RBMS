@@ -2,14 +2,48 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Textarea } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Switch, Textarea } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
 import { emptySlide, SECTION_LIST_LIMITS, USP_ICON_KEYS, uspIconKey, type FieldErrors, type FormOf, type SectionForm, type SlideForm } from "../../lib/sections";
 import { FieldError, Optional, TextField } from "../bits";
 import { ImageField } from "../image-field";
 import { MarkdownField } from "../markdown-field";
 import { CategoryPicker, ProductPicker, SlugSelect } from "../pickers";
+import { CtaFields, ItemTools, moveIn } from "./form-parts";
+import {
+  AppointmentFields,
+  BeforeAfterFields,
+  FaqFields,
+  GalleryFields,
+  GoldRatesFields,
+  HeroSplitFields,
+  HeroVideoFields,
+  InstagramFields,
+  LocationFields,
+  LogosFields,
+  MenuBoardFields,
+  MosaicFields,
+  OfferFields,
+  TestimonialsFields,
+} from "./section-forms-extra";
 import { USP_ICON_MAP } from "./section-meta";
+import {
+  BestsellersFields,
+  BlogPostsFields,
+  CategoryLayoutFields,
+  DealFields,
+  NewsletterLayoutFields,
+  PricingFields,
+  ProductTabsFields,
+  RecentlyViewedFields,
+  RecommendedFields,
+  ReviewsSummaryFields,
+  ShopTheLookFields,
+  StatsFields,
+  TeamFields,
+  TimelineFields,
+  UspLayoutFields,
+} from "./section-forms-shelves";
 
 interface Props<T extends SectionForm["type"]> {
   form: FormOf<T>;
@@ -43,43 +77,57 @@ export function SectionFields(props: { form: SectionForm; onChange: (f: SectionF
       return <UspFields {...(p as Props<"usp">)} />;
     case "newsletter":
       return <NewsletterFields {...(p as Props<"newsletter">)} />;
+    case "hero-split":
+      return <HeroSplitFields {...(p as Props<"hero-split">)} />;
+    case "hero-video":
+      return <HeroVideoFields {...(p as Props<"hero-video">)} />;
+    case "offer":
+      return <OfferFields {...(p as Props<"offer">)} />;
+    case "gallery":
+      return <GalleryFields {...(p as Props<"gallery">)} />;
+    case "logos":
+      return <LogosFields {...(p as Props<"logos">)} />;
+    case "category-mosaic":
+      return <MosaicFields {...(p as Props<"category-mosaic">)} />;
+    case "faq":
+      return <FaqFields {...(p as Props<"faq">)} />;
+    case "location":
+      return <LocationFields {...(p as Props<"location">)} />;
+    case "menu-board":
+      return <MenuBoardFields {...(p as Props<"menu-board">)} />;
+    case "appointment":
+      return <AppointmentFields {...(p as Props<"appointment">)} />;
+    case "before-after":
+      return <BeforeAfterFields {...(p as Props<"before-after">)} />;
+    case "gold-rates":
+      return <GoldRatesFields {...(p as Props<"gold-rates">)} />;
+    case "instagram":
+      return <InstagramFields {...(p as Props<"instagram">)} />;
+    case "product-tabs":
+      return <ProductTabsFields {...(p as Props<"product-tabs">)} />;
+    case "deal":
+      return <DealFields {...(p as Props<"deal">)} />;
+    case "shop-the-look":
+      return <ShopTheLookFields {...(p as Props<"shop-the-look">)} />;
+    case "bestsellers":
+      return <BestsellersFields {...(p as Props<"bestsellers">)} />;
+    case "recently-viewed":
+      return <RecentlyViewedFields {...(p as Props<"recently-viewed">)} />;
+    case "recommended":
+      return <RecommendedFields {...(p as Props<"recommended">)} />;
+    case "stats":
+      return <StatsFields {...(p as Props<"stats">)} />;
+    case "timeline":
+      return <TimelineFields {...(p as Props<"timeline">)} />;
+    case "team":
+      return <TeamFields {...(p as Props<"team">)} />;
+    case "pricing-table":
+      return <PricingFields {...(p as Props<"pricing-table">)} />;
+    case "blog-posts":
+      return <BlogPostsFields {...(p as Props<"blog-posts">)} />;
+    case "reviews-summary":
+      return <ReviewsSummaryFields {...(p as Props<"reviews-summary">)} />;
   }
-}
-
-/** Up / down / remove buttons for an item in a repeatable list. */
-function ItemTools({ i, n, onMove, onRemove, disabled, min = 1 }: { i: number; n: number; onMove: (d: number) => void; onRemove: () => void; disabled?: boolean; min?: number }) {
-  const { t } = useI18n();
-  return (
-    <div className="flex shrink-0 items-center gap-0.5">
-      <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || i === 0} onClick={() => onMove(-1)} aria-label={t("site.common.moveUpN", { n: i + 1 })}>
-        <ArrowUpIcon />
-      </Button>
-      <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || i === n - 1} onClick={() => onMove(1)} aria-label={t("site.common.moveDownN", { n: i + 1 })}>
-        <ArrowDownIcon />
-      </Button>
-      <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || n <= min} onClick={onRemove} aria-label={t("site.common.removeN", { n: i + 1 })}>
-        <XIcon />
-      </Button>
-    </div>
-  );
-}
-
-function moveIn<T>(list: T[], i: number, d: number): T[] {
-  const j = i + d;
-  if (j < 0 || j >= list.length) return list;
-  const next = [...list];
-  [next[i], next[j]] = [next[j]!, next[i]!];
-  return next;
-}
-
-function CtaFields({ idp, label, href, onLabel, onHref, errors, prefix = "", disabled }: { idp: string; label: string; href: string; onLabel: (v: string) => void; onHref: (v: string) => void; errors: FieldErrors; prefix?: string; disabled?: boolean }) {
-  const { t } = useI18n();
-  return (
-    <div className="grid items-start gap-3 sm:grid-cols-2">
-      <TextField id={`${idp}-cta-label`} label={t("site.home.ctaLabel")} optional value={label} placeholder={t("site.home.ctaLabelPlaceholder")} maxLength={60} disabled={disabled} error={errors[`${prefix}ctaLabel`]} onChange={onLabel} />
-      <TextField id={`${idp}-cta-href`} label={t("site.home.ctaHref")} optional value={href} placeholder="/products" hint={t("site.common.linkHint")} disabled={disabled} error={errors[`${prefix}ctaHref`]} onChange={onHref} />
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------- hero
@@ -151,6 +199,7 @@ function CategoriesFields({ form, onChange, errors, disabled, idp }: Props<"cate
         <CategoryPicker ids={form.categoryIds} onChange={(categoryIds) => onChange({ ...form, categoryIds })} max={SECTION_LIST_LIMITS.ids} disabled={disabled} idPrefix={idp} />
       )}
       <FieldError code={errors.categoryIds} />
+      <CategoryLayoutFields layout={form.layout} showCounts={form.showCounts} onChange={(p) => onChange({ ...form, ...p })} disabled={disabled} idp={idp} />
     </div>
   );
 }
@@ -272,41 +321,12 @@ function ImageTextFields({ form, onChange, errors, disabled, idp }: Props<"image
   );
 }
 
-function TestimonialsFields({ form, onChange, errors, disabled, idp }: Props<"testimonials">) {
-  const { t } = useI18n();
-  const set = (i: number, p: Partial<{ quote: string; name: string }>) => onChange({ ...form, items: form.items.map((x, j) => (j === i ? { ...x, ...p } : x)) });
-  return (
-    <div className="grid gap-4">
-      <TextField id={`${idp}-title`} label={t("site.home.sectionTitle")} optional value={form.title} maxLength={120} disabled={disabled} error={errors.title} onChange={(title) => onChange({ ...form, title })} />
-      {form.items.map((it, i) => (
-        <div key={i} className="grid gap-2 rounded-xl border bg-muted/20 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium">{t("site.home.testimonialN", { n: i + 1 })}</span>
-            <ItemTools i={i} n={form.items.length} disabled={disabled} onMove={(d) => onChange({ ...form, items: moveIn(form.items, i, d) })} onRemove={() => onChange({ ...form, items: form.items.filter((_, j) => j !== i) })} />
-          </div>
-          <UiField id={`${idp}-q${i}`}>
-            <FieldLabel>{t("site.home.quote")}</FieldLabel>
-            <FieldControl>
-              <Textarea rows={3} value={it.quote} maxLength={600} disabled={disabled} onChange={(e) => set(i, { quote: e.target.value })} />
-            </FieldControl>
-            <FieldError code={errors[`items.${i}.quote`]} />
-          </UiField>
-          <TextField id={`${idp}-n${i}`} label={t("site.home.customerName")} placeholder={t("site.home.customerNamePlaceholder")} value={it.name} maxLength={80} disabled={disabled} error={errors[`items.${i}.name`]} onChange={(name) => set(i, { name })} />
-        </div>
-      ))}
-      <FieldError code={errors.items} />
-      <Button type="button" variant="outline" className="justify-self-start" disabled={disabled || form.items.length >= SECTION_LIST_LIMITS.testimonials} onClick={() => onChange({ ...form, items: [...form.items, { quote: "", name: "" }] })}>
-        <PlusIcon /> {t("site.home.addTestimonial")}
-      </Button>
-    </div>
-  );
-}
-
 function UspFields({ form, onChange, errors, disabled, idp }: Props<"usp">) {
   const { t } = useI18n();
   const set = (i: number, p: Partial<{ icon: string; title: string; text: string }>) => onChange({ ...form, items: form.items.map((x, j) => (j === i ? { ...x, ...p } : x)) });
   return (
     <div className="grid gap-4">
+      <UspLayoutFields form={form} onChange={onChange} errors={errors} disabled={disabled} idp={idp} />
       {form.items.map((it, i) => {
         const current = uspIconKey(it.icon);
         return (
@@ -373,6 +393,7 @@ function NewsletterFields({ form, onChange, errors, disabled, idp }: Props<"news
         </FieldControl>
         <FieldError code={errors.text} />
       </UiField>
+      <NewsletterLayoutFields form={form} onChange={onChange} errors={errors} disabled={disabled} idp={idp} />
       <p className="text-meta text-muted-foreground">{t("site.home.newsletterHint")}</p>
     </div>
   );
@@ -401,5 +422,49 @@ export function sectionSummary(f: SectionForm, t: (k: string, v?: Record<string,
       return f.items.map((i) => i.title).filter(Boolean).join(" · ");
     case "newsletter":
       return f.heading;
+    case "hero-split":
+    case "hero-video":
+    case "offer":
+    case "appointment":
+      return f.heading;
+    case "gallery":
+      return f.title || t("site.home.imagesCount", { count: f.images.length });
+    case "logos":
+      return f.title || f.items.map((i) => i.name).filter(Boolean).join(" · ");
+    case "category-mosaic":
+      return f.title || (f.categoryIds.length ? t("site.home.categoriesCount", { count: f.categoryIds.length }) : t("site.home.mosaicAuto"));
+    case "faq":
+      return f.title || t("site.home.questionsCount", { count: f.items.length });
+    case "location":
+      return f.address.split(/\r?\n/)[0] || f.title;
+    case "menu-board":
+      return f.title || f.groups.map((g) => g.name).filter(Boolean).join(" · ");
+    case "before-after":
+    case "gold-rates":
+      return f.title;
+    case "instagram":
+      return f.handle ? `@${f.handle.replace(/^@/, "")}` : f.title;
+    case "product-tabs":
+      return f.title || f.tabs.map((x) => x.label || t(`site.home.tabSource.${x.source}`)).join(" · ");
+    case "deal":
+      return f.title || (f.productId ? t("site.home.productsCount", { count: 1 }) : t("site.home.dealPick"));
+    case "shop-the-look":
+      return f.title || t("site.home.dotsCount", { count: f.hotspots.length });
+    case "bestsellers":
+    case "recommended":
+      return f.title || t(`site.home.type.${f.type}`);
+    case "recently-viewed":
+      return f.title || t("site.home.type.recently-viewed");
+    case "stats":
+      return f.title || f.items.map((i) => `${i.prefix}${i.value}${i.suffix} ${i.label}`.trim()).filter(Boolean).join(" · ");
+    case "timeline":
+      return f.title || f.items.map((i) => i.when).filter(Boolean).join(" → ");
+    case "team":
+      return f.title || f.members.map((m) => m.name).filter(Boolean).join(" · ");
+    case "pricing-table":
+      return f.title || f.plans.map((p) => p.name).filter(Boolean).join(" · ");
+    case "blog-posts":
+    case "reviews-summary":
+      return f.title || t(`site.home.type.${f.type}`);
   }
 }

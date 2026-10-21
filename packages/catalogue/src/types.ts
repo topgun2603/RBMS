@@ -194,7 +194,13 @@ export interface PublicProductSummary {
   /** MRP of the cheapest variant (for a struck-through price), null when unset. */
   mrp: number | null;
   variantCount: number;
+  /** Live variant ids (the store asks inventory once per grid for stock badges). */
+  variantIds: string[];
+  /** The first two photos, only when there is more than one (cards swap to the second on hover). */
+  images?: string[];
   taxInclusive: boolean;
+  /** For the store's "New" badge. */
+  createdAt: Date;
 }
 
 export type PublicCategory = Omit<Category, "productCount" | "createdAt" | "updatedAt" | "active">;

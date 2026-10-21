@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { contrastRatio, hexToOklchString, NEAR_BLACK, readableForeground, WHITE } from "./color";
+import { contrastRatio, hexToOklchString, mix, NEAR_BLACK, readableForeground, relativeLuminance, WHITE } from "./color";
 import { DEFAULT_STORE_THEME, storeThemePatchSchema, storeThemeSchema, themeCssVariables } from "./theme";
 
 export const hexColor = z
@@ -125,6 +125,42 @@ function colorPairs(tokens: BrandTokens): ColorPair[] {
 }
 
 /**
+ * Cards, popovers, muted panels and borders that go with a custom page background, so a dark background doesn't keep
+ * the base theme's white cards (with the light text meant for the page). Dark: surfaces a little lighter than the page;
+ * light: cards near white over the tinted page.
+ */
+export function surfaceVariables(background: string, foreground: string): Record<string, string> {
+  const dark = relativeLuminance(background) < 0.2;
+  const card = dark ? mix(background, foreground, 0.06) : mix(background, WHITE, 0.7);
+  const muted = mix(background, foreground, dark ? 0.1 : 0.05);
+  const border = mix(background, foreground, dark ? 0.16 : 0.12);
+  const out = (hex: string) => hexToOklchString(hex);
+  return {
+    "--card": out(card),
+    "--card-foreground": out(foreground),
+    "--popover": out(card),
+    "--popover-foreground": out(foreground),
+    "--muted": out(muted),
+    "--muted-foreground": out(mix(foreground, background, 0.38)),
+    "--border": out(border),
+    "--input": out(border),
+    // Status colours: a custom dark background doesn't switch on the UI's .dark palette, so use its brighter inks.
+    ...(dark
+      ? {
+          "--destructive": "oklch(0.68 0.19 22)",
+          "--success": "oklch(0.72 0.15 155)",
+          "--warning": "oklch(0.8 0.15 80)",
+          "--info": "oklch(0.72 0.13 250)",
+          "--success-ink": "oklch(0.83 0.13 155)",
+          "--warning-ink": "oklch(0.86 0.13 85)",
+          "--danger-ink": "oklch(0.8 0.13 22)",
+          "--info-ink": "oklch(0.82 0.1 250)",
+        }
+      : {}),
+  };
+}
+
+/**
  * shadcn CSS variables for the tokens, values in oklch. Secondary/accent/background/foreground are only
  * emitted when set, so the UI's base theme (including its dark variant) supplies the rest.
  */
@@ -135,6 +171,7 @@ export function toCssVariables(tokens: BrandTokens): Record<string, string> {
   if (colors.background || colors.foreground) {
     vars["--foreground"] = hexToOklchString(colors.foreground ?? readableForeground(colors.background!));
   }
+  if (colors.background) Object.assign(vars, surfaceVariables(colors.background, colors.foreground ?? readableForeground(colors.background)));
   vars["--primary"] = hexToOklchString(colors.primary);
   vars["--primary-foreground"] = hexToOklchString(readableForeground(colors.primary));
   if (colors.secondary) {

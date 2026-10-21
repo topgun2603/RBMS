@@ -2,37 +2,60 @@ import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import {
-  ArrowRightIcon,
-  BadgeCheckIcon,
-  BanknoteIcon,
-  ClockIcon,
-  GiftIcon,
-  HeartIcon,
-  LeafIcon,
-  PhoneIcon,
-  QuoteIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  StarIcon,
-  TagIcon,
-  TruckIcon,
-  Undo2Icon,
-} from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 import { organizationJsonLd, STORE_PATHS, websiteSearchJsonLd } from "@srirealtime/cms/seo";
 import { apiGetSafe, getRequestInfo, requireStore } from "../server/api";
 import { getRatings } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { Markdown, safeHref } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
-import type { HomeSection, PublicHome, Rating, StoreConfig } from "../types";
-import { Reveal, RevealGroup, RevealItem } from "@srirealtime/ui/motion";
+import type { CollectionPage, HomeSection, List, PostSummary, ProductSummary, PublicHome, PublicMetalRates, Rating, Recommendations, SearchResult, ShopReviewSummary, StoreConfig } from "../types";
+import { Reveal } from "@srirealtime/ui/motion";
 import { percentOff } from "../lib/format";
+import { freshIds } from "../lib/cards";
 import { Container, JsonLd, SectionTitle, StoreImage } from "../components/bits";
 import { ProductCard, ProductGrid } from "../components/product-card";
 import { TrustBadges } from "../components/trust";
-import { Carousel, HeroSlider, NewsletterForm } from "../client/carousel";
+import { Carousel, HeroSlider } from "../client/carousel";
 import { RecentlyViewedStrip } from "../client/recently-viewed";
+import { ExpiryGate } from "../client/home-sections";
+import {
+  AppointmentSection,
+  BeforeAfterSection,
+  CategoryMosaicSection,
+  FaqSection,
+  GallerySection,
+  GoldRatesSection,
+  HERO_TYPES,
+  HeroSplitSection,
+  HeroVideoSection,
+  InstagramSection,
+  LocationSection,
+  LogosSection,
+  MenuBoardSection,
+  OfferSection,
+  offerEnded,
+  SectionFrame,
+  TestimonialsSection,
+} from "./home-sections";
+import {
+  BlogPostsSection,
+  CategoriesSectionView,
+  DealSection,
+  NewsletterSection,
+  PricingSection,
+  ProductTabsSection,
+  RecentlyViewedSection,
+  RecommendedSection,
+  ReviewsSummarySection,
+  ShelfSection,
+  ShopTheLookSection,
+  StatsSection,
+  TeamSection,
+  TimelineSection,
+  UspSection,
+  type ShelfData,
+} from "./home-shelves";
 
 export const getHome = () => apiGetSafe<PublicHome>("/cms/public/home", { sections: [], seo: null, isDefault: true, publishedAt: null }, { revalidate: 60 });
 
@@ -41,34 +64,97 @@ export async function homeMetadata(): Promise<Metadata> {
   return storeMetadata({ kind: "home", seo: home.seo });
 }
 
-const USP_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  truck: TruckIcon,
-  "free-shipping": TruckIcon,
-  shipping: TruckIcon,
-  cash: BanknoteIcon,
-  cod: BanknoteIcon,
-  return: Undo2Icon,
-  returns: Undo2Icon,
-  shield: ShieldCheckIcon,
-  secure: ShieldCheckIcon,
-  star: StarIcon,
-  gift: GiftIcon,
-  phone: PhoneIcon,
-  support: PhoneIcon,
-  leaf: LeafIcon,
-  clock: ClockIcon,
-  tag: TagIcon,
-  heart: HeartIcon,
-  check: BadgeCheckIcon,
-};
+
+/** Today's jewellery rate board (5-minute cache); null when the shop has rates off (404 / feature disabled). */
+const getMetalRates = () => apiGetSafe<PublicMetalRates | null>("/jewellery/public/rates", null, { revalidate: 300 });
+
+const recs = (kind: "bestsellers" | "sale" | "home", limit: number) =>
+  apiGetSafe<Recommendations | null>("/catalog/public/recommendations", null, { revalidate: 300, query: { kind, limit } }).then((r) => r?.items ?? []);
+
+/**
+ * Data the shelf / proof sections need, loaded in parallel once per request: products per tab (new: newest; best
+ * sellers: recent paid orders, newest while there are none; on sale: biggest discounts; a collection), best sellers,
+ * the server half of "recommended", blog posts and the shop's reviews. A failed lookup just leaves its section empty.
+ */
+async function loadShelves(sections: HomeSection[], t: Translator): Promise<Map<number, ShelfData>> {
+  const out = new Map<number, ShelfData>();
+  await Promise.all(
+    sections.map(async (s, i) => {
+      switch (s.type) {
+        case "product-tabs": {
+          const tabs = await Promise.all(
+            s.tabs.map(async (tab) => {
+              if (tab.source === "collection") {
+                const c = tab.collectionSlug
+                  ? await apiGetSafe<CollectionPage | null>(`/catalog/public/collections/${encodeURIComponent(tab.collectionSlug)}`, null, { revalidate: 120, query: { limit: s.limit } })
+                  : null;
+                return { label: tab.label || c?.collection.name || t("sections.tabCollection"), href: c ? STORE_PATHS.collection(c.collection.slug) : undefined, items: c?.items ?? [] };
+              }
+              if (tab.source === "new") {
+                const r = await apiGetSafe<List<ProductSummary>>("/catalog/public/products", { items: [], total: 0 }, { revalidate: 120, query: { sort: "new", limit: s.limit } });
+                return { label: tab.label || t("sections.tabNew"), href: `${STORE_PATHS.products}?sort=new`, items: r.items };
+              }
+              const items = await recs(tab.source, s.limit);
+              return { label: tab.label || t(tab.source === "sale" ? "sections.tabSale" : "sections.tabBestsellers"), href: undefined, items };
+            }),
+          );
+          out.set(i, { tabs: tabs.filter((x) => x.items.length > 0) });
+          return;
+        }
+        case "bestsellers":
+          out.set(i, { products: await recs("bestsellers", s.limit) });
+          return;
+        case "recommended":
+          out.set(i, { products: await recs("home", s.limit) });
+          return;
+        case "blog-posts": {
+          const r = await apiGetSafe<List<PostSummary>>("/cms/public/posts", { items: [], total: 0 }, { revalidate: 300, query: { limit: s.limit, tag: s.tag } });
+          out.set(i, { posts: r.items });
+          return;
+        }
+        case "reviews-summary": {
+          const summary = await apiGetSafe<ShopReviewSummary | null>("/reviews/public/summary", null, { revalidate: 300, query: { limit: s.limit } });
+          if (!summary?.count) return;
+          const ids = [...new Set(summary.items.map((r) => r.productId))];
+          const found = ids.length ? await apiGetSafe<List<ProductSummary>>("/catalog/public/lookup", { items: [], total: 0 }, { revalidate: 300, query: { ids: ids.join(",") } }) : { items: [] };
+          out.set(i, { reviews: { summary, products: new Map(found.items.map((p) => [p.id, p])) } });
+          return;
+        }
+        default:
+          return;
+      }
+    }),
+  );
+  return out;
+}
+
+/** Product counts per category (rolled up over sub-categories), for category sections that show them. */
+async function categoryCounts(sections: HomeSection[]): Promise<Map<string, number> | undefined> {
+  if (!sections.some((s) => s.type === "categories" && s.showCounts)) return undefined;
+  const r = await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 300, query: { limit: 1 } });
+  return new Map((r?.facets.categories ?? []).map((c) => [c.id, c.count]));
+}
+
+/** Product ids a section shows (for one ratings call per page). */
+function productIdsOf(s: HomeSection, d: ShelfData | undefined): string[] {
+  if (s.type === "collection" || s.type === "products") return s.products.map((p) => p.id);
+  if (s.type === "deal") return [s.product.id];
+  if (s.type === "shop-the-look") return s.hotspots.map((h) => h.product.id);
+  return [...(d?.products ?? []), ...(d?.tabs ?? []).flatMap((x) => x.items)].map((p) => p.id);
+}
 
 export async function HomePage() {
   const [info, config, home] = await Promise.all([getRequestInfo(), requireStore(), getHome()]);
-  const ids = home.sections.flatMap((s) => (s.type === "collection" || s.type === "products" ? s.products.map((p) => p.id) : []));
-  const ratings = await getRatings(ids);
+  const now = Date.now();
+  const sections = home.sections.filter((s) => !offerEnded(s, now));
+  const [shelves, counts] = await Promise.all([loadShelves(sections, info.t), categoryCounts(sections)]);
+  const ids = sections.flatMap((s, i) => productIdsOf(s, shelves.get(i)));
+  const [ratings, rates] = await Promise.all([getRatings(ids), sections.some((s) => s.type === "gold-rates") ? getMetalRates() : Promise.resolve(null)]);
   const t = info.t;
   const social = Object.values(config.shop.social ?? {}).filter((s): s is string => typeof s === "string");
-  const hasUsp = home.sections.some((s) => s.type === "usp");
+  const hasUsp = sections.some((s) => s.type === "usp");
+  const first = sections[0];
+  const heroHeading = first?.type === "hero" ? !!first.slides[0]?.heading : first?.type === "hero-split" || first?.type === "hero-video";
   return (
     <>
       <JsonLd
@@ -77,55 +163,74 @@ export async function HomePage() {
           websiteSearchJsonLd({ name: config.shop.name, url: info.baseUrl }),
         ]}
       />
-      {!(home.sections[0]?.type === "hero" && home.sections[0].slides[0]?.heading) && <h1 className="sr-only">{config.shop.name}</h1>}
+      {!heroHeading && <h1 className="sr-only">{config.shop.name}</h1>}
       <div className="sf-home flex flex-col gap-[var(--sf-section)] pb-4">
-        {home.sections.map((s, i) => (
-          <React.Fragment key={s.id ?? i}>
-            <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} />
+        {sections.map((s, i) => (
+          // `display: contents` keeps the flex gaps; the id lets the live preview select, outline and scroll to it.
+          <div key={s.id ?? i} data-section-id={s.id} className="contents">
+            {s.type === "offer" || s.type === "deal" ? (
+              <ExpiryGate endsAt={s.endsAt}>
+                <SectionFrame section={s}>
+                  <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} locale={info.locale} />
+                </SectionFrame>
+              </ExpiryGate>
+            ) : (
+              <SectionFrame section={s}>
+                <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} rates={rates} locale={info.locale} data={shelves.get(i)} counts={counts} />
+              </SectionFrame>
+            )}
             {/* Trust row right under the hero, unless the shop has its own "Why shop with us" (usp) section. */}
-            {i === 0 && s.type === "hero" && !hasUsp && (
+            {i === 0 && HERO_TYPES.has(s.type) && !hasUsp && (
               <Container className="sf-unboxed -mt-[calc(var(--sf-section)*0.55)]">
                 <Reveal>
                   <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />
                 </Reveal>
               </Container>
             )}
-          </React.Fragment>
+          </div>
         ))}
-        {/* Renders nothing (no gap) until the shopper has history. */}
-        <RecentlyViewedStrip className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8" />
+        {/* Renders nothing (no gap) until the shopper has history; a recently-viewed section takes its place. */}
+        {!sections.some((s) => s.type === "recently-viewed") && <RecentlyViewedStrip className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8" />}
       </div>
     </>
   );
 }
 
-export function HomeSectionView({ section: s, index, t, ratings, config }: { section: HomeSection; index: number; t: Translator; ratings: Map<string, Rating>; config: StoreConfig }) {
+export function HomeSectionView({
+  section: s,
+  index,
+  t,
+  ratings,
+  config,
+  rates = null,
+  locale = "en",
+  data,
+  counts,
+}: {
+  section: HomeSection;
+  index: number;
+  t: Translator;
+  ratings: Map<string, Rating>;
+  config: StoreConfig;
+  /** Today's jewellery rates, for a gold-rates section. */
+  rates?: PublicMetalRates | null;
+  locale?: string;
+  /** What a shelf / proof section loaded (see `loadShelves`). */
+  data?: ShelfData;
+  /** Product counts per category (categories sections with `showCounts`). */
+  counts?: ReadonlyMap<string, number>;
+}) {
   switch (s.type) {
     case "hero":
       return <HeroSlider slides={s.slides} shopName={config.shop.name} />;
 
     case "categories":
-      return (
-        <Container>
-          {s.title && <SectionTitle title={s.title} eyebrow={t("home.explore")} href={STORE_PATHS.products} linkLabel={t("list.viewAll")} />}
-          <Carousel label={s.title || t("nav.categories")} itemClassName="w-[30%] sm:w-[20%] lg:w-[15%] xl:w-[13%]">
-            {s.categories.map((c) => (
-              <Link key={c.id} href={STORE_PATHS.category(c.slug)} className="group block rounded-2xl p-1 text-center focus-ring">
-                <span className="relative block aspect-square rounded-full p-1 transition-[background-color] duration-300 group-hover:bg-[image:var(--sf-gradient)]">
-                  <span className="block size-full overflow-hidden rounded-full bg-muted ring-2 ring-background">
-                    <StoreImage src={c.image} alt={c.name} className="transition-transform duration-500 ease-out group-hover:scale-110 motion-reduce:transition-none" />
-                  </span>
-                </span>
-                <span className="mt-3 block truncate text-sm font-semibold transition-colors group-hover:text-primary">{c.name}</span>
-              </Link>
-            ))}
-          </Carousel>
-        </Container>
-      );
+      return <CategoriesSectionView s={s} t={t} counts={counts} />;
 
     case "collection": {
       // A sale ribbon only when the products really are discounted (no invented urgency / timers).
       const best = Math.max(0, ...s.products.map((p) => percentOff(p.priceMin, p.mrp)));
+      const fresh = freshIds(s.products);
       return (
         <Container>
           <SectionTitle
@@ -138,7 +243,7 @@ export function HomeSectionView({ section: s, index, t, ratings, config }: { sec
           {s.layout === "carousel" ? (
             <Carousel label={s.title || s.collection.name}>
               {s.products.map((p, i) => (
-                <ProductCard key={p.id} product={p} rating={ratings.get(p.id)} t={t} eager={index < 2 && i < 4} />
+                <ProductCard key={p.id} product={p} rating={ratings.get(p.id)} t={t} eager={index < 2 && i < 4} fresh={fresh.has(p.id)} />
               ))}
             </Carousel>
           ) : (
@@ -183,7 +288,7 @@ export function HomeSectionView({ section: s, index, t, ratings, config }: { sec
 
     case "text":
       return (
-        <Container className="max-w-3xl text-center">
+        <Container className={s.style?.align === "start" ? "max-w-3xl" : "max-w-3xl text-center"}>
           <Reveal>
             {s.heading && <h2 className="mb-4 font-display text-h2 font-semibold">{s.heading}</h2>}
             <Markdown source={s.markdown} className="text-base text-foreground/80" />
@@ -213,75 +318,63 @@ export function HomeSectionView({ section: s, index, t, ratings, config }: { sec
       );
 
     case "testimonials":
-      return (
-        <section className="kolam relative bg-tint-1 py-[var(--sf-section)]">
-          <Container>
-            {s.title && (
-              <Reveal className="mb-10 text-center">
-                <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-primary uppercase">{t("home.loved")}</p>
-                <h2 className="sf-heading font-display text-h2 font-semibold">{s.title}</h2>
-              </Reveal>
-            )}
-            <Carousel label={s.title || t("home.loved")} itemClassName="w-[84%] sm:w-[46%] lg:w-[32%] xl:w-[32%]">
-              {s.items.map((it, i) => (
-                <figure key={i} className="flex h-full flex-col rounded-[var(--sf-radius-card)] bg-card p-6 shadow-card ring-1 ring-border transition-transform duration-300 hover:-translate-y-1 motion-reduce:transition-none sm:p-7">
-                  <div className="flex items-center justify-between">
-                    <QuoteIcon className="size-8 text-primary/35" aria-hidden />
-                    <span className="flex gap-0.5" aria-hidden>
-                      {[0, 1, 2, 3, 4].map((k) => (
-                        <StarIcon key={k} className="size-3.5 fill-gold text-gold" />
-                      ))}
-                    </span>
-                  </div>
-                  <blockquote className="mt-4 flex-1 font-display text-lg leading-relaxed text-foreground/90">“{it.quote}”</blockquote>
-                  <figcaption className="mt-6 flex items-center gap-3 border-t pt-4">
-                    <span aria-hidden className="flex size-10 items-center justify-center rounded-full bg-[image:var(--sf-gradient)] text-sm font-bold text-primary-foreground">
-                      {it.name.charAt(0)}
-                    </span>
-                    <span className="text-sm font-semibold">{it.name}</span>
-                  </figcaption>
-                </figure>
-              ))}
-            </Carousel>
-          </Container>
-        </section>
-      );
+      return <TestimonialsSection s={s} t={t} />;
 
     case "usp":
-      return (
-        <Container>
-          <RevealGroup as="ul" className={`grid gap-3 sm:gap-4 ${s.items.length >= 4 ? "grid-cols-2 lg:grid-cols-4" : s.items.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-            {s.items.map((it, i) => {
-              const Icon = USP_ICON[it.icon] ?? SparklesIcon;
-              return (
-                <RevealItem as="li" key={i} className="group flex items-start gap-4 rounded-2xl bg-card p-5 ring-1 ring-border transition-shadow hover:shadow-card">
-                  <span className="icon-chip size-12 rounded-2xl text-primary transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transition-none">
-                    <Icon className="size-6" />
-                  </span>
-                  <span>
-                    <span className="block font-semibold">{it.title}</span>
-                    {it.text && <span className="mt-0.5 block text-sm text-muted-foreground">{it.text}</span>}
-                  </span>
-                </RevealItem>
-              );
-            })}
-          </RevealGroup>
-        </Container>
-      );
+      return <UspSection s={s} t={t} />;
 
     case "newsletter":
-      return (
-        <Container>
-          <Reveal className="sf-brand-hero relative overflow-hidden rounded-[var(--sf-radius-card)] px-6 py-12 text-primary-foreground sm:px-12 sm:py-14">
-            <div className="relative z-[1] flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="max-w-lg">
-                <h2 className="sf-heading font-display text-h2 font-semibold">{s.heading}</h2>
-                {s.text && <p className="mt-2 text-primary-foreground/85">{s.text}</p>}
-              </div>
-              <NewsletterForm />
-            </div>
-          </Reveal>
-        </Container>
-      );
+      return <NewsletterSection s={s} t={t} />;
+
+    case "hero-split":
+      return <HeroSplitSection s={s} index={index} />;
+    case "hero-video":
+      return <HeroVideoSection s={s} index={index} />;
+    case "offer":
+      return <OfferSection s={s} t={t} />;
+    case "gallery":
+      return <GallerySection s={s} />;
+    case "logos":
+      return <LogosSection s={s} />;
+    case "category-mosaic":
+      return <CategoryMosaicSection s={s} t={t} />;
+    case "faq":
+      return <FaqSection s={s} t={t} />;
+    case "location":
+      return <LocationSection s={s} t={t} config={config} />;
+    case "menu-board":
+      return <MenuBoardSection s={s} t={t} />;
+    case "appointment":
+      return <AppointmentSection s={s} t={t} />;
+    case "before-after":
+      return <BeforeAfterSection s={s} />;
+    case "gold-rates":
+      return <GoldRatesSection s={s} t={t} rates={rates} locale={locale} />;
+    case "instagram":
+      return <InstagramSection s={s} t={t} />;
+    case "product-tabs":
+      return <ProductTabsSection s={s} t={t} data={data} ratings={ratings} index={index} />;
+    case "deal":
+      return <DealSection s={s} t={t} rating={ratings.get(s.product.id)} />;
+    case "shop-the-look":
+      return <ShopTheLookSection s={s} t={t} />;
+    case "bestsellers":
+      return <ShelfSection title={s.title || t("rec.bestsellers")} eyebrow={t("rec.bestsellersEyebrow")} products={data?.products ?? []} layout={s.layout} ratings={ratings} t={t} index={index} />;
+    case "recommended":
+      return <RecommendedSection s={s} t={t} data={data} />;
+    case "recently-viewed":
+      return <RecentlyViewedSection s={s} />;
+    case "stats":
+      return <StatsSection s={s} />;
+    case "timeline":
+      return <TimelineSection s={s} t={t} />;
+    case "team":
+      return <TeamSection s={s} t={t} />;
+    case "pricing-table":
+      return <PricingSection s={s} t={t} />;
+    case "blog-posts":
+      return <BlogPostsSection s={s} t={t} posts={data?.posts ?? []} locale={locale} />;
+    case "reviews-summary":
+      return <ReviewsSummarySection s={s} t={t} data={data?.reviews} locale={locale} />;
   }
 }

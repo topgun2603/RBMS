@@ -144,6 +144,24 @@ export class ReviewsService {
   }
 
   /**
+   * `GET /public/summary`: the whole shop's rating over approved reviews and the latest `limit` (≤ 12) of them, for the
+   * storefront's reviews section. Zeros and no reviews when the shop has reviews switched off.
+   */
+  async shopSummary(tenantId: string, rawLimit: unknown = 6): Promise<RatingSummary & { items: PublicReview[] }> {
+    const n = Number(rawLimit);
+    const limit = Number.isInteger(n) && n >= 1 ? Math.min(n, 12) : 6;
+    if (this.deps.featureGate && !(await this.deps.featureGate.isEnabled(tenantId, REVIEW_FEATURE_KEYS.base))) {
+      return { ...ratingSummary([]), items: [] };
+    }
+    const where = and(eq(productReviews.tenantId, tenantId), eq(productReviews.status, "approved"));
+    const [rows, latest] = await Promise.all([
+      this.db.select({ rating: productReviews.rating, count: count() }).from(productReviews).where(where).groupBy(productReviews.rating),
+      this.db.select().from(productReviews).where(where).orderBy(desc(productReviews.createdAt), asc(productReviews.id)).limit(limit),
+    ]);
+    return { ...ratingSummary(rows), items: latest.map((r) => toPublicReview(toReview(r))) };
+  }
+
+  /**
    * `{ productId, average, count }` per product over approved reviews (zeros when unrated), in the order asked. Also the
    * catalogue's `RatingsPort`: with a feature gate, shops with `reviews` off get zeros.
    */

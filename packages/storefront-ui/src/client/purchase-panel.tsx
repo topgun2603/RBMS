@@ -25,7 +25,8 @@ const isSizeOption = (name: string) => /size|அளவு/i.test(name);
 
 /**
  * Variant pickers, price, qty, add to cart / buy now, wishlist, delivery check. `compact` (quick view) drops the
- * sticky phone bar and the delivery check; `sizeGuide` (server-rendered) adds a "Size guide" dialog next to sizes.
+ * sticky phone bar and the delivery check; `sizeGuide` (server-rendered) adds a "Size guide" dialog next to sizes;
+ * `stickyBar={false}` (theme `stickyBuy: off`) keeps the phone bar away.
  */
 export function PurchasePanel({
   product,
@@ -33,12 +34,14 @@ export function PurchasePanel({
   sizeGuide,
   compact,
   onAdded,
+  stickyBar = true,
 }: {
   product: Product;
   availability: AvailabilityMap;
   sizeGuide?: React.ReactNode;
   compact?: boolean;
   onAdded?: () => void;
+  stickyBar?: boolean;
 }) {
   const { t, cart, shell } = useStore();
   const router = useRouter();
@@ -201,7 +204,7 @@ export function PurchasePanel({
       {!compact && <DeliveryCheck weightGrams={(variant?.weightGrams ?? 500) * qty} subtotal={price * qty} />}
 
       {/* Phone: sticky buy bar slides up once the main buttons scroll away. */}
-      {!compact && (
+      {!compact && stickyBar && (
         <AnimatePresence>
           {showBar && (
             <motion.div

@@ -99,6 +99,18 @@ import {
   type SearchFacets,
   type SearchSort,
 } from "./search";
+import {
+  rankBestsellers,
+  rankForCart,
+  rankForHome,
+  rankSimilar,
+  rankTogether,
+  recommendationQuerySchema,
+  type RecCandidate,
+  type RecommendationKind,
+  type RecommendationQuery,
+  type RecSignals,
+} from "./recommend";
 import type {
   CatalogItem,
   Category,
@@ -167,6 +179,34 @@ export interface EventsPort {
   emit(tenantId: string, type: string, data: unknown): Promise<void>;
 }
 
+/**
+ * Purchase signals for store recommendations (implemented with the orders module in kit): paid orders per product and
+ * products bought together. Without it recommendations use the catalogue alone (similar products, newest first).
+ */
+export interface PurchaseStatsPort {
+  /** Paid orders per product since `since`, most first (at most `limit`). */
+  topProducts(tenantId: string, since: Date, limit: number): Promise<{ productId: string; orders: number }[]>;
+  /** Products in the same paid orders as any of `productIds` (not those), by how many orders, most first. */
+  boughtWith(tenantId: string, productIds: string[], since: Date, limit: number): Promise<{ productId: string; orders: number }[]>;
+}
+
+/** `GET /public/recommendations`. `source` says whether order data shaped the list. */
+export interface PublicRecommendations {
+  kind: RecommendationKind;
+  items: PublicProductSummary[];
+  /** kind=product: bought in the same orders (empty without order data). */
+  boughtTogether: PublicProductSummary[];
+  source: "orders" | "catalogue";
+}
+
+/** Candidate pool per recommendation call: the newest products plus the anchors' / viewed categories. */
+const REC_POOL = 300;
+const REC_CATEGORY_POOL = 200;
+const DAY_MS = 86_400_000;
+/** Purchase signals are cached per shop for this long (order scans are the expensive part). */
+const STATS_TTL_MS = 10 * 60_000;
+const STATS_CACHE_MAX = 500;
+
 export interface CatalogueDeps {
   db: Db;
   /**
@@ -190,6 +230,8 @@ export interface CatalogueDeps {
   listingReview?: ListingReviewPort;
   /** Webhook events (`product.created`, `product.updated`). Without it nothing is emitted. */
   events?: EventsPort;
+  /** Paid-order signals for recommendations (orders). Without it recommendations use the catalogue alone. */
+  purchases?: PurchaseStatsPort;
   /** Clock override for tests. */
   now?: () => Date;
 }
@@ -1692,6 +1734,187 @@ export class CatalogueService {
     const product = await this.assemble(tenantId, row.p);
     const category = row.categoryName && row.categorySlug ? { name: row.categoryName, slug: row.categorySlug } : null;
     return toPublicProduct(product, category);
+  }
+
+  /**
+   * `GET /public/compare?ids=`: full public products (variants, options, attributes) for up to 8 ids, in the order
+   * asked; unknown, inactive or non-store ids are left out. Powers the store's compare page.
+   */
+  async publicCompare(tenantId: string, rawIds: unknown): Promise<{ items: PublicProduct[] }> {
+    const { ids } = idsQuerySchema.parse({ ids: rawIds ?? [] });
+    const wanted = [...new Set(ids)].slice(0, 8);
+    if (!wanted.length) return { items: [] };
+    const rows = await this.db
+      .select({ p: catalogProducts, categoryName: catalogCategories.name, categorySlug: catalogCategories.slug })
+      .from(catalogProducts)
+      .leftJoin(catalogCategories, and(eq(catalogCategories.id, catalogProducts.categoryId), eq(catalogCategories.tenantId, tenantId)))
+      .where(and(this.publicWhere(tenantId), inArray(catalogProducts.id, wanted)));
+    const variants = await this.variantsOf(tenantId, rows.map((r) => r.p.id));
+    const byId = new Map(
+      rows.map((r) => {
+        const product: Product = { ...toProductBase(r.p), variants: (variants.get(r.p.id) ?? []).map(toVariant) };
+        const category = r.categoryName && r.categorySlug ? { name: r.categoryName, slug: r.categorySlug } : null;
+        return [r.p.id, toPublicProduct(product, category)] as const;
+      }),
+    );
+    return { items: wanted.map((id) => byId.get(id)).filter((x): x is PublicProduct => Boolean(x)) };
+  }
+
+  /** `GET /public/lookup?ids=`: public summaries of up to 48 products, in the order asked (cards for ids the store holds). */
+  async publicLookup(tenantId: string, rawIds: unknown): Promise<{ items: PublicProductSummary[] }> {
+    const { ids } = idsQuerySchema.parse({ ids: rawIds ?? [] });
+    const wanted = [...new Set(ids)].slice(0, 48);
+    if (!wanted.length) return { items: [] };
+    const live = await this.db
+      .select({ id: catalogProducts.id })
+      .from(catalogProducts)
+      .where(and(this.publicWhere(tenantId), inArray(catalogProducts.id, wanted)));
+    const ok = new Set(live.map((r) => r.id));
+    return { items: await this.publicSummaries(tenantId, wanted.filter((id) => ok.has(id))) };
+  }
+
+  // ================================================================ recommendations (public)
+
+  private statsCache = new Map<string, { at: number; value: Map<string, number> }>();
+
+  /** A purchase signal, cached per shop (`STATS_TTL_MS`); empty without the port or when it fails. */
+  private async signal(key: string, load: (p: PurchaseStatsPort) => Promise<{ productId: string; orders: number }[]>): Promise<Map<string, number> | undefined> {
+    const port = this.deps.purchases;
+    if (!port) return undefined;
+    const now = Date.now();
+    const hit = this.statsCache.get(key);
+    if (hit && now - hit.at < STATS_TTL_MS) return hit.value;
+    let value: Map<string, number>;
+    try {
+      value = new Map((await load(port)).map((r) => [r.productId, Number(r.orders)]));
+    } catch (err) {
+      this.log.warn({ err, key }, "catalogue: purchase stats unavailable, recommending from the catalogue");
+      return undefined;
+    }
+    if (this.statsCache.size >= STATS_CACHE_MAX) this.statsCache.delete(this.statsCache.keys().next().value!);
+    this.statsCache.set(key, { at: now, value });
+    return value;
+  }
+
+  /** Light rows for scoring: active store products (newest `REC_POOL`, plus up to `REC_CATEGORY_POOL` in `categoryIds`). */
+  private async recPool(tenantId: string, categoryIds: string[], extraIds: string[]): Promise<RecCandidate[]> {
+    // Aliased so the correlated subquery's columns are never printed unqualified (single-table select).
+    const minPrice = sql<number | null>`(select min(cv.price) from catalog_variants cv where cv.product_id = "catalog_products"."id" and cv.deleted_at is null)`;
+    const fields = {
+      id: catalogProducts.id,
+      categoryId: catalogProducts.categoryId,
+      brand: catalogProducts.brand,
+      tags: catalogProducts.tags,
+      createdAt: catalogProducts.createdAt,
+      price: minPrice,
+    };
+    const base = this.publicWhere(tenantId);
+    const [newest, inCats, extra] = await Promise.all([
+      this.db.select(fields).from(catalogProducts).where(base).orderBy(desc(catalogProducts.createdAt), asc(catalogProducts.id)).limit(REC_POOL),
+      categoryIds.length
+        ? this.db
+            .select(fields)
+            .from(catalogProducts)
+            .where(and(base, inArray(catalogProducts.categoryId, categoryIds)))
+            .orderBy(desc(catalogProducts.createdAt), asc(catalogProducts.id))
+            .limit(REC_CATEGORY_POOL)
+        : Promise.resolve([]),
+      extraIds.length ? this.db.select(fields).from(catalogProducts).where(and(base, inArray(catalogProducts.id, extraIds.slice(0, 200)))) : Promise.resolve([]),
+    ]);
+    const out = new Map<string, RecCandidate>();
+    for (const r of [...newest, ...inCats, ...extra]) {
+      if (!out.has(r.id)) out.set(r.id, { id: r.id, categoryId: r.categoryId, brand: r.brand, tags: r.tags ?? [], createdAt: r.createdAt, price: Number(r.price ?? 0) });
+    }
+    return [...out.values()];
+  }
+
+  /** Manual collections per product (for "shares a collection"). */
+  private async collectionsOf(tenantId: string): Promise<Map<string, string[]>> {
+    const rows = await this.db
+      .select({ id: catalogCollections.id, productIds: catalogCollections.productIds })
+      .from(catalogCollections)
+      .where(and(eq(catalogCollections.tenantId, tenantId), eq(catalogCollections.active, true), eq(catalogCollections.type, "manual")));
+    const out = new Map<string, string[]>();
+    for (const c of rows) for (const pid of c.productIds ?? []) out.set(pid, [...(out.get(pid) ?? []), c.id]);
+    return out;
+  }
+
+  /**
+   * `GET /public/recommendations` (scoring: ./recommend.ts). kind=product (`productIds`: the product): similar
+   * products + bought together; cart (`productIds`: the cart's products): complementary items, never the cart's own;
+   * home (`categoryIds`: categories the shopper viewed, most recent first): trending blended with those; bestsellers:
+   * by recent paid orders; sale: the biggest discounts. New shops (no orders) get catalogue-only lists.
+   */
+  async recommendations(tenantId: string, raw: RecommendationQuery = {}): Promise<PublicRecommendations> {
+    const q = recommendationQuerySchema.parse(raw);
+    const now = this.now();
+    const exclude = new Set(q.exclude);
+    if (q.kind === "sale") return { kind: q.kind, items: await this.saleShelf(tenantId, q.limit, exclude), boughtTogether: [], source: "catalogue" };
+
+    const cats = await this.activeCategories(tenantId);
+    const parents = new Map(cats.map((c) => [c.id, c.parentId]));
+    const parentOf = (id: string) => parents.get(id) ?? null;
+    const anchors = q.kind === "product" ? q.productIds.slice(0, 1) : q.kind === "cart" ? q.productIds : [];
+    const sales = await this.signal(`top:${tenantId}:${q.kind === "bestsellers" ? 90 : 30}`, (p) =>
+      p.topProducts(tenantId, new Date(now.getTime() - (q.kind === "bestsellers" ? 90 : 30) * DAY_MS), 200),
+    );
+    const together = anchors.length
+      ? await this.signal(`with:${tenantId}:${[...anchors].sort().join(",")}`, (p) => p.boughtWith(tenantId, anchors, new Date(now.getTime() - 365 * DAY_MS), 50))
+      : undefined;
+    const signals: RecSignals = { sales, together };
+
+    // The anchor rows come first (their categories widen the pool), then the pool itself.
+    const anchorRows = anchors.length ? await this.recPool(tenantId, [], anchors).then((rows) => rows.filter((r) => anchors.includes(r.id))) : [];
+    const poolCats = [...new Set([...anchorRows.map((a) => a.categoryId), ...q.categoryIds].filter((x): x is string => !!x))];
+    const signalIds = [...new Set([...(sales?.keys() ?? []), ...(together?.keys() ?? [])])];
+    const pool = await this.recPool(tenantId, poolCats.flatMap((id) => descendantIds(cats, id)), signalIds);
+    if (q.kind === "product" || q.kind === "cart") {
+      const cols = await this.collectionsOf(tenantId);
+      for (const c of [...pool, ...anchorRows]) (c as { collections?: string[] }).collections = cols.get(c.id) ?? [];
+    }
+
+    let ids: string[] = [];
+    let bought: string[] = [];
+    if (q.kind === "product") {
+      const anchor = anchorRows[0];
+      if (anchor) {
+        bought = rankTogether(together, new Set([anchor.id, ...exclude]), 3, new Set(pool.map((c) => c.id)));
+        ids = rankSimilar(anchor, pool, signals, { parentOf, now, limit: q.limit, skip: new Set([...exclude, ...bought]) });
+      }
+    } else if (q.kind === "cart") {
+      ids = rankForCart(anchorRows, pool, signals, { parentOf, now, limit: q.limit, skip: new Set([...exclude, ...anchors]) });
+    } else if (q.kind === "bestsellers") {
+      ids = rankBestsellers(pool, signals, { limit: q.limit, skip: exclude, now });
+    } else {
+      ids = rankForHome(pool, signals, q.categoryIds, { parentOf, now, limit: q.limit, skip: exclude });
+    }
+    const [items, boughtTogether] = await Promise.all([this.publicSummaries(tenantId, ids), this.publicSummaries(tenantId, bought)]);
+    const usedOrders = (sales?.size ?? 0) > 0 || (together?.size ?? 0) > 0;
+    return { kind: q.kind, items, boughtTogether, source: usedOrders ? "orders" : "catalogue" };
+  }
+
+  /** Products with a variant below its MRP, biggest discount first (then newest). */
+  private async saleShelf(tenantId: string, limit: number, exclude: ReadonlySet<string>): Promise<PublicProductSummary[]> {
+    const rows = await this.db
+      .select({ id: catalogProducts.id })
+      .from(catalogProducts)
+      .where(
+        and(
+          this.publicWhere(tenantId),
+          sql`exists (select 1 from catalog_variants cv where cv.product_id = "catalog_products"."id" and cv.deleted_at is null and cv.mrp is not null and cv.mrp > cv.price)`,
+        ),
+      )
+      .orderBy(desc(catalogProducts.createdAt), asc(catalogProducts.id))
+      .limit(120);
+    const list = (await this.publicSummaries(tenantId, rows.map((r) => r.id).filter((id) => !exclude.has(id)))).map((p, i) => ({
+      p,
+      i,
+      off: p.mrp && p.mrp > p.priceMin ? (p.mrp - p.priceMin) / p.mrp : 0,
+    }));
+    return list
+      .sort((a, b) => b.off - a.off || a.i - b.i)
+      .slice(0, limit)
+      .map((x) => x.p);
   }
 
   // ================================================================ search text (maintained on every write)

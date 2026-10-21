@@ -120,7 +120,7 @@ describe("default home", () => {
     const none = await publicHome(T, null, null, { catalog, shop });
     expect(none.isDefault).toBe(true);
     const at = new Date("2026-10-01T10:00:00Z");
-    const pub = await publicHome(T, { sections: [{ type: "newsletter", heading: "Join", text: "" }] }, at, { catalog, shop });
+    const pub = await publicHome(T, { sections: [{ type: "newsletter", heading: "Join", text: "", layout: "band" }] }, at, { catalog, shop });
     expect(pub).toMatchObject({ isDefault: false, publishedAt: "2026-10-01T10:00:00.000Z", sections: [{ type: "newsletter" }] });
     // Published but every section's data gone → empty, not the default.
     const empty = await publicHome(T, { sections: [{ type: "products", title: "", productIds: [GONE] }] }, at, { catalog, shop });

@@ -15,6 +15,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "collections",
   "blog",
   "track",
+  "compare",
   "i",
   "s",
   "api",

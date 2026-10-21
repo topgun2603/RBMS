@@ -21,6 +21,7 @@ export {
   collectionMetadata,
 } from "./pages/listing";
 export { ProductPage, productMetadata } from "./pages/product";
+export { ComparePage, compareMetadata } from "./pages/compare";
 export { OrderConfirmationPage, TrackPage, TrackLookupPage, orderMetadata, trackMetadata } from "./pages/order";
 export {
   CmsPageView,
@@ -48,6 +49,9 @@ export { StoreErrorView } from "./client/error-view";
 
 // route handlers
 export { proxyHandler, seoFileHandler, faviconHandler } from "./server/proxy";
+export { previewEnterHandler, previewExitHandler } from "./server/preview-routes";
+export { getPreviewSession, getPreviewHome, isPreview, type PreviewSession } from "./server/preview";
+export { PreviewMount } from "./pages/preview";
 
 // server data helpers
 export { getRequestInfo, getConfig, getBranding, getMenus, getCart, getFeatures, hasFeature, apiGet, apiGetOrNull, apiGetSafe, UpstreamError, CART_COOKIE } from "./server/api";

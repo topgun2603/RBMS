@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { normalizeLocale, LOCALE_COOKIE, translatorFor, type Locale, type Translator } from "../lib/messages";
 import { API_ORIGIN, tenantFromHost, upstreamTenantHeaders } from "../lib/tenant";
+import { previewTransform } from "./preview";
 import type { Branding, Menus, PricedCart, StoreConfig, StoreShell, StoreThemeView } from "../types";
 
 /** Cookie holding the anonymous / shopper cart token (read on the server for the header count). */
@@ -85,7 +86,8 @@ export async function apiGet<T>(path: string, opts: GetOptions = {}): Promise<T>
     const body = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
     throw new UpstreamError(res.status, body?.error?.code ?? `http_${res.status}`, body?.error?.message ?? res.statusText);
   }
-  return (await res.json()) as T;
+  // Live preview: the unsaved home / brand tokens for staff previews (no-op for shoppers; server/preview.ts).
+  return previewTransform(path, (await res.json()) as T);
 }
 
 /** Like apiGet, but 404 → null. */
@@ -184,6 +186,25 @@ const THEME_DEFAULTS: StoreThemeView = {
   sections: "plain",
   motif: "kolam",
   headings: "display",
+  headerStyle: "glass",
+  sticky: "always",
+  megaMenu: "images",
+  announcement: "dismissible",
+  footer: "columns",
+  cardHover: "rich",
+  cardButton: "hover",
+  productLayout: "thumbs-side",
+  productDetails: "accordion",
+  stickyBuy: "on",
+  productTrust: "on",
+  related: "rail",
+  listingFilters: "sidebar",
+  listingColumns: "4",
+  listingView: "grid",
+  listingPaging: "pages",
+  categoryHeader: "simple",
+  subcategories: "off",
+  compare: "off",
 };
 
 /** The shop's theme variants with defaults for anything missing (older APIs send none). */

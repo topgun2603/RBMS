@@ -6,7 +6,8 @@
   "description": "The shopper-facing store theme (Next.js server + client components): home, catalogue, product, cart, checkout, account. Used by apps/store.",
   "exports": {
     ".": "./src/index.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./preview": "./src/preview.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
@@ -14,6 +15,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.0",
+    "@srirealtime/branding": "workspace:*",
     "@srirealtime/cms": "workspace:*",
     "@srirealtime/gst": "workspace:*",
     "@srirealtime/i18n": "workspace:*",

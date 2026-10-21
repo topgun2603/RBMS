@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ExpandIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, ExpandIcon } from "lucide-react";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
 import { imageUrl } from "../lib/format";
@@ -10,12 +10,27 @@ import { useStore } from "./store-context";
 
 const Lightbox = React.lazy(() => import("./lightbox").then((m) => ({ default: m.Lightbox })));
 
+export type GalleryLayout = "thumbs-side" | "thumbs-below" | "grid" | "slider";
+
 /**
- * Phone: swipeable scroll-snap strip with an animated dot pill. Desktop: main image that cross-fades between photos,
- * zooms under the cursor (a lens following the pointer), and thumbnails with a selection ring that glides between
- * them. Tap / click opens a full-screen lightbox (loaded on first use).
+ * Phone: swipeable scroll-snap strip with an animated dot pill. Desktop (theme `productLayout`): thumbs-side / thumbs-below
+ * = main image that cross-fades between photos, zooms under the cursor (a lens following the pointer), and thumbnails
+ * (beside or under it) with a selection ring that glides between them · grid = every photo in two columns · slider =
+ * a wide strip showing two and a half photos with arrows. Tap / click opens a full-screen lightbox (loaded on first use).
  */
-export function ProductGallery({ images, name, badge, compact }: { images: { url: string; alt?: string }[]; name: string; badge?: string; compact?: boolean }) {
+export function ProductGallery({
+  images,
+  name,
+  badge,
+  compact,
+  layout = "thumbs-side",
+}: {
+  images: { url: string; alt?: string }[];
+  name: string;
+  badge?: string;
+  compact?: boolean;
+  layout?: GalleryLayout;
+}) {
   const { t } = useStore();
   const reduced = useReducedMotionSafe();
   const list = images.length ? images : [{ url: "", alt: name }];
@@ -27,16 +42,22 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
   const hasImages = images.length > 0;
   const id = React.useId();
 
+  // Slides are a full strip wide, except in the desktop slider where several show at once.
+  const step = (el: HTMLDivElement) => {
+    const [a, b] = el.children as unknown as HTMLElement[];
+    return a && b ? Math.abs(b.offsetLeft - a.offsetLeft) || el.clientWidth : el.clientWidth;
+  };
   const onScroll = () => {
     const el = strip.current;
     if (!el) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
+    const i = Math.min(list.length - 1, Math.round(Math.abs(el.scrollLeft) / step(el)));
     if (i !== index) setIndex(i);
   };
   const goTo = (i: number) => {
     setIndex(i);
     const el = strip.current;
-    if (el && el.offsetParent !== null) el.scrollTo({ left: i * el.clientWidth, behavior: reduced ? "auto" : "smooth" });
+    const dir = el && getComputedStyle(el).direction === "rtl" ? -1 : 1;
+    if (el && el.offsetParent !== null) el.scrollTo({ left: dir * i * step(el), behavior: reduced ? "auto" : "smooth" });
   };
   const open = (i: number) => {
     if (!hasImages) return;
@@ -44,15 +65,23 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
     setLightbox(i);
   };
   const current = list[index]!;
+  // Desktop look: the main image + thumbnails (side / below), all photos in a grid, or a wide slider.
+  const desk = compact ? "compact" : layout;
+  const withMain = desk === "thumbs-side" || desk === "thumbs-below";
+  const slider = desk === "slider";
 
   return (
-    <div className={cn("flex flex-col gap-3 lg:flex-row-reverse lg:gap-4", compact && "lg:flex-col lg:gap-3")}>
+    <div className={cn("flex flex-col gap-3", desk === "thumbs-side" && "lg:flex-row-reverse lg:gap-4")} data-gallery={desk}>
       <div className="relative min-w-0 flex-1">
-        {/* Phone / tablet: native swipe strip. */}
+        {/* Phone / tablet: native swipe strip (the desktop slider too, with several photos in view). */}
         <div
           ref={strip}
           onScroll={onScroll}
-          className={cn("-mx-4 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none sm:mx-0 sm:rounded-3xl", !compact && "lg:hidden")}
+          className={cn(
+            "-mx-4 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none sm:mx-0 sm:rounded-3xl",
+            !compact && !slider && "lg:hidden",
+            slider && "lg:gap-3 lg:rounded-none",
+          )}
           aria-roledescription="carousel"
           aria-label={name}
         >
@@ -61,7 +90,7 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
               type="button"
               key={i}
               onClick={() => open(i)}
-              className="aspect-[var(--sf-image-ratio,4/5)] w-full shrink-0 snap-center overflow-hidden bg-muted sm:rounded-3xl"
+              className={cn("aspect-[var(--sf-image-ratio,4/5)] w-full shrink-0 snap-center overflow-hidden bg-muted sm:rounded-3xl", slider && "lg:w-[calc((100%-1.5rem)/2.5)] lg:snap-start lg:rounded-[var(--sf-radius-card)]")}
               aria-label={hasImages ? `${t("product.zoom")}: ${t("product.image", { n: i + 1, total: list.length })}` : undefined}
               tabIndex={i === index ? 0 : -1}
               data-gallery-main={i === index ? "" : undefined}
@@ -70,9 +99,49 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
             </button>
           ))}
         </div>
+        {slider && list.length > 2 && (
+          <>
+            <button
+              type="button"
+              onClick={() => goTo(Math.max(0, index - 1))}
+              disabled={index === 0}
+              aria-label={t("product.prevImage")}
+              className="absolute start-3 top-1/2 z-[2] hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring disabled:opacity-0 lg:flex"
+            >
+              <ChevronLeftIcon className="size-5 rtl:rotate-180" />
+            </button>
+            <button
+              type="button"
+              onClick={() => goTo(Math.min(list.length - 1, index + 1))}
+              disabled={index >= list.length - 2}
+              aria-label={t("product.nextImage")}
+              className="absolute end-3 top-1/2 z-[2] hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring disabled:opacity-0 lg:flex"
+            >
+              <ChevronRightIcon className="size-5 rtl:rotate-180" />
+            </button>
+          </>
+        )}
+
+        {/* Desktop grid: every photo, two columns (an odd first photo spans both). */}
+        {desk === "grid" && (
+          <ul className="hidden grid-cols-2 gap-3 lg:grid" aria-label={name}>
+            {list.map((img, i) => (
+              <li key={i} className={cn(i === 0 && list.length % 2 === 1 && "col-span-2")}>
+                <button
+                  type="button"
+                  onClick={() => open(i)}
+                  className={cn("block aspect-[var(--sf-image-ratio,4/5)] w-full overflow-hidden rounded-[var(--sf-radius-card)] bg-muted focus-ring", hasImages && "cursor-zoom-in")}
+                  aria-label={hasImages ? `${t("product.zoom")}: ${t("product.image", { n: i + 1, total: list.length })}` : name}
+                >
+                  <StoreImage src={img.url || null} alt={img.alt || name} name={name} eager={i < 2} className="transition-transform duration-700 hover:scale-[1.03] motion-reduce:transition-none" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/* Desktop: cross-fading main image with a hover lens. */}
-        {!compact && (
+        {withMain && (
           <button
             type="button"
             onClick={() => open(index)}
@@ -128,10 +197,13 @@ export function ProductGallery({ images, name, badge, compact }: { images: { url
         )}
       </div>
 
-      {list.length > 1 && !compact && (
-        <ul className="hidden w-20 shrink-0 flex-col gap-3 lg:flex" aria-label={t("product.thumbnails")}>
+      {list.length > 1 && withMain && (
+        <ul
+          className={cn("hidden gap-3 lg:flex", desk === "thumbs-side" ? "w-20 shrink-0 flex-col" : "-m-1 flex-row overflow-x-auto p-1 scrollbar-none")}
+          aria-label={t("product.thumbnails")}
+        >
           {list.map((img, i) => (
-            <li key={i}>
+            <li key={i} className={desk === "thumbs-below" ? "w-20 shrink-0" : undefined}>
               <button
                 type="button"
                 onClick={() => setIndex(i)}

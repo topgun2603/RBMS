@@ -10,6 +10,7 @@ export * from "./types";
 export * from "./logic";
 export * from "./search";
 export * from "./collections";
+export * from "./recommend";
 export * from "./csv";
 export * from "./service";
 export * from "./features";

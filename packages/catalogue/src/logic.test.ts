@@ -216,7 +216,11 @@ describe("output shapes", () => {
       vendorId: null,
       updatedAt: product.updatedAt,
     });
-    expect(toPublicSummary(base, variants, null)).toMatchObject({ priceMin: 1000, priceMax: 1500, mrp: 1100, taxInclusive: true });
+    expect(toPublicSummary(base, variants, null)).toMatchObject({ priceMin: 1000, priceMax: 1500, mrp: 1100, taxInclusive: true, variantIds: ["v1", "v2"], createdAt: product.createdAt });
+    // One photo: no `images` (the card has nothing to swap to); two or more: the first two.
+    expect(toPublicSummary(base, variants, null)).not.toHaveProperty("images");
+    const photos = [{ url: "https://img/1.jpg" }, { url: "https://img/2.jpg" }, { url: "https://img/3.jpg" }];
+    expect(toPublicSummary({ ...base, images: photos }, variants, null).images).toEqual(["https://img/1.jpg", "https://img/2.jpg"]);
   });
 
   it("builds product event payloads with the price range and seller", () => {

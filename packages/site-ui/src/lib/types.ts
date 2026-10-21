@@ -2,7 +2,7 @@
  * API shapes this module reads (`/v1/cms`, `/v1/reviews`, `/v1/analytics`, `/v1/settings`, `/v1/tenancy/domains`,
  * `/v1/catalog`, `/v1/uploads`). Dates arrive as ISO strings; money is integer paise.
  */
-import type { Block, ContentStatus, HomeDoc, HomeSection, MenuItem, MenuKey, MenuItemType, SeoFields } from "./content";
+import type { Block, ContentStatus, HomeDoc, HomeSection, MenuItem, MenuKey, MenuItemType, SectionStyle, SeoFields } from "./content";
 
 export type ISODate = string;
 
@@ -43,13 +43,14 @@ export interface CategoryRef {
   image: string | null;
 }
 
-type Static = Exclude<HomeSection, { type: "hero" | "categories" | "collection" | "products" }>;
+type Static = Exclude<HomeSection, { type: "hero" | "categories" | "collection" | "products" | "category-mosaic" | "deal" | "shop-the-look" }>;
 
 export interface ResolvedHeroSection {
   type: "hero";
   id?: string;
   /** Preview only: hidden on the storefront. */
   hidden?: boolean;
+  style?: SectionStyle;
   slides: (Omit<Extract<HomeSection, { type: "hero" }>["slides"][number], "imageUrl"> & { imageUrl: string | null })[];
 }
 export interface ResolvedCategoriesSection {
@@ -57,14 +58,25 @@ export interface ResolvedCategoriesSection {
   id?: string;
   /** Preview only: hidden on the storefront. */
   hidden?: boolean;
+  style?: SectionStyle;
   title: string;
+  /** Older stored sections have none (= circles). */
+  layout?: Extract<HomeSection, { type: "categories" }>["layout"];
+  showCounts?: boolean;
   categories: CategoryRef[];
+}
+export interface ResolvedDealSection extends Omit<Extract<HomeSection, { type: "deal" }>, "productId"> {
+  product: PublicProductSummary;
+}
+export interface ResolvedShopTheLookSection extends Omit<Extract<HomeSection, { type: "shop-the-look" }>, "hotspots"> {
+  hotspots: { x: number; y: number; product: PublicProductSummary }[];
 }
 export interface ResolvedCollectionSection {
   type: "collection";
   id?: string;
   /** Preview only: hidden on the storefront. */
   hidden?: boolean;
+  style?: SectionStyle;
   title: string;
   layout: "carousel" | "grid";
   collection: { name: string; slug: string };
@@ -75,12 +87,30 @@ export interface ResolvedProductsSection {
   id?: string;
   /** Preview only: hidden on the storefront. */
   hidden?: boolean;
+  style?: SectionStyle;
   title: string;
   href?: string;
   products: PublicProductSummary[];
 }
+export interface ResolvedCategoryMosaicSection {
+  type: "category-mosaic";
+  id?: string;
+  /** Preview only: hidden on the storefront. */
+  hidden?: boolean;
+  style?: SectionStyle;
+  title: string;
+  categories: CategoryRef[];
+}
 /** What `GET /cms/home/preview` returns per section (the storefront's resolved shape). */
-export type ResolvedHomeSection = ResolvedHeroSection | ResolvedCategoriesSection | ResolvedCollectionSection | ResolvedProductsSection | Static;
+export type ResolvedHomeSection =
+  | ResolvedHeroSection
+  | ResolvedCategoriesSection
+  | ResolvedCategoryMosaicSection
+  | ResolvedCollectionSection
+  | ResolvedProductsSection
+  | ResolvedDealSection
+  | ResolvedShopTheLookSection
+  | Static;
 
 export interface CmsPage {
   id: string;

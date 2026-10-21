@@ -41,6 +41,10 @@ export function reviewsRoutes(service: ReviewsService) {
       const { productId } = productParam.parse(req.params);
       return service.listPublic(tid(req), productId, query(req) as PublicReviewQuery);
     });
+    app.get("/public/summary", PUBLIC, async (req, reply) => {
+      reply.header("cache-control", "public, max-age=120");
+      return service.shopSummary(tid(req), query(req).limit);
+    });
     app.get("/public/ratings", PUBLIC, async (req) => {
       const { productIds } = productIdsQuerySchema.parse(query(req));
       return service.ratings(tid(req), productIds);

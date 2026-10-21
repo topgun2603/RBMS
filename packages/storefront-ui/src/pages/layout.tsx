@@ -4,15 +4,18 @@ import { apiGetSafe, getBranding, getConfig, getMenus, getRequestInfo, getShell,
 import { helpCentreOn } from "../lib/features";
 import { imageUrl } from "../lib/format";
 import type { Collection, HomeSection, List, StoreConfig, StoreThemeView } from "../types";
+import { navCategories, opensWithFullBleedHero } from "../lib/chrome";
 import type { Translator } from "../lib/messages";
 import { StoreProvider } from "../client/store-context";
-import { PageViewTracker, StoreHeader, THEME_SCRIPT, type NavCategory, type NavCollection } from "../client/header";
+import { PageViewTracker, StoreHeader, THEME_SCRIPT, type NavCollection } from "../client/header";
 import { AnnouncementBar, type Announcement } from "../client/announcement";
 import { FloatingActions } from "../client/floating";
+import { CompareTray } from "../client/compare";
 import { StorePageTransition } from "../client/page-transition";
 import { StoreFooter } from "../components/footer";
 import { getCategories } from "./listing";
 import { getHome } from "./home";
+import { PreviewMount } from "./preview";
 
 /** Root metadata: title template with the shop name, favicon, metadataBase for absolute OG URLs. */
 export async function storeRootMetadata(): Promise<Metadata> {
@@ -71,7 +74,7 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
   const shell = await getShell(config, branding);
   const t = await getStoreT();
   const fonts = fontsHref(config.shop.fonts);
-  const categories: NavCategory[] = cats.items.filter((c) => !c.parentId).map((c) => ({ id: c.id, name: c.name, slug: c.slug, imageUrl: c.imageUrl }));
+  const categories = navCategories(cats.items);
   const f = cols.items[0];
   const featured: NavCollection | null = f ? { name: f.name, slug: f.slug, description: f.description, imageUrl: f.imageUrl } : null;
   return (
@@ -87,7 +90,7 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
         </>
       )}
       <StoreProvider shell={shell} locale={info.locale}>
-        <div className="sf-root" {...themeAttributes(shell.theme)} data-sf-brand-fonts={(config.shop.fonts?.length ?? 0) > 1 ? "" : undefined}>
+        <div id="top" className="sf-root" {...themeAttributes(shell.theme)} data-sf-brand-fonts={(config.shop.fonts?.length ?? 0) > 1 ? "" : undefined}>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">
           {t("nav.skip")}
         </a>
@@ -97,13 +100,15 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
             {config.closedMessage || t("store.closed")}
           </div>
         )}
-        <StoreHeader menu={menus.header} categories={categories} featured={featured} />
+        <StoreHeader menu={menus.header} categories={categories} featured={featured} overlayHero={opensWithFullBleedHero(home.sections, shell.theme)} />
         <PageViewTracker />
         <main id="main" className="min-h-[60dvh]">
           <StorePageTransition>{children}</StorePageTransition>
         </main>
-        <StoreFooter config={config} menu={menus.footer} t={t} help={helpCentreOn(shell.features)} />
+        <StoreFooter config={config} menu={menus.footer} t={t} help={helpCentreOn(shell.features)} variant={shell.theme.footer} logoUrl={shell.logoUrl} />
         <FloatingActions whatsapp={config.shop.social?.whatsapp ?? null} />
+        {shell.theme.compare === "on" && <CompareTray />}
+        <PreviewMount />
         </div>
       </StoreProvider>
     </>

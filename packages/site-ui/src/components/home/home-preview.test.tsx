@@ -24,7 +24,7 @@ describe("HomePreview", () => {
   it("shows hidden sections dimmed with a Hidden badge; visible ones as normal", () => {
     const html = render([
       { type: "text", heading: "Welcome", markdown: "Hello" },
-      { type: "newsletter", heading: "Join our list", text: "", hidden: true },
+      { type: "newsletter", heading: "Join our list", text: "", layout: "band", hidden: true },
     ]);
     const w = wrappers(html);
     expect(w).toHaveLength(2);

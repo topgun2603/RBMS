@@ -1,14 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRightIcon, BriefcaseIcon, CheckIcon, ExternalLinkIcon, LayoutTemplateIcon, PaletteIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
-import { Button, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRightIcon, BriefcaseIcon, CheckIcon, ExternalLinkIcon, LayoutGridIcon, LayoutListIcon, LayoutTemplateIcon, PaletteIcon, PanelTopIcon, ShirtIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
+import { Button, ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
 import { THEME_OPTIONS, THEME_PRESETS, themePreset, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
 import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@srirealtime/verticals";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
+import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice } from "../components/brand-fields";
-import { ThemePreview } from "../components/theme-preview";
+import type { PreviewView } from "../components/theme-preview";
+import { LivePreview } from "../components/live-preview";
+import { appearanceTokens } from "../components/live-preview-drafts";
 import { useUnsavedGuard } from "../components/unsaved-guard";
 import { useIsManager } from "../lib/access";
 import { draftFrom, draftFromPreset, useBrandingTokens, useSaveAppearance, useSaveBusinessType, type AppearanceDraft } from "../lib/appearance";
@@ -22,12 +25,23 @@ const RADII = [
   { value: 1.25, key: "extra" },
 ] as const;
 
+/** Theme options per editor section (labels: site.appearance.opt.<key>.*). */
+const HEADER_KEYS = ["header", "headerStyle", "sticky", "megaMenu", "announcement", "footer"] as const;
+const CARD_KEYS = ["card", "cardHover", "cardButton", "imageRatio"] as const;
+const PRODUCT_KEYS = ["productLayout", "productDetails", "stickyBuy", "productTrust", "related"] as const;
+const LAYOUT_KEYS = ["hero", "buttons", "sections", "motif", "density"] as const;
+const LISTING_KEYS = ["listingFilters", "listingColumns", "listingView", "listingPaging", "categoryHeader", "subcategories", "compare"] as const;
+const PRODUCT_PAGE_KEYS: ReadonlySet<ThemeOptionKey> = new Set(PRODUCT_KEYS);
+const LISTING_PAGE_KEYS: ReadonlySet<ThemeOptionKey> = new Set(LISTING_KEYS);
+
 /**
  * Settings → Appearance: the shop's trade (business pack) and its store's look. Pick a preset (it brings its own
- * colours and fonts), then change the layout: header, hero, product cards, picture shape, buttons, spacing, section
- * style, pattern, headings and corners. Colours, fonts, logo and light / dark mode are the shop's identity and live in
- * Settings → Branding; this page shows them. The preview redraws on every change; Save writes the brand tokens (and
- * the trade, when changed).
+ * colours and fonts), then change the parts: header & footer (layout, look, sticking, shop menu, offer ribbon, footer),
+ * product cards (look, hover, buttons, picture shape), the product page (photos, details, buy bar, trust badges,
+ * similar products), category / search pages (filters, columns, grid or list, paging, header, sub-category chips,
+ * compare) and the rest of the layout (banner, buttons, spacing, sections, pattern, headings, corners).
+ * Colours, fonts, logo and light / dark mode are the shop's identity and live in Settings → Branding; this page shows
+ * them. The preview (home or product page) redraws on every change; Save writes the brand tokens (and the trade).
  */
 export default function AppearancePage() {
   const { t } = useI18n();
@@ -68,8 +82,26 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
   useWebFonts([draft.fontSans, draft.fontHeading]);
 
   const set = (patch: Partial<AppearanceDraft>) => setDraft((d) => ({ ...d, ...patch, preset: patch.preset !== undefined ? patch.preset : d.preset }));
-  const setTheme = <K extends ThemeOptionKey>(k: K, v: StoreTheme[K]) => setDraft((d) => ({ ...d, theme: { ...d.theme, [k]: v } }));
+  const [view, setView] = React.useState<PreviewView>("home");
+  const sampleProduct = useSampleProductSlug();
+  const previewPath = view === "product" ? (sampleProduct ? `/p/${sampleProduct}` : "/products") : view === "listing" ? "/products" : "/";
+  const setTheme = <K extends ThemeOptionKey>(k: K, v: StoreTheme[K]) => {
+    setDraft((d) => ({ ...d, theme: { ...d.theme, [k]: v } }));
+    // Show the page the change is on.
+    setView(PRODUCT_PAGE_KEYS.has(k) ? "product" : LISTING_PAGE_KEYS.has(k) ? "listing" : "home");
+  };
   const settingsHref = useSettingsHref();
+  const choices = (keys: readonly ThemeOptionKey[]) =>
+    keys.map((k) => (
+      <Choice
+        key={k}
+        label={t(`site.appearance.opt.${k}.label`)}
+        value={draft.theme[k]}
+        onChange={(v) => setTheme(k, v as StoreTheme[typeof k])}
+        disabled={!canEdit}
+        options={(THEME_OPTIONS[k] as readonly string[]).map((v) => ({ value: v, label: t(`site.appearance.opt.${k}.${v}`) }))}
+      />
+    ));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +203,23 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
             </div>
           </Section>
 
+          <Section icon={PanelTopIcon} title={t("site.appearance.headerTitle")} description={t("site.appearance.headerBody")}>
+            {choices(HEADER_KEYS)}
+            {draft.theme.headerStyle === "transparent" && <p className="-mt-2 text-meta text-muted-foreground">{t("site.appearance.opt.headerStyle.hint")}</p>}
+          </Section>
+
+          <Section icon={LayoutGridIcon} title={t("site.appearance.cardsTitle")} description={t("site.appearance.cardsBody")}>
+            {choices(CARD_KEYS)}
+          </Section>
+
+          <Section icon={ShirtIcon} title={t("site.appearance.productTitle")} description={t("site.appearance.productBody")}>
+            {choices(PRODUCT_KEYS)}
+          </Section>
+
+          <Section icon={LayoutListIcon} title={t("site.appearance.listingTitle")} description={t("site.appearance.listingBody")}>
+            {choices(LISTING_KEYS)}
+          </Section>
+
           <Section icon={SlidersHorizontalIcon} title={t("site.appearance.layoutTitle")} description={t("site.appearance.layoutBody")}>
             <Choice
               label={t("site.appearance.headings")}
@@ -179,16 +228,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
               disabled={!canEdit}
               options={THEME_OPTIONS.headings.map((v) => ({ value: v, label: t(`site.appearance.opt.headings.${v}`) }))}
             />
-            {(["header", "hero", "card", "imageRatio", "buttons", "sections", "motif", "density"] as const).map((k) => (
-              <Choice
-                key={k}
-                label={t(`site.appearance.opt.${k}.label`)}
-                value={draft.theme[k]}
-                onChange={(v) => setTheme(k, v as StoreTheme[typeof k])}
-                disabled={!canEdit}
-                options={(THEME_OPTIONS[k] as readonly string[]).map((v) => ({ value: v, label: t(`site.appearance.opt.${k}.${v}`) }))}
-              />
-            ))}
+            {choices(LAYOUT_KEYS)}
             <Choice
               label={t("site.appearance.corners")}
               value={String(RADII.reduce((best, r) => (Math.abs(r.value - draft.radius) < Math.abs(best.value - draft.radius) ? r : best)).value)}
@@ -200,8 +240,19 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
         </div>
 
         <aside className="order-first grid w-full max-w-2xl gap-3 2xl:sticky 2xl:top-4 2xl:order-none 2xl:max-w-none">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Label>{t("site.appearance.preview")}</Label>
+            <ChipGroup
+              size="sm"
+              aria-label={t("site.appearance.preview")}
+              value={view}
+              onChange={(v) => setView(v as PreviewView)}
+              options={[
+                { value: "home", label: t("site.appearance.previewHome") },
+                { value: "listing", label: t("site.appearance.previewListing") },
+                { value: "product", label: t("site.appearance.previewProduct") },
+              ]}
+            />
             {storeUrl && (
               <Button asChild variant="ghost" size="sm">
                 <a href={storeUrl("/")} target="_blank" rel="noreferrer">
@@ -210,7 +261,8 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
               </Button>
             )}
           </div>
-          <ThemePreview draft={draft} copy={copyFor(pack, locale)} shopName={shop.shopName || "Your shop"} />
+          {/* The real store, restyled live with the unsaved look; the page chips jump to a listing or a product. */}
+          <LivePreview tokens={appearanceTokens(draft)} mode="browse" path={previewPath} onNavigate={() => {}} className="h-[78dvh]" />
           <p className="text-meta text-muted-foreground">{t("site.appearance.previewNote")}</p>
         </aside>
       </div>
@@ -226,4 +278,14 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
       )}
     </form>
   );
+}
+
+/** A product to show the product page in the live preview (the shop's first listed one). */
+function useSampleProductSlug(): string | null {
+  const q = useQuery({
+    queryKey: ["site", "appearance", "sample-product"],
+    queryFn: () => api.get<{ items: { slug: string }[] }>("/catalog/public/products", { limit: 1 }),
+    staleTime: 5 * 60_000,
+  });
+  return q.data?.items[0]?.slug ?? null;
 }

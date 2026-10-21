@@ -15,6 +15,7 @@ import { EmptyBagArt } from "../components/illustrations";
 import { PaymentIcons } from "../components/trust";
 import { errorMessage } from "./api";
 import { CartLineRow } from "./cart-lines";
+import { CartRecommendations } from "./recommend";
 import { useStore } from "./store-context";
 
 export function couponMessage(t: (k: string) => string, reason: string | undefined): string {
@@ -49,6 +50,7 @@ export function CartView() {
   const savings = c.lines.reduce((s, l) => s + (l.available && l.mrp && l.mrp > l.price ? (l.mrp - l.price) * l.qty : 0), 0) + c.discount;
 
   return (
+    <>
     <div className="grid gap-8 lg:grid-cols-[1fr_380px] lg:gap-12">
       <div className="min-w-0">
         <CartWarnings cart={c} />
@@ -96,6 +98,8 @@ export function CartView() {
         </div>
       </aside>
     </div>
+    <CartRecommendations />
+    </>
   );
 }
 

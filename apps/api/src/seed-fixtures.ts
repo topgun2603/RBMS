@@ -336,7 +336,14 @@ export async function ensureShop(kit: Kit, shop: ShopSpec, ownerUserId: string) 
   let tenant = await kit.tenancy.service.getBySlug(shop.slug);
   const created = !tenant;
   if (!tenant) {
-    tenant = await kit.tenancy.service.create({ slug: shop.slug, name: shop.name, ownerUserId, appId: shop.appId });
+    // The on-tenant-created "starter" hook applies the shop's trade (its categories, look and home) right away.
+    tenant = await kit.tenancy.service.create({
+      slug: shop.slug,
+      name: shop.name,
+      ownerUserId,
+      appId: shop.appId,
+      details: shop.businessType ? { signup: { businessType: shop.businessType } } : undefined,
+    });
     await kit.branding.service.update(tenant.id, { appName: shop.name, tokens: { colors: { primary: shop.primary } } });
     await kit.settings.service.handle("billing").setTenant(tenant.id, shop.billing);
     for (const item of shop.items) await kit.invoices.service.createItem(tenant.id, item);

@@ -154,7 +154,7 @@ export function SearchBox({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.12 } }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-x-0 top-full z-50 mt-2 origin-top overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-[var(--elevation-2)]"
+            className="sf-pop absolute inset-x-0 top-full z-50 mt-2 origin-top overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-[var(--elevation-2)]"
           >
             {items.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">{t("search.noSuggestions")}</p>}
             {data?.products.length ? <p className="px-4 pt-3 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{t("search.products")}</p> : null}

@@ -2334,6 +2334,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
+      '@srirealtime/branding':
+        specifier: workspace:*
+        version: link:../branding
       '@srirealtime/cms':
         specifier: workspace:*
         version: link:../cms

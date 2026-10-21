@@ -6,6 +6,8 @@ import {
   type HomeSection,
   type MenuItem,
   type MenuItemType,
+  type SectionStyle,
+  type SectionOf as HomeSectionOf,
   type SeoFields,
 } from "./content";
 import { noopLogger, type CatalogCategoryRef, type CatalogPort, type LoggerPort, type PublicProductSummary, type ShopPort } from "./ports";
@@ -13,7 +15,7 @@ import { STORE_PATHS } from "./seo/paths";
 
 // ------------------------------------------------------------------ resolved (public) shapes
 
-type Static = Exclude<HomeSection, { type: "hero" | "categories" | "collection" | "products" }>;
+type Static = Exclude<HomeSection, { type: "hero" | "categories" | "collection" | "products" | "category-mosaic" | "deal" | "shop-the-look" }>;
 
 export interface ResolvedHeroSlide extends Omit<HeroSlide, "imageUrl"> {
   /** Null only in the default home (no image chosen yet): render a branded background. */
@@ -22,6 +24,8 @@ export interface ResolvedHeroSlide extends Omit<HeroSlide, "imageUrl"> {
 /** Only in the staff preview (`includeHidden`): the section is hidden on the storefront. */
 interface HiddenFlag {
   hidden?: boolean;
+  /** The section's look (background, spacing …); omitted = the theme's defaults. */
+  style?: SectionStyle;
 }
 export interface ResolvedHeroSection extends HiddenFlag {
   type: "hero";
@@ -32,6 +36,9 @@ export interface ResolvedCategoriesSection extends HiddenFlag {
   type: "categories";
   id?: string;
   title: string;
+  /** Older stored sections have none (= circles). */
+  layout: HomeSectionOf<"categories">["layout"];
+  showCounts: boolean;
   categories: CatalogCategoryRef[];
 }
 export interface ResolvedCollectionSection extends HiddenFlag {
@@ -51,11 +58,30 @@ export interface ResolvedProductsSection extends HiddenFlag {
   products: PublicProductSummary[];
 }
 
+export interface ResolvedDealSection extends HiddenFlag, Omit<HomeSectionOf<"deal">, "productId" | "hidden" | "style"> {
+  product: PublicProductSummary;
+}
+
+export interface ResolvedShopTheLookSection extends HiddenFlag, Omit<HomeSectionOf<"shop-the-look">, "hotspots" | "hidden" | "style"> {
+  /** Dots whose product is gone are dropped. */
+  hotspots: { x: number; y: number; product: PublicProductSummary }[];
+}
+
+export interface ResolvedCategoryMosaicSection extends HiddenFlag {
+  type: "category-mosaic";
+  id?: string;
+  title: string;
+  categories: CatalogCategoryRef[];
+}
+
 export type ResolvedHomeSection =
   | ResolvedHeroSection
   | ResolvedCategoriesSection
+  | ResolvedCategoryMosaicSection
   | ResolvedCollectionSection
   | ResolvedProductsSection
+  | ResolvedDealSection
+  | ResolvedShopTheLookSection
   | Static;
 
 /** `GET /public/home`. */
@@ -89,18 +115,36 @@ function inOrder<T extends { id: string }>(ids: readonly string[], rows: readonl
 
 /** Max categories shown when a categories section lists "all". */
 export const ALL_CATEGORIES_LIMIT = 24;
+/** Tiles a category mosaic shows when no categories are picked. */
+export const MOSAIC_DEFAULT_TILES = 5;
 
 /** One section with its catalogue data; null when that data is gone (the section is dropped). */
 export async function resolveSection(tenantId: string, section: HomeSection, deps: ResolveDeps): Promise<ResolvedHomeSection | null> {
   const { catalog } = deps;
-  const hid = section.hidden ? { hidden: true } : {};
+  // Catalogue sections are rebuilt below, so they carry the hidden flag and the style over explicitly.
+  const hid = { ...(section.hidden ? { hidden: true } : {}), ...(section.style ? { style: section.style } : {}) };
   switch (section.type) {
     case "categories": {
       const rows = section.categoryIds?.length
         ? inOrder(section.categoryIds, await catalog.categories(tenantId, section.categoryIds))
         : (await catalog.categories(tenantId)).slice(0, ALL_CATEGORIES_LIMIT);
       if (!rows.length) return null;
-      return { type: "categories", ...(section.id ? { id: section.id } : {}), ...hid, title: section.title, categories: rows };
+      return {
+        type: "categories",
+        ...(section.id ? { id: section.id } : {}),
+        ...hid,
+        title: section.title,
+        layout: section.layout,
+        showCounts: section.showCounts,
+        categories: rows,
+      };
+    }
+    case "category-mosaic": {
+      const rows = section.categoryIds?.length
+        ? inOrder(section.categoryIds, await catalog.categories(tenantId, section.categoryIds))
+        : (await catalog.categories(tenantId)).slice(0, MOSAIC_DEFAULT_TILES);
+      if (!rows.length) return null;
+      return { type: "category-mosaic", ...(section.id ? { id: section.id } : {}), ...hid, title: section.title, categories: rows };
     }
     case "collection": {
       const c = await catalog.collection(tenantId, section.collectionSlug, section.limit);
@@ -119,6 +163,23 @@ export async function resolveSection(tenantId: string, section: HomeSection, dep
       const rows = inOrder(section.productIds, await catalog.productsByIds(tenantId, section.productIds));
       if (!rows.length) return null;
       return { type: "products", ...(section.id ? { id: section.id } : {}), ...hid, title: section.title, products: rows };
+    }
+    case "deal": {
+      const [product] = await catalog.productsByIds(tenantId, [section.productId]);
+      if (!product) return null;
+      const { productId: _p, hidden: _h, style: _s, ...rest } = section;
+      return { ...rest, ...hid, product };
+    }
+    case "shop-the-look": {
+      const ids = [...new Set(section.hotspots.map((h) => h.productId))];
+      const byId = new Map((await catalog.productsByIds(tenantId, ids)).map((p) => [p.id, p]));
+      const hotspots = section.hotspots.flatMap((h) => {
+        const product = byId.get(h.productId);
+        return product ? [{ x: h.x, y: h.y, product }] : [];
+      });
+      if (!hotspots.length) return null;
+      const { hotspots: _hs, hidden: _h, style: _s, ...rest } = section;
+      return { ...rest, ...hid, hotspots };
     }
     default: {
       const { hidden: _h, ...rest } = section;

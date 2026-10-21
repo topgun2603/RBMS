@@ -406,17 +406,134 @@ html {
   background: var(--card);
 }
 
-/* Header: bold = brand-coloured bar. */
+/* Header style: glass (default, see client/header) · solid = an opaque bar (shadow once scrolled). */
+.sf-root[data-sf-header-style="solid"] .sf-header .sf-header-surface {
+  background: var(--background);
+  backdrop-filter: none;
+}
+
+/* Header: bold = brand-coloured bar. Dropdown panels (.sf-pop) keep the popover colours. */
 .sf-root[data-sf-header="bold"] .sf-header {
   color: var(--primary-foreground);
+}
+.sf-root[data-sf-header="bold"] .sf-header .sf-pop {
+  color: var(--popover-foreground);
 }
 .sf-root[data-sf-header="bold"] .sf-header .sf-header-surface {
   background: var(--primary);
   border-color: transparent;
 }
-.sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button, a[aria-label], button[aria-label]) {
+.sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button, a[aria-label], button[aria-label]):not(.sf-pop *) {
   color: var(--primary-foreground);
 }
-.sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button):hover {
+.sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button):not(.sf-pop *):hover {
   background: color-mix(in oklch, var(--primary-foreground) 14%, transparent);
+}
+
+/*
+ * Header style "transparent": over a full-width home banner (data-overlay) the bar pulls the page up by its own height
+ * (fixed per layout, so nothing shifts) and stays clear with white text until the page scrolls (data-clear).
+ */
+.sf-header[data-overlay] {
+  margin-bottom: -4rem;
+}
+.sf-root[data-sf-header="minimal"] .sf-header[data-overlay] {
+  margin-bottom: -3.5rem;
+}
+@media (min-width: 64rem) {
+  .sf-root[data-sf-header="centered"] .sf-header[data-overlay] {
+    margin-bottom: -6.75rem;
+  }
+}
+.sf-header .sf-header-shade {
+  opacity: 0;
+}
+.sf-header[data-clear] .sf-header-shade {
+  opacity: 1;
+}
+.sf-header[data-clear] {
+  color: #fff;
+}
+.sf-header[data-clear] .sf-pop {
+  color: var(--popover-foreground);
+}
+.sf-header[data-clear] .sf-header-surface {
+  opacity: 0 !important;
+}
+.sf-root[data-sf-header] .sf-header[data-clear] :is(nav a, nav button, a[aria-label], button[aria-label], a, button):not(.sf-pop *) {
+  color: #fff;
+}
+.sf-root[data-sf-header] .sf-header[data-clear] :is(nav a, nav button, a[aria-label], button[aria-label], a, button):not(.sf-pop *):hover {
+  background-color: rgb(255 255 255 / 0.14);
+}
+.sf-header[data-clear] [role="group"]:not(.sf-pop *) {
+  border-color: rgb(255 255 255 / 0.35);
+  background: rgb(255 255 255 / 0.1);
+}
+.sf-header[data-clear] form[role="search"]:not(.sf-pop *) input {
+  border-color: rgb(255 255 255 / 0.35);
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+.sf-header[data-clear] form[role="search"] input::placeholder,
+.sf-header[data-clear] form[role="search"] > svg {
+  color: rgb(255 255 255 / 0.78);
+}
+
+/* Offer ribbon "ticker": one line scrolling by (paused on hover / focus; still with reduced motion, see AnnouncementBar). */
+.sf-ticker-track {
+  animation: sf-marquee 36s linear infinite;
+}
+.sf-ticker:is(:hover, :focus-within) .sf-ticker-track {
+  animation-play-state: paused;
+}
+[dir="rtl"] .sf-ticker-track {
+  animation-direction: reverse;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-ticker-track {
+    animation: none;
+  }
+}
+
+/*
+ * Per-section style (pages/home-sections.tsx SectionFrame). On a coloured band (brand, gradient, dark, photo) text that
+ * sits directly on the colour takes the band's ink; cards and light surfaces inside keep the normal colours.
+ */
+.sf-on-tone :where(.bg-background, .bg-tint-1, .bg-tint-2, .bg-muted) {
+  color: var(--foreground);
+}
+.sf-on-tone :where(.bg-card) {
+  color: var(--card-foreground);
+}
+.sf-on-tone :is(.text-primary, .text-foreground, .text-brand-ink, .text-foreground\/80, .text-foreground\/90):not(:where(.bg-card, .bg-background, .bg-tint-1, .bg-tint-2, .bg-muted) *) {
+  color: inherit;
+}
+.sf-on-tone .text-muted-foreground:not(:where(.bg-card, .bg-background, .bg-tint-1, .bg-tint-2, .bg-muted) *) {
+  color: color-mix(in srgb, currentColor 80%, transparent);
+}
+/* On the brand colour a primary button would vanish: it flips to the band's ink. */
+.sf-tone-brand :is(a, button).bg-primary:not(:where(.bg-card, .bg-background, .bg-tint-1, .bg-tint-2, .bg-muted) *) {
+  background-color: var(--primary-foreground);
+  color: var(--primary);
+  box-shadow: none;
+}
+.sf-on-tone .sf-section-title a {
+  color: inherit;
+}
+/* Width "full" without a band: the content uses the whole width (with the usual gutters). */
+.sf-sec[data-sf-width="full"] .sf-container.max-w-7xl {
+  max-width: none;
+}
+/* Alignment: centred titles and text; "start" undoes the centring some sections have by default. */
+.sf-sec[data-sf-align="center"] .sf-section-title {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.sf-sec[data-sf-align="center"] :is(.sf-heading, .sf-prose) {
+  text-align: center;
+}
+.sf-sec[data-sf-align="start"] .text-center:not(.sf-keep-center) {
+  text-align: start;
 }

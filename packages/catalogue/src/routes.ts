@@ -20,6 +20,7 @@ import {
   type VariantSearchQuery,
   type VendorScopePort,
 } from "./service";
+import type { RecommendationQuery } from "./recommend";
 import type { ProductScope } from "./types";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -151,6 +152,19 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
       return service.publicProduct(tid(req), slug);
     });
     app.get("/public/search", BASE, async (req) => service.search(tid(req), query(req)));
+    // Compare page, cards by id, and recommendations (cacheable: no shopper data in the response).
+    app.get("/public/compare", BASE, async (req, reply) => {
+      reply.header("cache-control", "public, max-age=60");
+      return service.publicCompare(tid(req), (req.query as { ids?: unknown } | undefined)?.ids);
+    });
+    app.get("/public/lookup", BASE, async (req, reply) => {
+      reply.header("cache-control", "public, max-age=60");
+      return service.publicLookup(tid(req), (req.query as { ids?: unknown } | undefined)?.ids);
+    });
+    app.get("/public/recommendations", BASE, async (req, reply) => {
+      reply.header("cache-control", "public, max-age=300");
+      return service.recommendations(tid(req), (req.query ?? {}) as RecommendationQuery);
+    });
     app.get("/public/search/suggest", BASE, async (req) => service.suggest(tid(req), query(req).q));
     app.get("/public/collections", BASE, async (req) => service.publicCollections(tid(req)));
     app.get("/public/collections/:slug", BASE, async (req) => {

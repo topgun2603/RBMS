@@ -13,7 +13,14 @@ const KEY = "sr_recent";
 const MAX = 12;
 const EVENT = "sr:recent";
 
-type Recent = Pick<ProductSummary, "id" | "name" | "slug" | "image" | "priceMin" | "priceMax" | "mrp" | "variantCount" | "categoryName" | "taxInclusive"> & { at: number };
+type Recent = Pick<ProductSummary, "id" | "name" | "slug" | "image" | "priceMin" | "priceMax" | "mrp" | "variantCount" | "categoryName" | "taxInclusive"> & {
+  /** Older entries have none (recommendations then skip them). */
+  categoryId?: string | null;
+  at: number;
+};
+
+/** This browser's recently viewed products, most recent first (empty when storage is blocked). */
+export const readRecent = (): Recent[] => read();
 
 function read(): Recent[] {
   try {
@@ -39,7 +46,7 @@ export function RecordRecentlyViewed({ product }: { product: Omit<Recent, "at"> 
 }
 
 /** "Recently viewed" rail (client-only; renders nothing until there is history, so it never shifts the page on load). */
-export function RecentlyViewedStrip({ excludeId, className }: { excludeId?: string; className?: string }) {
+export function RecentlyViewedStrip({ excludeId, className, title }: { excludeId?: string; className?: string; /** The home section's own title. */ title?: string }) {
   const { t } = useStore();
   const [items, setItems] = React.useState<Recent[]>([]);
   React.useEffect(() => {
@@ -54,11 +61,11 @@ export function RecentlyViewedStrip({ excludeId, className }: { excludeId?: stri
   }, [excludeId]);
   if (items.length < 2) return null;
   return (
-    <Reveal as="section" className={className} aria-label={t("recent.title")}>
-      <SectionTitle title={t("recent.title")} eyebrow={t("recent.eyebrow")} badge={<HistoryIcon className="size-5 text-muted-foreground" aria-hidden />} />
-      <Carousel label={t("recent.title")}>
-        {items.map((p) => (
-          <ProductCardView key={p.id} product={{ ...p, categoryId: null }} />
+    <Reveal as="section" className={className} aria-label={title || t("recent.title")}>
+      <SectionTitle title={title || t("recent.title")} eyebrow={t("recent.eyebrow")} badge={<HistoryIcon className="size-5 text-muted-foreground" aria-hidden />} />
+      <Carousel label={title || t("recent.title")}>
+        {items.map(({ at: _at, ...p }) => (
+          <ProductCardView key={p.id} product={{ ...p, categoryId: p.categoryId ?? null }} />
         ))}
       </Carousel>
     </Reveal>
