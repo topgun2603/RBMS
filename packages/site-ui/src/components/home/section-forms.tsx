@@ -199,7 +199,7 @@ function CategoriesFields({ form, onChange, errors, disabled, idp }: Props<"cate
         <CategoryPicker ids={form.categoryIds} onChange={(categoryIds) => onChange({ ...form, categoryIds })} max={SECTION_LIST_LIMITS.ids} disabled={disabled} idPrefix={idp} />
       )}
       <FieldError code={errors.categoryIds} />
-      <CategoryLayoutFields layout={form.layout} showCounts={form.showCounts} onChange={(p) => onChange({ ...form, ...p })} disabled={disabled} idp={idp} />
+      <CategoryLayoutFields layout={form.layout} showCounts={form.showCounts} columns={form.columns} onChange={(p) => onChange({ ...form, ...p })} disabled={disabled} idp={idp} />
     </div>
   );
 }

@@ -537,3 +537,116 @@ html {
 .sf-sec[data-sf-align="start"] .text-center:not(.sf-keep-center) {
   text-align: start;
 }
+
+/* ------------------------------------------------------------------ category art (components/category-art.tsx)
+ * The no-photo fallback of a category tile: an icon on a brand tint. `data-tone` rotates through six shades derived
+ * from --primary (hue-shifted with relative colour syntax; older browsers keep the plain brand tint), so a row of
+ * tiles isn't six identical pinks. Soft = light tint + brand-ink icon (text sits below the tile); bold = saturated
+ * gradient + white icon (text sits on the tile). Works on light and dark themes (mixes with --card / --foreground).
+ */
+.sf-cat-art {
+  --cat: var(--primary);
+  --cat-a: 7%;
+  --cat-b: 24%;
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  container-type: size;
+  color: color-mix(in oklch, var(--cat) 78%, var(--foreground));
+  background-color: color-mix(in oklch, var(--cat) 14%, var(--card));
+  background-image:
+    radial-gradient(color-mix(in oklch, var(--cat) 20%, transparent) 1px, transparent 1.5px),
+    radial-gradient(120% 90% at 0% 0%, color-mix(in oklch, var(--card) 70%, transparent), transparent 55%),
+    linear-gradient(150deg, color-mix(in oklch, var(--cat) var(--cat-a), var(--card)), color-mix(in oklch, var(--cat) var(--cat-b), var(--card)));
+  background-size: 11px 11px, 100% 100%, 100% 100%;
+}
+.dark .sf-cat-art {
+  --cat-a: 16%;
+  --cat-b: 34%;
+  color: color-mix(in oklch, var(--cat) 50%, white);
+}
+/* A soft disc + ring behind the icon. */
+.sf-cat-art::before {
+  content: "";
+  position: absolute;
+  width: 62cqmin;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--card) 62%, transparent);
+  box-shadow: 0 0 0 7cqmin color-mix(in oklch, var(--cat) 9%, transparent);
+  translate: 0 var(--cat-lift, 0);
+}
+.sf-cat-art-icon {
+  position: relative;
+  translate: 0 var(--cat-lift, 0);
+  width: clamp(1rem, 34cqmin, 5rem);
+  height: clamp(1rem, 34cqmin, 5rem);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.group:hover .sf-cat-art-icon,
+.group:focus-visible .sf-cat-art-icon {
+  transform: scale(1.12) rotate(-6deg);
+}
+.sf-cat-art[data-bold] {
+  color: oklch(1 0 0 / 0.92);
+  background-color: var(--cat);
+  background-image:
+    radial-gradient(oklch(1 0 0 / 0.14) 1px, transparent 1.5px),
+    radial-gradient(90% 70% at 85% 10%, oklch(1 0 0 / 0.22), transparent 60%),
+    linear-gradient(160deg, color-mix(in oklch, var(--cat) 80%, white) 0%, var(--cat) 45%, color-mix(in oklch, var(--cat) 75%, black) 100%);
+  background-size: 12px 12px, 100% 100%, 100% 100%;
+  /* Text sits on the lower part of a bold tile: the icon moves up a little. */
+  --cat-lift: -9cqh;
+}
+.sf-cat-art[data-bold]::before {
+  background: oklch(1 0 0 / 0.12);
+  box-shadow: 0 0 0 7cqmin oklch(1 0 0 / 0.06);
+}
+.sf-cat-art[data-bold] .sf-cat-art-icon {
+  width: clamp(1.25rem, 26cqmin, 5.5rem);
+  height: clamp(1.25rem, 26cqmin, 5.5rem);
+}
+/* Small chips (pills, icon list): flat tint, no disc or dots, a bigger icon. */
+.sf-cat-art[data-compact] {
+  background-image: linear-gradient(150deg, color-mix(in oklch, var(--cat) var(--cat-a), var(--card)), color-mix(in oklch, var(--cat) var(--cat-b), var(--card)));
+}
+.sf-cat-art[data-compact]::before {
+  content: none;
+}
+.sf-cat-art[data-compact] .sf-cat-art-icon {
+  width: 52cqmin;
+  height: 52cqmin;
+}
+.sf-cat-art[data-tone="1"] {
+  --cat: oklch(from var(--primary) l c calc(h + 25));
+}
+.sf-cat-art[data-tone="2"] {
+  --cat: oklch(from var(--primary) l c calc(h - 25));
+}
+.sf-cat-art[data-tone="3"] {
+  --cat: oklch(from var(--primary) calc(l * 0.92) c calc(h + 50));
+}
+.sf-cat-art[data-tone="4"] {
+  --cat: oklch(from var(--primary) l c calc(h - 50));
+}
+.sf-cat-art[data-tone="5"] {
+  --cat: oklch(from var(--primary) calc(l * 0.8) calc(c * 0.75) h);
+}
+/* Brand gradient ring of the "story rings" layout (hue-shifted brand colours, like the tints). */
+.sf-story-ring {
+  background: var(--sf-gradient);
+  background: conic-gradient(from 210deg, var(--primary), oklch(from var(--primary) l c calc(h + 40)), oklch(from var(--primary) calc(l * 1.05) c calc(h + 80)), oklch(from var(--primary) l c calc(h - 30)), var(--primary));
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-cat-art-icon {
+    transition: none;
+  }
+  .group:hover .sf-cat-art-icon,
+  .group:focus-visible .sf-cat-art-icon {
+    transform: none;
+  }
+}

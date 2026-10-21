@@ -111,10 +111,24 @@ describe("section form ↔ schema round-trips", () => {
   });
 
   it("'All categories' drops picked ids; 'Choose' keeps their order", () => {
-    const all = fromSectionForm({ type: "categories", title: "", mode: "all", categoryIds: [IDS.C1], layout: "circles", showCounts: false });
+    const all = fromSectionForm({ type: "categories", title: "", mode: "all", categoryIds: [IDS.C1], layout: "circles", showCounts: false, columns: "auto" });
     expect(all).toEqual({ type: "categories", title: "", layout: "circles", showCounts: false });
-    const pick = fromSectionForm({ type: "categories", title: "", mode: "pick", categoryIds: [IDS.C2, IDS.C1], layout: "cards", showCounts: true });
+    const pick = fromSectionForm({ type: "categories", title: "", mode: "pick", categoryIds: [IDS.C2, IDS.C1], layout: "cards", showCounts: true, columns: "auto" });
     expect(pick).toMatchObject({ categoryIds: [IDS.C2, IDS.C1] });
+  });
+
+  it("category layouts and columns round-trip; auto columns aren't stored", () => {
+    for (const layout of ["circles", "rounded-squares", "story-rings", "pills", "tiles", "banner-row", "bento", "minimal-list", "big-grid"] as const) {
+      const stored = { type: "categories" as const, title: "Shop", layout, showCounts: true, columns: "5" as const };
+      const form = toSectionForm(stored);
+      expect(form).toMatchObject({ layout, columns: "5", showCounts: true });
+      expect(fromSectionForm(form)).toEqual(stored);
+    }
+    // Older stored sections (no columns) read as auto and save without the field.
+    const old = toSectionForm({ type: "categories", title: "", layout: "cards", showCounts: false });
+    expect(old).toMatchObject({ columns: "auto" });
+    expect(fromSectionForm(old)).not.toHaveProperty("columns");
+    expect(newSectionForm("categories", samples, "c")).toMatchObject({ layout: "circles", columns: "auto" });
   });
 
   it("sends the collection limit as a number", () => {

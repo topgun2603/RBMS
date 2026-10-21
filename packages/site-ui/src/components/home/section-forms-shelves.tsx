@@ -11,6 +11,7 @@ import {
   emptyStat,
   emptyTab,
   SECTION_LIST_LIMITS,
+  type CategoryColumns,
   type CategoryLayout,
   type HotspotForm,
   type MemberForm,
@@ -25,6 +26,7 @@ import {
 } from "../../lib/sections";
 import { FieldError, Optional, TextField } from "../bits";
 import { ProductPicker, SlugSelect } from "../pickers";
+import { CategoryLayoutThumb } from "./category-layout-thumbs";
 import { CtaFields } from "./form-parts";
 import { Area, Chips, Img, Repeat, Toggle, type Props } from "./section-forms-extra";
 
@@ -63,17 +65,66 @@ function LimitField({ id, value, onChange, max, error, disabled, label }: { id: 
 
 // ---------------------------------------------------------------- layouts of existing sections
 
-export function CategoryLayoutFields({ layout, showCounts, onChange, disabled, idp }: { layout: CategoryLayout; showCounts: boolean; onChange: (p: { layout?: CategoryLayout; showCounts?: boolean }) => void; disabled?: boolean; idp: string }) {
+/** Picker order: round rows first, then chips, grids, and the list. */
+export const CATEGORY_LAYOUT_ORDER = ["circles", "rounded-squares", "story-rings", "pills", "icon-list", "cards", "tiles", "banner-row", "big-grid", "bento", "slider", "minimal-list"] as const satisfies readonly CategoryLayout[];
+/** Layouts where "per row" means something (the round rows, chips and bento size themselves). */
+const COLUMN_LAYOUTS: ReadonlySet<CategoryLayout> = new Set(["cards", "tiles", "banner-row", "big-grid", "slider", "minimal-list"]);
+
+/** Layout picker for the categories section: a sketch of each layout, then per-row and counts. */
+export function CategoryLayoutFields({
+  layout,
+  showCounts,
+  columns,
+  onChange,
+  disabled,
+  idp,
+}: {
+  layout: CategoryLayout;
+  showCounts: boolean;
+  columns: CategoryColumns;
+  onChange: (p: { layout?: CategoryLayout; showCounts?: boolean; columns?: CategoryColumns }) => void;
+  disabled?: boolean;
+  idp: string;
+}) {
   const { t } = useI18n();
   return (
-    <div className="grid gap-3">
-      <Chips<CategoryLayout>
-        label={t("site.home.layout")}
-        value={layout}
-        onChange={(v) => onChange({ layout: v })}
-        disabled={disabled}
-        options={(["circles", "cards", "slider", "icon-list", "big-grid"] as const).map((v) => ({ value: v, label: t(`site.home.catLayout.${v}`) }))}
-      />
+    <div className="grid gap-4">
+      <div className="grid content-start gap-2">
+        <Label id={`${idp}-layout`}>{t("site.home.layout")}</Label>
+        <div role="radiogroup" aria-labelledby={`${idp}-layout`} className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+          {CATEGORY_LAYOUT_ORDER.map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="radio"
+              aria-checked={layout === v}
+              disabled={disabled}
+              onClick={() => onChange({ layout: v })}
+              className={cn(
+                "grid gap-1 rounded-xl border bg-card p-1.5 text-center text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                layout === v ? "border-primary text-primary ring-1 ring-primary" : "text-muted-foreground hover:border-primary/40 hover:text-foreground",
+              )}
+            >
+              <span className="block rounded-lg bg-muted/60 px-1 py-0.5">
+                <CategoryLayoutThumb layout={v} className="h-auto w-full" />
+              </span>
+              <span className={cn("truncate", layout === v ? "text-primary" : "text-foreground")}>{t(`site.home.catLayout.${v}`)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {COLUMN_LAYOUTS.has(layout) && (
+        <div className="grid gap-1.5">
+          <Chips<CategoryColumns>
+            label={t("site.home.columns")}
+            value={columns}
+            onChange={(v) => onChange({ columns: v })}
+            disabled={disabled}
+            options={(["auto", "3", "4", "5", "6"] as const).map((v) => ({ value: v, label: v === "auto" ? t("site.home.columnsAuto") : v }))}
+          />
+          <p className="text-meta text-muted-foreground">{t("site.home.columnsHint")}</p>
+        </div>
+      )}
       <Toggle id={`${idp}-counts`} label={t("site.home.showCounts")} hint={t("site.home.showCountsHint")} checked={showCounts} onChange={(v) => onChange({ showCounts: v })} disabled={disabled} />
     </div>
   );

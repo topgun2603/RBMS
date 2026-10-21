@@ -7,6 +7,7 @@ import { Reveal } from "@srirealtime/ui/motion";
 import { Carousel } from "../client/carousel";
 import { BeforeAfter, CopyCode, Countdown, HeroVideo, QuoteRotator } from "../client/home-sections";
 import { Container, SectionTitle, StoreImage } from "../components/bits";
+import { CategoryBento } from "./home-categories";
 import { formatDate, imageUrl, money } from "../lib/format";
 import { Markdown, safeHref } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
@@ -403,30 +404,10 @@ export function TestimonialsSection({ s, t }: { s: HomeSectionOf<"testimonials">
 // ------------------------------------------------------------------ categories
 
 export function CategoryMosaicSection({ s, t }: { s: HomeSectionOf<"category-mosaic">; t: Translator }) {
-  const n = s.categories.length;
-  // Bento: the first tile is big; the rest fill a 4-column grid (2 on phones).
-  const spans = (i: number) => (i === 0 && n > 2 ? "col-span-2 row-span-2" : n === 2 || (n === 4 && i === 3) ? "col-span-2 md:col-span-2" : n === 1 ? "col-span-2 md:col-span-4" : "");
   return (
     <Container>
       {s.title && <SectionTitle title={s.title} eyebrow={t("home.explore")} href={STORE_PATHS.products} linkLabel={t("list.viewAll")} />}
-      <ul className={cn("grid auto-rows-[150px] grid-cols-2 gap-3 sm:auto-rows-[200px] sm:gap-4 md:grid-cols-4 lg:auto-rows-[230px]", n === 2 && "md:grid-cols-4")}>
-        {s.categories.map((c, i) => (
-          <li key={c.id} className={spans(i)}>
-            <Link href={STORE_PATHS.category(c.slug)} className="group relative block size-full overflow-hidden rounded-[var(--sf-radius-card)] bg-muted shadow-card focus-ring">
-              <StoreImage src={c.image} alt={c.name} eager={i === 0} className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-[1.06] motion-reduce:transition-none" />
-              <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-              <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4 text-white sm:p-5">
-                <span className="min-w-0">
-                  <span className={cn("block font-display font-semibold leading-tight", i === 0 && n > 2 ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl")}>{c.name}</span>
-                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold opacity-90 sm:text-sm">
-                    {t("sections.shopCategory")} <ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-1 rtl:rotate-180" aria-hidden />
-                  </span>
-                </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <CategoryBento categories={s.categories} t={t} />
     </Container>
   );
 }

@@ -247,11 +247,31 @@ export const heroSectionSchema = z.object({
 const variant = <T extends [string, ...string[]]>(values: T, fallback: T[number]) => z.enum(values).default(fallback).catch(fallback);
 
 /**
- * Category tiles: circles (round photos in a swipe row, the original look) · cards (photo cards in a grid) · slider
- * (large photo cards in a swipe row) · icon-list (compact chips with a small photo) · big-grid (large tiles, name on
- * the photo). `showCounts` adds how many products each one has.
+ * Category tiles: circles (round tiles, the original look) · cards (photo cards in a grid) · slider (large portrait
+ * cards in a swipe row with arrows) · icon-list (wrapping chips with a small photo) · big-grid (large tiles, name on the
+ * photo) · rounded-squares (app-icon squares, name below) · story-rings (circles in a brand gradient ring, like
+ * stories) · pills (one swipeable row of icon chips, good for many categories) · tiles (square tiles, name + count on
+ * a scrim) · banner-row (wide cards: picture, name, count, "Shop now") · bento (asymmetric grid, the first one large —
+ * same look as the category-mosaic section) · minimal-list (an editorial text list with counts and arrows).
+ * Categories without a photo get a brand-tinted icon. `showCounts` adds how many products each one has; `columns`
+ * caps the tiles per row on desktop for the grid layouts and the slider (auto = the layout's own); the section style's
+ * `align` centres rows of round tiles / chips (the default) or starts them at the left.
  */
-export const CATEGORY_LAYOUTS = ["circles", "cards", "slider", "icon-list", "big-grid"] as const;
+export const CATEGORY_LAYOUTS = [
+  "circles",
+  "cards",
+  "slider",
+  "icon-list",
+  "big-grid",
+  "rounded-squares",
+  "story-rings",
+  "pills",
+  "tiles",
+  "banner-row",
+  "bento",
+  "minimal-list",
+] as const;
+export const CATEGORY_COLUMNS = ["auto", "3", "4", "5", "6"] as const;
 
 export const categoriesSectionSchema = z.object({
   type: z.literal("categories"),
@@ -263,6 +283,7 @@ export const categoriesSectionSchema = z.object({
   categoryIds: z.array(uuid).max(CMS_LIMITS.ids).optional(),
   layout: variant([...CATEGORY_LAYOUTS], "circles"),
   showCounts: z.boolean().default(false),
+  columns: variant([...CATEGORY_COLUMNS], "auto"),
 });
 
 export const collectionSectionSchema = z.object({

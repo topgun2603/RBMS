@@ -45,3 +45,17 @@ describe("HomePreview", () => {
     expect(html).toContain("Festive kurtis");
   });
 });
+
+describe("categories preview sketch", () => {
+  const categories = [
+    { id: "c1", name: "Sarees", slug: "sarees", image: null },
+    { id: "c2", name: "Kurtis", slug: "kurtis", image: null },
+  ];
+  it("draws every layout", () => {
+    for (const layout of ["circles", "rounded-squares", "story-rings", "pills", "icon-list", "cards", "tiles", "banner-row", "big-grid", "bento", "slider", "minimal-list"] as const) {
+      const html = render([{ type: "categories", title: "Shop", layout, categories }]);
+      expect(html, layout).toContain(`data-sketch="${layout}"`);
+      expect(html, layout).toContain("Kurtis");
+    }
+  });
+});

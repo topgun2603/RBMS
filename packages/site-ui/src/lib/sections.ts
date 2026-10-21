@@ -7,6 +7,7 @@ import {
   CMS_LIMITS,
   homeSectionSchema,
   USP_ICONS,
+  type CATEGORY_COLUMNS,
   type CATEGORY_LAYOUTS,
   type NEWSLETTER_LAYOUTS,
   type PRODUCT_TAB_SOURCES,
@@ -59,6 +60,7 @@ export interface DishForm {
 }
 
 export type CategoryLayout = (typeof CATEGORY_LAYOUTS)[number];
+export type CategoryColumns = (typeof CATEGORY_COLUMNS)[number];
 export type UspLayout = (typeof USP_LAYOUTS)[number];
 export type NewsletterLayout = (typeof NEWSLETTER_LAYOUTS)[number];
 export type ShelfLayout = (typeof SHELF_LAYOUTS)[number];
@@ -112,7 +114,7 @@ export interface PlanForm {
 
 type Forms =
   | { type: "hero"; id?: string; slides: SlideForm[] }
-  | { type: "categories"; id?: string; title: string; mode: "all" | "pick"; categoryIds: string[]; layout: CategoryLayout; showCounts: boolean }
+  | { type: "categories"; id?: string; title: string; mode: "all" | "pick"; categoryIds: string[]; layout: CategoryLayout; showCounts: boolean; columns: CategoryColumns }
   | { type: "collection"; id?: string; title: string; collectionSlug: string; layout: "carousel" | "grid"; limit: string }
   | { type: "products"; id?: string; title: string; productIds: string[] }
   | { type: "banner"; id?: string; imageUrl: string; mobileImageUrl: string; href: string; alt: string }
@@ -300,6 +302,7 @@ function toFields(section: HomeSection | HomeSectionInput): Forms {
         categoryIds: [...(x.categoryIds ?? [])],
         layout: x.layout ?? "circles",
         showCounts: x.showCounts === true,
+        columns: x.columns ?? "auto",
       };
     case "collection":
       return {
@@ -543,6 +546,7 @@ function fromFields(f: Forms): HomeSectionInput {
         ...(f.mode === "pick" && f.categoryIds.length > 0 ? { categoryIds: [...f.categoryIds] } : {}),
         layout: f.layout,
         showCounts: f.showCounts,
+        ...(f.columns !== "auto" ? { columns: f.columns } : {}),
       };
     case "collection": {
       const n = Number(f.limit.trim());
@@ -911,7 +915,7 @@ function newFields(type: HomeSectionType, x: SectionSamples, id: string): Forms 
     case "hero":
       return { type, id, slides: [{ ...emptySlide(), heading: x.heroHeading, subheading: x.heroSubheading, ctaLabel: x.shopNow, ctaHref: "/products" }] };
     case "categories":
-      return { type, id, title: x.categoriesTitle, mode: "all", categoryIds: [], layout: "circles", showCounts: false };
+      return { type, id, title: x.categoriesTitle, mode: "all", categoryIds: [], layout: "circles", showCounts: false, columns: "auto" };
     case "collection":
       return { type, id, title: "", collectionSlug: "", layout: "carousel", limit: "12" };
     case "products":
@@ -1120,7 +1124,7 @@ function resolveOne(f: SectionForm, lk: PreviewLookups): ResolvedHomeSection {
         })),
       };
     case "categories":
-      return { type: "categories", ...id, title: f.title.trim(), layout: f.layout, showCounts: f.showCounts, categories: pickCats(f.mode === "pick" ? f.categoryIds : [], ALL_CATEGORIES_LIMIT) };
+      return { type: "categories", ...id, title: f.title.trim(), layout: f.layout, showCounts: f.showCounts, columns: f.columns, categories: pickCats(f.mode === "pick" ? f.categoryIds : [], ALL_CATEGORIES_LIMIT) };
     case "deal": {
       const product = lk.products.get(f.productId);
       return {

@@ -1,14 +1,22 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { gridClass, listClass } from "../lib/grid";
 import { en, ta, translatorFor } from "../lib/messages";
 import { shelvesEn, shelvesTa } from "../lib/messages-shelves";
 import { isProxyAllowed } from "../server/proxy";
 import { themeView } from "../server/api";
 import type { HomeSectionOf, ProductSummary, ShopReviewSummary } from "../types";
+import { CATEGORY_ICONS, categoryIconKey } from "../components/category-art";
+import { bentoSpan, gridFit } from "./home-categories";
 import { CategoriesSectionView, PricingSection, ReviewsSummarySection, TeamSection, TimelineSection } from "./home-shelves";
 import { offerEnded } from "./home-sections";
 import { ListingHeader, listingViewOf, moreQuery } from "./listing";
+
+// The rail is a client component that needs the store context; a plain list is enough for markup checks.
+vi.mock("../client/carousel", async (orig) => ({
+  ...(await orig<typeof import("../client/carousel")>()),
+  Carousel: ({ children, className }: { children: React.ReactNode; className?: string }) => <ul className={className}>{children}</ul>,
+}));
 
 const t = translatorFor("en");
 const html = (node: React.ReactNode) => renderToStaticMarkup(<>{node}</>);
@@ -96,6 +104,134 @@ describe("category tile layouts", () => {
       expect(out, layout).toContain("12 products");
     }
     expect(html(<CategoriesSectionView s={s("cards")} t={t} counts={counts} />)).not.toContain("12 products");
+  });
+
+  it("renders every layout (old and new) with links, counts and the icon fallback for photo-less categories", () => {
+    const all = ["circles", "cards", "slider", "icon-list", "big-grid", "rounded-squares", "story-rings", "pills", "tiles", "banner-row", "bento", "minimal-list"] as const;
+    for (const layout of all) {
+      const out = html(<CategoriesSectionView s={s(layout, true)} t={t} counts={counts} />);
+      expect(out, layout).toContain(`data-layout="${layout}"`);
+      expect(out, layout).toContain('href="/c/sarees"');
+      expect(out, layout).toContain('href="/c/kurtis"');
+      // pills show the bare number (the full text is the tooltip); everything else prints "12 products".
+      expect(out, layout).toContain(layout === "pills" ? 'title="12 products"' : "12 products");
+      if (layout !== "minimal-list") {
+        expect(out, layout).toContain('data-cat-icon="saree"');
+        expect(out, layout).toContain('data-cat-icon="shirt"');
+        expect(out, layout).not.toContain(">SA<");
+      }
+    }
+  });
+
+  it("rotates the brand tint per tile and keeps real photos", () => {
+    const sec = s("circles");
+    sec.categories = [...sec.categories, { id: "c3", name: "Footwear", slug: "footwear", image: "https://cdn.example.com/f.jpg" }];
+    const out = html(<CategoriesSectionView s={sec} t={t} />);
+    expect(out).toContain('data-tone="0"');
+    expect(out).toContain('data-tone="1"');
+    expect(out).toContain('src="https://cdn.example.com/f.jpg"');
+    expect(out).not.toContain('data-cat-icon="footwear"');
+  });
+
+  it("centres short rows unless the section is aligned to the start", () => {
+    expect(html(<CategoriesSectionView s={s("circles")} t={t} />)).toContain("sm:justify-center");
+    expect(html(<CategoriesSectionView s={{ ...s("circles"), style: { align: "start" } }} t={t} />)).not.toContain("sm:justify-center");
+  });
+
+  it("grids shrink to the number of tiles and respect columns", () => {
+    expect(gridFit(2, { sm: 3, lg: 6 }, "auto", 220)).toMatchObject({ sm: 2, lg: 2 });
+    expect(gridFit(2, { sm: 3, lg: 6 }, "auto", 220).style).toHaveProperty("maxWidth");
+    expect(gridFit(12, { sm: 3, lg: 6 }, "4", 220)).toMatchObject({ sm: 3, lg: 4 });
+    expect(gridFit(12, { sm: 3, lg: 6 }, "4", 220).style).not.toHaveProperty("maxWidth");
+    expect(gridFit(12, { sm: 2, lg: 3 }, undefined, 440)).toMatchObject({ sm: 2, lg: 3 });
+    const out = html(<CategoriesSectionView s={{ ...s("tiles"), columns: "5" }} t={t} />);
+    expect(out).toContain("--c-lg:2");
+  });
+});
+
+describe("bento spans", () => {
+  // Cells covered on a 4-column grid: never a hole at the end.
+  const md = (cls: string) => (/md:col-span-(\d)/.exec(cls)?.[1] ? Number(/md:col-span-(\d)/.exec(cls)![1]) : /col-span-(\d)/.exec(cls) ? Number(/col-span-(\d)/.exec(cls)![1]) : 1);
+  const rows = (cls: string) => (/md:row-span-(\d)/.exec(cls) ? Number(/md:row-span-(\d)/.exec(cls)![1]) : /row-span-(\d)/.exec(cls) ? Number(/row-span-(\d)/.exec(cls)![1]) : 1);
+  it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])("%i tiles fill whole rows", (n) => {
+    const cells = Array.from({ length: n }, (_, i) => bentoSpan(i, n)).reduce((sum, c) => sum + md(c) * rows(c), 0);
+    expect(cells % 4).toBe(0);
+  });
+});
+
+describe("category icon fallback", () => {
+  it.each([
+    ["Sarees", "sarees", "saree"],
+    ["Kurtis", "kurtis", "shirt"],
+    ["Bottoms", "bottoms", "bottoms"],
+    ["Women", "women", "dress"],
+    ["Men", "men", "shirt"],
+    ["Kids wear", "kids", "kids"],
+    ["Footwear", "footwear", "footwear"],
+    ["Handbags", "bags", "bag"],
+    ["Mobiles", "mobiles", "phone"],
+    ["Laptops", "laptops", "laptop"],
+    ["TVs", "tvs", "tv"],
+    ["Audio", "audio", "audio"],
+    ["Home appliances", "appliances", "fridge"],
+    ["Chargers & cables", "chargers", "charger"],
+    ["Mobile accessories", "mobile-accessories", "phone"],
+    ["Fashion accessories", "accessories", "watch"],
+    ["Medicines", "medicines", "medicine"],
+    ["Wellness", "wellness", "wellness"],
+    ["Baby care", "baby-care", "baby"],
+    ["Personal care", "personal-care", "personal"],
+    ["Health devices", "devices", "device"],
+    ["Starters", "starters", "starter"],
+    ["Main course", "main-course", "main"],
+    ["Biryani", "biryani", "rice"],
+    ["Breads", "breads", "bread"],
+    ["Desserts", "desserts", "dessert"],
+    ["Beverages", "beverages", "drink"],
+    ["Snacks", "snacks", "snack"],
+    ["Vegetables", "vegetables", "vegetable"],
+    ["Fruits", "fruits", "fruit"],
+    ["Dairy", "dairy", "dairy"],
+    ["Staples", "staples", "staples"],
+    ["Spices", "spices", "spice"],
+    ["Meat", "meat", "meat"],
+    ["Fish", "fish", "fish"],
+    ["Bakery", "bakery", "bread"],
+    ["Cakes", "cakes", "cake"],
+    ["Rings", "rings", "ring"],
+    ["Necklaces", "necklaces", "necklace"],
+    ["Bangles", "bangles", "bangle"],
+    ["Earrings", "earrings", "earring"],
+    ["Chains", "chains", "chain"],
+    ["Silver", "silver", "jewel"],
+    ["Hair", "hair", "hair"],
+    ["Skin", "skin", "skin"],
+    ["Spa", "spa", "spa"],
+    ["Bridal", "bridal", "bridal"],
+    ["Nails", "nails", "nails"],
+    ["Gym", "gym", "gym"],
+    ["Memberships", "memberships", "membership"],
+    ["Supplements", "supplements", "supplement"],
+    ["Tools", "tools", "tools"],
+    ["Paint", "paint", "paint"],
+    ["Plumbing", "plumbing", "plumbing"],
+    ["Electrical", "electrical", "electrical"],
+    ["Cement", "cement", "cement"],
+    ["Frames", "frames", "frames"],
+    ["Lenses", "lenses", "lenses"],
+    ["Sunglasses", "sunglasses", "sunglasses"],
+    ["Tailoring", "tailoring", "tailoring"],
+    ["Blouses", "blouses", "blouse"],
+    ["Alterations", "alterations", "alteration"],
+    ["Non-veg starters", "non-veg-starters", "starter"],
+    ["Eye drops", "eye-drops", "tag"],
+    ["Something else", "misc", "tag"],
+  ])("%s → %s", (name, slug, key) => {
+    expect(categoryIconKey(name, slug)).toBe(key);
+  });
+
+  it("every key has an icon", () => {
+    for (const k of ["saree", "ring", "tag"] as const) expect(CATEGORY_ICONS[k]).toBeTruthy();
   });
 });
 

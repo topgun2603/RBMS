@@ -254,6 +254,8 @@ type Sections =
       /** Older APIs leave these out (= circles, no counts). */
       layout?: CategoryLayout;
       showCounts?: boolean;
+      /** Tiles per row on desktop (grid layouts, slider); omitted = auto. */
+      columns?: CategoryColumns;
       categories: CategoryRef[];
     }
   | { type: "collection"; title: string; layout: "carousel" | "grid"; collection: { name: string; slug: string }; products: ProductSummary[] }
@@ -306,7 +308,20 @@ type Sections =
   | { type: "blog-posts"; title?: string; limit: number; tag?: string }
   | { type: "reviews-summary"; title?: string; limit: number };
 
-export type CategoryLayout = "circles" | "cards" | "slider" | "icon-list" | "big-grid";
+export type CategoryLayout =
+  | "circles"
+  | "cards"
+  | "slider"
+  | "icon-list"
+  | "big-grid"
+  | "rounded-squares"
+  | "story-rings"
+  | "pills"
+  | "tiles"
+  | "banner-row"
+  | "bento"
+  | "minimal-list";
+export type CategoryColumns = "auto" | "3" | "4" | "5" | "6";
 export type ShelfLayout = "grid" | "carousel";
 export type ProductTabSource = "new" | "bestsellers" | "sale" | "collection";
 

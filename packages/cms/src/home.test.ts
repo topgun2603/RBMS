@@ -126,6 +126,12 @@ describe("new section types", () => {
     expect(homeSectionSchema.parse(sample.categories)).toMatchObject({ layout: "circles", showCounts: false });
     expect(homeSectionSchema.parse({ ...sample.categories, layout: "big-grid", showCounts: true })).toMatchObject({ layout: "big-grid", showCounts: true });
     expect(homeSectionSchema.parse({ ...sample.categories, layout: "hexagons" })).toMatchObject({ layout: "circles" });
+    expect(homeSectionSchema.parse(sample.categories)).toMatchObject({ columns: "auto" });
+    for (const layout of ["rounded-squares", "story-rings", "pills", "tiles", "banner-row", "bento", "minimal-list"]) {
+      expect(homeSectionSchema.parse({ ...sample.categories, layout }), layout).toMatchObject({ layout });
+    }
+    expect(homeSectionSchema.parse({ ...sample.categories, layout: "tiles", columns: "5" })).toMatchObject({ layout: "tiles", columns: "5" });
+    expect(homeSectionSchema.parse({ ...sample.categories, columns: "9" })).toMatchObject({ columns: "auto" });
     expect(homeSectionSchema.parse(sample.usp)).toMatchObject({ layout: "cards" });
     expect(homeSectionSchema.parse({ ...sample.usp, layout: "split", title: "Why us" })).toMatchObject({ layout: "split", title: "Why us" });
     expect(homeSectionSchema.parse(sample.newsletter)).toMatchObject({ layout: "band" });
@@ -134,11 +140,11 @@ describe("new section types", () => {
   });
 
   it("resolve attaches products to a deal and to look hotspots (dropping the ones that are gone)", async () => {
-    const out = await resolveSections(T, [sample.deal, sample["shop-the-look"], { ...sample.categories, layout: "cards", showCounts: true }], { catalog });
+    const out = await resolveSections(T, [sample.deal, sample["shop-the-look"], { ...sample.categories, layout: "cards", showCounts: true, columns: "4" }], { catalog });
     expect(out[0]).toMatchObject({ type: "deal", product: { id: P1 }, endsAt: "2026-11-01T18:30:00.000Z" });
     expect(out[0]).not.toHaveProperty("productId");
     expect(out[1]).toMatchObject({ type: "shop-the-look", hotspots: [{ x: 30, y: 40.5, product: { id: P1 } }] });
-    expect(out[2]).toMatchObject({ type: "categories", layout: "cards", showCounts: true });
+    expect(out[2]).toMatchObject({ type: "categories", layout: "cards", showCounts: true, columns: "4" });
     const none: CatalogPort = { ...catalog, productsByIds: async () => [] };
     expect(await resolveSections(T, [sample.deal, sample["shop-the-look"]], { catalog: none })).toEqual([]);
   });

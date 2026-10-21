@@ -39,6 +39,8 @@ export interface ResolvedCategoriesSection extends HiddenFlag {
   /** Older stored sections have none (= circles). */
   layout: HomeSectionOf<"categories">["layout"];
   showCounts: boolean;
+  /** Tiles per row on desktop (grid layouts, slider); auto = the layout's own. */
+  columns: HomeSectionOf<"categories">["columns"];
   categories: CatalogCategoryRef[];
 }
 export interface ResolvedCollectionSection extends HiddenFlag {
@@ -136,6 +138,7 @@ export async function resolveSection(tenantId: string, section: HomeSection, dep
         title: section.title,
         layout: section.layout,
         showCounts: section.showCounts,
+        columns: section.columns,
         categories: rows,
       };
     }

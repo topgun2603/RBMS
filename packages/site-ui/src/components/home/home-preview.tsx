@@ -8,6 +8,7 @@ import { money } from "../../lib/format";
 import type { SectionStyle } from "../../lib/content";
 import type { PublicProductSummary, ResolvedHomeSection } from "../../lib/types";
 import { Markdown } from "../markdown";
+import { CategoriesSketch } from "./categories-sketch";
 import { uspIcon } from "./section-meta";
 
 /**
@@ -313,36 +314,7 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
       return (
         <div className="grid gap-3">
           <Title>{s.title}</Title>
-          {s.categories.length === 0 ? (
-            <Placeholder>{t("site.preview.noCategories")}</Placeholder>
-          ) : s.layout === "icon-list" ? (
-            <div className="flex flex-wrap gap-2 px-4">
-              {s.categories.map((c) => (
-                <span key={c.id} className="inline-flex items-center gap-2 rounded-full border bg-card py-1 ps-1 pe-3 text-xs font-medium">
-                  <Img src={c.image} className="size-7 rounded-full" />
-                  {c.name}
-                </span>
-              ))}
-            </div>
-          ) : s.layout === "cards" || s.layout === "big-grid" || s.layout === "slider" ? (
-            <div className={cn("gap-3 px-4", s.layout === "slider" ? "flex overflow-x-auto [scrollbar-width:none]" : s.layout === "big-grid" ? "grid grid-cols-1 @lg:grid-cols-3" : "grid grid-cols-2 @lg:grid-cols-4")}>
-              {s.categories.map((c) => (
-                <div key={c.id} className={cn("relative overflow-hidden rounded-xl border bg-card", s.layout === "slider" && "w-[46%] shrink-0 @lg:w-[23%]")}>
-                  <Img src={c.image} className={cn("w-full", s.layout === "cards" ? "aspect-square" : s.layout === "slider" ? "aspect-[3/4]" : "aspect-[4/3]")} />
-                  <span className={cn("block truncate text-xs font-semibold", s.layout === "cards" ? "px-2 py-1.5 text-center" : "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pt-6 pb-2 text-sm text-white")}>{c.name}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex gap-4 overflow-x-auto px-4 [scrollbar-width:none]">
-              {s.categories.map((c) => (
-                <div key={c.id} className="grid w-20 shrink-0 justify-items-center gap-1.5 text-center">
-                  <Img src={c.image} className="size-16 rounded-full ring-1 ring-border" />
-                  <span className="line-clamp-2 text-xs">{c.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {s.categories.length === 0 ? <Placeholder>{t("site.preview.noCategories")}</Placeholder> : <CategoriesSketch s={s} />}
         </div>
       );
     case "collection":

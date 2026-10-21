@@ -63,6 +63,8 @@ export interface ResolvedCategoriesSection {
   /** Older stored sections have none (= circles). */
   layout?: Extract<HomeSection, { type: "categories" }>["layout"];
   showCounts?: boolean;
+  /** Tiles per row on desktop; omitted = auto. */
+  columns?: Extract<HomeSection, { type: "categories" }>["columns"];
   categories: CategoryRef[];
 }
 export interface ResolvedDealSection extends Omit<Extract<HomeSection, { type: "deal" }>, "productId"> {
