@@ -126,7 +126,9 @@ export function toLineInput(l: CartLine): LineInput {
   const amount = lineAmount(l.qty, rate);
   const gross = lineGross(l);
   const d = clampDiscount(l.discount, gross);
-  const input: LineInput = { description: l.name, qty: l.qty, rate, gstRate, itemId: l.itemId };
+  const input: LineInput = { description: l.name, qty: l.qty, rate, gstRate };
+  // Open items (billed once, not in the catalogue) have no item id.
+  if (!l.itemId.startsWith("open:")) input.itemId = l.itemId;
   if (l.taxInclusive && gstRate) {
     const discount = Math.min(exclusiveOf(d, gstRate, true), amount);
     if (discount > 0) input.discount = discount;

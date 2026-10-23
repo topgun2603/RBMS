@@ -127,6 +127,8 @@ export function useCategoryProducts(categoryId: string | null) {
 }
 
 export const fetchProduct = (id: string) => posApi.get<Product>(`/catalog/products/${id}`);
+export const createCatalogProduct = (body: unknown) => posApi.post<Product>("/catalog/products", body);
+export const adjustItemStock = (itemId: string, body: unknown) => posApi.post<unknown>(`/inventory/stock/${itemId}/adjust`, body);
 
 /** Barcode or SKU → variant. 404 when nothing matches. */
 export const lookupCode = (code: string) => posApi.get<VariantLookup>("/catalog/variants/lookup", { code });

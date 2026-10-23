@@ -17,7 +17,7 @@ import {
   SheetTitle,
   toast,
 } from "@srirealtime/ui";
-import { ApiError, ConfirmDialog, describeError, useAppNavigate, useDebounced, useI18n, useSettingsHref } from "@srirealtime/web";
+import { ApiError, ConfirmDialog, describeError, useAppNavigate, useDebounced, useI18n, usePermission, useSettingsHref } from "@srirealtime/web";
 import {
   addPayment,
   createBill,
@@ -25,6 +25,7 @@ import {
   lookupCode,
   posApi,
   resolveCode,
+  useCategories,
   useLoyaltyQuote,
   useStock,
   type CreateBillInput,
@@ -65,6 +66,8 @@ import { ReceiptView, type CompletedSale } from "./receipt-view";
 import { ReturnsDialog } from "./returns-dialog";
 import { TopBar } from "./top-bar";
 import { VariantPicker } from "./variant-picker";
+import { QuickAddDialog, type QuickAddTarget } from "./quick-add-dialog";
+import { QUICK_ADD_PERMISSION, shouldOfferQuickAdd } from "../lib/quick-add";
 
 interface CartState {
   lines: CartLine[];
@@ -129,6 +132,13 @@ function Counter() {
   const [sale, setSale] = React.useState<CompletedSale | null>(null);
   const [sheet, setSheet] = React.useState(false);
   const [lastAdded, setLastAdded] = React.useState<{ name: string; n: number } | null>(null);
+  const [quickAddTarget, setQuickAddTarget] = React.useState<QuickAddTarget | null>(null);
+  const [lastGst, setLastGst] = useLocalState<number | null>(storageKey("quick-add-gst", env.tenant), null);
+  const hasCatalogueManage = usePermission(QUICK_ADD_PERMISSION);
+  // Only staff who may create products can save a new item; open items follow price edits.
+  const canCreateItem = env.has.catalogue && hasCatalogueManage;
+  const canOpenItem = env.can.price;
+  const categoriesQuery = useCategories(env.has.catalogue && canCreateItem);
   const searchRef = React.useRef<HTMLInputElement>(null);
   const customerRef = React.useRef<HTMLInputElement>(null);
 
@@ -144,7 +154,7 @@ function Counter() {
   const pointsDiscount = cart.points * (quote.data?.pointValuePaise ?? 0);
   const payable = payableAfterLoyalty(totals, pointsDiscount);
   const stock = useStock(
-    lines.map((l) => l.itemId),
+    lines.map((l) => l.itemId).filter((id) => !id.startsWith("open:")),
     env.has.inventory,
   );
 
@@ -195,11 +205,15 @@ function Counter() {
         toast.error(t("pos.offline.scan"));
       } else if (err && !(err instanceof ApiError && err.status === 404)) {
         toast.error(describeError(err, t));
+      } else if (shouldOfferQuickAdd({ code, looksLikeCode: looksLikeCode(code), online: env.online.online, canCreate: canCreateItem, canOpenItem })) {
+        setQuickAddTarget({ code: code.trim() });
+      } else if (looksLikeCode(code) && env.online.online && env.has.catalogue) {
+        toast.error(`${t("pos.scan.notFound", { code })} ${t("pos.quickAdd.askManagerShort")}`);
       } else {
         toast.error(t("pos.scan.notFound", { code }));
       }
     },
-    [t, reduced, shake, shakeScope],
+    [t, reduced, shake, shakeScope, env.online.online, env.has.catalogue, canCreateItem, canOpenItem],
   );
 
   const scan = React.useCallback(
@@ -384,7 +398,7 @@ function Counter() {
     }
   };
 
-  const overlayOpen = dialog !== null || editKey !== null || pickProduct !== null || sale !== null;
+  const overlayOpen = dialog !== null || editKey !== null || pickProduct !== null || sale !== null || quickAddTarget !== null;
   useCounterKeys({ enabled: !overlayOpen, onScan, onShortcut });
 
   // Desktop: keep the search box ready for typing / scanning.
@@ -604,6 +618,26 @@ function Counter() {
         }}
       />
       <VariantPicker productId={pickProduct} onClose={() => setPickProduct(null)} onPick={add} />
+      <QuickAddDialog
+        target={quickAddTarget}
+        canCreate={canCreateItem}
+        canOpenItem={canOpenItem}
+        hasInventory={env.has.inventory}
+        categories={categoriesQuery.data ?? []}
+        defaultGst={lastGst ?? undefined}
+        onClose={() => {
+          setQuickAddTarget(null);
+          window.setTimeout(() => searchRef.current?.focus(), 0);
+        }}
+        onAdded={(p, gst) => {
+          setLastGst(gst);
+          setQuickAddTarget(null);
+          add(p);
+          setQuery("");
+          void qc.invalidateQueries({ queryKey: ["pos"] });
+          window.setTimeout(() => searchRef.current?.focus(), 0);
+        }}
+      />
       <CameraScanDialog open={dialog === "camera"} onClose={() => setDialog(null)} onCode={(c) => void scan(c)} />
       <HoldDialog open={dialog === "hold"} defaultName={defaultHoldName} onClose={() => setDialog(null)} onHold={holdCurrent} />
       <HoldsDialog
