@@ -16,7 +16,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
  */
 
 /** Mirrors storefront-ui STORE_CACHE_RESOURCES. */
-export type StoreResource = "home" | "menus" | "pages" | "posts" | "seo" | "branding" | "config" | "features" | "catalog" | "offers" | "reviews";
+export type StoreResource = "home" | "menus" | "pages" | "posts" | "seo" | "branding" | "config" | "features" | "catalog" | "offers" | "reviews" | "bookings";
 
 const DEV_SECRET = "dev-store-revalidate-secret";
 const DEV_URL = "http://127.0.0.1:3003/api/revalidate";
@@ -35,15 +35,21 @@ const RULES: Rule[] = [
   [/^\/v1\/branding\/preview$/, []],
   [/^\/v1\/branding(\/|$)/, ["branding", "config"]],
   [/^\/v1\/(catalog|importexport)\/(public)(\/|$)/, []],
-  // Products, variants, categories, collections, media: listings, product pages, bundles (names / prices), sitemap.
-  [/^\/v1\/catalog(\/|$)/, ["catalog", "offers", "seo"]],
-  [/^\/v1\/importexport(\/|$)/, ["catalog", "offers", "seo"]],
+  // Products, variants, categories, collections, media: listings, product pages, bundles (names / prices), sitemap,
+  // and the booking page (service names and prices come from the catalogue).
+  [/^\/v1\/catalog(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
+  [/^\/v1\/importexport(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
   [/^\/v1\/inventory\/public(\/|$)/, []],
   [/^\/v1\/inventory(\/|$)/, ["catalog"]],
   [/^\/v1\/coupons\/offers\/preview$/, []],
   [/^\/v1\/coupons\/offers(\/|$)/, ["offers"]],
   [/^\/v1\/settings\/:namespace\/tenant$/, (p) => (p.namespace === "store" ? ["config"] : [])],
-  [/^\/v1\/features(\/|$)/, ["features", "config"]],
+  // Switches also decide what product pages offer (e.g. online booking → "Book now" vs "Enquire").
+  [/^\/v1\/features(\/|$)/, ["features", "config", "catalog", "bookings"]],
+  // Booking page (/book): services and staff; product pages say which items are bookable (catalog). Hours, time off and
+  // appointments only change the free slots, which the page fetches live.
+  [/^\/v1\/bookings\/public(\/|$)/, []],
+  [/^\/v1\/bookings\/(services|staff)(\/|$)/, ["bookings", "catalog"]],
   [/^\/v1\/reviews\/public(\/|$)/, []],
   [/^\/v1\/reviews(\/|$)/, ["reviews"]],
 ];

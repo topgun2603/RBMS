@@ -503,7 +503,7 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
               l.imageUrl ? (
                 <Img key={i} src={l.imageUrl} alt={l.name} className={cn("h-7 w-auto max-w-24 object-contain", s.grayscale && "opacity-60 grayscale")} />
               ) : (
-                <span key={i} className="text-sm font-semibold opacity-70">
+                <span key={i} className="font-display text-base font-semibold tracking-[0.02em] whitespace-nowrap opacity-75">
                   {l.name}
                 </span>
               ),

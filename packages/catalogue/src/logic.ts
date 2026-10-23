@@ -8,6 +8,7 @@ import type {
   Product,
   ProductEventData,
   ProductSummary,
+  PublicItemKind,
   Variant,
 } from "./types";
 
@@ -225,6 +226,20 @@ export function productEventData(
   };
 }
 
+/** Units that mean "work done", not goods ("Haircut · 1 service", "PT · 1 session", "Repair · 1 job"). */
+const SERVICE_UNITS = new Set(["service", "services", "svc", "job", "jobs", "session", "sessions", "visit", "visits", "hr", "hrs", "hour", "hours", "sitting", "sittings", "appointment", "consultation", "class", "classes"]);
+
+/**
+ * Product or service, from what the catalogue already knows: a service unit, a SAC code (GST service codes start
+ * with 99) or a "service" tag. Bookings links (see `BookableServicesPort`) make an item a service as well.
+ */
+export function itemKind(p: { unit?: string | null; hsn?: string | null; tags?: readonly string[] | null }): PublicItemKind {
+  if (p.unit && SERVICE_UNITS.has(p.unit.trim().toLowerCase())) return "service";
+  if (p.hsn && /^99\d{2,6}$/.test(p.hsn.replace(/\s+/g, ""))) return "service";
+  if (p.tags?.some((t) => /^services?$/i.test(t.trim()))) return "service";
+  return "product";
+}
+
 export const toPublicVariant = ({ cost: _cost, ...v }: Variant): PublicVariant => v;
 
 /** Storefront detail: no cost prices, no internal status/channels. */
@@ -239,6 +254,7 @@ export function toPublicProduct(
     categorySlug: category?.slug ?? null,
     ...priceRange(variants),
     variants: variants.map(toPublicVariant),
+    kind: itemKind(p),
   };
 }
 
@@ -264,6 +280,7 @@ export function toPublicSummary(
     variantIds: variants.map((v) => v.id),
     taxInclusive: p.taxInclusive,
     createdAt: p.createdAt,
+    kind: itemKind(p),
   };
 }
 

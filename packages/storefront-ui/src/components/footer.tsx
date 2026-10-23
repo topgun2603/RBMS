@@ -99,8 +99,12 @@ export interface FooterColumn {
   links: FooterLink[];
 }
 
-/** Desktop shows the brand block plus at most this many link columns in one row. */
-export const FOOTER_MAX_COLUMNS = 6;
+/**
+ * Link columns beside the brand block on desktop. Our built-in columns (Shop, More, Help, Policies) only fill gaps up
+ * to this many; past it they fold into each other (see `footerColumns`). A shop's own groups always show (up to 6
+ * fit the grid), so a shop with five groups of its own keeps them.
+ */
+export const FOOTER_MAX_COLUMNS = 4;
 
 const CATALOG_TYPES = new Set(["category", "collection", "product", "brand"]);
 const CATALOG_HREF = /^\/(products|c|collections|bundles|search|p|offers)(\/|\?|$)/;
@@ -142,13 +146,26 @@ export function footerColumns(menu: MenuItem[], help: boolean, t: Translator, po
   const helpCol = helpIdx >= 0 ? cols[helpIdx]! : null;
   const policyCol = policyIdx >= 0 ? cols[policyIdx]! : null;
 
-  // Shop: the shop's own shop-like group, else ours (first).
+  // Shop: the shop's own shop-like group, else ours (first). When ours would hold nothing but "Shop all" and one of the
+  // shop's groups already links the catalogue ("Salon: … Shop salon care"), "Shop all" joins that group instead of a
+  // one-link column of its own.
   let shopCol = shopIdx >= 0 ? cols[shopIdx]! : null;
+  let borrowed = false;
   if (!shopCol) {
-    shopCol = { kind: "shop", label: t("footer.shop"), links: [] };
-    cols.unshift(shopCol);
+    const host = loose.some(isCatalogLink) ? -1 : groups.findIndex((g, i) => i !== helpIdx && i !== policyIdx && kids(i).some(isCatalogLink));
+    if (host >= 0) {
+      shopCol = cols[host]!;
+      borrowed = true;
+    } else {
+      shopCol = { kind: "shop", label: t("footer.shop"), links: [] };
+      cols.unshift(shopCol);
+    }
   }
-  if (!linksTo(menu, "/products")) shopCol.links.unshift({ label: t("nav.shopAll"), href: "/products" });
+  if (!linksTo(menu, "/products")) {
+    const all = { label: t("nav.shopAll"), href: "/products" };
+    if (borrowed) shopCol.links.push(all);
+    else shopCol.links.unshift(all);
+  }
   for (const l of toLinks(loose.filter(isCatalogLink))) if (!hasHref(shopCol.links, l.href)) shopCol.links.push(l);
 
   // Loose non-catalogue links: the menu's only other group takes them; otherwise a "More" column.
@@ -175,7 +192,44 @@ export function footerColumns(menu: MenuItem[], help: boolean, t: Translator, po
   if (policyCol) policyCol.links.push(...missingPolicies);
   else if (missingPolicies.length) cols.push({ kind: "policies", label: t("footer.policies"), links: [...missingPolicies] });
 
-  return cols.filter((c) => c.links.length > 0);
+  return fitColumns(
+    cols.filter((c) => c.links.length > 0),
+    helpCol,
+  );
+}
+
+/**
+ * Keeps the footer to FOOTER_MAX_COLUMNS link columns by folding ours away, least important first: Policies into
+ * Help (ours or the shop's help group), then "More" into Help / the shop's last group, then our Help into the shop's
+ * last group, then our Shop column into the shop's first group. The shop's own groups are never dropped.
+ */
+function fitColumns(cols: FooterColumn[], helpGroup: FooterColumn | null): FooterColumn[] {
+  const out = [...cols];
+  const fold = (from: FooterColumn, into: FooterColumn) => {
+    for (const l of from.links) if (!hasHref(into.links, l.href)) into.links.push(l);
+    out.splice(out.indexOf(from), 1);
+  };
+  const ours = (kind: FooterColumn["kind"]) => out.find((c) => c.kind === kind);
+  const lastGroup = (except?: FooterColumn | null) => [...out].reverse().find((c) => c.kind === "group" && c !== except);
+  while (out.length > FOOTER_MAX_COLUMNS) {
+    const policies = ours("policies");
+    const more = ours("more");
+    const help = ours("help") ?? (helpGroup && out.includes(helpGroup) ? helpGroup : undefined);
+    const shop = ours("shop");
+    if (policies && (help ?? more)) fold(policies, (help ?? more)!);
+    else if (more && (help ?? lastGroup())) fold(more, (help ?? lastGroup())!);
+    else if (ours("help") && lastGroup()) fold(ours("help")!, lastGroup()!);
+    else if (policies && lastGroup()) fold(policies, lastGroup()!);
+    else if (shop && out.find((c) => c.kind === "group")) fold(shop, out.find((c) => c.kind === "group")!);
+    else break;
+  }
+  return out;
+}
+
+/** The minimal footer's one row: "Shop all", then every footer-menu link (each href once). */
+export function minimalLinks(columns: FooterColumn[], t: Translator): FooterLink[] {
+  const seen = new Set<string>(["/products"]);
+  return [{ label: t("nav.shopAll"), href: "/products" }, ...columns.flatMap((c) => c.links).filter((l) => !seen.has(l.href) && !!seen.add(l.href))];
 }
 
 /**
@@ -222,13 +276,11 @@ export function StoreFooter({
       <footer className="mt-[var(--sf-section)] border-t" data-footer="minimal">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-x-6 gap-y-3 px-4 py-5 text-xs text-muted-foreground sm:px-6 lg:flex-row lg:px-8">
           <p className="text-center">{rights}</p>
-          <nav aria-label={t("footer.policies")} className="flex flex-wrap justify-center gap-x-4 gap-y-1 lg:me-auto">
-            <FLink href="/products" className="text-xs">
-              {t("nav.shopAll")}
-            </FLink>
-            {policyLinks.map((k) => (
-              <FLink key={k} href={`/policies/${k}`} className="text-xs">
-                {t(`policy.${k}`)}
+          {/* The shop's footer menu (photo credits, policies, help…) flattened into one compact wrapping row. */}
+          <nav aria-label={t("footer.shop")} className="flex flex-wrap justify-center gap-x-4 gap-y-1 lg:me-auto">
+            {minimalLinks(columns, t).map((l) => (
+              <FLink key={l.href} href={l.href} className="text-xs">
+                {l.label}
               </FLink>
             ))}
           </nav>
@@ -291,9 +343,10 @@ export function StoreFooter({
     { href: "/cart", label: t("nav.cart"), icon: ShoppingBagIcon },
   ];
   const bigBand = variant === "newsletter";
-  // Brand block + the link columns in one row on desktop (up to FOOTER_MAX_COLUMNS; more wrap), two columns on tablets,
+  // Brand block + the link columns in one row on desktop (ours keep it to FOOTER_MAX_COLUMNS; a shop with more groups
+  // of its own gets up to 6 in the row, more wrap), two columns on tablets,
   // an accordion on phones.
-  const desktopCols = Math.max(1, Math.min(FOOTER_MAX_COLUMNS, columns.length));
+  const desktopCols = Math.max(1, Math.min(6, columns.length));
 
   return (
     <footer className={cn("mt-[var(--sf-section)] bg-tint-1", !bigBand && "border-t")} data-footer={variant}>
@@ -328,7 +381,7 @@ export function StoreFooter({
       )}
 
       <div className={cn("mx-auto grid w-full max-w-7xl gap-x-8 gap-y-10 px-4 py-12 sm:px-6 lg:px-8", FOOTER_GRID[desktopCols])} data-footer-columns={columns.length}>
-        <div className="grid content-start gap-4">
+        <div className="grid min-w-0 content-start gap-4">
           <FooterLogo name={shop.name} logoUrl={bigBand ? logoUrl : null} />
           <div className="grid gap-2 text-sm text-foreground/70">
             {shop.contactPhone && (
@@ -343,15 +396,16 @@ export function StoreFooter({
             )}
           </div>
           <SocialLinks social={social} t={t} />
-          {/* App-style quick links */}
-          <ul className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(4.75rem,1fr))] gap-2 sm:max-w-sm">
+          {/* Quick links: small icon pills that wrap inside the brand column (never wider than it). */}
+          <ul className="mt-1 flex min-w-0 flex-wrap gap-1.5" data-footer-quick>
             {quick.map((q) => (
-              <li key={q.href}>
-                <Link href={q.href} className="group flex flex-col items-center gap-1.5 rounded-2xl border bg-card px-1 py-3 text-center text-[11px] font-semibold text-foreground/75 transition-colors hover:border-primary/40 hover:text-primary focus-ring">
-                  <span className="icon-chip size-8 text-primary transition-transform group-hover:scale-110 motion-reduce:transition-none">
-                    <q.icon className="size-4" />
-                  </span>
-                  <span className="line-clamp-1">{q.label}</span>
+              <li key={q.href} className="min-w-0">
+                <Link
+                  href={q.href}
+                  className="group inline-flex max-w-full items-center gap-1.5 rounded-full border bg-card py-1.5 ps-2 pe-3 text-xs font-semibold text-foreground/75 transition-colors hover:border-primary/40 hover:text-primary focus-ring"
+                >
+                  <q.icon className="size-3.5 shrink-0 text-primary" aria-hidden />
+                  <span className="truncate">{q.label}</span>
                 </Link>
               </li>
             ))}

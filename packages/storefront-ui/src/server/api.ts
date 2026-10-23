@@ -171,6 +171,7 @@ export async function getShell(config: StoreConfig, branding: Branding | null): 
     minOrderValue: config.minOrderValue,
     contactPhone: config.shop.contactPhone,
     contactEmail: config.shop.contactEmail,
+    whatsapp: config.shop.social?.whatsapp ?? null,
     cartToken: cart ? cart.token : info.cartToken,
     cartCount: cart?.itemCount ?? 0,
     features,

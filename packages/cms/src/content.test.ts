@@ -64,6 +64,12 @@ describe("home sections", () => {
     });
   }
 
+  it("logos may be text-only wordmarks (a name, an optional link); a name stays required", () => {
+    const s = homeSectionSchema.parse({ type: "logos", items: [{ name: "Wella" }, { name: "L'Oréal", href: "https://loreal.com" }, { name: "Titan", imageUrl: "/l.png" }] });
+    expect(s).toMatchObject({ items: [{ name: "Wella" }, { name: "L'Oréal" }, { name: "Titan", imageUrl: "/l.png" }] });
+    expect(ok(homeSectionSchema, { type: "logos", items: [{ imageUrl: "/l.png" }] })).toBe(false);
+  });
+
   it("fills defaults and rejects unknown types", () => {
     const c = homeSectionSchema.parse({ type: "collection", collectionSlug: "new" });
     expect(c).toMatchObject({ title: "", layout: "carousel", limit: 12 });

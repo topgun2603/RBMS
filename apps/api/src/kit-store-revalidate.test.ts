@@ -10,8 +10,14 @@ describe("storeResourcesFor", () => {
     expect(storeResourcesFor("POST", "/v1/cms/posts/:id/publish")).toEqual(["posts", "seo"]);
     expect(storeResourcesFor("PUT", "/v1/branding/")).toEqual(["branding", "config"]);
     expect(storeResourcesFor("POST", "/v1/branding/preview")).toEqual([]);
-    expect(storeResourcesFor("PATCH", "/v1/catalog/products/:id")).toEqual(["catalog", "offers", "seo"]);
-    expect(storeResourcesFor("POST", "/v1/catalog/collections")).toEqual(["catalog", "offers", "seo"]);
+    expect(storeResourcesFor("PATCH", "/v1/catalog/products/:id")).toEqual(["catalog", "offers", "seo", "bookings"]);
+    expect(storeResourcesFor("POST", "/v1/catalog/collections")).toEqual(["catalog", "offers", "seo", "bookings"]);
+    // The booking page (/book) refreshes when services or staff change; slots are always live.
+    expect(storeResourcesFor("PATCH", "/v1/bookings/services/:id")).toEqual(["bookings", "catalog"]);
+    expect(storeResourcesFor("POST", "/v1/bookings/staff")).toEqual(["bookings", "catalog"]);
+    expect(storeResourcesFor("PUT", "/v1/bookings/hours")).toEqual([]);
+    expect(storeResourcesFor("POST", "/v1/bookings/public/appointments")).toEqual([]);
+    expect(storeResourcesFor("PUT", "/v1/features/:key")).toEqual(["features", "config", "catalog", "bookings"]);
     expect(storeResourcesFor("POST", "/v1/inventory/adjustments")).toEqual(["catalog"]);
     expect(storeResourcesFor("PATCH", "/v1/coupons/offers/:id")).toEqual(["offers"]);
     expect(storeResourcesFor("POST", "/v1/coupons/offers/preview")).toEqual([]);
@@ -58,7 +64,7 @@ describe("createStoreRevalidator", () => {
     const [url, init] = fetch.mock.calls[0]! as unknown as [string, RequestInit];
     expect(url).toBe("http://store/api/revalidate");
     expect((init.headers as Record<string, string>)["x-revalidate-secret"]).toBe("s");
-    expect(JSON.parse(init.body as string)).toEqual({ keys: ["anbu", "anbufashions.in"], resources: ["catalog", "offers", "seo", "home"] });
+    expect(JSON.parse(init.body as string)).toEqual({ keys: ["anbu", "anbufashions.in"], resources: ["catalog", "offers", "seo", "bookings", "home"] });
   });
 
   it("never throws: a store that is down is logged, and no tenant / no config means no call", async () => {

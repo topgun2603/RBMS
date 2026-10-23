@@ -1,6 +1,6 @@
 import { resolveCname, resolveTxt } from "node:dns/promises";
 import { AppError, type FeatureGatePort } from "@srirealtime/core";
-import { isPublicRef, type createCatalogue, type ProductRef, type StockSqlPort } from "@srirealtime/catalogue";
+import { isPublicRef, type BookableServicesPort, type createCatalogue, type ProductRef, type StockSqlPort } from "@srirealtime/catalogue";
 import { sql } from "@srirealtime/db";
 import { stockItems } from "@srirealtime/inventory";
 import type { CatalogPort as CmsCatalogPort, PublicProductSummary as CmsProductSummary } from "@srirealtime/cms";
@@ -58,6 +58,27 @@ export function catalogueStockSql(isEnabled: FeatureGatePort["isEnabled"]): Stoc
       sql`select sum(${stockItems.qty}) as qty, sum(${stockItems.reorderLevel}) as reorder, bool_and(${stockItems.track}) as track
         from ${stockItems} where ${stockItems.tenantId} = ${tenantId} and ${stockItems.itemId} = ${variantId}`,
     enabled: (tenantId) => isEnabled(tenantId, "inventory"),
+  };
+}
+
+/**
+ * Catalogue's bookable-services port over bookings: which variants are appointment services (active ones), their
+ * duration, and whether they can be booked online (`bookings.online` on and the service online-bookable). Nothing
+ * without the bookings feature.
+ */
+export function catalogueServicesPort(
+  services: () => (tenantId: string) => Promise<{ id: string; itemId: string; durationMin: number; active: boolean; onlineBookable: boolean }[]>,
+  isEnabled: FeatureGatePort["isEnabled"],
+): BookableServicesPort {
+  return {
+    forVariants: async (tenantId, variantIds) => {
+      if (!variantIds.length || !(await isEnabled(tenantId, "bookings"))) return [];
+      const [rows, online] = await Promise.all([services()(tenantId), isEnabled(tenantId, "bookings.online")]);
+      const wanted = new Set(variantIds);
+      return rows
+        .filter((s) => s.active && wanted.has(s.itemId))
+        .map((s) => ({ variantId: s.itemId, serviceId: s.id, durationMin: s.durationMin, online: online && s.onlineBookable }));
+    },
   };
 }
 
@@ -199,6 +220,8 @@ const toCmsSummary = (p: ProductRef | CmsProductSummary): CmsProductSummary => (
   mrp: p.mrp,
   variantCount: p.variantCount,
   taxInclusive: p.taxInclusive,
+  ...(p.kind ? { kind: p.kind } : {}),
+  ...(p.service ? { service: p.service } : {}),
 });
 
 export function cmsCatalogPort(catalogue: Catalogue): CmsCatalogPort {
@@ -212,7 +235,7 @@ export function cmsCatalogPort(catalogue: Catalogue): CmsCatalogPort {
       const page = await catalogue.publicCollection(tenantId, slug, { limit, offset: 0 }).catch(nullOn404);
       return page ? { name: page.collection.name, slug: page.collection.slug, products: page.items.map(toCmsSummary) } : null;
     },
-    productsByIds: async (tenantId, ids) => (await catalogue.productRefs(tenantId, ids)).filter(isPublicRef).map(toCmsSummary),
+    productsByIds: async (tenantId, ids) => (await catalogue.withServices(tenantId, (await catalogue.productRefs(tenantId, ids)).filter(isPublicRef))).map(toCmsSummary),
     newest: async (tenantId, limit) => (await catalogue.publicProducts(tenantId, { sort: "new", limit })).items.map(toCmsSummary),
   };
 }

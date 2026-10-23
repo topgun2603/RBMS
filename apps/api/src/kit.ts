@@ -46,6 +46,7 @@ import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
 import {
   catalogueAvailability,
+  catalogueServicesPort,
   catalogueStockSql,
   cmsCatalogPort,
   dnsDomainVerifier,
@@ -271,6 +272,7 @@ export function createKit(env: Env, log: Logger) {
   // The one product list for billing, the store and POS. Billing items and inventory items are its variants.
   // Search ports are late-bound: inventory and reviews are created further down.
   let reviewsRef: ReturnType<typeof createReviews> | undefined;
+  let bookingsRef: ReturnType<typeof createBookings> | undefined;
   const catalogue = createCatalogue({
     db,
     featureGate: features.gate,
@@ -287,6 +289,8 @@ export function createKit(env: Env, log: Logger) {
     events,
     // Recommendations: paid-order counts and products bought together.
     purchases: orderPurchaseStats(db),
+    // Bookable services (bookings, created further down): the store shows "Book now" for them instead of the cart.
+    services: catalogueServicesPort(() => (tenantId) => bookingsRef!.service.services(tenantId), (tenantId, key) => features.service.isEnabled(tenantId, key)),
     log,
   });
 
@@ -980,6 +984,7 @@ export function createKit(env: Env, log: Logger) {
     notify: messages.bookings,
     log,
   });
+  bookingsRef = bookings;
   // Memberships and packages (gyms, salons): selling and renewing bill through the shared adapter.
   const membershipSettings = settings.service.handle("memberships");
   const memberships = createMemberships({

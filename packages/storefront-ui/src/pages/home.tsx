@@ -1,3 +1,4 @@
+import { categoryKinds, type ListKind } from "../lib/service-item";
 import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
@@ -129,12 +130,21 @@ async function loadShelves(sections: HomeSection[], t: Translator): Promise<Map<
 }
 
 /** Product counts per category (rolled up over sub-categories), for category sections that show them. */
-async function categoryCounts(sections: HomeSection[]): Promise<Map<string, number> | undefined> {
+async function categoryCounts(sections: HomeSection[]): Promise<CategoryCounts | undefined> {
   if (!sections.some((s) => s.type === "categories" && s.showCounts)) return undefined;
-  const r = await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 300, query: { limit: 1 } });
+  const [r, sample] = await Promise.all([
+    apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 300, query: { limit: 1 } }),
+    // What each category holds (products, services or both) for "8 services" / "12 items": the first 100 items.
+    apiGetSafe<List<ProductSummary>>("/catalog/public/products", { items: [], total: 0 }, { revalidate: 300, query: { limit: 100 } }),
+  ]);
   // No answer → no counts at all (rather than "Coming soon" on every tile); an empty facet list means no products yet.
   if (!r?.facets) return undefined;
-  return new Map((r.facets.categories ?? []).map((c) => [c.id, c.count]));
+  return { counts: new Map((r.facets.categories ?? []).map((c) => [c.id, c.count])), kinds: categoryKinds(sample.items) };
+}
+
+interface CategoryCounts {
+  counts: Map<string, number>;
+  kinds: Map<string, ListKind>;
 }
 
 /** Product ids a section shows (for one ratings call per page). */
@@ -179,7 +189,7 @@ export async function HomePage() {
               </ExpiryGate>
             ) : (
               <SectionFrame section={s}>
-                <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} rates={rates} locale={info.locale} data={shelves.get(i)} counts={counts} />
+                <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} rates={rates} locale={info.locale} data={shelves.get(i)} counts={counts?.counts} kinds={counts?.kinds} />
               </SectionFrame>
             )}
             {/* Trust row right under the hero, unless the shop has its own "Why shop with us" (usp) section. */}
@@ -209,6 +219,7 @@ export function HomeSectionView({
   locale = "en",
   data,
   counts,
+  kinds,
 }: {
   section: HomeSection;
   index: number;
@@ -222,13 +233,15 @@ export function HomeSectionView({
   data?: ShelfData;
   /** Product counts per category (categories sections with `showCounts`). */
   counts?: ReadonlyMap<string, number>;
+  /** What each category holds (products / services / items), for the count wording. */
+  kinds?: ReadonlyMap<string, ListKind>;
 }) {
   switch (s.type) {
     case "hero":
       return <HeroSlider slides={s.slides} shopName={config.shop.name} />;
 
     case "categories":
-      return <CategoriesSectionView s={s} t={t} counts={counts} />;
+      return <CategoriesSectionView s={s} t={t} counts={counts} kinds={kinds} />;
 
     case "collection": {
       // A sale ribbon only when the products really are discounted (no invented urgency / timers).

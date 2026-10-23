@@ -81,6 +81,18 @@ describe("trade sections", () => {
     expect(html(<LocationSection s={{ type: "location", hours: [] }} t={t} config={config} />)).toBe("");
   });
 
+  it("location: an 'Open in Google Maps' way out on the map, and a labelled tile (not a bare pin) without coordinates", () => {
+    const s: HomeSectionOf<"location"> = { type: "location", address: "14 Race Course Road, Coimbatore", hours: [], coords: "11.0016, 76.9752" };
+    const withMap = html(<LocationSection s={s} t={t} config={config} />);
+    expect(withMap).toContain('loading="lazy"');
+    expect(withMap).toMatch(/data-testid="map-open"[^>]*>.*Open in Google Maps/);
+    expect(withMap).toContain("https://www.google.com/maps/search/?api=1&amp;query=11.0016%2C76.9752");
+    const noPin = html(<LocationSection s={{ ...s, coords: undefined }} t={t} config={config} />);
+    expect(noPin).not.toContain("openstreetmap");
+    expect(noPin).toMatch(/data-testid="map-placeholder"[\s\S]*Open in Google Maps/);
+    expect(noPin).toContain(encodeURIComponent("Lakshmi Jewellers 14 Race Course Road, Coimbatore"));
+  });
+
   it("menu board: veg / non-veg marks are labelled; prices in rupees", () => {
     const out = html(
       <MenuBoardSection

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { EyeIcon, Loader2Icon, PlusIcon, ShoppingBagIcon } from "lucide-react";
+import { CalendarCheck2Icon, EyeIcon, Loader2Icon, MessageCircleIcon, PlusIcon, ShoppingBagIcon } from "lucide-react";
 import type { CardBadge } from "../lib/cards";
 import { toast } from "@srirealtime/ui/components/sonner";
 import { cn } from "@srirealtime/ui/lib/utils";
@@ -11,6 +11,7 @@ import { STORE_PATHS } from "@srirealtime/cms/seo";
 import { imageUrl, percentOff } from "../lib/format";
 import { cardBadges, freshIds, hoverEffects } from "../lib/cards";
 import { gridClass, listClass, type GridColumns, type GridLayout } from "../lib/grid";
+import { isService, serviceAction, type ServiceAction } from "../lib/service-item";
 import type { Product, ProductSummary } from "../types";
 import { Price, Stars, StoreImage } from "../components/bits";
 import { call, errorMessage } from "./api";
@@ -56,6 +57,46 @@ export function useQuickAdd(product: Pick<ProductSummary, "id" | "slug" | "name"
   return { busy, run };
 }
 
+/** A service's card button: "Book" (→ /book?service=) or "Enquire" (WhatsApp), a plain link instead of quick add. */
+function ServiceLink({ action, className, round, label, name }: { action: ServiceAction; className: string; round?: boolean; label: string; name: string }) {
+  const Icon = action.kind === "book" ? CalendarCheck2Icon : MessageCircleIcon;
+  const body = round ? (
+    <Icon className="size-5" />
+  ) : (
+    <>
+      <Icon className="size-4" />
+      {label}
+    </>
+  );
+  const common = { className, "aria-label": round ? `${label}: ${name}` : undefined, "data-testid": "service-card-action", "data-service-action": action.kind };
+  if (action.kind === "book") {
+    return (
+      <Link href={action.href} {...common}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <a href={action.href} {...common} {...(action.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+      {body}
+    </a>
+  );
+}
+
+/** Card wiring for services: their action and label (null for products). */
+function useServiceCard(product: ProductSummary): { action: ServiceAction; label: string } | null {
+  const { t, shell } = useStore();
+  if (!isService(product)) return null;
+  const action = serviceAction(product, { whatsapp: shell.whatsapp, phone: shell.contactPhone }, t);
+  return { action, label: action.kind === "book" ? t("service.bookShort") : t("service.enquireShort") };
+}
+
+const HOVER_BAR_CLS =
+  "flex h-10 w-full items-center justify-center gap-2 rounded-full bg-background/95 text-sm font-semibold text-foreground shadow-[var(--elevation-2)] backdrop-blur transition-colors focus-ring hover:bg-primary hover:text-primary-foreground";
+const TOUCH_BTN_CLS = "absolute end-2.5 bottom-2.5 z-[3] flex size-10 items-center justify-center rounded-full bg-background/95 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring";
+const BELOW_BTN_CLS =
+  "sf-btn relative z-[2] mt-auto flex h-9 w-full items-center justify-center gap-2 border border-primary/40 text-sm font-semibold text-primary transition-colors focus-ring hover:bg-primary hover:text-primary-foreground";
+
 const cardVariants: Variants = { rest: {}, hover: {} };
 const liftVariants: Variants = { rest: { y: 0 }, hover: { y: -6 } };
 const glowVariants: Variants = { rest: { opacity: 0 }, hover: { opacity: 1 } };
@@ -75,9 +116,11 @@ const BADGE_CLS: Record<CardBadge["kind"], string> = {
 export function CardBadges({ badges, className }: { badges: CardBadge[]; className?: string }) {
   if (!badges.length) return null;
   return (
-    <span className={cn("pointer-events-none absolute start-0 top-3 z-[2] flex flex-col items-start gap-1", className)}>
+    // Never under the corner icons: the ribbons keep clear of one icon column (narrow tiles stack the icons) or of
+    // compare + heart side by side (wider tiles), and wrap rather than run under them.
+    <span className={cn("pointer-events-none absolute start-0 top-3 z-[2] flex max-w-[calc(100%-3.5rem)] flex-col items-start gap-1 @min-[15rem]/photo:max-w-[calc(100%-6rem)]", className)}>
       {badges.map((b) => (
-        <span key={b.kind} className={cn("rounded-e-full py-1 ps-2.5 pe-3 text-[11px] font-bold tracking-wide shadow-sm", BADGE_CLS[b.kind])} data-badge={b.kind}>
+        <span key={b.kind} className={cn("max-w-full rounded-e-full py-1 ps-2.5 pe-3 text-[11px] leading-tight font-bold tracking-wide shadow-sm [overflow-wrap:anywhere] [:lang(ta)_&]:tracking-normal", BADGE_CLS[b.kind])} data-badge={b.kind}>
           {b.label}
         </span>
       ))}
@@ -101,7 +144,9 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
   const href = STORE_PATHS.product(product.slug);
   const media = React.useRef<HTMLDivElement>(null);
   const { busy, run } = useQuickAdd(product);
-  const stock = useCardStock(product.id, product.variantIds);
+  const svc = useServiceCard(product);
+  // Services have no stock (and no quick add / quick view): a "Book" / "Enquire" link instead.
+  const stock = useCardStock(product.id, svc ? undefined : product.variantIds);
   const second = product.images?.[1] ?? null;
   const spring = { type: "spring" as const, stiffness: 320, damping: 26 };
   const soldOut = stock === "out";
@@ -114,8 +159,9 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
   const fx = hoverEffects(cardHover, !!second);
   const glow = fx.lift && (variant === "standard" || overlay || boxed);
   // Hover bar (and the touch +) vs a button under the card; framed cards always had theirs below.
-  const buttonBelow = shell.open && !soldOut && (cardButton === "always" || (cardButton === "hover" && framed));
-  const buttonOnHover = shell.open && !soldOut && cardButton === "hover" && !framed;
+  const canAct = !!svc || (shell.open && !soldOut);
+  const buttonBelow = canAct && (cardButton === "always" || (cardButton === "hover" && framed));
+  const buttonOnHover = canAct && cardButton === "hover" && !framed;
   const badges = cardBadges({ pct, fresh, stock }, t);
 
   return (
@@ -141,7 +187,8 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
         <div
           ref={media}
           className={cn(
-            "relative aspect-[var(--sf-image-ratio,4/5)] overflow-hidden bg-muted",
+            // @container: the corner icons stack and the ribbons shrink on narrow tiles (phones, 3-up rows).
+            "@container/photo relative aspect-[var(--sf-image-ratio,4/5)] overflow-hidden bg-muted",
             variant === "minimal" || editorial
               ? "rounded-[calc(var(--radius)*0.5)]"
               : framed
@@ -160,12 +207,12 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
             </motion.div>
           )}
           <CardBadges badges={badges} />
-          {/* Photo corner: compare (subtle until hover / when in use) beside the wishlist heart. */}
-          <div className="absolute end-2.5 top-2.5 z-[3] flex items-center gap-1.5">
+          {/* Photo corner: compare (subtle until hover / when in use) beside the wishlist heart; under it on narrow tiles. */}
+          <div className="absolute end-2.5 top-2.5 z-[3] flex items-center gap-1.5 @max-[15rem]/photo:flex-col">
             <CompareToggle product={product} />
             <WishlistHeart productId={product.id} size="sm" />
           </div>
-          {cardButton !== "none" && (
+          {cardButton !== "none" && !svc && (
             // Quick view (desktop hover / keyboard focus): gallery, options and add to cart in a dialog.
             <motion.button
               type="button"
@@ -174,7 +221,7 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
               onClick={() => quickView.open(product.slug)}
               aria-label={`${t("product.quickView")}: ${product.name}`}
               title={t("product.quickView")}
-              className="absolute end-2.5 top-[3.25rem] z-[3] hidden size-9 items-center justify-center rounded-full bg-background/95 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring hover:bg-primary hover:text-primary-foreground focus-visible:!opacity-100 [@media(hover:hover)]:flex"
+              className="absolute end-2.5 top-[3.25rem] z-[3] hidden size-9 @max-[15rem]/photo:top-[5.75rem] items-center justify-center rounded-full bg-background/95 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring hover:bg-primary hover:text-primary-foreground focus-visible:!opacity-100 [@media(hover:hover)]:flex"
               data-testid="quick-view-button"
             >
               <EyeIcon className="size-4" />
@@ -198,31 +245,30 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
                 transition={spring}
                 className={cn("absolute inset-x-2.5 bottom-2.5 z-[3] hidden focus-within:![transform:none] focus-within:!opacity-100", !overlay && "[@media(hover:hover)]:block")}
               >
-                <button
+                {svc ? (
+                  <ServiceLink action={svc.action} label={svc.label} name={product.name} className={HOVER_BAR_CLS} />
+                ) : (
+                  <button type="button" onClick={() => run(media.current)} disabled={busy} className={HOVER_BAR_CLS} data-testid="quick-add">
+                    {busy ? <Loader2Icon className="size-4 animate-spin" /> : product.variantCount > 1 ? <EyeIcon className="size-4" /> : <ShoppingBagIcon className="size-4" />}
+                    {addLabel}
+                  </button>
+                )}
+              </motion.div>
+              {/* Touch: a round + button that's always there (services: a round "Book" / "Enquire" link). */}
+              {svc ? (
+                <ServiceLink round action={svc.action} label={svc.label} name={product.name} className={cn(TOUCH_BTN_CLS, !overlay && "[@media(hover:hover)]:hidden")} />
+              ) : (
+                <motion.button
                   type="button"
                   onClick={() => run(media.current)}
                   disabled={busy}
-                  className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-background/95 text-sm font-semibold text-foreground shadow-[var(--elevation-2)] backdrop-blur transition-colors focus-ring hover:bg-primary hover:text-primary-foreground"
-                  data-testid="quick-add"
+                  whileTap={reduced ? undefined : { scale: 0.88 }}
+                  aria-label={`${addLabel}: ${product.name}`}
+                  className={cn(TOUCH_BTN_CLS, !overlay && "[@media(hover:hover)]:hidden")}
                 >
-                  {busy ? <Loader2Icon className="size-4 animate-spin" /> : product.variantCount > 1 ? <EyeIcon className="size-4" /> : <ShoppingBagIcon className="size-4" />}
-                  {addLabel}
-                </button>
-              </motion.div>
-              {/* Touch: a round + button that's always there. */}
-              <motion.button
-                type="button"
-                onClick={() => run(media.current)}
-                disabled={busy}
-                whileTap={reduced ? undefined : { scale: 0.88 }}
-                aria-label={`${addLabel}: ${product.name}`}
-                className={cn(
-                  "absolute end-2.5 bottom-2.5 z-[3] flex size-10 items-center justify-center rounded-full bg-background/95 text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring",
-                  !overlay && "[@media(hover:hover)]:hidden",
-                )}
-              >
-                {busy ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon className="size-5" />}
-              </motion.button>
+                  {busy ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon className="size-5" />}
+                </motion.button>
+              )}
             </>
           )}
         </div>
@@ -247,17 +293,9 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
         // The stretched link of the (visually hidden) title still covers the tile; keep one visible link target for keyboards.
         <Link href={href} aria-hidden tabIndex={-1} className="absolute inset-0 z-[1] rounded-[var(--sf-radius-card)]" />
       )}
-      {buttonBelow && (
-        <button
-          type="button"
-          onClick={() => run(media.current)}
-          disabled={busy}
-          className={cn(
-            "sf-btn relative z-[2] mt-auto flex h-9 w-full items-center justify-center gap-2 border border-primary/40 text-sm font-semibold text-primary transition-colors focus-ring hover:bg-primary hover:text-primary-foreground",
-            boxed && "mx-3 mb-3 w-auto",
-          )}
-          data-testid="quick-add"
-        >
+      {buttonBelow && svc && <ServiceLink action={svc.action} label={svc.label} name={product.name} className={cn(BELOW_BTN_CLS, boxed && "mx-3 mb-3 w-auto")} />}
+      {buttonBelow && !svc && (
+        <button type="button" onClick={() => run(media.current)} disabled={busy} className={cn(BELOW_BTN_CLS, boxed && "mx-3 mb-3 w-auto")} data-testid="quick-add">
           {busy ? <Loader2Icon className="size-4 animate-spin" /> : product.variantCount > 1 ? <EyeIcon className="size-4" /> : <PlusIcon className="size-4" />}
           {addLabel}
         </button>
@@ -276,7 +314,8 @@ export function ProductRowView({ product, rating, eager, fresh = false }: { prod
   const href = STORE_PATHS.product(product.slug);
   const media = React.useRef<HTMLDivElement>(null);
   const { busy, run } = useQuickAdd(product);
-  const stock = useCardStock(product.id, product.variantIds);
+  const svc = useServiceCard(product);
+  const stock = useCardStock(product.id, svc ? undefined : product.variantIds);
   const soldOut = stock === "out";
   const addLabel = soldOut ? t("product.outOfStock") : product.variantCount > 1 ? t("product.chooseOptions") : t("product.addToCart");
   const badges = cardBadges({ pct, fresh, stock }, t);
@@ -284,7 +323,8 @@ export function ProductRowView({ product, rating, eager, fresh = false }: { prod
     <article className="group/card relative flex h-full gap-3 rounded-[var(--sf-radius-card)] border bg-card p-2.5 text-card-foreground shadow-xs transition-shadow hover:shadow-card sm:gap-4 sm:p-3" data-testid="product-card" data-card="row">
       <div ref={media} className="relative aspect-[var(--sf-image-ratio,4/5)] w-28 shrink-0 self-start overflow-hidden rounded-[calc(var(--sf-radius-card)-0.375rem)] bg-muted sm:w-36">
         <StoreImage src={product.image} alt={product.name} eager={eager} sizes="150px" className={cn(soldOut && "opacity-70 grayscale-[0.6]")} />
-        <CardBadges badges={badges.slice(0, 1)} className="top-2" />
+        {/* No icons on a list row's thumbnail: the ribbon may use its full width. */}
+        <CardBadges badges={badges.slice(0, 1)} className="top-2 max-w-full" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
         {product.categoryName && <p className="truncate text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{product.categoryName}</p>}
@@ -296,7 +336,15 @@ export function ProductRowView({ product, rating, eager, fresh = false }: { prod
         <Price price={product.priceMin} priceMax={product.priceMax} mrp={product.mrp} t={t} size="sm" />
         {rating && rating.count > 0 && <Stars value={rating.average} count={rating.count} t={t} />}
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-          {shell.open && !soldOut && (
+          {svc && (
+            <ServiceLink
+              action={svc.action}
+              label={svc.label}
+              name={product.name}
+              className="sf-btn relative z-[2] inline-flex h-9 items-center gap-2 bg-primary px-4 text-sm font-semibold text-primary-foreground focus-ring"
+            />
+          )}
+          {!svc && shell.open && !soldOut && (
             <button
               type="button"
               onClick={() => run(media.current)}
@@ -308,14 +356,16 @@ export function ProductRowView({ product, rating, eager, fresh = false }: { prod
               {addLabel}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => quickView.open(product.slug)}
-            aria-label={`${t("product.quickView")}: ${product.name}`}
-            className="relative z-[2] hidden size-9 items-center justify-center rounded-full border text-foreground focus-ring hover:bg-muted sm:flex"
-          >
-            <EyeIcon className="size-4" />
-          </button>
+          {!svc && (
+            <button
+              type="button"
+              onClick={() => quickView.open(product.slug)}
+              aria-label={`${t("product.quickView")}: ${product.name}`}
+              className="relative z-[2] hidden size-9 items-center justify-center rounded-full border text-foreground focus-ring hover:bg-muted sm:flex"
+            >
+              <EyeIcon className="size-4" />
+            </button>
+          )}
           <CompareToggle product={product} variant="inline" />
           <WishlistHeart productId={product.id} size="sm" className="relative z-[2] ms-auto" />
         </div>

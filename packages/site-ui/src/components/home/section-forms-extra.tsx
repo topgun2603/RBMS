@@ -355,9 +355,17 @@ export function LogosFields({ form, onChange, errors, disabled, idp }: Props<"lo
       >
         {(it, set, i) => (
           <div className="grid items-start gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
-            <Img label={t("site.home.logo")} value={it.imageUrl} onChange={(imageUrl) => set({ imageUrl })} aspect="aspect-[3/2]" disabled={disabled} error={errors[`items.${i}.imageUrl`]} />
+            <Img
+              label={t("site.home.logo")}
+              optional
+              value={it.imageUrl}
+              onChange={(imageUrl) => set({ imageUrl })}
+              aspect="aspect-[3/2]"
+              disabled={disabled}
+              error={errors[`items.${i}.imageUrl`]}
+            />
             <div className="grid gap-3">
-              <TextField id={`${idp}-ln${i}`} label={t("site.home.brandName")} value={it.name} maxLength={80} disabled={disabled} error={errors[`items.${i}.name`]} onChange={(name) => set({ name })} />
+              <TextField id={`${idp}-ln${i}`} label={t("site.home.brandName")} hint={it.imageUrl ? undefined : t("site.home.logoTextHint")} value={it.name} maxLength={80} disabled={disabled} error={errors[`items.${i}.name`]} onChange={(name) => set({ name })} />
               <TextField id={`${idp}-lh${i}`} label={t("site.home.logoLink")} optional placeholder="/search?q=brand" value={it.href} disabled={disabled} error={errors[`items.${i}.href`]} onChange={(href) => set({ href })} />
             </div>
           </div>

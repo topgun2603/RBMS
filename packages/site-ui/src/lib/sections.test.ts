@@ -174,6 +174,18 @@ describe("new sections", () => {
   });
 });
 
+describe("logos without pictures", () => {
+  it("a name-only logo saves without an imageUrl and validates (a wordmark in the store)", () => {
+    const f = newSectionForm("logos", samples, "s-logos");
+    if (f.type !== "logos") throw new Error("type");
+    const out = fromSectionForm({ ...f, items: [{ imageUrl: "", name: "Wella", href: "" }, { imageUrl: "  ", name: "Schwarzkopf", href: "/search?q=schwarzkopf" }] });
+    expect(out).toMatchObject({ type: "logos", items: [{ name: "Wella" }, { name: "Schwarzkopf", href: "/search?q=schwarzkopf" }] });
+    expect((out as { items: object[] }).items[0]).not.toHaveProperty("imageUrl");
+    expect(homeSectionSchema.safeParse(out).success).toBe(true);
+    expect(toSectionForm(homeSectionSchema.parse(out))).toMatchObject({ items: [{ imageUrl: "", name: "Wella" }, { imageUrl: "", name: "Schwarzkopf" }] });
+  });
+});
+
 describe("validation errors map to form fields", () => {
   it("allows a hero without an image (branded gradient) but reports a half-filled button", () => {
     const blank = { imageUrl: "", mobileImageUrl: "", heading: "Hi", subheading: "", ctaLabel: "", ctaHref: "" };

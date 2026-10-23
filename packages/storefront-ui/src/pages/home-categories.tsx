@@ -1,3 +1,4 @@
+import type { ListKind } from "../lib/service-item";
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, ArrowUpRightIcon } from "lucide-react";
@@ -55,7 +56,7 @@ const SLIDER_WIDTH: Record<CategoryColumns, string> = {
  * Category tiles (see CATEGORY_LAYOUTS in @srirealtime/cms for the list). `counts` (product counts, from the search
  * facets) show when the section asks for them.
  */
-export function CategoriesSectionView({ s, t, counts }: { s: CategoriesSection; t: Translator; counts?: ReadonlyMap<string, number> }) {
+export function CategoriesSectionView({ s, t, counts, kinds }: { s: CategoriesSection; t: Translator; counts?: ReadonlyMap<string, number>; kinds?: ReadonlyMap<string, ListKind> }) {
   const layout = s.layout ?? "circles";
   const start = s.style?.align === "start";
   const cats = s.categories;
@@ -65,7 +66,9 @@ export function CategoriesSectionView({ s, t, counts }: { s: CategoriesSection; 
   const countText = (id: string) => {
     const c = countOf(id);
     if (c === undefined) return undefined;
-    return c > 0 ? t("sections.productsCount", { count: c }) : t("sections.comingSoon");
+    if (c <= 0) return t("sections.comingSoon");
+    const kind = kinds?.get(id);
+    return t(kind === "services" ? "sections.servicesCount" : kind === "items" ? "sections.itemsCount" : "sections.productsCount", { count: c });
   };
   const countLine = (id: string, cls = "text-xs text-muted-foreground") => {
     const text = countText(id);
@@ -201,7 +204,7 @@ export function CategoriesSectionView({ s, t, counts }: { s: CategoriesSection; 
                   <CategoryArt name={c.name} slug={c.slug} image={c.image} tone={i} eager={i < 3} imageClassName={zoom} />
                 </span>
                 <span className="block px-3 py-3 text-center">
-                  <span className="sf-keep-center block truncate text-sm font-semibold group-hover:text-primary sm:text-[0.95rem]">{c.name}</span>
+                  <span className="sf-keep-center line-clamp-2 block text-sm leading-snug font-semibold group-hover:text-primary sm:text-[0.95rem]">{c.name}</span>
                   {countLine(c.id, "sf-keep-center mt-0.5 text-xs text-muted-foreground")}
                 </span>
               </Link>

@@ -173,6 +173,23 @@ export interface VariantLookup extends CatalogItem {
 
 export type PublicVariant = Omit<Variant, "cost">;
 
+/**
+ * What a public product is: something shipped (`product`) or a service done for the customer (`service`: a bookable
+ * appointment service, or an item sold by the visit/job/session or under a SAC code). The store shows "Book now" or
+ * "Enquire" for services instead of the cart, stock and delivery blocks.
+ */
+export type PublicItemKind = "product" | "service";
+
+/** The booking side of a service item (from bookings, through `BookableServicesPort`). */
+export interface PublicServiceInfo {
+  /** The bookings service id (`/book?service=<id>`); null when the item isn't linked to an appointment service. */
+  serviceId: string | null;
+  /** Minutes the appointment takes; null when unknown. */
+  durationMin: number | null;
+  /** Bookable online right now (online booking on and the service online-bookable). False = enquire instead. */
+  bookable: boolean;
+}
+
 export interface PublicProduct
   extends Omit<Product, "variants" | "status" | "channels"> {
   categoryName: string | null;
@@ -180,6 +197,9 @@ export interface PublicProduct
   priceMin: number;
   priceMax: number;
   variants: PublicVariant[];
+  kind: PublicItemKind;
+  /** Set for services (`kind: "service"`). */
+  service?: PublicServiceInfo | null;
 }
 
 export interface PublicProductSummary {
@@ -201,6 +221,10 @@ export interface PublicProductSummary {
   taxInclusive: boolean;
   /** For the store's "New" badge. */
   createdAt: Date;
+  /** Product or service (cards show "Book" for services). Older builders may leave it out (= product). */
+  kind?: PublicItemKind;
+  /** Set for services. */
+  service?: PublicServiceInfo | null;
 }
 
 export type PublicCategory = Omit<Category, "productCount" | "createdAt" | "updatedAt" | "active">;

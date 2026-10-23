@@ -112,6 +112,64 @@ describe("footer columns", () => {
     expect(anbu).toContain("lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]");
   });
 
+  /** glow's and bytefix's real footer menus (2026-10): two groups of their own, neither shop-like nor help-like. */
+  const glowMenu: MenuItem[] = [
+    {
+      label: "Salon",
+      type: "url",
+      href: null,
+      children: [
+        { label: "Services & prices", type: "page", href: "/services" },
+        { label: "Packages & offers", type: "url", href: "/bundles" },
+        { label: "Book an appointment", type: "url", href: "/book" },
+        { label: "Shop salon care", type: "category", href: "/c/products" },
+      ],
+    },
+    { label: "Glow", type: "url", href: null, children: [{ label: "About us", type: "page", href: "/about" }, { label: "Booking policy", type: "page", href: "/booking-policy" }] },
+  ];
+  const allPolicies = [
+    { label: "Shipping policy", href: "/policies/shipping" },
+    { label: "Returns & refunds", href: "/policies/returns" },
+    { label: "Privacy policy", href: "/policies/privacy" },
+    { label: "Terms of service", href: "/policies/terms" },
+  ];
+
+  /** Two groups of the shop's own with no catalogue links (a services business). */
+  const companyMenu: MenuItem[] = [
+    { label: "Company", type: "url", href: null, children: [{ label: "About us", type: "page", href: "/about" }] },
+    { label: "Visit", type: "url", href: null, children: [{ label: "Contact & directions", type: "page", href: "/contact" }] },
+  ];
+
+  it("built-in columns only fill gaps up to four: Policies merge into Help when space is short", () => {
+    const cols = footerColumns(companyMenu, true, t, allPolicies);
+    expect(labels(cols)).toEqual(["Shop", "Company", "Visit", "Help"]);
+    expect(hrefs(cols[3])).toEqual(["/help", "/track", ...allPolicies.map((p) => p.href)]);
+    // Room to spare (one group): Help and Policies stay separate.
+    expect(labels(footerColumns(companyMenu.slice(1), true, t, allPolicies))).toEqual(["Shop", "Visit", "Help", "Policies"]);
+    // Four groups of the shop's own: ours fold into them; nothing is lost and none of the shop's groups is dropped.
+    const four: MenuItem[] = ["A", "B", "C", "D"].map((l) => ({ label: l, type: "url", href: null, children: [{ label: `${l}1`, type: "page", href: `/pages/${l}` }] }));
+    const packed = footerColumns(four, true, t, allPolicies);
+    expect(labels(packed)).toEqual(["A", "B", "C", "D"]);
+    expect(packed.flatMap((c) => hrefs(c))).toEqual(expect.arrayContaining(["/products", "/help", "/track", "/policies/terms", "/pages/A", "/pages/D"]));
+  });
+
+  it("no one-link Shop column: 'Shop all' joins the shop's group that already links the catalogue (glow, bytefix)", () => {
+    const cols = footerColumns(glowMenu, true, t, allPolicies);
+    expect(labels(cols)).toEqual(["Salon", "Glow", "Help", "Policies"]);
+    expect(hrefs(cols[0])).toEqual(["/services", "/bundles", "/book", "/c/products", "/products"]);
+    expect(cols.some((c) => c.kind === "shop")).toBe(false);
+  });
+
+  it("glow footer: four link columns and quick links as a wrapping pill row", () => {
+    const out = html(<StoreFooter config={{ ...config, policies: { shipping: "x", returns: "y", privacy: "z", terms: "w" } } as StoreConfig} menu={companyMenu} t={t} help variant="columns" />);
+    expect(out).toContain('data-footer-columns="4"');
+    expect(out).toContain("lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]");
+    expect(out.match(/data-footer-column="policies"/g)).toBeNull();
+    const quick = /<ul class="([^"]*)" data-footer-quick/.exec(out)?.[1] ?? "";
+    expect(quick).toContain("flex-wrap");
+    expect(quick).not.toMatch(/grid-cols|minmax/);
+  });
+
   it("centered footer lists tracking once when the menu already links it", () => {
     const out = html(<StoreFooter config={config} menu={anbuMenu} t={t} help variant="centered" />);
     expect(out.match(/href="\/track"/g)).toHaveLength(1);

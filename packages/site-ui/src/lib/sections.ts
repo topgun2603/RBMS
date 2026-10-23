@@ -637,7 +637,7 @@ function fromFields(f: Forms): HomeSectionInput {
         images: f.images.map((i) => ({ url: i.url.trim(), alt: i.alt.trim(), ...opt("caption", i.caption), ...opt("href", i.href) })),
       };
     case "logos":
-      return { type: "logos", ...idOf(f.id), ...opt("title", f.title), grayscale: f.grayscale, items: f.items.map((i) => ({ imageUrl: i.imageUrl.trim(), name: i.name.trim(), ...opt("href", i.href) })) };
+      return { type: "logos", ...idOf(f.id), ...opt("title", f.title), grayscale: f.grayscale, items: f.items.map((i) => ({ ...opt("imageUrl", i.imageUrl), name: i.name.trim(), ...opt("href", i.href) })) };
     case "category-mosaic":
       return { type: "category-mosaic", ...idOf(f.id), title: f.title.trim(), ...(f.categoryIds.length ? { categoryIds: [...f.categoryIds] } : {}) };
     case "faq":

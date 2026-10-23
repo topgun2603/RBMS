@@ -1,8 +1,9 @@
+import { countLabel, listKind, type ListKind } from "../lib/service-item";
 import * as React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, LayoutGridIcon, ListIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, LayoutGridIcon, ListIcon } from "lucide-react";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { Pagination as Pager, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink } from "@srirealtime/ui/components/pagination";
 import { breadcrumbJsonLd, STORE_PATHS } from "@srirealtime/cms/seo";
@@ -129,7 +130,7 @@ export async function CollectionView({ slug, searchParams }: { slug: string; sea
           )}
           <h1 className="font-display text-h1 font-semibold">{data.collection.name}</h1>
           {data.collection.description && <Markdown source={data.collection.description} className={cn("mt-3", best >= 10 ? "text-primary-foreground/85" : "text-muted-foreground")} />}
-          <p className={cn("mt-3 text-sm", best >= 10 ? "text-primary-foreground/75" : "text-muted-foreground")}>{t("list.count", { count: data.total })}</p>
+          <p className={cn("mt-3 text-sm", best >= 10 ? "text-primary-foreground/75" : "text-muted-foreground")}>{countLabel(data.total, listKind(data.items), t)}</p>
         </div>
       </header>
       {data.items.length ? <ProductGrid products={data.items} ratings={ratings} t={t} eagerCount={4} /> : <Empty illustration={<NoResultsArt />} title={t("list.empty")} />}
@@ -212,7 +213,7 @@ async function Listing({
   return (
     <Container className="py-8" data-listing-filters={mode} data-listing-view={view} data-listing-paging={paging}>
       <Breadcrumbs items={crumbs} />
-      <ListingHeader title={title} description={description} style={headerStyle} image={category?.imageUrl ?? null} count={result.total} t={t} />
+      <ListingHeader title={title} description={description} style={headerStyle} image={category?.imageUrl ?? null} count={result.total} kind={listKind(result.items)} t={t} />
       {theme.subcategories === "chips" && subcategories.length > 1 && (
         <nav aria-label={t("list.subcategories")} className="-mx-4 mb-6 overflow-x-auto px-4 scrollbar-none sm:mx-0 sm:px-0" data-testid="subcategory-chips">
           <ul className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
@@ -247,15 +248,20 @@ async function Listing({
       <div className={cn(mode === "sidebar" && "lg:grid lg:grid-cols-[240px_1fr] lg:gap-10")}>
         {mode === "sidebar" && (
           <aside className="hidden lg:block" aria-label={t("list.filters")}>
-            <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pe-2 scrollbar-none">{filters}</div>
+            {/* Sticky, scrolling on its own when taller than the window, with a visible (thin) scrollbar so lower groups
+                are discoverable; groups collapse (see FilterPanel). */}
+            <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain pe-3 scrollbar-thin" data-testid="filter-sidebar">
+              {filters}
+            </div>
           </aside>
         )}
         <div className="min-w-0">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground" aria-live="polite">
-              {t("list.count", { count: result.total })}
+              {countLabel(result.total, listKind(result.items), t)}
             </p>
-            <div className="flex items-center gap-2">
+            {/* Wraps on phones (Tamil "Filters" + sort labels are long): the sort grows to fill or drops to its own row. */}
+            <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full">
               {mode !== "top-bar" && (
                 <FilterSheet activeCount={active.length} resultsLabel={t("list.showResults", { count: result.total })} chips={active.length > 0 ? chips : undefined} always={mode === "drawer"}>
                   {filters}
@@ -330,6 +336,7 @@ export function ListingHeader({
   style,
   image,
   count,
+  kind = "products",
   t,
 }: {
   title: string;
@@ -337,6 +344,8 @@ export function ListingHeader({
   style: StoreThemeView["categoryHeader"];
   image: string | null;
   count: number;
+  /** What the listing holds ("12 services" / "20 items"). */
+  kind?: ListKind;
   t: Translator;
 }) {
   if (style === "none") return <h1 className="sr-only">{title}</h1>;
@@ -354,7 +363,7 @@ export function ListingHeader({
         <div className="relative z-[1] max-w-2xl">
           <h1 className="font-display text-h1 font-semibold text-balance drop-shadow-sm">{title}</h1>
           {description && <Markdown source={description} className="mt-3 text-white/85" />}
-          <p className="mt-3 text-sm text-white/75">{t("list.count", { count })}</p>
+          <p className="mt-3 text-sm text-white/75">{countLabel(count, kind, t)}</p>
         </div>
       </header>
     );
@@ -382,7 +391,7 @@ function activeFilters(path: string, sp: Params, facets: Facets, t: Translator, 
   return out;
 }
 
-interface FilterGroupData {
+export interface FilterGroupData {
   key: string;
   title: string;
   /** How many values of this group are on (the top bar's badge). */
@@ -483,10 +492,11 @@ function filterGroups(path: string, sp: Params, facets: Facets, t: Translator, h
     active: stockOn ? 1 : 0,
     body: (
       <Link href={hrefWith(path, sp, { stock: stockOn ? undefined : "1" })} scroll={false} className="flex items-center gap-3 rounded-lg py-1" aria-pressed={stockOn}>
-        <span className={cn("relative h-6 w-10 rounded-full bg-muted ring-1 ring-border transition-colors", stockOn && "bg-primary ring-primary")}>
+        {/* The switch never shrinks; the (long Tamil) label wraps beside it instead of being clipped. */}
+        <span className={cn("relative h-6 w-10 shrink-0 rounded-full bg-muted ring-1 ring-border transition-colors", stockOn && "bg-primary ring-primary")}>
           <span className={cn("absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform", stockOn && "translate-x-4")} />
         </span>
-        <span className="font-medium">{t("list.inStock")}</span>
+        <span className="min-w-0 leading-snug font-medium">{t("list.inStock")}</span>
       </Link>
     ),
   });
@@ -494,28 +504,36 @@ function filterGroups(path: string, sp: Params, facets: Facets, t: Translator, h
 }
 
 /** Sidebar / sheet: every group stacked (the in-stock switch has no heading of its own). */
-function FilterPanel({ groups }: { groups: FilterGroupData[] }) {
+/** Filter groups open at first: the first three, plus any group with a filter on. */
+export const FILTER_GROUPS_OPEN = 3;
+
+export function FilterPanel({ groups }: { groups: FilterGroupData[] }) {
+  let n = 0;
   return (
-    <div className="grid gap-7 text-sm">
-      {groups.map((g) =>
-        g.key === "stock" ? (
-          <React.Fragment key={g.key}>{g.body}</React.Fragment>
-        ) : (
-          <FilterGroup key={g.key} title={g.title}>
+    <div className="grid gap-1 text-sm">
+      {groups.map((g) => {
+        if (g.key === "stock") return <div key={g.key} className="py-2">{g.body}</div>;
+        const open = n++ < FILTER_GROUPS_OPEN || g.active > 0;
+        return (
+          <FilterGroup key={g.key} title={g.title} open={open}>
             {g.body}
           </FilterGroup>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
 
-function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+/** One collapsible group (native <details>: works without JS, keeps the links in the HTML). */
+function FilterGroup({ title, open, children }: { title: string; open: boolean; children: React.ReactNode }) {
   return (
-    <section>
-      <h2 className="mb-2.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{title}</h2>
-      {children}
-    </section>
+    <details open={open} className="group/fg border-b border-border/60 py-1 last:border-b-0" data-filter-group>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md py-2.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase focus-ring hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <h2>{title}</h2>
+        <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open/fg:rotate-180 motion-reduce:transition-none" aria-hidden />
+      </summary>
+      <div className="pt-1 pb-4">{children}</div>
+    </details>
   );
 }
 

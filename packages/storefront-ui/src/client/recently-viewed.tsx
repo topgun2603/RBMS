@@ -13,7 +13,7 @@ const KEY = "sr_recent";
 const MAX = 12;
 const EVENT = "sr:recent";
 
-type Recent = Pick<ProductSummary, "id" | "name" | "slug" | "image" | "priceMin" | "priceMax" | "mrp" | "variantCount" | "categoryName" | "taxInclusive"> & {
+type Recent = Pick<ProductSummary, "id" | "name" | "slug" | "image" | "priceMin" | "priceMax" | "mrp" | "variantCount" | "categoryName" | "taxInclusive" | "kind" | "service"> & {
   /** Older entries have none (recommendations then skip them). */
   categoryId?: string | null;
   at: number;

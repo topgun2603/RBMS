@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CalendarCheck2Icon, CheckIcon, Loader2Icon, UserRoundIcon } from "lucide-react";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { money } from "../lib/format";
@@ -34,6 +35,13 @@ interface Booked {
   appointment: { date: string; start: string };
 }
 
+/** The services `?service=` names (comma-separated ids) that the shop offers online. */
+export function preselected(param: string | null | undefined, services: readonly Pick<BookableService, "id">[]): string[] {
+  if (!param) return [];
+  const ids = new Set(services.map((s) => s.id));
+  return [...new Set(param.split(",").map((x) => x.trim()))].filter((id) => ids.has(id));
+}
+
 const istDate = (d: Date) => new Date(d.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10);
 
 /**
@@ -42,7 +50,9 @@ const istDate = (d: Date) => new Date(d.getTime() + 5.5 * 3600_000).toISOString(
  */
 export function BookingWizard({ services, staff }: { services: BookableService[]; staff: BookableStaff[] }) {
   const { t, locale } = useStore();
-  const [picked, setPicked] = React.useState<string[]>([]);
+  // `/book?service=<id>` (a service page's "Book now"): that service starts ticked.
+  const params = useSearchParams();
+  const [picked, setPicked] = React.useState<string[]>(() => preselected(params?.get("service"), services));
   const [who, setWho] = React.useState<string>("any");
   const days = React.useMemo(() => Array.from({ length: 14 }, (_, i) => istDate(new Date(Date.now() + i * 86_400_000))), []);
   const [day, setDay] = React.useState(days[0]!);

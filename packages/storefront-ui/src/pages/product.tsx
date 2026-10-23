@@ -3,6 +3,8 @@ import * as React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FileTextIcon, ListChecksIcon, TruckIcon } from "lucide-react";
+import { ServicePanel } from "../components/service-panel";
+import { isService } from "../lib/service-item";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@srirealtime/ui/components/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui/components/tabs";
 import { cn } from "@srirealtime/ui/lib/utils";
@@ -14,7 +16,7 @@ import { getRatings } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { percentOff } from "../lib/format";
 import { freshIds } from "../lib/cards";
-import { Markdown } from "../lib/markdown";
+import { Markdown, stripLeadingHeading } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
 import type { Availability, CmsPage, List, Product, ProductSummary, Promotions, Recommendations, ReviewList, SearchResult, SellerCard, SellerLookup, StoreThemeView } from "../types";
 import { Breadcrumbs, Container, JsonLd, SectionTitle, Stars } from "../components/bits";
@@ -54,12 +56,16 @@ export async function ProductPage({ slug }: { slug: string }) {
   const product = await getProduct(slug);
   if (!product) notFound();
   const { t, baseUrl } = info;
-  const ids = product.variants.map((v) => v.id);
+  // Services (a haircut, a repair) are booked or enquired about: no cart, stock, delivery check or shipping policy.
+  const service = isService(product);
+  const ids = service ? [] : product.variants.map((v) => v.id);
   const emptyReviews: ReviewList = { items: [], total: 0, summary: { average: 0, count: 0, distribution: {} } };
   // The clothing size guide only for trades that use it (a pizza or pack "Size" is not a bust/waist chart).
   const hasSizes = !!packFor(config.shop.businessType)?.sizeGuide && product.options.some((o) => /size|அளவு/i.test(o.name) && o.values.length > 0);
   const [avail, reviews, guidePage, seller, promos] = await Promise.all([
-    apiGetSafe<List<Availability>>("/inventory/public/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } }),
+    ids.length
+      ? apiGetSafe<List<Availability>>("/inventory/public/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } })
+      : Promise.resolve<List<Availability>>({ items: [], total: 0 }),
     apiGetSafe<ReviewList>(`/reviews/public/products/${product.id}/reviews`, emptyReviews, { revalidate: 60, query: { limit: 5 } }),
     hasSizes ? apiGetSafe<CmsPage | null>("/cms/public/pages/size-guide", null, { revalidate: 300 }) : Promise.resolve(null),
     getSeller(product.vendorId),
@@ -83,6 +89,7 @@ export async function ProductPage({ slug }: { slug: string }) {
   const theme = themeView(config.shop.theme);
   // A slider needs a few photos to slide; with one or two the usual gallery looks better.
   const layout = theme.productLayout === "slider" && product.images.length < 3 ? "thumbs-side" : theme.productLayout;
+  const scrollingPhotos = layout === "grid" && product.images.length >= 3;
 
   const gallery = <ProductGallery images={product.images} name={product.name} badge={pct > 0 ? t("product.off", { pct }) : undefined} layout={layout} />;
   const heading = (
@@ -101,7 +108,12 @@ export async function ProductPage({ slug }: { slug: string }) {
       {seller && <SoldBy seller={seller} className="mt-3 text-sm [&_svg]:size-4" />}
     </div>
   );
-  const buy = (
+  const buy = service ? (
+    <>
+      <OfferBadgeList offers={promos.offers} t={t} locale={info.locale} />
+      <ServicePanel product={product} t={t} contact={{ whatsapp: config.shop.social?.whatsapp ?? null, phone: config.shop.contactPhone }} />
+    </>
+  ) : (
     <>
       <OfferBadgeList offers={promos.offers} t={t} locale={info.locale} />
       <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} stickyBar={theme.stickyBuy === "on"} />
@@ -109,7 +121,9 @@ export async function ProductPage({ slug }: { slug: string }) {
       {theme.productTrust === "on" && <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />}
     </>
   );
-  const details = <ProductInfo product={product} attrs={attrs} t={t} shipping={config.policies.shipping ?? ""} returns={config.policies.returns ?? ""} mode={theme.productDetails} />;
+  const details = (
+    <ProductInfo product={product} attrs={attrs} t={t} shipping={service ? "" : (config.policies.shipping ?? "")} returns={service ? "" : (config.policies.returns ?? "")} mode={theme.productDetails} />
+  );
 
   return (
     <>
@@ -148,6 +162,7 @@ export async function ProductPage({ slug }: { slug: string }) {
           categoryName: product.categoryName,
           categoryId: product.categoryId,
           taxInclusive: product.taxInclusive,
+          ...(service ? { kind: "service" as const, service: product.service ?? null } : {}),
         }}
       />
       <Container className="pt-4 pb-8 sm:pt-6" data-product-layout={layout}>
@@ -166,9 +181,12 @@ export async function ProductPage({ slug }: { slug: string }) {
           </div>
         ) : (
           <div className={cn("grid gap-8 lg:gap-14", layout === "grid" ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]")}>
-            {/* Grid: the photos scroll and the details stay in view; otherwise the gallery stays in view. */}
-            <div className={cn(layout !== "grid" && "lg:sticky lg:top-24 lg:self-start")}>{gallery}</div>
-            <div className={cn("grid content-start gap-6", layout === "grid" && "lg:sticky lg:top-24 lg:self-start")}>
+            {/* Grid with several photos: the photos scroll and the details stay in view. Otherwise (and a grid of one or
+                two photos, which would leave a tall empty column beside the details) the gallery stays in view. */}
+            <div className={cn(!scrollingPhotos && "lg:sticky lg:top-24 lg:self-start")} data-gallery-sticky={scrollingPhotos ? undefined : ""}>
+              {gallery}
+            </div>
+            <div className={cn("grid content-start gap-6", scrollingPhotos && "lg:sticky lg:top-24 lg:self-start")}>
               {heading}
               {buy}
               {details}
@@ -251,13 +269,14 @@ function ProductInfo({
           {shipping.trim() && (
             <div>
               <p className="mb-1 font-semibold text-foreground">{t("policy.shipping")}</p>
-              <Markdown source={shipping} />
+              {/* Policies often start with their own "## Shipping" heading: don't say it twice. */}
+              <Markdown source={stripLeadingHeading(shipping, [t("policy.shipping"), "shipping", "delivery"])} />
             </div>
           )}
           {returns.trim() && (
             <div>
               <p className="mb-1 font-semibold text-foreground">{t("policy.returns")}</p>
-              <Markdown source={returns} />
+              <Markdown source={stripLeadingHeading(returns, [t("policy.returns"), "returns", "refunds"])} />
             </div>
           )}
         </div>

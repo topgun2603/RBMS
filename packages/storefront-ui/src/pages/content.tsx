@@ -7,7 +7,7 @@ import { breadcrumbJsonLd, STORE_PATHS } from "@srirealtime/cms/seo";
 import { apiGetOrNull, apiGetSafe, getConfig, getRequestInfo, requireStore } from "../server/api";
 import { storeMetadata } from "../server/meta";
 import { formatDate } from "../lib/format";
-import { Markdown, safeHref } from "../lib/markdown";
+import { Markdown, safeHref, stripLeadingHeading } from "../lib/markdown";
 import type { Block, CmsPage, List, Post, PostSummary } from "../types";
 import { Breadcrumbs, Container, Empty, JsonLd, StoreImage } from "../components/bits";
 import { POLICY_KINDS, type PolicyKind } from "../components/footer";
@@ -218,7 +218,7 @@ export async function PolicyPage({ kind }: { kind: string }) {
     <Container className="max-w-3xl py-10">
       <Breadcrumbs items={[{ name: t("nav.home"), href: "/" }, { name: t(`policy.${kind}`) }]} />
       <h1 className="mt-4 mb-8 font-display text-h1 font-semibold">{t(`policy.${kind}`)}</h1>
-      <Markdown source={config.policies[kind]} className="text-[17px] leading-relaxed text-foreground/85" />
+      <Markdown source={stripLeadingHeading(config.policies[kind], [t(`policy.${kind}`), kind])} className="text-[17px] leading-relaxed text-foreground/85" />
       <nav className="mt-12 flex flex-wrap gap-2 border-t pt-6" aria-label={t("footer.policies")}>
         {POLICY_KINDS.filter((k) => k !== kind && config.policies[k]?.trim()).map((k) => (
           <Link key={k} href={`/policies/${k}`} className="rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent">

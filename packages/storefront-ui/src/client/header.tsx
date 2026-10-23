@@ -35,6 +35,7 @@ import { useStore } from "./store-context";
 import { useWishlist } from "./wishlist";
 import { track } from "./analytics";
 import { helpCentreOn } from "../lib/features";
+import { navFitCount, navLeadFolds, overflowLinks } from "../lib/nav-fit";
 
 export interface NavCategory {
   id: string;
@@ -308,7 +309,6 @@ export function StoreHeader({
 
   const activeIndex = menu.findIndex((item) => !!item.href && item.href !== "/" && pathname.startsWith(item.href.split("?")[0]!));
   const shop = categories.length > 0 && megaMenu !== "off" ? <MegaMenu categories={categories} featured={featured} layout={megaMenu} /> : null;
-  const menuItems = menu.map((item, i) => <DesktopMenuItem key={i} item={item} active={i === activeIndex} />);
   const icons = (
     <>
       {overlay && (
@@ -363,10 +363,8 @@ export function StoreHeader({
           <div className="relative mx-auto grid h-16 w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center">
               {burger}
-              <nav aria-label={t("nav.menu")} className="-ms-3 hidden min-w-0 items-center gap-0.5 lg:flex">
-                {shop}
-                {menuItems}
-              </nav>
+              {/* Split: the menu gets its third of the bar; what doesn't fit goes under "More" (never under the logo). */}
+              <OverflowNav lead={shop} menu={menu} activeIndex={activeIndex} label={t("nav.menu")} className="-ms-3 hidden flex-1 lg:flex" />
             </div>
             <div className="max-w-[62vw] min-w-0 lg:max-w-xs">
               <Logo className="mx-auto" />
@@ -385,21 +383,18 @@ export function StoreHeader({
                 <Logo className={variant === "centered" ? "lg:mx-auto" : "me-2"} />
               </motion.div>
             </div>
-            {navInBar && (
-              <nav aria-label={t("nav.menu")} className="hidden items-center gap-0.5 lg:flex">
-                {shop}
-                {menuItems}
-              </nav>
-            )}
-            <SuspendedSearch className={cn("ms-auto hidden w-full md:block", variant === "centered" && "lg:hidden", variant === "minimal" && "max-w-sm")} expandable />
+            {navInBar && <OverflowNav lead={shop} menu={menu} activeIndex={activeIndex} label={t("nav.menu")} className="hidden flex-1 lg:flex" />}
+            <SuspendedSearch
+              className={cn("ms-auto hidden w-full md:block", variant === "centered" && "lg:hidden", variant === "minimal" && "max-w-sm", navInBar && "lg:w-56 lg:shrink-0 xl:w-72")}
+              expandable
+            />
             <div className={cn("ms-auto flex items-center gap-0.5 md:ms-1", variant === "centered" && "lg:ms-auto")}>{icons}</div>
           </div>
         )}
         {variant === "centered" && (
-          <nav aria-label={t("nav.menu")} className="relative hidden h-11 items-start justify-center gap-0.5 lg:flex">
-            {shop}
-            {menuItems}
-          </nav>
+          <div className="relative hidden h-11 items-start justify-center lg:flex">
+            <OverflowNav lead={shop} menu={menu} activeIndex={activeIndex} label={t("nav.menu")} className="w-full max-w-7xl justify-center px-4 sm:px-6 lg:px-8" />
+          </div>
         )}
         {/* Phones: a search row under the bar (over the banner the search icon is used instead, so the bar keeps one height). */}
         {!overlay && (
@@ -490,6 +485,73 @@ function CartButton({ asLink }: { asLink: boolean }) {
 }
 
 const menuItemCls = "relative inline-flex h-9 items-center gap-1 rounded-full px-3 whitespace-nowrap text-sm font-medium text-foreground/75 transition-colors hover:text-foreground focus-ring";
+
+/**
+ * The desktop menu row, never wider than its box: items that don't fit move into a "More" dropdown (measured with a
+ * ResizeObserver against an invisible copy of the labels, so it follows the window and the font). Until measured
+ * (server HTML, first paint) the row is clipped instead of running under the logo. `className` must give the box a
+ * width that doesn't depend on its content (a grid column, or flex-1 + min-w-0).
+ */
+function OverflowNav({ lead, menu, activeIndex, className, label }: { lead: React.ReactNode; menu: MenuItem[]; activeIndex: number; className?: string; label: string }) {
+  const { t } = useStore();
+  const box = React.useRef<HTMLElement>(null);
+  const leadRef = React.useRef<HTMLDivElement>(null);
+  const ruler = React.useRef<HTMLDivElement>(null);
+  const [count, setCount] = React.useState<number | null>(null);
+  // The lead ("Shop" mega menu) folds into "More" too when even the lead and "More" don't fit beside the search box
+  // (long Tamil labels at 1024 px); its last measured width is kept so the check works while it is hidden.
+  const [foldLead, setFoldLead] = React.useState(false);
+  const leadWidth = React.useRef(0);
+  const items = menu.filter((m) => m.href || m.children?.length);
+  React.useEffect(() => {
+    const el = box.current;
+    const r = ruler.current;
+    if (!el || !r || typeof ResizeObserver === "undefined") return setCount(items.length);
+    const fit = () => {
+      const widths = [...r.querySelectorAll<HTMLElement>("[data-measure-item]")].map((x) => x.offsetWidth);
+      const more = r.querySelector<HTMLElement>("[data-measure-more]")?.offsetWidth ?? 80;
+      const cs = getComputedStyle(el);
+      const available = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      if (leadRef.current?.offsetWidth) leadWidth.current = leadRef.current.offsetWidth;
+      const fold = navLeadFolds(available, leadWidth.current, widths, more, 2);
+      const next = navFitCount(available, fold ? 0 : leadWidth.current, widths, more, 2);
+      setFoldLead((f) => (f === fold ? f : fold));
+      setCount((c) => (c === next ? c : next));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    ro.observe(r);
+    return () => ro.disconnect();
+  }, [items.length]);
+  const shown = count === null ? items : items.slice(0, count);
+  const hidden = count === null ? [] : items.slice(count);
+  const folded = !!lead && foldLead && count !== null;
+  const moreLinks = [...(folded ? [{ label: t("nav.shop"), type: "url", href: STORE_PATHS.search }] : []), ...overflowLinks(hidden)];
+  return (
+    <nav ref={box} aria-label={label} className={cn("flex min-w-0 items-center gap-0.5", count === null && "overflow-x-clip", className)} data-nav-fit={count === null ? "pending" : hidden.length || folded ? "more" : "all"}>
+      {lead && <div ref={leadRef} className={cn("flex shrink-0", folded && "hidden")}>{lead}</div>}
+      {shown.map((item, i) => (
+        <DesktopMenuItem key={i} item={item} active={menu.indexOf(item) === activeIndex} />
+      ))}
+      {moreLinks.length > 0 && <DesktopMenuItem item={{ label: t("footer.more"), type: "url", href: null, children: moreLinks }} active={hidden.some((m) => menu.indexOf(m) === activeIndex)} />}
+      {/* The ruler: every label at full width, invisible and out of the flow (positioned by the bar, not this box, so
+          the mega menu keeps the bar's full width). */}
+      <div ref={ruler} aria-hidden className="pointer-events-none invisible absolute start-0 top-0 flex w-max gap-0.5" inert>
+        {items.map((item, i) => (
+          <span key={i} className={cn(menuItemCls, "shrink-0")} data-measure-item>
+            {item.label}
+            {item.children?.length ? <ChevronDownIcon className="size-3.5" /> : null}
+          </span>
+        ))}
+        <span className={cn(menuItemCls, "shrink-0")} data-measure-more>
+          {t("footer.more")}
+          <ChevronDownIcon className="size-3.5" />
+        </span>
+      </div>
+    </nav>
+  );
+}
 
 function ActiveUnderline() {
   return <motion.span layoutId="nav-underline" className="absolute inset-x-3 -bottom-[14px] h-0.5 rounded-full bg-primary" transition={{ type: "spring", stiffness: 420, damping: 34 }} />;

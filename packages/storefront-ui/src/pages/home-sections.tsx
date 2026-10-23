@@ -234,11 +234,24 @@ export function OfferSection({ s, t }: { s: HomeSectionOf<"offer">; t: Translato
 
 // ------------------------------------------------------------------ gallery, logos, instagram
 
+/**
+ * Masonry columns per breakpoint from the image count, so no column is left empty and the rows come out even:
+ * 9 photos → 3 columns (3 × 3) rather than 4 with one hanging; 8 → 4; 2 → 2.
+ */
+export function masonryColumns(n: number): { ph: number; md: number; lg: number } {
+  const lg = n <= 3 ? Math.max(1, n) : n % 4 === 0 ? 4 : n % 3 === 0 ? 3 : n >= 10 ? 4 : 3;
+  return { ph: Math.min(lg, 2), md: Math.min(lg, 3), lg };
+}
+
+/** Masonry tile heights in grid rows (20 rows = one column width): portrait, square, 4:5, repeating. */
+const MASONRY_ROWS = [27, 20, 25] as const;
+
 export function GallerySection({ s }: { s: HomeSectionOf<"gallery"> }) {
   const tile = (img: (typeof s.images)[number], i: number, ratio: string) => {
     const src = imageUrl(img.url);
+    const fill = ratio === "h-full";
     const fig = (
-      <figure className="group relative overflow-hidden rounded-[var(--sf-radius-card)] bg-muted">
+      <figure className={cn("group relative overflow-hidden rounded-[var(--sf-radius-card)] bg-muted", fill && "h-full")}>
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt={img.alt} loading="lazy" decoding="async" className={cn("w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] motion-reduce:transition-none", ratio)} />
@@ -252,7 +265,7 @@ export function GallerySection({ s }: { s: HomeSectionOf<"gallery"> }) {
     );
     const href = img.href ? safeHref(img.href) : null;
     return href ? (
-      <Link href={href} className="block rounded-[var(--sf-radius-card)] focus-ring">
+      <Link href={href} className={cn("block rounded-[var(--sf-radius-card)] focus-ring", fill && "h-full")}>
         {fig}
       </Link>
     ) : (
@@ -269,10 +282,19 @@ export function GallerySection({ s }: { s: HomeSectionOf<"gallery"> }) {
           ))}
         </Carousel>
       ) : s.layout === "masonry" ? (
-        <div className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-4 [&>*]:mb-3 [&>*]:break-inside-avoid sm:[&>*]:mb-4">
-          {s.images.map((img, i) => (
-            <React.Fragment key={i}>{tile(img, i, i % 3 === 0 ? "aspect-[3/4]" : i % 3 === 1 ? "aspect-square" : "aspect-[4/5]")}</React.Fragment>
-          ))}
+        // A grid of 1/20-column-width rows (container units) with tiles spanning 20–27 of them, packed densely: every
+        // column gets photos (CSS columns could leave the last one empty) at any width.
+        <div className="sf-masonry" data-gallery="masonry">
+          <div
+            className="sf-masonry-grid"
+            style={{ "--c-ph": masonryColumns(s.images.length).ph, "--c-md": masonryColumns(s.images.length).md, "--c-lg": masonryColumns(s.images.length).lg } as React.CSSProperties}
+          >
+            {s.images.map((img, i) => (
+              <div key={i} className="min-h-0" style={{ "--rows": MASONRY_ROWS[i % 3] } as React.CSSProperties}>
+                {tile(img, i, "h-full")}
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -301,7 +323,16 @@ export function LogosSection({ s }: { s: HomeSectionOf<"logos"> }) {
               className={cn("h-9 w-auto max-w-[140px] object-contain sm:h-11", s.grayscale && "opacity-60 grayscale transition-[filter,opacity] duration-300 group-hover:opacity-100 group-hover:grayscale-0 motion-reduce:transition-none")}
             />
           ) : (
-            <span className="font-display text-lg font-semibold opacity-70">{it.name}</span>
+            // No picture: the name as a typeset wordmark (display font, the logo strip's height).
+            <span
+              className={cn(
+                "sf-wordmark flex h-9 items-center font-display text-xl leading-none font-semibold tracking-[0.02em] whitespace-nowrap text-foreground/75 transition-[color,opacity] duration-300 group-hover:text-foreground sm:h-11 sm:text-2xl motion-reduce:transition-none",
+                s.grayscale && "opacity-60 group-hover:opacity-100",
+              )}
+              data-logo="wordmark"
+            >
+              {it.name}
+            </span>
           );
           const href = it.href ? safeHref(it.href) : null;
           return (
@@ -514,11 +545,31 @@ export function LocationSection({ s, t, config }: { s: HomeSectionOf<"location">
                 <MapPinIcon className="size-10 animate-bounce motion-reduce:animate-none" />
               </span>
               <iframe title={t("sections.mapTitle", { name: config.shop.name })} src={map} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" className="absolute inset-0 size-full border-0" />
+              {/* Always a way out to a full map app (and the fallback when the embed is blocked). */}
+              <a
+                href={directions}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute start-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-background/95 px-3.5 py-2 text-xs font-semibold text-foreground shadow-[var(--elevation-2)] backdrop-blur focus-ring hover:text-primary"
+                data-testid="map-open"
+              >
+                <NavigationIcon className="size-3.5" aria-hidden /> {t("sections.openInMaps")}
+              </a>
             </>
           ) : (
-            <a href={directions} target="_blank" rel="noopener noreferrer" className="sf-brand-hero absolute inset-0 flex items-center justify-center text-primary-foreground focus-ring" aria-label={t("sections.directions")}>
+            // No map pin set: a clear "Open in Google Maps" tile (searching the shop's name and address) instead of a map.
+            <a
+              href={directions}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sf-brand-hero absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center text-primary-foreground focus-ring"
+              data-testid="map-placeholder"
+            >
               <span className="relative z-[1] flex size-20 items-center justify-center rounded-full bg-white/15 ring-8 ring-white/10 backdrop-blur">
                 <MapPinIcon className="size-9" aria-hidden />
+              </span>
+              <span className="relative z-[1] inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm">
+                <NavigationIcon className="size-4" aria-hidden /> {t("sections.openInMaps")}
               </span>
             </a>
           )}

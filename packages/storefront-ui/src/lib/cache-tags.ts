@@ -8,7 +8,7 @@
  */
 
 /** The kinds of shop data the store caches (the API names these when it asks for a refresh). */
-export const STORE_CACHE_RESOURCES = ["home", "menus", "pages", "posts", "seo", "branding", "config", "features", "catalog", "offers", "reviews", "other"] as const;
+export const STORE_CACHE_RESOURCES = ["home", "menus", "pages", "posts", "seo", "branding", "config", "features", "catalog", "offers", "reviews", "bookings", "other"] as const;
 export type StoreCacheResource = (typeof STORE_CACHE_RESOURCES)[number];
 
 const KNOWN = new Set<string>(STORE_CACHE_RESOURCES);

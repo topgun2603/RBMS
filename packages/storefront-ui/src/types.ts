@@ -57,6 +57,15 @@ export interface Menus {
 
 // ------------------------------------------------------------------ catalogue
 
+/** The booking side of a service item (catalogue `service`). */
+export interface ServiceInfo {
+  /** Bookings service id (`/book?service=<id>`); null when the item isn't an appointment service. */
+  serviceId: string | null;
+  durationMin: number | null;
+  /** Can be booked online now; false = enquire (WhatsApp / call). */
+  bookable: boolean;
+}
+
 export interface ProductSummary {
   id: string;
   name: string;
@@ -75,6 +84,9 @@ export interface ProductSummary {
   mrp: number | null;
   variantCount: number;
   taxInclusive: boolean;
+  /** "service" for things the shop does (bookable or by enquiry); older APIs leave it out (= product). */
+  kind?: "product" | "service";
+  service?: ServiceInfo | null;
 }
 
 export interface Category {
@@ -134,6 +146,9 @@ export interface Product {
   variants: Variant[];
   createdAt: string;
   updatedAt: string;
+  /** "service": shown with "Book now" / "Enquire" instead of the cart (older APIs leave it out = product). */
+  kind?: "product" | "service";
+  service?: ServiceInfo | null;
 }
 
 export interface Facets {
@@ -283,7 +298,7 @@ type Sections =
   | { type: "hero-video"; videoUrl: string; posterUrl?: string; overlay: number; heading: string; text?: string; cta?: Cta }
   | { type: "offer"; eyebrow?: string; heading: string; text?: string; code?: string; endsAt?: string; cta?: Cta }
   | { type: "gallery"; title?: string; layout: "grid" | "masonry" | "carousel"; images: { url: string; alt: string; caption?: string; href?: string }[] }
-  | { type: "logos"; title?: string; grayscale: boolean; items: { imageUrl: string; name: string; href?: string }[] }
+  | { type: "logos"; title?: string; grayscale: boolean; items: { imageUrl?: string | null; name: string; href?: string }[] }
   | { type: "category-mosaic"; title: string; categories: CategoryRef[] }
   | { type: "faq"; title?: string; items: { q: string; a: string }[] }
   | { type: "location"; title?: string; address?: string; hours: { label: string; value: string }[]; phone?: string; whatsapp?: string; coords?: string; mapLink?: string }
@@ -719,6 +734,8 @@ export interface StoreShell {
   minOrderValue: number;
   contactPhone: string;
   contactEmail: string;
+  /** The shop's WhatsApp number or link (services' "Enquire on WhatsApp"). */
+  whatsapp?: string | null;
   /** Initial cart token from the `sr_cart` cookie. */
   cartToken: string | null;
   /** Item count rendered on the server (so the badge doesn't flash). */

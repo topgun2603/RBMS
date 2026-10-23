@@ -17,7 +17,12 @@ describe("store cache tags", () => {
     expect(cacheResource("/inventory/public/availability")).toBe("catalog");
     expect(cacheResource("/features")).toBe("features");
     expect(cacheResource("/reviews/public/ratings")).toBe("reviews");
-    expect(cacheResource("/bookings/public/services")).toBe("other");
+    // The booking page's services and staff: refreshed when staff change services (API kit-store-revalidate).
+    expect(cacheResource("/bookings/public/services")).toBe("bookings");
+    expect(cacheResource("/bookings/public/staff")).toBe("bookings");
+    expect(cacheTags("glow", "/bookings/public/services")).toEqual(["store:glow", "store:glow:bookings"]);
+    expect(tagsToRevalidate({ keys: ["glow"], resources: ["bookings", "catalog"] })).toEqual(["store:glow:bookings", "store:glow:catalog"]);
+    expect(cacheResource("/jobcards/public/track/x")).toBe("other");
   });
 
   it("tags every cached fetch with the shop and the shop + resource", () => {

@@ -470,7 +470,10 @@ export const gallerySectionSchema = z.object({
     .max(CMS_LIMITS.galleryImages),
 });
 
-/** Brand / partner logos in a strip; `grayscale` shows them grey until hovered. */
+/**
+ * Brand / partner logos in a strip; `grayscale` shows them grey until hovered. A logo picture is optional: entries
+ * with only a name (and maybe a link) show as typeset wordmarks.
+ */
 export const logosSectionSchema = z.object({
   type: z.literal("logos"),
   id: clientId,
@@ -479,7 +482,7 @@ export const logosSectionSchema = z.object({
   title: text(CMS_LIMITS.heading).optional(),
   grayscale: z.boolean().default(false),
   items: z
-    .array(z.object({ imageUrl: urlSchema, name: requiredText(80), href: hrefSchema.optional() }))
+    .array(z.object({ imageUrl: urlSchema.optional(), name: requiredText(80), href: hrefSchema.optional() }))
     .min(1)
     .max(CMS_LIMITS.logos),
 });

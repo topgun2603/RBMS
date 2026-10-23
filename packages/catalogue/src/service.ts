@@ -209,6 +209,14 @@ const DAY_MS = 86_400_000;
 const STATS_TTL_MS = 10 * 60_000;
 const STATS_CACHE_MAX = 500;
 
+/**
+ * Appointment services linked to catalogue variants (bookings: a bookable service bills one catalogue item). Lets the
+ * public product answers say an item is a service, how long it takes and whether it can be booked online.
+ */
+export interface BookableServicesPort {
+  forVariants(tenantId: string, variantIds: string[]): Promise<{ variantId: string; serviceId: string; durationMin: number; online: boolean }[]>;
+}
+
 export interface CatalogueDeps {
   db: Db;
   /**
@@ -234,6 +242,8 @@ export interface CatalogueDeps {
   events?: EventsPort;
   /** Paid-order signals for recommendations (orders). Without it recommendations use the catalogue alone. */
   purchases?: PurchaseStatsPort;
+  /** Bookable services (bookings). Without it services are told apart by unit / SAC code / tag only. */
+  services?: BookableServicesPort;
   /** Clock override for tests. */
   now?: () => Date;
 }
@@ -1720,7 +1730,10 @@ export class CatalogueService {
     ]);
     const variants = await this.variantsOf(tenantId, rows.map((r) => r.p.id));
     return {
-      items: rows.map((r) => toPublicSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null)),
+      items: await this.withServices(
+        tenantId,
+        rows.map((r) => toPublicSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null)),
+      ),
       total: counted?.total ?? 0,
     };
   }
@@ -1735,7 +1748,10 @@ export class CatalogueService {
     if (!row) throw notFound("Product");
     const product = await this.assemble(tenantId, row.p);
     const category = row.categoryName && row.categorySlug ? { name: row.categoryName, slug: row.categorySlug } : null;
-    return toPublicProduct(product, category);
+    const pub = toPublicProduct(product, category);
+    const [withService] = await this.withServices(tenantId, [{ ...pub, variantIds: pub.variants.map((v) => v.id) }]);
+    const { variantIds: _ids, ...out } = withService!;
+    return out;
   }
 
   /**
@@ -2072,7 +2088,37 @@ export class CatalogueService {
       .where(and(eq(catalogProducts.tenantId, tenantId), inArray(catalogProducts.id, ids)));
     const variants = await this.variantsOf(tenantId, ids);
     const byId = new Map(rows.map((r) => [r.p.id, toPublicSummary(toProductBase(r.p), variants.get(r.p.id) ?? [], r.categoryName ?? null)]));
-    return ids.map((id) => byId.get(id)).filter((x): x is PublicProductSummary => Boolean(x));
+    return this.withServices(tenantId, ids.map((id) => byId.get(id)).filter((x): x is PublicProductSummary => Boolean(x)));
+  }
+
+  /**
+   * Marks items linked to a bookable service (bookings port) as services, with the service id, duration and whether
+   * it can be booked online; service-kind items without a link get `{ serviceId: null, bookable: false }` (enquire).
+   * A failing port leaves the items as they are.
+   */
+  async withServices<T extends { kind?: PublicProductSummary["kind"]; service?: PublicProductSummary["service"]; variantIds?: string[] }>(
+    tenantId: string,
+    items: T[],
+  ): Promise<T[]> {
+    const port = this.deps.services;
+    const ids = items.flatMap((i) => i.variantIds ?? []);
+    let links: Awaited<ReturnType<BookableServicesPort["forVariants"]>> = [];
+    if (port && ids.length) {
+      try {
+        links = await port.forVariants(tenantId, ids);
+      } catch (err) {
+        this.log.warn({ err, tenantId }, "catalogue: bookable services unavailable");
+      }
+    }
+    const byVariant = new Map(links.map((l) => [l.variantId, l]));
+    return items.map((item) => {
+      const linked = (item.variantIds ?? []).map((id) => byVariant.get(id)).filter((l): l is NonNullable<typeof l> => Boolean(l));
+      // Prefer an online-bookable link; several variants may each be a service ("Haircut – short / long").
+      const best = linked.find((l) => l.online) ?? linked[0];
+      if (best) return { ...item, kind: "service" as const, service: { serviceId: best.serviceId, durationMin: best.durationMin, bookable: best.online } };
+      if (item.kind === "service") return { ...item, service: { serviceId: null, durationMin: null, bookable: false } };
+      return item;
+    });
   }
 
   /**

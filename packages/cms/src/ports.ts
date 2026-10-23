@@ -13,6 +13,9 @@ export interface PublicProductSummary {
   mrp: number | null;
   variantCount: number;
   taxInclusive: boolean;
+  /** "service" for bookable / service items (store cards show "Book"); absent = product. */
+  kind?: "product" | "service";
+  service?: { serviceId: string | null; durationMin: number | null; bookable: boolean } | null;
 }
 
 export interface CatalogCategoryRef {
