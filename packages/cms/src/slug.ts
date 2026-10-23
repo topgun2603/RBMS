@@ -15,6 +15,9 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "collections",
   "blog",
   "track",
+  // After-sales pages of the store app (warranty lookup, "track my repair").
+  "track-repair",
+  "warranty",
   "compare",
   "i",
   "s",

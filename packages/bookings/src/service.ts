@@ -42,7 +42,10 @@ import {
   mergeAnyStaff,
   nextStatuses,
   overlaps,
+  bookedInclusive,
+  bookedPrice,
   priceWithGst,
+  servicePrice,
   serviceTotals,
   staffDoes,
   workingWindows,
@@ -306,6 +309,8 @@ export interface ServiceView extends BookingServiceRow {
   /** Catalogue rate, GST-exclusive paise; null when the item is gone. */
   rate: number | null;
   gstRate: number | null;
+  /** What customers pay, GST included (the entered price for tax-inclusive items); null when the item is gone. */
+  price: number | null;
 }
 
 export interface DayRow {
@@ -456,7 +461,10 @@ export class BookingsService {
       .where(and(eq(bookingServices.tenantId, tenantId), opts.includeInactive ? undefined : eq(bookingServices.active, true)))
       .orderBy(asc(bookingServices.sort), asc(bookingServices.name));
     const prices = await this.priceMap(tenantId, rows.map((r) => r.itemId));
-    return rows.map((r) => ({ ...r, rate: prices.get(r.itemId)?.rate ?? null, gstRate: prices.get(r.itemId)?.gstRate ?? null }));
+    return rows.map((r) => {
+      const p = prices.get(r.itemId);
+      return { ...r, rate: p?.rate ?? null, gstRate: p?.gstRate ?? null, price: p ? servicePrice(p) : null };
+    });
   }
 
   private async priceMap(tenantId: string, itemIds: string[]) {
@@ -1123,13 +1131,24 @@ export class BookingsService {
         .where(and(eq(bookingAppointmentItems.tenantId, tenantId), eq(bookingAppointmentItems.appointmentId, id)))
         .orderBy(asc(bookingAppointmentItems.sort));
       if (items.length === 0) throw badRequest("Nothing to bill");
+      // Tax-inclusive services are billed at their entered price: the bill takes the GST out of it.
+      const live = await this.priceMap(tenantId, items.map((i) => i.itemId).filter((x): x is string => !!x));
       const staffName = a.staffId ? (await this.staffRow(tenantId, a.staffId, tx).catch(() => null))?.name : null;
       const customer = b.customer ? { name: b.customer.name, phone: b.customer.phone } : { name: a.customerName, phone: a.customerPhone };
       try {
         const r = await billing.createBill(
           tenant,
           {
-            lines: items.map((l) => ({ description: l.name, itemId: l.itemId, qty: 1, rate: l.rate, gstRate: l.gstRate, hsn: l.hsn, unit: l.unit })),
+            lines: items.map((l) => ({
+              description: l.name,
+              itemId: l.itemId,
+              qty: 1,
+              rate: l.rate,
+              gstRate: l.gstRate,
+              hsn: l.hsn,
+              unit: l.unit,
+              inclusiveTotal: bookedInclusive(l, l.itemId ? live.get(l.itemId) : null),
+            })),
             customer,
             notes: `Appointment #${a.number} · ${a.businessDate} ${formatHHMM(istMinuteOf(a.start))}${staffName ? ` · ${staffName}` : ""}`,
             tillSessionId: b.tillSessionId ?? null,
@@ -1157,7 +1176,7 @@ export class BookingsService {
       durationMin: s.durationMin,
       rate: s.rate ?? 0,
       gstRate: s.gstRate ?? 0,
-      price: priceWithGst(s.rate ?? 0, s.gstRate ?? 0),
+      price: s.price ?? priceWithGst(s.rate ?? 0, s.gstRate ?? 0),
     }));
   }
 
@@ -1181,11 +1200,12 @@ export class BookingsService {
       { serviceIds: b.serviceIds, staffId: b.staffId, start: b.start, customerName: b.name, customerPhone: b.phone, customerId: null, notes: b.notes },
       { source: "online", userId: null },
     );
-    return { number: view.number, manageToken: view.manageToken, appointment: this.publicView(view) };
+    return { number: view.number, manageToken: view.manageToken, appointment: await this.publicView(tenantId, view) };
   }
 
-  private publicView(v: AppointmentView): PublicAppointment {
-    const services = v.items.map((i) => ({ name: i.name, durationMin: i.durationMin, price: priceWithGst(i.rate, i.gstRate) }));
+  private async publicView(tenantId: string, v: AppointmentView): Promise<PublicAppointment> {
+    const live = await this.priceMap(tenantId, v.items.map((i) => i.itemId).filter((x): x is string => !!x));
+    const services = v.items.map((i) => ({ name: i.name, durationMin: i.durationMin, price: bookedPrice(i, i.itemId ? live.get(i.itemId) : null) }));
     return {
       number: v.number,
       date: v.businessDate,
@@ -1215,7 +1235,7 @@ export class BookingsService {
 
   async publicAppointment(tenantId: string, token: string): Promise<PublicAppointment> {
     const row = await this.byToken(tenantId, token);
-    return this.publicView((await this.views(tenantId, [row]))[0]!);
+    return this.publicView(tenantId, (await this.views(tenantId, [row]))[0]!);
   }
 
   /** The customer cancels from their link, until `cancelBeforeMin` before the start (409 `too_late` after). */
@@ -1235,7 +1255,7 @@ export class BookingsService {
     });
     const view = await this.get(tenantId, found.id);
     if (changed) this.notify("cancelled", tenantId, view, { by: "customer", reason: null });
-    return this.publicView(view);
+    return this.publicView(tenantId, view);
   }
 
   // ---------------------------------------------------------------- notices

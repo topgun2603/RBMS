@@ -4,8 +4,36 @@ import type { Db, Tx } from "@srirealtime/db";
 import { todayIST } from "@srirealtime/gst";
 import { and, asc, count, eq, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { allowedMoves, formatJobNumber, isClosed, isOverdue, jobTotals, lineAmount, lineTax, moveBlock, nextSteps, parseJobNumber, roundQty, type JobTotals } from "./logic";
-import { NOTIFY_STATUSES, noopLogger, type BillingPort, type BillResult, type JobSummary, type LoggerPort, type NotifyPort } from "./ports";
+import {
+  allowedMoves,
+  APPROVAL_CHANNELS,
+  APPROVAL_DECISIONS,
+  approvalText,
+  canRespondOnline,
+  currentApproval,
+  formatJobNumber,
+  isClosed,
+  isOverdue,
+  jobTotals,
+  joinFields,
+  lineAmount,
+  lineSerialsProblem,
+  lineTax,
+  moveBlock,
+  nextSteps,
+  normaliseSerial,
+  parseJobNumber,
+  phoneMatches,
+  roundQty,
+  SERIAL_RE,
+  splitFields,
+  type ApprovalChannel,
+  type ApprovalDecision,
+  type JobApproval,
+  type JobMeta,
+  type JobTotals,
+} from "./logic";
+import { NOTIFY_STATUSES, noopLogger, type BillingPort, type BillResult, type JobSummary, type LoggerPort, type NotifyPort, type SerialStockPort } from "./ports";
 import {
   CLOSED_STATUSES,
   JOB_PRIORITIES,
@@ -27,6 +55,8 @@ export interface JobcardsDeps {
   db: Db;
   billing?: BillingPort;
   notify?: NotifyPort;
+  /** Checks serial numbers put on part lines against the shop's serial stock (serials module). */
+  serials?: SerialStockPort;
   log?: LoggerPort;
   now?: () => Date;
 }
@@ -58,6 +88,14 @@ export const lineInput = z
     gstRate: z.number().min(0).max(28).default(18),
     hsn: optText(20),
     unit: optText(20),
+    /**
+     * Serial numbers / IMEIs of the units on a part from stock (an SSD, a battery), picked from the item's units on the
+     * shelf: passed to the bill, which marks them sold and starts their warranty. Replaces the line's list when given.
+     */
+    serials: z
+      .array(z.string().transform(normaliseSerial).pipe(z.string().regex(SERIAL_RE, "Serial numbers: 3 to 40 letters, digits, / and -")))
+      .max(200)
+      .optional(),
   })
   .strict();
 export type LineInput = z.input<typeof lineInput>;
@@ -110,6 +148,33 @@ export const cancelInput = z.object({ reason: z.string().trim().min(2).max(300) 
 export const billInput = z.object({ tillSessionId: z.string().uuid().nullish() }).strict();
 export type BillInput = z.input<typeof billInput>;
 
+/** Staff record the customer's answer to the estimate (approval channels other than the tracking page). */
+export const approvalInput = z
+  .object({
+    decision: z.enum(APPROVAL_DECISIONS),
+    /** Who answered; the customer's name when left out. */
+    by: optText(120),
+    channel: z.enum(APPROVAL_CHANNELS.filter((c) => c !== "online") as [ApprovalChannel, ...ApprovalChannel[]]).default("in_person"),
+    /** When the customer answered (default now; not in the future). */
+    at: z.coerce.date().optional(),
+    note: optText(500),
+  })
+  .strict();
+export type ApprovalInput = z.input<typeof approvalInput>;
+
+/** The customer answers on the tracking page. */
+export const publicApprovalInput = z.object({ decision: z.enum(["approve", "decline"]), note: optText(300) }).strict();
+export type PublicApprovalInput = z.input<typeof publicApprovalInput>;
+
+/** "Track my repair": the job number from the receipt and the last 4 digits of the phone given at intake. */
+export const findJobInput = z
+  .object({
+    number: z.string().trim().min(1).max(20),
+    phoneLast4: z.string().trim().regex(/^\d{4}$/, "The last 4 digits of your phone number"),
+  })
+  .strict();
+export type FindJobInput = z.input<typeof findJobInput>;
+
 /** GET /: `status` (comma list), `template`, `priority`, `overdue=1`, `q` (number, customer, phone, details), sort number | due | updated. */
 export const jobListQuery = listQuerySchema({ defaultLimit: 25, maxLimit: 200 }).extend({
   status: listFilter.oneOf(JOB_STATUSES),
@@ -133,6 +198,8 @@ export interface JobcardSummary extends JobcardRow {
   overdue: boolean;
   /** With GST, paise. */
   total: number;
+  /** The customer's answer to the estimate now asked (null: not answered, or never asked). */
+  approval: JobApproval | null;
 }
 
 export interface JobLine extends Omit<JobcardLineRow, "qty"> {
@@ -140,6 +207,8 @@ export interface JobLine extends Omit<JobcardLineRow, "qty"> {
   /** Before GST. */
   amount: number;
   tax: number;
+  /** Serial numbers / IMEIs of the units on this part line. */
+  serials: string[];
 }
 
 export interface JobView extends JobcardSummary {
@@ -150,6 +219,8 @@ export interface JobView extends JobcardSummary {
   moves: JobStatus[];
   /** The stepper's forward button(s). */
   next: JobStatus[];
+  /** When the job was last sent for approval (ISO), if ever. */
+  approvalRequestedAt: string | null;
 }
 
 /** What the customer's tracking link shows. No phone, no name, no prices except the total. */
@@ -162,6 +233,10 @@ export interface JobTrack {
   total: number;
   createdAt: Date;
   timeline: { status: JobStatus; at: Date }[];
+  /** The answer to the estimate now asked: decision, how and when (no names, no address). */
+  approval: { decision: ApprovalDecision; channel: ApprovalChannel; at: string; amount: number } | null;
+  /** The customer can approve or decline the estimate on this page now. */
+  canRespond: boolean;
 }
 
 export interface JobsSummary {
@@ -213,13 +288,23 @@ export class JobcardsService {
   }
 
   private summaryOf(row: JobcardRow, total: number, today: string): JobcardSummary {
+    const { fields, meta } = splitFields(row.fields);
     return {
       ...row,
+      fields,
       label: formatJobNumber(row.number),
-      summary: fieldsSummary(row.template, row.fields ?? {}),
+      summary: fieldsSummary(row.template, fields),
       overdue: isOverdue(row.dueDate, row.status, today),
       total,
+      approval: currentApproval(meta),
     };
+  }
+
+  /** Saves the card's `_meta` (the row must be locked by the caller's transaction). */
+  private async saveMeta(tx: Db | Tx, row: JobcardRow, meta: JobMeta) {
+    const fields = joinFields(splitFields(row.fields).fields, meta);
+    row.fields = fields;
+    await tx.update(jobcards).set({ fields, updatedAt: new Date() }).where(eq(jobcards.id, row.id));
   }
 
   /** Jobs, paged; `facets.status` counts each status under the other filters. */
@@ -282,10 +367,10 @@ export class JobcardsService {
       .orderBy(asc(jobcardLines.createdAt), asc(jobcardLines.id));
   }
 
-  private toLines(rows: JobcardLineRow[]): JobLine[] {
+  private toLines(rows: JobcardLineRow[], meta: JobMeta = {}): JobLine[] {
     return rows.map((r) => {
       const l = { qty: toNum(r.qty), rate: r.rate, gstRate: r.gstRate };
-      return { ...r, qty: l.qty, amount: lineAmount(l), tax: lineTax(l) };
+      return { ...r, qty: l.qty, amount: lineAmount(l), tax: lineTax(l), serials: meta.serials?.[r.id] ?? [] };
     });
   }
 
@@ -299,9 +384,10 @@ export class JobcardsService {
         .where(and(eq(jobcardEvents.tenantId, tenantId), eq(jobcardEvents.jobcardId, id)))
         .orderBy(asc(jobcardEvents.createdAt), asc(jobcardEvents.id)),
     ]);
-    const lines = this.toLines(lineRows);
+    const { meta } = splitFields(row.fields);
+    const lines = this.toLines(lineRows, meta);
     const totals = jobTotals(lines, row.advance);
-    const ctx = { billed: !!row.invoiceId, total: totals.total };
+    const ctx = { billed: !!row.invoiceId, total: totals.total, approval: currentApproval(meta)?.decision ?? null };
     return {
       ...this.summaryOf(row, totals.total, this.today()),
       lines,
@@ -309,13 +395,14 @@ export class JobcardsService {
       totals,
       moves: allowedMoves(row.status, ctx),
       next: nextSteps(row.status, ctx),
+      approvalRequestedAt: meta.approvalRequestedAt ?? null,
     };
   }
 
   /** Parts and labour with the amount, GST per line and totals (advance and balance included). */
   async estimate(tenantId: string, id: string): Promise<{ lines: JobLine[]; totals: JobTotals }> {
     const row = await this.row(tenantId, id);
-    const lines = this.toLines(await this.lineRows(tenantId, id));
+    const lines = this.toLines(await this.lineRows(tenantId, id), splitFields(row.fields).meta);
     return { lines, totals: jobTotals(lines, row.advance) };
   }
 
@@ -343,7 +430,27 @@ export class JobcardsService {
 
   /** Validates a template's details; errors point at `fields.<name>`. */
   private fieldsFor(template: JobTemplate, input: unknown): Record<string, unknown> {
-    return z.object({ fields: TEMPLATE_FIELDS[template] }).parse({ fields: input ?? {} }).fields as Record<string, unknown>;
+    // `_meta` is the service's own: never taken from the client.
+    const raw = input && typeof input === "object" && !Array.isArray(input) ? splitFields(input as Record<string, unknown>).fields : input;
+    return z.object({ fields: TEMPLATE_FIELDS[template] }).parse({ fields: raw ?? {} }).fields as Record<string, unknown>;
+  }
+
+  /** Normalised serials of a line, checked: on a part from stock, one per unit, not on another line, on the shelf. */
+  private async checkSerials(tenantId: string, l: { kind: "part" | "labour"; itemId: string | null; qty: number; serials: string[] }, elsewhere: string[]): Promise<string[]> {
+    const serials = [...l.serials];
+    const problem = lineSerialsProblem({ ...l, serials }, elsewhere);
+    if (problem) throw badRequest(problem);
+    if (serials.length === 0) return serials;
+    if (!this.deps.serials) throw new AppError(501, "serials_unavailable", "Serial numbers are not available for this shop");
+    const missing = await this.deps.serials.unavailable(tenantId, l.itemId!, serials);
+    if (missing.length) throw new AppError(409, "serial_unavailable", `Not in stock for this item: ${missing.join(", ")}`, { serials: missing });
+    return serials;
+  }
+
+  private static otherSerials(meta: JobMeta, lineId: string | null): string[] {
+    return Object.entries(meta.serials ?? {})
+      .filter(([id]) => id !== lineId)
+      .flatMap(([, v]) => v);
   }
 
   private lineValues(tenantId: string, jobcardId: string, l: z.output<typeof lineInput>) {
@@ -365,6 +472,10 @@ export class JobcardsService {
   async create(tenantId: string, input: unknown, userId: string | null = null): Promise<JobView> {
     const b = createInput.parse(input);
     const fields = this.fieldsFor(b.template, b.fields);
+    const lineSerials: string[][] = [];
+    for (const l of b.lines ?? []) {
+      lineSerials.push(await this.checkSerials(tenantId, { kind: l.kind, itemId: l.itemId ?? null, qty: l.qty, serials: l.serials ?? [] }, lineSerials.flat()));
+    }
     const id = await this.db.transaction(async (tx) => {
       const number = await this.nextNumber(tx, tenantId);
       const [row] = await tx
@@ -387,7 +498,14 @@ export class JobcardsService {
           createdBy: userId,
         })
         .returning();
-      if (b.lines?.length) await tx.insert(jobcardLines).values(b.lines.map((l) => this.lineValues(tenantId, row!.id, l)));
+      if (b.lines?.length) {
+        const ids = await tx
+          .insert(jobcardLines)
+          .values(b.lines.map((l) => this.lineValues(tenantId, row!.id, l)))
+          .returning({ id: jobcardLines.id });
+        const serials = Object.fromEntries(ids.map((r, i) => [r.id, lineSerials[i] ?? []]));
+        if (Object.values(serials).some((v) => v.length)) await this.saveMeta(tx, row!, { serials });
+      }
       await this.event(tx, tenantId, row!.id, "created", { to: "received", userId });
       return row!.id;
     });
@@ -413,7 +531,7 @@ export class JobcardsService {
       this.assertOpen(row);
       const { fields: rawFields, ...rest } = b;
       const set: Partial<typeof jobcards.$inferInsert> = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
-      if (rawFields !== undefined) set.fields = this.fieldsFor(row.template, rawFields);
+      if (rawFields !== undefined) set.fields = joinFields(this.fieldsFor(row.template, rawFields), splitFields(row.fields).meta);
       await tx
         .update(jobcards)
         .set({ ...set, updatedAt: new Date() })
@@ -462,11 +580,17 @@ export class JobcardsService {
   }
 
   private async moveTx(tx: Tx, tenantId: string, row: JobcardRow, to: JobStatus, note: string | null, userId: string | null) {
+    const { meta } = splitFields(row.fields);
     const totals = jobTotals(this.toLines(await this.lineRows(tenantId, row.id, tx)), row.advance);
-    const block = moveBlock(row.status, to, { billed: !!row.invoiceId, total: totals.total });
+    const block = moveBlock(row.status, to, { billed: !!row.invoiceId, total: totals.total, approval: currentApproval(meta)?.decision ?? null });
     if (block === "not_billed") throw new AppError(409, "not_billed", "Bill this job before delivering it");
     if (block === "same") return;
+    if (block === "needs_approval") {
+      throw new AppError(409, "needs_approval", to === "approved" ? "Record the customer's approval first" : "Record the customer's answer to the estimate first");
+    }
     if (block) throw new AppError(409, "job_move", `A ${row.status.replace(/_/g, " ")} job can't go to ${to.replace(/_/g, " ")}`);
+    // Sent (again) for approval: an earlier answer was for an older estimate.
+    if (to === "awaiting_approval") await this.saveMeta(tx, row, { ...meta, approvalRequestedAt: this.now().toISOString() });
     await tx
       .update(jobcards)
       .set({ status: to, closedAt: isClosed(to) ? this.now() : null, updatedAt: new Date() })
@@ -500,13 +624,107 @@ export class JobcardsService {
     return this.get(tenantId, id);
   }
 
+  // ---------------------------------------------------------------- approval
+
+  /**
+   * Records the customer's answer to the estimate in the row's transaction: the approval on the card (who, how, when,
+   * the total answered) and the timeline; approved → `approved`, declined → back to `diagnosed` when it was waiting.
+   */
+  private async decideTx(tx: Tx, tenantId: string, row: JobcardRow, a: Omit<JobApproval, "amount">, userId: string | null): Promise<JobApproval> {
+    const { meta } = splitFields(row.fields);
+    const totals = jobTotals(this.toLines(await this.lineRows(tenantId, row.id, tx)), row.advance);
+    const approval: JobApproval = { ...a, amount: totals.total };
+    await this.saveMeta(tx, row, { ...meta, approval });
+    await this.event(tx, tenantId, row.id, "approval", { note: [approvalText(approval), approval.note].filter(Boolean).join("\n"), userId });
+    if (approval.decision === "approved") await this.moveTx(tx, tenantId, row, "approved", null, userId);
+    else if (row.status === "awaiting_approval") await this.moveTx(tx, tenantId, row, "diagnosed", null, userId);
+    return approval;
+  }
+
+  /**
+   * Staff record that the customer approved (or declined) the estimate — at the counter, on a call, on WhatsApp… — with
+   * who and when. Jobs not yet sent for approval may be approved directly (told at intake).
+   */
+  async recordApproval(tenantId: string, id: string, input: unknown, userId: string | null = null): Promise<JobView> {
+    const b = approvalInput.parse(input);
+    const at = b.at ?? this.now();
+    if (Number.isNaN(at.getTime()) || at.getTime() > this.now().getTime() + 5 * 60_000) throw badRequest("The approval time can't be in the future");
+    await this.db.transaction(async (tx) => {
+      const row = await this.row(tenantId, id, tx, true);
+      this.assertOpen(row);
+      if (row.invoiceId) throw new AppError(409, "job_billed", "This job is already billed");
+      const before = JOB_FLOW.indexOf("approved");
+      if ((JOB_FLOW as readonly JobStatus[]).indexOf(row.status) >= before) throw new AppError(409, "not_awaiting_approval", "This job is already past approval");
+      if (b.decision === "declined" && row.status !== "awaiting_approval") throw new AppError(409, "not_awaiting_approval", "Ask for approval before recording a decline");
+      await this.decideTx(tx, tenantId, row, { decision: b.decision, by: b.by ?? row.customerName, channel: b.channel, at: at.toISOString(), note: b.note, recordedBy: userId }, userId);
+    });
+    return this.get(tenantId, id);
+  }
+
+  /**
+   * The customer approves or declines the estimate on the tracking page (only while it waits for approval and isn't
+   * answered yet; 409 otherwise). Their address and browser are kept with the answer; the shop is told.
+   */
+  async publicRespond(tenantId: string, token: string, input: unknown, client: { ip?: string | null; userAgent?: string | null } = {}): Promise<JobTrack | null> {
+    const b = publicApprovalInput.parse(input);
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
+    const [found] = await this.db
+      .select({ id: jobcards.id })
+      .from(jobcards)
+      .where(and(eq(jobcards.tenantId, tenantId), eq(jobcards.trackToken, token)))
+      .limit(1);
+    if (!found) return null;
+    const decided = await this.db.transaction(async (tx) => {
+      const row = await this.row(tenantId, found.id, tx, true);
+      const { meta } = splitFields(row.fields);
+      const totals = jobTotals(this.toLines(await this.lineRows(tenantId, row.id, tx)), row.advance);
+      if (!canRespondOnline(row.status, totals.total, currentApproval(meta))) {
+        throw new AppError(409, "not_awaiting_approval", "This estimate isn't waiting for your answer any more. Please call the shop.");
+      }
+      const approval = await this.decideTx(
+        tx,
+        tenantId,
+        row,
+        {
+          decision: b.decision === "approve" ? "approved" : "declined",
+          by: row.customerName,
+          channel: "online",
+          at: this.now().toISOString(),
+          note: b.note,
+          recordedBy: null,
+          ip: client.ip ? client.ip.slice(0, 64) : null,
+          userAgent: client.userAgent ? client.userAgent.slice(0, 300) : null,
+        },
+        null,
+      );
+      return { approval, summary: this.summaryFor(row, totals) };
+    });
+    this.tellShop(tenantId, { ...decided.summary, status: decided.approval.decision === "approved" ? "approved" : "diagnosed" }, decided.approval);
+    return this.track(tenantId, token);
+  }
+
+  /** The shop hears about an answer given online. Never throws. */
+  private tellShop(tenantId: string, job: JobSummary, approval: JobApproval) {
+    const fn = this.deps.notify?.approvalDecided;
+    if (!fn) return;
+    try {
+      void Promise.resolve(fn.call(this.deps.notify, tenantId, job, approval)).catch((err) => this.log.warn({ err, tenantId, jobId: job.id }, "jobcards: approval notice failed"));
+    } catch (err) {
+      this.log.warn({ err, tenantId, jobId: job.id }, "jobcards: approval notice failed");
+    }
+  }
+
   // ---------------------------------------------------------------- lines
 
   async addLine(tenantId: string, id: string, input: unknown, userId: string | null = null): Promise<JobView> {
     const l = lineInput.parse(input);
     await this.db.transaction(async (tx) => {
-      this.assertEditableLines(await this.row(tenantId, id, tx, true));
-      await tx.insert(jobcardLines).values(this.lineValues(tenantId, id, l));
+      const row = await this.row(tenantId, id, tx, true);
+      this.assertEditableLines(row);
+      const { meta } = splitFields(row.fields);
+      const serials = await this.checkSerials(tenantId, { kind: l.kind, itemId: l.itemId ?? null, qty: l.qty, serials: l.serials ?? [] }, JobcardsService.otherSerials(meta, null));
+      const [added] = await tx.insert(jobcardLines).values(this.lineValues(tenantId, id, l)).returning({ id: jobcardLines.id });
+      if (serials.length) await this.saveMeta(tx, row, { ...meta, serials: { ...meta.serials, [added!.id]: serials } });
       await this.event(tx, tenantId, id, "estimate", { note: `Added ${l.description}`, userId });
       await tx.update(jobcards).set({ updatedAt: new Date() }).where(eq(jobcards.id, id));
     });
@@ -524,10 +742,22 @@ export class JobcardsService {
   }
 
   async updateLine(tenantId: string, id: string, lineId: string, input: unknown, userId: string | null = null): Promise<JobView> {
-    const b = linePatch.parse(input);
+    const { serials: newSerials, ...b } = linePatch.parse(input);
     await this.db.transaction(async (tx) => {
-      this.assertEditableLines(await this.row(tenantId, id, tx, true));
+      const row = await this.row(tenantId, id, tx, true);
+      this.assertEditableLines(row);
       const line = await this.lineRow(tx, tenantId, id, lineId);
+      const { meta } = splitFields(row.fields);
+      const current = meta.serials?.[lineId] ?? [];
+      const next = { kind: b.kind ?? line.kind, itemId: b.itemId !== undefined ? (b.itemId ?? null) : line.itemId, qty: b.qty ?? toNum(line.qty), serials: newSerials ?? current };
+      // Units already on the line stay valid; only newly added ones are checked against the shelf.
+      const added = next.serials.filter((s) => !current.includes(s));
+      const problem = lineSerialsProblem(next, JobcardsService.otherSerials(meta, lineId));
+      if (problem) throw badRequest(problem);
+      if (added.length) await this.checkSerials(tenantId, { ...next, serials: added }, []);
+      if (newSerials !== undefined || next.serials.length !== current.length) {
+        await this.saveMeta(tx, row, { ...meta, serials: { ...meta.serials, [lineId]: next.serials } });
+      }
       const set: Partial<typeof jobcardLines.$inferInsert> = Object.fromEntries(Object.entries(b).filter(([, v]) => v !== undefined));
       if (b.qty !== undefined) set.qty = String(roundQty(b.qty));
       await tx
@@ -542,9 +772,15 @@ export class JobcardsService {
 
   async removeLine(tenantId: string, id: string, lineId: string, userId: string | null = null): Promise<JobView> {
     await this.db.transaction(async (tx) => {
-      this.assertEditableLines(await this.row(tenantId, id, tx, true));
+      const row = await this.row(tenantId, id, tx, true);
+      this.assertEditableLines(row);
       const line = await this.lineRow(tx, tenantId, id, lineId);
       await tx.delete(jobcardLines).where(eq(jobcardLines.id, lineId));
+      const { meta } = splitFields(row.fields);
+      if (meta.serials?.[lineId]) {
+        const { [lineId]: _gone, ...rest } = meta.serials;
+        await this.saveMeta(tx, row, { ...meta, serials: rest });
+      }
       await this.event(tx, tenantId, id, "estimate", { note: `Removed ${line.description}`, userId });
       await tx.update(jobcards).set({ updatedAt: new Date() }).where(eq(jobcards.id, id));
     });
@@ -570,16 +806,37 @@ export class JobcardsService {
       const lines = await this.lineRows(tenantId, id, tx);
       if (lines.length === 0) throw badRequest("Nothing to bill: add parts or labour first");
       const label = formatJobNumber(row.number);
-      const what = fieldsSummary(row.template, row.fields ?? {});
+      const { fields, meta } = splitFields(row.fields);
+      const what = fieldsSummary(row.template, fields);
+      // Units picked on part lines must still be on the shelf: the bill marks them sold and starts their warranty.
+      if (this.deps.serials) {
+        for (const l of lines) {
+          const serials = meta.serials?.[l.id] ?? [];
+          if (!serials.length || !l.itemId) continue;
+          const missing = await this.deps.serials.unavailable(tenantId, l.itemId, serials);
+          if (missing.length) throw new AppError(409, "serial_unavailable", `${l.description}: no longer in stock: ${missing.join(", ")}`, { serials: missing });
+        }
+      }
       let r: BillResult;
       try {
         r = await billing.createBill(
           tenant,
           {
-            lines: lines.map((l) => ({ description: l.description, itemId: l.itemId, qty: toNum(l.qty), rate: l.rate, gstRate: l.gstRate, hsn: l.hsn, unit: l.unit })),
+            lines: lines.map((l) => ({
+              description: l.description,
+              itemId: l.itemId,
+              qty: toNum(l.qty),
+              rate: l.rate,
+              gstRate: l.gstRate,
+              hsn: l.hsn,
+              unit: l.unit,
+              ...(meta.serials?.[l.id]?.length && l.itemId ? { serials: meta.serials[l.id] } : {}),
+            })),
             customer: { name: row.customerName, phone: row.customerPhone },
             notes: `Job card ${label}${what ? ` · ${what}` : ""}`,
             tillSessionId: b.tillSessionId ?? null,
+            // The advance taken at intake is already paid: recorded on the bill so its balance is total − advance.
+            advance: row.advance > 0 ? { amount: row.advance, date: todayIST(row.createdAt), reference: `Advance on ${label}` } : null,
           },
           { branchId: opts.branchId ?? null },
         );
@@ -618,6 +875,9 @@ export class JobcardsService {
       .where(and(eq(jobcards.tenantId, tenantId), eq(jobcards.trackToken, token)))
       .limit(1);
     if (!row) return null;
+    const { meta } = splitFields(row.job.fields);
+    const approval = currentApproval(meta);
+    const total = Math.round(toNum(row.total));
     const events = await this.db
       .select({ type: jobcardEvents.type, toStatus: jobcardEvents.toStatus, createdAt: jobcardEvents.createdAt })
       .from(jobcardEvents)
@@ -629,9 +889,27 @@ export class JobcardsService {
       template: row.job.template,
       status: row.job.status,
       dueDate: row.job.dueDate,
-      total: Math.round(toNum(row.total)),
+      total,
       createdAt: row.job.createdAt,
       timeline: events.filter((e) => e.toStatus).map((e) => ({ status: e.toStatus!, at: e.createdAt })),
+      approval: approval ? { decision: approval.decision, channel: approval.channel, at: approval.at, amount: approval.amount } : null,
+      canRespond: canRespondOnline(row.job.status, total, approval),
     };
+  }
+
+  /**
+   * "Track my repair": the job's tracking token for its number ("JC-0007", "7") and the last 4 digits of the phone
+   * given at intake; null when there is no such job or the digits don't match (callers answer the same either way).
+   */
+  async findTrackToken(tenantId: string, input: unknown): Promise<string | null> {
+    const b = findJobInput.parse(input);
+    const n = parseJobNumber(b.number);
+    if (n === null) return null;
+    const [row] = await this.db
+      .select({ token: jobcards.trackToken, phone: jobcards.customerPhone })
+      .from(jobcards)
+      .where(and(eq(jobcards.tenantId, tenantId), eq(jobcards.number, n)))
+      .limit(1);
+    return row && phoneMatches(row.phone, b.phoneLast4) ? row.token : null;
   }
 }

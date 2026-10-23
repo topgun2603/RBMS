@@ -97,6 +97,27 @@ export function exclusiveOf(price: number, gstRate: number, taxInclusive: boolea
   return round((price * 10_000) / (10_000 + bp));
 }
 
+/**
+ * The GST-inclusive price (paise) that `exclusiveOf(price, gstRate, true)` turned into `rate`, for when only the rounded
+ * exclusive rate was kept. Adding the GST back on top (`round(rate × 1.18)`) drifts by a paisa (₹6,500 → 5,508.47 →
+ * ₹6,499.99); this instead returns a price that maps back to `rate` exactly, preferring the roundest one (whole rupees,
+ * then 10 paise) when two prices share the rate. Use the stored inclusive price itself whenever it is still known.
+ */
+export function inclusiveOfRate(rate: number, gstRate: number): number {
+  const bp = Math.round(gstRate * 100);
+  if (!bp || rate <= 0) return rate;
+  const d = 10_000 + bp;
+  // price × 10000 / d rounds to `rate` ⇔ (2·rate − 1)·d / 20000 ≤ price < (2·rate + 1)·d / 20000.
+  const lo = Math.ceil(((2 * rate - 1) * d) / 20_000);
+  const hi = Math.ceil(((2 * rate + 1) * d) / 20_000) - 1;
+  const fits = (p: number) => round((p * 10_000) / d) === rate;
+  const candidates: number[] = [];
+  for (let p = lo; p <= hi; p++) if (fits(p)) candidates.push(p);
+  if (candidates.length === 0) return round((rate * d) / 10_000);
+  const score = (p: number) => (p % 100 === 0 ? 2 : p % 10 === 0 ? 1 : 0);
+  return candidates.reduce((best, p) => (score(p) > score(best) ? p : best), candidates[0]!);
+}
+
 /** Taxable value inside a GST-inclusive amount: `round(total × 100 / (100 + gstRate))`. */
 export function taxableOfInclusive(total: number, gstRate: number): number {
   const bp = Math.round(gstRate * 100);

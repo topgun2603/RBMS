@@ -245,6 +245,30 @@ const BATCH3: Record<string, { en: Copy; ta: Copy; push?: { en: string; ta: stri
       subject: "{{failures}} தோல்விகளுக்குப் பின் webhook நிறுத்தப்பட்டது - {{app}}",
     },
   },
+  // Job cards (to the shop's owners / admins): the customer answered the estimate on the tracking page.
+  // Vars: shop, number (JC-0007), customer, amount
+  "jobcards.estimate_approved": {
+    en: {
+      body: "{{shop}}: {{customer}} approved the estimate for job {{number}} ({{amount}}) online. You can start the work.",
+      subject: "Job {{number}}: estimate approved",
+    },
+    ta: {
+      body: "{{shop}}: {{customer}} வேலை {{number}}-க்கான மதிப்பீட்டை ({{amount}}) இணையத்தில் ஒப்புக்கொண்டார். வேலையைத் தொடங்கலாம்.",
+      subject: "வேலை {{number}}: மதிப்பீடு ஒப்புக்கொள்ளப்பட்டது",
+    },
+    push: { en: "{{number}}: {{customer}} approved {{amount}}", ta: "{{number}}: {{customer}} {{amount}} ஒப்புக்கொண்டார்" },
+  },
+  "jobcards.estimate_declined": {
+    en: {
+      body: "{{shop}}: {{customer}} declined the estimate for job {{number}} ({{amount}}) online. Please call them.",
+      subject: "Job {{number}}: estimate declined",
+    },
+    ta: {
+      body: "{{shop}}: {{customer}} வேலை {{number}}-க்கான மதிப்பீட்டை ({{amount}}) இணையத்தில் மறுத்தார். அவரை அழைக்கவும்.",
+      subject: "வேலை {{number}}: மதிப்பீடு மறுக்கப்பட்டது",
+    },
+    push: { en: "{{number}}: {{customer}} declined {{amount}}", ta: "{{number}}: {{customer}} {{amount}} மறுத்தார்" },
+  },
 };
 
 // Batch 5: the platform's plan subscriptions (packages/subscriptions), sent to the shop's owners/admins.

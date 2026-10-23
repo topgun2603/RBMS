@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appUrlFor } from "./kit-batch5";
+import { appUrlFor, signupBillingDefaults } from "./kit-batch5";
 
 describe("appUrlFor", () => {
   const setting = "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/";
@@ -10,5 +10,18 @@ describe("appUrlFor", () => {
   it("falls back to the first entry, or a single template", () => {
     expect(appUrlFor(setting, null, "x-shop")).toBe("http://x-shop.localhost:3001");
     expect(appUrlFor("https://{slug}.srikit.in", "EC", "anbu")).toBe("https://anbu.srikit.in");
+  });
+});
+
+describe("signupBillingDefaults", () => {
+  it("gives a new shop a bill prefix from its name, not INV", () => {
+    expect(signupBillingDefaults("ByteFix Computers", { state: "33", gstin: null, phone: "+919840012345" })).toEqual({
+      legalName: "ByteFix Computers",
+      invoicePrefix: "BFC",
+      stateCode: "33",
+      phone: "+919840012345",
+    });
+    expect(signupBillingDefaults("Glow Salon & Spa", null)).toEqual({ legalName: "Glow Salon & Spa", invoicePrefix: "GSS" });
+    expect(signupBillingDefaults("ஸ்ரீ", null).invoicePrefix).toBe("INV");
   });
 });

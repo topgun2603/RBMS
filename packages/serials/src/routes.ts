@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { notFound, requireRole, requireTenant, requireUser, tooMany, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { SERIALS_FEATURE, SERIALS_MANAGE, SERIALS_VIEW, SERIALS_WARRANTY_FEATURE } from "./ports";
@@ -17,6 +17,31 @@ const idsQuery = z.object({
 });
 const codeQuery = z.object({ code: z.string().trim().min(1).max(60) });
 
+/** Public warranty lookups: per shop and client address, a sliding window (in memory, per process). */
+export class LookupLimiter {
+  private readonly hits = new Map<string, number[]>();
+  constructor(
+    readonly limit: number,
+    readonly windowMs: number,
+    private readonly now: () => number = Date.now,
+  ) {}
+  hit(key: string): boolean {
+    const t = this.now();
+    const recent = (this.hits.get(key) ?? []).filter((x) => t - x < this.windowMs);
+    if (recent.length >= this.limit) {
+      this.hits.set(key, recent);
+      return false;
+    }
+    recent.push(t);
+    this.hits.set(key, recent);
+    if (this.hits.size > 20_000) this.hits.clear();
+    return true;
+  }
+}
+
+/** Customers on the store, no sign-in (tenant from the host); feature `serials.warranty`; no audit entry. */
+const PUBLIC = { config: { feature: SERIALS_WARRANTY_FEATURE, audit: false as const } };
+
 /** Reading: either permission. Receiving, status changes and item settings: `serials.manage`. */
 const view = (feature: string | string[] = SERIALS_FEATURE) => ({ config: { feature, permission: [SERIALS_VIEW, SERIALS_MANAGE] } });
 const manage = { config: { feature: SERIALS_FEATURE, permission: SERIALS_MANAGE } };
@@ -29,8 +54,26 @@ const resolve = { config: { feature: SERIALS_FEATURE, permission: [SERIALS_VIEW,
  * - `POST /units/receive`, `GET /units` (paged; status, itemId, q), `GET /units/:id` (+ events), `POST /units/:id/status`
  * - `GET /resolve?code=` (POS scan → `{ match: { itemId, serial } | null }`), `GET /summary`
  * - `GET /warranty?code=`, `POST /units/:id/claim` (feature `serials.warranty`)
+ * - customers (feature `serials.warranty`, no sign-in): `GET /public/warranty?code=&last4=` — product, purchase date,
+ *   warranty end and status of a unit this shop sold; 404 when unknown or the phone digits don't match; 20 lookups per
+ *   10 minutes per shop and address (429 `rate_limited`)
  */
-export function serialsRoutes(service: SerialsService) {
+export function serialsRoutes(service: SerialsService, opts: { limiter?: LookupLimiter } = {}) {
+  const limiter = opts.limiter ?? new LookupLimiter(20, 10 * 60_000);
+  return async (root: FastifyInstance) => {
+    root.get("/public/warranty", PUBLIC, async (req) => {
+      const tenantId = requireTenant(req.ctx).id;
+      if (!limiter.hit(`${tenantId}:${req.ip}`)) throw tooMany("Too many lookups, try again in a few minutes");
+      const found = await service.publicWarranty(tenantId, req.query ?? {});
+      if (!found) throw notFound("Warranty");
+      return found;
+    });
+
+    await root.register(staffRoutes(service));
+  };
+}
+
+function staffRoutes(service: SerialsService) {
   return async (app: FastifyInstance) => {
     app.addHook("preHandler", async (req) => {
       requireRole(req.ctx, "owner", "admin", "staff");

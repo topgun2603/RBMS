@@ -163,3 +163,25 @@ export function stockDelta(from: SerialStatus, to: SerialStatus): -1 | 0 | 1 {
   const b = ON_SHELF.includes(to);
   return a === b ? 0 : b ? 1 : -1;
 }
+
+// ---------------------------------------------------------------------------------------------- public lookup
+
+/** The last `n` digits of a phone number ("" when it has fewer). */
+export function lastDigits(phone: string | null | undefined, n = 4): string {
+  const d = (phone ?? "").replace(/\D/g, "");
+  return d.length >= n ? d.slice(-n) : "";
+}
+
+/** The customer's "last 4 digits of your phone" matches the phone on the sale (a sale without a phone never matches). */
+export function phoneLast4Matches(phone: string | null | undefined, last4: string): boolean {
+  const want = (last4 ?? "").replace(/\D/g, "");
+  return want.length === 4 && lastDigits(phone) === want;
+}
+
+export type PublicWarrantyStatus = WarrantyStatus | "claimed";
+
+/** What the public warranty page shows: a claim logged during the warranty reads "claimed" until the warranty ends. */
+export function publicWarrantyStatus(end: string | null | undefined, today: string, claimed: boolean): PublicWarrantyStatus {
+  const s = warrantyStatus(end, today);
+  return s === "active" && claimed ? "claimed" : s;
+}

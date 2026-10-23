@@ -20,7 +20,7 @@ const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-
  * tracking (`/jobcards/public/*`).
  */
 const ALLOWED =
-  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|features(?=$))(\/|$|\?)/;
+  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|serials\/public|features(?=$))(\/|$|\?)/;
 
 /** Pure: may the browser reach this API path (`/v1/...`, without the query) through the store proxy? */
 export function isProxyAllowed(path: string, method = "GET"): boolean {

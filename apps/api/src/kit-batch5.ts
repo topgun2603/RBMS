@@ -2,6 +2,7 @@ import { AppError, badRequest, defineModule, FULL_ACCESS_ROLES, requireUser, typ
 import type { Db } from "@srirealtime/db";
 import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@srirealtime/gst";
 import type { createAuth } from "@srirealtime/auth";
+import { prefixFromName } from "@srirealtime/branches";
 import type { createBranding } from "@srirealtime/branding";
 import { renderPlatformInvoice, type createDocuments, DEFAULT_BRANDING } from "@srirealtime/documents";
 import type { JobsService } from "@srirealtime/jobs";
@@ -103,6 +104,19 @@ export function appUrlFor(setting: string, appId: string | null, slug: string): 
     template = (entries.find(([app]) => app === appId) ?? entries[0])?.[1] ?? "";
   }
   return template.replace("{slug}", slug).replace(/\/+$/, "");
+}
+
+/**
+ * A new shop's seller profile on bills: its name, and the state, GSTIN and phone from sign-up. The bill prefix comes
+ * from the name ("ByteFix Computers" → "BFC"): left at the settings default, a shop's first bills went out as INV/…
+ * before it set its own, and issued numbers can't be changed afterwards (GST).
+ */
+export function signupBillingDefaults(name: string, s: Pick<SignupDetails, "state" | "gstin" | "phone"> | null): Record<string, unknown> {
+  const billing: Record<string, unknown> = { legalName: name, invoicePrefix: prefixFromName(name) };
+  if (s?.state) billing.stateCode = s.state;
+  if (s?.gstin) billing.gstin = s.gstin;
+  if (s?.phone) billing.phone = s.phone;
+  return billing;
 }
 
 export function createBatch5(d: Batch5Deps) {
@@ -232,11 +246,7 @@ export function createBatch5(d: Batch5Deps) {
     // without sign-up details gets its name everywhere and the default state (Tamil Nadu).
     run: async ({ tenant, details }) => {
       const s = signupOf(details);
-      const billing: Record<string, unknown> = { legalName: tenant.name };
-      if (s?.state) billing.stateCode = s.state;
-      if (s?.gstin) billing.gstin = s.gstin;
-      if (s?.phone) billing.phone = s.phone;
-      await billingProfile.setTenant(tenant.id, billing);
+      await billingProfile.setTenant(tenant.id, signupBillingDefaults(tenant.name, s));
       const general: Record<string, unknown> = { businessName: tenant.name };
       if (s?.phone) general.supportPhone = s.phone;
       if (s?.gstin) general.gstin = s.gstin;

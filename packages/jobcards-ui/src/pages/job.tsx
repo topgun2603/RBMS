@@ -17,6 +17,7 @@ import {
   PrinterIcon,
   ReceiptIcon,
   StickyNoteIcon,
+  ThumbsUpIcon,
   Trash2Icon,
 } from "lucide-react";
 import {
@@ -37,6 +38,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, usePermission, useRouteParams } from "@srirealtime/web";
+import { ApprovalCard, ApprovalDialog } from "../components/approval";
 import { DueDate, InlineError, JobStatusPill, STATUS_ICON, TemplateIcon, UrgentBadge, ReasonDialog } from "../components/bits";
 import { EditJobDialog } from "../components/edit-dialog";
 import { FieldsView } from "../components/fields-view";
@@ -45,7 +47,7 @@ import { JOBCARDS_FEATURES, JOBCARDS_PERMISSIONS } from "../lib/access";
 import { jobcardsConfig } from "../lib/config";
 import { money, qty } from "../lib/format";
 import { useJob, useJobActions } from "../lib/queries";
-import { JOB_FLOW, type Job, type JobEvent, type JobLine, type JobStatus } from "../lib/types";
+import { JOB_FLOW, type ApprovalDecision, type Job, type JobEvent, type JobLine, type JobStatus } from "../lib/types";
 
 /** One job: status stepper, details, parts and labour, totals, timeline, bill / cancel / tracking link / print. */
 export default function JobPage() {
@@ -80,6 +82,8 @@ function JobScreen({ job }: { job: Job }) {
   const [removing, setRemoving] = React.useState<JobLine | null>(null);
   const [billing, setBilling] = React.useState(false);
   const [cancelling, setCancelling] = React.useState(false);
+  const [deciding, setDeciding] = React.useState<ApprovalDecision | null>(null);
+  const awaitingAnswer = job.status === "awaiting_approval" && !job.approval;
   const closed = job.status === "delivered" || job.status === "cancelled";
   const linesLocked = closed || !!job.invoiceId;
 
@@ -119,6 +123,11 @@ function JobScreen({ job }: { job: Job }) {
         description={[job.customerName, t(`jobcards.template.${job.template}`), t("jobcards.detail.takenIn", { date: formatDate(job.createdAt) })].join(" · ")}
         actions={
           <>
+            {canManage && awaitingAnswer && (
+              <Button onClick={() => setDeciding("approved")}>
+                <ThumbsUpIcon /> {t("jobcards.approval.record")}
+              </Button>
+            )}
             {canManage &&
               job.next.map((s, i) => (
                 <Button key={s} variant={i === 0 ? "default" : "outline"} disabled={actions.move.isPending} onClick={() => move(s)}>
@@ -178,6 +187,7 @@ function JobScreen({ job }: { job: Job }) {
         <Stepper job={job} />
         <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid h-fit gap-section">
+            <ApprovalCard job={job} canManage={canManage && !closed} onRecord={setDeciding} />
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>{t("jobcards.detail.details")}</CardTitle>
@@ -267,7 +277,7 @@ function JobScreen({ job }: { job: Job }) {
         onOpenChange={setBilling}
         destructive={false}
         title={t("jobcards.bill.title", { number: job.label })}
-        description={t("jobcards.bill.body", { total: money(job.totals.total), advance: money(job.totals.advance) })}
+        description={t("jobcards.bill.body", { total: money(job.totals.total), advance: money(job.totals.advance), balance: money(Math.max(job.totals.balance, 0)) })}
         confirmLabel={t("jobcards.bill.confirm")}
         onConfirm={async () => {
           try {
@@ -278,6 +288,13 @@ function JobScreen({ job }: { job: Job }) {
             toast.error(describeError(err, t));
           }
         }}
+      />
+      <ApprovalDialog
+        open={deciding !== null}
+        onOpenChange={(o) => !o && setDeciding(null)}
+        job={job}
+        decision={deciding ?? "approved"}
+        onSave={(b) => actions.approval.mutateAsync(b)}
       />
       <ReasonDialog
         open={cancelling}
@@ -301,13 +318,15 @@ function Stepper({ job }: { job: Job }) {
       </Card>
     );
   const at = JOB_FLOW.indexOf(job.status);
-  const usedTrial = job.status === "trial" || job.events.some((e) => e.toStatus === "trial");
+  // Optional steps (approval, trial) the job never went through show struck through.
+  const used = (s: JobStatus) => job.status === s || job.events.some((e) => e.toStatus === s);
+  const OPTIONAL: JobStatus[] = ["awaiting_approval", "approved", "trial"];
   return (
     <ol className="flex gap-1 overflow-x-auto rounded-xl border bg-card p-2" aria-label={t("jobcards.detail.progress")}>
       {JOB_FLOW.map((s, i) => {
         const done = i < at;
         const current = i === at;
-        const skipped = s === "trial" && !usedTrial && i < at;
+        const skipped = OPTIONAL.includes(s) && !used(s) && i < at;
         return (
           <li
             key={s}
@@ -355,6 +374,7 @@ function LinesTable({ lines, onEdit, onRemove }: { lines: JobLine[]; onEdit?: (l
               <td className="py-2">
                 <span className="font-medium">{l.description}</span>
                 <span className="ml-2 text-meta text-muted-foreground">{t(`jobcards.lines.kinds.${l.kind}`)}</span>
+                {l.serials?.length > 0 && <span className="block font-mono text-meta text-muted-foreground">{t("jobcards.lines.serialsList", { serials: l.serials.join(", ") })}</span>}
               </td>
               <td className="py-2 text-right tabular-nums">{qty(l.qty)}</td>
               <td className="py-2 text-right tabular-nums">{money(l.rate)}</td>
@@ -431,6 +451,8 @@ function eventText(e: JobEvent, t: ReturnType<typeof useI18n>["t"]): string {
       return t("jobcards.timeline.estimate");
     case "note":
       return t("jobcards.timeline.note");
+    case "approval":
+      return t("jobcards.timeline.approval");
   }
 }
 

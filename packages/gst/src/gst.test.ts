@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInvoice, computeLine, exclusiveOf, isGstRate, isInterState, lineAmount, taxableOfInclusive, type LineInput } from "./gst";
+import { computeInvoice, computeLine, exclusiveOf, inclusiveOfRate, isGstRate, isInterState, lineAmount, taxableOfInclusive, type LineInput } from "./gst";
 
 const TN = "33";
 const KA = "29";
@@ -201,5 +201,28 @@ describe("exclusiveOf", () => {
     const rate = exclusiveOf(49900, 12, true);
     const l = computeLine({ description: "Shirt", qty: 1, rate, gstRate: 12 }, false);
     expect(Math.abs(l.total - 49900)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("inclusiveOfRate", () => {
+  it("recovers the entered GST-inclusive price from the rounded exclusive rate", () => {
+    for (const price of [650000, 10000, 59900, 99900, 49900, 100, 1]) {
+      for (const gst of [5, 12, 18, 28]) {
+        expect(inclusiveOfRate(exclusiveOf(price, gst, true), gst)).toBe(price);
+      }
+    }
+  });
+  it("fixes the paisa drift of adding GST back on top", () => {
+    const rate = exclusiveOf(650000, 18, true); // ₹5,508.47
+    expect(Math.round((rate * 118) / 100)).toBe(649999); // ₹6,499.99: the old way
+    expect(inclusiveOfRate(rate, 18)).toBe(650000);
+    expect(inclusiveOfRate(exclusiveOf(10000, 18, true), 18)).toBe(10000); // not ₹100.01
+  });
+  it("always maps back to the same rate", () => {
+    for (let rate = 1; rate < 3000; rate += 7) expect(exclusiveOf(inclusiveOfRate(rate, 18), 18, true)).toBe(rate);
+  });
+  it("leaves 0% and zero amounts alone", () => {
+    expect(inclusiveOfRate(12345, 0)).toBe(12345);
+    expect(inclusiveOfRate(0, 18)).toBe(0);
   });
 });

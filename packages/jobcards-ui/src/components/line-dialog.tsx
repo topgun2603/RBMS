@@ -27,12 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, useFeature, useI18n, usePermission } from "@srirealtime/web";
 import { money, paiseToInput, rupeesToPaise } from "../lib/format";
 import type { LineBody } from "../lib/queries";
 import { LINE_KINDS, type JobLine, type LineKind, type ShopItem } from "../lib/types";
 import { InlineError } from "./bits";
 import { ItemPicker } from "./pickers";
+import { SerialPicker } from "./serial-picker";
 
 const GST_RATES = [0, 5, 12, 18, 28] as const;
 
@@ -61,7 +62,12 @@ export function LineDialog({
   const [gst, setGst] = React.useState("18");
   const [hsn, setHsn] = React.useState<string | null>(null);
   const [unit, setUnit] = React.useState<string | null>(null);
+  const [serials, setSerials] = React.useState<string[]>([]);
   const [submitted, setSubmitted] = React.useState(false);
+  // Serial numbers on parts from stock: the shop tracks serials and this member can read the serial stock.
+  const serialsFeature = useFeature("serials");
+  const serialsAllowed = usePermission(["serials.view", "serials.manage"]);
+  const serialsOn = serialsFeature && serialsAllowed;
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -75,12 +81,14 @@ export function LineDialog({
     setGst(String(line?.gstRate ?? 18));
     setHsn(line?.hsn ?? null);
     setUnit(line?.unit ?? null);
+    setSerials(line?.serials ?? []);
     setSubmitted(false);
     setError(null);
   }, [open, line]);
 
   const pick = (it: ShopItem | null) => {
     setItem(it);
+    setSerials([]);
     if (!it) return;
     setDescription(it.name);
     setRate(paiseToInput(it.rate));
@@ -96,6 +104,8 @@ export function LineDialog({
     qty: !Number.isFinite(n) || n <= 0 ? t("jobcards.lines.qtyInvalid") : null,
     rate: paise === null ? t("jobcards.common.amountInvalid") : null,
   };
+  const itemId = kind === "part" ? (item?.id ?? (line?.kind === "part" ? line.itemId : null) ?? null) : null;
+  const serialsTooMany = serials.length > Math.ceil(Number.isFinite(n) && n > 0 ? n : 1);
   const amount = paise !== null && Number.isFinite(n) ? Math.round(n * paise) : 0;
   const tax = Math.round((amount * Number(gst)) / 100);
 
@@ -103,12 +113,13 @@ export function LineDialog({
     e.preventDefault();
     setSubmitted(true);
     setError(null);
-    if (errors.description || errors.qty || errors.rate) return;
+    if (errors.description || errors.qty || errors.rate || serialsTooMany) return;
     setBusy(true);
     try {
       await onSave({
         kind,
-        itemId: kind === "part" ? (item?.id ?? (line?.kind === "part" ? line.itemId : null) ?? null) : null,
+        itemId,
+        ...(itemId && (serials.length || line?.serials?.length) ? { serials } : {}),
         description: description.trim(),
         qty: n,
         rate: paise!,
@@ -191,6 +202,7 @@ export function LineDialog({
               </Select>
             </Field>
           </FieldRow>
+          {serialsOn && itemId && <SerialPicker itemId={itemId} qty={Number.isFinite(n) ? n : 1} value={serials} onChange={setSerials} />}
           <p className="text-sm text-muted-foreground tabular-nums">{t("jobcards.lines.preview", { amount: money(amount), tax: money(tax), total: money(amount + tax) })}</p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

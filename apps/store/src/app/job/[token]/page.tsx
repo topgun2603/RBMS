@@ -1,8 +1,8 @@
-import { JobPage, jobMetadata } from "@srirealtime/storefront-ui";
+import { JobTrackPage, jobTrackMetadata } from "@srirealtime/storefront-ui";
 
 export const dynamic = "force-dynamic";
-export const generateMetadata = jobMetadata;
+export const generateMetadata = jobTrackMetadata;
 
 export default function Page({ params }: { params: Promise<{ token: string }> }) {
-  return <JobPage params={params} />;
+  return <JobTrackPage params={params} />;
 }

@@ -7,6 +7,7 @@ import {
   isValidGstin,
   monthToDate,
   prefixProblem,
+  prefixFromName,
   sanitizePrefix,
   suggestPrefix,
   usableBranches,
@@ -56,6 +57,22 @@ describe("GSTIN and state", () => {
 });
 
 describe("bill prefixes", () => {
+  it("derives a new shop's prefix from its name", () => {
+    expect(prefixFromName("ByteFix Computers")).toBe("BFC");
+    expect(prefixFromName("ByteFix")).toBe("BF");
+    expect(prefixFromName("Glow Salon & Spa")).toBe("GSS");
+    expect(prefixFromName("Glow")).toBe("GLO");
+    expect(prefixFromName("Sri Lakshmi Stores Pvt. Ltd.")).toBe("SLS");
+    expect(prefixFromName("The Royal Tailors")).toBe("RT");
+    expect(prefixFromName("A1 Mobiles")).toBe("AM");
+    expect(prefixFromName("Café Mocha")).toBe("CM");
+    expect(prefixFromName("Kanchi Silk Saree House Of Weaves")).toBe("KSSH");
+    expect(prefixFromName("ஸ்ரீ ஸ்டோர்ஸ்")).toBe("INV");
+    expect(prefixFromName("")).toBe("INV");
+    expect(prefixFromName(null)).toBe("INV");
+    for (const n of ["ByteFix Computers", "Glow", "x", "123 Stores"]) expect(prefixProblem(prefixFromName(n))).toBeNull();
+  });
+
   it("sanitises like the invoices module", () => {
     expect(sanitizePrefix("mdu north")).toBe("MDUNOR");
     expect(sanitizePrefix("")).toBe("INV");

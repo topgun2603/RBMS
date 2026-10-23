@@ -2,7 +2,8 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "@srirealtime/web";
-import type { BillResult, Job, JobPriority, JobsSummary, JobStatus, JobSummary, JobTemplate, LineKind, ShopItem } from "./types";
+import type { ApprovalChannel, ApprovalDecision, BillResult, Job, JobPriority, JobsSummary, JobStatus, JobSummary, JobTemplate, LineKind, SerialUnit, ShopItem } from "./types";
+import { BOARD_STATUSES } from "./types";
 
 const J = "/jobcards";
 
@@ -18,6 +19,7 @@ export const jk = {
   job: (id: string) => ["jobcards", "job", id] as const,
   summary: ["jobcards", "summary"] as const,
   items: (q: string) => ["jobcards", "shop-items", q] as const,
+  units: (itemId: string) => ["jobcards", "serial-units", itemId] as const,
 };
 
 /** Every job still in the shop, for the board (the API's max page). */
@@ -25,7 +27,7 @@ export function useBoard(params: { q?: string; template?: string }) {
   return useQuery({
     queryKey: [...jk.board, params],
     queryFn: ({ signal }) =>
-      api.get<{ items: JobSummary[]; total: number }>(J, { status: "received,diagnosed,awaiting_approval,in_progress,trial,ready", limit: 200, sort: "due", q: params.q || undefined, template: params.template || undefined }, { signal }),
+      api.get<{ items: JobSummary[]; total: number }>(J, { status: BOARD_STATUSES.join(","), limit: 200, sort: "due", q: params.q || undefined, template: params.template || undefined }, { signal }),
     placeholderData: keepPreviousData,
     refetchInterval: 30_000,
     retry: retry4xx,
@@ -51,6 +53,19 @@ export function useShopItems(q: string, enabled = true) {
   });
 }
 
+/**
+ * Units of a stock item on the shelf (in stock or returned) for the serial picker on part lines (serials module:
+ * needs `serials.view` or `serials.manage`; off → empty).
+ */
+export function useSerialUnits(itemId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: jk.units(itemId ?? ""),
+    queryFn: ({ signal }) => api.get<{ items: SerialUnit[]; total: number }>("/serials/units", { itemId: itemId!, status: "in_stock,returned", limit: 200 }, { signal }),
+    enabled: enabled && !!itemId,
+    retry: retry4xx,
+  });
+}
+
 export interface LineBody {
   kind: LineKind;
   itemId?: string | null;
@@ -60,6 +75,16 @@ export interface LineBody {
   gstRate: number;
   hsn?: string | null;
   unit?: string | null;
+  /** Serials of the units on a part line (replaces the line's list). */
+  serials?: string[];
+}
+
+export interface ApprovalBody {
+  decision: ApprovalDecision;
+  by?: string | null;
+  channel?: Exclude<ApprovalChannel, "online">;
+  at?: string;
+  note?: string | null;
 }
 
 export interface CardBody {
@@ -99,6 +124,7 @@ export function useJobActions(id: string) {
     move: useMutation({ mutationFn: (b: { status: JobStatus; note?: string | null }) => api.post<Job>(`${J}/${id}/status`, b), onSuccess: done }),
     note: useMutation({ mutationFn: (note: string) => api.post<Job>(`${J}/${id}/notes`, { note }), onSuccess: done }),
     cancel: useMutation({ mutationFn: (reason: string) => api.post<Job>(`${J}/${id}/cancel`, { reason }), onSuccess: done }),
+    approval: useMutation({ mutationFn: (b: ApprovalBody) => api.post<Job>(`${J}/${id}/approval`, b), onSuccess: done }),
     addLine: useMutation({ mutationFn: (b: LineBody) => api.post<Job>(`${J}/${id}/lines`, b), onSuccess: done }),
     updateLine: useMutation({ mutationFn: ({ lineId, ...b }: Partial<LineBody> & { lineId: string }) => api.patch<Job>(`${J}/${id}/lines/${lineId}`, b), onSuccess: done }),
     removeLine: useMutation({ mutationFn: (lineId: string) => api.delete<Job>(`${J}/${id}/lines/${lineId}`), onSuccess: done }),

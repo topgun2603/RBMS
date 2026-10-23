@@ -20,8 +20,14 @@ export {
   cancelInput,
   billInput,
   jobListQuery,
+  approvalInput,
+  publicApprovalInput,
+  findJobInput,
 } from "./service";
 export type {
+  ApprovalInput,
+  FindJobInput,
+  PublicApprovalInput,
   BillInput,
   CreateInput,
   JobcardsDeps,
@@ -35,7 +41,7 @@ export type {
   MoveInput,
   UpdateInput,
 } from "./service";
-export { jobcardsRoutes } from "./routes";
+export { jobcardsRoutes, PublicLimiter, type JobcardsRouteOptions } from "./routes";
 
 /**
  * Job cards for service work: mobile / electronics repair, tailoring, optical lens orders (and a general card).

@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   AlertTriangleIcon,
+  BadgeCheckIcon,
   BanIcon,
   CalendarIcon,
   CheckCheckIcon,
@@ -53,6 +54,7 @@ export const STATUS_TONE: Record<JobStatus, StatusTone> = {
   received: "neutral",
   diagnosed: "info",
   awaiting_approval: "warning",
+  approved: "success",
   in_progress: "brand",
   trial: "info",
   ready: "success",
@@ -64,6 +66,7 @@ export const STATUS_ICON: Record<JobStatus, React.ComponentType<{ className?: st
   received: InboxIcon,
   diagnosed: SearchIcon,
   awaiting_approval: HourglassIcon,
+  approved: BadgeCheckIcon,
   in_progress: WrenchIcon,
   trial: RulerIcon,
   ready: PackageCheckIcon,

@@ -1,3 +1,4 @@
+import { computeLine, exclusiveOf, taxableOfInclusive } from "@srirealtime/gst";
 import { describe, expect, it } from "vitest";
 import {
   addDays,
@@ -25,6 +26,9 @@ import {
   parseHHMM,
   pickLeastBusy,
   priceWithGst,
+  servicePrice,
+  bookedInclusive,
+  bookedPrice,
   serviceTotals,
   staffDoes,
   subtract,
@@ -266,5 +270,48 @@ describe("priceWithGst", () => {
   it("adds GST to the exclusive rate", () => {
     expect(priceWithGst(50000, 18)).toBe(59000);
     expect(priceWithGst(33333, 5)).toBe(35000);
+  });
+});
+
+describe("GST-inclusive service prices", () => {
+  // As the catalogue stores them: the entered price and its exclusive rate (exclusiveOf).
+  const item = (price: number, gstRate = 18) => ({ price, gstRate, taxInclusive: true, rate: exclusiveOf(price, gstRate, true) });
+
+  it.each([650000, 10000, 59900])("shows the entered price %i exactly, not rate + GST", (price) => {
+    const it = item(price);
+    expect(servicePrice(it)).toBe(price);
+    // The old path: ₹6,500 → 5,508.47 → ₹6,499.99; ₹100 → 84.75 → ₹100.01.
+    if (price === 650000) expect(priceWithGst(it.rate, 18)).toBe(649999);
+    if (price === 10000) expect(priceWithGst(it.rate, 18)).toBe(10001);
+  });
+
+  it("prices exclusive services with GST on top", () => {
+    expect(servicePrice({ rate: 50000, gstRate: 18, price: 50000, taxInclusive: false })).toBe(59000);
+    expect(servicePrice({ rate: 50000, gstRate: 18 })).toBe(59000);
+  });
+
+  it.each([650000, 10000, 59900])("bills a booked ₹%i service at the entered price with the GST split inside it", (price) => {
+    const it = item(price);
+    const line = { rate: it.rate, gstRate: 18 };
+    const inclusiveTotal = bookedInclusive(line, it);
+    expect(inclusiveTotal).toBe(price);
+    const bill = computeLine({ description: "Facial", qty: 1, rate: line.rate, gstRate: 18, inclusiveTotal: inclusiveTotal! }, false);
+    expect(bill.total).toBe(price);
+    expect(bill.taxable + bill.cgst + bill.sgst).toBe(price);
+    expect(bill.taxable).toBe(taxableOfInclusive(price, 18));
+    expect(Math.abs(bill.cgst - bill.sgst)).toBeLessThanOrEqual(1);
+    expect(bookedPrice(line, it)).toBe(price);
+  });
+
+  it("recovers the inclusive price from the saved rate when the catalogue price changed since booking", () => {
+    const booked = item(650000);
+    const now = item(700000);
+    expect(bookedInclusive({ rate: booked.rate, gstRate: 18 }, now)).toBe(650000);
+  });
+
+  it("keeps exclusive services and items gone from the catalogue on rate + GST", () => {
+    expect(bookedInclusive({ rate: 50000, gstRate: 18 }, { rate: 50000, gstRate: 18, price: 50000, taxInclusive: false })).toBeNull();
+    expect(bookedInclusive({ rate: 50000, gstRate: 18 }, null)).toBeNull();
+    expect(bookedPrice({ rate: 50000, gstRate: 18 }, null)).toBe(59000);
   });
 });

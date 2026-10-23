@@ -18,6 +18,7 @@ export {
   itemListQuery,
   UNIT_SORT,
   ITEM_SORT,
+  publicWarrantyQuery,
 } from "./service";
 export type {
   ClaimInput,
@@ -32,8 +33,9 @@ export type {
   UnitListQuery,
   UnitView,
   WarrantyLookup,
+  PublicWarranty,
 } from "./service";
-export { serialsRoutes } from "./routes";
+export { serialsRoutes, LookupLimiter } from "./routes";
 
 /**
  * Serial number / IMEI tracking with warranty for electronics and mobile shops: receive units (pasted or scanned),

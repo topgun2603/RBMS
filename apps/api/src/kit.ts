@@ -12,7 +12,7 @@ import { createDocuments, type DocSeller } from "@srirealtime/documents";
 import { createExpenses } from "@srirealtime/expenses";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
-import { createJobcards } from "@srirealtime/jobcards";
+import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
 import { createMemberships } from "@srirealtime/memberships";
 import { createMedicines, type StockPort as InventoryStockPort } from "@srirealtime/medicines";
 import { createJewellery } from "@srirealtime/jewellery";
@@ -871,10 +871,16 @@ export function createKit(env: Env, log: Logger) {
 
   /**
    * Issued GST bills from priced lines (GST-exclusive rates) for the vertical modules: dining orders, job cards,
-   * appointments, memberships. Payment is taken on the bill as usual.
+   * appointments, memberships. Payment is taken on the bill as usual. Lines may carry the GST-inclusive amount charged
+   * (`inclusiveTotal`: tax-inclusive service prices, so ₹6,500 bills at ₹6,500) and the serials sold on them; a job
+   * card's advance is recorded on the bill as already paid (balance due = total − advance).
    */
-  const billFromLines: LinesBillingPort = {
-    createBill: async (tenant, input, opts) => {
+  type SharedBillInput = Omit<Parameters<LinesBillingPort["createBill"]>[1], "lines"> & {
+    lines: (Parameters<LinesBillingPort["createBill"]>[1]["lines"][number] & { inclusiveTotal?: number | null; serials?: string[] })[];
+    advance?: NonNullable<Parameters<JobcardsBillingPort["createBill"]>[1]["advance"]> | null;
+  };
+  const billFromLines = {
+    createBill: async (tenant: Parameters<LinesBillingPort["createBill"]>[0], input: SharedBillInput, opts: { branchId: string | null }) => {
       const inv = await invoices.service.create(
         tenant,
         {
@@ -891,11 +897,27 @@ export function createKit(env: Env, log: Logger) {
             gstRate: l.gstRate as never,
             hsn: l.hsn ?? undefined,
             unit: l.unit ?? undefined,
+            ...(typeof l.inclusiveTotal === "number" ? { inclusiveTotal: l.inclusiveTotal } : {}),
+            ...(l.serials?.length ? { serials: l.serials } : {}),
           })),
         },
         { branchId: opts.branchId },
       );
-      return { id: inv.id, number: inv.number, total: inv.total };
+      let advancePaid = 0;
+      const advance = input.advance;
+      if (advance && advance.amount > 0 && inv.total > 0) {
+        // The bill is issued already: a failure here leaves the advance to be entered by hand, never undoes the bill.
+        const amount = Math.min(advance.amount, inv.total - inv.paid);
+        try {
+          if (amount > 0) {
+            await invoices.service.addPayment(tenant.id, inv.id, { amount, method: "other", date: advance.date, reference: advance.reference.slice(0, 100) });
+            advancePaid = amount;
+          }
+        } catch (err) {
+          log.error({ err, tenantId: tenant.id, invoiceId: inv.id }, "bill from lines: recording the advance failed");
+        }
+      }
+      return { id: inv.id, number: inv.number, total: inv.total, advancePaid };
     },
   };
 
@@ -924,7 +946,31 @@ export function createKit(env: Env, log: Logger) {
   const aggregators = createAggregatorsWiring({ db, dining, catalogue, features: { isEnabled }, encryptionKey: env.APP_SECRET, publicBaseUrl: env.API_PUBLIC_URL, log });
 
   // Job cards (repair, tailoring, optical orders): bills through the shared adapter.
-  const jobcards = createJobcards({ db, billing: billFromLines, notify: messages.jobcards, log });
+  // Parts with serials on job card lines are checked against the serial stock; the shop's owners hear about estimates
+  // the customer approves or declines on the tracking page (push, else WhatsApp).
+  const jobApprovalNotice = async (tenantId: string, job: JobSummary, approval: JobApproval) => {
+    const members = await tenancy.service.listMembers(tenantId);
+    const owners = members.filter((m) => m.status === "active" && (m.roles.includes("owner") || m.roles.includes("admin"))).map((m) => m.userId);
+    const template = approval.decision === "approved" ? "jobcards.estimate_approved" : "jobcards.estimate_declined";
+    const vars = {
+      shop: (await shopName(tenantId)) ?? "",
+      number: formatJobNumber(job.number),
+      customer: job.customerName,
+      amount: `Rs.${(approval.amount / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    };
+    for (const userId of owners) {
+      const pushed = await notify.service.sendToUser({ tenantId, userId, template, vars, channels: ["push"] });
+      if (pushed.some((r) => r.status === "sent" || r.status === "queued")) continue;
+      await notify.service.sendToUser({ tenantId, userId, template, vars, channels: ["whatsapp"] });
+    }
+  };
+  const jobcards = createJobcards({
+    db,
+    billing: billFromLines,
+    notify: { statusChanged: (tenantId, job) => messages.jobcards.statusChanged(tenantId, job), approvalDecided: jobApprovalNotice },
+    serials: { unavailable: (tenantId, itemId, codes) => serials.service.unavailableFor(tenantId, itemId, codes) },
+    log,
+  });
   // Appointments (salons, spas, eye tests, personal training): service prices from the catalogue, bills through the
   // shared adapter.
   const bookings = createBookings({

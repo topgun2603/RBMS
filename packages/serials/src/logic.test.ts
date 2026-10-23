@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { LookupLimiter } from "./routes";
+import { publicWarrantyQuery } from "./service";
 import {
+  lastDigits,
+  phoneLast4Matches,
+  publicWarrantyStatus,
   canMoveTo,
   checkSerialRows,
   isValidImei,
@@ -102,5 +107,41 @@ describe("status moves", () => {
     expect(stockDelta("defective", "written_off")).toBe(0);
     expect(stockDelta("written_off", "in_stock")).toBe(1);
     expect(stockDelta("returned", "in_stock")).toBe(0);
+  });
+});
+
+describe("public warranty lookup", () => {
+  it("matches the last 4 digits of the phone on the sale", () => {
+    expect(lastDigits("+91 98765 43210")).toBe("3210");
+    expect(lastDigits("12")).toBe("");
+    expect(phoneLast4Matches("+91 98765 43210", "3210")).toBe(true);
+    expect(phoneLast4Matches("+91 98765 43210", "3211")).toBe(false);
+    expect(phoneLast4Matches(null, "3210")).toBe(false);
+    expect(phoneLast4Matches("9876543210", "")).toBe(false);
+  });
+
+  it("reads claimed only while the warranty runs", () => {
+    expect(publicWarrantyStatus("2027-10-19", "2026-10-22", false)).toBe("active");
+    expect(publicWarrantyStatus("2027-10-19", "2026-10-22", true)).toBe("claimed");
+    expect(publicWarrantyStatus("2026-10-21", "2026-10-22", true)).toBe("expired");
+    expect(publicWarrantyStatus(null, "2026-10-22", false)).toBe("none");
+  });
+
+  it("validates the query", () => {
+    expect(publicWarrantyQuery.parse({ code: " 3567 ", last4: "" })).toEqual({ code: "3567" });
+    expect(publicWarrantyQuery.parse({ code: "SN123", last4: "0042" }).last4).toBe("0042");
+    expect(() => publicWarrantyQuery.parse({ code: "SN123", last4: "42" })).toThrow();
+    expect(() => publicWarrantyQuery.parse({ code: "" })).toThrow();
+  });
+
+  it("rate-limits per key in a sliding window", () => {
+    let now = 0;
+    const l = new LookupLimiter(2, 1000, () => now);
+    expect(l.hit("a")).toBe(true);
+    expect(l.hit("a")).toBe(true);
+    expect(l.hit("a")).toBe(false);
+    expect(l.hit("b")).toBe(true);
+    now = 1001;
+    expect(l.hit("a")).toBe(true);
   });
 });

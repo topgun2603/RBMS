@@ -9,6 +9,11 @@ export interface BillLine {
   gstRate: number;
   hsn: string | null;
   unit: string | null;
+  /**
+   * Paise: the GST-inclusive amount charged for the line when the service is priced with GST included (the catalogue's
+   * tax-inclusive price), so the bill takes the GST out of it and its total equals the price exactly.
+   */
+  inclusiveTotal?: number | null;
 }
 
 export interface BillResult {
@@ -26,9 +31,27 @@ export interface BillingPort {
   ): Promise<BillResult>;
 }
 
-/** Billing items (catalogue variants) by id: the service's name, rate (GST-exclusive paise), GST and HSN. */
+/** A billing item (catalogue variant) as the price port returns it. */
+export interface ServicePriceItem {
+  id: string;
+  name: string;
+  /** GST-exclusive paise (what the bill line uses). */
+  rate: number;
+  gstRate: number;
+  hsn: string | null;
+  unit: string;
+  /** The price as entered in the catalogue (incl. GST when `taxInclusive`). */
+  price?: number;
+  /** The entered price includes GST: customers see and pay exactly `price`. */
+  taxInclusive?: boolean;
+}
+
+/**
+ * Billing items (catalogue variants) by id: the service's name, rate (GST-exclusive paise), GST and HSN, plus the
+ * entered price and whether it includes GST (so a ₹6,500 incl.-GST service is shown and billed at ₹6,500, not ₹6,499.99).
+ */
 export interface ServicePricePort {
-  items(tenantId: string, ids: string[]): Promise<{ id: string; name: string; rate: number; gstRate: number; hsn: string | null; unit: string }[]>;
+  items(tenantId: string, ids: string[]): Promise<ServicePriceItem[]>;
 }
 
 /** What a booking notice carries (SMS / WhatsApp to the customer, a ping to the staff member). */

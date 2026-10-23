@@ -1,0 +1,138 @@
+/*
+ * Copy for the after-sales pages (warranty lookup, track my repair, the repair's tracking page with the estimate
+ * approval). Kept apart from the store's main dictionary; `{name}` placeholders are filled with `fill`.
+ */
+
+const en = {
+  // /warranty
+  "warranty.title": "Check your warranty",
+  "warranty.subtitle": "Enter the serial number or IMEI printed on the box, the bill or the product label.",
+  "warranty.code": "Serial number or IMEI",
+  "warranty.codePlaceholder": "e.g. 5CD1234XYZ or 356789012345678",
+  "warranty.last4": "Last 4 digits of your phone (optional)",
+  "warranty.last4Hint": "The phone number given at purchase. Adding it keeps others from checking your product.",
+  "warranty.submit": "Check warranty",
+  "warranty.checking": "Checking…",
+  "warranty.notFound": "We couldn't find a sale with that serial number. Check the number (and the phone digits, if you gave them) or call the shop.",
+  "warranty.tooMany": "Too many lookups. Please wait a few minutes and try again.",
+  "warranty.off": "Warranty lookup isn't available",
+  "warranty.offBody": "Please call the shop with your bill to check the warranty.",
+  "warranty.product": "Product",
+  "warranty.serial": "Serial / IMEI",
+  "warranty.purchased": "Purchased on",
+  "warranty.ends": "Warranty until",
+  "warranty.months": "{months}-month warranty",
+  "warranty.daysLeft": "{days} days left",
+  "warranty.status.active": "Under warranty",
+  "warranty.status.expired": "Warranty ended",
+  "warranty.status.claimed": "Claim in progress",
+  "warranty.status.none": "No warranty",
+  "warranty.claimedHint": "A warranty claim for this product is with the shop.",
+  "warranty.trackRepair": "Gave it in for repair? Track your repair",
+  // /track-repair
+  "repair.title": "Track your repair",
+  "repair.subtitle": "Enter the job number from your receipt and the last 4 digits of the phone number you gave us.",
+  "repair.number": "Job number",
+  "repair.numberPlaceholder": "e.g. JC-0007",
+  "repair.last4": "Last 4 digits of your phone",
+  "repair.submit": "Track repair",
+  "repair.finding": "Finding…",
+  "repair.notFound": "No repair matches that job number and phone. Check both and try again, or call the shop.",
+  "repair.tooMany": "Too many tries. Please wait a few minutes or call the shop.",
+  "repair.last4Invalid": "Enter the last 4 digits",
+  "repair.numberInvalid": "Enter the job number",
+  "repair.off": "Repair tracking isn't available",
+  "repair.offBody": "Please call the shop to ask about your repair.",
+  "repair.warranty": "Check a product's warranty",
+  // /job/<token>
+  "job.status.approved": "Estimate approved",
+  "job.approval.title": "Your approval is needed",
+  "job.approval.body": "The shop has checked your item and the estimate for the work is {total} (GST included). Approve it to start the work, or decline it and the shop will contact you.",
+  "job.approval.approve": "Approve {total}",
+  "job.approval.decline": "Decline",
+  "job.approval.confirmApprove": "Approve the estimate of {total}? The shop will start the work.",
+  "job.approval.confirmDecline": "Decline the estimate? The work won't start; the shop will call you.",
+  "job.approval.yesApprove": "Yes, approve",
+  "job.approval.yesDecline": "Yes, decline",
+  "job.approval.back": "Go back",
+  "job.approval.note": "Message for the shop (optional)",
+  "job.approval.saving": "Sending…",
+  "job.approval.approved": "You approved the estimate of {amount} on {date}.",
+  "job.approval.approvedShop": "The estimate of {amount} was approved on {date}.",
+  "job.approval.declined": "You declined the estimate of {amount} on {date}. The shop will contact you.",
+  "job.approval.declinedShop": "The estimate of {amount} was declined on {date}.",
+  "job.approval.error": "Couldn't send your answer. Please try again or call the shop.",
+  "job.approval.recorded": "Your answer is recorded with the time and your connection's address.",
+} as const;
+
+export type AftersalesKey = keyof typeof en;
+export type AftersalesText = Record<AftersalesKey, string>;
+
+const ta: AftersalesText = {
+  "warranty.title": "உங்கள் உத்தரவாதத்தைச் சரிபார்க்கவும்",
+  "warranty.subtitle": "பெட்டி, பில் அல்லது பொருளின் லேபிளில் உள்ள வரிசை எண் அல்லது IMEI-ஐ உள்ளிடவும்.",
+  "warranty.code": "வரிசை எண் அல்லது IMEI",
+  "warranty.codePlaceholder": "எ.கா. 5CD1234XYZ அல்லது 356789012345678",
+  "warranty.last4": "உங்கள் தொலைபேசியின் கடைசி 4 இலக்கங்கள் (விருப்பம்)",
+  "warranty.last4Hint": "வாங்கும்போது கொடுத்த எண். இதைச் சேர்த்தால் மற்றவர்கள் உங்கள் பொருளைச் சரிபார்க்க முடியாது.",
+  "warranty.submit": "உத்தரவாதத்தைச் சரிபார்",
+  "warranty.checking": "சரிபார்க்கிறது…",
+  "warranty.notFound": "அந்த வரிசை எண்ணுடன் விற்பனை எதுவும் இல்லை. எண்ணை (கொடுத்திருந்தால் தொலைபேசி இலக்கங்களையும்) சரிபார்க்கவும் அல்லது கடையை அழைக்கவும்.",
+  "warranty.tooMany": "அதிகமான தேடல்கள். சில நிமிடங்கள் கழித்து முயற்சிக்கவும்.",
+  "warranty.off": "உத்தரவாதச் சரிபார்ப்பு இல்லை",
+  "warranty.offBody": "உத்தரவாதத்தைச் சரிபார்க்க உங்கள் பில்லுடன் கடையை அழைக்கவும்.",
+  "warranty.product": "பொருள்",
+  "warranty.serial": "வரிசை எண் / IMEI",
+  "warranty.purchased": "வாங்கிய தேதி",
+  "warranty.ends": "உத்தரவாதம் வரை",
+  "warranty.months": "{months} மாத உத்தரவாதம்",
+  "warranty.daysLeft": "இன்னும் {days} நாட்கள்",
+  "warranty.status.active": "உத்தரவாதத்தில் உள்ளது",
+  "warranty.status.expired": "உத்தரவாதம் முடிந்தது",
+  "warranty.status.claimed": "கோரிக்கை நடைபெறுகிறது",
+  "warranty.status.none": "உத்தரவாதம் இல்லை",
+  "warranty.claimedHint": "இந்தப் பொருளுக்கான உத்தரவாதக் கோரிக்கை கடையிடம் உள்ளது.",
+  "warranty.trackRepair": "பழுதுக்குக் கொடுத்தீர்களா? உங்கள் பழுதைக் கண்காணிக்கவும்",
+  "repair.title": "உங்கள் பழுதைக் கண்காணிக்கவும்",
+  "repair.subtitle": "ரசீதில் உள்ள வேலை எண்ணையும் நீங்கள் கொடுத்த தொலைபேசி எண்ணின் கடைசி 4 இலக்கங்களையும் உள்ளிடவும்.",
+  "repair.number": "வேலை எண்",
+  "repair.numberPlaceholder": "எ.கா. JC-0007",
+  "repair.last4": "உங்கள் தொலைபேசியின் கடைசி 4 இலக்கங்கள்",
+  "repair.submit": "பழுதைக் கண்காணி",
+  "repair.finding": "தேடுகிறது…",
+  "repair.notFound": "அந்த வேலை எண் மற்றும் தொலைபேசியுடன் பழுது எதுவும் பொருந்தவில்லை. இரண்டையும் சரிபார்த்து மீண்டும் முயற்சிக்கவும், அல்லது கடையை அழைக்கவும்.",
+  "repair.tooMany": "அதிகமான முயற்சிகள். சில நிமிடங்கள் காத்திருக்கவும் அல்லது கடையை அழைக்கவும்.",
+  "repair.last4Invalid": "கடைசி 4 இலக்கங்களை உள்ளிடவும்",
+  "repair.numberInvalid": "வேலை எண்ணை உள்ளிடவும்",
+  "repair.off": "பழுது கண்காணிப்பு இல்லை",
+  "repair.offBody": "உங்கள் பழுது பற்றி அறிய கடையை அழைக்கவும்.",
+  "repair.warranty": "பொருளின் உத்தரவாதத்தைச் சரிபார்க்கவும்",
+  "job.status.approved": "மதிப்பீடு ஒப்புக்கொள்ளப்பட்டது",
+  "job.approval.title": "உங்கள் ஒப்புதல் தேவை",
+  "job.approval.body": "கடை உங்கள் பொருளைப் பரிசோதித்தது; வேலைக்கான மதிப்பீடு {total} (GST உட்பட). வேலையைத் தொடங்க ஒப்புக்கொள்ளவும், அல்லது மறுத்தால் கடை உங்களைத் தொடர்புகொள்ளும்.",
+  "job.approval.approve": "{total} ஒப்புக்கொள்",
+  "job.approval.decline": "மறு",
+  "job.approval.confirmApprove": "{total} மதிப்பீட்டை ஒப்புக்கொள்கிறீர்களா? கடை வேலையைத் தொடங்கும்.",
+  "job.approval.confirmDecline": "மதிப்பீட்டை மறுக்கிறீர்களா? வேலை தொடங்காது; கடை உங்களை அழைக்கும்.",
+  "job.approval.yesApprove": "ஆம், ஒப்புக்கொள்கிறேன்",
+  "job.approval.yesDecline": "ஆம், மறுக்கிறேன்",
+  "job.approval.back": "பின்செல்",
+  "job.approval.note": "கடைக்கான செய்தி (விருப்பம்)",
+  "job.approval.saving": "அனுப்புகிறது…",
+  "job.approval.approved": "{date} அன்று {amount} மதிப்பீட்டை ஒப்புக்கொண்டீர்கள்.",
+  "job.approval.approvedShop": "{amount} மதிப்பீடு {date} அன்று ஒப்புக்கொள்ளப்பட்டது.",
+  "job.approval.declined": "{date} அன்று {amount} மதிப்பீட்டை மறுத்தீர்கள். கடை உங்களைத் தொடர்புகொள்ளும்.",
+  "job.approval.declinedShop": "{amount} மதிப்பீடு {date} அன்று மறுக்கப்பட்டது.",
+  "job.approval.error": "உங்கள் பதிலை அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது கடையை அழைக்கவும்.",
+  "job.approval.recorded": "உங்கள் பதில் நேரம் மற்றும் இணைப்பு முகவரியுடன் பதிவுசெய்யப்படும்.",
+};
+
+export const aftersalesMessages = { en: en as AftersalesText, ta } as const;
+
+/** The after-sales copy in the shopper's language (English for anything else). */
+export const aftersalesText = (locale: string | null | undefined): AftersalesText => (locale === "ta" ? ta : aftersalesMessages.en);
+
+/** "{total}" → value. */
+export function fill(s: string, vars: Record<string, string | number> = {}): string {
+  return s.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
+}

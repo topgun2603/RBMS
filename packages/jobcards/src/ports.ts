@@ -1,4 +1,5 @@
 import type { FeatureDef, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { JobApproval } from "./logic";
 import type { JobStatus } from "./schema";
 import type { JobTemplate } from "./templates";
 
@@ -10,21 +11,47 @@ export interface BillLine {
   gstRate: number;
   hsn: string | null;
   unit: string | null;
+  /** Serial numbers / IMEIs of the units sold on this line: the bill marks them sold and starts their warranty. */
+  serials?: string[];
 }
 
 export interface BillResult {
   id: string;
   number: string | null;
   total: number;
+  /** Paise of the advance recorded on the bill as already paid. */
+  advancePaid?: number;
 }
 
-/** Makes the GST bill for a job (invoices). The bill is issued; payment (and the advance) is taken on it as usual. */
+/** The advance taken at intake, recorded on the bill as a payment already received (balance = total − advance). */
+export interface BillAdvance {
+  /** Paise; the adapter records at most the bill total. */
+  amount: number;
+  /** When it was taken (YYYY-MM-DD, IST). */
+  date: string;
+  /** "Advance on JC-0007" */
+  reference: string;
+}
+
+/** Makes the GST bill for a job (invoices). The bill is issued with the advance on it as paid; the rest is paid as usual. */
 export interface BillingPort {
   createBill(
     tenant: TenantRef,
-    input: { lines: BillLine[]; customer: { name: string; phone: string | null } | null; notes: string | null; tillSessionId: string | null },
+    input: {
+      lines: BillLine[];
+      customer: { name: string; phone: string | null } | null;
+      notes: string | null;
+      tillSessionId: string | null;
+      advance?: BillAdvance | null;
+    },
     opts: { branchId: string | null },
   ): Promise<BillResult>;
+}
+
+/** The shop's serial-number stock (serials module), for parts with serials on job card lines. */
+export interface SerialStockPort {
+  /** Of `serials` (normalised), the ones not on the shelf for `itemId` (unknown, sold, defective, another item's). */
+  unavailable(tenantId: string, itemId: string, serials: string[]): Promise<string[]>;
 }
 
 /** What a status listener gets: enough to text the customer "your phone is ready". */
@@ -49,6 +76,8 @@ export interface JobSummary {
  */
 export interface NotifyPort {
   statusChanged(tenantId: string, job: JobSummary): void | Promise<void>;
+  /** The customer approved or declined the estimate on the tracking page: tell the shop (owners / admins). */
+  approvalDecided?(tenantId: string, job: JobSummary, approval: JobApproval): void | Promise<void>;
 }
 
 /** Statuses the notify port hears about. */

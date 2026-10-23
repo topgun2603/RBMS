@@ -9,6 +9,9 @@ import {
   MANUAL_STATUSES,
   normaliseSerial,
   ON_SHELF,
+  phoneLast4Matches,
+  publicWarrantyStatus,
+  type PublicWarrantyStatus,
   stockDelta,
   warrantyDaysLeft,
   warrantyEnd,
@@ -136,6 +139,31 @@ export interface WarrantyLookup {
   item: SerialItemRow | null;
   events: SerialEventRow[];
 }
+
+/** The public warranty page (no customer name, phone or bill): what the unit is and its warranty. */
+export interface PublicWarranty {
+  product: string;
+  /** The serial / IMEI as looked up (upper case). */
+  serial: string;
+  /** Bill date the warranty runs from. */
+  purchaseDate: string | null;
+  warrantyMonths: number;
+  warrantyEnd: string | null;
+  status: PublicWarrantyStatus;
+  /** Days of warranty left counting today (0 once expired); null without a warranty. */
+  daysLeft: number | null;
+}
+
+export const publicWarrantyQuery = z.object({
+  code: z.string().trim().min(3).max(60),
+  /** Last 4 digits of the phone on the bill (optional; when given it must match). */
+  last4: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/, "Last 4 digits of your phone")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+});
 
 export interface ReceiveResult {
   received: number;
@@ -493,6 +521,48 @@ export class SerialsService {
     if (!unit) throw notFound("Serial");
     const [item, events] = await Promise.all([this.itemRow(tenantId, unit.itemId), this.events(tenantId, unit.id)]);
     return { unit: this.unitView(unit), item, events };
+  }
+
+  /**
+   * The customer's public warranty lookup by serial / IMEI (+ the last 4 digits of the phone on the bill, when given):
+   * only units sold by this shop; null when there is no such sale or the digits don't match (the caller answers the
+   * same 404 either way, so a lookup never tells which). Never returns the customer's name, phone or bill.
+   */
+  async publicWarranty(tenantId: string, query: unknown): Promise<PublicWarranty | null> {
+    const q = publicWarrantyQuery.parse(query ?? {});
+    const unit = await this.byCode(tenantId, q.code);
+    if (!unit || unit.status !== "sold") return null;
+    if (q.last4 !== undefined && !phoneLast4Matches(unit.customerPhone, q.last4)) return null;
+    const since = unit.soldAt ?? unit.receivedAt;
+    const [claim] = await this.db
+      .select({ n: count() })
+      .from(serialEvents)
+      .where(and(eq(serialEvents.tenantId, tenantId), eq(serialEvents.unitId, unit.id), eq(serialEvents.type, "warranty_claim"), gte(serialEvents.createdAt, since)));
+    const today = this.today();
+    return {
+      product: unit.itemName,
+      serial: normaliseSerial(q.code),
+      purchaseDate: unit.soldOn,
+      warrantyMonths: unit.warrantyMonths,
+      warrantyEnd: unit.warrantyEnd,
+      status: publicWarrantyStatus(unit.warrantyEnd, today, (claim?.n ?? 0) > 0),
+      daysLeft: warrantyDaysLeft(unit.warrantyEnd, today),
+    };
+  }
+
+  /**
+   * Of `serials`, the ones that are not on the shelf for `itemId` (in stock or returned) — unknown, sold, defective or
+   * another item's. Normalised (upper case, no spaces). For job cards selling parts with serial numbers.
+   */
+  async unavailableFor(tenantId: string, itemId: string, serials: string[]): Promise<string[]> {
+    const codes = [...new Set(serials.map(normaliseSerial).filter(Boolean))];
+    if (codes.length === 0) return [];
+    const rows = await this.db
+      .select({ serial: serialUnits.serial })
+      .from(serialUnits)
+      .where(and(eq(serialUnits.tenantId, tenantId), eq(serialUnits.itemId, itemId), inArray(serialUnits.status, [...ON_SHELF]), inArray(serialUnits.serial, codes)));
+    const ok = new Set(rows.map((r) => r.serial));
+    return codes.filter((c) => !ok.has(c));
   }
 
   /**

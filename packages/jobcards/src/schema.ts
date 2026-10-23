@@ -2,12 +2,16 @@ import { pk, tenantId, timestamps } from "@srirealtime/db";
 import { date, index, integer, jsonb, numeric, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import type { JobTemplate } from "./templates";
 
-/** The work flow, in order. `trial` (tailoring fittings) is optional; `cancelled` sits outside the flow. */
-export const JOB_FLOW = ["received", "diagnosed", "awaiting_approval", "in_progress", "trial", "ready", "delivered"] as const;
+/**
+ * The work flow, in order. `trial` (tailoring fittings) is optional; `cancelled` sits outside the flow. A job sent for
+ * approval (`awaiting_approval`) only goes on once the customer's answer is recorded: approved → `approved` (who, when,
+ * how — see `JobApproval`), declined → back to `diagnosed`. Jobs that need no approval may skip both steps.
+ */
+export const JOB_FLOW = ["received", "diagnosed", "awaiting_approval", "approved", "in_progress", "trial", "ready", "delivered"] as const;
 export const JOB_STATUSES = [...JOB_FLOW, "cancelled"] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 /** Still in the shop (on the board). */
-export const OPEN_STATUSES: readonly JobStatus[] = ["received", "diagnosed", "awaiting_approval", "in_progress", "trial", "ready"];
+export const OPEN_STATUSES: readonly JobStatus[] = ["received", "diagnosed", "awaiting_approval", "approved", "in_progress", "trial", "ready"];
 /** Done with: no longer overdue, never edited. */
 export const CLOSED_STATUSES: readonly JobStatus[] = ["delivered", "cancelled"];
 
@@ -17,7 +21,7 @@ export type JobPriority = (typeof JOB_PRIORITIES)[number];
 export const LINE_KINDS = ["part", "labour"] as const;
 export type JobLineKind = (typeof LINE_KINDS)[number];
 
-export const EVENT_TYPES = ["created", "status", "note", "estimate", "billed"] as const;
+export const EVENT_TYPES = ["created", "status", "note", "estimate", "billed", "approval"] as const;
 export type JobEventType = (typeof EVENT_TYPES)[number];
 
 /** A job taken in for service: a phone to repair, a blouse to stitch, spectacles to make. */
@@ -34,7 +38,10 @@ export const jobcards = pgTable(
     customerPhone: text("customer_phone"),
     /** Billing customer, when picked from the customer list. */
     customerId: uuid("customer_id"),
-    /** Template details (validated per template in templates.ts). */
+    /**
+     * Template details (validated per template in templates.ts). The service also keeps its own bookkeeping here under
+     * `_meta` (`JobMeta`: the estimate approval, serial numbers on part lines); views never show `_meta` as a field.
+     */
     fields: jsonb("fields").$type<Record<string, unknown>>().notNull().default({}),
     dueDate: date("due_date", { mode: "string" }),
     assigneeName: text("assignee_name"),

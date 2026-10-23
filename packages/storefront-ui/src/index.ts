@@ -46,6 +46,7 @@ export { SellerPage, sellerMetadata, sellerJsonLd, sellerProductSummary } from "
 export { StoreNotFound } from "./pages/errors";
 export { TableMenuPage, tableMetadata } from "./pages/table";
 export { BookPage, bookMetadata, BookingPage, bookingMetadata, JobPage, jobMetadata } from "./pages/services";
+export { WarrantyPage, warrantyMetadata, TrackRepairPage, trackRepairMetadata, JobTrackPage, jobTrackMetadata } from "./pages/aftersales";
 export { StoreErrorView } from "./client/error-view";
 
 // route handlers

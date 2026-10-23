@@ -103,6 +103,27 @@ export function sanitizePrefix(prefix: string | null | undefined): string {
   return p || DEFAULT_INVOICE_PREFIX;
 }
 
+/** Words left out of a shop's initials ("Sri Lakshmi Stores Pvt Ltd" → "SLS"). */
+const FILLER_WORDS = new Set(["AND", "THE", "OF", "PVT", "PRIVATE", "LTD", "LIMITED", "LLP", "CO", "COMPANY", "INC"]);
+
+/**
+ * A new shop's default bill prefix from its name, so its first bills don't go out as "INV/…": the initials of up to
+ * four words ("ByteFix Computers" → "BFC", "Glow Salon & Spa" → "GSS"; a CamelCase name counts as words), or the first
+ * three letters of a one-word name ("Glow" → "GLO"). Names with no Latin letters or digits get "INV".
+ */
+export function prefixFromName(name: string | null | undefined): string {
+  const words = (name ?? "")
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter((w) => w && !FILLER_WORDS.has(w));
+  if (words.length === 0) return DEFAULT_INVOICE_PREFIX;
+  const initials = words.slice(0, 4).map((w) => w[0]).join("");
+  return sanitizePrefix(initials.length >= 2 ? initials : words[0]!.slice(0, 3));
+}
+
 /** Null when `prefix` (already upper-cased) is usable, else the message. */
 export function prefixProblem(prefix: string): string | null {
   if (!INVOICE_PREFIX_PATTERN.test(prefix)) {

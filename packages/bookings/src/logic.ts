@@ -1,3 +1,4 @@
+import { inclusiveOfRate } from "@srirealtime/gst";
 import type { AppointmentStatus, HoursBreak } from "./schema";
 
 /*
@@ -269,5 +270,38 @@ export function canCustomerCancel(status: AppointmentStatus, start: Date, now: D
   return (status === "booked" || status === "confirmed") && start.getTime() - now.getTime() >= beforeMin * MIN_MS;
 }
 
-/** GST-inclusive price shown to customers, from the GST-exclusive rate in paise. */
+/** GST-inclusive price shown to customers, from the GST-exclusive rate in paise (services priced before GST). */
 export const priceWithGst = (rate: number, gstRate: number) => Math.round((rate * (100 + gstRate)) / 100);
+
+/** What the price port says about a service's catalogue item. */
+export interface PricedItem {
+  rate: number;
+  gstRate: number;
+  price?: number | null;
+  taxInclusive?: boolean | null;
+}
+
+/**
+ * The GST-inclusive price customers see and pay: the entered price itself when the catalogue price includes GST
+ * (₹6,500 stays ₹6,500), else the exclusive rate plus GST. Never converted to the exclusive rate and back.
+ */
+export function servicePrice(item: PricedItem): number {
+  if (item.taxInclusive && typeof item.price === "number") return item.price;
+  return priceWithGst(item.rate, item.gstRate);
+}
+
+/**
+ * The GST-inclusive amount of a booked service line (`rate` / `gstRate` as saved on the appointment), given the
+ * catalogue item now (`live`, if still there): null for a service priced before GST (the bill adds GST on top as
+ * usual). For a tax-inclusive price it is the catalogue's price while the saved rate still matches it, else the price
+ * recovered from the saved rate (`inclusiveOfRate`) — never `rate + GST`, which drifts by a paisa.
+ */
+export function bookedInclusive(line: { rate: number; gstRate: number }, live: PricedItem | null | undefined): number | null {
+  if (!live?.taxInclusive || !line.gstRate) return null;
+  if (live.rate === line.rate && live.gstRate === line.gstRate && typeof live.price === "number") return live.price;
+  return inclusiveOfRate(line.rate, line.gstRate);
+}
+
+/** What a customer pays for a booked service line, GST included. */
+export const bookedPrice = (line: { rate: number; gstRate: number }, live: PricedItem | null | undefined) =>
+  bookedInclusive(line, live) ?? priceWithGst(line.rate, line.gstRate);
