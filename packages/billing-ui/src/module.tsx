@@ -4,23 +4,33 @@ import * as React from "react";
 import {
   BarChart3Icon,
   BellRingIcon,
+  BookMarkedIcon,
   BookOpenIcon,
+  BookTextIcon,
   BoxesIcon,
   BuildingIcon,
+  CalendarDaysIcon,
   ClipboardListIcon,
   CreditCardIcon,
   FileTextIcon,
   HandCoinsIcon,
+  LandmarkIcon,
   LayoutDashboardIcon,
+  ListTreeIcon,
+  LockIcon,
   PackageIcon,
+  PercentIcon,
   PlusIcon,
   ReceiptIndianRupeeIcon,
+  ScaleIcon,
+  TrendingUpIcon,
   TruckIcon,
   UsersIcon,
   WalletCardsIcon,
   WarehouseIcon,
 } from "lucide-react";
 import { ModuleDashboard, type NavSection, type RouteDef, type WebModule, type WidgetDef } from "@srirealtime/web";
+import { ACC_POST, ACC_VIEW } from "./lib/accounting";
 import { EXPENSES_PERMISSION } from "./lib/access";
 import { billingMessages } from "./lib/messages";
 
@@ -39,6 +49,8 @@ export const BILLING_FEATURES = {
   expenses: "expenses",
   /** PDF downloads (@srirealtime/documents). */
   documents: "documents",
+  /** Double-entry books: chart of accounts, journal, ledgers, trial balance, P&L, balance sheet (@srirealtime/accounting). */
+  accounting: "accounting",
 } as const;
 
 const F = BILLING_FEATURES;
@@ -95,14 +107,27 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { href: "expenses", label: "billing.nav.expenses", icon: ReceiptIndianRupeeIcon, feature: F.expenses, permission: EXPENSES_PERMISSION },
   ];
 
+  const accounting = [
+    { href: "accounting", label: "billing.accounting.nav.overview", icon: BookMarkedIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/journal", label: "billing.accounting.nav.journal", icon: BookTextIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/day-book", label: "billing.accounting.nav.dayBook", icon: CalendarDaysIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/ledger", label: "billing.accounting.nav.ledger", icon: BookOpenIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/trial-balance", label: "billing.accounting.nav.trialBalance", icon: ScaleIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/profit-loss", label: "billing.accounting.nav.profitLoss", icon: TrendingUpIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/balance-sheet", label: "billing.accounting.nav.balanceSheet", icon: LandmarkIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/gst", label: "billing.accounting.nav.gst", icon: PercentIcon, feature: F.accounting, permission: ACC_VIEW },
+    { href: "accounting/accounts", label: "billing.accounting.nav.accounts", icon: ListTreeIcon, feature: F.accounting, permission: ACC_VIEW },
+  ];
+
   const nav: NavSection[] =
     layout === "sections"
       ? [
           { id: "sell", title: "billing.nav.sell", items: [home, ...sell] },
           { id: "stock", title: "billing.nav.stockGroup", items: stock },
           { id: "insights", title: "billing.nav.insights", items: insights },
+          { id: "accounting", title: "billing.accounting.nav.group", items: accounting },
         ]
-      : [{ id: "billing", title: "billing.nav.billing", items: [home, ...sell, ...stock, ...insights] }];
+      : [{ id: "billing", title: "billing.nav.billing", items: [home, ...sell, ...stock, ...insights, ...accounting] }];
 
   // Static segments before ":id" so "invoices/new" isn't read as a bill id.
   const routes: RouteDef[] = [
@@ -131,6 +156,20 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "payables", component: page(() => import("./pages/payables")), feature: F.purchases },
     { path: "reports", component: page(() => import("./pages/reports")), feature: F.reports },
     { path: "expenses", component: page(() => import("./pages/expenses")), feature: F.expenses, permission: EXPENSES_PERMISSION },
+    // Accounting: static segments first, so "accounting/journal/new" isn't read as an id.
+    { path: "accounting", component: page(() => import("./pages/accounting")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/accounts", component: page(() => import("./pages/accounting-accounts")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/journal", component: page(() => import("./pages/accounting-journal")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/journal/new", component: page(() => import("./pages/accounting-journal-new")), feature: F.accounting, permission: ACC_POST },
+    { path: "accounting/day-book", component: page(() => import("./pages/accounting-day-book")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/ledger", component: page(() => import("./pages/accounting-ledger")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/trial-balance", component: page(() => import("./pages/accounting-trial-balance")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/profit-loss", component: page(() => import("./pages/accounting-profit-loss")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/balance-sheet", component: page(() => import("./pages/accounting-balance-sheet")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/gst", component: page(() => import("./pages/accounting-gst")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/checks", component: page(() => import("./pages/accounting-checks")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/settings", component: page(() => import("./pages/accounting-settings")), feature: F.accounting, permission: ACC_VIEW },
+    { path: "accounting/how-it-works", component: page(() => import("./pages/accounting-help")), feature: F.accounting, permission: ACC_VIEW },
   ];
 
   const widgetDefs: WidgetDef[] = [
@@ -171,6 +210,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
       { path: "", label: "billing.nav.settings", icon: BuildingIcon, feature: F.invoices, component: page(() => import("./pages/settings-profile")) },
       { path: "payments", label: "billing.nav.onlinePayments", icon: CreditCardIcon, feature: F.payments, component: page(() => import("./pages/settings-payments")) },
       { path: "reminders", label: "billing.nav.reminders", icon: BellRingIcon, feature: F.reminders, component: page(() => import("./pages/settings-reminders")) },
+      { path: "accounting", label: "billing.accounting.nav.settings", icon: LockIcon, feature: F.accounting, component: page(() => import("./pages/accounting-settings")) },
     ],
   };
 }

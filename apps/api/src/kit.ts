@@ -10,8 +10,10 @@ import { createCms } from "@srirealtime/cms";
 import { createConsent } from "@srirealtime/consent";
 import { createCoupons } from "@srirealtime/coupons";
 import { createDelivery, DELIVERY_TRACK_JOB } from "@srirealtime/delivery";
-import { createDocuments, type DocSeller } from "@srirealtime/documents";
+import { createDocuments, page, type DocSeller } from "@srirealtime/documents";
 import { createExpenses } from "@srirealtime/expenses";
+import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "@srirealtime/accounting";
+import { accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
@@ -136,7 +138,12 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   // Restaurant orders and kitchen tickets (created after invoices and catalogue); the order hooks reach it lazily.
   let diningRef: ReturnType<typeof createDining> | undefined;
   /** Developer webhooks (EventsPort). Never throws; a no-op until batch 3 exists. */
-  const emit = (tenantId: string, type: string, data: unknown) => (b3 ? b3.events.emit(tenantId, type, data) : Promise.resolve());
+  // Bill, payment and credit-note events also nudge the books (debounced; see kit-accounting.ts and docs/accounting.md).
+  let accountingRef: ReturnType<typeof createAccounting> | undefined;
+  const emit = (tenantId: string, type: string, data: unknown) => {
+    if (accountingRef && /^(invoice|payment|credit_note)\./.test(type)) accountingRef.service.kick(tenantId);
+    return b3 ? b3.events.emit(tenantId, type, data) : Promise.resolve();
+  };
   const events = { emit };
 
   const settings = createSettings({ db });
@@ -891,6 +898,39 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     log,
   });
 
+  // ---- accounting (double-entry books): reads bills, purchases, payments and expenses through ports; writes only its own tables.
+  const accountingDeps = {
+    db,
+    invoices: invoices.service,
+    inventory: inventory.service,
+    sellerState: async (tenantId: string) => ((await billingProfile.get({ tenantId })).stateCode as string | null | undefined) ?? null,
+    isEnabled: (tenantId: string, key: string) => features.service.isEnabled(tenantId, key),
+  };
+  const accounting = createAccounting({
+    db,
+    now: clock,
+    sources: accountingSources(accountingDeps),
+    stock: accountingStock(accountingDeps),
+    reconcile: accountingReconcile(accountingDeps),
+    features: features.gate,
+    shopName: async (tenantId) => {
+      const p = await billingProfile.get({ tenantId });
+      return (typeof p.legalName === "string" && p.legalName) || "";
+    },
+    log,
+  });
+  accountingRef = accounting;
+  // Report PDFs (trial balance, profit and loss ...): /v1/documents/accounting-report/<report>.pdf?from=&to=
+  documents.registry.register<ReportTable>({
+    key: "accounting-report",
+    paper: "A4",
+    feature: "accounting",
+    permission: "accounting.view",
+    load: (tenantId, id, ctx) => accounting.service.reportTable(tenantId, id, ctx.query).catch((err: { status?: number }) => (err?.status === 404 ? null : Promise.reject(err))),
+    render: (table, ctx) => page({ title: table.title, paper: "A4", locale: ctx.locale, branding: ctx.branding, css: REPORT_CSS, body: reportBodyHtml(table) }),
+    filename: (table) => `${table.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`,
+  });
+
   /**
    * Trade-specific engines (scales, serials, jewellery) are in the app profiles of several trades; their features start
    * off for a shop and are switched on by its business pack (kit-verticals.ts `starter`), or by the owner.
@@ -1417,6 +1457,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     onboarding.module,
     analytics.module,
     expenses.module,
+    accounting.module,
     medicines.module,
     dining.module,
     aggregators.module,
@@ -1466,6 +1507,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     onboarding,
     analytics,
     expenses,
+    accounting,
     medicines,
     dining,
     aggregators,

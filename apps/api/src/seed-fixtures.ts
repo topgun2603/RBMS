@@ -44,6 +44,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "documents",
       "onboarding",
       "expenses",
+      // The shop's books (the owner switches them on).
+      "accounting",
       // Batch 3: counter help desk, loyalty points, WhatsApp inbox + campaigns, GST e-invoice / e-way bill, branches,
       // API keys + webhooks and the report builder.
       ...BATCH3_BL,
@@ -83,6 +85,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "analytics",
       "onboarding",
       "expenses",
+      // The shop's books (the owner switches them on).
+      "accounting",
       "custom-domain",
       // Batch 3: sellers (marketplace + KYC), chat, help desk + FAQ, loyalty, WhatsApp, e-invoice, API keys, reports.
       ...BATCH3_EC,
@@ -112,6 +116,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "documents",
       "onboarding",
       "expenses",
+      // The shop's books (the owner switches them on).
+      "accounting",
       ...BATCH3_BL,
       // Medicine details, batches + expiry (FEFO), prescriptions and the Schedule H1 register.
       "medicines.*",
@@ -155,6 +161,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "analytics",
       "onboarding",
       "expenses",
+      // The shop's books (the owner switches them on).
+      "accounting",
       "custom-domain",
       "chat",
       "support.*",
@@ -198,6 +206,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "analytics",
       "onboarding",
       "expenses",
+      // The shop's books (the owner switches them on).
+      "accounting",
       "custom-domain",
       "chat",
       "support.*",
@@ -239,8 +249,8 @@ const PLAN_ADDITIONS: Record<string, string[]> = {
     "pos.*",
     "subscriptions",
   ],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions"],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions"],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting"],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting"],
 };
 /** Limits added to the plans package's defaults: paired POS terminals (-1 = unlimited). */
 export const PLAN_LIMIT_ADDITIONS: Record<string, Record<string, number>> = {

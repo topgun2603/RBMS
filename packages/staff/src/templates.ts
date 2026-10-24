@@ -103,8 +103,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
   {
     key: "accountant",
     name: "Accountant",
-    description: "Reports, credit book, purchases and expenses.",
-    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage"],
+    description: "Reports, credit book, purchases and expenses, and the accounting books (journal entries, period lock).",
+    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*"],
   },
   {
     key: "demo",
@@ -149,6 +149,8 @@ export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (rea
     // Before POS terminals added pos.weigh.
     ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till", "medicines.dispense", "dining.serve", "dining.bill", "jobcards.view", "bookings.desk", "memberships.checkin", "serials.view", "jewellery.exchange"],
   ],
+  // Before the accounting books added accounting.*.
+  accountant: [["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage"]],
   // Before pharmacies added medicines.manage.
   "stock-keeper": [["catalogue.view", "catalogue.manage", "inventory.adjust", "inventory.transfer", "inventory.purchases"]],
   // Batch 1 (60011aa, 9ed3d7b): before the online store added cms.* and reviews.*.

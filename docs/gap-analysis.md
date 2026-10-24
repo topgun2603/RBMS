@@ -8,7 +8,7 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 
 | # | Area | Status | Evidence | Effort |
 |---|---|---|---|---|
-| 1 | Double-entry accounting: ledgers, day book, trial balance, P&L, balance sheet | Missing | No such tables/routes. Only `reports/profit` (expenses package) and the customer ledger (`packages/invoices/src/ledger.ts`). Accountants of Tally/Busy/Zoho users need these | L |
+| 1 | Double-entry accounting: ledgers, day book, trial balance, P&L, balance sheet | Done, Part A (2026-10-24) | `packages/accounting` (migration 0032): chart of accounts seeded per shop, immutable journal entries with reversal, period lock, automatic posting from bills, payments, receipts, credit notes, purchases, supplier payments, debit notes, expenses, till and stock adjustments (idempotent, versioned), day book, ledger and cash book, trial balance, P&L (with comparison), balance sheet, GST ledger, CSV and PDF, reconciliation with the credit book, Payables and the GST summaries; UI under Accounts in billing-ui. Reconciles to the paisa on ByteFix, Raja, Kumar and Theneer. Not done (Part B): bank statement import and reconciliation, TDS/TCS postings, depreciation, year-end close; design in `docs/accounting.md` | - |
 | 2 | Supplier payables: part-payments, supplier ledger/ageing, advances | Done (2026-10-23) | `purchase_payments` + `amount_paid`/`due_date` on purchases, supplier opening balance, lump "pay supplier" allocated oldest-first or to chosen bills, reversals, statement + CSV, advances on account (migration 0026; `packages/inventory/src/payables.ts`, `purchasing.ts`; UI: Payables, Supplier statement, Pay dialogs). Old `paid` flag kept (back-filled; `POST /purchases/:id/paid` now records/reverses payments). Not done: bank/cheque clearing, TDS on supplier payments | - |
 | 3 | Purchase workflow: PO, GRN, purchase returns / debit notes | Done (2026-10-23) | `purchase_orders` (draft/sent/partially_received/received/cancelled), `goods_receipts` (partial GRNs add stock, freight/other charges spread by value into cost), PO to bill (receive+bill or convert), `debit_notes` (stock out, balance reduced or refund recorded, numbered PO/GRN/DN per FY). Limits: bill uses PO rates, one bill per GRN, a GRN cancel does not rewind the moving-average cost, no quotes/RFQ, no PO WhatsApp. Batch 1 (2026-10-24) added: cancel a goods receipt (`POST /v1/inventory/goods-receipts/:id/cancel`: stock back out, order received quantities and status rewound; refused when billed or when the stock was already sold or moved; migration 0029) and the purchase-order PDF / print (`GET /v1/documents/purchase-order/:id.pdf`, English + Tamil; Print and PDF buttons on the order page) | - |
 | 4 | Batch / expiry for non-pharmacy stock (FMCG, cosmetics, food) | Partial | Batches+expiry exist only in `packages/medicines`; `packages/inventory` has none | M |
@@ -26,7 +26,7 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 | 11 | Quotation / estimate / proforma / sale order / delivery challan | Missing | `INVOICE_STATUSES` = draft/issued/partially_paid/paid/cancelled; no document types (jobcards has estimates for repair only) | M |
 | 12 | Discount approval / manager override, per-user discount cap | Done (2026-10-24) | Per-role and per-member limits (max discount % per bill line and / or max discount per bill, table `staff_discount_limits`, `GET/PUT/DELETE /v1/staff/discount-limits`, Team & roles > Discount limits). Enforced on the server for `POST /v1/invoices` and `PATCH /v1/invoices/:id` (`apps/api/src/discount-guard.ts`): over the limit the API answers 403 `discount_approval_required`; the counter (POS) and the billing invoice form then ask a manager for their POS PIN (`x-approval-pin`); permission `invoices.discount-approve` (managers via `invoices.*`, owners/admins always), wrong PINs counted (5 per 5 minutes per cashier), approvals and refusals audited (`invoices.discount.approved` / `.approval_failed`). Owners, admins and anyone without a limit are not capped (existing shops unchanged). Not done: limits on quotes / orders / bill-level loyalty discount, offline POS queue approvals | - |
 | 13 | Shift / cash drawer close, Z-report | Partial | Till sessions with denomination counts, expected cash, X/close (`invoices/src/till.ts`, `pos-ui day-dialog`). Pay-in/out categories and multi-cashier handover not verified | S |
-| 14 | Bank reconciliation, bank accounts, cheque (PDC) tracking | Missing | "cheque" is only a payment-mode label; no statement import/match | M-L |
+| 14 | Bank reconciliation, bank accounts, cheque (PDC) tracking | Partial (bank accounts master done 2026-10-24) | bank accounts exist in the chart of accounts (`is_bank`, last 4 digits, IFSC) and payments by UPI/card/bank/cheque post to them (`docs/accounting.md`); statement import, matching and cheque (PDC) tracking are Part B | M-L |
 | 15 | TDS/TCS (194Q, 206C(1H), 194C etc.) | Missing | No calculation or reports | M |
 | 16 | Stock audit / physical count with variance | Missing | Only `adjust` + movements (`inventory/src/routes.ts`) | S-M |
 | 17 | Stock transfer between branches | Partial | `POST /transfers` is an immediate move (`stockTransfers`); no in-transit/receive-confirm, no challan/e-way for transfer | S-M |
@@ -54,7 +54,7 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 | 34 | WhatsApp / SMS | Done | `packages/whatsapp` (Meta + mock), `notify`, campaigns | - |
 | 35 | E-invoice IRN, e-way bill, cancel | Done | `packages/einvoice` (GSP driver + mock); real-GSP production use unproven | - |
 | 36 | HSN summary | Done | gstr1 hsn section, gst-tab | - |
-| 37 | Expenses | Partial | categories, entries, profit report; no recurring, no vendor link, no cash/bank accounts | S-M |
+| 37 | Expenses | Partial | categories, entries, profit report; no recurring, no vendor link, expenses now post to the books as cash or bank by payment method (`docs/accounting.md`) | S-M |
 | 38 | Roles / multi-user | Done | `packages/staff` templates + custom roles, POS PINs | - |
 | 39 | Multi-branch | Partial | `packages/branches`, branch locations, per-branch series; no consolidated cross-branch P&L view | M |
 | 40 | Audit log | Done | `packages/audit` with CSV | - |
@@ -74,14 +74,14 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 
 ## Counts (45 items)
 
-Done 21, Partial 14, Missing 10. By severity: Critical 8, High 15, Medium/Low 22.
+Done 22, Partial 14, Missing 9. By severity: Critical 8, High 15, Medium/Low 22.
 
 ## Recommended order
 
 1. ~~Supplier payments + payables ageing + purchase returns/debit notes (#2, #3, #20)~~ done 2026-10-23
 2. ~~Offline billing queue (#6)~~ (built 2026-10-24; needs a browser pass) and ~~direct ESC/POS/WebUSB printing (#7)~~ (built 2026-10-24; needs a hardware pass)
 3. ~~Vyapar/Tally/Busy importers incl. opening balances (#5) and Tally export (#22)~~ done 2026-10-24
-4. Simple accounting layer: day book, cash/bank books, P&L, balance sheet, trial balance (#1, #14)
+4. ~~Simple accounting layer: day book, cash/bank books, P&L, balance sheet, trial balance (#1)~~ done 2026-10-24 (Part A); bank reconciliation (#14) is Part B
 5. GST completeness: 3B with ITC/RCM, GSTR-1 gaps, composition (#9, #10); TDS/TCS (#15)
 6. Stock: expiry batches for general items, stocktake, transfer receive flow, landed cost (#4, #16-18)
 7. Quotes/challans/sale orders (#11); ~~discount caps (#12)~~ done 2026-10-24; price tiers/UoM (#31)

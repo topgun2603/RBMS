@@ -218,6 +218,80 @@ describe("messages", () => {
   });
 });
 
+describe("accounting screens", () => {
+  const { en, ta } = billingMessages;
+  const files = [
+    "pages/accounting.tsx",
+    "pages/accounting-accounts.tsx",
+    "pages/accounting-journal.tsx",
+    "pages/accounting-journal-new.tsx",
+    "pages/accounting-day-book.tsx",
+    "pages/accounting-ledger.tsx",
+    "pages/accounting-trial-balance.tsx",
+    "pages/accounting-profit-loss.tsx",
+    "pages/accounting-balance-sheet.tsx",
+    "pages/accounting-gst.tsx",
+    "pages/accounting-checks.tsx",
+    "pages/accounting-settings.tsx",
+    "pages/accounting-help.tsx",
+    "components/accounting/parts.tsx",
+    "components/accounting/entry-dialog.tsx",
+    "module.tsx",
+  ];
+
+  it("defines every billing.accounting.* key the screens use, in English and Tamil", () => {
+    const used = new Set<string>();
+    for (const f of files) for (const m of readFileSync(join(__dirname, f), "utf8").matchAll(/["'`](billing\.accounting\.[a-zA-Z0-9_.]+)["'`]/g)) used.add(m[1]!);
+    const groups = ["cash_bank", "receivables", "stock", "tax_assets", "current_assets", "fixed_assets", "payables", "tax_liabilities", "current_liabilities", "loans", "capital", "sales", "other_income", "direct", "indirect"];
+    const sources = ["account_opening", "opening_parties", "invoice", "invoice_cancel", "invoice_payment", "customer_receipt", "credit_note", "purchase", "purchase_cancel", "supplier_payment", "supplier_payment_reversal", "debit_note", "debit_note_cancel", "expense", "expense_cancel", "till_difference", "till_cash", "stock_adjustment"];
+    const dynamic = [
+      ...["newEntry", "dayBook", "trialBalance", "profitLoss", "balanceSheet", "accounts", "settings", "howItWorks"].flatMap((k) => [`billing.accounting.nav.${k}`, `billing.accounting.about.${k}`]),
+      ...groups.flatMap((g) => [`billing.accounting.group.${g}`, `billing.accounting.groupAbout.${g}`]),
+      ...["asset", "liability", "equity", "income", "expense"].map((x) => `billing.accounting.type.${x}`),
+      ...["journal", "contra", "payment", "receipt", "auto", "reversal"].map((x) => `billing.accounting.voucher.${x}`),
+      ...sources.map((s) => `billing.accounting.source.${s}`),
+      ...["payment", "receipt", "contra", "journal"].map((k) => `billing.accounting.new.about.${k}`),
+      ...["payment", "receipt", "contra"].map((k) => `billing.accounting.new.preview.${k}`),
+      ...["trial_balance", "sales", "sales_taxable", "sales_returns", "receivables", "payables", "gst_output", "gst_input"].map((k) => `billing.accounting.checks.${k}`),
+      ...["invoice", "payment", "receipt", "creditNote", "purchase", "supplierPayment", "debitNote", "expense", "till", "stock", "opening"].flatMap((k) => [`billing.accounting.help.auto.${k}.when`, `billing.accounting.help.auto.${k}.what`]),
+      ...["lock", "reports", "basis", "stockValue", "limits"].flatMap((k) => [`billing.accounting.help.${k}Title`, `billing.accounting.help.${k}Body`]),
+    ];
+    const all = [...used, ...dynamic].filter((k) => !k.endsWith("."));
+    expect(all.filter((k) => !(k in en))).toEqual([]);
+    expect(all.filter((k) => !(k in ta))).toEqual([]);
+  });
+
+  it("has Tamil script in every Tamil accounting string (apart from numbers and symbols)", () => {
+    const keys = Object.keys(en).filter((k) => k.startsWith("billing.accounting."));
+    const latin = keys.filter((k) => !/[஀-௿]/.test(ta[k]!) && !/^[A-Z0-9 ()%/.{}+·#-]+$/i.test(ta[k]!));
+    expect(latin).toEqual([]);
+  });
+
+  it("keeps the same {placeholders} in both languages", () => {
+    const ph = (s: string) => [...s.matchAll(/\{(\w+)[,}]/g)].map((m) => m[1]).sort().join(",");
+    const bad = Object.keys(en).filter((k) => k.startsWith("billing.accounting.") && ph(en[k]!) !== ph(ta[k]!));
+    expect(bad).toEqual([]);
+  });
+
+  it("shows the accounting pages only with the accounting feature and the view permission", () => {
+    const m = billingModule();
+    const items = m.nav.flatMap((s) => s.items).filter((i) => i.href.startsWith("accounting"));
+    expect(items.length).toBeGreaterThanOrEqual(8);
+    for (const i of items) {
+      expect(i.feature, i.href).toBe("accounting");
+      expect(i.permission, i.href).toBe("accounting.view");
+    }
+    const routes = m.routes.filter((r) => r.path.startsWith("accounting"));
+    expect(routes.map((r) => r.path)).toEqual(expect.arrayContaining(["accounting", "accounting/accounts", "accounting/journal", "accounting/journal/new", "accounting/day-book", "accounting/ledger", "accounting/trial-balance", "accounting/profit-loss", "accounting/balance-sheet", "accounting/settings", "accounting/how-it-works"]));
+    expect(routes.find((r) => r.path === "accounting/journal/new")?.permission).toBe("accounting.post");
+    expect(m.settings?.find((s) => s.path === "accounting")?.feature).toBe("accounting");
+  });
+
+  it("is hidden for shops whose plan lacks the feature", () => {
+    expect(navHrefs("raja", mount("/")).some((h) => h.startsWith("/accounting"))).toBe(false);
+  });
+});
+
 describe("permission gating (Gated.permission)", () => {
   it("gates expenses nav and route by expenses.manage", () => {
     const m = billingModule();
