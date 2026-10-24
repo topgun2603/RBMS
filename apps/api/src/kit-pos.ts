@@ -5,7 +5,7 @@ import { forbidden, type AuditPort } from "@srirealtime/core";
 import { gstRateAtPrice } from "@srirealtime/gst";
 import { and, eq, gt, inArray, sql, type Db, type SQL } from "@srirealtime/db";
 import { stockItems } from "@srirealtime/inventory";
-import { createPos, type PosCatalogPort, type PosItem, type PosQuotaPort } from "@srirealtime/pos";
+import { createPos, type PosCatalogPort, type PosInvoicesPort, type PosItem, type PosQuotaPort } from "@srirealtime/pos";
 import { scaleItems } from "@srirealtime/scales";
 import type { TenancyService } from "@srirealtime/tenancy";
 import { toTenantRef } from "@srirealtime/tenancy";
@@ -132,6 +132,8 @@ export interface PosWiringDeps {
   shopName: (tenantId: string) => Promise<string | null>;
   branch: (tenantId: string, branchId: string) => Promise<{ id: string; locationId: string | null; active: boolean } | null>;
   billExists: (tenantId: string, invoiceId: string) => Promise<boolean>;
+  /** Offline billing: number blocks and bill sync (kit-pos-offline.ts). */
+  invoices?: PosInvoicesPort;
   audit: AuditPort;
   log: Logger;
 }
@@ -183,6 +185,7 @@ export function createPosWiring(d: PosWiringDeps) {
       },
     },
     bills: { exists: d.billExists },
+    ...(d.invoices ? { invoices: d.invoices } : {}),
     audit: d.audit,
     log: d.log,
   });

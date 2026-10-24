@@ -21,10 +21,12 @@ import {
   Switch,
   toast,
 } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { hasCashPayment, printDirectIfConfigured, resolvePrinterConfig } from "@srirealtime/receipt-print";
+import { describeError, useI18n, useOptionalShop } from "@srirealtime/web";
 import { fetchPdf, isNetworkError, sendBill, thermalPath } from "../lib/api";
 import { formatQty, mobileDigits, money, timeShort } from "../lib/format";
 import { reportNetwork } from "../lib/online";
+import { failureKey, fetchShopPrinting, kickDrawer, saleReceipt } from "../lib/printing";
 import { printPdfBlob, printReceiptInPage } from "../lib/print";
 import { storageKey, useLocalState } from "../lib/storage";
 import type { Invoice } from "../lib/types";
@@ -42,8 +44,9 @@ export interface CompletedSale {
 /** After a sale: big change due, print (thermal PDF, else the in-page 80 mm receipt), WhatsApp, next sale. */
 export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSale: () => void }) {
   const { t, locale } = useI18n();
-  const { has, tenant, terminal } = usePos();
+  const { has, tenant, terminal, shopName, seller, branch, cashier } = usePos();
   const inv = sale.invoice;
+  const shopBrand = useOptionalShop();
   const [printing, setPrinting] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [phone, setPhone] = React.useState(mobileDigits(sale.phone) ?? "");
@@ -55,27 +58,59 @@ export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSal
   const newSaleRef = React.useRef<HTMLButtonElement>(null);
   const printed = React.useRef(false);
 
-  const print = React.useCallback(async () => {
-    setPrinting(true);
-    try {
-      const blob = await fetchPdf(thermalPath(inv.id), { locale: locale === "ta" ? "ta" : undefined });
-      await printPdfBlob(blob);
-    } catch (err) {
-      if (isNetworkError(err)) reportNetwork(false);
-      // No thermal PDF (documents module off, offline, browser can't print a PDF frame): print the page receipt.
-      printReceiptInPage();
-    } finally {
-      setPrinting(false);
-      newSaleRef.current?.focus();
-    }
-  }, [inv.id, locale]);
+  const autoPrintRef = React.useRef(autoPrint);
+  autoPrintRef.current = autoPrint;
+
+  // Direct thermal printer (Settings → Printing) first; the thermal PDF / in-page receipt when none is set up or it fails.
+  const print = React.useCallback(
+    async (o: { drawer?: boolean; interactive?: boolean } = {}) => {
+      setPrinting(true);
+      try {
+        const direct = await printDirectIfConfigured({
+          tenant,
+          loadShop: fetchShopPrinting,
+          receipt: () => saleReceipt(inv, { locale, shopName, seller, branchName: branch?.name, cashier, change: sale.change, time: timeShort(Date.now()) }),
+          logoUrl: shopBrand?.logoUrl ?? null,
+          drawer: o.drawer,
+          direct: { interactive: o.interactive ?? true },
+        });
+        if (direct.handled) return;
+        if (direct.reason !== "not_configured") toast.warning(`${t(failureKey(direct.reason))} ${t("pos.printing.fellBack")}`);
+      } catch {
+        // fall through to the browser print
+      }
+      try {
+        const blob = await fetchPdf(thermalPath(inv.id), { locale: locale === "ta" ? "ta" : undefined });
+        await printPdfBlob(blob);
+      } catch (err) {
+        if (isNetworkError(err)) reportNetwork(false);
+        // No thermal PDF (documents module off, offline, browser can't print a PDF frame): print the page receipt.
+        printReceiptInPage();
+      } finally {
+        setPrinting(false);
+        newSaleRef.current?.focus();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one sale; the shop and seller details are stable for it
+    [inv.id, locale, tenant],
+  );
 
   React.useEffect(() => {
     newSaleRef.current?.focus();
-    if (autoPrint && !printed.current) {
-      printed.current = true;
-      void print();
-    }
+    if (printed.current) return;
+    printed.current = true;
+    // Once per sale: print automatically (with the drawer kick when cash was taken), or just open the drawer.
+    void (async () => {
+      const cfg = await resolvePrinterConfig(tenant, fetchShopPrinting);
+      const direct = cfg.transport !== "none";
+      const cash = hasCashPayment(inv);
+      if (autoPrintRef.current || (direct && cfg.autoPrint)) {
+        await print({ drawer: cash, interactive: false });
+      } else if (direct && cash && cfg.openDrawerOnCash) {
+        const r = await kickDrawer({ tenant, kind: "cash_sale", user: cashier, interactive: false });
+        if (!r.opened) toast.warning(t(failureKey(r.reason)));
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per sale
   }, [inv.id]);
 

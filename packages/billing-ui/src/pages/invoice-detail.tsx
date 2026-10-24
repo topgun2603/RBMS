@@ -14,6 +14,7 @@ import {
   useQueryParams,
   useRouteParams,
   useShop,
+  useTenantSlug,
 } from "@srirealtime/web";
 import {
   AlertTriangleIcon,
@@ -70,6 +71,7 @@ import { InvoiceDocument } from "../components/invoice-document";
 import { CancelDialog, PaymentDialog, ShareDialog } from "../components/invoice-dialogs";
 import { isOnlinePayment, MessagesTimeline, SendInvoiceButton } from "../components/payments/send-invoice";
 import { StatusBadge } from "../components/status-badge";
+import { printInvoiceDirect } from "../lib/direct-print";
 import { money } from "../lib/format";
 import { useDeleteInvoice, useInvoice, useInvoiceAction } from "../lib/queries";
 import { invoiceWarnings } from "../lib/queries-v2";
@@ -154,7 +156,7 @@ function useArrivalFlags() {
 }
 
 function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
-  const { t, formatDate } = useI18n();
+  const { t, formatDate, locale } = useI18n();
   const navigate = useModuleNavigate();
   const reduced = useReducedMotionSafe();
   const { shopName, logoUrl } = useShop();
@@ -167,7 +169,14 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   const pdf = usePdf();
   const pdfName = `${(inv.number ?? t("billing.status.draft")).replace(/[/\\]/g, "-")}.pdf`;
   const downloadPdf = () => void pdf.run("a4", PDF_PATHS.invoice(inv.id), { mode: "download", fallbackName: pdfName });
-  const printReceipt = () => void pdf.run("thermal", PDF_PATHS.invoiceThermal(inv.id), { mode: "open", fallbackName: pdfName });
+  const tenant = useTenantSlug();
+  const printReceipt = async () => {
+    // A direct thermal printer set up on this computer (counter Settings → Printing) is used first.
+    const direct = await printInvoiceDirect(inv, { tenant, locale, shopName, logoUrl });
+    if (direct === "printed") return;
+    if (direct === "failed") toast.warning(t("billing.detail.printFallback"));
+    void pdf.run("thermal", PDF_PATHS.invoiceThermal(inv.id), { mode: "open", fallbackName: pdfName });
+  };
   const [dialog, setDialog] = React.useState<DialogKind>(null);
   const [unpay, setUnpay] = React.useState<string | null>(null);
   const [celebrate, setCelebrate] = React.useState(flags.issued);

@@ -64,6 +64,7 @@ import {
   type AuditPort,
   type LoggerPort,
   type PosBillsPort,
+  type PosInvoicesPort,
   type PosBranchesPort,
   type PosCatalogPort,
   type PosCategory,
@@ -89,6 +90,8 @@ export interface PosDeps {
   quota?: PosQuotaPort;
   branches?: PosBranchesPort;
   bills?: PosBillsPort;
+  /** Invoices, for offline billing (number blocks and bill sync); without it those routes answer 503. */
+  invoices?: PosInvoicesPort;
   audit?: AuditPort;
   log?: LoggerPort;
   now?: () => Date;

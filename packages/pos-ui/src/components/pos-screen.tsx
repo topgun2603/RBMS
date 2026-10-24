@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangleIcon, CalendarClockIcon, ShoppingCartIcon, WalletIcon, WifiOffIcon } from "lucide-react";
+import { AlertTriangleIcon, CalendarClockIcon, ShoppingCartIcon, WalletIcon } from "lucide-react";
 import {
   AnimatedNumber,
   AnimatePresence,
@@ -44,6 +44,8 @@ import {
   type CartProduct,
 } from "../lib/cart";
 import { e164, money, timeShort, todayIST } from "../lib/format";
+import { buildSale, offlineBlocker, offlineInvoice, slipInvoice } from "../lib/offline/bill";
+import { newClientId } from "../lib/offline/queue";
 import { reportNetwork } from "../lib/online";
 import { fromBillingItem, fromLookup, looksLikeCode } from "../lib/products";
 import type { ShortcutAction } from "../lib/shortcuts";
@@ -74,6 +76,9 @@ import { VariantPicker } from "./variant-picker";
 import { WeightDialog } from "./weight-dialog";
 import { QuickAddDialog, type QuickAddTarget } from "./quick-add-dialog";
 import { QUICK_ADD_PERMISSION, shouldOfferQuickAdd } from "../lib/quick-add";
+import { OfflineBar } from "./offline/offline-bar";
+import { OfflineProvider, useOffline } from "./offline/offline-provider";
+import { PendingBillsDialog } from "./offline/pending-bills-dialog";
 
 interface CartState {
   lines: CartLine[];
@@ -84,7 +89,7 @@ interface CartState {
 
 const EMPTY_CART: CartState = { lines: [], customer: NO_CUSTOMER, points: 0 };
 
-type DialogKind = "pay" | "hold" | "holds" | "returns" | "day" | "help" | "camera" | "clear";
+type DialogKind = "pay" | "hold" | "holds" | "returns" | "day" | "help" | "camera" | "clear" | "pending" | "exit";
 
 /** The full-screen counter (covers the app shell). */
 
@@ -109,7 +114,9 @@ async function lookupOrResolve(code: string): Promise<{ variant?: VariantLookup;
 export function PosScreen() {
   return (
     <PosProvider>
-      <WithCatalog />
+      <OfflineProvider>
+        <WithCatalog />
+      </OfflineProvider>
     </PosProvider>
   );
 }
@@ -138,6 +145,7 @@ async function serverHit(code: string, catalogue: boolean): Promise<ServerHit | 
 function Counter() {
   const env = usePos();
   const catalog = useCatalog();
+  const offline = useOffline();
   const { t } = useI18n();
   const qc = useQueryClient();
   const appNavigate = useAppNavigate();
@@ -384,7 +392,49 @@ function Counter() {
 
   const approval = useDiscountApproval();
 
+  /** The attempt key of the bill being made: the same cart retried is the same bill (Idempotency-Key). */
+  const billKey = React.useRef<{ sig: string; key: string } | null>(null);
+
+  /** No connection: the sale is saved on this device (with its number) and synced later. */
+  const completeOffline = async (r: PaymentResult): Promise<boolean> => {
+    const blocker = offlineBlocker(lines, r.points > 0 || r.tenders.credit > 0 ? ["credit"] : []);
+    if (blocker) {
+      toast.error(t(blocker === "ticket" ? "pos.off.noTickets" : "pos.off.noCredit"));
+      return false;
+    }
+    const date = todayIST();
+    const payments = paymentsFor(r.settlement, r.tenders, r.refs);
+    const built = buildSale({
+      lines,
+      customer,
+      phone,
+      payments,
+      ...(dayOpen ? { tillSessionId: till!.id } : {}),
+      cashier: env.cashier,
+      date,
+      now: new Date(),
+      walkInName: t("pos.customer.walkInName"),
+      sellerState,
+      placeOfSupply,
+    });
+    let bill;
+    try {
+      bill = await offline.enqueue(built);
+    } catch {
+      toast.error(t("pos.off.saveFailed"));
+      return false;
+    }
+    const inv = offlineInvoice(bill)!;
+    setCart(EMPTY_CART);
+    setSelected(null);
+    setDialog(null);
+    setSale({ invoice: inv, change: r.settlement.change, credit: 0, failedPayments: [], phone });
+    toast.success(t("pos.off.savedToast", { number: bill.number }));
+    return true;
+  };
+
   const complete = async (r: PaymentResult): Promise<boolean> => {
+    if (!env.online.online) return completeOffline(r);
     const date = todayIST();
     const tillSessionId = dayOpen ? till!.id : undefined;
     const input: CreateBillInput = { date, lines: lines.map(toLineInput), issue: true, ...(tillSessionId ? { tillSessionId } : {}) };
@@ -395,7 +445,11 @@ function Counter() {
     let inv;
     try {
       // A discount above the cashier's limit asks for a manager's PIN (server-enforced) and repeats the bill with it.
-      inv = await approval.run((pin) => createBill(input, pin));
+      const sig = JSON.stringify(input);
+      if (billKey.current?.sig !== sig) billKey.current = { sig, key: newClientId() };
+      const key = billKey.current.key;
+      inv = await approval.run((pin) => createBill(input, pin, key));
+      billKey.current = null;
       reportNetwork(true);
     } catch (err) {
       if (err instanceof ApprovalCancelled) return false;
@@ -530,14 +584,19 @@ function Counter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the till state is known
   }, [env.sellerLoading, branchReady, tillQuery.isSuccess, env.online.online]);
 
-  const exit = () => {
+  const doExit = () => {
     // On a paired terminal "Exit" locks it for the next cashier.
     if (env.terminal) env.terminal.lock("locked");
     else appNavigate("/");
   };
+  // Leaving (or locking) with bills that haven't reached the server asks first: they stay safe on this device.
+  const exit = () => {
+    if (offline.counts.pending > 0) setDialog("exit");
+    else doExit();
+  };
 
   const editing = editKey ? (lines.find((l) => l.key === editKey) ?? null) : null;
-  const payBlocked = !env.online.online ? t("pos.offline.payTitle") : null;
+  const payBlocked = !env.online.online ? t("pos.off.payOfflineTitle") : null;
 
   const cartPanel = (
     <CartPanel
@@ -582,22 +641,7 @@ function Counter() {
         onExit={exit}
       />
 
-      <AnimatePresence initial={false}>
-        {!env.online.online && (
-          <motion.div
-            key="offline"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-destructive text-white dark:bg-destructive/60"
-            role="alert"
-          >
-            <p className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium">
-              <WifiOffIcon className="size-4" /> {t("pos.offline.banner")}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <OfflineBar onOpen={() => setDialog("pending")} />
       {!env.sellerLoading && !env.sellerState && (
         <div className="flex items-center justify-center gap-2 bg-warning/20 px-3 py-2 text-sm" role="alert">
           <AlertTriangleIcon className="size-4" /> {t("pos.profile.body")}
@@ -774,6 +818,27 @@ function Counter() {
         canTill={env.can.till}
       />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
+      <PendingBillsDialog
+        open={dialog === "pending"}
+        onClose={() => setDialog(null)}
+        onShowSlip={(b) => {
+          const inv = slipInvoice(b);
+          if (!inv) return;
+          setDialog(null);
+          setSale({ invoice: inv, change: 0, credit: 0, failedPayments: [], phone: b.payload.customer?.phone ?? null });
+        }}
+      />
+      <ConfirmDialog
+        open={dialog === "exit"}
+        onOpenChange={(o) => !o && setDialog(null)}
+        title={t("pos.off.exitTitle")}
+        description={t(env.online.online ? "pos.off.exitBodyOnline" : "pos.off.exitBodyOffline", { count: offline.counts.pending })}
+        confirmLabel={t(env.terminal ? "pos.off.exitLock" : "pos.off.exitLeave")}
+        onConfirm={() => {
+          setDialog(null);
+          doExit();
+        }}
+      />
       {approval.dialog}
       <ConfirmDialog
         open={dialog === "clear"}

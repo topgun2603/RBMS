@@ -1,4 +1,6 @@
 import type { AuditPort, FeatureDef, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { DbOrTx } from "@srirealtime/db";
+import type { OfflineFlag } from "./schema";
 
 /** One sellable line of the POS catalogue (docs/pos-terminals.md `PosItem`). Money in paise. */
 export interface PosItem {
@@ -104,6 +106,71 @@ export interface PosBranchesPort {
 
 export interface PosBillsPort {
   exists(tenantId: string, invoiceId: string): Promise<boolean>;
+}
+
+/** A block of consecutive invoice numbers taken from a (branch, FY) series. */
+export interface PosSeqBlock {
+  branchId: string | null;
+  fy: string;
+  prefix: string;
+  fromSeq: number;
+  toSeq: number;
+}
+
+export interface PosOfflineIssueInput {
+  /** Bill date (IST day the cashier made it). */
+  date: string;
+  branchId: string | null;
+  customerId?: string;
+  customer?: { name: string; phone?: string };
+  /** Invoice API lines, exactly as the counter built them (rate, gstRate, discount, itemId ...). */
+  lines: Record<string, unknown>[];
+  notes?: string;
+  tillSessionId?: string;
+  userId: string;
+  /** A reserved number to issue with (FY, prefix and sequence). */
+  preset?: { fy: string; prefix: string; seq: number };
+}
+
+export interface PosOfflineIssued {
+  invoiceId: string;
+  number: string;
+  fy: string;
+  seq: number;
+  total: number;
+  paid: number;
+  balance: number;
+  /** customer_missing / till_closed noticed while issuing. */
+  flags: OfflineFlag[];
+}
+
+export interface PosBillInfo {
+  invoiceId: string;
+  number: string | null;
+  total: number;
+  paid: number;
+  balance: number;
+}
+
+/** The host's view of the invoices module for offline bills (apps/api kit-pos.ts). */
+export interface PosInvoicesPort {
+  /** Takes `count` numbers; `inTx` runs in the same transaction (records the block atomically with the numbers). */
+  reserveBlock(
+    tenant: TenantRef,
+    q: { branchId: string | null; count: number },
+    inTx: (tx: DbOrTx, block: PosSeqBlock) => Promise<void>,
+  ): Promise<PosSeqBlock>;
+  /** Issues the bill (customer fallback, till fallback); throws AppError for refusals. */
+  issue(tenant: TenantRef, input: PosOfflineIssueInput): Promise<PosOfflineIssued>;
+  /** Records the payments taken at the counter; a payment that is refused is reported as a flag, never thrown. */
+  pay(
+    tenant: TenantRef,
+    invoiceId: string,
+    input: { date: string; payments: { method: "cash" | "upi" | "card"; amount: number; reference?: string }[]; tillSessionId?: string; userId: string },
+  ): Promise<{ paid: number; balance: number; flags: OfflineFlag[] }>;
+  get(tenant: TenantRef, invoiceId: string): Promise<PosBillInfo | null>;
+  /** The bill that holds a reserved number, if any. */
+  findBySeq(tenant: TenantRef, q: { branchId: string | null; fy: string; seq: number }): Promise<PosBillInfo | null>;
 }
 
 export interface LoggerPort {

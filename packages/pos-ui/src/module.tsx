@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MonitorSmartphoneIcon, ScanBarcodeIcon } from "lucide-react";
+import { MonitorSmartphoneIcon, PrinterIcon, ScanBarcodeIcon } from "lucide-react";
 import type { RouteDef, SettingsPage, WebModule } from "@srirealtime/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "./lib/access";
 import { posMessages } from "./lib/messages";
@@ -16,7 +16,7 @@ export interface PosModuleOptions {
 /** Terminal mode (pairing, PIN lock, the counter or the weighing station on a paired device), module-relative. */
 export const POS_TERMINAL_PATH = "terminal";
 /** Settings pages the module claims under the app's /settings. */
-export const POS_SETTINGS_PATHS = { terminals: "pos-terminals" } as const;
+export const POS_SETTINGS_PATHS = { terminals: "pos-terminals", printing: "pos-printing" } as const;
 
 const page = (load: () => Promise<{ default: React.ComponentType }>) => React.lazy(load);
 
@@ -37,6 +37,15 @@ export function posModule(opts: PosModuleOptions = {}): WebModule {
       feature: POS_FEATURES.terminals,
       permission: POS_PERMISSIONS.devices,
       component: page(() => import("./pages/terminals")),
+    },
+    // Direct thermal printer + cash drawer of this computer (per device), receipt layout (device or shop default).
+    {
+      path: POS_SETTINGS_PATHS.printing,
+      label: "pos.nav.printing",
+      icon: PrinterIcon,
+      feature: POS_FEATURES.invoices,
+      permission: POS_PERMISSIONS.create,
+      component: page(() => import("./pages/printing")),
     },
   ];
   return {

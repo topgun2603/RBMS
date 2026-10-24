@@ -112,6 +112,12 @@ export function ReturnsDialog({ open, onClose, tillSessionId, onDone }: { open: 
           <DialogTitle>{t("pos.returns.title")}</DialogTitle>
           <DialogDescription>{t("pos.returns.body")}</DialogDescription>
         </DialogHeader>
+        {!online.online && (
+          <Alert variant="warning">
+            <InfoIcon />
+            <AlertDescription>{t("pos.off.returnsOffline")}</AlertDescription>
+          </Alert>
+        )}
 
         {step.kind === "find" && (
           <div className="grid gap-3">

@@ -86,8 +86,12 @@ export function PaymentDialog(props: PaymentDialogProps) {
   const cashRef = React.useRef<HTMLInputElement>(null);
 
   const phone = customerPhone(customer);
-  const showPoints = has.loyalty && !!phone;
-  const methods: Method[] = ["cash", "upi", "card", ...(has.creditBook ? (["credit"] as const) : []), ...(showPoints ? (["points"] as const) : [])];
+  // Offline the bill is saved on this device: only money taken at the counter (cash, UPI, card). The credit book and
+  // loyalty points need the server (docs/offline-billing.md).
+  const offlineMode = !online.online;
+  const showPoints = has.loyalty && !!phone && !offlineMode;
+  const creditOn = has.creditBook && !offlineMode;
+  const methods: Method[] = ["cash", "upi", "card", ...(creditOn ? (["credit"] as const) : []), ...(showPoints ? (["points"] as const) : [])];
 
   const pointValue = quote?.pointValuePaise ?? 0;
   const pointsDiscount = points * pointValue;
@@ -97,10 +101,10 @@ export function PaymentDialog(props: PaymentDialogProps) {
     cash: rupeesToPaise(text.cash) ?? 0,
     upi: rupeesToPaise(text.upi) ?? 0,
     card: rupeesToPaise(text.card) ?? 0,
-    credit: has.creditBook ? (rupeesToPaise(text.credit) ?? 0) : 0,
+    credit: creditOn ? (rupeesToPaise(text.credit) ?? 0) : 0,
   };
-  const s = settle(payable, tenders, { upiConfirmed, hasCustomer: customer.kind === "saved", creditAllowed: has.creditBook });
-  const blocked = !online.online ? "offline" : !sellerState ? "profile" : null;
+  const s = settle(payable, tenders, { upiConfirmed, hasCustomer: customer.kind === "saved", creditAllowed: creditOn });
+  const blocked = !sellerState ? "profile" : null;
 
   // Fresh dialog every time it opens.
   React.useEffect(() => {
@@ -136,7 +140,7 @@ export function PaymentDialog(props: PaymentDialogProps) {
     // Nothing entered: F10 / "Exact cash" takes the exact amount in cash.
     if (exactCashIfEmpty && tenders.cash + tenders.upi + tenders.card + tenders.credit === 0) {
       tnd = { ...tenders, cash: payable };
-      st = settle(payable, tnd, { upiConfirmed, hasCustomer: customer.kind === "saved", creditAllowed: has.creditBook });
+      st = settle(payable, tnd, { upiConfirmed, hasCustomer: customer.kind === "saved", creditAllowed: creditOn });
       setText((x) => ({ ...x, cash: paiseToInput(payable) }));
     }
     if (!st.ok) return;
@@ -176,12 +180,21 @@ export function PaymentDialog(props: PaymentDialogProps) {
           <DialogDescription>{t("pos.pay.body")}</DialogDescription>
         </DialogHeader>
 
+        {offlineMode && (
+          <div className="px-5 pt-4">
+            <Alert variant="warning">
+              <WifiOffIcon />
+              <AlertTitle>{t("pos.off.payOfflineTitle")}</AlertTitle>
+              <AlertDescription>{t("pos.off.payOfflineBody")}</AlertDescription>
+            </Alert>
+          </div>
+        )}
         {blocked && (
           <div className="px-5 pt-4">
-            <Alert variant={blocked === "offline" ? "destructive" : "warning"}>
+            <Alert variant="warning">
               <WifiOffIcon />
-              <AlertTitle>{t(blocked === "offline" ? "pos.offline.payTitle" : "pos.profile.title")}</AlertTitle>
-              <AlertDescription>{t(blocked === "offline" ? "pos.offline.payBody" : "pos.profile.body")}</AlertDescription>
+              <AlertTitle>{t("pos.profile.title")}</AlertTitle>
+              <AlertDescription>{t("pos.profile.body")}</AlertDescription>
             </Alert>
           </div>
         )}

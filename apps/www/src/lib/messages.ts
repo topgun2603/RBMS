@@ -1,8 +1,8 @@
 import { enMore, taMore } from "./messages-more";
-import { enSignIn, taSignIn } from "./messages-signin";
 import { enMfa, taMfa } from "./messages-mfa";
-
+import { enSignIn, taSignIn } from "./messages-signin";
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
+
 /**
  * Marketing-site strings, English + Tamil. The audience is Tamil Nadu shop owners: plain words, Tamil that reads
  * naturally (கடன் கணக்கு for the credit book — never Hindi terms such as "Khata").
@@ -58,9 +58,9 @@ export const en: Messages = {
   "strip.upi": "UPI, card and cash",
   "strip.phone": "Works on any phone",
   "strip.print": "Thermal and A4 printing",
-
   "strip.trades": "29 trade setups",
   "strip.counters": "Multiple counters and weighing",
+
   "products.eyebrow": "Two products, one account",
   "products.title": "Start with what your shop needs",
   "products.body": "Pick Billing for the counter or Online Store to sell on the internet. Pharmacy, restaurant and service trades get their extra tools on top. One phone number signs you in to all your shops.",
@@ -130,7 +130,6 @@ export const en: Messages = {
   "faq.home.5.a": "No. Pick the one you need when you sign up. Both use the same account, so one phone number opens all your shops.",
   "faq.home.6.q": "What happens to my data if I stop paying?",
   "faq.home.6.a": "Nothing is deleted. Your shop moves to the Free plan and its limits apply to new bills; everything you made before stays available.",
-
   "faq.home.7.q": "Can I run more than one counter?",
   "faq.home.7.a": "Yes. Add a terminal for each counter, pair a computer, tablet or phone with a code or QR, and give every cashier a PIN. All counters share one stock list. How many terminals you can add depends on your plan.",
   "faq.home.8.q": "Does it work with a weighing scale?",
@@ -143,6 +142,7 @@ export const en: Messages = {
   "faq.home.11.a": "Srirealtime has setups for 29 trades, from kirana and textiles to pharmacy, jewellery, salons and repair shops. If yours is not listed, a general setup works, and you can tell us your trade.",
   "faq.home.12.q": "Does it work without internet?",
   "faq.home.12.a": "Billing needs an internet connection. The counter keeps your item list on the device, so search and scanning stay quick on a slow connection. Offline billing is not available yet.",
+
   "billing.meta.title": "Billing software for shops: GST bills, credit book, POS",
   "billing.meta.description": "GST billing for Tamil Nadu shops: fast bills, credit book with WhatsApp reminders, POS counters with staff PINs, weighing station, purchases, stock and GST reports. In English and Tamil.",
   "billing.eyebrow": "Srirealtime Billing",
@@ -160,13 +160,13 @@ export const en: Messages = {
   "billing.f.5.body": "Daily sales, profit, dues and top items. Rate-wise and HSN-wise GST summaries with GSTR-1 and GSTR-3B figures for your accountant, downloadable as CSV or Excel.",
   "billing.f.6.title": "Staff and branches",
   "billing.f.6.body": "Give each person their own login with only the screens they need. Add branches as you grow.",
-  "billing.mock.title": "What your customer receives",
   "billing.f.7.title": "Weighing station",
   "billing.f.7.body": "Weigh loose goods, print a ticket with a barcode, and the cashier scans it. Prices always come from your price list, never typed in.",
   "billing.f.8.title": "Tools for your trade",
   "billing.f.8.body": "Batches, expiry and the H1 register for pharmacy. Serials and warranty for electronics. Tables and KOT for restaurants. Job cards, bookings and memberships for service trades.",
   "billing.f.9.title": "One account, many ways to sell",
   "billing.f.9.body": "Online store orders reduce the same stock as the counter, and online shoppers appear in your customer list and credit book.",
+  "billing.mock.title": "What your customer receives",
   "billing.mock.body": "A clean GST bill on WhatsApp with a UPI link to pay the balance.",
 
   "store.meta.title": "Online store for your shop: website, UPI checkout, WhatsApp orders",
@@ -186,7 +186,6 @@ export const en: Messages = {
   "store.f.5.body": "Pages are built for search engines, with product details Google understands.",
   "store.f.6.title": "Offers and loyalty",
   "store.f.6.body": "Coupons, festival sales, reviews and points to bring customers back.",
-  "store.mock.title": "What your customers see",
   "store.f.7.title": "20+ store looks",
   "store.f.7.body": "A ready-made look for each trade. Build your home page from blocks: banners, best sellers, flash sale, deal of the day, find-your-size, shop-by-shade, gold-rate board, menu board.",
   "store.f.8.title": "Delivery zones and pickup",
@@ -199,6 +198,7 @@ export const en: Messages = {
   "store.f.11.body": "For restaurants, cloud kitchens and tea stalls: Half and Full portions, veg and non-veg marks, delivery or pickup, minimum order, and orders straight to the kitchen display.",
   "store.f.12.title": "Tamil and English",
   "store.f.12.body": "Your store, products and pages in both languages, with a language switch for the shopper.",
+  "store.mock.title": "What your customers see",
   "store.mock.body": "A storefront in your colours, in English and Tamil, with a cart that just works.",
 
   "product.faq": "Questions about {product}",
@@ -257,8 +257,8 @@ export const en: Messages = {
   "cmp.invoices.whatsapp": "Share bills on WhatsApp",
   "cmp.invoices.reports": "Sales reports",
   "cmp.invoices.credit-book": "Credit book",
-  "cmp.invoices.gst-reports": "GST reports (GSTR-1, 3B)",
   "cmp.pos": "Pair counters with staff PINs",
+  "cmp.invoices.gst-reports": "GST reports (GSTR-1, 3B)",
   "cmp.inventory": "Stock and purchases",
   "cmp.payments": "UPI and payment links",
   "cmp.gst-einvoice": "E-invoice (IRN)",
@@ -285,8 +285,8 @@ export const en: Messages = {
   "cmp.expenses": "Expense tracking",
   "cmp.limit.invoices_per_month": "Invoices a month",
   "cmp.limit.staff": "Team members",
-  "cmp.limit.storage_mb": "File storage",
   "cmp.limit.pos_terminals": "POS counters (terminals)",
+  "cmp.limit.storage_mb": "File storage",
   "cmp.limit.sms_per_month": "SMS a month",
   "cmp.limit.whatsapp_per_month": "WhatsApp messages a month",
   "cmp.feature.remove_branding": "Remove Srirealtime branding",
@@ -476,9 +476,9 @@ export const en: Messages = {
   "mock.credit.c1": "Selvi",
   "mock.credit.c2": "Murugan",
   "mock.credit.c3": "Lakshmi",
+  ...enMore,
   ...enSignIn,
   ...enMfa,
-  ...enMore,
 };
 export const ta: Messages = {
   "brand.name": "Srirealtime",
@@ -531,10 +531,10 @@ export const ta: Messages = {
   "strip.upi": "UPI, கார்டு, ரொக்கம்",
   "strip.phone": "எந்த போனிலும் இயங்கும்",
   "strip.print": "தெர்மல், A4 பிரிண்ட்",
-
-  "products.eyebrow": "இரண்டு தயாரிப்புகள், ஒரே கணக்கு",
   "strip.trades": "29 தொழில் அமைப்புகள்",
   "strip.counters": "பல கவுண்டர்கள், எடை நிலையம்",
+
+  "products.eyebrow": "இரண்டு தயாரிப்புகள், ஒரே கணக்கு",
   "products.title": "உங்கள் கடைக்குத் தேவையானதில் தொடங்குங்கள்",
   "products.body": "கவுண்டருக்கு பில்லிங், இணையத்தில் விற்க ஆன்லைன் ஸ்டோர். மருந்தகம், உணவகம், சேவைத் தொழில்களுக்கு கூடுதல் கருவிகள் சேரும். ஒரே போன் எண்ணில் உங்கள் எல்லாக் கடைகளும் திறக்கும்.",
   "products.billing.title": "பில்லிங்",
@@ -603,8 +603,6 @@ export const ta: Messages = {
   "faq.home.5.a": "இல்லை. பதிவு செய்யும்போது தேவையானதைத் தேர்ந்தெடுங்கள். இரண்டுக்கும் ஒரே கணக்கு; ஒரே போன் எண்ணில் எல்லாக் கடைகளும் திறக்கும்.",
   "faq.home.6.q": "கட்டணம் நிறுத்தினால் என் தரவு என்னாகும்?",
   "faq.home.6.a": "எதுவும் நீக்கப்படாது. உங்கள் கடை இலவசத் திட்டத்துக்கு மாறும்; அதன் வரம்புகள் புதிய பில்களுக்கு மட்டும். முன்பு செய்த அனைத்தும் அப்படியே இருக்கும்.",
-
-  "billing.meta.title": "கடைகளுக்கான பில்லிங் மென்பொருள்: GST பில், கடன் கணக்கு, POS",
   "faq.home.7.q": "ஒன்றுக்கு மேற்பட்ட கவுண்டர் நடத்தலாமா?",
   "faq.home.7.a": "ஆம். ஒவ்வொரு கவுண்டருக்கும் ஒரு டெர்மினலைச் சேர்த்து, கணினி, டேப்லெட் அல்லது போனைக் குறியீடு அல்லது QR மூலம் இணைக்கலாம்; ஒவ்வொரு காசாளருக்கும் PIN கொடுக்கலாம். எல்லாக் கவுண்டர்களுக்கும் ஒரே இருப்புப் பட்டியல். எத்தனை டெர்மினல்கள் என்பது உங்கள் திட்டத்தைப் பொறுத்தது.",
   "faq.home.8.q": "எடை தராசுடன் இயங்குமா?",
@@ -617,6 +615,8 @@ export const ta: Messages = {
   "faq.home.11.a": "மளிகை, ஜவுளி முதல் மருந்தகம், நகை, சலூன், ரிப்பேர் கடை வரை 29 தொழில்களுக்கு அமைப்புகள் உள்ளன. உங்களுடையது பட்டியலில் இல்லையென்றால் பொதுவான அமைப்பைப் பயன்படுத்தலாம்; உங்கள் தொழிலை எங்களுக்குச் சொல்லுங்கள்.",
   "faq.home.12.q": "இணையம் இல்லாமல் இயங்குமா?",
   "faq.home.12.a": "பில் போட இணைய இணைப்பு தேவை. பொருள் பட்டியல் சாதனத்திலேயே இருப்பதால் மெதுவான இணைப்பிலும் தேடலும் ஸ்கேனும் வேகமாக இருக்கும். இணையம் இல்லாமல் பில் போடும் வசதி இன்னும் இல்லை.",
+
+  "billing.meta.title": "கடைகளுக்கான பில்லிங் மென்பொருள்: GST பில், கடன் கணக்கு, POS",
   "billing.meta.description": "தமிழ்நாட்டுக் கடைகளுக்கான GST பில்லிங்: வேகமான பில், WhatsApp நினைவூட்டலுடன் கடன் கணக்கு, பணியாளர் PIN-உடன் POS கவுண்டர்கள், எடை நிலையம், கொள்முதல், இருப்பு, GST அறிக்கைகள். தமிழிலும் ஆங்கிலத்திலும்.",
   "billing.eyebrow": "Srirealtime பில்லிங்",
   "billing.title": "நொடியில் பில், கட்டுக்குள் நிலுவை",
@@ -633,14 +633,14 @@ export const ta: Messages = {
   "billing.f.5.body": "தினசரி விற்பனை, லாபம், நிலுவை, அதிகம் விற்றவை. ஆடிட்டருக்கான வரி வாரி, HSN வாரி GST சுருக்கமும் GSTR-1, GSTR-3B தொகைகளும்; CSV அல்லது Excel-ஆகப் பதிவிறக்கலாம்.",
   "billing.f.6.title": "பணியாளர்களும் கிளைகளும்",
   "billing.f.6.body": "ஒவ்வொருவருக்கும் தேவையான திரைகளுடன் தனி உள்நுழைவு. வளர வளர கிளைகளைச் சேர்க்கலாம்.",
-  "billing.mock.title": "உங்கள் வாடிக்கையாளருக்குக் கிடைப்பது",
-  "billing.mock.body": "மீதியைச் செலுத்த UPI இணைப்புடன், WhatsApp-ல் தெளிவான GST பில்.",
   "billing.f.7.title": "எடை நிலையம்",
   "billing.f.7.body": "உதிரிப் பொருளை எடையிட்டு, பார்கோடுடன் சீட்டு அச்சிடுங்கள்; காசாளர் ஸ்கேன் செய்தால் போதும். விலை எப்போதும் உங்கள் விலைப் பட்டியலிலிருந்தே வரும், கையால் தட்டச்சு இல்லை.",
   "billing.f.8.title": "உங்கள் தொழிலுக்கான கருவிகள்",
   "billing.f.8.body": "மருந்தகத்துக்கு பேட்ச், காலாவதி, H1 பதிவேடு. எலக்ட்ரானிக்ஸுக்கு சீரியல், உத்தரவாதம். உணவகத்துக்கு மேசை, KOT. சேவைத் தொழில்களுக்கு வேலைச் சீட்டு, முன்பதிவு, உறுப்பினர்.",
   "billing.f.9.title": "ஒரே கணக்கு, பல விற்பனை வழிகள்",
   "billing.f.9.body": "ஆன்லைன் ஸ்டோர் ஆர்டர்களும் கவுண்டரின் அதே இருப்பைக் குறைக்கும்; ஆன்லைன் வாடிக்கையாளர்கள் உங்கள் வாடிக்கையாளர் பட்டியலிலும் கடன் கணக்கிலும் தெரிவார்கள்.",
+  "billing.mock.title": "உங்கள் வாடிக்கையாளருக்குக் கிடைப்பது",
+  "billing.mock.body": "மீதியைச் செலுத்த UPI இணைப்புடன், WhatsApp-ல் தெளிவான GST பில்.",
 
   "store.meta.title": "உங்கள் கடைக்கு ஆன்லைன் ஸ்டோர்: இணையதளம், UPI, WhatsApp ஆர்டர்",
   "store.meta.description": "உங்கள் தமிழ்நாட்டுக் கடையை ஆன்லைனில் கொண்டு வாருங்கள்: தமிழ், ஆங்கிலத்தில் சொந்த இணையதளம், 20-க்கும் மேற்பட்ட ஸ்டோர் தோற்றங்கள், UPI மற்றும் டெலிவரியில் பணம், டெலிவரிப் பகுதிகள் அல்லது பிக்அப், உணவு ஆர்டர், WhatsApp ஆர்டர் தகவல்.",
@@ -659,8 +659,6 @@ export const ta: Messages = {
   "store.f.5.body": "Google புரிந்துகொள்ளும் பொருள் விவரங்களுடன், தேடுபொறிகளுக்கு ஏற்ற பக்கங்கள்.",
   "store.f.6.title": "சலுகைகளும் லாயல்டியும்",
   "store.f.6.body": "கூப்பன், பண்டிகை விற்பனை, மதிப்புரைகள், புள்ளிகள்; வாடிக்கையாளர்கள் மீண்டும் வர.",
-  "store.mock.title": "உங்கள் வாடிக்கையாளர்கள் பார்ப்பது",
-  "store.mock.body": "உங்கள் நிறங்களில், தமிழிலும் ஆங்கிலத்திலும், சரியாக வேலை செய்யும் கார்ட்டுடன் ஒரு ஸ்டோர்.",
   "store.f.7.title": "20-க்கும் மேற்பட்ட ஸ்டோர் தோற்றங்கள்",
   "store.f.7.body": "ஒவ்வொரு தொழிலுக்கும் தயாரான தோற்றம். பேனர், அதிகம் விற்றவை, ஃபிளாஷ் சேல், இன்றைய சலுகை, அளவு கண்டறிதல், நிறம் வாரியாகத் தேடல், தங்க விலைப் பலகை, மெனு பலகை போன்ற பகுதிகளால் முகப்புப் பக்கத்தை அமையுங்கள்.",
   "store.f.8.title": "டெலிவரிப் பகுதிகளும் பிக்அப்பும்",
@@ -673,6 +671,8 @@ export const ta: Messages = {
   "store.f.11.body": "உணவகம், கிளவுட் கிச்சன், டீக்கடைகளுக்கு: அரை-முழு அளவுகள், சைவ/அசைவ அடையாளம், டெலிவரி அல்லது பிக்அப், குறைந்தபட்ச ஆர்டர், ஆர்டர்கள் நேராக சமையலறைத் திரைக்கு.",
   "store.f.12.title": "தமிழும் ஆங்கிலமும்",
   "store.f.12.body": "ஸ்டோர், பொருட்கள், பக்கங்கள் இரண்டு மொழியிலும்; வாடிக்கையாளருக்கு மொழி மாற்றும் வசதி.",
+  "store.mock.title": "உங்கள் வாடிக்கையாளர்கள் பார்ப்பது",
+  "store.mock.body": "உங்கள் நிறங்களில், தமிழிலும் ஆங்கிலத்திலும், சரியாக வேலை செய்யும் கார்ட்டுடன் ஒரு ஸ்டோர்.",
 
   "product.faq": "{product} பற்றிய கேள்விகள்",
   "product.everything": "உங்களுக்குத் தேவையான அனைத்தும்",
@@ -730,9 +730,9 @@ export const ta: Messages = {
   "cmp.invoices.whatsapp": "WhatsApp-ல் பில் பகிர்வு",
   "cmp.invoices.reports": "விற்பனை அறிக்கைகள்",
   "cmp.invoices.credit-book": "கடன் கணக்கு",
+  "cmp.pos": "கவுண்டர்களை இணைத்தல், பணியாளர் PIN",
   "cmp.invoices.gst-reports": "GST அறிக்கைகள் (GSTR-1, 3B)",
   "cmp.inventory": "இருப்பும் கொள்முதலும்",
-  "cmp.pos": "கவுண்டர்களை இணைத்தல், பணியாளர் PIN",
   "cmp.payments": "UPI, கட்டண இணைப்புகள்",
   "cmp.gst-einvoice": "இ-இன்வாய்ஸ் (IRN)",
   "cmp.gst-ewaybill": "இ-வே பில்",
@@ -758,9 +758,9 @@ export const ta: Messages = {
   "cmp.expenses": "செலவுக் கணக்கு",
   "cmp.limit.invoices_per_month": "மாதத்துக்கு பில்கள்",
   "cmp.limit.staff": "குழு உறுப்பினர்கள்",
+  "cmp.limit.pos_terminals": "POS கவுண்டர்கள் (டெர்மினல்கள்)",
   "cmp.limit.storage_mb": "கோப்புச் சேமிப்பு",
   "cmp.limit.sms_per_month": "மாதத்துக்கு SMS",
-  "cmp.limit.pos_terminals": "POS கவுண்டர்கள் (டெர்மினல்கள்)",
   "cmp.limit.whatsapp_per_month": "மாதத்துக்கு WhatsApp செய்திகள்",
   "cmp.feature.remove_branding": "Srirealtime அடையாளத்தை நீக்கு",
   "cmp.feature.priority_support": "முன்னுரிமை உதவி",

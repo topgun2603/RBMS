@@ -21,3 +21,6 @@ terraform.tfvars
 
 # Generated API documents (pnpm --filter @srirealtime/api openapi)
 apps/api/openapi*.json
+
+# Print bridge config holds the access token
+tools/print-bridge/config.json

@@ -129,3 +129,117 @@ export const posWeighTickets = pgTable(
 export type TerminalRow = typeof posTerminals.$inferSelect;
 export type StaffPinRow = typeof posStaffPins.$inferSelect;
 export type WeighTicketRow = typeof posWeighTickets.$inferSelect;
+
+// ------------------------------------------------------------------ offline billing (docs/offline-billing.md)
+
+export const NUMBER_BLOCK_STATUSES = ["open", "closed"] as const;
+export type NumberBlockStatus = (typeof NUMBER_BLOCK_STATUSES)[number];
+
+/** A sequence number released without a bill, with the reason (the audit trail of "no silent gaps"). */
+export interface VoidedSeq {
+  seq: number;
+  reason: "unused" | "bill_voided" | "lost_device" | "other";
+  at: string;
+  by: string | null;
+  /** The offline bill (client id) that was voided at the counter, if any. */
+  clientId?: string;
+}
+
+/**
+ * A block of consecutive invoice numbers taken from the (branch, FY) invoice series for one device ahead of time, so
+ * it can number bills while offline. Every number ends up either on a synced bill (`pos_offline_bills.block_id` +
+ * `seq`) or in `voided` with a reason: the block is closed only when all of them are accounted for.
+ */
+export const posNumberBlocks = pgTable(
+  "pos_number_blocks",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    /** The paired terminal's id, or a browser-generated device id (staff browser) when not paired. */
+    deviceId: text("device_id").notNull(),
+    terminalId: uuid("terminal_id"),
+    branchId: uuid("branch_id"),
+    fy: text("fy").notNull(),
+    prefix: text("prefix").notNull(),
+    fromSeq: integer("from_seq").notNull(),
+    toSeq: integer("to_seq").notNull(),
+    status: text("status").$type<NumberBlockStatus>().notNull().default("open"),
+    voided: jsonb("voided").$type<VoidedSeq[]>().notNull().default([]),
+    reservedBy: uuid("reserved_by"),
+    closedBy: uuid("closed_by"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closeNote: text("close_note"),
+    ...timestamps(),
+  },
+  (t) => [
+    index("pos_number_blocks_tenant_device_idx").on(t.tenantId, t.deviceId, t.status),
+    check("pos_number_blocks_range_chk", sql`${t.toSeq} >= ${t.fromSeq}`),
+  ],
+);
+
+export const OFFLINE_BILL_STATUSES = ["processing", "synced", "failed", "voided"] as const;
+export type OfflineBillStatus = (typeof OFFLINE_BILL_STATUSES)[number];
+
+/** Something a person should look at after an offline bill synced (the bill itself stands as sold). */
+export interface OfflineFlag {
+  code:
+    | "stock_negative"
+    | "price_changed"
+    | "tax_changed"
+    | "item_missing"
+    | "customer_missing"
+    | "number_reassigned"
+    | "till_closed"
+    | "payment_failed"
+    | "late_sync";
+  /** 0-based line index the flag is about. */
+  line?: number;
+  detail?: Record<string, unknown>;
+}
+
+/**
+ * One bill made offline and sent to the server. `client_id` is the idempotency key (a UUID made on the device): the
+ * unique index makes a replay answer with the first result instead of billing twice.
+ */
+export const posOfflineBills = pgTable(
+  "pos_offline_bills",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    clientId: uuid("client_id").notNull(),
+    deviceId: text("device_id").notNull(),
+    userId: uuid("user_id"),
+    status: text("status").$type<OfflineBillStatus>().notNull().default("processing"),
+    attempts: integer("attempts").notNull().default(1),
+    /** When this attempt started; a processing row older than a couple of minutes is taken over by a retry. */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull().defaultNow(),
+    /** The bill as the device built it (lines, payments, customer, numbers). */
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    /** When the cashier completed it on the device. */
+    billedAt: timestamp("billed_at", { withTimezone: true }).notNull(),
+    blockId: uuid("block_id"),
+    seq: integer("seq"),
+    /** "OFF-A1B2-0007" printed on the slip when no reserved number was available. */
+    provisionalNumber: text("provisional_number"),
+    invoiceId: uuid("invoice_id"),
+    /** The legal invoice number. */
+    number: text("number"),
+    flags: jsonb("flags").$type<OfflineFlag[]>().notNull().default([]),
+    error: jsonb("error").$type<{ code: string; message: string } | null>(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: uuid("reviewed_by"),
+    reviewNote: text("review_note"),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [
+    uniqueIndex("pos_offline_bills_tenant_client_uq").on(t.tenantId, t.clientId),
+    // A reserved number is used by at most one bill.
+    uniqueIndex("pos_offline_bills_block_seq_uq").on(t.blockId, t.seq).where(sql`${t.blockId} is not null`),
+    index("pos_offline_bills_tenant_status_idx").on(t.tenantId, t.status, t.createdAt),
+    index("pos_offline_bills_tenant_invoice_idx").on(t.tenantId, t.invoiceId),
+  ],
+);
+
+export type NumberBlockRow = typeof posNumberBlocks.$inferSelect;
+export type OfflineBillRow = typeof posOfflineBills.$inferSelect;

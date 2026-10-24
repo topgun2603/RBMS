@@ -87,6 +87,7 @@ import type { CreditNote, Invoice } from "@srirealtime/invoices";
 import { and, eq } from "@srirealtime/db";
 import { createStoreRevalidator, storeRevalidateConfig } from "./kit-store-revalidate";
 import { createPosWiring } from "./kit-pos";
+import { posInvoicesPort } from "./kit-pos-offline";
 
 /**
  * Composition root: builds every module and connects them through their ports.
@@ -960,13 +961,13 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   };
   const billFromLines = {
     createBill: async (tenant: Parameters<LinesBillingPort["createBill"]>[0], input: SharedBillInput, opts: { branchId: string | null }) => {
-      const inv = await invoices.service.create(
       // A line without HSN/SAC takes its item's (membership plans, job-card parts, bookings), so GSTR-1's HSN table has no blank rows.
       const itemHsn = new Map<string, string | null>();
       for (const l of input.lines) {
         if (l.hsn || !l.itemId || itemHsn.has(l.itemId)) continue;
         itemHsn.set(l.itemId, await invoices.service.getItem(tenant.id, l.itemId).then((i) => i.hsn ?? null, () => null));
       }
+      const inv = await invoices.service.create(
         tenant,
         {
           date: todayIST(clock?.()),
@@ -1315,6 +1316,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       return b ? { id: b.id, locationId: b.stockLocationId, active: b.active } : null;
     },
     billExists: async (tenantId, invoiceId) => Boolean(await invoices.service.get(tenantId, invoiceId).catch(() => null)),
+    invoices: posInvoicesPort(invoices.service, db),
     audit: audit.service,
     log,
   });
@@ -1351,35 +1353,6 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     await payments.service.retryPending();
   });
 
-  const modules: SrModule[] = [
-    jobs.module,
-    settings.module,
-    i18n.module,
-    tenancy.module,
-    auth.module,
-    plans.module,
-    features.module,
-    branding.module,
-    notify.module,
-    messages.module,
-    uploads.module,
-    consent.module,
-    invoices.module,
-    payments.module,
-    inventory.module,
-    catalogue.module,
-    staff.module,
-    audit.module,
-    orders.module,
-    coupons.module,
-    documents.module,
-    ...importExport.modules,
-    storefront.module,
-    delivery.module,
-    reviews.module,
-    cms.module,
-    onboarding.module,
-    analytics.module,
   // Read-only live demo (demo-auth.ts): `POST /v1/auth/demo`, and the guard that keeps demo sessions read-only.
   const demoDeps = {
     shops: parseDemoShops(env.DEMO_SHOPS),
@@ -1414,6 +1387,35 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   };
   if (demoDeps.shops.size > 0) log.info({ shops: [...demoDeps.shops] }, "demo: read-only live demo enabled");
 
+  const modules: SrModule[] = [
+    jobs.module,
+    settings.module,
+    i18n.module,
+    tenancy.module,
+    auth.module,
+    plans.module,
+    features.module,
+    branding.module,
+    notify.module,
+    messages.module,
+    uploads.module,
+    consent.module,
+    invoices.module,
+    payments.module,
+    inventory.module,
+    catalogue.module,
+    staff.module,
+    audit.module,
+    orders.module,
+    coupons.module,
+    documents.module,
+    ...importExport.modules,
+    storefront.module,
+    delivery.module,
+    reviews.module,
+    cms.module,
+    onboarding.module,
+    analytics.module,
     expenses.module,
     medicines.module,
     dining.module,
@@ -1431,6 +1433,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     mobile.module,
     ...batch3.modules,
     ...batch5.modules,
+    demoAuthModule(demoDeps),
   ];
 
   return {
@@ -1460,7 +1463,6 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     delivery,
     reviews,
     cms,
-    demoAuthModule(demoDeps),
     onboarding,
     analytics,
     expenses,

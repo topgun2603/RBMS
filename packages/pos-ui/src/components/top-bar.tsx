@@ -38,6 +38,7 @@ import {
 import { LocaleSwitcher, ThemeToggle, useI18n, useModuleNavigate } from "@srirealtime/web";
 import { timeShort, todayIST } from "../lib/format";
 import type { DayRecord } from "../lib/storage";
+import { NoSaleButton, NoSaleMenuItem } from "./drawer-button";
 import { MyPinDialog } from "./my-pin-dialog";
 import { usePos } from "./pos-context";
 
@@ -137,6 +138,7 @@ export function TopBar(p: TopBarProps) {
         <Button type="button" variant="ghost" size="sm" className="hidden lg:inline-flex" onClick={p.onReturns}>
           <Undo2Icon /> {t("pos.top.returns")}
         </Button>
+        <NoSaleButton />
         <div className="hidden lg:flex">
           <ThemeToggle />
         </div>
@@ -163,6 +165,7 @@ export function TopBar(p: TopBarProps) {
             <DropdownMenuItem onSelect={p.onDay}>
               <CalendarClockIcon /> {t("pos.top.day")}
             </DropdownMenuItem>
+            <NoSaleMenuItem />
             <DropdownMenuItem onSelect={p.onHelp}>
               <CircleHelpIcon /> {t("pos.top.help")}
               <DropdownMenuShortcut>?</DropdownMenuShortcut>

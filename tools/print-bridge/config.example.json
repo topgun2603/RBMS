@@ -1,0 +1,9 @@
+{
+  "token": "REPLACE-WITH-OUTPUT-OF: node bridge.mjs --new-token",
+  "port": 9101,
+  "allowedOrigins": ["https://yourshop.example.com"],
+  "printers": {
+    "default": { "type": "windows", "printer": "EPSON TM-T82 Receipt" },
+    "lan": { "type": "tcp", "host": "192.168.1.50", "port": 9100 }
+  }
+}

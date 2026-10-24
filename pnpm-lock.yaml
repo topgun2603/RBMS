@@ -876,6 +876,9 @@ importers:
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@srirealtime/receipt-print':
+        specifier: workspace:*
+        version: link:../receipt-print
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../ui
@@ -2063,6 +2066,9 @@ importers:
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@srirealtime/receipt-print':
+        specifier: workspace:*
+        version: link:../receipt-print
       '@srirealtime/ui':
         specifier: workspace:*
         version: link:../ui
@@ -2103,6 +2109,8 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.3.0(react@19.3.0)
+
+  packages/receipt-print: {}
 
   packages/reports:
     dependencies:

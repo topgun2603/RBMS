@@ -174,6 +174,38 @@ export function defineAppSettings(settings: SettingsService) {
   settings.define("solutions", SOLUTIONS_SETTINGS_SCHEMA, SOLUTIONS_SETTINGS_DEFAULTS);
   settings.define("whatsapp", WHATSAPP_SETTINGS_SCHEMA, WHATSAPP_SETTINGS_DEFAULTS);
 
+  // Shop defaults for direct thermal receipt printing (docs/printing.md). The printer itself (transport, pairing, bridge
+  // token) is per device and stays in the browser; these are the layout choices every counter starts from.
+  settings.define(
+    "printing",
+    z.object({
+      paperWidth: z.union([z.literal(58), z.literal(80)]),
+      charsPerLine: z.number().int().min(24).max(64),
+      widthDots: z.number().int().min(192).max(832),
+      headerLines: z.array(z.string().max(64)).max(6),
+      footerLines: z.array(z.string().max(64)).max(6),
+      showLogo: z.boolean(),
+      showQr: z.boolean(),
+      autoPrint: z.boolean(),
+      openDrawerOnCash: z.boolean(),
+      cut: z.enum(["partial", "full", "none"]),
+      drawerPin: z.union([z.literal(0), z.literal(1)]),
+    }),
+    {
+      paperWidth: 80,
+      charsPerLine: 48,
+      widthDots: 576,
+      headerLines: [],
+      footerLines: [],
+      showLogo: false,
+      showQr: true,
+      autoPrint: false,
+      openDrawerOnCash: true,
+      cut: "partial",
+      drawerPin: 0,
+    },
+  );
+
   settings.define(
     "notifications",
     z.object({

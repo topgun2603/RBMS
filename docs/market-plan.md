@@ -172,6 +172,10 @@ Local database (SQLite through drift), a bill number series per device, a sync q
 and rules for stock after sync (sales are never blocked offline; stock can go negative and is flagged for review).
 Prices and items cached on the phone, refreshed when online.
 
+Web counter first (2026-10-24, docs/offline-billing.md): the same rules are built for the web POS (IndexedDB queue,
+reserved number blocks of the real series, idempotent sync, flags for review). The Flutter app can reuse the server side
+as is (`/v1/pos/offline/*`); only the local database and screens remain.
+
 ### M4: srikit Shops (6 weeks)
 
 The customer app over `storefront` + `marketplace`: nearby shops, search, cart and checkout, bookings, job and order

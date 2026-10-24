@@ -20,6 +20,7 @@ import type {
   VariantLookup,
 } from "./types";
 import type { LineInput } from "@srirealtime/gst";
+import { rememberCustomers, searchCachedCustomers } from "./offline/customers";
 
 /**
  * The counter's API calls. Every call carries `x-branch` (the branch picked in the top bar, when the shop has
@@ -166,14 +167,26 @@ export function useStock(itemIds: string[], enabled: boolean) {
 export function useCustomerSearch(q: string) {
   return useQuery({
     queryKey: pk.customers(q),
-    queryFn: ({ signal }) => api<Paged<Customer>>("/invoices/customers", withBranch({ query: { q, limit: 6 }, signal })),
+    queryFn: async ({ signal }) => {
+      try {
+        const r = await api<Paged<Customer>>("/invoices/customers", withBranch({ query: { q, limit: 6 }, signal }));
+        rememberCustomers(r.items);
+        return r;
+      } catch (err) {
+        // Offline: the customers this counter has seen before (docs/offline-billing.md).
+        if (!isNetworkError(err)) throw err;
+        const items = await searchCachedCustomers(q);
+        return { items, total: items.length };
+      }
+    },
     enabled: q.trim().length >= 3,
     placeholderData: keepPreviousData,
     staleTime: 15_000,
   });
 }
 
-export const createCustomer = (input: { name: string; phone?: string | null }) => posApi.post<Customer>("/invoices/customers", input);
+export const createCustomer = (input: { name: string; phone?: string | null }) =>
+  posApi.post<Customer>("/invoices/customers", input).then((c) => (rememberCustomers([c]), c));
 
 export function useLoyaltyQuote(phone: string | null, amount: number, enabled: boolean) {
   return useQuery({
@@ -202,8 +215,13 @@ export interface CreateBillInput {
 }
 
 /** `approvalPin`: a manager's POS PIN approving a discount above the cashier's limit (the API asks for it with 403 `discount_approval_required`). */
-export const createBill = (input: CreateBillInput, approvalPin?: string) =>
-  posApi.post<Invoice>("/invoices", input, approvalPin ? { headers: { [APPROVAL_PIN_HEADER]: approvalPin } } : undefined);
+export const createBill = (input: CreateBillInput, approvalPin?: string, idempotencyKey?: string) => {
+  const headers: Record<string, string> = {};
+  if (approvalPin) headers[APPROVAL_PIN_HEADER] = approvalPin;
+  // The same cart retried (a lost answer, a second tap) gets the first bill back instead of billing twice.
+  if (idempotencyKey) headers["idempotency-key"] = idempotencyKey;
+  return posApi.post<Invoice>("/invoices", input, Object.keys(headers).length ? { headers } : undefined);
+};
 
 export const addPayment = (id: string, p: { amount: number; method: PaymentMethod; date: string; reference?: string; tillSessionId?: string }) =>
   posApi.post<Invoice>(`/invoices/${id}/payments`, p);

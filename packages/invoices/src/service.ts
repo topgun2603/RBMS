@@ -627,9 +627,30 @@ export interface IssueOptions {
   /** Loyalty points to redeem on the bill. */
   loyaltyPoints?: number;
 }
+/**
+ * A number reserved ahead of time with `reserveSeqBlock` (offline POS bills): the bill takes exactly this FY, prefix and
+ * sequence instead of the next one in the series. The caller guarantees the number is unused.
+ */
+export interface PresetNumber {
+  fy: string;
+  prefix: string;
+  seq: number;
+}
+
+/** A block of consecutive sequence numbers taken from a (branch, FY) series for one offline terminal. */
+export interface SeqBlock {
+  branchId: string | null;
+  fy: string;
+  prefix: string;
+  fromSeq: number;
+  toSeq: number;
+}
+
 export interface CreateOptions {
   /** The request's branch, stored on the draft. */
   branchId?: string | null;
+  /** Issue with a reserved number (only with `issue: true`); see `reserveSeqBlock`. */
+  presetNumber?: PresetNumber;
 }
 
 export const invoiceInputSchema = z.object({
@@ -2177,13 +2198,22 @@ export class InvoicesService {
     // The id exists before the insert so a points redemption can reference the bill.
     const id = newId();
     const check = { lines: values.lines.map(toLineInput), placeOfSupply: values.placeOfSupply };
-    const issued = await this.issueWith(tenant, id, seller, branch, check, loyalty, async (tx) => {
-      const [row] = await tx
-        .insert(invoices)
-        .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, ...values })
-        .returning();
-      return row!;
-    });
+    const issued = await this.issueWith(
+      tenant,
+      id,
+      seller,
+      branch,
+      check,
+      loyalty,
+      async (tx) => {
+        const [row] = await tx
+          .insert(invoices)
+          .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, ...values })
+          .returning();
+        return row!;
+      },
+      opts.presetNumber,
+    );
     return this.afterIssue(issued, branch);
   }
 
@@ -2224,6 +2254,43 @@ export class InvoicesService {
     if (rows.length > 0) return;
     await this.row(this.db, tenantId, id); // 404 if missing
     throw badRequest("Only drafts can be deleted; cancel issued invoices instead");
+  }
+
+  /**
+   * Takes `count` consecutive numbers from the (branch, today's FY) series for an offline terminal. The series row is
+   * locked for the transaction, so two terminals asking at once get disjoint blocks and online bills continue after
+   * the block. Nothing is written to `invoices`: each number is consumed by `create(..., { presetNumber })` when the
+   * offline bill syncs, or voided explicitly by the caller (never silently skipped).
+   */
+  async reserveSeqBlock(
+    tenant: TenantRef,
+    input: { branchId?: string | null; count: number },
+    /** Runs in the same transaction once the numbers are taken, so a caller can record the block atomically with it. */
+    inTx?: (tx: DbOrTx, block: SeqBlock) => Promise<void>,
+  ): Promise<SeqBlock> {
+    const count = z.number().int().min(1).max(500).parse(input.count);
+    const branchId = issueOptionsSchema.shape.branchId.parse(input.branchId) ?? null;
+    const { seller, branch } = await this.sellerFor(tenant.id, branchId);
+    if (!seller.stateCode) {
+      throw badRequest("Complete the business profile (state, GSTIN, address) in billing settings before issuing invoices");
+    }
+    const fy = financialYear(this.today());
+    const prefix = seller.invoicePrefix ?? DEFAULT_INVOICE_PREFIX;
+    return this.db.transaction(async (tx) => {
+      await this.prepareSeries(tx, { tenantId: tenant.id, branchId: branch.branchId, isDefault: branch.info?.isDefault ?? false, fy, prefix });
+      const [first] = await allocateSeqStatement(tx, { tenantId: tenant.id, fy, prefix, branchId: branch.branchId });
+      const fromSeq = first!.seq;
+      if (count > 1) {
+        const seriesBranch = branch.branchId ? eq(invoiceSeries.branchId, branch.branchId) : isNull(invoiceSeries.branchId);
+        await tx
+          .update(invoiceSeries)
+          .set({ nextSeq: fromSeq + count - 1, updatedAt: sql`now()` })
+          .where(and(eq(invoiceSeries.tenantId, tenant.id), eq(invoiceSeries.fy, fy), seriesBranch));
+      }
+      const block: SeqBlock = { branchId: branch.branchId, fy, prefix, fromSeq, toSeq: fromSeq + count - 1 };
+      await inTx?.(tx, block);
+      return block;
+    });
   }
 
   // ================================================================ invoices: issue
@@ -2299,6 +2366,7 @@ export class InvoicesService {
     check: { lines: LineInput[]; placeOfSupply: string },
     loyalty: IssueLoyalty | null,
     load: (tx: DbOrTx) => Promise<InvoiceRow>,
+    preset?: PresetNumber,
   ): Promise<InvoiceRow> {
     if (!seller.stateCode) {
       throw badRequest("Complete the business profile (state, GSTIN, address) in billing settings before issuing invoices");
@@ -2323,7 +2391,7 @@ export class InvoicesService {
       }
       return await this.db.transaction(async (tx) => {
         const draft = await load(tx);
-        return this.applyIssue(tx, tenant.id, draft, seller, branch, redemption);
+        return this.applyIssue(tx, tenant.id, draft, seller, branch, redemption, preset);
       });
     } catch (err) {
       if (redeemed) {
@@ -2401,6 +2469,7 @@ export class InvoicesService {
     seller: SellerProfile,
     branch: IssueBranch,
     redemption: (LoyaltyRedemption & { expectedTotal: number }) | null,
+    preset?: PresetNumber,
   ): Promise<InvoiceRow> {
     if (draft.status !== "draft") throw badRequest("Only drafts can be issued");
     let totals = this.assertIssuable(draft.lines.map(toLineInput), draft.placeOfSupply, seller);
@@ -2426,10 +2495,18 @@ export class InvoicesService {
     });
 
     const fy = financialYear(draft.date);
-    const prefix = seller.invoicePrefix ?? DEFAULT_INVOICE_PREFIX;
-    await this.prepareSeries(tx, { tenantId, branchId: branch.branchId, isDefault: branch.info?.isDefault ?? false, fy, prefix });
-    const [series] = await allocateSeqStatement(tx, { tenantId, fy, prefix, branchId: branch.branchId });
-    const seq = series!.seq;
+    let prefix = seller.invoicePrefix ?? DEFAULT_INVOICE_PREFIX;
+    let seq: number;
+    if (preset) {
+      // A number reserved earlier: it must be of the bill's own FY (the series is per FY) and is used as is.
+      if (preset.fy !== fy) throw new AppError(409, "number_fy_mismatch", "The reserved number belongs to another financial year than the bill's date");
+      prefix = preset.prefix;
+      seq = preset.seq;
+    } else {
+      await this.prepareSeries(tx, { tenantId, branchId: branch.branchId, isDefault: branch.info?.isDefault ?? false, fy, prefix });
+      const [series] = await allocateSeqStatement(tx, { tenantId, fy, prefix, branchId: branch.branchId });
+      seq = series!.seq;
+    }
 
     const [updated] = await tx
       .update(invoices)

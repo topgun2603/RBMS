@@ -1,4 +1,6 @@
 import type { Messages } from "@srirealtime/i18n/client";
+import { printingEn, printingTa } from "./messages-printing";
+import { offlineEn, offlineTa } from "./messages-offline";
 import { terminalEn, terminalTa } from "./messages-terminal";
 
 /**
@@ -827,4 +829,4 @@ const ta: Messages = {
   "pos.returns.printSlip": "சீட்டு அச்சிடு",
 };
 
-export const posMessages = { en: { ...en, ...terminalEn }, ta: { ...ta, ...terminalTa } } as const;
+export const posMessages = { en: { ...en, ...terminalEn, ...printingEn, ...offlineEn }, ta: { ...ta, ...terminalTa, ...printingTa, ...offlineTa } } as const;
