@@ -57,7 +57,7 @@ export default function PurchaseDetailPage() {
     return (
       <Page>
         <PageHeading title={<Skeleton className="h-8 w-48" />} back={back} />
-        <div className="grid gap-section md:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid grid-cols-1 gap-section md:grid-cols-[minmax(0,1fr)_18rem]">
           <Skeleton className="h-72 rounded-2xl" />
           <Skeleton className="h-56 rounded-2xl" />
         </div>
@@ -141,8 +141,8 @@ export default function PurchaseDetailPage() {
         </Alert>
       )}
 
-      <FadeIn className="grid gap-section md:grid-cols-[minmax(0,1fr)_19rem] md:items-start">
-        <div className="grid min-w-0 gap-section">
+      <FadeIn className="grid grid-cols-1 gap-section md:grid-cols-[minmax(0,1fr)_19rem] md:items-start">
+        <div className="grid min-w-0 grid-cols-1 gap-section">
           {/* Supplier */}
           <Card>
             <CardHeader className="flex flex-row items-center gap-2">

@@ -82,7 +82,7 @@ export function Gstr2bTab({ period, onPeriod }: { period: string; onPeriod: (p: 
   const summary = useSummary2b(month);
   const s = summary.data;
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <Card className="px-card">
         <div className="flex flex-wrap items-end gap-3">
           <PeriodPicker value={month} onChange={onPeriod} kind="month" id="b2-month" />
@@ -130,7 +130,7 @@ function UploadCard({ month, compact }: { month: string; compact?: boolean }) {
 
   if (!canManage) {
     return (
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <EmptyState icon={FileSpreadsheetIcon} title={t("billing.gst.b2.noneTitle", { month: label(month) })} description={t("billing.gst.b2.noneBody")} />
         <ViewOnlyNote />
       </div>
@@ -221,7 +221,7 @@ function Imported({ month, s }: { month: string; s: Summary2b }) {
   };
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <Card className="px-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="icon-chip size-10 text-primary">

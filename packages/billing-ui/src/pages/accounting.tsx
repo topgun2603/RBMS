@@ -27,12 +27,12 @@ function Tile({ label, children, hint, icon: Icon }: { label: string; children: 
   return (
     <Card className="min-w-0">
       <CardContent className="flex items-start gap-3">
-        <span className="icon-chip size-9 shrink-0 text-primary">
+        <span className="icon-chip hidden size-9 shrink-0 sm:inline-flex text-primary">
           <Icon className="size-4" />
         </span>
         <div className="min-w-0">
           <p className="text-meta text-muted-foreground">{label}</p>
-          <div className="font-heading text-xl font-semibold">{children}</div>
+          <div className="font-heading text-base font-semibold sm:text-xl">{children}</div>
           {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
         </div>
       </CardContent>
@@ -106,7 +106,7 @@ export default function AccountingHomePage() {
           <span className="icon-chip size-9 shrink-0 text-primary">
             <ShieldCheckIcon className="size-4" />
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 basis-48">
             <p className="font-medium">{t("billing.accounting.selfCheck")}</p>
             <p className="text-meta text-muted-foreground">
               {overview.data?.lastSyncAt ? t("billing.accounting.lastPosted", { when: formatDate(overview.data.lastSyncAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) }) : t("billing.accounting.notPostedYet")}

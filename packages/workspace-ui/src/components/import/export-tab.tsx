@@ -157,7 +157,8 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
 function TallyCard() {
   const { t } = useI18n();
   const owner = useIsOwner();
-  const today = new Date();
+  // India's calendar day, not UTC's: before 5:30 am IST the UTC date is still yesterday.
+  const today = new Date(Date.now() + 330 * 60_000);
   const fyStart = new Date(Date.UTC(today.getUTCMonth() >= 3 ? today.getUTCFullYear() : today.getUTCFullYear() - 1, 3, 1));
   const [kind, setKind] = React.useState<"sale" | "purchase">("sale");
   const [from, setFrom] = React.useState(ymd(fyStart));

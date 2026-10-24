@@ -26,7 +26,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { TransferStatusPill } from "../components/inventory/audit-bits";
-import { fmtDay } from "../components/inventory/batch-bits";
+import { fmtDay, fmtStamp } from "../components/inventory/batch-bits";
 import { cleanQty } from "../components/inventory/stock-meta";
 import { useHasPermission } from "../lib/access";
 import { formatQty, money, parseQty } from "../lib/format";
@@ -145,7 +145,7 @@ function TransferScreen({ tr }: { tr: Transfer }) {
           <li key={s.key} className={cn("flex items-center gap-2", s.on ? "text-foreground" : "text-muted-foreground/60")}>
             <span className={cn("size-2 rounded-full", s.on ? "bg-primary" : "bg-muted-foreground/30")} aria-hidden />
             {t(`billing.transfers.step.${s.key}`)}
-            {s.at ? <span className="text-xs text-muted-foreground">{fmtDay(s.at.slice(0, 10))}</span> : null}
+            {s.at ? <span className="text-xs text-muted-foreground">{fmtStamp(s.at)}</span> : null}
           </li>
         ))}
       </ol>

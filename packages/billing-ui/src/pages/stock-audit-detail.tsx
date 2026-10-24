@@ -27,7 +27,7 @@ import {
 } from "@srirealtime/ui";
 import { StatTile } from "../components/charts/stat-tile";
 import { AuditStatusPill } from "../components/inventory/audit-bits";
-import { fmtDay } from "../components/inventory/batch-bits";
+import { fmtDay, fmtStamp } from "../components/inventory/batch-bits";
 import { cameraScanSupported, ScanDialog } from "../components/inventory/scan-dialog";
 import { useHasPermission } from "../lib/access";
 import { formatQty, money, parseQty } from "../lib/format";
@@ -155,7 +155,7 @@ function AuditScreen({ audit }: { audit: StockAudit }) {
       <PageHeading
         icon={ClipboardCheckIcon}
         title={audit.number}
-        description={[audit.title, audit.locationName, t("billing.audit.frozenAt", { date: fmtDay(audit.snapshotAt.slice(0, 10)) })].filter(Boolean).join(" · ")}
+        description={[audit.title, audit.locationName, t("billing.audit.frozenAt", { date: fmtStamp(audit.snapshotAt) })].filter(Boolean).join(" · ")}
         actions={actions}
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -241,6 +241,9 @@ function AuditScreen({ audit }: { audit: StockAudit }) {
                 if (ok) {
                   setConfirm(null);
                   if (confirm === "cancel") go("stock-audit");
+                } else if (confirm === "approve") {
+                  // The toast says what is missing (usually a reason); leave the dialog so the highlighted rows are in view.
+                  setConfirm(null);
                 }
               }}
             >

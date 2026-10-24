@@ -86,7 +86,7 @@ export function Gstr3bTab({ config, period, onPeriod }: { config: GstConfig; per
   };
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <Card className="px-card">
         <div className="flex flex-wrap items-end gap-3">
           <PeriodPicker value={key} onChange={onPeriod} kind={quarterly ? "quarter" : "month"} id="g3-period" />
@@ -109,7 +109,7 @@ export function Gstr3bTab({ config, period, onPeriod }: { config: GstConfig; per
           <Skeleton className="h-48 rounded-2xl" />
         </div>
       ) : (
-        <div className={q.isFetching ? "grid gap-5 opacity-60 transition-opacity" : "grid gap-5"}>
+        <div className={q.isFetching ? "grid grid-cols-1 gap-5 opacity-60 transition-opacity" : "grid grid-cols-1 gap-5"}>
           {r.warnings.map((w) => (
             <Alert key={w} variant={w === "composition" ? "default" : "warning"}>
               <AlertDescription>{t(`billing.gst.g3.warn.${w}`)}</AlertDescription>
@@ -217,7 +217,7 @@ function PayableSummary({ r }: { r: Gstr3b }) {
   const extras = r.cashPayable - taxTotal(r.setOff.cash) - rcm;
   return (
     <Section title={t("billing.gst.g3.payTitle")} hint={t("billing.gst.g3.payHint")} className="border-primary/30">
-      <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_18rem]">
         <ul className="grid gap-2 text-sm">
           <li className="flex justify-between gap-3">
             <span>{t("billing.gst.g3.payOutput")}</span>
@@ -333,7 +333,7 @@ function LedgerCompare({ ledger }: { ledger: NonNullable<Gstr3b["ledger"]> }) {
       hint={t("billing.gst.g3.ledgerHint")}
       actions={<StatusPill tone={same ? "success" : "warning"}>{t(same ? "billing.gst.g3.ledgerSame" : "billing.gst.g3.ledgerDiffers")}</StatusPill>}
     >
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {block(t("billing.gst.g3.ledgerOutput"), ledger.books.output, ledger.returnOutput, ledger.outputDiff)}
         {block(t("billing.gst.g3.ledgerInput"), ledger.books.input, ledger.returnItc, ledger.itcDiff)}
       </div>

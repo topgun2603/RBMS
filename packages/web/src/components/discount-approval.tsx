@@ -58,7 +58,6 @@ export function useDiscountApproval() {
   const ask = React.useCallback(
     (err: ApiError) =>
       new Promise<string>((resolve, reject) => {
-        setError(null);
         setPending({ details: (err.details ?? {}) as DiscountApprovalDetails, message: err.message, resolve, reject });
       }),
     [],
@@ -78,6 +77,8 @@ export function useDiscountApproval() {
             if (wrongApprover(err)) {
               const left = (err.details as DiscountApprovalDetails | undefined)?.attemptsLeft;
               setError(left !== undefined ? t("web.approval.wrongLeft", { count: left }) : t("web.approval.wrong"));
+            } else {
+              setError(null);
             }
             setBusy(false);
             try {

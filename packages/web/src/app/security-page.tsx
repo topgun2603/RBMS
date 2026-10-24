@@ -16,7 +16,7 @@ import { useSession } from "./session";
 
 /** Settings → Security: your own two-factor sign-in, recovery codes, and (owner / admin) the shop-wide requirement. */
 export default function SecurityPage() {
-  const { t, locale } = useI18n();
+  const { t, formatDate } = useI18n();
   const { shopName } = useShop();
   const { canManage } = useSession();
   const qc = useQueryClient();
@@ -90,7 +90,7 @@ export default function SecurityPage() {
               ) : status.data.enabled ? (
                 <>
                   {status.data.enabledAt && (
-                    <p className="text-sm text-muted-foreground">{t("web.security.2fa.since", { date: new Date(status.data.enabledAt).toLocaleDateString(locale) })}</p>
+                    <p className="text-sm text-muted-foreground">{t("web.security.2fa.since", { date: formatDate(status.data.enabledAt, { day: "numeric", month: "short", year: "numeric" }) })}</p>
                   )}
                   <div className="space-y-1">
                     <p className="flex items-center gap-2 text-sm font-medium">

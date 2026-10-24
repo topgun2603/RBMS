@@ -435,7 +435,8 @@ function Counter() {
     setSelected(null);
     setDialog(null);
     setSale({ invoice: inv, change: r.settlement.change, credit: 0, failedPayments: [], phone });
-    toast.success(t("pos.off.savedToast", { number: bill.number }));
+    // Bottom of the screen: at the top it would sit on the offline bar that tells the same story.
+    toast.success(t("pos.off.savedToast", { number: bill.number }), { position: "bottom-center" });
     return true;
   };
 

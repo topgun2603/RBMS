@@ -28,7 +28,7 @@ import {
 } from "@srirealtime/ui";
 import { BoxIllustration } from "../components/illustrations";
 import { AuditStatusPill } from "../components/inventory/audit-bits";
-import { fmtDay } from "../components/inventory/batch-bits";
+import { fmtStamp } from "../components/inventory/batch-bits";
 import { useHasPermission } from "../lib/access";
 import { money } from "../lib/format";
 import { useCreateAudit } from "../lib/queries-stock";
@@ -71,7 +71,7 @@ function Audits() {
       },
       { id: "title", header: t("billing.audit.col.title"), hideBelow: "md", card: "subtitle", cell: (r) => <span className="text-muted-foreground">{r.title || r.locationName}</span>, cardCell: (r) => r.title || r.locationName },
       { id: "location", header: t("billing.audit.col.location"), hideBelow: "lg", cell: (r) => r.locationName },
-      { id: "date", header: t("billing.audit.col.date"), hideBelow: "md", cell: (r) => <span className="tabular-nums">{fmtDay(r.createdAt.slice(0, 10))}</span> },
+      { id: "date", header: t("billing.audit.col.date"), hideBelow: "md", cell: (r) => <span className="tabular-nums">{fmtStamp(r.createdAt)}</span> },
       { id: "lines", header: t("billing.audit.col.lines"), numeric: true, hideBelow: "lg", cell: (r) => `${r.totals.counted}/${r.totals.lines}` },
       {
         id: "variance",

@@ -57,7 +57,7 @@ export function CompositionTab({ config, period, onPeriod }: { config: GstConfig
   const limit = config.compositionType === "services" ? LIMIT_SERVICES : LIMIT_GOODS;
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <Card className="px-card">
         <div className="flex flex-wrap items-end gap-3">
           <PeriodPicker value={quarter} onChange={onPeriod} kind="quarter" id="cmp-quarter" />

@@ -86,7 +86,7 @@ function stripHandoffFromUrl() {
 }
 
 /** "Continue with Google" with an "or" divider (above the code form, or below the password form). */
-function GoogleBlock({ busy, onClick, label, busyLabel, or, below }: { busy: boolean; onClick: () => void; label: string; busyLabel: string; or: string; below?: boolean }) {
+function GoogleBlock({ busy, onClick, label, busyLabel, or, below, alone }: { busy: boolean; onClick: () => void; label: string; busyLabel: string; or: string; below?: boolean; alone?: boolean }) {
   const divider = (
     <div className={cn("flex items-center gap-3 text-xs text-muted-foreground", below ? "mt-4" : "my-4")} aria-hidden="true">
       <span className="h-px flex-1 bg-border" />
@@ -100,6 +100,7 @@ function GoogleBlock({ busy, onClick, label, busyLabel, or, below }: { busy: boo
       {busy ? busyLabel : label}
     </Button>
   );
+  if (alone) return button;
   return below ? (
     <>
       {divider}
@@ -378,17 +379,17 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
           <SlideIn key="identify" direction="right" distance={16}>
             <div className="mb-6 space-y-1.5 text-center">
               <h1 className="font-heading text-xl font-semibold tracking-tight">{t("web.login.title", { shop: shopName })}</h1>
-              <p className="text-sm text-muted-foreground">{t("web.login.subtitle")}</p>
+              {codeOn && <p className="text-sm text-muted-foreground">{t("web.login.subtitle")}</p>}
             </div>
             {googleOn && (
-              <GoogleBlock busy={googleBusy} onClick={() => void onGoogle()} label={t("web.login.google")} busyLabel={t("web.login.googleBusy")} or={t("web.login.or")} />
+              <GoogleBlock busy={googleBusy} onClick={() => void onGoogle()} label={t("web.login.google")} busyLabel={t("web.login.googleBusy")} or={t("web.login.or")} alone={!codeOn} />
             )}
             {handoff === "failed" && (
               <p role="alert" className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 {t("web.login.handoffExpired")}
               </p>
             )}
-            <form onSubmit={onIdentify} className="grid gap-4" noValidate>
+            {codeOn && <form onSubmit={onIdentify} className="grid gap-4" noValidate>
               <Field id="target">
                 <FieldLabel>{t(phoneOn && emailOn ? "web.login.targetLabel" : phoneOn ? "web.login.targetLabelPhone" : "web.login.targetLabelEmail")}</FieldLabel>
                 <div className="relative">
@@ -448,7 +449,7 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
                   {t("web.login.usePassword")}
                 </Button>
               )}
-            </form>
+            </form>}
           </SlideIn>
         ) : (
           <SlideIn key="verify" direction="left" distance={16}>

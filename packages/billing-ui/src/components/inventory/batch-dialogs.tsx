@@ -29,7 +29,7 @@ import {
 } from "@srirealtime/ui";
 import { describeError, useI18n } from "@srirealtime/web";
 import { MoneyInput } from "../money-input";
-import { fmtDay } from "./batch-bits";
+import { fmtStamp } from "./batch-bits";
 import { cleanQty } from "./stock-meta";
 import { formatQty, paiseToInput, parseQty, rupeesToPaise } from "../../lib/format";
 import { useAdjustBatch, useBatchMovements, useBatchSettings, useSaveBatchSettings, useUpdateBatch } from "../../lib/queries-stock";
@@ -254,7 +254,7 @@ export function BatchHistorySheet({ open, onOpenChange, batch }: { open: boolean
               <div className="min-w-0">
                 <p className="font-medium">{t(`billing.batches.reason.${m.reason}`)}</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {[m.refNumber, m.note, fmtDay(m.createdAt.slice(0, 10))].filter(Boolean).join(" · ")}
+                  {[m.refNumber, m.note, fmtStamp(m.createdAt)].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <div className="shrink-0 text-right tabular-nums">

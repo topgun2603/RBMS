@@ -8,7 +8,7 @@ import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTa
 import { StatTile } from "../components/charts/stat-tile";
 import { BoxIllustration } from "../components/illustrations";
 import { TransferStatusPill } from "../components/inventory/audit-bits";
-import { fmtDay } from "../components/inventory/batch-bits";
+import { fmtStamp } from "../components/inventory/batch-bits";
 import { useHasPermission } from "../lib/access";
 import { formatQty, money } from "../lib/format";
 import { downloadCsv } from "../lib/queries-v2";
@@ -73,7 +73,7 @@ function Transfers() {
         cardCell: (r) => `${locs.name(r.fromLocationId)} → ${locs.name(r.toLocationId)}`,
       },
       { id: "items", header: t("billing.transfers.col.items"), numeric: true, hideBelow: "md", cell: (r) => r.lines.length },
-      { id: "date", header: t("billing.transfers.col.sent"), hideBelow: "md", cell: (r) => <span className="tabular-nums">{fmtDay((r.sentAt ?? r.createdAt).slice(0, 10))}</span> },
+      { id: "date", header: t("billing.transfers.col.sent"), hideBelow: "md", cell: (r) => <span className="tabular-nums">{fmtStamp(r.sentAt ?? r.createdAt)}</span> },
       { id: "status", header: t("billing.transfers.col.status"), card: "right", cell: (r) => <TransferStatusPill status={r.status} /> },
     ],
     [t, locs],

@@ -74,7 +74,7 @@ export function Gstr1Tab({ config, period, onPeriod }: { config: GstConfig; peri
   const counts = (n: (typeof TABLES)[number]): number => (n === "docs" ? (res ? docRangeCount(res.json) : 0) : (res?.counts[n] ?? 0));
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <Card className="px-card">
         <div className="flex flex-wrap items-end gap-3">
           <PeriodPicker value={key} onChange={onPeriod} kind={quarterly ? "quarter" : "month"} id="g1-period" />

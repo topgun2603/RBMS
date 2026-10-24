@@ -138,8 +138,8 @@ export default function PurchaseOrderDetailPage() {
         }
       />
 
-      <div className="grid gap-section md:grid-cols-[minmax(0,1fr)_19rem] md:items-start">
-        <div className="grid min-w-0 gap-section">
+      <div className="grid grid-cols-1 gap-section md:grid-cols-[minmax(0,1fr)_19rem] md:items-start">
+        <div className="grid min-w-0 grid-cols-1 gap-section">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">{t("billing.form.items")}</CardTitle>

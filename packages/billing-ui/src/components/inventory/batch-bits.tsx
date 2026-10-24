@@ -26,6 +26,13 @@ export function fmtDay(d: string | null | undefined): string {
   return Number.isNaN(dt.getTime()) ? d : dateFmt.format(dt);
 }
 
+/** "31 Mar 2027" for a timestamp, on India's calendar day (a UTC date would be a day behind until 5:30 am). */
+export function fmtStamp(ts: string | null | undefined): string {
+  if (!ts) return "—";
+  const ms = Date.parse(ts);
+  return Number.isNaN(ms) ? ts : fmtDay(new Date(ms + 330 * 60_000).toISOString().slice(0, 10));
+}
+
 /** Expired / Expiring / OK / No expiry, with the days left in the text (icon + label, never colour alone). */
 export function ExpiryPill({ status, daysLeft, className }: { status: ExpiryStatus; daysLeft: number | null; className?: string }) {
   const { t } = useI18n();

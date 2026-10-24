@@ -14,12 +14,12 @@ export default function AccountingHelpPage() {
   const { t } = useI18n();
   return (
     <AccountingPage title={t("billing.accounting.nav.howItWorks")} description={t("billing.accounting.help.subtitle")} icon={HelpCircleIcon} needsSetup={false}>
-      <div className="mx-auto grid max-w-3xl gap-5">
+      <div className="mx-auto grid max-w-3xl grid-cols-1 gap-5">
         <Card>
           <CardHeader>
             <CardTitle>{t("billing.accounting.help.whatTitle")}</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 text-sm leading-relaxed">
+          <CardContent className="grid grid-cols-1 gap-3 text-sm leading-relaxed">
             <p>{t("billing.accounting.help.whatBody")}</p>
             <p>{t("billing.accounting.help.twoSides")}</p>
             <div className="overflow-x-auto rounded-xl border">
@@ -85,7 +85,7 @@ export default function AccountingHelpPage() {
           <CardHeader>
             <CardTitle>{t("billing.accounting.help.handTitle")}</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-2 text-sm leading-relaxed">
+          <CardContent className="grid grid-cols-1 gap-2 text-sm leading-relaxed">
             <p>{t("billing.accounting.help.handBody")}</p>
             <ul className="list-disc pl-5 text-muted-foreground">
               {(["payment", "receipt", "contra", "journal"] as const).map((k) => (

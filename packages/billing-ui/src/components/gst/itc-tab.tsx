@@ -50,7 +50,7 @@ export function ItcTab({ period, onPeriod, filter, section, onSection }: { perio
   const { t } = useI18n();
   const view = section === "rcm" ? "rcm" : "register";
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <ChipGroup
         aria-label={t("billing.gst.itc.viewLabel")}
         value={view}
@@ -94,7 +94,7 @@ function Register({ month, onMonth, initialStatus }: { month: string; onMonth: (
   const all = Object.values(facets).reduce((s, n) => s + n, 0);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <Card className="px-card">
         <div className="flex flex-wrap items-end gap-3">
           <PeriodPicker value={month} onChange={onMonth} kind="month" id="itc-month" />
