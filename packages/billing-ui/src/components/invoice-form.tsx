@@ -12,7 +12,7 @@ import {
   StickyNoteIcon,
   Trash2Icon,
 } from "lucide-react";
-import { amountInWordsINR, computeInvoice, isValidGstin, type LineInput } from "@srirealtime/gst";
+import { amountInWordsINR, computeInvoice, isValidGstin, lineGstRate, type GstRateRule, type LineInput } from "@srirealtime/gst";
 import {
   Alert,
   AlertDescription,
@@ -57,6 +57,8 @@ interface LineDraft {
   rate: string;
   discount: string;
   gstRate: string;
+  /** Price-band GST from the saved item (apparel / footwear); cleared when the rate is picked by hand. */
+  gstRule?: GstRateRule | null;
 }
 
 let keySeq = 0;
@@ -101,6 +103,11 @@ function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError }
   if (l.hsn.trim()) input.hsn = l.hsn.trim();
   if (l.unit.trim()) input.unit = l.unit.trim();
   if (discount) input.discount = discount;
+  if (l.gstRule) {
+    // The band of this line's value after its discount (the API re-bands the same way).
+    input.gstRule = l.gstRule;
+    input.gstRate = lineGstRate(input) as GstRate;
+  }
   return { input, errors };
 }
 
@@ -115,6 +122,7 @@ function linesFromInvoice(inv: Invoice): LineDraft[] {
     rate: paiseToInput(l.rate),
     discount: l.discount ? paiseToInput(l.discount) : "",
     gstRate: String(l.gstRate),
+    ...(l.gstRule ? { gstRule: l.gstRule } : {}),
   }));
 }
 
@@ -558,6 +566,8 @@ function LineRow({
   const { t } = useI18n();
   const id = `line-${line.key}`;
   const qtyRef = React.useRef<HTMLInputElement>(null);
+  // Price-band GST (apparel / footwear): the rate follows the line's value after its discount.
+  const bandRate = line.gstRule ? (parseLine(line).input?.gstRate.toString() ?? null) : null;
 
   const pickItem = (item: Item) => {
     onChange({
@@ -567,6 +577,7 @@ function LineRow({
       unit: item.unit || "pcs",
       rate: paiseToInput(item.rate),
       gstRate: String(item.gstRate),
+      gstRule: item.gstRule ?? null,
     });
     window.setTimeout(() => {
       qtyRef.current?.focus();
@@ -646,7 +657,8 @@ function LineRow({
           <Label htmlFor={`${id}-gst`} className="text-xs text-muted-foreground">
             {t("billing.form.gst")}
           </Label>
-          <GstRateSelect id={`${id}-gst`} value={line.gstRate} onChange={(gstRate) => onChange({ gstRate })} size="sm" className="w-full" />
+          <GstRateSelect id={`${id}-gst`} value={bandRate ?? line.gstRate} onChange={(gstRate) => onChange({ gstRate, gstRule: null })} size="sm" className="w-full" />
+          {bandRate && <span className="text-[11px] leading-tight text-muted-foreground">{t("billing.form.gstBand", { rate: bandRate })}</span>}
         </div>
         <div className="grid content-start gap-1.5">
           <Label htmlFor={`${id}-rate`} className="text-xs text-muted-foreground">

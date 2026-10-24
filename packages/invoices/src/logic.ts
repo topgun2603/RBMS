@@ -5,6 +5,7 @@ import {
   sanitizePrefix,
   stateFromGstin,
   taxableOfInclusive,
+  gstRateForInclusive,
   type LineInput,
   type LineTotals,
 } from "./calc";
@@ -130,6 +131,7 @@ const lineInputOf = (l: LineTotals): LineInput => {
   if (l.itemId) out.itemId = l.itemId;
   if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
   if (l.serials?.length) out.serials = [...l.serials];
+  if (l.gstRule) out.gstRule = l.gstRule;
   return out;
 };
 
@@ -161,7 +163,8 @@ export function applyBillDiscount(lines: readonly LineTotals[], discount: number
     const base = lineInputOf(l);
     if (share <= 0) return base;
     const inclusiveTotal = l.total - share;
-    const lost = l.taxable - taxableOfInclusive(inclusiveTotal, l.gstRate);
+    // A price-band line is re-banded on what is now charged (the discount lowers its value of supply).
+    const lost = l.taxable - taxableOfInclusive(inclusiveTotal, l.gstRule ? gstRateForInclusive(l.gstRule, inclusiveTotal, l.qty).rate : l.gstRate);
     return { ...base, discount: (l.discount ?? 0) + Math.max(lost, 0), inclusiveTotal };
   });
 }

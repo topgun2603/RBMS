@@ -96,13 +96,15 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "memberships.checkin",
       "serials.view",
       "jewellery.exchange",
+      // POS terminals: use a weighing station (weigh tickets).
+      "pos.weigh",
     ],
   },
   {
     key: "accountant",
     name: "Accountant",
     description: "Reports, credit book, purchases and expenses.",
-    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "expenses.manage"],
+    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage"],
   },
   {
     key: "delivery",
@@ -137,6 +139,8 @@ export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (rea
     ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till", "medicines.dispense"],
     // Before services added jobcards.view, bookings.desk and memberships.checkin.
     ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till", "medicines.dispense", "dining.serve", "dining.bill"],
+    // Before POS terminals added pos.weigh.
+    ["invoices.create", "invoices.credit-note", "payments.receive", "customers.create", "catalogue.view", "loyalty.redeem", "pos.till", "medicines.dispense", "dining.serve", "dining.bill", "jobcards.view", "bookings.desk", "memberships.checkin", "serials.view", "jewellery.exchange"],
   ],
   // Before pharmacies added medicines.manage.
   "stock-keeper": [["catalogue.view", "catalogue.manage", "inventory.adjust", "inventory.transfer", "inventory.purchases"]],

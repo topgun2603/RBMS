@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n, useRouteParams } from "@srirealtime/web";
-import { BanIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, Link2Icon, Loader2Icon, ReceiptTextIcon, StoreIcon, TruckIcon } from "lucide-react";
+import { BanIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, HandCoinsIcon, Link2Icon, Loader2Icon, ReceiptTextIcon, StoreIcon, TruckIcon, Undo2Icon } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -23,7 +23,11 @@ import {
   TableRow,
   toast,
 } from "@srirealtime/ui";
+import { DebitNoteDialog, PayPurchaseDialog } from "../components/inventory/payables-dialogs";
+import { PurchasePaymentsCard, PurchaseReturnsCard } from "../components/inventory/purchase-payables-cards";
 import { PurchaseStatusPill } from "../components/inventory/stock-meta";
+import { useHasPermission } from "../lib/access";
+import type { PurchasePayables } from "../lib/types-payables";
 import { formatQty, money, stateLabel } from "../lib/format";
 import { usePurchase, usePurchaseAction } from "../lib/queries-v2";
 import { PDF_PATHS, usePdf } from "../lib/pdf";
@@ -34,6 +38,9 @@ export default function PurchaseDetailPage() {
   const q = usePurchase(id);
   const action = usePurchaseAction();
   const [cancelling, setCancelling] = React.useState(false);
+  const [paying, setPaying] = React.useState(false);
+  const [returning, setReturning] = React.useState(false);
+  const canPay = useHasPermission("inventory.purchases.pay");
   const documents = useFeature("documents");
   const pdf = usePdf();
   const back = { href: "purchases", label: t("billing.nav.purchases") };
@@ -58,7 +65,9 @@ export default function PurchaseDetailPage() {
     );
   }
 
-  const p = q.data;
+  const p = q.data as typeof q.data & PurchasePayables;
+  const balance = p.balance ?? (p.paid ? 0 : p.total);
+  const amountPaid = p.amountPaid ?? (p.paid ? p.total : 0);
   const totals = p.totals ?? { subtotal: 0, discount: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, roundOff: 0, total: p.total, taxBreakup: [] };
   const itc = totals.cgst + totals.sgst + totals.igst;
   const inter = totals.igst > 0;
@@ -101,10 +110,20 @@ export default function PurchaseDetailPage() {
             )}
             {!cancelled && (
             <>
-              <Button variant={p.paid ? "outline" : "default"} size="lg" disabled={busy} onClick={() => void togglePaid()}>
-                {p.paid ? <ClockIcon /> : <CheckCircle2Icon />}
-                {p.paid ? t("billing.purchases.markUnpaid") : t("billing.purchases.markPaid")}
+              {canPay && balance > 0 && (
+                <Button size="lg" disabled={busy} onClick={() => setPaying(true)}>
+                  <HandCoinsIcon /> {t("billing.payables.payBill")}
+                </Button>
+              )}
+              <Button variant="outline" size="lg" disabled={busy} onClick={() => setReturning(true)}>
+                <Undo2Icon /> {t("billing.payables.returnGoods")}
               </Button>
+              {canPay && (
+                <Button variant="outline" size="lg" disabled={busy} onClick={() => void togglePaid()}>
+                  {p.paid ? <ClockIcon /> : <CheckCircle2Icon />}
+                  {p.paid ? t("billing.purchases.markUnpaid") : t("billing.purchases.markPaid")}
+                </Button>
+              )}
               <Button variant="outline" size="lg" className="text-danger-ink" disabled={busy} onClick={() => setCancelling(true)}>
                 <BanIcon /> {t("billing.purchases.cancel")}
               </Button>
@@ -214,6 +233,9 @@ export default function PurchaseDetailPage() {
             </CardContent>
           </Card>
 
+          <PurchasePaymentsCard purchaseId={p.id} cancelled={cancelled} />
+          <PurchaseReturnsCard purchaseId={p.id} />
+
           {p.notes && (
             <Card className="gap-2">
               <CardContent className="text-sm">
@@ -265,6 +287,31 @@ export default function PurchaseDetailPage() {
                 <span className="font-semibold">{t("billing.totals.grandTotal")}</span>
                 <span className="font-heading text-2xl font-bold text-primary tabular-nums">{money(p.total)}</span>
               </div>
+              {!cancelled && (
+                <div className="mt-3 grid gap-1 rounded-xl border border-card-ring px-3 py-2.5 text-sm">
+                  {(p.freight ?? 0) + (p.otherCharges ?? 0) > 0 && (
+                    <DetailRow label={t("billing.payables.charges")}>
+                      <span className="tabular-nums">{money((p.freight ?? 0) + (p.otherCharges ?? 0))}</span>
+                    </DetailRow>
+                  )}
+                  <DetailRow label={t("billing.payables.paidSoFar")}>
+                    <span className="tabular-nums">{money(amountPaid)}</span>
+                  </DetailRow>
+                  {(p.returnedAmount ?? 0) > 0 && (
+                    <DetailRow label={t("billing.payables.returned")}>
+                      <span className="tabular-nums">{money(p.returnedAmount ?? 0)}</span>
+                    </DetailRow>
+                  )}
+                  <DetailRow label={balance < 0 ? t("billing.payables.supplierOwesUs") : t("billing.payables.balanceDue")}>
+                    <span className={`font-semibold tabular-nums ${balance > 0 ? "text-warning-ink" : balance < 0 ? "text-success-ink" : ""}`}>{money(Math.abs(balance))}</span>
+                  </DetailRow>
+                  {p.dueDate && (
+                    <DetailRow label={t("billing.payables.dueDate")}>
+                      <span className="tabular-nums">{formatDate(p.dueDate)}</span>
+                    </DetailRow>
+                  )}
+                </div>
+              )}
               <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-success/14 px-3 py-2.5">
                 <span className="text-sm font-medium text-success-ink">{t("billing.purchases.itc")}</span>
                 <span className="font-semibold text-success-ink tabular-nums">{cancelled ? money(0) : money(itc)}</span>
@@ -286,6 +333,8 @@ export default function PurchaseDetailPage() {
         </div>
       </FadeIn>
 
+      <PayPurchaseDialog open={paying} onOpenChange={setPaying} purchase={{ id: p.id, billNumber: p.billNumber, balance }} />
+      <DebitNoteDialog open={returning} onOpenChange={setReturning} purchase={p} />
       <ConfirmDialog
         open={cancelling}
         onOpenChange={setCancelling}

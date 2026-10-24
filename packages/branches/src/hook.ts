@@ -48,6 +48,9 @@ export async function resolveRequestBranch(
   if (!(await directory.featureOn(tenant.id))) return null;
   const active = await directory.activeBranches(tenant.id);
   if (active.length === 0) return null;
+  // A paired POS terminal works in its own branch (docs/pos-terminals.md), whatever the header says.
+  const terminalBranch = ctx.device?.branchId ? active.find((b) => b.id === ctx.device!.branchId) : undefined;
+  if (terminalBranch) return toRef(terminalBranch);
   const signedIn = ctx.user && (isSuperAdmin(ctx) || ctx.user.tenantRoles.length > 0);
   const assignments = signedIn ? await directory.assignments(tenant.id, ctx.user!.id) : [];
   const access = accessFor(ctx, assignments);

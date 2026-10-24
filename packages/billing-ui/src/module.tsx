@@ -7,6 +7,7 @@ import {
   BookOpenIcon,
   BoxesIcon,
   BuildingIcon,
+  ClipboardListIcon,
   CreditCardIcon,
   FileTextIcon,
   HandCoinsIcon,
@@ -16,6 +17,7 @@ import {
   ReceiptIndianRupeeIcon,
   TruckIcon,
   UsersIcon,
+  WalletCardsIcon,
   WarehouseIcon,
 } from "lucide-react";
 import { ModuleDashboard, type NavSection, type RouteDef, type WebModule, type WidgetDef } from "@srirealtime/web";
@@ -84,7 +86,9 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { href: "items", label: "billing.nav.items", icon: PackageIcon, feature: F.invoices },
     { href: "stock", label: "billing.nav.stock", icon: WarehouseIcon, feature: F.inventory },
     { href: "purchases", label: "billing.nav.purchases", icon: BoxesIcon, feature: F.purchases },
+    { href: "purchase-orders", label: "billing.nav.purchaseOrders", icon: ClipboardListIcon, feature: F.purchases },
     { href: "suppliers", label: "billing.nav.suppliers", icon: TruckIcon, feature: F.purchases },
+    { href: "payables", label: "billing.nav.payables", icon: WalletCardsIcon, feature: F.purchases },
   ];
   const insights = [
     { href: "reports", label: "billing.nav.reports", icon: BarChart3Icon, feature: F.reports },
@@ -118,7 +122,13 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "purchases", component: page(() => import("./pages/purchases")), feature: F.purchases },
     { path: "purchases/new", component: page(() => import("./pages/purchase-new")), feature: F.purchases, immersive: true },
     { path: "purchases/:id", component: page(() => import("./pages/purchase-detail")), feature: F.purchases },
+    { path: "purchase-orders", component: page(() => import("./pages/purchase-orders")), feature: F.purchases },
+    { path: "purchase-orders/new", component: page(() => import("./pages/purchase-order-new")), feature: F.purchases, immersive: true },
+    { path: "purchase-orders/:id", component: page(() => import("./pages/purchase-order-detail")), feature: F.purchases },
+    { path: "debit-notes", component: page(() => import("./pages/debit-notes")), feature: F.purchases },
     { path: "suppliers", component: page(() => import("./pages/suppliers")), feature: F.purchases },
+    { path: "suppliers/:id", component: page(() => import("./pages/supplier-detail")), feature: F.purchases },
+    { path: "payables", component: page(() => import("./pages/payables")), feature: F.purchases },
     { path: "reports", component: page(() => import("./pages/reports")), feature: F.reports },
     { path: "expenses", component: page(() => import("./pages/expenses")), feature: F.expenses, permission: EXPENSES_PERMISSION },
   ];
@@ -131,6 +141,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { id: "kpi-collected", zone: "kpi", priority: 45, feature: F.invoices, component: widget("CollectedKpiWidget", widgets) },
     { id: "kpi-overdue", zone: "kpi", priority: 50, feature: F.invoices, component: widget("OverdueKpiWidget", widgets) },
     // Needs attention: overdue bills, low / out-of-stock items.
+    { id: "kpi-payables", zone: "kpi", priority: 55, feature: F.purchases, component: widget("PayablesKpiWidget", () => import("./widgets/payables")) },
     { id: "attention", zone: "attention", priority: 10, feature: F.invoices, component: widget("BillingAttentionWidget", widgets) },
     { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, component: widget("SalesTrendWidget", widgets) },
     { id: "recent-bills", zone: "main", priority: 30, feature: F.invoices, component: widget("RecentBillsWidget", widgets) },

@@ -1,7 +1,20 @@
+import type { ZodTypeAny } from "zod";
 import type { RequestContext } from "./context";
 
 /** Route-level audit settings: `false` skips the host's automatic audit entry for that route. */
 export type RouteAuditConfig = { action: string; entity: string; idParam?: string } | false;
+
+/**
+ * Typed shapes of a route for the API document (`GET /v1/developer/openapi.json`) and the generated mobile client.
+ * Documentation only: routes still parse their input themselves.
+ */
+export interface RouteSchema {
+  body?: ZodTypeAny;
+  /** A z.object: each key becomes a query parameter. */
+  query?: ZodTypeAny;
+  /** The 200 response. */
+  response?: ZodTypeAny;
+}
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -26,6 +39,8 @@ declare module "fastify" {
      * Requests without a shop are recorded (tenant null) only for super-admins or routes with an explicit config.
      */
     audit?: RouteAuditConfig;
+    /** Request / response shapes for the API document. */
+    schema?: RouteSchema;
   }
 }
 

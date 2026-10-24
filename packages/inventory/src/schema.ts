@@ -14,13 +14,17 @@ export const MOVEMENT_REASONS = [
   "sale_return_cancel",
   "purchase",
   "purchase_cancel",
+  /** Goods sent back to the supplier (debit note). */
+  "purchase_return",
+  /** A cancelled debit note's goods taken back in. */
+  "purchase_return_cancel",
   "transfer_out",
   "transfer_in",
 ] as const;
 export type MovementReason = (typeof MOVEMENT_REASONS)[number];
 
 /** Known movement ref types; reservations may commit with their own ref type (e.g. "order"). */
-export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note"] as const;
+export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note", "grn", "debit_note"] as const;
 export type RefType = (typeof REF_TYPES)[number] | (string & {});
 
 export const LOCATION_TYPES = ["store", "warehouse"] as const;
@@ -184,6 +188,9 @@ export const suppliers = pgTable(
     gstin: text("gstin"),
     address: text("address"),
     stateCode: text("state_code"),
+    /** Paise we already owed the supplier when we started using the app (positive = payable). */
+    openingBalance: integer("opening_balance").notNull().default(0),
+    openingDate: date("opening_date", { mode: "string" }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps(),
   },
@@ -207,7 +214,18 @@ export const purchases = pgTable(
     totals: jsonb("totals").$type<Omit<InvoiceTotals, "lines">>().notNull(),
     /** Paise. */
     total: integer("total").notNull(),
+    /** Kept in step with `balance <= 0` (the old flag); money lives in `amountPaid`/`returnedAmount`. */
     paid: boolean("paid").notNull().default(false),
+    /** Paise paid to the supplier against this bill, net of refunds received. */
+    amountPaid: integer("amount_paid").notNull().default(0),
+    /** Paise of goods returned on debit notes that reduce what is owed on this bill. */
+    returnedAmount: integer("returned_amount").notNull().default(0),
+    dueDate: date("due_date", { mode: "string" }),
+    /** Supplier's freight and other charges (no GST), included in `total` and capitalised into stock cost. */
+    freight: integer("freight").notNull().default(0),
+    otherCharges: integer("other_charges").notNull().default(0),
+    purchaseOrderId: uuid("purchase_order_id"),
+    goodsReceiptId: uuid("goods_receipt_id"),
     status: text("status").$type<PurchaseStatus>().notNull().default("recorded"),
     notes: text("notes"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
@@ -217,6 +235,181 @@ export const purchases = pgTable(
   (t) => [index("purchases_tenant_date_idx").on(t.tenantId, t.date), index("purchases_tenant_supplier_idx").on(t.tenantId, t.supplierId)],
 );
 
+// ------------------------------------------------------------------ supplier payables
+
+export const PAYMENT_MODES = ["cash", "upi", "bank", "cheque", "card", "other"] as const;
+export type PaymentMode = (typeof PAYMENT_MODES)[number];
+/** `payment` = paid to the supplier; `refund` = money received back from the supplier. */
+export const SUPPLIER_PAYMENT_KINDS = ["payment", "refund"] as const;
+export type SupplierPaymentKind = (typeof SUPPLIER_PAYMENT_KINDS)[number];
+
+/**
+ * Money paid to (or refunded by) a supplier. `purchaseId` null = on account (settles the opening balance or is an
+ * advance). A lump payment split over several bills shares one `groupId`. Reversed rows stay for the audit trail.
+ */
+export const purchasePayments = pgTable(
+  "purchase_payments",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    supplierId: uuid("supplier_id"),
+    purchaseId: uuid("purchase_id"),
+    groupId: uuid("group_id").notNull(),
+    kind: text("kind").$type<SupplierPaymentKind>().notNull().default("payment"),
+    /** Paise, always positive. */
+    amount: integer("amount").notNull(),
+    mode: text("mode").$type<PaymentMode>().notNull().default("cash"),
+    reference: text("reference"),
+    date: date("date", { mode: "string" }).notNull(),
+    note: text("note"),
+    debitNoteId: uuid("debit_note_id"),
+    createdBy: uuid("created_by"),
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    reversedBy: uuid("reversed_by"),
+    reverseNote: text("reverse_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("purchase_payments_tenant_purchase_idx").on(t.tenantId, t.purchaseId),
+    index("purchase_payments_tenant_supplier_idx").on(t.tenantId, t.supplierId, t.date),
+    index("purchase_payments_tenant_group_idx").on(t.tenantId, t.groupId),
+  ],
+);
+
+// ------------------------------------------------------------------ purchase workflow
+
+export const PO_STATUSES = ["draft", "sent", "partially_received", "received", "cancelled"] as const;
+export type PoStatus = (typeof PO_STATUSES)[number];
+
+/** A purchase order line; `received` is the quantity delivered so far. */
+export type PoLine = LineTotals & { itemId?: string; received: number };
+
+export const purchaseOrders = pgTable(
+  "purchase_orders",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    number: text("number").notNull(),
+    supplierId: uuid("supplier_id"),
+    supplier: jsonb("supplier").$type<SupplierSnapshot>().notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    expectedDate: date("expected_date", { mode: "string" }),
+    status: text("status").$type<PoStatus>().notNull().default("draft"),
+    placeOfSupply: text("place_of_supply").notNull(),
+    lines: jsonb("lines").$type<PoLine[]>().notNull(),
+    totals: jsonb("totals").$type<Omit<InvoiceTotals, "lines">>().notNull(),
+    /** Ordered value incl. GST, paise. */
+    total: integer("total").notNull(),
+    locationId: uuid("location_id"),
+    notes: text("notes"),
+    createdBy: uuid("created_by"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [
+    unique("purchase_orders_tenant_number_uq").on(t.tenantId, t.number),
+    index("purchase_orders_tenant_date_idx").on(t.tenantId, t.date),
+    index("purchase_orders_tenant_supplier_idx").on(t.tenantId, t.supplierId),
+  ],
+);
+
+/** A line of a goods receipt. */
+export interface GrnLine {
+  /** Index of the line on the purchase order. */
+  lineIndex: number;
+  itemId?: string;
+  description: string;
+  qty: number;
+  /** Taxable value of the received qty (paise, before landed charges). */
+  taxable: number;
+  /** Landed charges apportioned to this line (paise). */
+  landed: number;
+}
+
+/** A goods receipt (GRN): what arrived against a purchase order, when and where. Receiving adds stock. */
+export const goodsReceipts = pgTable(
+  "goods_receipts",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    number: text("number").notNull(),
+    purchaseOrderId: uuid("purchase_order_id").notNull(),
+    supplierId: uuid("supplier_id"),
+    date: date("date", { mode: "string" }).notNull(),
+    locationId: uuid("location_id").notNull(),
+    lines: jsonb("lines").$type<GrnLine[]>().notNull(),
+    freight: integer("freight").notNull().default(0),
+    otherCharges: integer("other_charges").notNull().default(0),
+    /** The purchase bill made from this receipt, once billed. */
+    purchaseId: uuid("purchase_id"),
+    note: text("note"),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("goods_receipts_tenant_number_uq").on(t.tenantId, t.number),
+    index("goods_receipts_tenant_po_idx").on(t.tenantId, t.purchaseOrderId),
+  ],
+);
+
+export const DEBIT_NOTE_STATUSES = ["issued", "cancelled"] as const;
+export type DebitNoteStatus = (typeof DEBIT_NOTE_STATUSES)[number];
+
+/** A returned line: `lineIndex` is the line of the purchase bill; amounts are the returned share. */
+export type DebitNoteLine = LineTotals & { itemId?: string; lineIndex: number };
+
+/** Goods returned to a supplier against a purchase: reduces stock and what is owed (or is refunded). */
+export const debitNotes = pgTable(
+  "debit_notes",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    number: text("number").notNull(),
+    purchaseId: uuid("purchase_id").notNull(),
+    supplierId: uuid("supplier_id"),
+    supplierName: text("supplier_name").notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    lines: jsonb("lines").$type<DebitNoteLine[]>().notNull(),
+    totals: jsonb("totals").$type<Omit<InvoiceTotals, "lines">>().notNull(),
+    total: integer("total").notNull(),
+    /** Paise of `total` the supplier paid back in money (the rest reduces the balance). */
+    refundAmount: integer("refund_amount").notNull().default(0),
+    reason: text("reason"),
+    locationId: uuid("location_id").notNull(),
+    status: text("status").$type<DebitNoteStatus>().notNull().default("issued"),
+    createdBy: uuid("created_by"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("debit_notes_tenant_number_uq").on(t.tenantId, t.number),
+    index("debit_notes_tenant_purchase_idx").on(t.tenantId, t.purchaseId),
+    index("debit_notes_tenant_date_idx").on(t.tenantId, t.date),
+  ],
+);
+
+export const PURCHASE_DOC_KINDS = ["po", "grn", "dn"] as const;
+export type PurchaseDocKind = (typeof PURCHASE_DOC_KINDS)[number];
+
+/** Per-tenant, per-FY counters for PO / GRN / debit note numbers (like `credit_note_series`). */
+export const purchaseDocSeries = pgTable(
+  "purchase_doc_series",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    kind: text("kind").$type<PurchaseDocKind>().notNull(),
+    fy: text("fy").notNull(),
+    prefix: text("prefix").notNull(),
+    nextSeq: integer("next_seq").notNull(),
+    ...timestamps(),
+  },
+  (t) => [unique("purchase_doc_series_tenant_kind_fy_uq").on(t.tenantId, t.kind, t.fy)],
+);
+
+export type PurchasePaymentRow = typeof purchasePayments.$inferSelect;
+export type PurchaseOrderRow = typeof purchaseOrders.$inferSelect;
+export type GoodsReceiptRow = typeof goodsReceipts.$inferSelect;
+export type DebitNoteRow = typeof debitNotes.$inferSelect;
 export type StockLocationRow = typeof stockLocations.$inferSelect;
 export type StockTransferRow = typeof stockTransfers.$inferSelect;
 export type StockReservationRow = typeof stockReservations.$inferSelect;

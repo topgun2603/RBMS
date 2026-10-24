@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MailIcon, MoreVerticalIcon, PencilIcon, PhoneIcon, UserMinusIcon, UserPlusIcon, UsersRoundIcon } from "lucide-react";
+import { KeyRoundIcon, MailIcon, MoreVerticalIcon, PencilIcon, PhoneIcon, UserMinusIcon, UserPlusIcon, UsersRoundIcon } from "lucide-react";
 import {
   AnimatePresence,
   Button,
@@ -20,9 +20,11 @@ import {
   toast,
   useReducedMotionSafe,
 } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, displayName, QueryError, SearchField, useI18n, useSession } from "@srirealtime/web";
+import { ConfirmDialog, describeError, displayName, QueryError, SearchField, useFeature, useI18n, useSession } from "@srirealtime/web";
 import { LevelPill, useRelativeTime } from "../bits";
-import { useMyUserId } from "../../lib/access";
+import { useHasPermission, useMyUserId } from "../../lib/access";
+import { POS_DEVICES_PERMISSION, POS_TERMINALS_FEATURE, usePosPins } from "../../lib/pins";
+import { PinDialog, type PinTarget } from "./pin-dialog";
 import { useMembers, useRemoveMember, useRoles, useUpdateMember } from "../../lib/queries";
 import type { StaffMember } from "../../lib/types";
 import { MemberDialog } from "./member-dialog";
@@ -43,6 +45,11 @@ export function MembersTab() {
   const [q, setQ] = React.useState("");
   const [dialog, setDialog] = React.useState<{ member: StaffMember | null } | null>(null);
   const [removing, setRemoving] = React.useState<StaffMember | null>(null);
+  // POS PINs (paired terminals): who has one; managers with pos.devices set / reset / remove them.
+  const pinsOn = useFeature(POS_TERMINALS_FEATURE);
+  const canPins = useHasPermission(POS_DEVICES_PERMISSION);
+  const pins = usePosPins(pinsOn && canPins);
+  const [pinFor, setPinFor] = React.useState<PinTarget | null>(null);
 
   const roleByKey = React.useMemo(() => new Map((roles.data ?? []).map((r) => [r.key, r])), [roles.data]);
   const list = React.useMemo(() => {
@@ -82,7 +89,14 @@ export function MembersTab() {
         ) : (
           <Skeleton className="h-4 w-24" />
         )}
-        {invite}
+        <div className="flex flex-wrap items-center gap-2">
+          {pinsOn && (
+            <Button size="lg" variant="outline" onClick={() => setPinFor({ userId: "me", name: "", hasPin: !!(me && pins.data?.get(me)?.hasPin) })}>
+              <KeyRoundIcon /> {t("workspace.pins.myTitle")}
+            </Button>
+          )}
+          {invite}
+        </div>
       </div>
 
       {members.isPending ? (
@@ -122,6 +136,14 @@ export function MembersTab() {
                         <span className={cn("truncate font-medium", !m.active && "text-muted-foreground")}>{m.name || contact[0] || t("workspace.team.unnamed")}</span>
                         {m.userId === me && <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t("workspace.team.you")}</span>}
                         {!m.active && <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t("workspace.team.inactive")}</span>}
+                        {pinsOn && canPins && pins.data && (
+                          <span
+                            className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs", pins.data.get(m.userId)?.hasPin ? "bg-success/15 text-success-ink" : "bg-muted text-muted-foreground")}
+                            data-pin={pins.data.get(m.userId)?.hasPin ? "set" : "none"}
+                          >
+                            <KeyRoundIcon className="size-3" /> {pins.data.get(m.userId)?.hasPin ? t("workspace.pins.has") : t("workspace.pins.none")}
+                          </span>
+                        )}
                       </p>
                       <p className="flex flex-wrap items-center gap-x-3 text-meta text-muted-foreground">
                         {m.phone && (
@@ -154,6 +176,17 @@ export function MembersTab() {
                       </div>
                     </div>
                     <div className="ml-auto flex items-center gap-1">
+                      {pinsOn && canPins && m.userId !== me && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t(pins.data?.get(m.userId)?.hasPin ? "workspace.pins.resetFor" : "workspace.pins.setFor", { name: displayName(m) })}
+                          title={t(pins.data?.get(m.userId)?.hasPin ? "workspace.pins.resetFor" : "workspace.pins.setFor", { name: displayName(m) })}
+                          onClick={() => setPinFor({ userId: m.userId, name: displayName(m), hasPin: !!pins.data?.get(m.userId)?.hasPin })}
+                        >
+                          <KeyRoundIcon />
+                        </Button>
+                      )}
                       <Switch
                         checked={m.active}
                         disabled={!editable || update.isPending}
@@ -189,6 +222,7 @@ export function MembersTab() {
         </Card>
       )}
 
+      <PinDialog target={pinFor} onClose={() => setPinFor(null)} />
       <MemberDialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)} member={dialog?.member ?? null} />
       <ConfirmDialog
         open={!!removing}

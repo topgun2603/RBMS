@@ -94,6 +94,8 @@ export interface Item {
   unit: string | null;
   rate: number;
   gstRate: GstRate;
+  /** Catalogue items: price-band GST (apparel / footwear); `gstRate`/`rate` are the band at the item's price. */
+  gstRule?: import("@srirealtime/gst").GstRateRule | null;
   createdAt: ISODate;
   /** Catalogue items: the product's category. */
   categoryId?: string | null;

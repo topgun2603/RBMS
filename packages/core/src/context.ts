@@ -33,10 +33,26 @@ export interface BranchRef {
   locationId: string | null;
 }
 
+/**
+ * The paired POS terminal a request comes from (`x-device-token`, `@srirealtime/pos`). `branchId` / `locationId` are
+ * the terminal's branch and its stock location (null when none).
+ */
+export interface DeviceRef {
+  terminalId: string;
+  role: "pos" | "weighing";
+  branchId: string | null;
+  locationId: string | null;
+}
+
 /** Per-request context. Tenancy fills `tenant`, auth fills `user`, the branches hook (after auth) fills `branch`. */
 export interface RequestContext {
   tenant: TenantRef | null;
   user: UserRef | null;
+  /**
+   * The paired POS terminal, filled by the pos device hook (after tenancy, before auth). Undefined when that hook
+   * isn't mounted, null when the request carries no device token. Treat undefined like null.
+   */
+  device?: DeviceRef | null;
   /**
    * Current branch, filled by the branches context hook. Undefined when that hook isn't mounted, null when the shop
    * doesn't use branches (feature `multi-branch` off or no branches yet). Treat undefined like null.

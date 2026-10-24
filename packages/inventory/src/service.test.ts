@@ -193,6 +193,11 @@ describe("createInventory", () => {
       "stockLocations",
       "stockTransfers",
       "stockReservations",
+      "purchasePayments",
+      "purchaseOrders",
+      "goodsReceipts",
+      "debitNotes",
+      "purchaseDocSeries",
     ]);
     expect(service).toBeInstanceOf(InventoryService);
   });

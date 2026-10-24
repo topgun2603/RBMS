@@ -34,7 +34,7 @@ export function StepRow({ step, compact }: { step: OnboardingStep; compact?: boo
       <span
         className={cn(
           "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full",
-          state === "done" ? "bg-success text-white" : state === "skipped" ? "bg-muted text-muted-foreground" : "border-2 border-dashed border-primary/50 text-primary",
+          state === "done" ? "bg-success text-white dark:bg-success/60" : state === "skipped" ? "bg-muted text-muted-foreground" : "border-2 border-dashed border-primary/50 text-primary",
         )}
         aria-hidden
       >

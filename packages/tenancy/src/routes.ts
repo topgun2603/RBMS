@@ -1,5 +1,6 @@
 import {
   badRequest,
+  documented,
   forbidden,
   isSuperAdmin,
   notFound,
@@ -16,6 +17,16 @@ import { CUSTOM_DOMAIN_FEATURE, shouldForceVerify } from "./domains";
 import { TENANT_STATUSES } from "./schema";
 import type { TenantListQuery } from "./list";
 import { publicTenant, type TenancyService } from "./service";
+
+/** `publicTenant` as JSON, for the API document and the mobile client. */
+export const publicTenantSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  appId: z.string().nullable(),
+  status: z.enum(TENANT_STATUSES),
+});
+const mineResponse = z.object({ items: z.array(z.object({ tenant: publicTenantSchema, roles: z.array(z.string()) })) });
 
 /** Base levels and `role:<key>` custom roles; the service validates the combination (normalizeMemberRoles). */
 const role = z.string().regex(/^(role:)?[a-z][a-z0-9_-]{0,31}$/, "Invalid role");
@@ -111,7 +122,7 @@ export function tenancyRoutes(
       return publicTenant(tenant);
     });
 
-    app.get("/current", async (req) => {
+    app.get("/current", documented({ response: publicTenantSchema }), async (req) => {
       const ref = requireTenant(req.ctx);
       const tenant = await service.getById(ref.id);
       if (!tenant) throw notFound("Tenant");
@@ -125,7 +136,7 @@ export function tenancyRoutes(
       return publicTenant(await service.update(tenant.id, body));
     });
 
-    app.get("/mine", async (req) => {
+    app.get("/mine", documented({ response: mineResponse }), async (req) => {
       const user = requireUser(req.ctx);
       const rows = await service.tenantsForUser(user.id);
       return { items: rows.map((r) => ({ tenant: publicTenant(r.tenant), roles: r.roles })) };

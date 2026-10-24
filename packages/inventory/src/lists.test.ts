@@ -54,9 +54,9 @@ describe("purchase list", () => {
     const render = (s?: string) => db.select().from(purchases).orderBy(...PURCHASE_SORT.orderBy(s)).toSQL().sql;
     expect(render()).toContain('order by "purchases"."date" desc nulls last, "purchases"."created_at" desc, "purchases"."id" desc');
     expect(render("supplier")).toContain(`order by lower("purchases"."supplier"->>'name') asc`);
-    expect(render("-balance")).toContain("then \"purchases\".\"total\" else 0 end) desc");
+    expect(render("-balance")).toContain("\"purchases\".\"amount_paid\" else 0 end) desc");
     expect(() => render("paid")).toThrow(AppError);
-    expect(PURCHASE_SORT.keys).toEqual(["date", "number", "supplier", "total", "balance"]);
+    expect(PURCHASE_SORT.keys).toEqual(["date", "number", "supplier", "total", "balance", "due"]);
   });
 });
 
@@ -67,9 +67,9 @@ describe("supplier list", () => {
     const due = svc.payableSubquery(T);
     const render = (s?: string) => db.select({ id: suppliers.id }).from(suppliers).leftJoin(due, undefined).orderBy(...svc.supplierSort(due).orderBy(s)).toSQL().sql;
     expect(render()).toContain('order by lower("suppliers"."name") asc nulls last, "suppliers"."id" asc');
-    expect(render("-balance")).toContain('order by coalesce("payable", 0) desc nulls last');
+    expect(render("-balance")).toContain('coalesce("payable", 0) + "suppliers"."opening_balance"');
     expect(render("-lastPurchase")).toContain('order by "last_purchase" desc nulls last');
-    expect(render("-lastPurchase")).toContain('filter (where not "paid")');
+    expect(render("-lastPurchase")).toContain('"amount_paid"');
     expect(() => render("phone")).toThrow(AppError);
   });
 });

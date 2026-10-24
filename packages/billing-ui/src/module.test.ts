@@ -48,6 +48,12 @@ function visibleFor(shop: string) {
   return (g: { feature?: string | readonly string[] }, m?: { features?: readonly string[] }) => check(g.feature, m?.features).ok;
 }
 
+/** The settings pages the shop may open (listed by the settings rail since 192ea93, not by the sidebar). */
+function settingsHrefs(shop: string, module: MountedModule) {
+  const visible = visibleFor(shop);
+  return (module.settings ?? []).filter((p) => visible(p, module)).map((p) => `/settings/${p.path}`.replace(/\/$/, ""));
+}
+
 function navHrefs(shop: string, module: MountedModule) {
   const visible = visibleFor(shop);
   const settings = (module.settings ?? []).filter((p) => visible(p, module)).map((p) => ({ href: `/settings/${p.path}`.replace(/\/$/, ""), label: p.label }));
@@ -79,12 +85,14 @@ describe("billingModule", () => {
       "/items",
       "/stock",
       "/purchases",
+      "/purchase-orders",
       "/suppliers",
+      "/payables",
       "/reports",
       "/settings",
-      "/settings/payments",
-      "/settings/reminders",
     ]);
+    // The sidebar has one Settings link; the pages themselves are in the settings rail.
+    expect(settingsHrefs("raja", mount("/"))).toEqual(["/settings", "/settings/payments", "/settings/reminders"]);
   });
 
   it("kumar (BL, starter) loses purchases, suppliers and reminders", () => {
@@ -93,7 +101,9 @@ describe("billingModule", () => {
     expect(hrefs).toContain("/stock");
     expect(hrefs).not.toContain("/purchases");
     expect(hrefs).not.toContain("/suppliers");
-    expect(hrefs).not.toContain("/settings/reminders");
+    expect(hrefs).not.toContain("/purchase-orders");
+    expect(hrefs).not.toContain("/payables");
+    expect(settingsHrefs("kumar", mount("/"))).not.toContain("/settings/reminders");
   });
 
   it("anbu (EC) at /billing: no credit book, reminders or purchases, with no special-casing", () => {
@@ -106,8 +116,8 @@ describe("billingModule", () => {
       "/billing/stock",
       "/billing/reports",
       "/settings",
-      "/settings/payments",
     ]);
+    expect(settingsHrefs("anbu", m)).toEqual(["/settings", "/settings/payments"]);
     const visible = visibleFor("anbu");
     expect((m.widgets ?? []).filter((w) => visible(w, m)).map((w) => w.id)).toEqual([
       "kpi-sales",

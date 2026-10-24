@@ -109,6 +109,8 @@ export interface ItemSourceRecord {
   unit: string;
   rate: number;
   gstRate: number;
+  /** Catalogue: the product's price-band GST rule, if any (`gstRate` is then the band at this item's price). */
+  gstRule?: import("@srirealtime/gst").GstRateRule | null;
   createdAt: Date;
   /** Optional extras a source may fill (catalogue: category, product active, stock with inventory). */
   categoryId?: string | null;

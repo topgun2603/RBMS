@@ -1,4 +1,4 @@
-import { requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { documented, requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { NotifyService } from "./service";
@@ -7,6 +7,9 @@ import { CHANNELS, type Channel } from "./types";
 const channel = z.enum(CHANNELS as [Channel, ...Channel[]]);
 const varsSchema = z.record(z.union([z.string(), z.number()])).optional();
 const scopeQuery = z.object({ scope: z.enum(["tenant", "global"]).optional() });
+const pushTokenBody = z.object({ token: z.string().min(10).max(4096), platform: z.enum(["android", "ios", "web"]) });
+const pushTokenDeleteBody = z.object({ token: z.string().min(1) });
+const okResponse = z.object({ ok: z.literal(true) });
 
 const providerRef = z
   .object({
@@ -77,18 +80,16 @@ export function notifyRoutes(service: NotifyService) {
       return service.preview({ ...body, tenantId, locale: body.locale ?? req.ctx.locale });
     });
 
-    app.post("/push-tokens", async (req) => {
+    app.post("/push-tokens", documented({ body: pushTokenBody, response: okResponse }), async (req) => {
       const user = requireUser(req.ctx);
-      const body = z
-        .object({ token: z.string().min(10).max(4096), platform: z.enum(["android", "ios", "web"]) })
-        .parse(req.body);
+      const body = pushTokenBody.parse(req.body);
       await service.registerPushToken({ userId: user.id, tenantId: req.ctx.tenant?.id ?? null, ...body });
       return { ok: true };
     });
 
-    app.delete("/push-tokens", async (req) => {
+    app.delete("/push-tokens", documented({ body: pushTokenDeleteBody, response: okResponse }), async (req) => {
       const user = requireUser(req.ctx);
-      const { token } = z.object({ token: z.string().min(1) }).parse(req.body ?? req.query);
+      const { token } = pushTokenDeleteBody.parse(req.body ?? req.query);
       await service.removePushToken(token, user.id);
       return { ok: true };
     });

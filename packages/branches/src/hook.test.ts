@@ -32,6 +32,14 @@ function directory(opts: { on?: boolean; branches?: BranchLite[]; assignments?: 
 const ref = (b: BranchLite) => ({ id: b.id, code: b.code, locationId: b.locationId });
 
 describe("resolveRequestBranch", () => {
+  it("a paired POS terminal works in its own branch, whatever the header says", async () => {
+    const device = { terminalId: "t", role: "pos" as const, branchId: MDU.id, locationId: "l-mdu" };
+    expect(await resolveRequestBranch(directory(), ctx({ user: user(["staff"]), device }), "MAIN")).toEqual(ref(MDU));
+    expect(await resolveRequestBranch(directory(), ctx({ device }), null)).toEqual(ref(MDU));
+    // A closed branch falls back to the normal choice.
+    expect(await resolveRequestBranch(directory({ branches: [MAIN] }), ctx({ user: user(["owner"]), device }), null)).toEqual(ref(MAIN));
+  });
+
   it("is null without a tenant, with the feature off, or without branches", async () => {
     const d = directory();
     expect(await resolveRequestBranch(d, { ...emptyContext() }, "MDU")).toBeNull();

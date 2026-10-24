@@ -135,7 +135,7 @@ function OnlineCard({ order: o, now }: { order: OnlineOrder; now: number }) {
           <li key={`${l.externalId}-${i}`} className="text-sm leading-snug">
             <span className="font-semibold tabular-nums">{qty(l.qty)}×</span> {l.title}
             {!l.itemId && (
-              <span className="ml-1 inline-flex items-center gap-1 rounded bg-warning/15 px-1 text-xs font-medium text-warning">
+              <span className="ml-1 inline-flex items-center gap-1 rounded bg-warning/15 px-1 text-xs font-medium text-warning-ink">
                 <AlertTriangleIcon className="size-3" /> {t("restaurant.online.unmapped")}
               </span>
             )}
@@ -149,7 +149,7 @@ function OnlineCard({ order: o, now }: { order: OnlineOrder; now: number }) {
         <dt className="text-muted-foreground">{t("restaurant.online.total")}</dt>
         <dd className="text-right font-semibold tabular-nums">{money(o.total)}</dd>
         <dt className="text-muted-foreground">{t("restaurant.online.payment")}</dt>
-        <dd className={cn("text-right font-medium", o.payment === "cod" && "text-warning")}>{t(`restaurant.online.pay.${o.payment}`)}</dd>
+        <dd className={cn("text-right font-medium", o.payment === "cod" && "text-warning-ink")}>{t(`restaurant.online.pay.${o.payment}`)}</dd>
         {o.rider?.name && (
           <>
             <dt className="text-muted-foreground">{t("restaurant.online.rider")}</dt>
@@ -168,7 +168,7 @@ function OnlineCard({ order: o, now }: { order: OnlineOrder; now: number }) {
         </div>
       )}
       {failed && (
-        <div className="flex items-center justify-between gap-2 rounded bg-warning/10 px-2 py-1 text-meta text-warning">
+        <div className="flex items-center justify-between gap-2 rounded bg-warning/10 px-2 py-1 text-meta text-warning-ink">
           <span>{t("restaurant.online.reportFailed", { error: o.lastCallback?.error ?? "" })}</span>
           <Button size="sm" variant="outline" disabled={busy} onClick={() => run(a.resync.mutateAsync(o.id), t("restaurant.online.resent"))}>
             <RefreshCwIcon /> {t("restaurant.online.resend")}

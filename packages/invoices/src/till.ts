@@ -60,13 +60,14 @@ const countSchema = z
   .refine((c) => Object.keys(c).every((k) => (DENOMINATIONS as readonly number[]).includes(Number(k))), "Unknown note or coin")
   .transform((c) => Object.fromEntries(Object.entries(c).filter(([, n]) => n > 0)) as DenominationCount);
 
-export const tillOpenSchema = z
-  .object({
-    register: registerName,
-    /** Paise in the drawer; or give `openingCount`. */
-    openingCash: z.number().int().min(0).max(MAX_PAISE).optional(),
-    openingCount: countSchema.optional(),
-  })
+/** The open-till fields without the "cash or count" rule (the API document extends it). */
+export const tillOpenFields = z.object({
+  register: registerName,
+  /** Paise in the drawer; or give `openingCount`. */
+  openingCash: z.number().int().min(0).max(MAX_PAISE).optional(),
+  openingCount: countSchema.optional(),
+});
+export const tillOpenSchema = tillOpenFields
   .refine((v) => v.openingCash !== undefined || v.openingCount !== undefined, { message: "Enter the opening cash or count the drawer", path: ["openingCash"] });
 export type TillOpenInput = z.input<typeof tillOpenSchema>;
 
@@ -82,13 +83,14 @@ export const tillCashSchema = z.object({
 });
 export type TillCashInput = z.input<typeof tillCashSchema>;
 
-export const tillCloseSchema = z
-  .object({
-    count: countSchema.optional(),
-    /** Paise counted, when not counted by denomination. */
-    countedCash: z.number().int().min(0).max(MAX_PAISE).optional(),
-    note: z.string().trim().max(300).nullish(),
-  })
+/** The close-till fields without the "count the drawer" rule (the API document extends it). */
+export const tillCloseFields = z.object({
+  count: countSchema.optional(),
+  /** Paise counted, when not counted by denomination. */
+  countedCash: z.number().int().min(0).max(MAX_PAISE).optional(),
+  note: z.string().trim().max(300).nullish(),
+});
+export const tillCloseSchema = tillCloseFields
   .refine((v) => v.count !== undefined || v.countedCash !== undefined, { message: "Count the drawer", path: ["count"] });
 export type TillCloseInput = z.input<typeof tillCloseSchema>;
 

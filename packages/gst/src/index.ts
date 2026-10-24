@@ -1,5 +1,6 @@
 // Pure, browser-safe Indian GST utilities. No runtime dependencies.
 export * from "./gst";
+export * from "./rate-rule";
 export * from "./words";
 export * from "./states";
 export * from "./gstin";

@@ -25,7 +25,9 @@ import {
   formatInvoiceNumber,
   GST_RATES,
   isGstRate,
+  isGstRateRule,
   isInterState,
+  lineGstRate,
   isValidDate,
   isValidGstin,
   isValidStateCode,
@@ -36,6 +38,7 @@ import {
   stateFromGstin,
   todayIST,
   type GstRate,
+  type GstRateRule,
   type InvoiceTotals,
   type LineInput,
   type LineTotals,
@@ -244,6 +247,8 @@ export interface Item {
   unit: string;
   rate: number;
   gstRate: GstRate;
+  /** Catalogue items only: a price-band GST rule (apparel / footwear); `gstRate` is then the band at the item's price. */
+  gstRule?: GstRateRule | null;
   createdAt: Date;
   /** Catalogue items only: the product's category. */
   categoryId?: string | null;
@@ -505,6 +510,11 @@ const gstRate = z
   .number()
   .refine(isGstRate, `GST rate must be one of ${GST_RATES.join(", ")}`)
   .transform((v) => v as GstRate);
+/** A price-band GST rule (apparel / footwear, `@srirealtime/gst` rate-rule.ts). */
+const gstRule = z
+  .object({ kind: z.literal("price-band"), threshold: z.number().int().positive().max(MAX_PAISE), below: gstRate, above: gstRate })
+  .refine((r) => isGstRateRule(r), "A GST price band needs a lower rate below and a higher rate above the threshold")
+  .transform((r) => r as GstRateRule);
 const qty = z
   .number()
   .positive()
@@ -551,6 +561,11 @@ export const lineInputSchema = z
     rate: money,
     discount: money.optional(),
     gstRate,
+    /**
+     * Price-band GST (apparel / footwear): the line is taxed at the band of its unit taxable value after the
+     * discount, computed here; `gstRate` is then only a hint.
+     */
+    gstRule: gstRule.nullish(),
     /** Saved item the line came from (drives stock). */
     itemId: opt(z.string().uuid()),
     /** GST-inclusive amount charged for the line (orders with tax-inclusive prices): GST is taken out of it. */
@@ -569,7 +584,7 @@ export const lineInputSchema = z
     if (l.inclusiveTotal !== undefined) {
       // Must be the same line, only rounded differently: its taxable value within a paisa per unit of qty × rate − discount.
       const forward = lineAmount(l.qty, l.rate) - (l.discount ?? 0);
-      if (Math.abs(taxableOfInclusive(l.inclusiveTotal, l.gstRate) - forward) > Math.ceil(l.qty) + 1) {
+      if (Math.abs(taxableOfInclusive(l.inclusiveTotal, lineGstRate(l)) - forward) > Math.ceil(l.qty) + 1) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["inclusiveTotal"], message: "Inclusive total doesn't match the rate and quantity" });
       }
     }
@@ -585,6 +600,7 @@ export const lineInputSchema = z
     if (l.itemId) out.itemId = l.itemId;
     if (l.inclusiveTotal !== undefined) out.inclusiveTotal = l.inclusiveTotal;
     if (l.serials?.length) out.serials = l.serials;
+    if (l.gstRule) out.gstRule = l.gstRule;
     return out;
   });
 
@@ -823,6 +839,7 @@ const toLineInput = (l: LineTotals): LineInput => {
   if (l.itemId) out.itemId = l.itemId;
   if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
   if (l.serials?.length) out.serials = [...l.serials];
+  if (l.gstRule) out.gstRule = l.gstRule;
   return out;
 };
 
@@ -886,6 +903,7 @@ const toItem = (i: BillingItem | ItemSourceRecord): Item => ({
   unit: i.unit,
   rate: i.rate,
   gstRate: i.gstRate as GstRate,
+  ...("gstRule" in i && i.gstRule ? { gstRule: i.gstRule } : {}),
   createdAt: i.createdAt,
   ...("categoryId" in i && i.categoryId !== undefined ? { categoryId: i.categoryId } : {}),
   ...("active" in i && i.active !== undefined ? { active: i.active } : {}),
@@ -1053,6 +1071,11 @@ export class InvoicesService {
 
   private today() {
     return todayIST(this.now());
+  }
+
+  /** Money is recorded on the day it comes in (IST): a post-dated cheque is entered when it clears. */
+  private assertNotFuture(date: string) {
+    if (date > this.today()) throw badRequest("A payment can't be dated after today");
   }
 
   async sellerProfile(tenantId: string): Promise<SellerProfile> {
@@ -1388,6 +1411,7 @@ export class InvoicesService {
   /** Records money received on account and allocates it oldest-first to open bills; the rest is advance. */
   async addReceipt(tenantId: string, customerId: string, input: ReceiptInput, userId: string | null = null): Promise<ReceiptResult> {
     const b = receiptInputSchema.parse(input);
+    this.assertNotFuture(b.date);
     const paidNow: string[] = [];
     const result = await this.db.transaction(async (tx) => {
       // Locks the customer so concurrent receipts allocate one after the other.
@@ -2487,6 +2511,7 @@ export class InvoicesService {
 
   async addPayment(tenantId: string, id: string, input: PaymentInput, userId: string | null = null): Promise<Invoice> {
     const b = paymentInputSchema.parse(input);
+    this.assertNotFuture(b.date);
     let before: InvoiceStatus | null = null;
     const row = await this.db.transaction(async (tx) => {
       const inv = await this.row(tx, tenantId, id, true);

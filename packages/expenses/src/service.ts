@@ -79,8 +79,8 @@ export const listQuery = listQuerySchema({ defaultLimit: 50, maxLimit: 500 })
   .superRefine(rangeOrder("from", "to"));
 export type ExpenseListQuery = z.input<typeof listQuery>;
 
-const categoryInput = z.object({ name: z.string().trim().min(1).max(60), sort: z.number().int().min(0).max(10_000).optional() });
-const categoryPatch = categoryInput.partial();
+export const categoryInput = z.object({ name: z.string().trim().min(1).max(60), sort: z.number().int().min(0).max(10_000).optional() });
+export const categoryPatch = categoryInput.partial();
 
 export interface ExpenseView extends ExpenseRow {
   categoryName: string;

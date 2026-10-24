@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createFeatures } from "./index";
 import { resolveFeatures } from "./resolve";
+import { featuresRoutes, tenantFeaturesSchema } from "./routes";
 
 // postgres-js connects lazily; these tests never touch the database (resolve is stubbed).
 const { db, close } = createDb("postgres://user:pass@127.0.0.1:1/none", { max: 1 });
@@ -153,5 +154,25 @@ describe("preHandler", () => {
     const both = await shop.server.inject("/both");
     expect(both.statusCode).toBe(403);
     expect(both.json().details).toEqual({ feature: "payments", reason: "shop" });
+  });
+});
+
+describe("GET /v1/features", () => {
+  it("answers TenantFeatures matching tenantFeaturesSchema (every FeatureState field)", async () => {
+    const f = build({ modules: ["invoices", "invoices.reminders"], toggles: { "invoices.reminders": false } });
+    const server = Fastify();
+    server.decorateRequest("ctx", null as never);
+    server.addHook("onRequest", async (req) => {
+      req.ctx = { ...emptyContext(), tenant };
+    });
+    await server.register(featuresRoutes(f.service), { prefix: "/v1/features" });
+    const res = await server.inject("/v1/features");
+    expect(res.statusCode).toBe(200);
+    const json = res.json();
+    // Equality also catches fields the schema doesn't document (zod strips unknown keys).
+    expect(tenantFeaturesSchema.parse(json)).toEqual(json);
+    expect(json.features.find((s: { key: string }) => s.key === "invoices.reminders")).toMatchObject({ enabled: false, reason: "shop", shopEnabled: false });
+    expect(json.features.find((s: { key: string }) => s.key === "payments")).toMatchObject({ reason: "plan", shopEnabled: null });
+    await server.close();
   });
 });

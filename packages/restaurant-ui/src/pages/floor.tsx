@@ -163,7 +163,7 @@ function TableCard({ table, onOpen }: { table: FloorTable; onOpen: () => void })
             #{o.number} · {elapsed(minutesSince(o.openedAt))}
           </span>
           {(o.readyKots > 0 || o.activeKots > 0) && (
-            <span className={cn("text-meta font-medium", o.readyKots > 0 ? "text-success" : "text-warning")}>
+            <span className={cn("text-meta font-medium", o.readyKots > 0 ? "text-success-ink" : "text-warning-ink")}>
               {o.readyKots > 0 ? t("restaurant.floor.readyN", { count: o.readyKots }) : t("restaurant.floor.cookingN", { count: o.activeKots })}
             </span>
           )}
@@ -192,7 +192,7 @@ function OrderCard({ order: o, onOpen }: { order: OrderSummary; onOpen: () => vo
           {[o.customerName, o.note].filter(Boolean).join(" · ") || t("restaurant.floor.walkIn")} · {elapsed(minutesSince(o.createdAt))}
         </span>
         {(o.readyKots > 0 || o.activeKots > 0) && (
-          <span className={cn("text-meta font-medium", o.readyKots > 0 ? "text-success" : "text-warning")}>
+          <span className={cn("text-meta font-medium", o.readyKots > 0 ? "text-success-ink" : "text-warning-ink")}>
             {o.readyKots > 0 ? t("restaurant.floor.readyN", { count: o.readyKots }) : t("restaurant.floor.cookingN", { count: o.activeKots })}
           </span>
         )}

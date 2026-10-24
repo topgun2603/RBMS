@@ -67,6 +67,7 @@ describe("built-in templates", () => {
       "memberships.checkin",
       "payments.receive",
       "pos.till",
+      "pos.weigh",
       "serials.view",
     ]);
   });

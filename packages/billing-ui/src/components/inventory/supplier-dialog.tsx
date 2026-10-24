@@ -20,7 +20,9 @@ import {
 } from "@srirealtime/ui";
 import { StateSelect } from "../state-select";
 import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@srirealtime/web";
-import { stateLabel } from "../../lib/format";
+import { MoneyInput } from "../money-input";
+import { paiseToInput, rupeesToPaise, stateLabel } from "../../lib/format";
+import type { SupplierPayables } from "../../lib/types-payables";
 import { useSaveSupplier } from "../../lib/queries-v2";
 import type { Supplier, SupplierInput } from "../../lib/types";
 
@@ -38,16 +40,20 @@ const schema = z.object({
     .refine((v) => v === "" || isValidGstin(v), "billing.validation.gstin"),
   address: z.string().trim().max(300),
   stateCode: z.string(),
+  openingBalance: z.string().trim(),
+  openingDate: z.string(),
 });
 type Values = z.infer<typeof schema>;
 
-const toValues = (s?: Partial<Supplier> | null): Values => ({
+const toValues = (s?: (Partial<Supplier> & SupplierPayables) | null): Values => ({
   name: s?.name ?? "",
   phone: s?.phone ?? "",
   email: s?.email ?? "",
   gstin: s?.gstin ?? "",
   address: s?.address ?? "",
   stateCode: s?.stateCode ?? "",
+  openingBalance: s?.openingBalance ? paiseToInput(s.openingBalance) : "",
+  openingDate: s?.openingDate ?? "",
 });
 
 /** Add / edit a supplier. GSTIN fills the state automatically. */
@@ -84,6 +90,11 @@ export function SupplierDialog({
     }
   }, [gstin, form]);
 
+  const openingBody = (v: Values): Partial<SupplierPayables> => {
+    const paise = v.openingBalance ? rupeesToPaise(v.openingBalance) : 0;
+    return { openingBalance: paise ?? 0, openingDate: v.openingDate || null };
+  };
+
   const onSubmit = form.handleSubmit(async (v) => {
     try {
       const body: SupplierInput = {
@@ -93,6 +104,7 @@ export function SupplierDialog({
         gstin: v.gstin.trim().toUpperCase(),
         address: v.address.trim(),
         stateCode: v.stateCode,
+        ...openingBody(v),
       };
       const saved = await save.mutateAsync({ id: supplier?.id, body });
       toast.success(supplier ? t("billing.suppliers.updated") : t("billing.suppliers.created", { name: saved.name }));
@@ -213,6 +225,35 @@ export function SupplierDialog({
                 </FormItem>
               )}
             />
+            <div className="grid items-start gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="openingBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("billing.payables.openingBalance")}</FormLabel>
+                    <FormControl>
+                      <MoneyInput {...field} />
+                    </FormControl>
+                    <FormDescription>{t("billing.payables.openingHint")}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="openingDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("billing.payables.openingDate")}</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" size="lg" onClick={() => onOpenChange(false)} disabled={save.isPending}>
                 {t("billing.common.cancel")}

@@ -53,7 +53,7 @@ export function ApplyDialog({ open, onOpenChange, exchange }: { open: boolean; o
           <Field invalid={submitted && !bill}>
             <FieldLabel>{t("jewellery.apply.bill")}</FieldLabel>
             <BillPicker value={bill} onChange={setBill} invalid={submitted && !bill} autoFocus />
-            {over && <FieldHint className="text-warning">{t("jewellery.apply.over", { balance: money(bill!.balance) })}</FieldHint>}
+            {over && <FieldHint className="text-warning-ink">{t("jewellery.apply.over", { balance: money(bill!.balance) })}</FieldHint>}
             <FieldError>{submitted && !bill ? t("jewellery.common.required") : null}</FieldError>
           </Field>
           <DialogFooter>

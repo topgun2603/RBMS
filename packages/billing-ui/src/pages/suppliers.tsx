@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useI18n, useServerTable } from "@srirealtime/web";
-import { MoreVerticalIcon, PencilIcon, PlusIcon, ReceiptTextIcon, StoreIcon, Trash2Icon } from "lucide-react";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable } from "@srirealtime/web";
+import { MoreVerticalIcon, PencilIcon, PlusIcon, ReceiptTextIcon, ScrollTextIcon, StoreIcon, Trash2Icon } from "lucide-react";
 import {
   Button,
   DataTable,
@@ -34,6 +34,7 @@ export default function SuppliersPage() {
 function Suppliers() {
   const { t, formatDate } = useI18n();
   const del = useDeleteSupplier();
+  const navigate = useModuleNavigate();
   const [editing, setEditing] = React.useState<{ open: boolean; supplier: Supplier | null }>({ open: false, supplier: null });
   const [deleting, setDeleting] = React.useState<Supplier | null>(null);
 
@@ -50,13 +51,9 @@ function Suppliers() {
           <div className="flex min-w-0 items-center gap-2.5">
             <InitialsAvatar name={s.name} size="sm" />
             <div className="grid min-w-0">
-              <button
-                type="button"
-                className="truncate text-left font-medium outline-none hover:text-primary hover:underline focus-visible:underline"
-                onClick={() => setEditing({ open: true, supplier: s })}
-              >
+              <ModuleLink to={`suppliers/${s.id}`} className="truncate text-left font-medium outline-none hover:text-primary hover:underline focus-visible:underline">
                 {s.name}
-              </button>
+              </ModuleLink>
               {s.phone && <span className="truncate text-xs text-muted-foreground tabular-nums">{s.phone}</span>}
             </div>
           </div>
@@ -117,6 +114,11 @@ function Suppliers() {
                   <ReceiptTextIcon /> {t("billing.suppliers.viewPurchases")}
                 </ModuleLink>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild className="h-10">
+                <ModuleLink to={`suppliers/${s.id}`}>
+                  <ScrollTextIcon /> {t("billing.payables.statement")}
+                </ModuleLink>
+              </DropdownMenuItem>
               <DropdownMenuItem className="h-10" onSelect={() => setEditing({ open: true, supplier: s })}>
                 <PencilIcon /> {t("billing.common.edit")}
               </DropdownMenuItem>
@@ -160,7 +162,7 @@ function Suppliers() {
 
       <DataTable
         table={st.table}
-        onRowClick={(s) => setEditing({ open: true, supplier: s })}
+        onRowClick={(s) => navigate(`suppliers/${s.id}`)}
         empty={
           filtered ? undefined : (
             <EmptyState

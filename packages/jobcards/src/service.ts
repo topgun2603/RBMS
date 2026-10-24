@@ -145,7 +145,7 @@ export const moveInput = z.object({ status: z.enum(JOB_STATUSES), note: optText(
 export type MoveInput = z.input<typeof moveInput>;
 export const noteInput = z.object({ note: z.string().trim().min(1).max(1000) }).strict();
 export const cancelInput = z.object({ reason: z.string().trim().min(2).max(300) }).strict();
-export const billInput = z.object({ tillSessionId: z.string().uuid().nullish() }).strict();
+export const billInput = z.object({ tillSessionId: z.string().uuid().nullish(), /** Credit terms for a saved customer (YYYY-MM-DD). */ dueDate: optDate }).strict();
 export type BillInput = z.input<typeof billInput>;
 
 /** Staff record the customer's answer to the estimate (approval channels other than the tracking page). */
@@ -304,7 +304,7 @@ export class JobcardsService {
   private async saveMeta(tx: Db | Tx, row: JobcardRow, meta: JobMeta) {
     const fields = joinFields(splitFields(row.fields).fields, meta);
     row.fields = fields;
-    await tx.update(jobcards).set({ fields, updatedAt: new Date() }).where(eq(jobcards.id, row.id));
+    await tx.update(jobcards).set({ fields, updatedAt: this.now() }).where(eq(jobcards.id, row.id));
   }
 
   /** Jobs, paged; `facets.status` counts each status under the other filters. */
@@ -496,6 +496,8 @@ export class JobcardsService {
           notes: b.notes,
           trackToken: trackToken(),
           createdBy: userId,
+          createdAt: this.now(),
+          updatedAt: this.now(),
         })
         .returning();
       if (b.lines?.length) {
@@ -534,7 +536,7 @@ export class JobcardsService {
       if (rawFields !== undefined) set.fields = joinFields(this.fieldsFor(row.template, rawFields), splitFields(row.fields).meta);
       await tx
         .update(jobcards)
-        .set({ ...set, updatedAt: new Date() })
+        .set({ ...set, updatedAt: this.now() })
         .where(eq(jobcards.id, id));
     });
     return this.get(tenantId, id);
@@ -545,7 +547,7 @@ export class JobcardsService {
     const { note } = noteInput.parse(input);
     await this.row(tenantId, id);
     await this.event(this.db, tenantId, id, "note", { note, userId });
-    await this.db.update(jobcards).set({ updatedAt: new Date() }).where(eq(jobcards.id, id));
+    await this.db.update(jobcards).set({ updatedAt: this.now() }).where(eq(jobcards.id, id));
     return this.get(tenantId, id);
   }
 
@@ -593,7 +595,7 @@ export class JobcardsService {
     if (to === "awaiting_approval") await this.saveMeta(tx, row, { ...meta, approvalRequestedAt: this.now().toISOString() });
     await tx
       .update(jobcards)
-      .set({ status: to, closedAt: isClosed(to) ? this.now() : null, updatedAt: new Date() })
+      .set({ status: to, closedAt: isClosed(to) ? this.now() : null, updatedAt: this.now() })
       .where(eq(jobcards.id, row.id));
     await this.event(tx, tenantId, row.id, "status", { from: row.status, to, note, userId });
   }
@@ -726,7 +728,7 @@ export class JobcardsService {
       const [added] = await tx.insert(jobcardLines).values(this.lineValues(tenantId, id, l)).returning({ id: jobcardLines.id });
       if (serials.length) await this.saveMeta(tx, row, { ...meta, serials: { ...meta.serials, [added!.id]: serials } });
       await this.event(tx, tenantId, id, "estimate", { note: `Added ${l.description}`, userId });
-      await tx.update(jobcards).set({ updatedAt: new Date() }).where(eq(jobcards.id, id));
+      await tx.update(jobcards).set({ updatedAt: this.now() }).where(eq(jobcards.id, id));
     });
     return this.get(tenantId, id);
   }
@@ -762,10 +764,10 @@ export class JobcardsService {
       if (b.qty !== undefined) set.qty = String(roundQty(b.qty));
       await tx
         .update(jobcardLines)
-        .set({ ...set, updatedAt: new Date() })
+        .set({ ...set, updatedAt: this.now() })
         .where(eq(jobcardLines.id, lineId));
       await this.event(tx, tenantId, id, "estimate", { note: `Changed ${b.description ?? line.description}`, userId });
-      await tx.update(jobcards).set({ updatedAt: new Date() }).where(eq(jobcards.id, id));
+      await tx.update(jobcards).set({ updatedAt: this.now() }).where(eq(jobcards.id, id));
     });
     return this.get(tenantId, id);
   }
@@ -782,7 +784,7 @@ export class JobcardsService {
         await this.saveMeta(tx, row, { ...meta, serials: rest });
       }
       await this.event(tx, tenantId, id, "estimate", { note: `Removed ${line.description}`, userId });
-      await tx.update(jobcards).set({ updatedAt: new Date() }).where(eq(jobcards.id, id));
+      await tx.update(jobcards).set({ updatedAt: this.now() }).where(eq(jobcards.id, id));
     });
     return this.get(tenantId, id);
   }
@@ -832,7 +834,7 @@ export class JobcardsService {
               unit: l.unit,
               ...(meta.serials?.[l.id]?.length && l.itemId ? { serials: meta.serials[l.id] } : {}),
             })),
-            customer: { name: row.customerName, phone: row.customerPhone },
+            customer: { name: row.customerName, phone: row.customerPhone, customerId: row.customerId ?? null, dueDate: b.dueDate ?? null },
             notes: `Job card ${label}${what ? ` · ${what}` : ""}`,
             tillSessionId: b.tillSessionId ?? null,
             // The advance taken at intake is already paid: recorded on the bill so its balance is total − advance.
@@ -846,13 +848,13 @@ export class JobcardsService {
       }
       await tx
         .update(jobcards)
-        .set({ invoiceId: r.id, invoiceNumber: r.number, updatedAt: new Date() })
+        .set({ invoiceId: r.id, invoiceNumber: r.number, updatedAt: this.now() })
         .where(eq(jobcards.id, id));
       await this.event(tx, tenantId, id, "billed", { note: r.number, userId: opts.userId ?? null });
       if ((JOB_FLOW as readonly JobStatus[]).indexOf(row.status) < JOB_FLOW.indexOf("ready")) {
         await tx
           .update(jobcards)
-          .set({ status: "ready", updatedAt: new Date() })
+          .set({ status: "ready", updatedAt: this.now() })
           .where(eq(jobcards.id, id));
         await this.event(tx, tenantId, id, "status", { from: row.status, to: "ready", userId: opts.userId ?? null });
         movedToReady = true;

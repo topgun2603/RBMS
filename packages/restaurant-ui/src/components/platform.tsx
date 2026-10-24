@@ -32,7 +32,7 @@ export function DueChip({ dueAt, now, className }: { dueAt: string | null | unde
     <span
       className={cn(
         "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-        m < 0 ? "bg-destructive text-white" : m <= 5 ? "bg-warning/20 text-warning" : "bg-muted",
+        m < 0 ? "bg-destructive text-white dark:bg-destructive/60" : m <= 5 ? "bg-warning/20 text-warning-ink" : "bg-muted",
         className,
       )}
     >

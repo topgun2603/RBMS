@@ -197,7 +197,7 @@ export function LedgerTypeTag({ type }: { type: LedgerType }) {
 }
 
 const STEP: Record<StepState, [string, Icon]> = {
-  done: ["bg-success text-white", CheckCircle2Icon],
+  done: ["bg-success text-white dark:bg-success/60", CheckCircle2Icon],
   waiting: ["bg-warning/20 text-warning-ink", ClockIcon],
   failed: ["bg-destructive/15 text-danger-ink", XCircleIcon],
   todo: ["bg-muted text-muted-foreground", CircleDashedIcon],

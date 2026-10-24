@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/web";
+import { pinsEn, pinsTa } from "./messages-pins";
 
 /** workspace.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
@@ -155,6 +156,7 @@ const en: Messages = {
   "workspace.perm.inventory.adjust": "Adjust stock",
   "workspace.perm.inventory.transfer": "Transfer stock",
   "workspace.perm.inventory.purchases": "Purchases and suppliers",
+  "workspace.perm.inventory.purchases.pay": "Pay suppliers",
   "workspace.perm.orders.manage": "Manage orders",
   "workspace.perm.orders.cancel": "Cancel orders",
   "workspace.perm.orders.refund": "Record refunds",
@@ -180,7 +182,8 @@ const en: Messages = {
   "workspace.permDesc.catalogue.manage": "Add and edit products, prices and categories.",
   "workspace.permDesc.inventory.adjust": "Correct stock counts (damage, counting, opening stock).",
   "workspace.permDesc.inventory.transfer": "Move stock between locations.",
-  "workspace.permDesc.inventory.purchases": "Record purchase bills and manage suppliers.",
+  "workspace.permDesc.inventory.purchases": "Record purchase bills, orders, receipts and debit notes, and manage suppliers.",
+  "workspace.permDesc.inventory.purchases.pay": "Pay suppliers (part or full), reverse payments and mark purchase bills paid.",
   "workspace.permDesc.expenses.manage": "Record expenses and see the profit report.",
   "workspace.permDesc.importexport.run": "Upload spreadsheets and download data.",
   "workspace.permDesc.audit.view": "Read and download the activity log.",
@@ -881,6 +884,7 @@ const ta: Messages = {
   "workspace.perm.inventory.adjust": "இருப்பைச் சரிசெய்தல்",
   "workspace.perm.inventory.transfer": "இருப்பை இடம் மாற்றுதல்",
   "workspace.perm.inventory.purchases": "கொள்முதல் & சப்ளையர்கள்",
+  "workspace.perm.inventory.purchases.pay": "சப்ளையர்களுக்குப் பணம் செலுத்துதல்",
   "workspace.perm.orders.manage": "ஆர்டர்களை நிர்வகித்தல்",
   "workspace.perm.orders.cancel": "ஆர்டர்களை ரத்து செய்தல்",
   "workspace.perm.orders.refund": "பணத்தைத் திருப்பித் தருதலைப் பதிவு செய்தல்",
@@ -906,7 +910,8 @@ const ta: Messages = {
   "workspace.permDesc.catalogue.manage": "பொருட்கள், விலைகள், வகைகளைச் சேர்க்கலாம், திருத்தலாம்.",
   "workspace.permDesc.inventory.adjust": "இருப்பு எண்ணிக்கையைச் சரிசெய்யலாம் (சேதம், கணக்கெடுப்பு, தொடக்க இருப்பு).",
   "workspace.permDesc.inventory.transfer": "இருப்பை ஓர் இடத்திலிருந்து மற்றொரு இடத்துக்கு மாற்றலாம்.",
-  "workspace.permDesc.inventory.purchases": "கொள்முதல் பில்களைப் பதிவு செய்யலாம், சப்ளையர்களை நிர்வகிக்கலாம்.",
+  "workspace.permDesc.inventory.purchases": "கொள்முதல் பில்கள், ஆர்டர்கள், பெறுதல்கள், டெபிட் நோட்டுகளைப் பதிவு செய்யலாம், சப்ளையர்களை நிர்வகிக்கலாம்.",
+  "workspace.permDesc.inventory.purchases.pay": "சப்ளையர்களுக்குப் பணம் செலுத்தலாம் (பகுதி அல்லது முழு), செலுத்தியதை நீக்கலாம், கொள்முதல் பில்லை செலுத்தியதாகக் குறிக்கலாம்.",
   "workspace.permDesc.expenses.manage": "செலவுகளைப் பதிவு செய்து லாப அறிக்கையைப் பார்க்கலாம்.",
   "workspace.permDesc.importexport.run": "விரிதாள்களைப் பதிவேற்றலாம், தரவைப் பதிவிறக்கலாம்.",
   "workspace.permDesc.audit.view": "செயல்பாட்டுப் பதிவைப் படிக்கலாம், பதிவிறக்கலாம்.",
@@ -1454,4 +1459,4 @@ const ta: Messages = {
   "workspace.messages.channelName.push": "செயலி",
 };
 
-export const workspaceMessages = { en, ta } as const;
+export const workspaceMessages = { en: { ...en, ...pinsEn }, ta: { ...ta, ...pinsTa } } as const;

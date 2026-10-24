@@ -1,7 +1,7 @@
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
+import { AppError, documented, emptyContext, type RequestContext } from "@srirealtime/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { buildOpenApi, createRouteCollector, moduleOf, toOpenApiPath } from "./openapi";
 import { developerRoutes } from "./routes";
 import type { DeveloperService } from "./service";
@@ -73,6 +73,53 @@ describe("route collector + document", () => {
     const ids = Object.values(doc.paths).flatMap((p) => Object.values(p).map((o) => (o as { operationId: string }).operationId));
     expect(new Set(ids).size).toBe(ids.length);
     expect(JSON.parse(JSON.stringify(doc))).toEqual(doc);
+  });
+});
+
+describe("typed routes (documented)", () => {
+  it("puts body, query and response schemas in the document", async () => {
+    const collector = createRouteCollector();
+    const app = Fastify();
+    collector.register(app);
+    const body = z.object({ target: z.string().min(3), channel: z.enum(["sms", "email"]).optional() });
+    const query = z.object({ limit: z.coerce.number().int().optional(), q: z.string() });
+    const response = z.object({ id: z.string().uuid(), name: z.string().nullable(), at: z.string().datetime() });
+    await app.register(
+      async (s) => {
+        s.post("/thing", documented({ body, response }, { feature: "x" }), async () => ({}));
+        s.get("/things", documented({ query, response: z.object({ items: z.array(response) }) }), async () => ({}));
+        s.get("/plain", async () => ({}));
+      },
+      { prefix: "/v1/demo" },
+    );
+    await app.ready();
+    const doc = buildOpenApi(collector.routes());
+
+    const post = doc.paths["/v1/demo/thing"]!.post as Record<string, any>;
+    expect(post["x-typed"]).toBe(true);
+    expect(post["x-feature"]).toEqual(["x"]);
+    expect(post.requestBody).toMatchObject({
+      required: true,
+      content: { "application/json": { schema: { type: "object", required: ["target"], properties: { channel: { enum: ["sms", "email"] } } } } },
+    });
+    expect(post.responses["200"].content["application/json"].schema.properties).toEqual({
+      id: { type: "string", format: "uuid" },
+      name: { type: ["string", "null"] },
+      at: { type: "string", format: "date-time" },
+    });
+    expect(post.responses.default.content["application/json"].schema).toEqual({ $ref: "#/components/schemas/Error" });
+    expect(doc.components.schemas.Error.required).toEqual(["error"]);
+
+    const list = doc.paths["/v1/demo/things"]!.get as Record<string, any>;
+    expect(list.parameters).toEqual([
+      { name: "limit", in: "query", required: false, schema: { type: "integer" } },
+      { name: "q", in: "query", required: true, schema: { type: "string" } },
+    ]);
+    expect(JSON.stringify(doc)).not.toContain("$schema");
+
+    const plain = doc.paths["/v1/demo/plain"]!.get as Record<string, any>;
+    expect(plain["x-typed"]).toBeUndefined();
+    expect(plain.responses["200"]).toEqual({ description: "OK" });
   });
 });
 

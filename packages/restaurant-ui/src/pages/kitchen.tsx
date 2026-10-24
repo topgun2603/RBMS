@@ -163,7 +163,7 @@ function Ticket({
           // Platform orders count down to the rider's pickup instead of up from the ticket.
           <DueChip dueAt={x.dueAt} now={now} />
         ) : (
-          <span className={cn("rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums", late ? "bg-destructive text-white" : warn ? "bg-warning/20 text-warning" : "bg-muted")}>
+          <span className={cn("rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums", late ? "bg-destructive text-white dark:bg-destructive/60" : warn ? "bg-warning/20 text-warning-ink" : "bg-muted")}>
             {elapsed(age)}
           </span>
         )}
@@ -172,7 +172,7 @@ function Ticket({
         {x.items.map((i) => (
           <li key={i.id} className={cn("text-base leading-snug", i.status === "cancelled" && "text-destructive line-through")}>
             <span className="font-bold tabular-nums">{qty(i.qty)}×</span> {i.name}
-            {i.note && <span className="block pl-6 text-sm font-medium text-warning">↳ {i.note}</span>}
+            {i.note && <span className="block pl-6 text-sm font-medium text-warning-ink">↳ {i.note}</span>}
             {i.status === "cancelled" && <span className="block pl-6 text-sm no-underline">{t("restaurant.kitchen.voided")}</span>}
           </li>
         ))}

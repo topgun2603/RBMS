@@ -1,12 +1,38 @@
 import { formatINR } from "@srirealtime/gst";
-import { requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { documented, requireRole, requireTenant, requireUser } from "@srirealtime/core";
 import type { CreditNoteInput, CreditNoteListQuery } from "./credit-notes";
-import type { TillCashInput, TillCloseInput, TillListQuery, TillOpenInput } from "./till";
+import { tillCashSchema, tillCloseFields, tillOpenFields, type TillCashInput, type TillCloseInput, type TillListQuery, type TillOpenInput } from "./till";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { FEATURES } from "./features";
+import type { LedgerEntryType } from "./ledger";
+import {
+  CREDIT_NOTE_REASONS,
+  CREDIT_NOTE_STATUSES,
+  INVOICE_STATUSES,
+  MESSAGE_CHANNELS,
+  PAYMENT_METHODS,
+  PAYMENT_SOURCES,
+  REFUND_MODES,
+  TILL_STATUSES,
+} from "./schema";
 import { csvBuilders, csvDisposition } from "./reports";
 import {
+  BALANCE_KINDS,
+  CREDIT_AGE_BUCKETS,
+  creditBookQuerySchema,
+  customerInputSchema,
+  customerPatchSchema,
+  customerListQuerySchema,
+  invoiceInputSchema,
+  invoiceListQuerySchema,
+  ITEM_STOCK_STATUSES,
+  itemListQuerySchema,
+  itemPatchSchema,
+  ledgerQuerySchema,
+  paymentInputSchema,
+  receiptInputSchema,
+  sendInputSchema,
   type CreditBookQuery,
   type CustomerInput,
   type InvoiceInput,
@@ -48,12 +74,336 @@ function sendCsv(reply: FastifyReply, csv: string, name: string, from?: string |
 }
 
 const feature = (key: string) => ({ config: { feature: key } });
+
+// ---- response shapes for the API document and the mobile client. Money is in paise.
+const periodTotalsSchema = z.object({ invoiced: z.number().int(), collected: z.number().int(), count: z.number().int() });
+export const invoiceSummarySchema = z.object({
+  id: z.string().uuid(),
+  number: z.string().nullable(),
+  branchId: z.string().uuid().nullable(),
+  status: z.enum(INVOICE_STATUSES),
+  date: z.string(),
+  dueDate: z.string().nullable(),
+  customerName: z.string(),
+  total: z.number().int(),
+  paid: z.number().int(),
+  credited: z.number().int(),
+  balance: z.number().int(),
+  isOverdue: z.boolean(),
+});
+export const dashboardSummarySchema = z.object({
+  month: periodTotalsSchema,
+  prevMonth: periodTotalsSchema,
+  outstanding: z.number().int(),
+  overdueCount: z.number().int(),
+  recent: z.array(invoiceSummarySchema),
+  trend: z.array(z.object({ date: z.string(), invoiced: z.number().int() })),
+});
+
+const paise = z.number().int();
+const isoDateTime = z.string().datetime();
+/** List facets: filter value -> count, per filter (e.g. `{ status: { paid: 3 } }`). */
+const facetsSchema = z.record(z.string(), z.record(z.string(), z.number().int()));
+const pageFields = { total: z.number().int(), limit: z.number().int(), offset: z.number().int() };
+
+/** A customer as stored on a bill (or given for a walk-in). */
+export const customerSnapshotSchema = z.object({
+  name: z.string(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  gstin: z.string().nullable(),
+  address: z.string().nullable(),
+  stateCode: z.string().nullable(),
+});
+/** The seller details on a bill (the billing profile, or the branch's details over it). */
+export const sellerProfileSchema = z.object({
+  legalName: z.string().nullable(),
+  gstin: z.string().nullable(),
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  pincode: z.string().nullable(),
+  stateCode: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  invoicePrefix: z.string().nullable(),
+  terms: z.string().nullable(),
+  bankName: z.string().nullable(),
+  accountNumber: z.string().nullable(),
+  ifsc: z.string().nullable(),
+  upiId: z.string().nullable(),
+  autoReminders: z.boolean(),
+  reminderDays: z.array(z.number().int()),
+  sendPaymentReceipts: z.boolean(),
+});
+/** A computed bill line (`LineTotals`). `qty` may have 3 decimals. */
+export const invoiceLineSchema = z.object({
+  description: z.string(),
+  hsn: z.string().nullish(),
+  qty: z.number(),
+  unit: z.string().nullish(),
+  /** GST-exclusive paise per unit. */
+  rate: paise,
+  discount: paise.nullish(),
+  gstRate: z.number(),
+  /** Price-band GST rule the line was banded with (apparel / footwear); `gstRate` is the band it fell in. */
+  gstRule: z.object({ kind: z.literal("price-band"), threshold: paise, below: z.number(), above: z.number() }).nullish(),
+  itemId: z.string().nullish(),
+  inclusiveTotal: paise.nullish(),
+  serials: z.array(z.string()).nullish(),
+  amount: paise,
+  taxable: paise,
+  cgst: paise,
+  sgst: paise,
+  igst: paise,
+  total: paise,
+});
+export const invoiceTotalsSchema = z.object({
+  subtotal: paise,
+  discount: paise,
+  taxable: paise,
+  cgst: paise,
+  sgst: paise,
+  igst: paise,
+  roundOff: paise,
+  total: paise,
+  taxBreakup: z.array(z.object({ gstRate: z.number(), taxable: paise, cgst: paise, sgst: paise, igst: paise })),
+  /** Loyalty points used on the bill and the discount they gave. */
+  loyalty: z.object({ points: z.number().int(), discount: paise }).optional(),
+});
+export const invoicePaymentSchema = z.object({
+  id: z.string().uuid(),
+  /** Negative for a refund. */
+  amount: paise,
+  method: z.enum(PAYMENT_METHODS),
+  date: z.string(),
+  reference: z.string().nullable(),
+  source: z.enum(PAYMENT_SOURCES),
+  creditNoteId: z.string().uuid().nullable(),
+  createdAt: isoDateTime,
+});
+export const creditNoteSummarySchema = z.object({
+  id: z.string().uuid(),
+  number: z.string(),
+  date: z.string(),
+  status: z.enum(CREDIT_NOTE_STATUSES),
+  invoiceId: z.string().uuid(),
+  invoiceNumber: z.string(),
+  invoiceDate: z.string(),
+  branchId: z.string().uuid().nullable(),
+  customerId: z.string().uuid().nullable(),
+  customerName: z.string(),
+  reason: z.enum(CREDIT_NOTE_REASONS),
+  refundMode: z.enum(REFUND_MODES),
+  refundAmount: paise,
+  total: paise,
+  createdAt: isoDateTime,
+});
+/** A full bill (`Invoice`): the create, get, issue, payment and cancel answers. */
+export const invoiceSchema = invoiceSummarySchema.extend({
+  customerId: z.string().uuid().nullable(),
+  customer: customerSnapshotSchema,
+  seller: sellerProfileSchema,
+  placeOfSupply: z.string(),
+  interState: z.boolean(),
+  lines: z.array(invoiceLineSchema),
+  totals: invoiceTotalsSchema,
+  amountInWords: z.string(),
+  notes: z.string().nullable(),
+  payments: z.array(invoicePaymentSchema),
+  shareToken: z.string().nullable(),
+  cancelledAt: isoDateTime.nullable(),
+  cancelReason: z.string().nullable(),
+  /** E.g. "credit_limit_exceeded". */
+  warnings: z.array(z.string()),
+  /** Last 10 WhatsApp / SMS messages about the bill, newest first (`to` is masked). */
+  messages: z.array(z.object({ template: z.string(), channel: z.enum(MESSAGE_CHANNELS), to: z.string(), sentAt: isoDateTime })),
+  creditNotes: z.array(creditNoteSummarySchema),
+  tillSessionId: z.string().uuid().nullable(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+export const invoiceListSchema = z.object({
+  items: z.array(invoiceSummarySchema),
+  ...pageFields,
+  /** `status`: bills per status (and "overdue") under the other filters. */
+  facets: facetsSchema.optional(),
+});
+/** Public link of an issued bill: `url` is `<shop billing site>/i/<token>`. */
+export const shareLinkSchema = z.object({ token: z.string(), url: z.string().url() });
+export const sendResultSchema = z.object({ logId: z.string(), url: z.string() });
+
+export const customerSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  gstin: z.string().nullable(),
+  address: z.string().nullable(),
+  stateCode: z.string().nullable(),
+  /** + = owed to the shop before using the app, - = advance. */
+  openingBalance: paise,
+  /** Null = no limit. */
+  creditLimit: paise.nullable(),
+  /** Ledger balance: opening + bills - payments - receipts. Negative = the customer is in credit. */
+  outstanding: paise,
+  /** Unallocated receipt money. */
+  advance: paise,
+  createdAt: isoDateTime,
+});
+export const customerListItemSchema = customerSchema.extend({
+  /** Latest issued bill date (YYYY-MM-DD). */
+  lastBillDate: z.string().nullable(),
+  /** Billed (issued bills, not cancelled) less credit notes. */
+  totalBilled: paise,
+  /** Open bills past their due date. */
+  overdue: paise,
+});
+export const customerListSchema = z.object({
+  items: z.array(customerListItemSchema),
+  ...pageFields,
+  /** `balance`: customers per kind (due / advance / settled) under the other filters. */
+  facets: z.object({ balance: z.record(z.enum(BALANCE_KINDS), z.number().int()) }).optional(),
+});
+
+/** One credit book row: the customer with their ledger balance. Dates are YYYY-MM-DD. */
+export const creditBookRowSchema = z.object({
+  customer: customerSchema,
+  /** = `customer.outstanding`; negative = advance. */
+  balance: paise,
+  /** Open bills past their due date. */
+  overdue: paise,
+  /** Latest bill, payment or receipt date. */
+  lastActivity: z.string().nullable(),
+  /** Due date (or bill date) of the oldest open bill with money left on it. */
+  oldestDue: z.string().nullable(),
+  /** Latest payment or receipt date. */
+  lastPayment: z.string().nullable(),
+});
+export const creditBookSchema = z.object({
+  items: z.array(creditBookRowSchema),
+  ...pageFields,
+  /** Over every customer of the shop (not just this page or filter). */
+  totals: z.object({ receivable: paise, advance: paise, customersWithDues: z.number().int() }),
+  /** `age`: customers per overdue bucket (CREDIT_AGE_BUCKETS) under the other filters. */
+  facets: z.object({ age: z.record(z.enum(CREDIT_AGE_BUCKETS), z.number().int()) }),
+});
+export const ledgerEntrySchema = z.object({
+  date: z.string(),
+  type: z.enum(["opening", "invoice", "payment", "receipt", "cancel", "credit_note", "refund"] as const satisfies readonly LedgerEntryType[]),
+  /** The bill, payment, receipt or credit note id (null for the opening line). */
+  refId: z.string().nullable(),
+  number: z.string().nullable(),
+  description: z.string(),
+  debit: paise,
+  credit: paise,
+  /** Running balance after this line. */
+  balance: paise,
+});
+/** A customer's running-balance statement (`GET /customers/:id/ledger`). */
+export const ledgerSchema = z.object({
+  customer: customerSchema,
+  openingBalance: paise,
+  entries: z.array(ledgerEntrySchema),
+  closingBalance: paise,
+});
+export const receiptSchema = z.object({
+  id: z.string().uuid(),
+  customerId: z.string().uuid(),
+  amount: paise,
+  method: z.enum(PAYMENT_METHODS),
+  date: z.string(),
+  reference: z.string().nullable(),
+  note: z.string().nullable(),
+  /** Paise left unallocated (customer advance). */
+  advance: paise,
+  createdAt: isoDateTime,
+});
+/** Money received on account, spread oldest-first over open bills. */
+export const receiptResultSchema = z.object({
+  receipt: receiptSchema,
+  allocations: z.array(z.object({ invoiceId: z.string().uuid(), number: z.string().nullable(), amount: paise })),
+  advance: paise,
+});
+
+/** A saved item (a catalogue variant when the catalogue is wired). `rate` is GST-exclusive paise. */
+export const billingItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  hsn: z.string().nullable(),
+  unit: z.string(),
+  rate: paise,
+  gstRate: z.number(),
+  /** Catalogue items: price-band GST (apparel / footwear); `gstRate`/`rate` are the band at this item's price. */
+  gstRule: z.object({ kind: z.literal("price-band"), threshold: paise, below: z.number(), above: z.number() }).nullish(),
+  createdAt: isoDateTime,
+  categoryId: z.string().uuid().nullable().optional(),
+  active: z.boolean().optional(),
+  stockQty: z.number().nullable().optional(),
+  stockStatus: z.enum([...ITEM_STOCK_STATUSES, "untracked"]).nullable().optional(),
+});
+export const billingItemListSchema = z.object({
+  items: z.array(billingItemSchema),
+  ...pageFields,
+  facets: facetsSchema.optional(),
+  /** Names of the catalogue categories counted in `facets.category`. */
+  categories: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+});
+
+const methodRowSchema = z.object({ method: z.enum(PAYMENT_METHODS), amount: paise, count: z.number().int() });
+/** X report (running totals) of a till session; the Z report is the same frozen at close. */
+export const tillReportSchema = z.object({
+  bills: z.object({ count: z.number().int(), total: paise, cancelled: z.number().int() }),
+  payments: z.array(methodRowSchema),
+  refunds: z.array(methodRowSchema),
+  creditNotes: z.object({ count: z.number().int(), total: paise }),
+  onCredit: paise,
+  collected: paise,
+  refunded: paise,
+  cash: z.object({ opening: paise, sales: paise, refunds: paise, cashIn: paise, cashOut: paise, expected: paise }),
+});
+/** Notes and coins counted: rupee denomination -> count, e.g. `{ "500": 4 }`. */
+const denominationCountSchema = z.record(z.string(), z.number().int());
+export const tillSessionSchema = z.object({
+  id: z.string().uuid(),
+  branchId: z.string().uuid().nullable(),
+  register: z.string(),
+  status: z.enum(TILL_STATUSES),
+  /** IST business date it was opened on. */
+  date: z.string(),
+  openingCash: paise,
+  openingCount: denominationCountSchema.nullable(),
+  openedBy: z.string().uuid().nullable(),
+  openedByName: z.string().nullable(),
+  openedAt: isoDateTime,
+  /** Cash put in (+) or taken out (-) during the session. */
+  cashEntries: z.array(
+    z.object({ id: z.string(), amount: paise, reason: z.string(), by: z.string().nullable(), byName: z.string().nullable(), at: isoDateTime }),
+  ),
+  closingCount: denominationCountSchema.nullable(),
+  expectedCash: paise.nullable(),
+  countedCash: paise.nullable(),
+  difference: paise.nullable(),
+  note: z.string().nullable(),
+  closedBy: z.string().uuid().nullable(),
+  closedByName: z.string().nullable(),
+  closedAt: isoDateTime.nullable(),
+  /** The Z report; null while open. */
+  summary: tillReportSchema.nullable(),
+});
+export const tillCurrentSchema = z.object({ session: tillSessionSchema.nullable() });
+export const tillReportResponseSchema = z.object({ session: tillSessionSchema, report: tillReportSchema });
 const BASE = feature(FEATURES.base);
 const WHATSAPP = feature(FEATURES.whatsapp);
 const CREDIT_BOOK = feature(FEATURES.creditBook);
 const REPORTS = feature(FEATURES.reports);
 const GST_REPORTS = feature(FEATURES.gstReports);
 const audited = (key: string, audit: { action: string; entity: string; idParam?: string }) => ({ config: { feature: key, audit } });
+/** A BASE route with its API document shapes. */
+const base = (schema: Parameters<typeof documented>[0]) => documented(schema, BASE.config);
+/** A CREDIT_BOOK route with its API document shapes. */
+const creditBook = (schema: Parameters<typeof documented>[0]) => documented(schema, CREDIT_BOOK.config);
+/** The cashier's display name the counter sends with till actions (see `actorName`). */
+const actorField = { actorName: z.string().max(80).nullish() };
 
 /**
  * Routes under /v1/invoices. Everything except the /public/* pages needs an owner, admin or staff member
@@ -80,15 +430,15 @@ export function invoicesRoutes(service: InvoicesService) {
       });
 
       // customers
-      staff.get("/customers", BASE, async (req) => service.listCustomers(requireTenant(req.ctx).id, req.query as CustomerListQuery));
-      staff.get("/customers/:id", BASE, async (req) => {
+      staff.get("/customers", base({ query: customerListQuerySchema, response: customerListSchema }), async (req) => service.listCustomers(requireTenant(req.ctx).id, req.query as CustomerListQuery));
+      staff.get("/customers/:id", base({ response: customerSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.getCustomer(requireTenant(req.ctx).id, id);
       });
-      staff.post("/customers", BASE, async (req) =>
+      staff.post("/customers", base({ body: customerInputSchema, response: customerSchema }), async (req) =>
         service.createCustomer(requireTenant(req.ctx).id, body(req) as CustomerInput),
       );
-      staff.patch("/customers/:id", BASE, async (req) => {
+      staff.patch("/customers/:id", base({ body: customerPatchSchema, response: customerSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.updateCustomer(requireTenant(req.ctx).id, id, body(req) as Partial<CustomerInput>);
       });
@@ -99,13 +449,13 @@ export function invoicesRoutes(service: InvoicesService) {
       });
 
       // credit book
-      staff.get("/credit-book", CREDIT_BOOK, async (req, reply) => {
+      staff.get("/credit-book", creditBook({ query: creditBookQuerySchema, response: creditBookSchema }), async (req, reply) => {
         const csv = wantsCsv(req);
         const q = query(req);
         const result = await service.creditBook(requireTenant(req.ctx).id, (csv ? { ...q, limit: "500", offset: "0" } : q) as CreditBookQuery);
         return csv ? sendCsv(reply, csvBuilders.creditBook(result.items), "credit-book", q.filter ?? "all") : result;
       });
-      staff.get("/customers/:id/ledger", CREDIT_BOOK, async (req, reply) => {
+      staff.get("/customers/:id/ledger", creditBook({ query: ledgerQuerySchema, response: ledgerSchema }), async (req, reply) => {
         const { id } = idParam.parse(req.params);
         const q = query(req);
         const result = await service.ledger(requireTenant(req.ctx).id, id, q as LedgerQuery);
@@ -113,7 +463,7 @@ export function invoicesRoutes(service: InvoicesService) {
         const last = result.entries[result.entries.length - 1];
         return sendCsv(reply, csvBuilders.ledger(result.entries), "ledger", q.from ?? result.entries[0]?.date, q.to ?? last?.date);
       });
-      staff.post("/customers/:id/receipts", CREDIT_BOOK, async (req) => {
+      staff.post("/customers/:id/receipts", creditBook({ body: receiptInputSchema, response: receiptResultSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         const user = requireUser(req.ctx);
         return service.addReceipt(requireTenant(req.ctx).id, id, body(req) as ReceiptInput, user.id);
@@ -123,23 +473,23 @@ export function invoicesRoutes(service: InvoicesService) {
         await service.deleteReceipt(requireTenant(req.ctx).id, id, receiptId);
         return { ok: true };
       });
-      staff.post("/customers/:id/statement/share", CREDIT_BOOK, async (req) => {
+      staff.post("/customers/:id/statement/share", creditBook({ response: shareLinkSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.shareStatement(requireTenant(req.ctx).id, id);
       });
-      staff.post("/customers/:id/remind", WHATSAPP, async (req) => {
+      staff.post("/customers/:id/remind", documented({ body: sendInputSchema, response: sendResultSchema }, WHATSAPP.config), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.remindCustomer(requireTenant(req.ctx).id, id, body(req) as SendInput);
       });
 
       // items
-      staff.get("/items", BASE, async (req) => service.listItems(requireTenant(req.ctx).id, req.query as ItemListQuery));
+      staff.get("/items", base({ query: itemListQuerySchema, response: billingItemListSchema }), async (req) => service.listItems(requireTenant(req.ctx).id, req.query as ItemListQuery));
       staff.get("/items/:id", BASE, async (req) => {
         const { id } = idParam.parse(req.params);
         return service.getItem(requireTenant(req.ctx).id, id);
       });
       staff.post("/items", BASE, async (req) => service.createItem(requireTenant(req.ctx).id, body(req) as ItemInput));
-      staff.patch("/items/:id", BASE, async (req) => {
+      staff.patch("/items/:id", base({ body: itemPatchSchema, response: billingItemSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.updateItem(requireTenant(req.ctx).id, id, body(req) as Partial<ItemInput>);
       });
@@ -221,12 +571,17 @@ export function invoicesRoutes(service: InvoicesService) {
       });
 
       // POS till sessions
-      staff.get("/till/current", BASE, async (req) => {
+      staff.get("/till/current", base({ query: registerQuery, response: tillCurrentSchema }), async (req) => {
         const { register } = registerQuery.parse(query(req));
         return { session: await service.till.current(requireTenant(req.ctx).id, { register, branchId: req.ctx.branch?.id ?? null }) };
       });
       staff.get("/till/sessions", REPORTS, async (req) => service.till.list(requireTenant(req.ctx).id, query(req) as TillListQuery));
-      staff.post("/till/open", audited(FEATURES.base, { action: "invoices.till.open", entity: "till_session" }), async (req) => {
+      staff.post(
+        "/till/open",
+        documented(
+          { body: tillOpenFields.extend(actorField), response: tillSessionSchema },
+          audited(FEATURES.base, { action: "invoices.till.open", entity: "till_session" }).config,
+        ), async (req) => {
         const user = requireUser(req.ctx);
         const b = body(req);
         const session = await service.till.open(requireTenant(req.ctx).id, b as TillOpenInput, {
@@ -241,11 +596,16 @@ export function invoicesRoutes(service: InvoicesService) {
         const { id } = idParam.parse(req.params);
         return service.till.get(requireTenant(req.ctx).id, id);
       });
-      staff.get("/till/:id/x", BASE, async (req) => {
+      staff.get("/till/:id/x", base({ response: tillReportResponseSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.till.report(requireTenant(req.ctx).id, id);
       });
-      staff.post("/till/:id/cash", audited(FEATURES.base, { action: "invoices.till.cash", entity: "till_session" }), async (req) => {
+      staff.post(
+        "/till/:id/cash",
+        documented(
+          { body: tillCashSchema.extend(actorField), response: tillSessionSchema },
+          audited(FEATURES.base, { action: "invoices.till.cash", entity: "till_session" }).config,
+        ), async (req) => {
         const { id } = idParam.parse(req.params);
         const user = requireUser(req.ctx);
         const b = body(req);
@@ -254,7 +614,12 @@ export function invoicesRoutes(service: InvoicesService) {
         if (e) req.auditSummary = `Cash ${e.amount > 0 ? "in" : "out"} ${formatINR(Math.abs(e.amount))}${e.reason ? `: ${e.reason}` : ""}`;
         return session;
       });
-      staff.post("/till/:id/close", audited(FEATURES.base, { action: "invoices.till.close", entity: "till_session" }), async (req) => {
+      staff.post(
+        "/till/:id/close",
+        documented(
+          { body: tillCloseFields.extend(actorField), response: tillReportResponseSchema },
+          audited(FEATURES.base, { action: "invoices.till.close", entity: "till_session" }).config,
+        ), async (req) => {
         const { id } = idParam.parse(req.params);
         const user = requireUser(req.ctx);
         const b = body(req);
@@ -264,12 +629,12 @@ export function invoicesRoutes(service: InvoicesService) {
       });
 
       // invoices
-      staff.get("/", BASE, async (req) => service.list(requireTenant(req.ctx).id, req.query as InvoiceListQuery));
-      staff.get("/summary", BASE, async (req) => service.summary(requireTenant(req.ctx).id));
-      staff.post("/", BASE, async (req) =>
+      staff.get("/", base({ query: invoiceListQuerySchema, response: invoiceListSchema }), async (req) => service.list(requireTenant(req.ctx).id, req.query as InvoiceListQuery));
+      staff.get("/summary", base({ response: dashboardSummarySchema }), async (req) => service.summary(requireTenant(req.ctx).id));
+      staff.post("/", base({ body: invoiceInputSchema, response: invoiceSchema }), async (req) =>
         service.create(requireTenant(req.ctx), body(req) as InvoiceInput, { branchId: req.ctx.branch?.id ?? null }),
       );
-      staff.get(BILL_ID, BASE, async (req) => {
+      staff.get(BILL_ID, base({ response: invoiceSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.get(requireTenant(req.ctx).id, id);
       });
@@ -282,7 +647,7 @@ export function invoicesRoutes(service: InvoicesService) {
         await service.deleteDraft(requireTenant(req.ctx).id, id);
         return { ok: true };
       });
-      staff.post(`${BILL_ID}/issue`, BASE, async (req) => {
+      staff.post(`${BILL_ID}/issue`, base({ body: issueBody, response: invoiceSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         const { loyaltyPoints } = issueBody.parse(body(req));
         return service.issue(requireTenant(req.ctx), id, {
@@ -290,12 +655,12 @@ export function invoicesRoutes(service: InvoicesService) {
           ...(loyaltyPoints !== undefined ? { loyaltyPoints } : {}),
         });
       });
-      staff.post(`${BILL_ID}/cancel`, BASE, async (req) => {
+      staff.post(`${BILL_ID}/cancel`, base({ body: cancelBody, response: invoiceSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         const { reason } = cancelBody.parse(req.body ?? {});
         return service.cancel(requireTenant(req.ctx).id, id, reason);
       });
-      staff.post(`${BILL_ID}/payments`, BASE, async (req) => {
+      staff.post(`${BILL_ID}/payments`, base({ body: paymentInputSchema, response: invoiceSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         const user = requireUser(req.ctx);
         return service.addPayment(requireTenant(req.ctx).id, id, body(req) as PaymentInput, user.id);
@@ -304,11 +669,11 @@ export function invoicesRoutes(service: InvoicesService) {
         const { id, paymentId } = paymentParam.parse(req.params);
         return service.deletePayment(requireTenant(req.ctx).id, id, paymentId);
       });
-      staff.post(`${BILL_ID}/share`, BASE, async (req) => {
+      staff.post(`${BILL_ID}/share`, base({ response: shareLinkSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.share(requireTenant(req.ctx).id, id);
       });
-      staff.post(`${BILL_ID}/send`, WHATSAPP, async (req) => {
+      staff.post(`${BILL_ID}/send`, documented({ body: sendInputSchema, response: sendResultSchema }, WHATSAPP.config), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.sendInvoice(requireTenant(req.ctx).id, id, body(req) as SendInput);
       });

@@ -312,3 +312,17 @@ describe("plan actions", () => {
     expect(hasMandate(sub({ providerSubscriptionId: "sub_1", authUrl: "https://x" }))).toBe(false);
   });
 });
+
+describe("POS PINs in Team & roles", () => {
+  it("validates PINs like the server (4–6 digits, not weak)", async () => {
+    const { pinProblem, POS_DEVICES_PERMISSION, POS_TERMINALS_FEATURE } = await import("./lib/pins");
+    expect(pinProblem("123")).toBe("format");
+    expect(pinProblem("1234")).toBe("weak");
+    expect(pinProblem("0000")).toBe("weak");
+    expect(pinProblem("987654")).toBe("weak");
+    expect(pinProblem("2580", "2581")).toBe("mismatch");
+    expect(pinProblem("2580", "2580")).toBeNull();
+    expect(POS_DEVICES_PERMISSION).toBe("pos.devices");
+    expect(POS_TERMINALS_FEATURE).toBe("pos.terminals");
+  });
+});

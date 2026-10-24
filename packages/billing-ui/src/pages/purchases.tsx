@@ -12,7 +12,7 @@ import type { Paged, PurchaseSummary, Supplier } from "../lib/types";
 
 const STATUSES = ["unpaid", "paid", "cancelled"] as const;
 const supplierName = (p: PurchaseSummary) => p.supplierName ?? p.supplier?.name ?? "—";
-const balanceOf = (p: PurchaseSummary) => (p.status === "recorded" && !p.paid ? p.total : 0);
+const balanceOf = (p: PurchaseSummary & { balance?: number }) => (p.status === "recorded" && !p.paid ? Math.max(0, p.balance ?? p.total) : 0);
 
 export default function PurchasesPage() {
   // useServerTable reads the search params, which needs a Suspense boundary.

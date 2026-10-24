@@ -28,7 +28,36 @@ export * from "./credit-notes-calc";
 export * from "./credit-notes";
 export * from "./till-calc";
 export * from "./till";
-export { invoicesRoutes } from "./routes";
+export {
+  invoicesRoutes,
+  billingItemListSchema,
+  billingItemSchema,
+  creditBookRowSchema,
+  creditBookSchema,
+  creditNoteSummarySchema,
+  customerListItemSchema,
+  customerListSchema,
+  customerSchema,
+  customerSnapshotSchema,
+  dashboardSummarySchema,
+  invoiceLineSchema,
+  invoiceListSchema,
+  invoicePaymentSchema,
+  invoiceSchema,
+  invoiceSummarySchema,
+  invoiceTotalsSchema,
+  ledgerEntrySchema,
+  ledgerSchema,
+  receiptResultSchema,
+  receiptSchema,
+  sellerProfileSchema,
+  sendResultSchema,
+  shareLinkSchema,
+  tillCurrentSchema,
+  tillReportResponseSchema,
+  tillReportSchema,
+  tillSessionSchema,
+} from "./routes";
 
 /**
  * GST billing: customers with a credit book, items, invoices with FY numbering, payments and receipts, public share

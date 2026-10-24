@@ -44,7 +44,7 @@ export function MovementsDialog({ open, onOpenChange, batch }: { open: boolean; 
                   </p>
                 </div>
                 <div className="shrink-0 text-right tabular-nums">
-                  <p className={cn("font-semibold", m.delta < 0 ? "text-destructive" : "text-success")}>
+                  <p className={cn("font-semibold", m.delta < 0 ? "text-destructive" : "text-success-ink")}>
                     {m.delta > 0 ? "+" : ""}
                     {fmtQty(m.delta)}
                   </p>

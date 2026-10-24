@@ -207,7 +207,7 @@ export default function CampaignNewPage() {
                   s === step ? "border-primary bg-primary/8 text-foreground" : "bg-card text-muted-foreground hover:bg-accent/50",
                 )}
               >
-                <span className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs tabular-nums", done ? "bg-success text-white" : s === step ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                <span className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs tabular-nums", done ? "bg-success text-white dark:bg-success/60" : s === step ? "bg-primary text-primary-foreground" : "bg-muted")}>
                   {done ? <CheckIcon className="size-3.5" /> : i + 1}
                 </span>
                 <span className="truncate">{t(`inbox.campaign.step.${s}`)}</span>

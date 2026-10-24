@@ -10,6 +10,8 @@ export * from "./ports";
 export * from "./csv";
 export {
   ExpensesService,
+  categoryInput as expenseCategoryInput,
+  categoryPatch as expenseCategoryPatch,
   expenseInput,
   expensePatch,
   listQuery as expenseListQuery,
@@ -18,7 +20,14 @@ export {
   MAX_REPORT_DAYS,
 } from "./service";
 export type { ExpenseInput, ExpenseList, ExpenseListQuery, ExpensePatch, ExpenseView, ExpensesDeps } from "./service";
-export { expensesRoutes } from "./routes";
+export {
+  expensesRoutes,
+  expenseCategoryListSchema,
+  expenseCategorySchema,
+  expenseListSchema,
+  expenseSchema,
+  expenseSummarySchema,
+} from "./routes";
 
 /** Shop expenses with GST input credit, a summary by category/month and a profit report. */
 export function createExpenses(deps: ExpensesDeps) {

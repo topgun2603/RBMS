@@ -7,7 +7,7 @@ import { FeaturesService, type FeaturesDeps } from "./service";
 export * from "./schema";
 export * from "./resolve";
 export * from "./service";
-export { featuresRoutes } from "./routes";
+export { featuresRoutes, featureStateSchema, tenantFeaturesSchema } from "./routes";
 
 /**
  * Feature switches: every module declares features; a feature is on for a shop only when its app profile, plan,

@@ -34,6 +34,7 @@ import {
   type LineInput,
   type TaxBreakupRow,
 } from "@srirealtime/gst";
+import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -67,10 +68,17 @@ import {
   type StockDrop,
   type StockLevelInput,
 } from "./levels";
+import { PurchasingService } from "./purchasing";
+import { apportion, purchaseBalance } from "./payables";
 import { noopLogger, type CatalogItem, type EventsPort, type ItemCatalogPort, type LoggerPort, type SellerStatePort } from "./ports";
 import {
   LOCATION_TYPES,
+  debitNotes,
+  goodsReceipts,
+  purchasePayments,
   purchases,
+  type PaymentMode,
+  PAYMENT_MODES,
   type LocationType,
   type MovementReason,
   type ReservationStatus,
@@ -101,6 +109,14 @@ export const MAX_QTY = 1_000_000_000;
 export const DEFAULT_SUPPLIER_NAME = "Cash purchase";
 export const DEFAULT_LOCATION_NAME = "Main";
 export const DEFAULT_LOCATION_CODE = "MAIN";
+
+/** Internal extras of a purchase made from a goods receipt / purchase order. */
+export interface PurchaseExtra {
+  /** The stock already came in with a goods receipt. */
+  skipStock?: boolean;
+  purchaseOrderId?: string;
+  goodsReceiptId?: string;
+}
 
 export interface InventoryDeps {
   db: Db;
@@ -251,8 +267,11 @@ export interface Supplier {
   gstin: string | null;
   address: string | null;
   stateCode: string | null;
-  /** Paise: sum of totals of recorded purchases not yet paid. */
+  /** Paise we owe: opening balance + unpaid recorded bills - on-account payments (negative = advance paid). */
   payable: number;
+  /** Paise owed when the supplier was set up (positive = payable). */
+  openingBalance: number;
+  openingDate: string | null;
   createdAt: Date;
 }
 
@@ -269,6 +288,12 @@ export interface PurchaseSummary {
   igst: number;
   total: number;
   paid: boolean;
+  /** Paise paid so far (net of refunds). */
+  amountPaid: number;
+  returnedAmount: number;
+  /** total - returnedAmount - amountPaid. */
+  balance: number;
+  dueDate: string | null;
   status: PurchaseStatus;
   createdAt: Date;
 }
@@ -285,6 +310,14 @@ export interface Purchase {
   totals: Omit<InvoiceTotals, "lines">;
   total: number;
   paid: boolean;
+  amountPaid: number;
+  returnedAmount: number;
+  balance: number;
+  dueDate: string | null;
+  freight: number;
+  otherCharges: number;
+  purchaseOrderId: string | null;
+  goodsReceiptId: string | null;
   status: PurchaseStatus;
   notes: string | null;
   cancelledAt: Date | null;
@@ -460,6 +493,9 @@ export const supplierInputSchema = z.object({
   gstin: opt(gstin),
   address: opt(z.string().trim().max(500)),
   stateCode: opt(stateCode),
+  /** Paise already owed to the supplier when starting (negative = advance paid to them). */
+  openingBalance: z.number().int().min(-MAX_PAISE).max(MAX_PAISE).optional(),
+  openingDate: opt(dateStr),
 });
 export const supplierPatchSchema = supplierInputSchema.partial();
 export type SupplierInput = z.input<typeof supplierInputSchema>;
@@ -510,6 +546,14 @@ export const purchaseInputSchema = z.object({
   lines: z.array(purchaseLineSchema).min(1, "Add at least one line").max(200),
   notes: opt(z.string().trim().max(2000)),
   paid: z.boolean().default(false),
+  /** Paid at entry (part payment), paise; `paid: true` means the whole bill. */
+  amountPaid: money.optional(),
+  paymentMode: z.enum(PAYMENT_MODES).optional(),
+  paymentReference: opt(z.string().trim().max(100)),
+  dueDate: opt(dateStr),
+  /** Supplier's freight and other charges (no GST); added to the bill total and spread over the stock cost. */
+  freight: money.optional(),
+  otherCharges: money.optional(),
   /** Where the stock arrives (default location when omitted). */
   locationId: locationIdParam,
 });
@@ -545,7 +589,8 @@ export const PURCHASE_SORT = defineSort(
     number: sql`lower(${purchases.billNumber})`,
     supplier: sql`lower(${purchases.supplier}->>'name')`,
     total: purchases.total,
-    balance: sql`(case when ${purchases.status} = 'recorded' and not ${purchases.paid} then ${purchases.total} else 0 end)`,
+    balance: sql`(case when ${purchases.status} = 'recorded' then ${purchases.total} - ${purchases.returnedAmount} - ${purchases.amountPaid} else 0 end)`,
+    due: purchases.dueDate,
   },
   { default: "-date", tieBreaker: [purchases.createdAt, purchases.id] },
 );
@@ -662,6 +707,8 @@ function snapshotOf(c: {
 }
 
 const toSupplier = (s: SupplierRow, payable: unknown): Supplier => ({
+  openingBalance: s.openingBalance,
+  openingDate: s.openingDate,
   id: s.id,
   name: s.name,
   phone: s.phone,
@@ -685,6 +732,14 @@ const toPurchase = (r: PurchaseRow): Purchase => ({
   totals: r.totals,
   total: r.total,
   paid: r.paid,
+  amountPaid: r.amountPaid,
+  returnedAmount: r.returnedAmount,
+  balance: purchaseBalance(r),
+  dueDate: r.dueDate,
+  freight: r.freight,
+  otherCharges: r.otherCharges,
+  purchaseOrderId: r.purchaseOrderId,
+  goodsReceiptId: r.goodsReceiptId,
   status: r.status,
   notes: r.notes,
   cancelledAt: r.cancelledAt,
@@ -704,6 +759,10 @@ const toPurchaseSummary = (r: PurchaseRow): PurchaseSummary => ({
   igst: r.totals.igst,
   total: r.total,
   paid: r.paid,
+  amountPaid: r.amountPaid,
+  returnedAmount: r.returnedAmount,
+  balance: purchaseBalance(r),
+  dueDate: r.dueDate,
   status: r.status,
   createdAt: r.createdAt,
 });
@@ -904,8 +963,11 @@ export class InventoryService {
   private readonly events: EventsPort | null;
   /** Tenants whose legacy (null-location) rows were moved to the default location by this process. */
   private readonly healed = new Set<string>();
+  /** Supplier payments, purchase orders / goods receipts and debit notes. */
+  readonly purchasing: PurchasingService;
 
   constructor(deps: InventoryDeps) {
+    this.purchasing = new PurchasingService(this, deps);
     this.db = deps.db;
     this.catalog = deps.catalog;
     this.sellerState = deps.sellerState;
@@ -929,7 +991,8 @@ export class InventoryService {
     return toLocation(await this.defaultLocationRow(tenantId));
   }
 
-  private async defaultLocationRow(tenantId: string): Promise<StockLocationRow> {
+  /** @internal */
+  async defaultLocationRow(tenantId: string): Promise<StockLocationRow> {
     const find = async () =>
       (
         await this.db
@@ -1040,7 +1103,8 @@ export class InventoryService {
   }
 
   /** The given location (404 if unknown; 400 if inactive and `active` is required) or the default one. Heals the tenant. */
-  private async resolveLocation(tenantId: string, locationId: string | null | undefined, opts: { active?: boolean } = {}) {
+  /** @internal */
+  async resolveLocation(tenantId: string, locationId: string | null | undefined, opts: { active?: boolean } = {}) {
     const def = locationId && this.healed.has(tenantId) ? null : await this.defaultLocationRow(tenantId);
     if (!locationId) return def!;
     const loc = def && def.id === locationId ? def : await this.locationRow(this.db, tenantId, locationId);
@@ -1196,7 +1260,8 @@ export class InventoryService {
   // ================================================================ stock primitives
 
   /** Applies one stock change inside `tx`: upsert qty (and reserved), update average cost, append a movement. */
-  private async change(tx: DbOrTx, c: StockChange, drops?: StockDrop[]): Promise<{ qtyMilli: number; avgCost: number | null }> {
+  /** @internal used by PurchasingService */
+  async change(tx: DbOrTx, c: StockChange, drops?: StockDrop[]): Promise<{ qtyMilli: number; avgCost: number | null }> {
     const [row] = await upsertStockStatement(tx, {
       tenantId: c.tenantId,
       locationId: c.locationId,
@@ -1294,7 +1359,8 @@ export class InventoryService {
   }
 
   /** Item ids (of `itemIds`) that are untracked at any location. */
-  private async untrackedOf(db: DbOrTx, tenantId: string, itemIds: string[]): Promise<Set<string>> {
+  /** @internal */
+  async untrackedOf(db: DbOrTx, tenantId: string, itemIds: string[]): Promise<Set<string>> {
     if (itemIds.length === 0) return new Set();
     const rows = await db
       .select({ itemId: stockItems.itemId })
@@ -2006,7 +2072,7 @@ export class InventoryService {
     return this.db
       .select({
         supplierId: purchases.supplierId,
-        payable: sql<string>`coalesce(sum(${purchases.total}) filter (where not ${purchases.paid}), 0)`.as("payable"),
+        payable: sql<string>`coalesce(sum(${purchases.total} - ${purchases.returnedAmount} - ${purchases.amountPaid}), 0)`.as("payable"),
         lastPurchase: sql<string | null>`max(${purchases.date})::text`.as("last_purchase"),
       })
       .from(purchases)
@@ -2015,10 +2081,20 @@ export class InventoryService {
       .as("supplier_payable");
   }
 
-  /** Supplier list sort (name / balance = unpaid purchases / lastPurchase). Default: name A→Z. */
+  /** Paise paid (net of refunds) to a supplier that belong to no bill: settle the opening balance or are advances. */
+  private onAccountSql() {
+    return sql<string>`(select coalesce(sum(case when pp.kind = 'payment' then pp.amount else -pp.amount end), 0) from purchase_payments pp where pp.tenant_id = ${suppliers.tenantId} and pp.supplier_id = ${suppliers.id} and pp.purchase_id is null and pp.reversed_at is null)`;
+  }
+
+  /** What we owe a supplier in total: unpaid bills + opening balance - on-account payments. */
+  private supplierPayableSql(due: ReturnType<InventoryService["payableSubquery"]>) {
+    return sql<string>`(coalesce(${due.payable}, 0) + ${suppliers.openingBalance} - ${this.onAccountSql()})`;
+  }
+
+  /** Supplier list sort (name / balance = total payable / lastPurchase). Default: name A→Z. */
   supplierSort(due: ReturnType<InventoryService["payableSubquery"]>) {
     return defineSort(
-      { name: sql`lower(${suppliers.name})`, balance: sql`coalesce(${due.payable}, 0)`, lastPurchase: due.lastPurchase },
+      { name: sql`lower(${suppliers.name})`, balance: this.supplierPayableSql(due), lastPurchase: due.lastPurchase },
       { default: "name", tieBreaker: suppliers.id },
     );
   }
@@ -2039,7 +2115,7 @@ export class InventoryService {
     return runList(p, {
       rows: () =>
         this.db
-          .select({ s: suppliers, payable: due.payable, lastPurchase: due.lastPurchase })
+          .select({ s: suppliers, payable: this.supplierPayableSql(due), lastPurchase: due.lastPurchase })
           .from(suppliers)
           .leftJoin(due, eq(due.supplierId, suppliers.id))
           .where(where)
@@ -2051,7 +2127,8 @@ export class InventoryService {
     });
   }
 
-  private async supplierRow(db: DbOrTx, tenantId: string, id: string): Promise<SupplierRow | null> {
+  /** @internal */
+  async supplierRow(db: DbOrTx, tenantId: string, id: string): Promise<SupplierRow | null> {
     const [row] = await db
       .select()
       .from(suppliers)
@@ -2063,7 +2140,7 @@ export class InventoryService {
   async getSupplier(tenantId: string, id: string): Promise<Supplier> {
     const due = this.payableSubquery(tenantId);
     const [row] = await this.db
-      .select({ s: suppliers, payable: due.payable })
+      .select({ s: suppliers, payable: this.supplierPayableSql(due) })
       .from(suppliers)
       .leftJoin(due, eq(due.supplierId, suppliers.id))
       .where(and(eq(suppliers.tenantId, tenantId), eq(suppliers.id, id), isNull(suppliers.deletedAt)))
@@ -2076,9 +2153,9 @@ export class InventoryService {
     const b = supplierInputSchema.parse(input);
     const [row] = await this.db
       .insert(suppliers)
-      .values({ tenantId, ...snapshotOf(b) })
+      .values({ tenantId, ...snapshotOf(b), openingBalance: b.openingBalance ?? 0, openingDate: b.openingDate ?? null })
       .returning();
-    return toSupplier(row!, 0);
+    return toSupplier(row!, row!.openingBalance);
   }
 
   async updateSupplier(tenantId: string, id: string, input: Partial<SupplierInput>): Promise<Supplier> {
@@ -2093,6 +2170,8 @@ export class InventoryService {
     if (b.address !== undefined) set.address = b.address;
     if (b.stateCode !== undefined) set.stateCode = b.stateCode;
     else if (b.gstin) set.stateCode = stateFromGstin(b.gstin);
+    if (b.openingBalance !== undefined) set.openingBalance = b.openingBalance;
+    if (b.openingDate !== undefined) set.openingDate = b.openingDate;
     if (Object.keys(set).length > 0) {
       await this.db
         .update(suppliers)
@@ -2114,7 +2193,8 @@ export class InventoryService {
 
   // ================================================================ purchases
 
-  private async purchaseRow(db: DbOrTx, tenantId: string, id: string, lock = false): Promise<PurchaseRow> {
+  /** @internal */
+  async purchaseRow(db: DbOrTx, tenantId: string, id: string, lock = false): Promise<PurchaseRow> {
     const q = db
       .select()
       .from(purchases)
@@ -2184,7 +2264,7 @@ export class InventoryService {
    * Records a supplier bill. Totals are recomputed here; lines with an itemId add stock (reason
    * `purchase`) at cost = taxable / qty (GST excluded, it is claimed as ITC) and update the average cost.
    */
-  async createPurchase(tenantId: string, input: PurchaseInput, userId: string | null = null): Promise<Purchase> {
+  async createPurchase(tenantId: string, input: PurchaseInput, userId: string | null = null, extra: PurchaseExtra = {}): Promise<Purchase> {
     const b = purchaseInputSchema.parse(input);
 
     let supplierId: string | null = null;
@@ -2207,7 +2287,13 @@ export class InventoryService {
     }
     const supplierState = supplier.stateCode ?? placeOfSupply;
     const totals = computeInvoice(b.lines, { sellerState: supplierState, placeOfSupply });
-    if (totals.total > MAX_PAISE) throw badRequest("Purchase total is too large");
+    const freight = b.freight ?? 0;
+    const otherCharges = b.otherCharges ?? 0;
+    const grandTotal = totals.total + freight + otherCharges;
+    if (grandTotal > MAX_PAISE) throw badRequest("Purchase total is too large");
+    const amountPaid = b.paid ? grandTotal : (b.amountPaid ?? 0);
+    if (amountPaid > grandTotal) throw badRequest("The amount paid can't be more than the bill total");
+    if (b.dueDate && b.dueDate < b.date) throw badRequest("The due date can't be before the bill date");
 
     const stockLines = mergePurchaseLines(totals.lines as PurchaseLine[]);
     if (stockLines.length > 0) {
@@ -2231,14 +2317,35 @@ export class InventoryService {
           interState: isInterState(supplierState, placeOfSupply),
           lines: totals.lines as PurchaseLine[],
           totals: withoutLines(totals),
-          total: totals.total,
-          paid: b.paid,
+          total: grandTotal,
+          paid: grandTotal - amountPaid <= 0,
+          amountPaid,
+          dueDate: b.dueDate ?? null,
+          freight,
+          otherCharges,
+          purchaseOrderId: extra.purchaseOrderId ?? null,
+          goodsReceiptId: extra.goodsReceiptId ?? null,
           status: "recorded",
           notes: b.notes ?? null,
           createdBy: userId,
         })
         .returning();
-      await this.addPurchaseStock(tx, tenantId, loc.id, created!, stockLines, userId);
+      if (!extra.skipStock) await this.addPurchaseStock(tx, tenantId, loc.id, created!, stockLines, userId, freight + otherCharges);
+      if (amountPaid > 0) {
+        await tx.insert(purchasePayments).values({
+          tenantId,
+          supplierId,
+          purchaseId: created!.id,
+          groupId: randomUUID(),
+          kind: "payment",
+          amount: amountPaid,
+          mode: b.paymentMode ?? "cash",
+          reference: b.paymentReference ?? null,
+          date: b.date,
+          note: b.paid ? "Paid at entry" : "Part payment at entry",
+          createdBy: userId,
+        });
+      }
       return created!;
     });
     this.log.info({ tenantId, purchaseId: row.id, total: row.total }, "inventory: purchase recorded");
@@ -2252,14 +2359,20 @@ export class InventoryService {
     p: PurchaseRow,
     lines: { itemId: string; milli: number; taxable: number }[],
     userId: string | null,
+    /** Freight and other charges, spread over the lines by taxable value into the unit cost. */
+    landed = 0,
   ) {
     if (lines.length === 0) return;
+    const shares = apportion(
+      landed,
+      lines.map((l) => l.taxable),
+    );
     const untracked = await this.untrackedOf(
       tx,
       tenantId,
       lines.map((l) => l.itemId),
     );
-    for (const l of lines) {
+    for (const [i, l] of lines.entries()) {
       if (untracked.has(l.itemId)) continue;
       await this.change(tx, {
         tenantId,
@@ -2270,7 +2383,7 @@ export class InventoryService {
         refType: "purchase",
         refId: p.id,
         refNumber: p.billNumber,
-        unitCost: unitCostOf(l.taxable, l.milli),
+        unitCost: unitCostOf(l.taxable + (shares[i] ?? 0), l.milli),
         createdBy: userId,
       });
     }
@@ -2282,9 +2395,26 @@ export class InventoryService {
     const row = await this.db.transaction(async (tx) => {
       const p = await this.purchaseRow(tx, tenantId, id, true);
       if (p.status === "cancelled") return p;
+      const [dn] = await tx
+        .select({ id: debitNotes.id })
+        .from(debitNotes)
+        .where(and(eq(debitNotes.tenantId, tenantId), eq(debitNotes.purchaseId, id), eq(debitNotes.status, "issued")))
+        .limit(1);
+      if (dn) throw conflict("This purchase has debit notes; cancel them first");
+      // Its payments are reversed with it (they stay in the history, marked reversed).
+      await tx
+        .update(purchasePayments)
+        .set({ reversedAt: this.now(), reversedBy: userId, reverseNote: "Purchase cancelled" })
+        .where(and(eq(purchasePayments.tenantId, tenantId), eq(purchasePayments.purchaseId, id), isNull(purchasePayments.reversedAt)));
+      if (p.goodsReceiptId) {
+        await tx
+          .update(goodsReceipts)
+          .set({ purchaseId: null })
+          .where(and(eq(goodsReceipts.tenantId, tenantId), eq(goodsReceipts.id, p.goodsReceiptId)));
+      }
       const [updated] = await tx
         .update(purchases)
-        .set({ status: "cancelled", cancelledAt: this.now() })
+        .set({ status: "cancelled", cancelledAt: this.now(), amountPaid: 0, paid: false })
         .where(and(eq(purchases.tenantId, tenantId), eq(purchases.id, id), eq(purchases.status, "recorded")))
         .returning();
       if (!updated) throw conflict("This purchase was changed meanwhile; reload and try again");
@@ -2323,16 +2453,13 @@ export class InventoryService {
     return toPurchase(row);
   }
 
-  async setPurchasePaid(tenantId: string, id: string, input: { paid: boolean }): Promise<Purchase> {
+  /**
+   * The old paid / unpaid switch, now on top of payments: `paid: true` records a payment for what is still due (cash),
+   * `paid: false` reverses every payment on the bill.
+   */
+  async setPurchasePaid(tenantId: string, id: string, input: { paid: boolean }, userId: string | null = null): Promise<Purchase> {
     const { paid } = paidInputSchema.parse(input);
-    const [row] = await this.db
-      .update(purchases)
-      .set({ paid })
-      .where(and(eq(purchases.tenantId, tenantId), eq(purchases.id, id), eq(purchases.status, "recorded")))
-      .returning();
-    if (row) return toPurchase(row);
-    const existing = await this.purchaseRow(this.db, tenantId, id); // 404 if missing
-    throw badRequest(`A ${existing.status} purchase can't be marked paid or unpaid`);
+    return this.purchasing.setPaidFlag(tenantId, id, paid, userId);
   }
 
   // ================================================================ reports

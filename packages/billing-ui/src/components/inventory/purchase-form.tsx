@@ -31,6 +31,7 @@ import { MoneyInput } from "../money-input";
 import { money, paiseToInput, parseQty, rupeesToPaise, stateLabel, todayIST } from "../../lib/format";
 import { useItems, useSellerProfile } from "../../lib/queries";
 import { useCreatePurchase } from "../../lib/queries-v2";
+import { useCreatePurchaseOrder } from "../../lib/queries-payables";
 import type { GstRate, Item, LineInput, PurchaseInput } from "../../lib/types";
 
 interface LineDraft {
@@ -85,8 +86,13 @@ function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError }
   return { input, errors };
 }
 
-/** New supplier bill: adds stock for linked items and records input tax credit. */
-export function PurchaseForm() {
+/**
+ * New supplier bill: adds stock for linked items and records input tax credit. With `mode="order"` it makes a purchase
+ * order instead (saved supplier, expected date; stock comes in when the goods are received).
+ */
+export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}) {
+  const order = mode === "order";
+  const createOrder = useCreatePurchaseOrder();
   const { t } = useI18n();
   const navigate = useModuleNavigate();
   const seller = useSellerProfile();
@@ -96,6 +102,9 @@ export function PurchaseForm() {
   const [billNumber, setBillNumber] = React.useState("");
   const [date, setDate] = React.useState(() => todayIST());
   const [paid, setPaid] = React.useState(false);
+  const [dueDate, setDueDate] = React.useState("");
+  const [paidSoFar, setPaidSoFar] = React.useState("");
+  const [expected, setExpected] = React.useState("");
   const [lines, setLines] = React.useState<LineDraft[]>(() => [blankLine()]);
   const [notes, setNotes] = React.useState("");
   const [showNotes, setShowNotes] = React.useState(false);
@@ -127,7 +136,7 @@ export function PurchaseForm() {
   };
   const removeLine = (key: string) => setLines((ls) => (ls.length === 1 ? [blankLine(ls[0]?.gstRate)] : ls.filter((l) => l.key !== key)));
 
-  const partyError =
+  const baseSupplierError =
     party.kind === "none"
       ? t("billing.purchaseForm.errors.supplier")
       : party.kind === "oneoff" && !party.name.trim()
@@ -135,7 +144,9 @@ export function PurchaseForm() {
         : party.kind === "oneoff" && party.gstin && !isValidGstin(party.gstin)
           ? t("billing.validation.gstin")
           : null;
-  const billError = !billNumber.trim() ? t("billing.purchaseForm.errors.billNumber") : null;
+  const partyError = order && party.kind === "oneoff" ? t("billing.po.errors.savedSupplier") : baseSupplierError;
+  const paidSoFarPaise = paidSoFar.trim() ? rupeesToPaise(paidSoFar) : 0;
+  const billError = order ? null : !billNumber.trim() ? t("billing.purchaseForm.errors.billNumber") : null;
   const filled = parsed.filter((p) => !isBlank(p.line));
   const linesInvalid = filled.length === 0 || filled.some((p) => Object.keys(p.errors).length > 0);
   const linked = filled.filter((p) => p.line.itemId).length;
@@ -146,11 +157,34 @@ export function PurchaseForm() {
       toast.error(partyError ?? billError ?? (filled.length === 0 ? t("billing.form.errors.noLines") : t("billing.form.errors.lines")));
       return;
     }
-    const body: PurchaseInput = {
+    if (order) {
+      try {
+        const po = await createOrder.mutateAsync({
+          supplierId: party.kind === "saved" ? party.supplier.id : undefined,
+          date,
+          ...(expected ? { expectedDate: expected } : {}),
+          lines: filled.map((p) => p.input!),
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+        });
+        setDone(true);
+        toast.success(t("billing.po.created", { number: po.number }));
+        window.setTimeout(() => navigate(`purchase-orders/${po.id}`, { replace: true }), 900);
+      } catch (err) {
+        toast.error(describeError(err, t));
+      }
+      return;
+    }
+    if (paidSoFarPaise === null || (!paid && paidSoFarPaise > totals.total)) {
+      toast.error(t("billing.payables.paidSoFarTooBig"));
+      return;
+    }
+    const body: PurchaseInput & Record<string, unknown> = {
       billNumber: billNumber.trim(),
       date,
       lines: filled.map((p) => p.input!),
       paid,
+      ...(!paid && paidSoFarPaise ? { amountPaid: paidSoFarPaise } : {}),
+      ...(dueDate ? { dueDate } : {}),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     };
     if (party.kind === "saved") body.supplierId = party.supplier.id;
@@ -171,7 +205,7 @@ export function PurchaseForm() {
     }
   };
 
-  const busy = create.isPending || done;
+  const busy = create.isPending || createOrder.isPending || done;
 
   return (
     <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
@@ -190,6 +224,7 @@ export function PurchaseForm() {
         {/* Bill details */}
         <Card>
           <CardContent className="grid items-start gap-4 sm:grid-cols-3">
+            {!order && (
             <div className="grid content-start gap-1.5">
               <Label htmlFor="pur-bill">{t("billing.purchaseForm.billNumber")}</Label>
               <Input
@@ -204,18 +239,40 @@ export function PurchaseForm() {
               />
               {submitted && billError && <p id="pur-bill-err" className="text-xs text-destructive">{billError}</p>}
             </div>
+            )}
             <div className="grid content-start gap-1.5">
               <Label htmlFor="pur-date">{t("billing.purchaseForm.date")}</Label>
               <Input id="pur-date" type="date" value={date} max={todayIST()} onChange={(e) => setDate(e.target.value || todayIST())} />
             </div>
-            <div className="grid content-start gap-1.5">
-              <Label htmlFor="pur-paid">{t("billing.purchaseForm.paidLabel")}</Label>
-              <div className={cn("flex items-center justify-between gap-3 rounded-md border px-3", controlHeight())}>
-                <span className="text-sm">{paid ? t("billing.purchases.paid") : t("billing.purchases.unpaid")}</span>
-                <Switch id="pur-paid" checked={paid} onCheckedChange={setPaid} />
+            {order ? (
+              <div className="grid content-start gap-1.5">
+                <Label htmlFor="pur-expected">{t("billing.po.col.expected")}</Label>
+                <Input id="pur-expected" type="date" value={expected} min={date} onChange={(e) => setExpected(e.target.value)} />
               </div>
-              <p className="text-meta text-muted-foreground">{t("billing.purchaseForm.paidHint")}</p>
-            </div>
+            ) : (
+              <>
+                <div className="grid content-start gap-1.5">
+                  <Label htmlFor="pur-paid">{t("billing.purchaseForm.paidLabel")}</Label>
+                  <div className={cn("flex items-center justify-between gap-3 rounded-md border px-3", controlHeight())}>
+                    <span className="text-sm">{paid ? t("billing.purchases.paid") : t("billing.purchases.unpaid")}</span>
+                    <Switch id="pur-paid" checked={paid} onCheckedChange={setPaid} />
+                  </div>
+                  <p className="text-meta text-muted-foreground">{t("billing.purchaseForm.paidHint")}</p>
+                </div>
+                {!paid && (
+                  <>
+                    <div className="grid content-start gap-1.5">
+                      <Label htmlFor="pur-due">{t("billing.payables.dueDate")}</Label>
+                      <Input id="pur-due" type="date" value={dueDate} min={date} onChange={(e) => setDueDate(e.target.value)} />
+                    </div>
+                    <div className="grid content-start gap-1.5">
+                      <Label htmlFor="pur-paidnow">{t("billing.payables.paidSoFar")}</Label>
+                      <MoneyInput id="pur-paidnow" value={paidSoFar} onChange={(e) => setPaidSoFar(e.target.value)} />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -321,8 +378,8 @@ export function PurchaseForm() {
 
         <div className="hidden gap-2 lg:grid">
           <Button size="lg" className="h-12 text-base" disabled={busy} onClick={() => void submit()}>
-            {create.isPending ? <Loader2Icon className="animate-spin" /> : <CheckIcon />}
-            {t("billing.purchaseForm.save")}
+            {busy && !done ? <Loader2Icon className="animate-spin" /> : <CheckIcon />}
+            {order ? t("billing.po.save") : t("billing.purchaseForm.save")}
           </Button>
         </div>
       </div>
@@ -340,8 +397,8 @@ export function PurchaseForm() {
             <AnimatedNumber value={totals.total} format={(n) => money(Math.round(n))} className="block truncate font-heading text-lg font-bold tabular-nums" />
           </div>
           <Button className="h-11 px-5" disabled={busy} onClick={() => void submit()}>
-            {create.isPending ? <Loader2Icon className="animate-spin" /> : <CheckIcon />}
-            {t("billing.purchaseForm.saveShort")}
+            {busy && !done ? <Loader2Icon className="animate-spin" /> : <CheckIcon />}
+            {order ? t("billing.po.saveShort") : t("billing.purchaseForm.saveShort")}
           </Button>
         </div>
       </div>
@@ -355,8 +412,8 @@ export function PurchaseForm() {
             className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
             role="status"
           >
-            <SuccessCheck size={88} label={t("billing.purchaseForm.savedTitle")} />
-            <p className="font-heading text-lg font-semibold">{t("billing.purchaseForm.savedTitle")}</p>
+            <SuccessCheck size={88} label={order ? t("billing.po.savedTitle") : t("billing.purchaseForm.savedTitle")} />
+            <p className="font-heading text-lg font-semibold">{order ? t("billing.po.savedTitle") : t("billing.purchaseForm.savedTitle")}</p>
           </motion.div>
         )}
       </AnimatePresence>

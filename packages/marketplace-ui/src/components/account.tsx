@@ -178,7 +178,7 @@ export function KycTimeline({ checks, compact }: { checks: KycCheck[]; compact?:
             <span
               className={cn(
                 "absolute top-1 -left-6 flex size-[1.375rem] items-center justify-center rounded-full ring-4 ring-card",
-                ok ? "bg-success text-white" : bad ? "bg-destructive text-white" : "bg-warning text-white",
+                ok ? "bg-success text-white dark:bg-success/60" : bad ? "bg-destructive text-white dark:bg-destructive/60" : "bg-warning text-neutral-950",
               )}
               aria-hidden
             >

@@ -1,4 +1,6 @@
 import type { FastifyInstance, RouteOptions } from "fastify";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import type { RouteSchema } from "@srirealtime/core";
 import "./fastify";
 
 export interface CollectedRoute {
@@ -11,6 +13,7 @@ export interface CollectedRoute {
   permission: string[];
   summary: string | null;
   apiKey: boolean;
+  schema: RouteSchema | null;
 }
 
 const toList = (v: string | string[] | undefined) => (v === undefined ? [] : Array.isArray(v) ? [...v] : [v]);
@@ -39,6 +42,7 @@ export function createRouteCollector() {
         permission: toList(opts.config?.permission),
         summary: opts.config?.summary ?? null,
         apiKey: opts.config?.apiKey !== false,
+        schema: opts.config?.schema ?? null,
       }));
     },
   };
@@ -86,7 +90,8 @@ export interface OpenApiOptions {
 
 /**
  * OpenAPI 3.1 summary of the registered routes: one operation per method + path, tags = module, bearer auth (API key
- * or session token), `x-feature` / `x-permission` / `x-api-key` extensions. No request/response schemas.
+ * or session token), `x-feature` / `x-permission` / `x-api-key` extensions. Routes that declare `config.schema` get
+ * their body, query and 200 response schemas; the rest are described as plain objects.
  */
 export function buildOpenApi(routes: readonly CollectedRoute[], opts: OpenApiOptions = {}) {
   const paths: Record<string, Record<string, unknown>> = {};
@@ -106,18 +111,25 @@ export function buildOpenApi(routes: readonly CollectedRoute[], opts: OpenApiOpt
     while (opIds.has(opId)) opId += "_";
     opIds.add(opId);
     const isPublic = PUBLIC_RE.test(path + "/") || path.endsWith("/openapi.json");
+    const s = r.schema;
+    const query = s?.query ? queryParameters(jsonSchema(s.query)) : [];
     const op: Record<string, unknown> = {
       operationId: opId,
       tags: [tag],
       summary: r.summary ?? `${r.method} ${path}`,
-      parameters: params.map((name) => ({ name, in: "path", required: true, schema: { type: "string" } })),
-      responses: { "200": { description: "OK" }, default: { description: "Error `{ error: { code, message, details } }`" } },
+      parameters: [...params.map((name) => ({ name, in: "path", required: true, schema: { type: "string" } })), ...query],
+      responses: {
+        "200": { description: "OK", ...(s?.response ? { content: { "application/json": { schema: jsonSchema(s.response) } } } : {}) },
+        default: { description: "Error", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      },
     };
+    if (s) op["x-typed"] = true;
     if (isPublic) op.security = [];
     if (r.feature.length) op["x-feature"] = r.feature;
     if (r.permission.length) op["x-permission"] = r.permission;
     if (!r.apiKey) op["x-api-key"] = false;
-    if (["post", "put", "patch"].includes(method))
+    if (s?.body) op.requestBody = { required: true, content: { "application/json": { schema: jsonSchema(s.body) } } };
+    else if (["post", "put", "patch"].includes(method))
       op.requestBody = { required: false, content: { "application/json": { schema: { type: "object" } } } };
     (paths[path] ??= {})[method] = op;
   }
@@ -135,6 +147,7 @@ export function buildOpenApi(routes: readonly CollectedRoute[], opts: OpenApiOpt
     ...(opts.serverUrl ? { servers: [{ url: opts.serverUrl }] } : {}),
     tags: [...tags].sort().map((name) => ({ name, ...(opts.moduleDescriptions?.[name] ? { description: opts.moduleDescriptions[name] } : {}) })),
     components: {
+      schemas: { Error: ERROR_SCHEMA },
       securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "API key (`sk_live_…`) or session token" } },
     },
     security: [{ bearerAuth: [] }],
@@ -142,3 +155,28 @@ export function buildOpenApi(routes: readonly CollectedRoute[], opts: OpenApiOpt
   };
 }
 export type OpenApiDocument = ReturnType<typeof buildOpenApi>;
+
+const ERROR_SCHEMA = {
+  type: "object",
+  required: ["error"],
+  properties: {
+    error: {
+      type: "object",
+      required: ["code", "message"],
+      properties: { code: { type: "string" }, message: { type: "string" }, details: {} },
+    },
+  },
+};
+
+/** A zod schema as inline JSON Schema, the dialect OpenAPI 3.1 uses (no $refs, so each operation stands alone). */
+export function jsonSchema(schema: NonNullable<RouteSchema["body"]>): Record<string, unknown> {
+  const { $schema: _drop, ...rest } = zodToJsonSchema(schema, { target: "jsonSchema7", $refStrategy: "none" }) as Record<string, unknown>;
+  return rest;
+}
+
+/** Query parameters from an object schema. */
+function queryParameters(schema: Record<string, unknown>) {
+  const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+  const required = new Set((schema.required as string[] | undefined) ?? []);
+  return Object.entries(props).map(([name, s]) => ({ name, in: "query", required: required.has(name), schema: s }));
+}

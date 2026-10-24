@@ -8,4 +8,5 @@ export * from "./util";
 export * from "./permissions";
 export * from "./audit";
 export * from "./list";
-export type { RouteAuditConfig } from "./fastify";
+export type { RouteAuditConfig, RouteSchema } from "./fastify";
+export { documented } from "./route-doc";

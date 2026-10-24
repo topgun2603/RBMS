@@ -1,4 +1,5 @@
 import { normalizeStateCode } from "./states";
+import { lineGstRate, type GstRateRule } from "./rate-rule";
 
 export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
 export type GstRate = (typeof GST_RATES)[number];
@@ -28,6 +29,12 @@ export interface LineInput {
   inclusiveTotal?: number;
   /** Serial numbers / IMEIs of the units sold on this line (electronics); printed on the bill, at most one per unit. */
   serials?: string[];
+  /**
+   * A price-dependent rate (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above; see rate-rule.ts). When
+   * set, `computeLine` taxes the line at the band of its unit taxable value after the line discount (from
+   * `inclusiveTotal` for tax-inclusive lines) and returns that as `gstRate`; `gstRate` on input is only a hint.
+   */
+  gstRule?: GstRateRule | null;
 }
 
 export interface LineTotals extends LineInput {
@@ -124,7 +131,10 @@ export function taxableOfInclusive(total: number, gstRate: number): number {
   return bp ? round((total * 10_000) / (10_000 + bp)) : total;
 }
 
-export function computeLine(line: LineInput, interState: boolean): LineTotals {
+export function computeLine(input: LineInput, interState: boolean): LineTotals {
+  // A rule-priced line is taxed at the band of its own taxable value; everything below then uses that rate, so the
+  // line's stored `gstRate` (and the rate-wise / HSN-wise summaries built from it) is the effective one.
+  const line: LineInput = input.gstRule ? { ...input, gstRate: lineGstRate(input) as GstRate } : input;
   const discount = line.discount ?? 0;
   // Basis points avoid float error for 0.25%.
   const bp = Math.round(line.gstRate * 100);

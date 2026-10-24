@@ -39,7 +39,7 @@ export interface BillingPort {
     tenant: TenantRef,
     input: {
       lines: BillLine[];
-      customer: { name: string; phone: string | null } | null;
+      customer: { name: string; phone: string | null; /** The saved customer the job belongs to: the bill goes on their account (credit book). */ customerId?: string | null; dueDate?: string | null } | null;
       notes: string | null;
       tillSessionId: string | null;
       advance?: BillAdvance | null;

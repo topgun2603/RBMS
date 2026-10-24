@@ -8,6 +8,7 @@ import * as expensesV2 from "./messages/expenses";
 import * as growthV2 from "./messages/growth";
 import * as creditNotesV2 from "./messages/credit-notes";
 import * as listsV2 from "./messages/lists";
+import * as payablesV2 from "./messages/payables";
 
 /**
  * billing.* strings for the billing module. Tenant/server overrides from GET /v1/i18n/messages win
@@ -108,6 +109,7 @@ const en: Messages = {
   "billing.form.rate": "Rate",
   "billing.form.discount": "Discount",
   "billing.form.gst": "GST",
+  "billing.form.gstBand": "{rate}% by price (5% up to ₹2,500 a piece, else 18%)",
   "billing.form.hsn": "HSN/SAC",
   "billing.form.inclTax": "incl. {tax} tax",
   "billing.form.addLine": "Add item",
@@ -461,6 +463,7 @@ const ta: Messages = {
   "billing.form.rate": "விலை",
   "billing.form.discount": "தள்ளுபடி",
   "billing.form.gst": "GST",
+  "billing.form.gstBand": "விலைப்படி {rate}% (ஒரு துண்டு ₹2,500 வரை 5%, மேல் 18%)",
   "billing.form.hsn": "HSN/SAC",
   "billing.form.inclTax": "{tax} வரி உட்பட",
   "billing.form.addLine": "பொருள் சேர்",
@@ -714,7 +717,7 @@ const ta: Messages = {
   "billing.errors.loadFailed": "ஏற்ற முடியவில்லை",
 };
 
-const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, growthV2, creditNotesV2, listsV2];
+const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, growthV2, creditNotesV2, listsV2, payablesV2];
 
 export const billingMessages = {
   en: Object.assign({}, en, ...areas.map((a) => a.en)) as Messages,
