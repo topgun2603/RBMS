@@ -9,13 +9,21 @@ import { errors as joseErrors, jwtVerify, type JWTPayload } from "jose";
 /** Google's signing certificates for Firebase ID tokens (PEM X.509, keyed by `kid`). */
 export const FIREBASE_KEYS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 
-/** The verified part of a Firebase phone sign-in that auth relies on. */
+/** The verified part of a Firebase sign-in that auth relies on (a phone check or a Google sign-in). */
 export interface FirebasePhoneClaims {
   /** Firebase user id (`sub`). */
   uid: string;
-  /** Verified phone number, E.164 as Firebase sends it. */
+  /** How the user signed in: the SMS check, or Google. */
+  provider: "phone" | "google.com";
+  /** Verified phone number, E.164 as Firebase sends it. Set for `provider: "phone"`, otherwise "". */
   phone: string;
-  /** When the user completed the SMS check (seconds since epoch). */
+  /** Google only: the verified email (lower-cased) and profile. */
+  email?: string;
+  name?: string;
+  picture?: string;
+  /** Google only: the Google account id (`firebase.identities["google.com"][0]`), the same value as the Google ID token's `sub`. */
+  googleSub?: string;
+  /** When the user completed the sign-in (seconds since epoch). */
   authTime: number;
 }
 
@@ -35,6 +43,7 @@ export type FirebaseTokenErrorCode =
   | "firebase_wrong_project"
   | "firebase_not_phone"
   | "firebase_no_phone"
+  | "firebase_no_email"
   | "firebase_bad_signature"
   | "firebase_unknown_key"
   | "firebase_keys_unavailable";
@@ -55,8 +64,9 @@ const MESSAGES: Record<FirebaseTokenErrorCode, string> = {
   firebase_token_expired: "This phone sign-in has expired. Please verify your number again.",
   firebase_token_stale: "This phone sign-in is too old. Please verify your number again.",
   firebase_wrong_project: "This phone sign-in was made for a different app.",
-  firebase_not_phone: "Only phone number sign-in is accepted here.",
+  firebase_not_phone: "Only phone number or Google sign-in is accepted here.",
   firebase_no_phone: "This sign-in has no verified phone number.",
+  firebase_no_email: "Your Google account email is not verified.",
   firebase_bad_signature: "This phone sign-in could not be verified.",
   firebase_unknown_key: "This phone sign-in could not be verified.",
   firebase_keys_unavailable: "Phone sign-in is temporarily unavailable. Please try again shortly.",
@@ -144,7 +154,7 @@ export interface FirebaseVerifierOptions {
 /**
  * Checks: RS256 with a known `kid`; signature; `aud` = project id; `iss` = https://securetoken.google.com/<projectId>;
  * `exp` / `iat` within the clock skew; `auth_time` not in the future (and recent); `sub` non-empty;
- * `firebase.sign_in_provider` = "phone"; `phone_number` present.
+ * `firebase.sign_in_provider` = "phone" (with `phone_number`) or "google.com" (with a verified `email`).
  */
 export function createFirebaseVerifier(opts: FirebaseVerifierOptions): FirebaseTokenVerifier {
   const projectId = opts.projectId.trim();
@@ -191,11 +201,28 @@ export function createFirebaseVerifier(opts: FirebaseVerifierOptions): FirebaseT
     if (typeof authTime !== "number" || authTime > nowSec + skew) throw fail("firebase_token_invalid");
     if (nowSec - authTime > maxAuthAge + skew) throw fail("firebase_token_stale");
     if (typeof payload.sub !== "string" || !payload.sub.trim()) throw fail("firebase_token_invalid");
-    const firebase = (payload as { firebase?: { sign_in_provider?: unknown } }).firebase;
-    if (firebase?.sign_in_provider !== "phone") throw fail("firebase_not_phone");
+    const firebase = (payload as { firebase?: { sign_in_provider?: unknown; identities?: Record<string, unknown> } }).firebase;
+    const provider = firebase?.sign_in_provider;
+    if (provider === "google.com") {
+      const p = payload as { email?: unknown; email_verified?: unknown; name?: unknown; picture?: unknown };
+      if (typeof p.email !== "string" || !p.email.includes("@") || p.email_verified !== true) throw fail("firebase_no_email");
+      const ids = firebase?.identities?.["google.com"];
+      const googleSub = Array.isArray(ids) && typeof ids[0] === "string" && ids[0] ? ids[0] : undefined;
+      return {
+        uid: payload.sub,
+        provider: "google.com",
+        phone: "",
+        email: p.email.trim().toLowerCase(),
+        ...(typeof p.name === "string" && p.name.trim() ? { name: p.name.trim() } : {}),
+        ...(typeof p.picture === "string" && p.picture ? { picture: p.picture } : {}),
+        ...(googleSub ? { googleSub } : {}),
+        authTime,
+      };
+    }
+    if (provider !== "phone") throw fail("firebase_not_phone");
     const phone = (payload as { phone_number?: unknown }).phone_number;
     if (typeof phone !== "string" || !/^\+\d{6,15}$/.test(phone)) throw fail("firebase_no_phone");
-    return { uid: payload.sub, phone, authTime };
+    return { uid: payload.sub, provider: "phone", phone, authTime };
   };
 }
 

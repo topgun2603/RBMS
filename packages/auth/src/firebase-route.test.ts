@@ -14,7 +14,7 @@ import { SignJWT } from "jose";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 import { createFirebaseVerifier } from "./firebase";
-import { authRoutes, SlidingWindow } from "./routes";
+import { authRoutes, signInResponse, SlidingWindow } from "./routes";
 import { AuthService, type AuthConfig } from "./service";
 
 const PROJECT = "srikit-test";
@@ -93,7 +93,7 @@ describe("POST /v1/auth/firebase (no database)", () => {
     const notPhone = await app.inject({
       method: "POST",
       url: "/v1/auth/firebase",
-      payload: { idToken: await firebaseToken("+919876500001", { firebase: { sign_in_provider: "google.com" } }) },
+      payload: { idToken: await firebaseToken("+919876500001", { firebase: { sign_in_provider: "password" } }) },
     });
     expect(notPhone.json().error.code).toBe("firebase_not_phone");
     const junk = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: "x.y.z-but-long-enough" } });
@@ -138,7 +138,7 @@ create table "${SCHEMA}".users (
 create table "${SCHEMA}".auth_sessions (
   id uuid primary key default gen_random_uuid(), user_id uuid not null references "${SCHEMA}".users(id) on delete cascade,
   token_hash text not null unique, expires_at timestamptz not null, last_seen_at timestamptz not null default now(),
-  ip text, user_agent text, revoked_at timestamptz, created_at timestamptz not null default now());
+  ip text, user_agent text, client text, terminal_id uuid, revoked_at timestamptz, created_at timestamptz not null default now());
 `;
 
 describe.skipIf(!URL_)("POST /v1/auth/firebase against Postgres", () => {
@@ -163,6 +163,8 @@ describe.skipIf(!URL_)("POST /v1/auth/firebase against Postgres", () => {
     const first = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await firebaseToken(), name: "Kavya" } });
     expect(first.statusCode).toBe(200);
     const a = first.json();
+    // The documented response shape (API document, mobile client) matches the real answer.
+    expect(signInResponse.safeParse(a).success).toBe(true);
     expect(a).toMatchObject({ isNewUser: true, user: { phone: "+919876500001", name: "Kavya", status: "active" } });
     expect(typeof a.token).toBe("string");
     expect(String(first.headers["set-cookie"])).toMatch(/^sr_session=[^;]+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=\d+/);
@@ -182,6 +184,43 @@ describe.skipIf(!URL_)("POST /v1/auth/firebase against Postgres", () => {
     expect((await service.authenticate(a.token))?.user.id).toBe(a.user.id);
     expect((await service.authenticate(b.token))?.user.id).toBe(a.user.id);
     expect(await service.listSessions(a.user.id)).toHaveLength(2);
+  });
+
+  it("gives a mobile app a long session that slides with use; the web keeps 30 days", async () => {
+    const { app, service } = await appFor(db, { firebaseProjectId: PROJECT });
+    const days = (d: string | Date) => Math.round((new Date(d).getTime() - Date.now()) / 86_400_000);
+
+    const web = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await firebaseToken("+919876500003") } });
+    expect(days(web.json().expiresAt)).toBe(30);
+    const phone = await app.inject({
+      method: "POST",
+      url: "/v1/auth/firebase",
+      headers: { "x-client": "srikit-business/1.0.0 (android)" },
+      payload: { idToken: await firebaseToken("+919876500003") },
+    });
+    expect(days(phone.json().expiresAt)).toBe(90);
+    const sessions = await service.listSessions(phone.json().user.id);
+    expect(sessions.map((s) => s.client).sort()).toEqual(["srikit-business/1.0.0 (android)", null].sort());
+
+    // Ten days later the phone is used again: its expiry moves 90 days ahead; the web session's doesn't.
+    await db.execute(sql.raw(`update "${SCHEMA}".auth_sessions set last_seen_at = now() - interval '10 days', expires_at = expires_at - interval '10 days'`));
+    expect(days((await service.authenticate(phone.json().token))!.session.expiresAt)).toBe(90);
+    expect(days((await service.authenticate(web.json().token))!.session.expiresAt)).toBe(20);
+  });
+
+  it("signs in with Google through Firebase by verified email, like /auth/google", async () => {
+    const { app, audit } = await appFor(db, { firebaseProjectId: PROJECT });
+    const google = (claims: Record<string, unknown> = {}) =>
+      firebaseToken("+0", { phone_number: undefined, sub: "g-uid-1", email: "Shopper@Example.com", email_verified: true, name: "Shopper One", firebase: { sign_in_provider: "google.com" }, ...claims });
+    const first = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await google() } });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ isNewUser: true, user: { email: "shopper@example.com", name: "Shopper One", phone: null } });
+    const again = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await google() } });
+    expect(again.json()).toMatchObject({ isNewUser: false, user: { id: first.json().user.id } });
+    expect(audit.record).toHaveBeenLastCalledWith(expect.objectContaining({ action: "auth.login", summary: "Signed in with firebase" }));
+    const unverified = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await google({ email_verified: false }) } });
+    expect(unverified.statusCode).toBe(400);
+    expect(unverified.json().error.code).toBe("firebase_no_email");
   });
 
   it("refuses a disabled account", async () => {

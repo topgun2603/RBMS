@@ -1,9 +1,9 @@
-import { AppError, badRequest, notFound, requireSuperAdmin, requireUser, tooMany, type AuditEvent, type AuditPort } from "@srirealtime/core";
+import { AppError, badRequest, documented, notFound, requireSuperAdmin, requireUser, tooMany, type AuditEvent, type AuditPort } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
 import type { UserListQuery } from "./list";
-import type { AuthService, SignInResult } from "./service";
+import { parseClient, type AuthService, type SignInResult } from "./service";
 
 const otpRequestBody = z.object({
   target: z.string().min(3).max(254),
@@ -51,7 +51,40 @@ export class SlidingWindow {
     return true;
   }
 }
+// ---- response shapes for the API document and the mobile client (JSON: dates are ISO strings)
+export const authUserSchema = z.object({
+  id: z.string().uuid(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  name: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  locale: z.string(),
+  platformRoles: z.array(z.string()),
+  status: z.enum(["active", "disabled", "deleted"]),
+  createdAt: z.string().datetime(),
+});
+export const signInResponse = z.object({ token: z.string(), expiresAt: z.string().datetime(), user: authUserSchema, isNewUser: z.boolean() });
+export const authConfigResponse = z.object({
+  phone: z.object({ method: z.enum(["firebase", "otp"]), firebaseProjectId: z.string().nullable(), smsOtp: z.boolean() }),
+  google: z.boolean(),
+  testTargets: z.array(z.string()).optional(),
+});
+export const otpRequestResponse = z.object({
+  target: z.string(),
+  channel: z.enum(["sms", "whatsapp", "email"]),
+  expiresInSeconds: z.number().int(),
+  resendInSeconds: z.number().int(),
+});
+export const meResponse = z.object({ user: authUserSchema, tenantRoles: z.array(z.string()), permissions: z.array(z.string()) });
+export const okResponse = z.object({ ok: z.literal(true) });
+
 const handoffBody = z.object({ code: z.string().trim().min(1).max(200) });
+const storeContextQuery = z.object({ shop: z.string().trim().min(1).max(63), origin: z.string().max(300).optional() });
+const storeHandoffBody = z.object({
+  shop: z.string().trim().min(1).max(63),
+  origin: z.string().min(1).max(300),
+  return: z.string().max(2048).optional(),
+});
 const handoffCreateBody = z.object({ tenantId: z.string().uuid().optional() });
 
 /** "<appUrl>/login?handoff=<code>" (an appUrl with a path, e.g. ".../billing", gets "/login" appended). */
@@ -102,6 +135,8 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
   const clearSessionCookie = (req: FastifyRequest, reply: FastifyReply) => {
     reply.header("set-cookie", sessionCookie(service.cookieName, "", { maxAgeSeconds: 0, secure: isHttps(req) }));
   };
+  /** Who is signing in: IP, user agent and, for the srikit mobile apps, the `x-client` header (long sliding session). */
+  const sessionMeta = (req: FastifyRequest) => ({ ip: req.ctx.ip, userAgent: req.ctx.userAgent, client: parseClient(req.headers["x-client"]) });
   const signedIn = (req: FastifyRequest, reply: FastifyReply, r: SignInResult) => {
     setSessionCookie(req, reply, r.token, r.expiresAt);
     return { token: r.token, expiresAt: r.expiresAt, user: r.user, isNewUser: r.isNewUser };
@@ -109,9 +144,9 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
 
   return (app: FastifyInstance) => {
     // Public: which phone method to use (firebase | otp), so clients only load the Firebase SDK when it will work.
-    app.get("/config", async () => service.clientConfig());
+    app.get("/config", documented({ response: authConfigResponse }), async () => service.clientConfig());
 
-    app.post("/otp/request", async (req) => {
+    app.post("/otp/request", documented({ body: otpRequestBody, response: otpRequestResponse }), async (req) => {
       const body = otpRequestBody.parse(req.body);
       return service.requestOtp({
         target: body.target,
@@ -122,9 +157,9 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       });
     });
 
-    app.post("/otp/verify", SELF_AUDITED, async (req, reply) => {
+    app.post("/otp/verify", documented({ body: otpVerifyBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
       const body = otpVerifyBody.parse(req.body);
-      const r = await service.verifyOtp({ ...body, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      const r = await service.verifyOtp({ ...body, ...sessionMeta(req) });
       await login(req, r, "otp");
       return signedIn(req, reply, r);
     });
@@ -140,16 +175,16 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
 
     app.post("/google", SELF_AUDITED, async (req, reply) => {
       const body = googleBody.parse(req.body);
-      const r = await service.signInWithGoogle({ idToken: body.idToken, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      const r = await service.signInWithGoogle({ idToken: body.idToken, ...sessionMeta(req) });
       await login(req, r, "google");
       return signedIn(req, reply, r);
     });
 
     // Firebase Phone Authentication: the client verifies the number with Firebase and sends the ID token here.
-    app.post("/firebase", SELF_AUDITED, async (req, reply) => {
+    app.post("/firebase", documented({ body: firebaseBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
       const body = firebaseBody.parse(req.body);
       if (!firebaseLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many sign-in attempts. Please wait a few minutes and try again");
-      const r = await service.signInWithFirebase({ ...body, ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      const r = await service.signInWithFirebase({ ...body, ...sessionMeta(req) });
       await login(req, r, "firebase");
       return signedIn(req, reply, r);
     });
@@ -172,10 +207,31 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       });
       return appUrl ? { ...h, appUrl, url: handoffLoginUrl(appUrl, h.code) } : h;
     });
+    // Shopper sign-in through the landing site: which shop this is and whether the storefront origin is really its own ...
+    app.get("/store/context", async (req) => {
+      const q = storeContextQuery.parse(req.query);
+      return service.storeSignInContext(q.shop, q.origin);
+    });
+    // ... and a handoff that can only go back to one of that shop's storefront origins (validated here, not by the caller).
+    app.post("/store/handoff", SELF_AUDITED, async (req) => {
+      const me = requireUser(req.ctx);
+      const body = storeHandoffBody.parse(req.body);
+      const r = await service.createStoreHandoff(me.id, { shop: body.shop, origin: body.origin, returnUrl: body.return }, { ip: req.ctx.ip });
+      await record(req, {
+        tenantId: r.tenantId,
+        actorUserId: me.id,
+        action: "auth.handoff.create",
+        entityType: "user",
+        entityId: me.id,
+        summary: "Sign-in handoff to a storefront",
+      });
+      const { tenantId: _t, ...out } = r;
+      return out;
+    });
     // ... which the other origin redeems for its own session.
     app.post("/handoff/redeem", SELF_AUDITED, async (req, reply) => {
       const { code } = handoffBody.parse(req.body);
-      const r = await service.redeemHandoff(code, { ip: req.ctx.ip, userAgent: req.ctx.userAgent });
+      const r = await service.redeemHandoff(code, sessionMeta(req), req.ctx.tenant?.id ?? null);
       await record(req, {
         tenantId: req.ctx.tenant?.id ?? null,
         actorUserId: r.user.id,
@@ -187,7 +243,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       return signedIn(req, reply, r);
     });
 
-    app.get("/me", async (req) => {
+    app.get("/me", documented({ response: meResponse }), async (req) => {
       const me = requireUser(req.ctx);
       const user = await service.getUser(me.id);
       if (!user) throw notFound("User");
@@ -200,7 +256,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       return { user: await service.updateProfile(me.id, body) };
     });
 
-    app.post("/logout", async (req, reply) => {
+    app.post("/logout", documented({ response: okResponse }), async (req, reply) => {
       const me = requireUser(req.ctx);
       await service.revokeSession(me.sessionId, me.id).catch(() => undefined);
       clearSessionCookie(req, reply);

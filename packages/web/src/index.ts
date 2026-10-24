@@ -11,6 +11,14 @@ export {
   configureApi,
   isPublicPath,
   onApiError,
+  setDeviceToken,
+  getDeviceToken,
+  setSessionOverride,
+  hasSessionOverride,
+  authToken,
+  authHeaders,
+  DEVICE_TOKEN_HEADER,
+  type SessionOverride,
   type ApiErrorEvent,
   type ApiOptions,
   type QueryParams,
@@ -120,7 +128,8 @@ export {
   type Translator,
 } from "./lib/i18n";
 export { webMessages } from "./lib/messages";
-export { ShopProvider, useShop, useOptionalShop, BrandingStyle, useDocumentBranding, useWebFonts, fontsInCss, brandingQueryKey } from "./lib/branding";
+export { ShopProvider, ShopBranding, shopBrandingQuery, useShop, useOptionalShop, BrandingStyle, useDocumentBranding, useWebFonts, fontsInCss, brandingQueryKey } from "./lib/branding";
+export { adminBrandingCss } from "./lib/branding-css";
 export {
   FeaturesProvider,
   useFeatures,
@@ -194,7 +203,7 @@ export {
   normalizeBase,
   type NavigateOptions,
 } from "./app/navigation";
-export { useSession, useOptionalSession, useVisible, usePermission, useGateContext, type SessionValue } from "./app/session";
+export { SessionProvider, useSession, useOptionalSession, useVisible, usePermission, useGateContext, type SessionValue } from "./app/session";
 export {
   layoutWidgets,
   mergeQuickActions,

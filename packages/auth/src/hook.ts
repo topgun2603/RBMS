@@ -23,7 +23,9 @@ export const defaultPermissionsFor = (roles: readonly string[]): string[] =>
  * `user.permissions` comes from `permissions.permissionsFor(tenant, roles)` (the staff module, cached per tenant+roles)
  * or `defaultPermissionsFor` when no resolver is given; it is `[]` without a tenant.
  *
- * Invalid, expired or revoked tokens leave `req.ctx.user` null; routes decide via `requireUser`.
+ * Invalid, expired or revoked tokens leave `req.ctx.user` null; routes decide via `requireUser`. A POS PIN session
+ * (bound to a terminal) without that terminal's device token (`ctx.device`, set by the pos device hook registered
+ * before this one) fails the request with 401 `device_required`.
  */
 export function authContextHook(
   service: AuthService,
@@ -35,7 +37,9 @@ export function authContextHook(
     app.addHook("onRequest", async (req) => {
       const token = tokenFromRequest(req, service.cookieName);
       if (!token) return;
-      const auth = await service.authenticate(token);
+      // POS PIN sessions are bound to a paired terminal: the device hook (before this one) sets `ctx.device`.
+      const terminalId = req.ctx.device?.terminalId;
+      const auth = await (terminalId ? service.authenticate(token, { terminalId }) : service.authenticate(token));
       if (!auth) return;
       let tenantRoles: string[] = [];
       let perms: string[] = [];

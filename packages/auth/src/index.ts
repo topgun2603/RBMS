@@ -19,7 +19,7 @@ export function createAuth(deps: AuthDeps) {
   return { service, module, contextHook };
 }
 
-export { AuthService, createGoogleVerifier, HANDOFF_TTL_SECONDS, toAuthUser } from "./service";
+export { AuthService, createGoogleVerifier, HANDOFF_TTL_SECONDS, parseClient, POS_SESSION_CLIENT, toAuthUser } from "./service";
 export type { AuthClientConfig, AuthConfig, AuthDeps, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
 export { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 export {
@@ -49,3 +49,5 @@ export type { Target, OtpRateLimitInput } from "./helpers";
 export { authContextHook, defaultPermissionsFor, tokenFromRequest } from "./hook";
 export * from "./schema";
 export { USER_ROLE_FILTERS, USER_SORT, USER_STATUSES, userListConditions, userListQuerySchema, type UserListParams, type UserListQuery } from "./list";
+export { matchStoreOrigin, matchStoreReturn, normalizeOrigin, storeOriginsFor } from "./store-origin";
+export type { StoreOriginsPort, StoreSignInShop } from "./store-origin";

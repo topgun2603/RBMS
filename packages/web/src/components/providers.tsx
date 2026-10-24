@@ -24,7 +24,25 @@ function makeQueryClient() {
 
 function ThemedToaster() {
   const { resolvedTheme } = useTheme();
+  useThemeColorMeta(resolvedTheme);
   return <Toaster theme={resolvedTheme === "dark" ? "dark" : "light"} position="top-center" richColors closeButton />;
+}
+
+/** The layouts' theme-color colours (browser / phone status bar), per mode. */
+const THEME_COLORS = { light: "#fbfaf8", dark: "#1a1816" } as const;
+
+/**
+ * The layouts declare theme-color per `prefers-color-scheme`, which follows the OS, so picking Dark in the app on a
+ * light phone kept a light status bar (and the reverse). Once the app's own choice is known, point every theme-color
+ * meta at it.
+ */
+function useThemeColorMeta(resolvedTheme: string | undefined) {
+  React.useEffect(() => {
+    if (resolvedTheme !== "light" && resolvedTheme !== "dark") return;
+    for (const meta of document.querySelectorAll<HTMLMetaElement>("meta[name='theme-color']")) {
+      meta.content = THEME_COLORS[resolvedTheme];
+    }
+  }, [resolvedTheme]);
 }
 
 /** Query client, theme, i18n (kit + module bundles), shop features, tooltips and toasts. */

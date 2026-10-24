@@ -49,10 +49,17 @@ export const authSessions = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     ip: text("ip"),
     userAgent: text("user_agent"),
+    /** The app that signed in, from the `x-client` header (e.g. "srikit-business/1.0.0 (android)"); null = web. */
+    client: text("client"),
+    /**
+     * A POS PIN session (`@srirealtime/pos`): the paired terminal it is bound to. Such a session is valid only on a
+     * request that carries that terminal's device token; it never slides. Null for every other session.
+     */
+    terminalId: uuid("terminal_id"),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("auth_sessions_user_idx").on(t.userId)],
+  (t) => [index("auth_sessions_user_idx").on(t.userId), index("auth_sessions_terminal_idx").on(t.terminalId)],
 );
 
 export const authOtps = pgTable(
@@ -87,6 +94,8 @@ export const authHandoffs = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    /** The shop a storefront handoff was made for; only that shop can redeem it. Null for business-app handoffs. */
+    tenantId: uuid("tenant_id"),
     ip: text("ip"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

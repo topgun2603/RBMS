@@ -19,7 +19,8 @@ import { roleCondition, USER_SORT, userListConditions, userListQuerySchema, type
 import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { createFirebaseVerifier, FirebaseTokenError, type FirebaseTokenVerifier } from "./firebase";
+import { matchStoreOrigin, matchStoreReturn, type StoreOriginsPort } from "./store-origin";
+import { createFirebaseVerifier, FirebaseTokenError, type FirebasePhoneClaims, type FirebaseTokenVerifier } from "./firebase";
 import { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, normalizePhone, otpHash, otpRetryAfter, type Target } from "./helpers";
 import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
@@ -67,6 +68,11 @@ export interface AuthConfig {
    * WhatsApp, email and test identities are unaffected.
    */
   smsOtpDisabled?: boolean;
+  /**
+   * Lifetime of a mobile app session (`SessionMeta.client` set). Mobile sessions slide: each use (at most every five
+   * minutes) moves the expiry this many days ahead, so a phone in daily use stays signed in. Default 90.
+   */
+  mobileSessionTtlDays?: number;
 }
 
 /** What clients need to pick a sign-in method (`GET /config`). */
@@ -101,6 +107,8 @@ export interface AuthDeps {
   verifyFirebaseToken?: FirebaseTokenVerifier;
   /** The app URL of a shop the user belongs to (null when not a member), for `POST /handoff { tenantId }`. */
   handoffTargets?: { appUrl(userId: string, tenantId: string): Promise<string | null> };
+  /** A shop's storefront origins, for `POST /store/handoff` (shopper sign-in through the landing site). */
+  storeOrigins?: StoreOriginsPort;
   /** Records sign-ins, handoffs and super-admin user changes (the host audit hook can't: no user yet, or no shop). */
   audit?: AuditPort;
 }
@@ -131,6 +139,10 @@ export interface SessionInfo {
   id: string;
   ip: string | null;
   userAgent: string | null;
+  /** The mobile app that signed in; null for the web. "srikit-pos" for a POS PIN session. */
+  client: string | null;
+  /** The POS terminal a PIN session is bound to; null for every other session. */
+  terminalId: string | null;
   createdAt: Date;
   lastSeenAt: Date;
   expiresAt: Date;
@@ -139,6 +151,16 @@ export interface SessionInfo {
 export interface SessionMeta {
   ip?: string | null;
   userAgent?: string | null;
+  /** A srikit mobile app (`parseClient` of the `x-client` header). Makes the session a long, sliding mobile one. */
+  client?: string | null;
+}
+
+const CLIENT_RE = /^srikit-[a-z]+\/\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.]+)?(?: \((?:android|ios)\))?$/;
+
+/** The `x-client` header of a srikit mobile app, e.g. "srikit-business/1.0.0 (android)"; null for anything else. */
+export function parseClient(header: string | string[] | undefined): string | null {
+  const v = (Array.isArray(header) ? header[0] : header)?.trim();
+  return v && v.length <= 80 && CLIENT_RE.test(v) ? v : null;
 }
 
 export interface SignInResult {
@@ -164,10 +186,15 @@ const toSessionInfo = (s: SessionRow): SessionInfo => ({
   id: s.id,
   ip: s.ip,
   userAgent: s.userAgent,
+  client: s.client,
+  terminalId: s.terminalId ?? null,
   createdAt: s.createdAt,
   lastSeenAt: s.lastSeenAt,
   expiresAt: s.expiresAt,
 });
+
+/** `client` of POS PIN sessions (`createTerminalSession`). */
+export const POS_SESSION_CLIENT = "srikit-pos";
 
 const GOOGLE_ISSUERS = ["accounts.google.com", "https://accounts.google.com"];
 const TOUCH_INTERVAL_MS = 5 * 60_000;
@@ -210,6 +237,7 @@ export class AuthService {
       guestTokenTtlMinutes: c.guestTokenTtlMinutes && c.guestTokenTtlMinutes > 0 ? c.guestTokenTtlMinutes : 60,
       firebaseProjectId: c.firebaseProjectId?.trim() || null,
       smsOtpDisabled: c.smsOtpDisabled ?? false,
+      mobileSessionTtlDays: c.mobileSessionTtlDays && c.mobileSessionTtlDays > 0 ? c.mobileSessionTtlDays : 90,
     };
     const t = c.testOtp;
     const targets = (t?.targets ?? []).map((s) => s.trim()).filter(Boolean);
@@ -327,6 +355,7 @@ export class AuthService {
     code: string;
     ip?: string | null;
     userAgent?: string | null;
+    client?: string | null;
     name?: string | null;
   }): Promise<SignInResult> {
     const target = this.parseTarget(input.target);
@@ -416,7 +445,7 @@ export class AuthService {
 
   private async signInTarget(
     target: string,
-    input: { name?: string | null; ip?: string | null; userAgent?: string | null },
+    input: { name?: string | null; ip?: string | null; userAgent?: string | null; client?: string | null },
   ): Promise<SignInResult> {
     const { user, isNewUser } = await this.findOrCreateByTarget(target, { name: input.name ?? null });
     this.assertCanSignIn(user);
@@ -428,7 +457,7 @@ export class AuthService {
 
   // ---------------------------------------------------------------- Google
 
-  async signInWithGoogle(input: { idToken: string; ip?: string | null; userAgent?: string | null }): Promise<SignInResult> {
+  async signInWithGoogle(input: { idToken: string; ip?: string | null; userAgent?: string | null; client?: string | null }): Promise<SignInResult> {
     if (this.cfg.googleClientIds.length === 0) throw badRequest("Google sign-in is not configured");
     let claims: GoogleClaims;
     try {
@@ -440,13 +469,23 @@ export class AuthService {
     const verified = claims.email_verified === true || claims.email_verified === "true";
     const email = claims.email ? normalizeEmail(claims.email) : null;
     if (!email || !verified) throw badRequest("Your Google account email is not verified");
+    return this.signInGoogleIdentity({ sub: claims.sub, email, name: claims.name ?? null, picture: claims.picture ?? null }, input);
+  }
 
-    const [linked] = await this.db
-      .select({ user: users })
-      .from(authIdentities)
-      .innerJoin(users, eq(users.id, authIdentities.userId))
-      .where(and(eq(authIdentities.provider, "google"), eq(authIdentities.providerUserId, claims.sub)))
-      .limit(1);
+  /** A verified Google account (from a Google ID token or a Firebase "google.com" sign-in): find or create the user by email. */
+  private async signInGoogleIdentity(
+    g: { sub: string | null; email: string; name: string | null; picture: string | null },
+    input: { ip?: string | null; userAgent?: string | null; client?: string | null },
+  ): Promise<SignInResult> {
+    const { sub, email } = g;
+    const [linked] = sub
+      ? await this.db
+          .select({ user: users })
+          .from(authIdentities)
+          .innerJoin(users, eq(users.id, authIdentities.userId))
+          .where(and(eq(authIdentities.provider, "google"), eq(authIdentities.providerUserId, sub)))
+          .limit(1)
+      : [];
 
     let userId: string;
     let isNewUser = false;
@@ -454,25 +493,27 @@ export class AuthService {
       this.assertCanSignIn(toAuthUser(linked.user));
       userId = linked.user.id;
     } else {
-      const res = await this.findOrCreateByTarget(email, { name: claims.name ?? null, avatarUrl: claims.picture ?? null });
+      const res = await this.findOrCreateByTarget(email, { name: g.name, avatarUrl: g.picture });
       this.assertCanSignIn(res.user);
       userId = res.user.id;
       isNewUser = res.isNewUser;
-      await this.db
-        .insert(authIdentities)
-        .values({ userId, provider: "google", providerUserId: claims.sub, email })
-        .onConflictDoNothing();
+      if (sub) {
+        await this.db
+          .insert(authIdentities)
+          .values({ userId, provider: "google", providerUserId: sub, email })
+          .onConflictDoNothing();
+      }
       if (!isNewUser && (!res.user.name || !res.user.avatarUrl)) {
         await this.db
           .update(users)
-          .set({ name: res.user.name ?? claims.name ?? null, avatarUrl: res.user.avatarUrl ?? claims.picture ?? null })
+          .set({ name: res.user.name ?? g.name ?? null, avatarUrl: res.user.avatarUrl ?? g.picture ?? null })
           .where(eq(users.id, userId));
       }
     }
     return this.completeSignIn(userId, isNewUser, input);
   }
 
-  // ---------------------------------------------------------------- Firebase phone
+  // ---------------------------------------------------------------- Firebase (phone, Google)
 
   /**
    * Signs in with a Firebase Phone Authentication ID token: the verified `phone_number` goes through the same path as a
@@ -480,11 +521,11 @@ export class AuthService {
    * 400 with a `firebase_*` code when the token is rejected (503 `firebase_keys_unavailable` when Google's keys can't
    * be fetched).
    */
-  async signInWithFirebase(input: { idToken: string; name?: string | null; ip?: string | null; userAgent?: string | null }): Promise<SignInResult> {
+  async signInWithFirebase(input: { idToken: string; name?: string | null; ip?: string | null; userAgent?: string | null; client?: string | null }): Promise<SignInResult> {
     if (!this.verifyFirebase) throw new AppError(503, "not_configured", "Firebase phone sign-in is not configured");
-    let phone: string;
+    let claims: FirebasePhoneClaims;
     try {
-      ({ phone } = await this.verifyFirebase(input.idToken));
+      claims = await this.verifyFirebase(input.idToken);
     } catch (err) {
       if (err instanceof FirebaseTokenError) {
         this.deps.log?.warn({ code: err.code }, "auth: Firebase token rejected");
@@ -493,7 +534,13 @@ export class AuthService {
       this.deps.log?.warn({ err }, "auth: Firebase token check failed");
       throw new AppError(400, "firebase_token_invalid", "This phone sign-in could not be checked. Please try again.");
     }
-    const normalized = normalizePhone(phone);
+    if (claims.provider === "google.com") {
+      // Same rules as POST /auth/google: only a verified email, matched to (or creating) the user with that email.
+      const email = claims.email ? normalizeEmail(claims.email) : null;
+      if (!email) throw new AppError(400, "firebase_no_email", "Your Google account email is not verified.");
+      return this.signInGoogleIdentity({ sub: claims.googleSub ?? null, email, name: claims.name ?? null, picture: claims.picture ?? null }, input);
+    }
+    const normalized = normalizePhone(claims.phone);
     if (!normalized) throw new AppError(400, "firebase_no_phone", "This phone number can't be used to sign in.");
     return this.signInTarget(normalized, input);
   }
@@ -504,11 +551,11 @@ export class AuthService {
    * A one-time code that signs the same user in on another origin (the landing site hands a new shop owner over to the
    * shop's app): single use, valid for `HANDOFF_TTL_SECONDS`, only its hash is stored.
    */
-  async createHandoff(userId: string, meta: SessionMeta = {}): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number }> {
+  async createHandoff(userId: string, meta: SessionMeta = {}, tenantId: string | null = null): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number }> {
     const now = new Date();
     const code = randomToken(24);
     const expiresAt = new Date(now.getTime() + HANDOFF_TTL_SECONDS * 1000);
-    await this.db.insert(authHandoffs).values({ codeHash: sha256(code), userId, expiresAt, ip: meta.ip ?? null });
+    await this.db.insert(authHandoffs).values({ codeHash: sha256(code), userId, tenantId, expiresAt, ip: meta.ip ?? null });
     // Housekeeping: codes are worthless a minute later.
     await this.db.delete(authHandoffs).where(lt(authHandoffs.expiresAt, new Date(now.getTime() - 86_400_000)));
     return { code, expiresAt, expiresInSeconds: HANDOFF_TTL_SECONDS };
@@ -523,8 +570,43 @@ export class AuthService {
     return url;
   }
 
-  /** Redeems a handoff code once (atomic) and starts a new session for its user. 400 `invalid_handoff` otherwise. */
-  async redeemHandoff(code: string, meta: SessionMeta = {}): Promise<SignInResult> {
+  /** The shop's public name and whether `origin` is one of its storefront origins (404 for an unknown or suspended shop). */
+  async storeSignInContext(slug: string, origin?: string | null): Promise<{ shop: { slug: string; name: string }; origin: string | null }> {
+    const port = this.deps.storeOrigins;
+    if (!port) throw badRequest("Storefront sign-in is not configured");
+    const shop = await port.shop((slug ?? "").trim().toLowerCase());
+    if (!shop) throw notFound("Shop");
+    return { shop: { slug: shop.slug, name: shop.name }, origin: matchStoreOrigin(origin, shop.origins) };
+  }
+
+  /**
+   * A handoff for a shopper signing in to a shop's storefront. `origin` must be one of THAT shop's storefront origins
+   * (its subdomain on the configured store host, or a verified custom domain) and `returnUrl`, when given, must sit on
+   * it; otherwise 400 `invalid_store_origin`. The response repeats the validated origin: the only place to post the code.
+   */
+  async createStoreHandoff(
+    userId: string,
+    input: { shop: string; origin: string; returnUrl?: string | null },
+    meta: SessionMeta = {},
+  ): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number; origin: string; returnUrl: string | null; tenantId: string }> {
+    const port = this.deps.storeOrigins;
+    if (!port) throw badRequest("Storefront sign-in is not configured");
+    const shop = await port.shop((input.shop ?? "").trim().toLowerCase());
+    if (!shop) throw notFound("Shop");
+    const origin = matchStoreOrigin(input.origin, shop.origins);
+    const bad = () => new AppError(400, "invalid_store_origin", "This address is not one of the shop's storefronts.");
+    if (!origin) throw bad();
+    let returnUrl: string | null = null;
+    if (input.returnUrl) {
+      returnUrl = matchStoreReturn(input.returnUrl, origin);
+      if (!returnUrl) throw bad();
+    }
+    const h = await this.createHandoff(userId, meta, shop.id);
+    return { ...h, origin, returnUrl, tenantId: shop.id };
+  }
+
+  /** Redeems a handoff code once (atomic; a code bound to a shop needs `requestTenantId` to match, and any mismatch burns it) and starts a new session for its user. 400 `invalid_handoff` otherwise. */
+  async redeemHandoff(code: string, meta: SessionMeta = {}, requestTenantId: string | null = null): Promise<SignInResult> {
     const invalid = () => new AppError(400, "invalid_handoff", "This sign-in link has expired or was already used. Please sign in again.");
     if (typeof code !== "string" || code.length < 16 || code.length > 128) throw invalid();
     const now = new Date();
@@ -532,8 +614,11 @@ export class AuthService {
       .update(authHandoffs)
       .set({ consumedAt: now })
       .where(and(eq(authHandoffs.codeHash, sha256(code)), isNull(authHandoffs.consumedAt), gt(authHandoffs.expiresAt, now)))
-      .returning({ userId: authHandoffs.userId });
+      .returning({ userId: authHandoffs.userId, tenantId: authHandoffs.tenantId });
     if (!row) throw invalid();
+    // A storefront code is bound to its shop. Presented anywhere else it is refused like an unknown code, and it is
+    // already burnt by the update above, so a leaked code can't be retried on the right shop either.
+    if (row.tenantId && row.tenantId !== requestTenantId) throw invalid();
     const user = await this.getUser(row.userId);
     if (!user) throw invalid();
     this.assertCanSignIn(user);
@@ -550,17 +635,68 @@ export class AuthService {
       .values({
         userId,
         tokenHash: sha256(token),
-        expiresAt: addDays(now, this.cfg.sessionTtlDays),
+        expiresAt: addDays(now, meta.client ? this.cfg.mobileSessionTtlDays : this.cfg.sessionTtlDays),
         lastSeenAt: now,
         ip: meta.ip ?? null,
         userAgent: meta.userAgent ? meta.userAgent.slice(0, 512) : null,
+        client: meta.client ?? null,
       })
       .returning();
     return { token, session: toSessionInfo(row!) };
   }
 
-  /** Resolves a session token. Returns null for unknown, expired or revoked sessions and inactive users. */
-  async authenticate(token: string | null | undefined): Promise<{ user: AuthUser; session: SessionInfo } | null> {
+  /**
+   * A POS PIN session (`@srirealtime/pos`): bound to one paired terminal, `client = "srikit-pos"`, a fixed lifetime
+   * (default 12 h) that never slides. `authenticate` accepts it only with that terminal's id.
+   */
+  async createTerminalSession(
+    userId: string,
+    input: { terminalId: string; ttlMinutes?: number; ip?: string | null; userAgent?: string | null },
+  ): Promise<{ token: string; session: SessionInfo }> {
+    const token = randomToken();
+    const now = new Date();
+    const [row] = await this.db
+      .insert(authSessions)
+      .values({
+        userId,
+        tokenHash: sha256(token),
+        expiresAt: addMinutes(now, input.ttlMinutes && input.ttlMinutes > 0 ? input.ttlMinutes : 12 * 60),
+        lastSeenAt: now,
+        ip: input.ip ?? null,
+        userAgent: input.userAgent ? input.userAgent.slice(0, 512) : null,
+        client: POS_SESSION_CLIENT,
+        terminalId: input.terminalId,
+      })
+      .returning();
+    return { token, session: toSessionInfo(row!) };
+  }
+
+  /** Revokes every active PIN session bound to a terminal (unpaired, re-paired or deleted). Returns how many. */
+  async revokeTerminalSessions(terminalId: string): Promise<number> {
+    const res = await this.db
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(authSessions.terminalId, terminalId), isNull(authSessions.revokedAt)))
+      .returning({ id: authSessions.id });
+    return res.length;
+  }
+
+  /** Revokes one session if it is an active PIN session of this terminal (the POS lock button). */
+  async revokeTerminalSession(sessionId: string, terminalId: string): Promise<boolean> {
+    const res = await this.db
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(authSessions.id, sessionId), eq(authSessions.terminalId, terminalId), isNull(authSessions.revokedAt)))
+      .returning({ id: authSessions.id });
+    return res.length > 0;
+  }
+
+  /**
+   * Resolves a session token. Returns null for unknown, expired or revoked sessions and inactive users.
+   * A terminal-bound (POS PIN) session needs `opts.terminalId` = its terminal (from the request's device token):
+   * otherwise it throws 401 `device_required`.
+   */
+  async authenticate(token: string | null | undefined, opts: { terminalId?: string | null } = {}): Promise<{ user: AuthUser; session: SessionInfo } | null> {
     if (!token || token.length > 256) return null;
     const now = new Date();
     const [row] = await this.db
@@ -572,9 +708,15 @@ export class AuthService {
     if (!row) return null;
     const { session, user } = row;
     if (session.revokedAt || session.expiresAt <= now || user.status !== "active") return null;
+    if (session.terminalId && session.terminalId !== (opts.terminalId ?? null)) {
+      throw new AppError(401, "device_required", "This session works only on the paired POS terminal it was opened on");
+    }
     if (now.getTime() - session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
-      await this.db.update(authSessions).set({ lastSeenAt: now }).where(eq(authSessions.id, session.id));
+      // Mobile sessions slide; web sessions and POS PIN sessions keep the expiry they were given.
+      const expiresAt = session.client && !session.terminalId ? addDays(now, this.cfg.mobileSessionTtlDays) : session.expiresAt;
+      await this.db.update(authSessions).set({ lastSeenAt: now, expiresAt }).where(eq(authSessions.id, session.id));
       session.lastSeenAt = now;
+      session.expiresAt = expiresAt;
     }
     return { user: toAuthUser(user), session: toSessionInfo(session) };
   }

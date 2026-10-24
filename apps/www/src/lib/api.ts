@@ -149,6 +149,12 @@ export const api = {
 
   slugAvailable: (slug: string, signal?: AbortSignal) => call<SlugCheck>("GET", `/tenancy/slug-available?slug=${encodeURIComponent(slug)}`, undefined, signal),
   signup: (input: SignupInput) => call<SignupResult>("POST", "/signup", input),
+  /** A shop's public name, and `origin` back when it really is one of that shop's storefronts (else null). */
+  storeContext: (shop: string, origin: string) =>
+    call<{ shop: { slug: string; name: string }; origin: string | null }>("GET", `/auth/store/context?shop=${encodeURIComponent(shop)}&origin=${encodeURIComponent(origin)}`),
+  /** A single-use code for the shop's storefront; the API only issues it for that shop's own origins. */
+  storeHandoff: (shop: string, origin: string, returnUrl?: string) =>
+    call<{ code: string; expiresAt: string; origin: string; returnUrl: string | null }>("POST", "/auth/store/handoff", { shop, origin, ...(returnUrl ? { return: returnUrl } : {}) }),
   /** Single-use login code for opening a shop app on another origin. */
   handoff: (tenantId?: string) => call<HandoffResult>("POST", "/auth/handoff", tenantId ? { tenantId } : {}),
 };

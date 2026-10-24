@@ -154,6 +154,9 @@ export type FirebasePhoneErrorKind =
   | "invalid_phone"
   | "captcha"
   | "unauthorized_domain"
+  | "popup_closed"
+  | "popup_blocked"
+  | "account_exists"
   | "not_enabled"
   | "unknown";
 
@@ -185,6 +188,16 @@ export function firebasePhoneErrorKind(err: unknown): FirebasePhoneErrorKind {
       return "captcha";
     case "auth/unauthorized-domain":
       return "unauthorized_domain";
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+    case "auth/user-cancelled":
+      return "popup_closed";
+    case "auth/popup-blocked":
+      return "popup_blocked";
+    case "auth/account-exists-with-different-credential":
+      return "account_exists";
+    case "firebase_no_email":
+      return "account_exists";
     case "auth/operation-not-allowed":
     case "auth/admin-restricted-operation":
     case "auth/invalid-api-key":
@@ -218,6 +231,9 @@ const MESSAGES: Record<"en" | "ta", Record<FirebasePhoneErrorKind, string>> = {
     invalid_phone: "Enter a valid mobile number.",
     captcha: "We couldn't confirm this request. Reload the page and try again.",
     unauthorized_domain: "Phone sign-in isn't available on this address. Please use email.",
+    popup_closed: "Sign-in was cancelled. Please try again.",
+    popup_blocked: "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
+    account_exists: "We couldn't use this Google account. Make sure its email is verified, or use your mobile number.",
     not_enabled: "Phone sign-in isn't available right now. Please use email.",
     unknown: "Something went wrong. Please try again.",
   },
@@ -230,6 +246,9 @@ const MESSAGES: Record<"en" | "ta", Record<FirebasePhoneErrorKind, string>> = {
     invalid_phone: "சரியான மொபைல் எண்ணை உள்ளிடவும்.",
     captcha: "இந்தக் கோரிக்கையை உறுதிசெய்ய முடியவில்லை. பக்கத்தை மீண்டும் ஏற்றி முயலவும்.",
     unauthorized_domain: "இந்த முகவரியில் தொலைபேசி உள்நுழைவு இல்லை. மின்னஞ்சலைப் பயன்படுத்தவும்.",
+    popup_closed: "உள்நுழைவு ரத்து செய்யப்பட்டது. மீண்டும் முயலவும்.",
+    popup_blocked: "உங்கள் உலாவி உள்நுழைவு சாளரத்தைத் தடுத்தது. இந்தத் தளத்திற்கு பாப்-அப்களை அனுமதித்து மீண்டும் முயலவும்.",
+    account_exists: "இந்த Google கணக்கைப் பயன்படுத்த முடியவில்லை. அதன் மின்னஞ்சல் சரிபார்க்கப்பட்டதா என்று பாருங்கள் அல்லது மொபைல் எண்ணைப் பயன்படுத்துங்கள்.",
     not_enabled: "தொலைபேசி உள்நுழைவு இப்போது கிடைக்கவில்லை. மின்னஞ்சலைப் பயன்படுத்தவும்.",
     unknown: "ஏதோ தவறு நடந்தது. மீண்டும் முயலவும்.",
   },
@@ -317,6 +336,24 @@ export async function sendFirebasePhoneCode(phone: string, opts: { locale?: stri
       }
     },
   };
+}
+
+/**
+ * "Continue with Google" through Firebase: a Google account picker in a popup. Resolves with the Firebase ID token for
+ * `POST /v1/auth/firebase` (the API accepts a Google token only with a verified email). Must run from a click (pop-up
+ * blockers). Firebase is signed out right away, like the phone flow. Throws Firebase errors (`firebasePhoneMessage`).
+ */
+export async function signInWithGoogle(opts: { locale?: string } = {}): Promise<string> {
+  const { mod, auth } = await loadSdk();
+  auth.languageCode = opts.locale?.toLowerCase().startsWith("ta") ? "ta" : "en";
+  const provider = new mod.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    const cred = await mod.signInWithPopup(auth, provider, mod.browserPopupRedirectResolver);
+    return await cred.user.getIdToken();
+  } finally {
+    await mod.signOut(auth).catch(() => undefined);
+  }
 }
 
 /** Preloads the SDK chunk (e.g. when the user starts typing a phone number). No-op without a Firebase config. */

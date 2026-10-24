@@ -64,6 +64,63 @@ export function isPublicPath(path: string): boolean {
   return publicPrefixes.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`));
 }
 
+// ---------------------------------------------------------------- paired POS terminals (docs/pos-terminals.md)
+
+/** Header a paired POS terminal sends with every request. */
+export const DEVICE_TOKEN_HEADER = "x-device-token";
+
+let deviceToken: string | null = null;
+
+export interface SessionOverride {
+  /** Bearer token to send instead of the stored sign-in (null = none, e.g. a locked terminal). */
+  token: string | null;
+  /** A 401 while the override is active: reported here instead of clearing the stored sign-in and redirecting. */
+  onUnauthorized?: (error: ApiError) => void;
+}
+
+let sessionOverride: SessionOverride | null = null;
+
+/** While set, every api() / apiDownload() call carries `x-device-token` (a paired POS terminal). null stops. */
+export function setDeviceToken(token: string | null) {
+  deviceToken = token || null;
+}
+export const getDeviceToken = () => deviceToken;
+
+/**
+ * Terminal mode: calls use `override.token` (a PIN session) instead of the stored staff sign-in, and a 401 goes to
+ * `override.onUnauthorized` (lock the terminal) instead of signing out. null restores the normal behaviour.
+ */
+export function setSessionOverride(override: SessionOverride | null) {
+  sessionOverride = override;
+}
+export const hasSessionOverride = () => sessionOverride !== null;
+
+/** The bearer token calls use right now (the terminal's PIN session while overridden, else the stored sign-in). */
+export const authToken = (): string | null => (sessionOverride ? sessionOverride.token : getToken());
+
+/** Auth headers for hand-built fetches (PDF / file downloads): bearer, x-tenant, x-device-token. */
+export function authHeaders(init?: HeadersInit): Headers {
+  const headers = new Headers(init);
+  const token = authToken();
+  if (token) headers.set("authorization", `Bearer ${token}`);
+  const slug = currentTenantSlug();
+  if (slug) headers.set("x-tenant", slug);
+  if (deviceToken) headers.set(DEVICE_TOKEN_HEADER, deviceToken);
+  return headers;
+}
+
+function unauthorized(error: ApiError) {
+  if (sessionOverride) {
+    try {
+      sessionOverride.onUnauthorized?.(error);
+    } catch {
+      // the terminal's handler must never change what the caller sees
+    }
+    return;
+  }
+  handleUnauthorized();
+}
+
 function handleUnauthorized() {
   setToken(null);
   if (typeof window === "undefined" || redirecting) return;
@@ -84,8 +141,9 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   const headers = new Headers(extraHeaders);
   headers.set("accept", "application/json");
 
-  const token = anonymous ? null : getToken();
+  const token = anonymous ? null : authToken();
   if (token) headers.set("authorization", `Bearer ${token}`);
+  if (deviceToken) headers.set(DEVICE_TOKEN_HEADER, deviceToken);
   const slug = tenant === undefined ? currentTenantSlug() : tenant;
   if (slug) headers.set("x-tenant", slug);
   // The current branch (multi-branch shops) goes with every signed-in call for this shop.
@@ -132,10 +190,10 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
       message?: string;
       details?: unknown;
     } | null;
-    if (res.status === 401 && !anonymous) handleUnauthorized();
     // A closed branch or a removed assignment: forget it so the next call uses the server's choice.
     if (branch && isBranchError(e?.code)) setStoredBranch(null, slug);
     const error = new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Request failed", e?.details);
+    if (res.status === 401 && !anonymous) unauthorized(error);
     emitApiError({ error, method: (init.method ?? "GET").toUpperCase(), path });
     throw error;
   }
@@ -176,8 +234,9 @@ function emitApiError(e: ApiErrorEvent) {
  */
 export async function apiDownload(path: string, query: QueryParams, fallbackName: string): Promise<void> {
   const headers = new Headers({ accept: "text/csv, */*" });
-  const token = getToken();
+  const token = authToken();
   if (token) headers.set("authorization", `Bearer ${token}`);
+  if (deviceToken) headers.set(DEVICE_TOKEN_HEADER, deviceToken);
   const slug = currentTenantSlug();
   if (slug) headers.set("x-tenant", slug);
   const branch = slug ? getStoredBranch(slug) : null;
@@ -194,9 +253,10 @@ export async function apiDownload(path: string, query: QueryParams, fallbackName
       .json()
       .then((j: { error?: ErrBody }) => j.error ?? null)
       .catch(() => null);
-    if (res.status === 401) handleUnauthorized();
     if (branch && isBranchError(e?.code)) setStoredBranch(null, slug);
-    throw new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Download failed", e?.details);
+    const error = new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText ?? "Download failed", e?.details);
+    if (res.status === 401) unauthorized(error);
+    throw error;
   }
   const blob = await res.blob();
   const cd = res.headers.get("content-disposition") ?? "";

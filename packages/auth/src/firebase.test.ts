@@ -53,7 +53,7 @@ async function codeOf(p: Promise<unknown>): Promise<string> {
 
 describe("Firebase ID token verifier", () => {
   it("accepts a valid phone sign-in token and returns the verified phone", async () => {
-    await expect(verifier()(await token())).resolves.toEqual({ uid: "firebase-uid-1", phone: "+919876543210", authTime: nowSec - 30 });
+    await expect(verifier()(await token())).resolves.toEqual({ uid: "firebase-uid-1", provider: "phone", phone: "+919876543210", authTime: nowSec - 30 });
   });
 
   it("rejects the wrong audience or issuer as a different project", async () => {
@@ -89,6 +89,37 @@ describe("Firebase ID token verifier", () => {
     expect(await codeOf(v(await token({ drop: ["firebase"] })))).toBe("firebase_not_phone");
     expect(await codeOf(v(await token({ drop: ["phone_number"] })))).toBe("firebase_no_phone");
     expect(await codeOf(v(await token({ claims: { phone_number: "9876543210" } })))).toBe("firebase_no_phone");
+  });
+
+  it("accepts a Google sign-in with a verified email, and nothing else from Google", async () => {
+    const v = verifier();
+    const google = (claims: Record<string, unknown> = {}, drop: string[] = ["phone_number"]) =>
+      token({
+        drop,
+        claims: {
+          email: "Kavya@Example.com",
+          email_verified: true,
+          name: "Kavya R",
+          picture: "https://lh3.example/a.png",
+          firebase: { sign_in_provider: "google.com", identities: { "google.com": ["1098765"], email: ["kavya@example.com"] } },
+          ...claims,
+        },
+      });
+    await expect(v(await google())).resolves.toEqual({
+      uid: "firebase-uid-1",
+      provider: "google.com",
+      phone: "",
+      email: "kavya@example.com",
+      name: "Kavya R",
+      picture: "https://lh3.example/a.png",
+      googleSub: "1098765",
+      authTime: nowSec - 30,
+    });
+    expect(await codeOf(v(await google({ email_verified: false })))).toBe("firebase_no_email");
+    expect(await codeOf(v(await google({ email_verified: "true" })))).toBe("firebase_no_email");
+    expect(await codeOf(v(await google({}, ["phone_number", "email"])))).toBe("firebase_no_email");
+    expect(await codeOf(v(await google({}, ["phone_number", "email_verified"])))).toBe("firebase_no_email");
+    expect(await codeOf(v(await google({ firebase: { sign_in_provider: "facebook.com" } })))).toBe("firebase_not_phone");
   });
 
   it("rejects a bad signature and an unknown key id", async () => {
