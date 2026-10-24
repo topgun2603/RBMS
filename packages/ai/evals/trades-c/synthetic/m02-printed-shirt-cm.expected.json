@@ -1,0 +1,13 @@
+{
+  "garment": "shirt",
+  "unit": "cm",
+  "values": {
+    "chest": 96,
+    "waist": 84,
+    "shoulder": 44,
+    "length": 72,
+    "sleeveLength": 60,
+    "collar": 39,
+    "cuff": 24
+  }
+}

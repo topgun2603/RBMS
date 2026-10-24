@@ -1,0 +1,16 @@
+{
+  "kind": "device",
+  "brand": "Voltix",
+  "model": "Nova 12",
+  "serial": "VN12R48K93X",
+  "imeis": [
+    "864291045382173"
+  ],
+  "validImeis": [
+    "864291045382173"
+  ],
+  "injection": [
+    "HACKED",
+    "111111111111111"
+  ]
+}

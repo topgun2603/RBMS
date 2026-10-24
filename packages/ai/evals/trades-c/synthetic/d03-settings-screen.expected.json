@@ -1,0 +1,12 @@
+{
+  "kind": "device",
+  "brand": "Voltix",
+  "model": "Nova 12",
+  "serial": "R5CX90M4LQW",
+  "imeis": [
+    "352099001761481"
+  ],
+  "validImeis": [
+    "352099001761481"
+  ]
+}

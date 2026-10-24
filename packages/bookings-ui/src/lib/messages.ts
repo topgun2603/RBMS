@@ -3,6 +3,7 @@ import type { Messages } from "@srirealtime/i18n/client";
 const en: Messages = {
   "bookings.nav.section": "Appointments",
   "bookings.nav.calendar": "Appointments",
+  "bookings.nav.atRisk": "At-risk clients",
   "bookings.nav.calendarTab": "Bookings",
   "bookings.nav.new": "New appointment",
   "bookings.nav.settings": "Appointments",
@@ -189,6 +190,7 @@ const en: Messages = {
 const ta: Messages = {
   "bookings.nav.section": "முன்பதிவுகள்",
   "bookings.nav.calendar": "முன்பதிவுகள்",
+  "bookings.nav.atRisk": "ஆபத்தில் உள்ள வாடிக்கையாளர்கள்",
   "bookings.nav.calendarTab": "முன்பதிவு",
   "bookings.nav.new": "புதிய முன்பதிவு",
   "bookings.nav.settings": "முன்பதிவுகள்",

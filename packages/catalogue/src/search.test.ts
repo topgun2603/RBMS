@@ -295,3 +295,12 @@ describe("translatedTextMatchSql (Tamil queries match approved Tamil names)", ()
     expect(searchMatchSql(parseQuery("பட்டு"))).not.toBeNull();
   });
 });
+
+describe("parseQuery: sentence-style queries", () => {
+  it("drops joining words from a multi-word query and keeps a query made only of them", () => {
+    expect(parseQuery("red silk saree for wedding").words).toEqual(["red", "silk", "saree", "wedding"]);
+    expect(parseQuery("tea with milk and sugar").words).toEqual(["tea", "milk", "sugar"]);
+    expect(parseQuery("for").words).toEqual(["for"]);
+    expect(parseQuery("for the").words).toEqual(["for", "the"]);
+  });
+});

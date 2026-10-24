@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "kind": "menu",
+  "dishes": [
+    {
+      "name": "pani puri",
+      "prices": [
+        50
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "papdi chaat",
+      "prices": [
+        70
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "dahi vada",
+      "prices": [
+        65
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "sev puri",
+      "prices": [
+        60
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "gulab jamun",
+      "prices": [
+        40
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "carrot halwa",
+      "prices": [
+        90
+      ],
+      "mark": "unknown"
+    }
+  ]
+}

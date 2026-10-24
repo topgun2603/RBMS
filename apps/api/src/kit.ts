@@ -21,6 +21,9 @@ import { createAiAssistKit } from "./kit-ai-assist";
 import { createAiAsk } from "./kit-ai-ask";
 import { createAiInsightsKit } from "./kit-ai-insights";
 import { createAiVision } from "./kit-ai-vision";
+import { createAiTradesA } from "./kit-ai-trades-a";
+import { createAiTradesBKit } from "./kit-ai-trades-b";
+import { createAiTradesC } from "./kit-ai-trades-c";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
@@ -1353,6 +1356,25 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
     now: clock,
   });
+  // Phase 3 part C (docs/ai.md): repair & electronics, tailoring, salon / spa / gym win-back, hardware quotes. Drafts only.
+  const aiTradesC = createAiTradesC({
+    ai: ai.service,
+    db,
+    items: invoices.service,
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    shopName: async (tenantId) => (await tenancy.service.getById(tenantId))?.name ?? "",
+    now: clock,
+  });
+  // Phase 3 part A (docs/ai.md): pharmacy (prescription scan, interactions, near-expiry plan) and restaurant (menu photo, recipes + food cost, prep forecast), see kit-ai-trades-a.ts.
+  const aiTradesA = createAiTradesA({
+    db,
+    ai: ai.service,
+    catalogue: catalogue.service as never,
+    dining: dining.service,
+    recipes: dining.recipes,
+    kitchenSettings: settings.service.handle("kitchen"),
+    now: clock,
+  });
   defineJob("ai.purge-debug", async () => {
     const n = await ai.service.purgeDebug();
     if (n) log.info({ cleared: n }, "ai: stored debug prompts older than 7 days cleared");
@@ -1480,6 +1502,25 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     log,
   });
   jewelleryRef = jewellery;
+  // Phase 3 part B (docs/ai.md): catalogue from photos, counter pack identify, textile photo tags, jewellery HUID + price breakup, see kit-ai-trades-b.ts.
+  const aiTradesB = createAiTradesBKit({
+    db,
+    ai: ai.service,
+    catalogue: catalogue.service as never,
+    jewellery: jewellery.service as never,
+    jobs: jobs.service,
+    storeSettings,
+    shopName,
+    uploadHosts: [env.PUBLIC_UPLOAD_BASE_URL, env.API_PUBLIC_URL].flatMap((u) => {
+      try {
+        return u ? [new URL(u).hostname] : [];
+      } catch {
+        return [];
+      }
+    }),
+    production: env.NODE_ENV === "production",
+    log,
+  });
 
   // POS terminals: pairing, device tokens, staff PINs, catalogue sync, weigh tickets (kit-pos.ts).
   const pos = createPosWiring({
@@ -1614,6 +1655,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     aiAsk.module,
     aiInsights.module,
     aiVision,
+    ...aiTradesA.modules,
+    aiTradesC,
+    aiTradesB.module,
     medicines.module,
     dining.module,
     aggregators.module,

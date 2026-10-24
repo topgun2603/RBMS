@@ -1,0 +1,12 @@
+{
+  "garment": "blouse",
+  "unit": "in",
+  "values": {
+    "length": 14,
+    "bust": 35,
+    "shoulder": 13.5
+  },
+  "uncertain": [
+    "waist"
+  ]
+}

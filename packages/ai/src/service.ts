@@ -56,6 +56,8 @@ export interface AiDeps {
   settings: { get(tenantId: string): Promise<AiSettings> };
   /** The `ai` module feature: plan, app profile and the owner's Features switch. */
   featureOn(tenantId: string): Promise<boolean>;
+  /** Is this module feature on for the shop? Lets the helper list hide helpers of modules the shop does not have (`requires`). */
+  featureEnabled?(tenantId: string, key: string): Promise<boolean>;
   credits: CreditsPort;
   /** Names for the platform usage table. */
   shops?: (ids: string[]) => Promise<Map<string, { slug: string; name: string }>>;
@@ -71,6 +73,11 @@ export function monthKey(d: Date): string {
 }
 
 export const DEBUG_KEEP_DAYS = 7;
+
+/** A helper follows the shop's AI switch unless its own switch says otherwise; an `optIn` helper (sensitive data) needs its switch set to true. */
+export function featureAllowed(features: Record<string, boolean>, key: string): boolean {
+  return featureInfo(key)?.optIn ? features[key] === true : features[key] !== false;
+}
 const MAX_MEDIA_CHARS = 20_000_000;
 const TOOL_RESULT_MAX = 20_000;
 
@@ -156,7 +163,7 @@ export class AiService {
     if (!(await this.deps.featureOn(req.tenantId))) return blocked(err.notInPlan());
     const settings = await this.settingsOf(req.tenantId);
     if (!settings.enabled) return blocked(err.off());
-    if (settings.features[req.feature] === false) return blocked(err.featureOff(req.feature));
+    if (featureAllowed(settings.features, req.feature) === false) return blocked(err.featureOff(req.feature));
     const balance = await this.deps.credits.balance(req.tenantId);
     if (balance.remaining !== null && balance.remaining <= 0) return blocked(err.exhausted(balance));
 
@@ -385,6 +392,7 @@ export class AiService {
       this.spentIn(tenantId, monthKey(this.now())),
     ]);
     const available = config.enabled && !!config.provider;
+    const listed = await this.listedFeatures(tenantId);
     return {
       /** Everything needed for a helper to run for this shop right now. */
       ready: available && featureOn && settings.enabled && (balance.remaining === null || balance.remaining > 0),
@@ -401,7 +409,7 @@ export class AiService {
         creditUsd: CREDIT_MICRO_USD / 1_000_000,
         creditInr: creditsToInr(1, config.usdInr),
       },
-      features: AI_FEATURE_REGISTRY.map((f) => ({
+      features: listed.map((f) => ({
         key: f.key,
         status: f.status,
         tier: f.tier,
@@ -409,11 +417,26 @@ export class AiService {
         labelTa: f.labelTa,
         description: f.description,
         descriptionTa: f.descriptionTa,
-        enabled: settings.enabled && settings.features[f.key] !== false,
-        allowed: settings.features[f.key] !== false,
+        enabled: settings.enabled && featureAllowed(settings.features, f.key),
+        allowed: featureAllowed(settings.features, f.key),
+        optIn: f.optIn === true,
       })),
       settings: { enabled: settings.enabled, maskGstin: settings.maskGstin, storePrompts: settings.storePrompts, autoHsn: settings.autoHsn === true },
     };
+  }
+
+  /** The registry minus helpers whose module (`requires`) the shop does not have. */
+  private async listedFeatures(tenantId: string) {
+    const check = this.deps.featureEnabled;
+    if (!check) return AI_FEATURE_REGISTRY;
+    const keep = await Promise.all(
+      AI_FEATURE_REGISTRY.map(async (f) => {
+        if (!f.requires?.length) return true;
+        for (const key of f.requires) if (await check(tenantId, key).catch(() => false)) return true;
+        return false;
+      }),
+    );
+    return AI_FEATURE_REGISTRY.filter((_, i) => keep[i]);
   }
 
   private async spentIn(tenantId: string, period: string): Promise<number> {

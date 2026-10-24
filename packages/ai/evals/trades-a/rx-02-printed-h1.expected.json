@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "kind": "rx",
+  "readable": true,
+  "doctor": "Meena",
+  "reg": "TN-55871",
+  "date": "2026-10-22",
+  "patient": "Sample Patient Two",
+  "age": 52,
+  "medicines": [
+    {
+      "name": "tramadol",
+      "strength": "50"
+    },
+    {
+      "name": "azithromycin",
+      "strength": "500"
+    },
+    {
+      "name": "pantoprazole",
+      "strength": "40"
+    }
+  ]
+}

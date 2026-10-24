@@ -40,6 +40,8 @@ const RULES: Rule[] = [
   [/^\/v1\/catalog(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
   // Approving, rejecting, editing or re-drafting a Tamil product translation changes the Tamil product text the store shows.
   [/^\/v1\/ai\/assist\/translat(e$|ions(\/|$))/, ["catalog", "offers", "seo", "bookings"]],
+  // Approving AI photo tags writes tags and attributes to a product, which the store searches and filters on.
+  [/^\/v1\/ai\/trade\/product-tags(\/|$)/, ["catalog", "seo"]],
   [/^\/v1\/importexport(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
   [/^\/v1\/inventory\/public(\/|$)/, []],
   [/^\/v1\/inventory(\/|$)/, ["catalog"]],

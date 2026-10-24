@@ -133,3 +133,71 @@ export const aiDailySummaries = pgTable(
   (t) => [uniqueIndex("ai_daily_summaries_tenant_date_uq").on(t.tenantId, t.date), index("ai_daily_summaries_tenant_idx").on(t.tenantId, t.createdAt)],
 );
 export type AiDailySummaryRow = typeof aiDailySummaries.$inferSelect;
+
+// ------------------------------------------------------------------ Phase 3 part B: catalogue from photos, product photo tags
+
+export const PHOTO_BATCH_STATUSES = ["queued", "running", "done", "failed"] as const;
+export type PhotoBatchStatus = (typeof PHOTO_BATCH_STATUSES)[number];
+
+/**
+ * "Add products from photos": one row per upload of up to 20 photos. The photos themselves are NOT stored (they travel in the
+ * job payload and are dropped when the job ends); this row holds progress and the checked product drafts for the review grid.
+ * Nothing is created in the catalogue until the owner confirms in the grid.
+ */
+export const aiPhotoBatches = pgTable(
+  "ai_photo_batches",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    kind: text("kind").notNull().default("catalogue-photos"),
+    status: text("status").$type<PhotoBatchStatus>().notNull().default("queued"),
+    total: integer("total").notNull().default(0),
+    done: integer("done").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    credits: integer("credits").notNull().default(0),
+    /** Checked drafts (`ProductDraft[]`, see trades/catalogue/photos.ts). */
+    drafts: jsonb("drafts").$type<unknown[]>().notNull().default([]),
+    /** Per photo problems: `{ photo, code }`. */
+    problems: jsonb("problems").$type<{ photo: number; code: string }[]>().notNull().default([]),
+    error: text("error"),
+    createdBy: text("created_by"),
+    ...timestamps(),
+  },
+  (t) => [index("ai_photo_batches_tenant_idx").on(t.tenantId, t.createdAt)],
+);
+export type AiPhotoBatchRow = typeof aiPhotoBatches.$inferSelect;
+
+export const PRODUCT_TAG_STATUSES = ["queued", "draft", "failed", "approved", "rejected"] as const;
+export type ProductTagStatus = (typeof PRODUCT_TAG_STATUSES)[number];
+
+/**
+ * AI draft tags for a product photo (colour, fabric, pattern, occasion, work, sleeve, neck). A bulk run writes `draft` rows;
+ * the owner approves each product (or all non-conflicting drafts of a batch). Approving writes tags and attributes to the
+ * product through the catalogue (which refreshes search); `applied` records exactly what was written. One row per (shop, product).
+ */
+export const aiProductTags = pgTable(
+  "ai_product_tags",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    productId: uuid("product_id").notNull(),
+    batchId: uuid("batch_id").notNull(),
+    status: text("status").$type<ProductTagStatus>().notNull().default("queued"),
+    /** The product name and image the draft was made from. */
+    sourceName: text("source_name").notNull(),
+    imageUrl: text("image_url"),
+    /** `TagProposal` (see trades/textiles/tags.ts). */
+    proposal: jsonb("proposal").$type<Record<string, unknown>>(),
+    /** What approval wrote: `{ tags: string[], attributes: Record<string,string> }`. */
+    applied: jsonb("applied").$type<Record<string, unknown>>(),
+    runId: uuid("run_id"),
+    credits: integer("credits").notNull().default(0),
+    error: text("error"),
+    createdBy: text("created_by"),
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("ai_product_tags_uq").on(t.tenantId, t.productId), index("ai_product_tags_batch_idx").on(t.tenantId, t.batchId)],
+);
+export type AiProductTagRow = typeof aiProductTags.$inferSelect;

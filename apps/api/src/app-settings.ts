@@ -196,6 +196,8 @@ export function defineAppSettings(settings: SettingsService) {
   settings.define("whatsapp", WHATSAPP_SETTINGS_SCHEMA, WHATSAPP_SETTINGS_DEFAULTS);
   // AI helpers (docs/ai.md): the owner's opt-in, per-helper switches, masking and debug storage. Off by default.
   settings.define("ai", AI_SETTINGS_SCHEMA, AI_SETTINGS_DEFAULTS);
+  // Restaurant kitchen: the food-cost percentage a dish should stay under (recipes screen, AI Phase 3 part A).
+  settings.define("kitchen", z.object({ targetFoodCostPct: z.number().min(5).max(90) }), { targetFoodCostPct: 35 });
 
   // Shop defaults for direct thermal receipt printing (docs/printing.md). The printer itself (transport, pairing, bridge
   // token) is per device and stays in the browser; these are the layout choices every counter starts from.

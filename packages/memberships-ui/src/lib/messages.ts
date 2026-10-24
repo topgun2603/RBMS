@@ -5,6 +5,7 @@ const en: Messages = {
   "memberships.nav.members": "Members",
   "memberships.nav.membersTab": "Members",
   "memberships.nav.checkin": "Check in",
+  "memberships.nav.atRisk": "At risk",
   "memberships.nav.settings": "Memberships",
 
   "memberships.common.all": "All",
@@ -213,6 +214,7 @@ const en: Messages = {
 const ta: Messages = {
   "memberships.nav.section": "உறுப்பினர்கள்",
   "memberships.nav.members": "உறுப்பினர்கள்",
+  "memberships.nav.atRisk": "ஆபத்தில்",
   "memberships.nav.membersTab": "உறுப்பினர்",
   "memberships.nav.checkin": "வருகைப் பதிவு",
   "memberships.nav.settings": "உறுப்பினர் திட்டங்கள்",

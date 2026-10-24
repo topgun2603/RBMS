@@ -1374,3 +1374,22 @@ Settings, **Import & export**, **Export**. Reports also download as CSV.
 
 **Where do I get help?**
 Open **Support** from the menu (where your plan includes it), or ask the RBMS team.
+
+## AI helpers for repair, tailoring, gyms and salons, and hardware shops
+
+Switch AI on in Settings > AI first. Everything below is a draft you check; nothing is saved, sent or quoted for you.
+
+- **Repair job cards:** on a new device job card, "Draft fault note" turns the complaint (typed or spoken, Tamil or English) into possible causes, things to check and the parts and labour from your own items with a price range. "Read from photo" fills the brand, model, serial and IMEI from a box label, About screen or sticker; an IMEI that fails its check digit is never filled in. Warranty is shown only from your own sales records.
+- **Tailoring job cards:** "Read measurement sheet" reads a printed or handwritten card; only clear values are ticked, and you choose the unit if the sheet does not say. "Design notes from photo" writes short notes for the style box.
+- **Gyms, spas and salons:** Members > At risk (or Appointments > At-risk clients) lists people whose plan is ending or lapsed, who visit less, or who have gone quiet. "Draft message" writes a short message in English or Tamil; type an offer only if you want one mentioned. Copy it or open WhatsApp and send it yourself. People who opted out are marked and cannot be drafted for.
+- **Hardware shops:** Quotations > "Build from a description" proposes material lines from your own items with rough quantities and your prices, lists what you do not stock, and saves a draft quotation for you to edit. Quantities are estimates, not a design.
+
+## AI helpers for catalogues, clothing shops, jewellers and the counter
+
+These helpers need AI switched on in Settings > AI (each one has its own switch) and use credits; the screen says about how many before it reads anything. They only draft: nothing is created or saved until you confirm.
+
+- **Add products from photos** (Items, or Products): choose up to 20 photos of shelves, product packs or a printed price list and tap Read the photos. Progress is shown. Then check each item in the grid: edit the name, price, MRP, HSN, GST or category, skip an item, or merge two rows that are the same product. Items you already have are left unticked. Enter a price for any item that has none. Tap Create to add the ticked items. The HSN and GST rate are suggestions from the official list: please verify them.
+- **Photo of the pack** (billing counter, when a scanned code is not found): in the add-item box tap Photo of the pack and take a photo of the pack. The name, MRP, GST and category are filled in for you to check, then save as usual.
+- **Tag photos** (clothing and textile shops, Products): select products with photos and tap Tag photos. Later open Review photo tags, tick what is right, edit the words if needed and approve. Tags help shoppers find "red silk saree for wedding". What you typed yourself (for example Fabric) is never changed unless you tick Replace.
+- **Read HUID from photo** (Jewellery, edit a piece): take a sharp close-up of the hallmark. The 6-character HUID is filled in for you to check. It does not verify the hallmark: check it on the BIS CARE app.
+- **Price breakup** (Jewellery, open a piece): shows how the price is made up (metal at today's rate, wastage, making, stones, GST) and a short English or Tamil explanation. Print it, copy it or share it on WhatsApp. The figures are worked out by the software; the AI only writes the words.

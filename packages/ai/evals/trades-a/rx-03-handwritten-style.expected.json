@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "kind": "rx",
+  "readable": true,
+  "doctor": "Selvam",
+  "reg": "",
+  "date": "2026-10-23",
+  "patient": "Sample Patient Three",
+  "age": 61,
+  "medicines": [
+    {
+      "name": "amlodipine",
+      "strength": "5"
+    },
+    {
+      "name": "metformin",
+      "strength": "500"
+    },
+    {
+      "name": "atorvastatin",
+      "strength": "10"
+    }
+  ]
+}

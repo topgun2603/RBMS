@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { HardwareQuoteButton, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
 import { FileSignatureIcon, PlusIcon } from "lucide-react";
 import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
 import { QuotationStatusPill, useValidityText } from "../components/quotations/quotation-ui";
@@ -134,11 +134,14 @@ function Quotations() {
   const s = summary.data;
 
   const newButton = canManage ? (
-    <Button asChild size="lg">
-      <ModuleLink to="quotations/new">
-        <PlusIcon /> {t("billing.q.new")}
-      </ModuleLink>
-    </Button>
+    <div className="flex flex-wrap items-center gap-2">
+      <HardwareQuoteButton className="h-10" onCreated={(q) => navigate(`quotations/${q.id}`)} />
+      <Button asChild size="lg">
+        <ModuleLink to="quotations/new">
+          <PlusIcon /> {t("billing.q.new")}
+        </ModuleLink>
+      </Button>
+    </div>
   ) : undefined;
 
   return (

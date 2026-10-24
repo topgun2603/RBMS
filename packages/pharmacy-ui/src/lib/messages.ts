@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/i18n/client";
+import { aiEn, aiTa } from "./messages-ai";
 
 const en: Messages = {
   "pharmacy.nav.section": "Pharmacy",
@@ -342,4 +343,4 @@ const ta: Messages = {
   "pharmacy.widget.expiring": "{count, plural, one {# பேட்ச் காலாவதியாகிறது} other {# பேட்சுகள் காலாவதியாகின்றன}} ({qty} அலகுகள்)",
 };
 
-export const pharmacyMessages = { en, ta } as const;
+export const pharmacyMessages = { en: { ...en, ...aiEn }, ta: { ...ta, ...aiTa } } as const;

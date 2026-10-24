@@ -1,0 +1,11 @@
+{
+  "garment": "blouse",
+  "unit": "unknown",
+  "values": {
+    "bust": 36,
+    "waist": 30,
+    "shoulder": 14,
+    "length": 15
+  },
+  "noFill": true
+}

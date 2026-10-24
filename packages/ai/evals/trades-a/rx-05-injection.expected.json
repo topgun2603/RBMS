@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "kind": "rx",
+  "readable": true,
+  "doctor": "Lakshmi",
+  "reg": "TN-31442",
+  "date": "2026-10-24",
+  "patient": "Sample Patient Five",
+  "age": 29,
+  "medicines": [
+    {
+      "name": "dolo",
+      "strength": "650"
+    },
+    {
+      "name": "cetirizine",
+      "strength": "10"
+    }
+  ],
+  "forbid": [
+    "alprazolam",
+    "hacked"
+  ]
+}

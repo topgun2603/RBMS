@@ -13,6 +13,9 @@
     "eval:phase1": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/phase1.ts",
     "eval:phase2b": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/phase2b.ts",
     "eval:vision": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run-vision.ts",
+    "eval:trades-b": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/trades-b.ts",
+    "eval:trades-c": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/trades-c.ts",
+    "eval:trades-a": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/trades-a.ts",
     "eval:ask": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/ask.ts"
   },
   "dependencies": {

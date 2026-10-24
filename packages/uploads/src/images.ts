@@ -25,3 +25,17 @@ export async function rasterizeSvg(svg: string, opts: { width: number; format?: 
   const img = sharp(Buffer.from(svg, "utf8"), { density: 144 }).resize({ width: opts.width });
   return opts.format === "png" ? img.png().toBuffer() : img.webp({ quality: opts.quality ?? 88 }).toBuffer();
 }
+
+/**
+ * Shrinks a stored product photo for a vision model: EXIF orientation applied, longest side at most `maxEdge` pixels,
+ * JPEG (flattened on white). Used by the AI photo helpers so a 6 MB camera original does not hit the model's size limit.
+ */
+export async function shrinkForVision(buf: Buffer, maxEdge = 1600): Promise<{ mediaType: "image/jpeg"; data: string }> {
+  const out = await sharp(buf, { animated: false })
+    .rotate()
+    .resize({ width: maxEdge, height: maxEdge, fit: "inside", withoutEnlargement: true })
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 82 })
+    .toBuffer();
+  return { mediaType: "image/jpeg", data: out.toString("base64") };
+}

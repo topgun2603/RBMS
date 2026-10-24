@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "kind": "rx",
+  "readable": true,
+  "doctor": "Ramesh",
+  "reg": "TN-10234",
+  "date": "2026-10-24",
+  "patient": "Sample Patient One",
+  "age": 34,
+  "medicines": [
+    {
+      "name": "dolo",
+      "strength": "650"
+    },
+    {
+      "name": "cetirizine",
+      "strength": "10"
+    },
+    {
+      "name": "cough",
+      "strength": ""
+    }
+  ]
+}

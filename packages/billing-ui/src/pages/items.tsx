@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { AddFromPhotosButton, api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
 import { BoxesIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import {
   Badge,
@@ -254,6 +254,7 @@ function Items({ categories }: { categories: { id: string; name: string }[] }) {
                 </ModuleLink>
               </Button>
             )}
+            <AddFromPhotosButton />
             {addButton}
           </>
         }

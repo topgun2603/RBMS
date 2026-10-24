@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BookLockIcon, BoxesIcon, FileTextIcon, PackagePlusIcon, PillIcon } from "lucide-react";
+import { BookLockIcon, BoxesIcon, CalendarClockIcon, FileTextIcon, PackagePlusIcon, PillIcon, ScanLineIcon } from "lucide-react";
 import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
 import { PHARMACY_FEATURES, PHARMACY_PERMISSIONS, PHARMACY_VIEW } from "./lib/access";
 import { pharmacyMessages } from "./lib/messages";
@@ -13,6 +13,8 @@ export const PHARMACY_ROUTES = {
   medicines: "medicines",
   prescriptions: "prescriptions",
   register: "register",
+  rx: "rx",
+  plan: "expiry-plan",
 } as const;
 
 export interface PharmacyModuleOptions {
@@ -46,6 +48,8 @@ export function pharmacyModule(opts: PharmacyModuleOptions = {}): WebModule {
         { href: PHARMACY_ROUTES.batches, label: "pharmacy.nav.batches", tabLabel: "pharmacy.nav.batchesTab", icon: BoxesIcon, mobile: "tab", exact: true, feature: F.medicines, permission: PHARMACY_VIEW },
         { href: PHARMACY_ROUTES.medicines, label: "pharmacy.nav.medicines", icon: PillIcon, mobile: "more", feature: F.medicines, permission: PHARMACY_VIEW },
         { href: PHARMACY_ROUTES.prescriptions, label: "pharmacy.nav.prescriptions", icon: FileTextIcon, mobile: "more", feature: F.prescriptions, permission: PHARMACY_VIEW },
+        { href: PHARMACY_ROUTES.rx, label: "pharmacy.nav.rx", icon: ScanLineIcon, mobile: "more", feature: F.prescriptions, permission: PHARMACY_VIEW },
+        { href: PHARMACY_ROUTES.plan, label: "pharmacy.nav.plan", icon: CalendarClockIcon, mobile: "more", feature: F.medicines, permission: PHARMACY_VIEW },
         { href: PHARMACY_ROUTES.register, label: "pharmacy.nav.register", icon: BookLockIcon, mobile: "more", feature: F.register, permission: PHARMACY_VIEW },
       ],
     },
@@ -55,6 +59,8 @@ export function pharmacyModule(opts: PharmacyModuleOptions = {}): WebModule {
     { path: "", component: page(() => import("./pages/batches")), feature: F.medicines, permission: PHARMACY_VIEW },
     { path: "medicines", component: page(() => import("./pages/medicines")), feature: F.medicines, permission: PHARMACY_VIEW },
     { path: "prescriptions", component: page(() => import("./pages/prescriptions")), feature: F.prescriptions, permission: PHARMACY_VIEW },
+    { path: "rx", component: page(() => import("./pages/rx-desk")), feature: F.prescriptions, permission: PHARMACY_VIEW },
+    { path: "expiry-plan", component: page(() => import("./pages/expiry-plan")), feature: F.medicines, permission: PHARMACY_VIEW },
     { path: "register", component: page(() => import("./pages/register")), feature: F.register, permission: PHARMACY_VIEW },
   ];
 

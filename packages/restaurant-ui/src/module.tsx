@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BikeIcon, ChefHatIcon, LayoutGridIcon, PlugIcon, UtensilsIcon } from "lucide-react";
+import { BikeIcon, CalculatorIcon, ChefHatIcon, ClipboardListIcon, ImageUpIcon, LayoutGridIcon, PlugIcon, UtensilsIcon } from "lucide-react";
 import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
 import { FLOOR_ACCESS, KITCHEN_ACCESS, ONLINE_ACCESS, RESTAURANT_FEATURES, RESTAURANT_PERMISSIONS } from "./lib/access";
 import { setRestaurantConfig } from "./lib/config";
@@ -46,6 +46,9 @@ export function restaurantModule(opts: RestaurantModuleOptions = {}): WebModule 
         { href: "", label: "restaurant.nav.floor", tabLabel: "restaurant.nav.floorTab", icon: LayoutGridIcon, mobile: "tab", exact: true, feature: F.dining, permission: FLOOR_ACCESS },
         { href: "kitchen", label: "restaurant.nav.kitchen", icon: ChefHatIcon, mobile: "more", feature: F.kitchen, permission: KITCHEN_ACCESS },
         { href: "online", label: "restaurant.nav.online", icon: BikeIcon, mobile: "more", feature: F.platforms, permission: ONLINE_ACCESS },
+        { href: "recipes", label: "restaurant.nav.recipes", icon: CalculatorIcon, mobile: "more", feature: F.dining, permission: P.manage },
+        { href: "prep", label: "restaurant.nav.prep", icon: ClipboardListIcon, mobile: "more", feature: F.dining, permission: [P.manage, P.kitchen] },
+        { href: "menu-import", label: "restaurant.nav.menuImport", icon: ImageUpIcon, mobile: "more", feature: F.dining, permission: P.manage },
       ],
     },
   ];
@@ -55,6 +58,9 @@ export function restaurantModule(opts: RestaurantModuleOptions = {}): WebModule 
     { path: "", component: page(() => import("./pages/floor")), feature: F.dining, permission: FLOOR_ACCESS },
     { path: "kitchen", component: page(() => import("./pages/kitchen")), feature: F.kitchen, permission: KITCHEN_ACCESS, immersive: true },
     { path: "online", component: page(() => import("./pages/online")), feature: F.platforms, permission: ONLINE_ACCESS },
+    { path: "recipes", component: page(() => import("./pages/recipes")), feature: F.dining, permission: P.manage },
+    { path: "prep", component: page(() => import("./pages/prep")), feature: F.dining, permission: [P.manage, P.kitchen] },
+    { path: "menu-import", component: page(() => import("./pages/menu-import")), feature: F.dining, permission: P.manage },
     { path: "orders/:id", component: page(() => import("./pages/order")), feature: F.dining, permission: FLOOR_ACCESS },
   ];
 

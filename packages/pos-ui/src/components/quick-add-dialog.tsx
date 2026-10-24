@@ -24,7 +24,7 @@ import {
   Switch,
   toast,
 } from "@srirealtime/ui";
-import { describeError, HsnSuggestPanel, useHsnSuggest, useI18n } from "@srirealtime/web";
+import { describeError, HsnSuggestPanel, PackPhotoButton, useHsnSuggest, useI18n, type PackResult } from "@srirealtime/web";
 import type { CartProduct } from "../lib/cart";
 import { adjustItemStock, createCatalogProduct, lookupCode } from "../lib/api";
 import { rupeesToPaise } from "../lib/format";
@@ -92,6 +92,20 @@ export function QuickAddDialog({
   const set = <K extends keyof QuickAddForm>(k: K, v: QuickAddForm[K]) => setForm((f) => ({ ...f, [k]: v }));
   // AI "Suggest HSN & GST": the counter form has no HSN box, so only the usual GST rate is applied (shown with the HSN for reference).
   const hsnAi = useHsnSuggest({ name: form.name, price: rupeesToPaise(form.price) ?? undefined });
+  // "Photo of the pack" (AI draft): fills the form; the cashier checks it and saves as usual.
+  const applyPack = ({ draft }: PackResult) => {
+    setForm((f) => ({
+      ...f,
+      name: draft.name || f.name,
+      barcode: f.barcode || draft.barcode || "",
+      mrp: draft.mrp !== null ? String(draft.mrp / 100) : f.mrp,
+      price: draft.price !== null ? String(draft.price / 100) : draft.mrp !== null ? String(draft.mrp / 100) : f.price,
+      taxInclusive: draft.mrp !== null ? true : f.taxInclusive,
+      unit: (QUICK_ADD_UNITS as readonly string[]).includes(draft.unit) ? draft.unit : f.unit,
+      gstRate: draft.hsn && (QUICK_ADD_GST_RATES as readonly number[]).includes(draft.hsn.gstRate) ? draft.hsn.gstRate : f.gstRate,
+      categoryId: draft.categoryId && categories.some((c) => c.id === draft.categoryId) ? draft.categoryId : f.categoryId,
+    }));
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +180,7 @@ export function QuickAddDialog({
   return (
     <Dialog open={!!target} onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent className="sm:max-w-lg" closeLabel={t("pos.common.close")}>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)] gap-4" noValidate>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PackagePlusIcon className="size-5 text-primary" /> {t("pos.quickAdd.title")}
@@ -175,7 +189,7 @@ export function QuickAddDialog({
           </DialogHeader>
 
           {canCreate && canOpenItem && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant={mode === "create" ? "default" : "outline"} onClick={() => setMode("create")}>
                 {t("pos.quickAdd.tabCreate")}
               </Button>
@@ -187,6 +201,7 @@ export function QuickAddDialog({
 
           {mode === "create" && canCreate ? (
             <>
+              <PackPhotoButton onDraft={applyPack} />
               <FieldRow cols={2}>
                 <Field invalid={!!errors.barcode}>
                   <FieldLabel>{t("pos.quickAdd.barcode")}</FieldLabel>

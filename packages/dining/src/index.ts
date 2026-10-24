@@ -1,12 +1,14 @@
 import { defineModule } from "@srirealtime/core";
 import { DINING_FEATURES, DINING_PERMISSIONS } from "./ports";
 import { diningRoutes } from "./routes";
-import { diningAreas, diningKots, diningMenuItems, diningOrderItems, diningOrders, diningTables } from "./schema";
+import { diningAreas, diningIngredients, diningKots, diningMenuItems, diningOrderItems, diningOrders, diningRecipeLines, diningRecipes, diningTables } from "./schema";
+import { RecipeService } from "./recipes";
 import { DiningService, type DiningDeps } from "./service";
 
 export * from "./schema";
 export * from "./logic";
 export * from "./ports";
+export * from "./recipes";
 export { DiningService, openInput, lineInput, billInput, tableInput, areaInput, menuItemInput } from "./service";
 export type { BillInput, DiningDeps, ExternalExtra, ExternalOrderInput, FloorTable, KitchenTicket, LineInput, OpenInput, OrderLine, OrderView } from "./service";
 export { diningRoutes } from "./routes";
@@ -20,10 +22,10 @@ export function createDining(deps: DiningDeps) {
   const service = new DiningService(deps);
   const module = defineModule({
     id: "dining",
-    tables: { diningAreas, diningTables, diningMenuItems, diningOrders, diningOrderItems, diningKots },
+    tables: { diningAreas, diningTables, diningMenuItems, diningOrders, diningOrderItems, diningKots, diningIngredients, diningRecipes, diningRecipeLines },
     routes: diningRoutes(service),
     features: DINING_FEATURES,
     permissions: DINING_PERMISSIONS,
   });
-  return { service, module };
+  return { service, module, recipes: new RecipeService(deps.db) };
 }

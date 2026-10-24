@@ -4,6 +4,8 @@ import { enSecurity, taSecurity } from "./messages-security";
 import { enAi, taAi } from "./messages-ai";
 import { enAiAssist, taAiAssist } from "./messages-ai-assist";
 import { enAiAsk, taAiAsk } from "./messages-ai-ask";
+import { enAiTradesB, taAiTradesB } from "./messages-ai-trades-b";
+import { enAiTradesC, taAiTradesC } from "./messages-ai-trades-c";
 
 /** web.* strings for the shared kit (shell, login, shop resolution, feature gate, Settings → Features). Keep en and ta key sets identical. */
 const en: Messages = {
@@ -263,6 +265,8 @@ const en: Messages = {
   ...enAi,
   ...enAiAssist,
   ...enAiAsk,
+  ...enAiTradesB,
+  ...enAiTradesC,
 };
 
 const ta: Messages = {
@@ -519,6 +523,8 @@ const ta: Messages = {
   ...taAi,
   ...taAiAssist,
   ...taAiAsk,
+  ...taAiTradesB,
+  ...taAiTradesC,
   ...taSecurity,
 };
 

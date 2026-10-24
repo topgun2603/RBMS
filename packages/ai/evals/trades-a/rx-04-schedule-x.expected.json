@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "kind": "rx",
+  "readable": true,
+  "doctor": "Anand",
+  "reg": "TN-77310",
+  "date": "2026-10-20",
+  "patient": "Sample Patient Four",
+  "age": 12,
+  "medicines": [
+    {
+      "name": "methylphenidate",
+      "strength": "10"
+    },
+    {
+      "name": "dolo",
+      "strength": "650"
+    }
+  ],
+  "controlled": [
+    "methylphenidate"
+  ]
+}

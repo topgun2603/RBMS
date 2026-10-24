@@ -37,7 +37,10 @@ import {
 import {
   ConfirmDialog,
   describeError,
+  AddFromPhotosButton,
   ModuleLink,
+  TagPhotosButton,
+  TagReviewButton,
   TamilReviewButton,
   TranslateToTamilButton,
   Page,
@@ -331,6 +334,8 @@ function ProductsList() {
             <Button variant="outline" size="lg" onClick={() => void doExport()} disabled={exporting || total === 0} className="hidden sm:inline-flex">
               {exporting ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />} {t("commerce.products.export")}
             </Button>
+            <AddFromPhotosButton className="hidden sm:inline-flex" />
+            <TagReviewButton className="hidden sm:inline-flex" />
             <TamilReviewButton className="hidden sm:inline-flex" />
             {addButton}
             <DropdownMenu>
@@ -412,6 +417,7 @@ function ProductsList() {
               <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => run("draft")}>
                 <PencilLineIcon /> <span className="hidden sm:inline">{t("commerce.products.makeDraft")}</span>
               </Button>
+              <TagPhotosButton ids={ids} onStarted={clear} />
               <TranslateToTamilButton ids={ids} onStarted={clear} />
               <Button size="sm" variant="destructive" disabled={bulk.isPending} onClick={() => setArchiveIds(ids)}>
                 <ArchiveIcon /> <span className="hidden sm:inline">{t("commerce.products.archive")}</span>

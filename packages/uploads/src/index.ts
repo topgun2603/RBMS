@@ -49,4 +49,4 @@ export {
   withExtension,
 } from "./keys";
 export { STAFF_ROLES, byteRange, listQuery, uploadsRoutes } from "./routes";
-export { rasterizeSvg } from "./images";
+export { rasterizeSvg, shrinkForVision } from "./images";

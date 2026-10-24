@@ -1,0 +1,73 @@
+{
+  "synthetic": true,
+  "kind": "menu",
+  "dishes": [
+    {
+      "name": "idli",
+      "prices": [
+        40
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "pongal",
+      "prices": [
+        55
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "masala dosa",
+      "prices": [
+        75
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "vada",
+      "prices": [
+        20
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "veg meals",
+      "prices": [
+        120
+      ],
+      "mark": "veg"
+    },
+    {
+      "name": "fish curry meals",
+      "prices": [
+        180
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "chicken meals",
+      "prices": [
+        160
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "tea",
+      "prices": [
+        15
+      ],
+      "mark": "unknown"
+    },
+    {
+      "name": "filter coffee",
+      "prices": [
+        25
+      ],
+      "mark": "unknown"
+    }
+  ],
+  "tamil": [
+    "இட்லி",
+    "தோசை"
+  ]
+}

@@ -82,6 +82,7 @@ export function createAiKit(deps: AiKitDeps) {
     config,
     settings: { get: async (tenantId) => (await deps.settings.get({ tenantId })) as AiSettings },
     featureOn: (tenantId) => deps.isEnabled(tenantId, "ai"),
+    featureEnabled: (tenantId, key) => deps.isEnabled(tenantId, key),
     credits: planCredits(deps.plans, deps.tenantRef),
     shops: async (ids) => {
       if (ids.length === 0) return new Map();

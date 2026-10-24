@@ -1,0 +1,83 @@
+{
+  "synthetic": true,
+  "kind": "menu",
+  "dishes": [
+    {
+      "name": "paneer 65",
+      "prices": [
+        140,
+        260
+      ],
+      "mark": "veg"
+    },
+    {
+      "name": "gobi manchurian",
+      "prices": [
+        120,
+        220
+      ],
+      "mark": "veg"
+    },
+    {
+      "name": "chicken 65",
+      "prices": [
+        160,
+        300
+      ],
+      "mark": "nonveg"
+    },
+    {
+      "name": "fish fingers",
+      "prices": [
+        190,
+        350
+      ],
+      "mark": "nonveg"
+    },
+    {
+      "name": "chicken biryani",
+      "prices": [
+        220,
+        380
+      ],
+      "mark": "nonveg"
+    },
+    {
+      "name": "mutton biryani",
+      "prices": [
+        280,
+        480
+      ],
+      "mark": "nonveg"
+    },
+    {
+      "name": "veg biryani",
+      "prices": [
+        170,
+        300
+      ],
+      "mark": "veg"
+    },
+    {
+      "name": "filter coffee",
+      "prices": [
+        30
+      ],
+      "mark": "veg"
+    },
+    {
+      "name": "fresh lime soda",
+      "prices": [
+        45
+      ],
+      "mark": "veg"
+    },
+    {
+      "name": "rose milk",
+      "prices": [
+        50
+      ],
+      "mark": "veg"
+    }
+  ]
+}

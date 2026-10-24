@@ -20,7 +20,7 @@ import {
   Switch,
   Textarea,
 } from "@srirealtime/ui";
-import { tOr, useI18n } from "@srirealtime/web";
+import { DesignNotesButton, DeviceLabelButton, FaultNoteButton, MeasurementSheetButton, tOr, useI18n } from "@srirealtime/web";
 import {
   EYES,
   GARMENT_MEASUREMENTS,
@@ -67,6 +67,18 @@ function DeviceForm({ value, onChange, error, msg }: { value: DeviceDraft; onCha
   const set = (patch: Partial<DeviceDraft>) => onChange({ ...value, ...patch });
   return (
     <div className="grid gap-5">
+      <div className="flex flex-wrap gap-2" data-testid="jobcards-ai-device">
+        <DeviceLabelButton
+          forWhat="jobcard"
+          onApply={(fill) => {
+            const ids = [fill.imei1, fill.imei2, fill.serial].filter((x): x is string => !!x);
+            set({ ...(fill.brand ? { brand: fill.brand } : {}), ...(fill.model ? { model: fill.model } : {}), ...(ids.length ? { serial: ids.join(" / ").slice(0, 60) } : {}) });
+          }}
+        />
+        <FaultNoteButton complaint={value.issue} brand={value.brand} model={value.model} onApply={(note) => set({ issue: (value.issue.trim() ? `${value.issue.trim()}
+
+${note}` : note).slice(0, 1000) })} />
+      </div>
       <FieldRow cols={3}>
         <Field>
           <FieldLabel>{t("jobcards.fields.brand")}</FieldLabel>
@@ -151,6 +163,15 @@ function GarmentForm({ value, onChange, msg }: { value: GarmentDraft; onChange: 
           {t("jobcards.fields.fabricReceived")}
         </label>
         <Switch id="jc-fabric" checked={value.fabricReceived} onCheckedChange={(v) => set({ fabricReceived: v })} />
+      </div>
+      <div className="flex flex-wrap gap-2" data-testid="jobcards-ai-garment">
+        <MeasurementSheetButton
+          garment={value.garmentType}
+          keys={value.measurements.map((m) => m.key)}
+          onApply={(vals, unit) => set({ unit, measurements: value.measurements.map((m) => (m.key in vals ? { ...m, value: String(vals[m.key]) } : m)) })}
+        />
+        <DesignNotesButton onApply={(text) => set({ style: (value.style.trim() ? `${value.style.trim()}
+${text}` : text).slice(0, 1000) })} />
       </div>
       <fieldset className="grid gap-3">
         <div className="flex items-center justify-between gap-2">

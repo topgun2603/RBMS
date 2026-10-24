@@ -23,7 +23,7 @@ import {
   SelectValue,
   toast,
 } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, HuidPhotoButton, useI18n } from "@srirealtime/web";
 import { decimalInput, paiseToInput, parseDecimal, rupeesToPaise } from "../lib/format";
 import { isPurityOf, isValidHuid, MAKING_TYPES, METALS, normalizeHuid, PURITIES, priceBreakdown, rateOf, type MakingType, type Metal, type Purity } from "../lib/pricing";
 import { useJewellerySettings, useRates, useSavePiece } from "../lib/queries";
@@ -257,6 +257,7 @@ export function PieceDialog({ open, onOpenChange, piece }: { open: boolean; onOp
               <FieldControl>
                 <Input value={huid} maxLength={8} autoCapitalize="characters" className="font-mono sm:max-w-48" onChange={(e) => setHuid(e.target.value.toUpperCase())} />
               </FieldControl>
+              <HuidPhotoButton pieceId={piece?.id} onApply={(v) => setHuid(v)} className="mt-1 w-fit" />
               <FieldHint>{t("jewellery.piece.huidHint")}</FieldHint>
               <FieldError>{err("huid") ?? (h && !isValidHuid(h) && h.length >= 6 ? t("jewellery.piece.huidInvalid") : null)}</FieldError>
             </Field>

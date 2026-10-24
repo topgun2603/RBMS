@@ -1,5 +1,6 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
-import { boolean, date, index, integer, numeric, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, date, index, integer, numeric, pgTable, real, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const ORDER_TYPES = ["dine_in", "takeaway", "delivery", "online"] as const;
 export type DiningOrderType = (typeof ORDER_TYPES)[number];
@@ -179,3 +180,58 @@ export type DiningMenuItemRow = typeof diningMenuItems.$inferSelect;
 export type DiningOrderRow = typeof diningOrders.$inferSelect;
 export type DiningOrderItemRow = typeof diningOrderItems.$inferSelect;
 export type DiningKotRow = typeof diningKots.$inferSelect;
+
+// ------------------------------------------------------------------ recipes and food cost
+
+/** An ingredient the kitchen buys: its name and the price the owner types (paise per `unit`). A linked inventory item's latest purchase rate overrides it. */
+export const diningIngredients = pgTable(
+  "dining_ingredients",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    /** Plain name, unique per shop ignoring case ("Basmati rice"). */
+    name: text("name").notNull(),
+    /** The unit the price is for: kg, g, l, ml, pcs or dozen. */
+    unit: text("unit").notNull().default("kg"),
+    /** Paise per `unit`, excluding GST; null = not priced yet. */
+    price: integer("price"),
+    /** The inventory item (catalogue variant) this is bought as, when the shop tracks purchases. */
+    itemId: uuid("item_id"),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("dining_ingredients_tenant_name_uq").on(t.tenantId, sql`lower(${t.name})`)],
+);
+
+/** What goes into ONE portion of a dish (`itemId` = the dish's catalogue variant id, as in dining_menu_items). */
+export const diningRecipes = pgTable(
+  "dining_recipes",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    itemId: uuid("item_id").notNull(),
+    note: text("note"),
+    /** "manual" or "ai" (drafted by AI, then confirmed by a person). */
+    source: text("source").notNull().default("manual"),
+    ...timestamps(),
+  },
+  (t) => [unique("dining_recipes_tenant_item_uq").on(t.tenantId, t.itemId)],
+);
+
+export const diningRecipeLines = pgTable(
+  "dining_recipe_lines",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    recipeId: uuid("recipe_id").notNull(),
+    ingredientId: uuid("ingredient_id").notNull(),
+    qty: numeric("qty", { precision: 14, scale: 4 }).notNull(),
+    /** g, kg, ml, l, tsp, tbsp, cup or pcs. */
+    unit: text("unit").notNull(),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [index("dining_recipe_lines_tenant_recipe_idx").on(t.tenantId, t.recipeId)],
+);
+
+export type DiningIngredientRow = typeof diningIngredients.$inferSelect;
+export type DiningRecipeRow = typeof diningRecipes.$inferSelect;
+export type DiningRecipeLineRow = typeof diningRecipeLines.$inferSelect;

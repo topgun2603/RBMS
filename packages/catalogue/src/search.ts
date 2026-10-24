@@ -40,6 +40,11 @@ export interface ParsedQuery {
 /** Quotes one lexeme for to_tsquery so no input can be read as an operator. */
 const tsLexeme = (w: string) => `'${w.replace(/\\/g, "\\\\").replace(/'/g, "''")}':*`;
 
+/**
+ * Joining words a shopper types in a sentence ("red silk saree for wedding"). Dropped from a multi-word query so they do not
+ * have to appear in the product; a query made only of them is kept as typed.
+ */
+const QUERY_FILLER = new Set(["for", "and", "with", "in", "the", "of", "to", "from"]);
 export function parseQuery(raw: string | null | undefined): ParsedQuery {
   const text = normalizeText(raw).slice(0, MAX_QUERY_LENGTH).trim();
   const words: string[] = [];
@@ -47,6 +52,11 @@ export function parseQuery(raw: string | null | undefined): ParsedQuery {
     const w = part.replace(EDGE_PUNCTUATION, "");
     if (w && !words.includes(w)) words.push(w);
     if (words.length >= MAX_QUERY_WORDS) break;
+  }
+  // "pink silk saree for wedding": the joining word is not a product word.
+  if (words.length > 1) {
+    const kept = words.filter((w) => !QUERY_FILLER.has(w));
+    if (kept.length > 0) words.splice(0, words.length, ...kept);
   }
   if (words.length === 0) return { text: "", words: [], tsquery: null };
   return { text, words, tsquery: words.map(tsLexeme).join(" & ") };

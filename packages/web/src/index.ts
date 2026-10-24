@@ -162,6 +162,15 @@ export { DescribeButton, toMarkdown, type DescribeApply, type DescribeFacts } fr
 export { ProductTamilText } from "./components/ai-assist/product-tamil";
 export { AiHelpButton } from "./components/ai-assist/help-panel";
 export { AskShopButton, FiguresTables, type AskTable } from "./components/ai-assist/ask-shop-panel";
+export { AddFromPhotosButton } from "./components/ai-trades-b/catalogue-photos";
+export { TagPhotosButton, TagReviewButton } from "./components/ai-trades-b/product-tags";
+export { PackPhotoButton, type PackDraft, type PackResult } from "./components/ai-trades-b/pack-identify";
+export { HuidPhotoButton, PriceBreakupButton } from "./components/ai-trades-b/jewellery";
+export { DeviceLabelButton, type DeviceFill } from "./components/ai-trades-c/device-label";
+export { FaultNoteButton } from "./components/ai-trades-c/fault-note";
+export { MeasurementSheetButton, DesignNotesButton } from "./components/ai-trades-c/garment";
+export { AtRiskPanel, AtRiskPage, useAtRisk, type AtRiskClient } from "./components/ai-trades-c/at-risk";
+export { HardwareQuoteButton } from "./components/ai-trades-c/hardware-quote";
 export { TamilReviewButton, TamilReviewDialog, TranslateToTamilButton } from "./components/ai-assist/translate-bulk";
 export { useAiAssistAllowed, useAiAssistStatus, helperOn, type AiAssistStatus } from "./components/ai-assist/use-assist";
 export { UpgradeDialog, UpgradeDialogHost, limitName } from "./components/upgrade-dialog";

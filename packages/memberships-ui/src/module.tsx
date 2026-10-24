@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ScanLineIcon, TicketIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { ScanLineIcon, TicketIcon, TrendingDownIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
 import { DESK_ACCESS, MEMBERS_VIEW, MEMBERSHIPS_FEATURES, MEMBERSHIPS_PERMISSIONS } from "./lib/access";
 import { setMembershipsConfig } from "./lib/config";
@@ -12,6 +12,7 @@ export const MEMBERSHIPS_ROUTES = {
   members: "",
   add: "?add=1",
   checkin: "checkin",
+  atRisk: "at-risk",
   member: (id: string) => `m/${id}`,
 } as const;
 
@@ -50,6 +51,7 @@ export function membershipsModule(opts: MembershipsModuleOptions = {}): WebModul
       items: [
         { href: MEMBERSHIPS_ROUTES.members, label: "memberships.nav.members", tabLabel: "memberships.nav.membersTab", icon: UsersIcon, mobile: "tab", exact: true, feature: F.memberships, permission: MEMBERS_VIEW },
         { href: MEMBERSHIPS_ROUTES.checkin, label: "memberships.nav.checkin", icon: ScanLineIcon, mobile: "tab", feature: F.checkin, permission: DESK_ACCESS },
+        { href: MEMBERSHIPS_ROUTES.atRisk, label: "memberships.nav.atRisk", icon: TrendingDownIcon, feature: F.memberships, permission: P.manage },
       ],
     },
   ];
@@ -58,6 +60,7 @@ export function membershipsModule(opts: MembershipsModuleOptions = {}): WebModul
   const routes: RouteDef[] = [
     { path: "", component: page(() => import("./pages/members")), feature: F.memberships, permission: MEMBERS_VIEW },
     { path: "checkin", component: page(() => import("./pages/checkin")), feature: F.checkin, permission: DESK_ACCESS, immersive: true },
+    { path: "at-risk", component: page(() => import("./pages/at-risk")), feature: F.memberships, permission: P.manage },
     { path: "m/:id", component: page(() => import("./pages/member")), feature: F.memberships, permission: MEMBERS_VIEW },
   ];
 

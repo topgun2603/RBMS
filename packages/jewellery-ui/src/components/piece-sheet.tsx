@@ -3,7 +3,7 @@
 import * as React from "react";
 import { PencilIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { Button, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Skeleton, toast } from "@srirealtime/ui";
-import { ConfirmDialog, DetailRow, describeError, useI18n } from "@srirealtime/web";
+import { ConfirmDialog, DetailRow, PriceBreakupButton, describeError, useI18n } from "@srirealtime/web";
 import { grams, money } from "../lib/format";
 import { usePieceActions, usePiecePrice } from "../lib/queries";
 import type { Piece } from "../lib/types";
@@ -71,6 +71,7 @@ export function PieceSheet({ piece, onOpenChange, onEdit, canManage }: { piece: 
                 ) : (
                   <p className="text-sm text-muted-foreground">{t("jewellery.piece.noRate", { metal: metalLabel(p.metal, p.purity) })}</p>
                 )}
+                {price.data?.breakdown && <PriceBreakupButton pieceId={p.id} className="mt-3" />}
                 {p.lastPrice != null && (
                   <p className="mt-2 text-meta text-muted-foreground">
                     {t("jewellery.sheet.catalogue", { price: money(p.lastPrice) })}

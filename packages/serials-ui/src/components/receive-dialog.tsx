@@ -21,7 +21,7 @@ import {
   Textarea,
   toast,
 } from "@srirealtime/ui";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+import { ApiError, DeviceLabelButton, describeError, useI18n } from "@srirealtime/web";
 import { rupeesToPaise } from "../lib/format";
 import { useItemSettings, useReceiveUnits } from "../lib/queries";
 import { parseAndCheck, type ParsedRow, type RowCode } from "../lib/serial";
@@ -159,6 +159,20 @@ export function ReceiveDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 }}
               />
             </FieldControl>
+            <div className="mt-2">
+              <DeviceLabelButton
+                forWhat="serial"
+                onApply={(fill) => {
+                  const line = dual ? [fill.imei1 ?? fill.serial, fill.imei2].filter(Boolean).join(" ") : (fill.serial ?? fill.imei1 ?? "");
+                  if (!line) return;
+                  setText((p) => (p.trim() ? `${p.replace(/\s+$/, "")}
+${line}
+` : `${line}
+`));
+                  setRejected(null);
+                }}
+              />
+            </div>
             <FieldHint>{t("serials.receive.serialsHint")}</FieldHint>
             <FieldError>{err("units")}</FieldError>
           </Field>

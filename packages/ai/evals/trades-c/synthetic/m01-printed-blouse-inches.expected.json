@@ -1,0 +1,15 @@
+{
+  "garment": "blouse",
+  "unit": "in",
+  "values": {
+    "length": 14.5,
+    "bust": 36,
+    "waist": 30,
+    "shoulder": 14,
+    "armhole": 16,
+    "sleeveLength": 6,
+    "sleeveRound": 12,
+    "frontNeck": 7,
+    "backNeck": 8
+  }
+}
