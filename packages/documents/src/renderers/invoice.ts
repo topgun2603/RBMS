@@ -114,6 +114,22 @@ export interface CreditNoteVariant {
   refundAmount: number;
 }
 
+/** Extra content when an invoice layout prints a quotation (docs/quotations.md). */
+export interface QuotationVariant {
+  rev: number;
+  validUntil: string;
+  /** Terms and conditions of this quotation (the invoice terms of the shop are not printed). */
+  terms: string | null;
+  deliveryText: string | null;
+  advancePercent: number | null;
+  advanceAmount: number;
+  acceptedBy: string | null;
+  acceptedAt: string | null;
+}
+
+/** Statuses of a quotation that get a stamp across the page. */
+const QUOTE_STAMPS: Record<string, keyof Labels> = { cancelled: "cancelled", expired: "expired", declined: "declined" };
+
 /** "return" → "Goods returned" etc. */
 export function reasonLabel(reason: string, t: Labels): string {
   const map: Record<string, string> = { return: t.reasonReturn, price_correction: t.reasonPriceCorrection, discount: t.reasonDiscount, other: t.reasonOther };
@@ -128,21 +144,23 @@ function refundLine(cn: CreditNoteVariant, t: Labels): [string, string] | null {
 }
 
 /** GST tax invoice on A4: same content as billing-ui's printable InvoiceDocument. With `variant.creditNote`, a credit note. */
-export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext, variant: { creditNote?: CreditNoteVariant } = {}): string {
+export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext, variant: { creditNote?: CreditNoteVariant; quotation?: QuotationVariant } = {}): string {
   const cn = variant.creditNote ?? null;
+  const qt = variant.quotation ?? null;
   const t = labels(ctx.locale);
   const L = (k: keyof typeof t) => esc(t[k]);
   const seller = inv.seller;
   const buyer = inv.customer;
   const totals = inv.totals;
   const inter = inv.interState;
+  const stampKey = qt ? QUOTE_STAMPS[inv.status] : inv.status === "cancelled" ? "cancelled" : undefined;
   const cancelled = inv.status === "cancelled";
   const brandName = ctx.branding.appName || seller.legalName || "";
   const logo = safeImageUrl(ctx.branding.logoUrl);
-  const upi = cn ? null : invoiceUpi(inv, brandName, "Invoice");
+  const upi = cn || qt ? null : invoiceUpi(inv, brandName, "Invoice");
   const words = inv.amountInWords || amountInWordsINR(totals.total);
   const d = (v: string | null | undefined) => fmtDate(v, ctx.locale);
-  const title = cn ? t.creditNote : seller.gstin ? t.taxInvoice : t.billOfSupply;
+  const title = qt ? t.quotation : cn ? t.creditNote : seller.gstin ? t.taxInvoice : t.billOfSupply;
   const refund = cn ? refundLine(cn, t) : null;
   const taxCols = inter ? `<th class="r">IGST</th>` : `<th class="r">CGST</th><th class="r">SGST</th>`;
   const totRow = (label: string, value: string) => `<div class="tot"><dt>${esc(label)}</dt><dd class="num">${esc(value)}</dd></div>`;
@@ -193,8 +211,9 @@ ${totals.taxBreakup
     inter ? totRow("IGST", money(totals.igst)) : totRow("CGST", money(totals.cgst)) + totRow("SGST", money(totals.sgst)),
     totals.roundOff !== 0 ? totRow(t.roundOff, `${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`) : "",
     `<div class="tot grand"><dt>${L("grandTotal")}</dt><dd class="num">${esc(money(totals.total))}</dd></div>`,
-    !cn && inv.paid > 0 ? totRow(t.paid, money(inv.paid)) + `<div class="tot b"><dt>${L("balance")}</dt><dd class="num">${esc(money(inv.balance))}</dd></div>` : "",
+    !cn && !qt && inv.paid > 0 ? totRow(t.paid, money(inv.paid)) + `<div class="tot b"><dt>${L("balance")}</dt><dd class="num">${esc(money(inv.balance))}</dd></div>` : "",
     refund ? totRow(refund[0], refund[1]) : "",
+    qt && qt.advancePercent && qt.advanceAmount > 0 ? totRow(`${t.advanceRequired} (${qt.advancePercent}%)`, money(qt.advanceAmount)) : "",
   ].join("");
 
   const bank =
@@ -207,7 +226,7 @@ ${totals.taxBreakup
       : "";
 
   const body = `<article class="doc">
-${cancelled ? `<div class="stamp" aria-hidden="true">${L("cancelled")}</div>` : ""}
+${stampKey ? `<div class="stamp" aria-hidden="true">${L(stampKey)}</div>` : ""}
 <header class="head">
   <div>
     <div class="brand">${logo ? `<img src="${esc(logo)}" alt="">` : ""}<span class="name">${esc(brandName)}</span></div>
@@ -216,8 +235,8 @@ ${cancelled ? `<div class="stamp" aria-hidden="true">${L("cancelled")}</div>` : 
   <div class="title">
     <h1>${esc(title)}</h1>
     <dl class="meta">
-      <dt>${cn ? L("creditNoteNo") : L("number")}</dt><dd class="num">${esc(inv.number ?? t.draft)}</dd>
-      <dt>${L("date")}</dt><dd class="num">${esc(d(inv.date))}</dd>
+      <dt>${qt ? L("quotationNo") : cn ? L("creditNoteNo") : L("number")}</dt><dd class="num">${esc(inv.number ?? t.draft)}</dd>
+      <dt>${L("date")}</dt><dd class="num">${esc(d(inv.date))}</dd>${qt ? `${qt.rev > 1 ? `<dt>${L("revision")}</dt><dd class="num">${qt.rev}</dd>` : ""}<dt>${L("validUntil")}</dt><dd class="num">${esc(d(qt.validUntil))}</dd>` : ""}
       ${
         cn
           ? `<dt>${L("againstInvoice")}</dt><dd class="num">${esc(cn.invoiceNumber)}</dd><dt>${L("invoiceDate")}</dt><dd class="num">${esc(d(cn.invoiceDate))}</dd>`
@@ -230,7 +249,7 @@ ${cancelled ? `<div class="stamp" aria-hidden="true">${L("cancelled")}</div>` : 
   </div>
 </header>${einvoiceBlockA4(inv.einvoice, t, ctx.locale)}
 <section class="buyer avoid">
-  <p class="label">${L("billTo")}</p>
+  <p class="label">${qt ? L("quotationFor") : L("billTo")}</p>
   <p class="b">${esc(buyer.name || "—")}</p>
   ${buyer.address ? `<p class="muted">${escLines(buyer.address)}</p>` : ""}
   <p class="small muted">${[
@@ -258,8 +277,8 @@ ${lines}
 <section class="foot avoid">
   <div class="left">
     ${cn ? `<div><p class="label">${L("reason")}</p><p>${esc(reasonLabel(cn.reason, t))}</p></div>` : bank}
-    ${inv.notes ? `<div><p class="label">${L("notes")}</p><p>${escLines(inv.notes)}</p></div>` : ""}
-    ${!cn && seller.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(seller.terms)}</p></div>` : ""}
+    ${inv.notes ? `<div><p class="label">${L("notes")}</p><p>${escLines(inv.notes)}</p></div>` : ""}${qt?.deliveryText ? `<div><p class="label">${L("deliveryTime")}</p><p>${escLines(qt.deliveryText)}</p></div>` : ""}
+    ${qt ? (qt.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(qt.terms)}</p></div>` : "") : !cn && seller.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(seller.terms)}</p></div>` : ""}${qt?.acceptedBy ? `<p class="b">${esc(t.acceptedBy.replace("{name}", qt.acceptedBy).replace("{date}", d(qt.acceptedAt)))}</p>` : ""}
     ${cancelled && inv.cancelReason ? `<p class="cancel">${L("cancelReason")}: ${esc(inv.cancelReason)}</p>` : ""}
   </div>
   <div>
@@ -273,22 +292,23 @@ ${lines}
     <div class="sign"><p class="muted">${esc(t.forName.replace("{name}", seller.legalName || brandName))}</p><div class="line">${L("signatory")}</div></div>
   </div>
 </section>
-<p class="cg">${cn ? L("computerGeneratedNote") : L("computerGenerated")}</p>
+<p class="cg">${qt ? L("quotationNote") : cn ? L("computerGeneratedNote") : L("computerGenerated")}</p>
 </article>`;
 
-  return page({ title: `${cn ? t.creditNote : t.invoice} ${inv.number ?? ""}`.trim(), paper: "A4", locale: ctx.locale, branding: ctx.branding, css: CSS, body });
+  return page({ title: `${qt ? t.quotation : cn ? t.creditNote : t.invoice} ${inv.number ?? ""}`.trim(), paper: "A4", locale: ctx.locale, branding: ctx.branding, css: CSS, body });
 }
 
 /** 80 mm thermal receipt. With `variant.creditNote`, a credit note slip. */
-export function renderInvoiceThermal(inv: InvoiceDocData, ctx: RenderContext, variant: { creditNote?: CreditNoteVariant } = {}): string {
+export function renderInvoiceThermal(inv: InvoiceDocData, ctx: RenderContext, variant: { creditNote?: CreditNoteVariant; quotation?: QuotationVariant } = {}): string {
   const cn = variant.creditNote ?? null;
+  const qt = variant.quotation ?? null;
   const t = labels(ctx.locale);
   const L = (k: keyof typeof t) => esc(t[k]);
   const s = inv.seller;
   const totals = inv.totals;
-  const cancelled = inv.status === "cancelled";
+  const stampKey = qt ? QUOTE_STAMPS[inv.status] : inv.status === "cancelled" ? "cancelled" : undefined;
   const brandName = ctx.branding.appName || s.legalName || "";
-  const upi = cn ? null : invoiceUpi(inv, brandName, "Invoice");
+  const upi = cn || qt ? null : invoiceUpi(inv, brandName, "Invoice");
   const refund = cn ? refundLine(cn, t) : null;
   const row = (label: string, value: string, cls = "") => `<tr class="${cls}"><td>${esc(label)}</td><td class="r num">${esc(value)}</td></tr>`;
 
@@ -326,13 +346,13 @@ ${qr ? `<div class="c">${qr}</div>` : ""}`;
   ${s.city || s.pincode ? `<p class="small">${esc([s.city, s.pincode].filter(Boolean).join(" – "))}</p>` : ""}
   ${s.phone ? `<p class="small">${esc(s.phone)}</p>` : ""}
   ${s.gstin ? `<p class="small b">GSTIN: ${esc(s.gstin)}</p>` : ""}
-  <p class="b" style="margin-top:3px">${esc(cn ? t.creditNote : s.gstin ? t.taxInvoice : t.billOfSupply)}</p>
+  <p class="b" style="margin-top:3px">${esc(qt ? t.quotation : cn ? t.creditNote : s.gstin ? t.taxInvoice : t.billOfSupply)}</p>
 </div>
-${cancelled ? `<div class="stamp c">${L("cancelled")}</div>` : ""}
+${stampKey ? `<div class="stamp c">${L(stampKey)}</div>` : ""}
 <hr>
 <table>
-  ${row(cn ? t.creditNoteNo : t.number, inv.number ?? t.draft)}
-  ${row(t.date, fmtDate(inv.date, ctx.locale))}
+  ${row(qt ? t.quotationNo : cn ? t.creditNoteNo : t.number, inv.number ?? t.draft)}
+  ${row(t.date, fmtDate(inv.date, ctx.locale))}${qt ? `${qt.rev > 1 ? row(t.revision, String(qt.rev)) : ""}${row(t.validUntil, fmtDate(qt.validUntil, ctx.locale))}` : ""}
   ${cn ? row(t.againstInvoice, cn.invoiceNumber) + row(t.invoiceDate, fmtDate(cn.invoiceDate, ctx.locale)) + row(t.reason, reasonLabel(cn.reason, t)) : ""}
   ${inv.customer.name ? row(t.customer, inv.customer.name) : ""}
   ${inv.customer.gstin ? row("GSTIN", inv.customer.gstin) : ""}
@@ -353,16 +373,22 @@ ${inv.lines
   ${inv.interState ? row("IGST", money(totals.igst)) : row("CGST", money(totals.cgst)) + row("SGST", money(totals.sgst))}
   ${totals.roundOff !== 0 ? row(t.roundOff, `${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`) : ""}
   ${row(t.grandTotal, money(totals.total), "grand")}
-  ${!cn && inv.paid > 0 ? row(t.paid, money(inv.paid)) + row(t.balance, money(inv.balance), "b") : ""}
-  ${refund ? row(refund[0], refund[1], "b") : ""}
+  ${!cn && !qt && inv.paid > 0 ? row(t.paid, money(inv.paid)) + row(t.balance, money(inv.balance), "b") : ""}
+  ${refund ? row(refund[0], refund[1], "b") : ""}${qt && qt.advancePercent && qt.advanceAmount > 0 ? row(`${t.advanceRequired} (${qt.advancePercent}%)`, money(qt.advanceAmount), "b") : ""}
 </table>
-<p class="xs" style="margin-top:3px">${esc(inv.amountInWords || amountInWordsINR(totals.total))}</p>${einv}
+<p class="xs" style="margin-top:3px">${esc(inv.amountInWords || amountInWordsINR(totals.total))}</p>${einv}${
+  qt && (qt.deliveryText || inv.notes || qt.terms || qt.acceptedBy)
+    ? `<hr>${qt.deliveryText ? `<p class="xs"><b>${L("deliveryTime")}:</b> ${esc(qt.deliveryText)}</p>` : ""}${inv.notes ? `<p class="xs">${escLines(inv.notes)}</p>` : ""}${
+        qt.terms ? `<p class="xs"><b>${L("terms")}:</b> ${escLines(qt.terms)}</p>` : ""
+      }${qt.acceptedBy ? `<p class="xs b">${esc(t.acceptedBy.replace("{name}", qt.acceptedBy).replace("{date}", fmtDate(qt.acceptedAt, ctx.locale)))}</p>` : ""}`
+    : ""
+}
 ${
   upi
     ? `<hr><div class="c"><p class="b">${L("scanToPay")} ${esc(money(inv.balance))}</p>${qrSvg(upi, 120, `UPI ${money(inv.balance)}`)}<p class="xs">${esc(s.upiId)}</p></div>`
     : ""
 }
 <hr>
-<p class="c">${cn ? L("computerGeneratedNote") : L("thankYou")}</p>`;
-  return page({ title: `${cn ? t.creditNote : t.receipt} ${inv.number ?? ""}`.trim(), paper: "80mm", locale: ctx.locale, branding: ctx.branding, css, body });
+<p class="c">${qt ? L("quotationNote") : cn ? L("computerGeneratedNote") : L("thankYou")}</p>`;
+  return page({ title: `${qt ? t.quotation : cn ? t.creditNote : t.receipt} ${inv.number ?? ""}`.trim(), paper: "80mm", locale: ctx.locale, branding: ctx.branding, css, body });
 }

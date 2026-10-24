@@ -408,6 +408,110 @@ export const tillSessions = pgTable(
   ],
 );
 
+// ------------------------------------------------------------------ quotations (estimates; docs/quotations.md)
+
+/** "expired" is not stored: a sent quotation past its valid-until date reads as expired (see quotations-calc). */
+export const QUOTATION_STATUSES = ["draft", "sent", "accepted", "declined", "cancelled", "converted"] as const;
+export type QuotationStatus = (typeof QUOTATION_STATUSES)[number];
+/** Statuses shown to staff and filtered on: the stored ones plus the derived "expired". */
+export const QUOTATION_DISPLAY_STATUSES = [...QUOTATION_STATUSES, "expired"] as const;
+export type QuotationDisplayStatus = (typeof QUOTATION_DISPLAY_STATUSES)[number];
+
+export const QUOTATION_CONVERSIONS = ["invoice", "order"] as const;
+export type QuotationConversion = (typeof QUOTATION_CONVERSIONS)[number];
+
+/** One entry of a quotation's timeline. */
+export interface QuotationEvent {
+  at: string;
+  type: "created" | "revised" | "sent" | "viewed" | "accepted" | "declined" | "converted" | "cancelled";
+  /** Staff user id, or the customer's typed name for accepted / declined. */
+  by?: string | null;
+  note?: string | null;
+}
+
+/**
+ * A quotation. Revisions share one number and `groupId`; each revision is its own row (`rev` 1, 2 ...) and only the
+ * newest has `latest = true`. A quotation never touches stock, GST returns, loyalty or the credit book.
+ */
+export const quotations = pgTable(
+  "quotations",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    /** All revisions of one quotation share this (the first revision's id). */
+    groupId: uuid("group_id").notNull(),
+    rev: integer("rev").notNull().default(1),
+    latest: boolean("latest").notNull().default(true),
+    branchId: uuid("branch_id"),
+    customerId: uuid("customer_id"),
+    customer: jsonb("customer").$type<CustomerSnapshot>().notNull(),
+    /** The shop's details as they were when the quotation was saved. */
+    seller: jsonb("seller").$type<SellerProfile>().notNull(),
+    number: text("number").notNull(),
+    fy: text("fy").notNull(),
+    seq: integer("seq").notNull(),
+    status: text("status").$type<QuotationStatus>().notNull().default("draft"),
+    date: date("date", { mode: "string" }).notNull(),
+    validUntil: date("valid_until", { mode: "string" }).notNull(),
+    placeOfSupply: text("place_of_supply").notNull(),
+    interState: boolean("inter_state").notNull().default(false),
+    lines: jsonb("lines").$type<LineTotals[]>().notNull(),
+    totals: jsonb("totals").$type<Omit<InvoiceTotals, "lines">>().notNull(),
+    /** Paise. */
+    total: integer("total").notNull(),
+    notes: text("notes"),
+    terms: text("terms"),
+    /** Free text such as "2 weeks after advance". */
+    deliveryText: text("delivery_text"),
+    /** 1-100; the advance the shop asks for when the quotation is accepted. */
+    advancePercent: integer("advance_percent"),
+    shareToken: text("share_token").unique("quotations_share_token_uq"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    /** Name the customer typed when accepting / declining on the public page. */
+    respondedBy: text("responded_by"),
+    responseNote: text("response_note"),
+    convertedKind: text("converted_kind").$type<QuotationConversion>(),
+    convertedId: uuid("converted_id"),
+    convertedNumber: text("converted_number"),
+    convertedAt: timestamp("converted_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    events: jsonb("events").$type<QuotationEvent[]>().notNull().default([]),
+    createdBy: uuid("created_by"),
+    ...timestamps(),
+  },
+  (t) => [
+    uniqueIndex("quotations_tenant_branch_fy_seq_rev_uq").on(
+      t.tenantId,
+      sql`coalesce(${t.branchId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+      t.fy,
+      t.seq,
+      t.rev,
+    ),
+    index("quotations_tenant_latest_date_idx").on(t.tenantId, t.latest, t.date),
+    index("quotations_tenant_group_idx").on(t.tenantId, t.groupId),
+    index("quotations_tenant_customer_idx").on(t.tenantId, t.customerId),
+    index("quotations_tenant_converted_idx").on(t.tenantId, t.convertedId),
+  ],
+);
+
+/** Per-tenant, per-branch, per-FY quotation counter (`branch_id` null = no branch), like `invoice_series`. */
+export const quotationSeries = pgTable(
+  "quotation_series",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    branchId: uuid("branch_id"),
+    fy: text("fy").notNull(),
+    prefix: text("prefix").notNull(),
+    nextSeq: integer("next_seq").notNull(),
+    ...timestamps(),
+  },
+  (t) => [unique("quotation_series_tenant_branch_fy_uq").on(t.tenantId, t.branchId, t.fy).nullsNotDistinct()],
+);
+
+export type QuotationRow = typeof quotations.$inferSelect;
 export type CreditNoteRow = typeof creditNotes.$inferSelect;
 export type TillSessionRow = typeof tillSessions.$inferSelect;
 

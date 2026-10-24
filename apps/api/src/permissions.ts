@@ -12,6 +12,13 @@ import type { FastifyInstance, FastifyRequest, RouteOptions } from "fastify";
 export const INVOICE_PERMISSIONS: PermissionDef[] = [
   { key: "invoices.create", module: "invoices", label: "Create bills", description: "Create, edit, issue and share bills." },
   { key: "invoices.cancel", module: "invoices", label: "Cancel bills", description: "Cancel issued bills (stock goes back)." },
+  { key: "quotations.view", module: "invoices", label: "View quotations", description: "See quotations and download their PDFs." },
+  {
+    key: "quotations.manage",
+    module: "invoices",
+    label: "Make quotations",
+    description: "Create, revise, send, cancel and convert quotations into bills or orders.",
+  },
   {
     key: "invoices.credit-note",
     module: "invoices",
@@ -50,6 +57,7 @@ export const CATALOGUE_PERMISSION_DEFS: PermissionDef[] = CATALOGUE_PERMISSIONS.
 export const INVENTORY_PERMISSION_DEFS: PermissionDef[] = INVENTORY_PERMISSIONS.map((p) => ({ ...p }));
 
 const BILL = "/v1/invoices/:id([0-9a-fA-F-]{36})";
+const QUOTE = "/v1/quotations/:id([0-9a-fA-F-]{36})";
 const ORDER = "/v1/orders/:id([0-9a-fA-F-]{36})";
 const COUPON = "/v1/coupons/:id([0-9a-fA-F-]{36})";
 const CATALOGUE_MANAGE = CATALOGUE_PERMISSIONS[0].key;
@@ -64,6 +72,21 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   [`POST ${BILL}/send`]: "invoices.create",
   [`POST ${BILL}/cancel`]: "invoices.cancel",
   [`POST ${BILL}/payments`]: "payments.receive",
+  // ---- quotations (estimates): view = see them, manage = make, revise, send, cancel and convert
+  "GET /v1/quotations/": "quotations.view",
+  "GET /v1/quotations/summary": "quotations.view",
+  "GET /v1/quotations/linked": "quotations.view",
+  "GET /v1/quotations/settings": "quotations.view",
+  [`GET ${QUOTE}`]: "quotations.view",
+  "POST /v1/quotations/": "quotations.manage",
+  [`PATCH ${QUOTE}`]: "quotations.manage",
+  [`POST ${QUOTE}/revise`]: "quotations.manage",
+  [`POST ${QUOTE}/duplicate`]: "quotations.manage",
+  [`POST ${QUOTE}/cancel`]: "quotations.manage",
+  [`POST ${QUOTE}/share`]: "quotations.manage",
+  [`POST ${QUOTE}/send`]: "quotations.manage",
+  [`POST ${QUOTE}/convert`]: "quotations.manage",
+
   // ---- invoices: credit notes and POS till sessions
   [`POST ${BILL}/credit-notes`]: "invoices.credit-note",
   "POST /v1/invoices/credit-notes/:id/cancel": "invoices.credit-note",
@@ -157,6 +180,12 @@ async function loyaltyGuard(req: FastifyRequest) {
   const points = (req.body as { loyaltyPoints?: unknown } | null)?.loyaltyPoints;
   if (points !== undefined && points !== null && Number(points) > 0) requirePermission(req.ctx, "loyalty.redeem");
 }
+/** Making a bill or an order from a quotation needs the permission to make one; recording the advance needs payments.receive. */
+async function convertGuard(req: FastifyRequest) {
+  const b = (req.body ?? {}) as { to?: unknown; recordAdvance?: unknown };
+  requirePermission(req.ctx, b.to === "order" ? ORDER_PERMISSIONS_KEYS.manage : "invoices.create");
+  if (b.recordAdvance === true) requirePermission(req.ctx, "payments.receive");
+}
 const both =
   (...guards: ((req: FastifyRequest) => Promise<void>)[]) =>
   async (req: FastifyRequest) => {
@@ -166,6 +195,11 @@ export const ROUTE_GUARDS: Record<string, (req: FastifyRequest) => Promise<void>
   "POST /v1/invoices/": both(discountGuard, loyaltyGuard),
   [`PATCH ${BILL}`]: both(discountGuard, loyaltyGuard),
   [`POST ${BILL}/issue`]: loyaltyGuard,
+  [`POST ${QUOTE}/convert`]: convertGuard,
+  // A discount on a quotation is a promise to the customer: same permission as on a bill.
+  "POST /v1/quotations/": discountGuard,
+  [`PATCH ${QUOTE}`]: discountGuard,
+  [`POST ${QUOTE}/revise`]: discountGuard,
   "POST /v1/orders/": loyaltyGuard,
 };
 

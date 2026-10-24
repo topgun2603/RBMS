@@ -36,6 +36,7 @@ import { createI18n } from "@srirealtime/i18n";
 import { createIdempotency } from "@srirealtime/idempotency";
 import { createInventory } from "@srirealtime/inventory";
 import { createInvoices } from "@srirealtime/invoices";
+import { wireQuotations } from "./kit-quotations";
 import { createJobs } from "@srirealtime/jobs";
 import { createNotify, type NotifyConfig } from "@srirealtime/notify";
 import { createPayments } from "@srirealtime/payments";
@@ -693,6 +694,32 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
   });
 
+  // ---- Quotations (docs/quotations.md): estimates that turn into a bill or an order in one tap.
+  const quotationSettings = settings.service.handle("quotations");
+  const quotations = wireQuotations({
+    db,
+    invoices: invoices.service,
+    orders: orders.service,
+    catalogue: catalogue.service,
+    features,
+    notify: notify.service,
+    audit: audit.service,
+    settings: { get: (tenantId) => quotationSettings.get({ tenantId }) },
+    branding: {
+      get: async (tenantId) => {
+        const b = await branding.service.get(tenantId);
+        return { appName: b.appName, logoUrl: b.logoUrl, css: b.css };
+      },
+    },
+    publicBaseUrl: async (tenantId) => {
+      const tenant = await tenancy.service.getById(tenantId);
+      return billingUrlFor(env.BILLING_PUBLIC_URL, tenant?.appId ?? null).replace("{slug}", tenant?.slug ?? "");
+    },
+    branches: { seller: (tenantId, branchId) => b3!.branchSeller(tenantId, branchId) },
+    now: clock,
+    log,
+  });
+
   // ---- PDFs: data through ports over the invoices, orders and inventory services.
   const sellerDoc = async (tenantId: string): Promise<DocSeller> => {
     const p = await billingProfile.get({ tenantId });
@@ -733,6 +760,11 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   const documents = createDocuments({
     config: { env: process.env },
     ...docPorts,
+    // Quotation PDFs (staff + the customer's share link).
+    quotations: {
+      quotation: (tenantId, id) => quotations.service.docData(tenantId, id),
+      publicQuotation: (token) => quotations.service.publicDocData(token),
+    },
     // Purchase order PDF (print / send to the supplier).
     purchaseOrders: {
       purchaseOrder: async (tenantId, id) => {
@@ -1441,6 +1473,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     uploads.module,
     consent.module,
     invoices.module,
+    quotations.module,
     payments.module,
     inventory.module,
     catalogue.module,
@@ -1491,6 +1524,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     uploads,
     consent,
     invoices,
+    quotations,
     payments,
     inventory,
     catalogue,

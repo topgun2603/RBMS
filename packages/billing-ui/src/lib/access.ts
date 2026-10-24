@@ -31,3 +31,5 @@ export function useHasPermission(key: string): boolean {
 }
 
 export const EXPENSES_PERMISSION = "expenses.manage";
+export const QUOTATIONS_VIEW_PERMISSION = "quotations.view";
+export const QUOTATIONS_MANAGE_PERMISSION = "quotations.manage";

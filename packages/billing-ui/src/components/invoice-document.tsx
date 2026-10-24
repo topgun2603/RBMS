@@ -7,6 +7,7 @@ import { BrandMark, useI18n } from "@srirealtime/web";
 import { QrImage } from "./upi-qr";
 import { money, stateLabel } from "../lib/format";
 import type { Invoice } from "../lib/types";
+import type { QuotationDocMeta } from "../lib/types-quotations";
 
 const qtyFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 });
 const pct = (r: number) => `${r}%`;
@@ -14,18 +15,23 @@ const pct = (r: number) => `${r}%`;
 /**
  * Printable GST tax invoice (A4 via @media print in globals.css). Used by the staff detail page
  * and the public /i/[token] page. Everything comes from the invoice's own snapshots.
+ *
+ * With `quotation` it prints a quotation instead (staff detail and the public /q/[token] page): titled "Quotation", with
+ * validity, delivery time, advance, the quotation's own terms and who accepted it, and no payment block.
  */
 export function InvoiceDocument({
   invoice: inv,
   shopName,
   logoUrl,
   className,
+  quotation,
 }: {
   invoice: Invoice;
   /** Branded name shown next to the logo (falls back to the seller's legal name). */
   shopName?: string | null;
   logoUrl?: string | null;
   className?: string;
+  quotation?: QuotationDocMeta;
 }) {
   const { t, formatDate } = useI18n();
   const seller = inv.seller ?? {};
@@ -33,8 +39,9 @@ export function InvoiceDocument({
   const totals = inv.totals;
   const inter = inv.interState;
   const cancelled = inv.status === "cancelled";
+  const stamp = quotation ? (["cancelled", "expired", "declined"].includes(quotation.displayStatus) ? quotation.displayStatus : null) : cancelled ? "cancelled" : null;
   const brandName = shopName || seller.legalName || "";
-  const showUpi = !!seller.upiId && inv.balance > 0 && !cancelled && inv.status !== "draft";
+  const showUpi = !quotation && !!seller.upiId && inv.balance > 0 && !cancelled && inv.status !== "draft";
   const upi = showUpi
     ? upiLink({
         vpa: seller.upiId!,
@@ -52,15 +59,15 @@ export function InvoiceDocument({
         "relative mx-auto w-full max-w-4xl overflow-hidden rounded-xl border bg-card p-4 text-card-foreground shadow-sm sm:p-8",
         className,
       )}
-      aria-label={t("billing.doc.taxInvoice")}
+      aria-label={quotation ? t("billing.q.doc.title") : t("billing.doc.taxInvoice")}
     >
-      {cancelled && (
+      {stamp && (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-7xl font-black tracking-widest text-destructive/15 uppercase select-none sm:text-8xl"
           style={{ transform: "rotate(-24deg)" }}
         >
-          {t("billing.status.cancelled")}
+          {quotation ? t(`billing.q.status.${stamp}`) : t("billing.status.cancelled")}
         </div>
       )}
 
@@ -87,13 +94,25 @@ export function InvoiceDocument({
         </div>
         <div className="shrink-0 sm:text-right">
           <h2 className="font-heading text-xl font-bold tracking-wide text-primary uppercase">
-            {seller.gstin ? t("billing.doc.taxInvoice") : t("billing.doc.billOfSupply")}
+            {quotation ? t("billing.q.doc.title") : seller.gstin ? t("billing.doc.taxInvoice") : t("billing.doc.billOfSupply")}
           </h2>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm sm:justify-end">
-            <dt className="text-muted-foreground">{t("billing.doc.number")}</dt>
+            <dt className="text-muted-foreground">{quotation ? t("billing.q.doc.number") : t("billing.doc.number")}</dt>
             <dd className="font-semibold tabular-nums">{inv.number ?? t("billing.status.draft")}</dd>
+            {quotation && quotation.rev > 1 && (
+              <>
+                <dt className="text-muted-foreground">{t("billing.q.doc.revision")}</dt>
+                <dd className="tabular-nums">{quotation.rev}</dd>
+              </>
+            )}
             <dt className="text-muted-foreground">{t("billing.doc.date")}</dt>
             <dd className="tabular-nums">{date(inv.date)}</dd>
+            {quotation && (
+              <>
+                <dt className="text-muted-foreground">{t("billing.q.doc.validUntil")}</dt>
+                <dd className="font-semibold tabular-nums">{date(quotation.validUntil)}</dd>
+              </>
+            )}
             {inv.dueDate && (
               <>
                 <dt className="text-muted-foreground">{t("billing.doc.dueDate")}</dt>
@@ -108,7 +127,7 @@ export function InvoiceDocument({
 
       {/* Buyer */}
       <section className="avoid-break grid gap-1 border-b py-4 text-sm">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("billing.doc.billTo")}</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{quotation ? t("billing.q.doc.preparedFor") : t("billing.doc.billTo")}</p>
         <p className="font-semibold">{buyer.name || "—"}</p>
         {buyer.address && <p className="text-muted-foreground whitespace-pre-line">{buyer.address}</p>}
         <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
@@ -251,6 +270,14 @@ export function InvoiceDocument({
             <dt className="font-semibold">{t("billing.totals.grandTotal")}</dt>
             <dd className="font-heading text-xl font-bold text-primary tabular-nums">{money(totals.total)}</dd>
           </div>
+          {quotation && !!quotation.advancePercent && quotation.advanceAmount > 0 && (
+            <div className="flex items-baseline justify-between gap-4 text-sm">
+              <dt className="font-medium">
+                {t("billing.q.doc.advance")} ({quotation.advancePercent}%)
+              </dt>
+              <dd className="font-semibold tabular-nums">{money(quotation.advanceAmount)}</dd>
+            </div>
+          )}
           {!!totals.loyalty?.discount && (
             <p className="text-right text-xs text-muted-foreground">
               {t("billing.loyalty.usedOnBill", { amount: money(totals.loyalty.discount), points: totals.loyalty.points })}
@@ -292,17 +319,28 @@ export function InvoiceDocument({
               )}
             </div>
           )}
+          {quotation?.deliveryText && (
+            <div className="space-y-0.5">
+              <p className="font-semibold tracking-wide text-muted-foreground uppercase">{t("billing.q.doc.delivery")}</p>
+              <p className="whitespace-pre-line">{quotation.deliveryText}</p>
+            </div>
+          )}
           {inv.notes && (
             <div className="space-y-0.5">
               <p className="font-semibold tracking-wide text-muted-foreground uppercase">{t("billing.doc.notes")}</p>
               <p className="whitespace-pre-line">{inv.notes}</p>
             </div>
           )}
-          {seller.terms && (
+          {(quotation ? quotation.terms : seller.terms) && (
             <div className="space-y-0.5">
               <p className="font-semibold tracking-wide text-muted-foreground uppercase">{t("billing.doc.terms")}</p>
-              <p className="whitespace-pre-line text-muted-foreground">{seller.terms}</p>
+              <p className="whitespace-pre-line text-muted-foreground">{quotation ? quotation.terms : seller.terms}</p>
             </div>
+          )}
+          {quotation?.acceptedBy && (
+            <p className="rounded-md bg-success/10 px-2 py-1.5 font-medium text-success-ink">
+              {t("billing.q.doc.acceptedBy", { name: quotation.acceptedBy, date: quotation.acceptedAt ? formatDate(quotation.acceptedAt) : "" })}
+            </p>
           )}
           {cancelled && inv.cancelReason && (
             <p className="text-destructive">
@@ -327,7 +365,7 @@ export function InvoiceDocument({
           </div>
         </div>
       </section>
-      <p className="mt-6 text-center text-[0.6875rem] text-muted-foreground">{t("billing.doc.computerGenerated")}</p>
+      <p className="mt-6 text-center text-[0.6875rem] text-muted-foreground">{quotation ? t("billing.q.doc.note") : t("billing.doc.computerGenerated")}</p>
     </article>
   );
 }

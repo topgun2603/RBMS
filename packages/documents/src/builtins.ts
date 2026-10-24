@@ -5,6 +5,7 @@ import { renderPurchase } from "./renderers/purchase";
 import { renderPurchaseOrder } from "./renderers/purchase-order";
 import { renderStatement } from "./renderers/statement";
 import { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
+import { renderQuotation, renderQuotationThermal } from "./renderers/quotation";
 import { renderTillReport } from "./renderers/till";
 import type {
   CreditNoteDocData,
@@ -17,6 +18,8 @@ import type {
   PurchaseDocPort,
   PurchaseOrderDocData,
   PurchaseOrderDocPort,
+  QuotationDocData,
+  QuotationDocPort,
   StatementDocData,
   StatementDocPort,
   TillDocData,
@@ -35,6 +38,8 @@ export const DOCUMENT_TYPE_FEATURES = {
   "credit-note": "invoices",
   "credit-note-thermal": "invoices",
   "till-z": "invoices",
+  quotation: "invoices.quotations",
+  "quotation-thermal": "invoices.quotations",
 } as const;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -50,8 +55,11 @@ export interface BuiltinPorts {
   purchases?: PurchaseDocPort;
   purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
+  quotations?: QuotationDocPort;
   till?: TillDocPort;
 }
+
+export const quotationFilename = (d: QuotationDocData) => safeFilename(`Quotation-${d.number}${d.rev > 1 ? `-rev${d.rev}` : ""}`);
 
 export const creditNoteFilename = (d: CreditNoteDocData) => safeFilename(`Credit-note-${d.number}`);
 
@@ -133,6 +141,29 @@ export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): vo
       load: (tenantId, id) => cn.creditNote(tenantId, id),
       render: renderCreditNoteThermal,
       filename: creditNoteFilename,
+      version,
+    });
+  }
+  const qt = ports.quotations;
+  if (qt) {
+    reg.register<QuotationDocData>({
+      key: "quotation",
+      paper: "A4",
+      feature: DOCUMENT_TYPE_FEATURES.quotation,
+      permission: "quotations.view",
+      load: (tenantId, id) => qt.quotation(tenantId, id),
+      render: renderQuotation,
+      filename: quotationFilename,
+      version,
+    });
+    reg.register<QuotationDocData>({
+      key: "quotation-thermal",
+      paper: "80mm",
+      feature: DOCUMENT_TYPE_FEATURES["quotation-thermal"],
+      permission: "quotations.view",
+      load: (tenantId, id) => qt.quotation(tenantId, id),
+      render: renderQuotationThermal,
+      filename: quotationFilename,
       version,
     });
   }

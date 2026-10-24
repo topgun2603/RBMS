@@ -70,6 +70,32 @@ export interface InvoiceEinvoice {
   mock: boolean;
 }
 
+/** A quotation (invoices' `QuotationDocData` is assignable to it). */
+export interface QuotationDocData {
+  id?: string;
+  number: string;
+  rev: number;
+  /** "draft" | "sent" | "accepted" | "declined" | "expired" | "converted" | "cancelled"; expired / declined / cancelled get a stamp. */
+  status: string;
+  date: string;
+  validUntil: string;
+  customer: DocParty;
+  seller: DocSeller;
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  amountInWords?: string | null;
+  notes: string | null;
+  terms: string | null;
+  deliveryText: string | null;
+  advancePercent: number | null;
+  advanceAmount: number;
+  acceptedBy: string | null;
+  acceptedAt: string | null;
+  updatedAt?: Date | string | null;
+}
+
 export interface DocLedgerEntry {
   date: string;
   type: "opening" | "invoice" | "payment" | "receipt" | "cancel" | (string & {});
@@ -261,6 +287,13 @@ export interface InvoiceDocPort {
   invoice(tenantId: string, id: string): Promise<InvoiceDocData | null>;
   /** The invoice behind a public share token (null = unknown token or the shop's feature is off). */
   publicInvoice(token: string): Promise<{ tenantId?: string | null; invoice: InvoiceDocData; branding?: Partial<Branding> | null } | null>;
+}
+
+export interface QuotationDocPort {
+  /** A quotation of the tenant (any revision), or null. */
+  quotation(tenantId: string, id: string): Promise<QuotationDocData | null>;
+  /** The quotation behind a public share token (null = unknown token, a draft, or the shop's feature is off). */
+  publicQuotation(token: string): Promise<{ tenantId?: string | null; quotation: QuotationDocData; branding?: Partial<Branding> | null } | null>;
 }
 
 export interface StatementDocPort {

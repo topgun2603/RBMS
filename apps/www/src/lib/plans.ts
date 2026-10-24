@@ -125,7 +125,7 @@ export interface CompareGroup {
 
 /** Rows shown per group, by feature key. Keys no plan grants are dropped, so the table follows the catalogue. */
 const MODULE_GROUPS: { key: string; rows: string[] }[] = [
-  { key: "billing", rows: ["invoices", "invoices.whatsapp", "invoices.reports", "invoices.credit-book", "invoices.gst-reports", "inventory", "pos", "payments", "expenses", "gst-einvoice", "gst-ewaybill", "multi-branch"] },
+  { key: "billing", rows: ["invoices", "invoices.whatsapp", "invoices.reports", "invoices.credit-book", "invoices.quotations", "invoices.gst-reports", "inventory", "pos", "payments", "expenses", "gst-einvoice", "gst-ewaybill", "multi-branch"] },
   { key: "store", rows: ["storefront", "catalogue.variants", "delivery", "coupons", "reviews", "cms.blog", "custom-domain", "marketplace"] },
   { key: "growth", rows: ["loyalty", "chat", "support", "whatsapp", "analytics", "reports.advanced"] },
   { key: "team", rows: ["staff", "importexport", "audit", "developer"] },

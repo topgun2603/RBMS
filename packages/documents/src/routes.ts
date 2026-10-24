@@ -52,6 +52,13 @@ export function documentsRoutes(service: DocumentsService) {
       return sendPdf(reply, await service.renderPublicInvoice(token, { locale: locale ?? req.ctx?.locale }));
     });
 
+    app.get("/public/quotation/:file", routeConfig("invoices.quotations"), async (req, reply) => {
+      const { file } = fileParam.parse(req.params);
+      const token = tokenParam.parse({ token: stripPdf(file) }).token;
+      const { locale } = localeQuery.parse(req.query ?? {});
+      return sendPdf(reply, await service.renderPublicQuotation(token, { locale: locale ?? req.ctx?.locale }));
+    });
+
     app.get("/types", routeConfig("documents"), async (req) => {
       requireTenant(req.ctx);
       requireRole(req.ctx, "owner", "admin", "staff");

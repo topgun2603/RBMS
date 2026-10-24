@@ -66,6 +66,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "invoices.whatsapp",
       "invoices.reports",
       "invoices.gst-reports",
+      "invoices.quotations",
       "inventory",
       "inventory.locations",
       "payments",
@@ -231,8 +232,9 @@ const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo",
 const VERTICALS_FREE = ["medicines", "dining", "jobcards", "bookings", "memberships", "scales", "serials", "jewellery"];
 const VERTICALS_PAID = ["medicines.*", "dining.*", "jobcards.*", "bookings.*", "memberships.*", "scales.*", "serials.*", "jewellery.*"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
-  free: ["catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions"],
+  free: ["invoices.quotations", "catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions"],
   starter: [
+    "invoices.quotations",
     "catalogue.*",
     "orders",
     "documents",

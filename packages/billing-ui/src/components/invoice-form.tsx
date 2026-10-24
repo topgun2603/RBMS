@@ -46,7 +46,7 @@ import { addDays, money, paiseToInput, parseQty, rupeesToPaise, stateLabel, toda
 import { sellerProfileGaps, useCustomer, useItems, useSaveInvoice, useSellerProfile } from "../lib/queries";
 import type { GstRate, Invoice, InvoiceInput, Item } from "../lib/types";
 
-interface LineDraft {
+export interface LineDraft {
   key: string;
   /** Saved item this line came from (v2: drives stock). Cleared when the description is retyped. */
   itemId?: string;
@@ -63,7 +63,7 @@ interface LineDraft {
 
 let keySeq = 0;
 const newKey = () => `l${++keySeq}-${Date.now().toString(36)}`;
-const blankLine = (gstRate = "5"): LineDraft => ({
+export const blankLine = (gstRate = "5"): LineDraft => ({
   key: newKey(),
   description: "",
   hsn: "",
@@ -74,12 +74,12 @@ const blankLine = (gstRate = "5"): LineDraft => ({
   gstRate,
 });
 
-const isBlank = (l: LineDraft) => !l.description.trim() && !l.rate.trim();
+export const isBlank = (l: LineDraft) => !l.description.trim() && !l.rate.trim();
 
-type LineError = Partial<Record<"description" | "qty" | "rate" | "discount" | "hsn", string>>;
+export type LineError = Partial<Record<"description" | "qty" | "rate" | "discount" | "hsn", string>>;
 
 /** Parsed line (null when it can't be priced yet) plus field errors. */
-function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError } {
+export function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError } {
   const errors: LineError = {};
   const qty = parseQty(l.qty);
   const rate = rupeesToPaise(l.rate);
@@ -111,7 +111,7 @@ function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError }
   return { input, errors };
 }
 
-function linesFromInvoice(inv: Invoice): LineDraft[] {
+export function linesFromInvoice(inv: Pick<Invoice, "lines">): LineDraft[] {
   return inv.lines.map((l) => ({
     key: newKey(),
     itemId: l.itemId,
@@ -126,7 +126,7 @@ function linesFromInvoice(inv: Invoice): LineDraft[] {
   }));
 }
 
-function partyFromInvoice(inv: Invoice): Party {
+export function partyFromInvoice(inv: Pick<Invoice, "customerId" | "customer" | "createdAt">): Party {
   if (inv.customerId) {
     return {
       kind: "saved",
@@ -152,7 +152,7 @@ function partyFromInvoice(inv: Invoice): Party {
   };
 }
 
-const partyState = (p: Party) => (p.kind === "saved" ? p.customer.stateCode : p.kind === "walkin" ? p.stateCode : null) || "";
+export const partyState = (p: Party) => (p.kind === "saved" ? p.customer.stateCode : p.kind === "walkin" ? p.stateCode : null) || "";
 
 /** New / edit bill. Live GST totals come from the same computeInvoice the API uses. */
 export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice; initialCustomerId?: string }) {
@@ -527,7 +527,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+export function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
@@ -546,7 +546,7 @@ function FieldError({ id, msg }: { id: string; msg?: string }) {
   );
 }
 
-function LineRow({
+export function LineRow({
   index,
   line,
   errors,

@@ -69,6 +69,7 @@ import { CreditNoteDialog } from "../components/credit-notes/credit-note-dialog"
 import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui";
 import { InvoiceDocument } from "../components/invoice-document";
 import { CancelDialog, PaymentDialog, ShareDialog } from "../components/invoice-dialogs";
+import { LinkedQuotationBanner } from "../components/quotations/linked-quotation";
 import { isOnlinePayment, MessagesTimeline, SendInvoiceButton } from "../components/payments/send-invoice";
 import { StatusBadge } from "../components/status-badge";
 import { printInvoiceDirect } from "../lib/direct-print";
@@ -179,6 +180,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   };
   const [dialog, setDialog] = React.useState<DialogKind>(null);
   const [unpay, setUnpay] = React.useState<string | null>(null);
+  const [advanceHint, setAdvanceHint] = React.useState<number | undefined>(undefined);
   const [celebrate, setCelebrate] = React.useState(flags.issued);
   const [creditWarning, setCreditWarning] = React.useState(flags.creditWarning || invoiceWarnings(inv).includes("credit_limit_exceeded"));
 
@@ -255,6 +257,16 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LinkedQuotationBanner
+        invoiceId={inv.id}
+        paid={inv.paid}
+        open={open}
+        onRecordAdvance={(amount) => {
+          setAdvanceHint(amount);
+          setDialog("pay");
+        }}
+      />
 
       {creditWarning && (
         <Alert data-print-hide className="mb-4 border-warning/40 bg-warning/10 text-warning-ink">
@@ -583,7 +595,15 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
         </div>
       </div>
 
-      <PaymentDialog invoice={inv} open={dialog === "pay"} onOpenChange={setDialogOpen("pay")} />
+      <PaymentDialog
+        invoice={inv}
+        open={dialog === "pay"}
+        defaultAmount={advanceHint}
+        onOpenChange={(o) => {
+          setDialogOpen("pay")(o);
+          if (!o) setAdvanceHint(undefined);
+        }}
+      />
       {creditable && <CreditNoteDialog invoice={inv} open={dialog === "creditNote"} onOpenChange={setDialogOpen("creditNote")} />}
       <CancelDialog invoice={inv} open={dialog === "cancel"} onOpenChange={setDialogOpen("cancel")} />
       <ShareDialog invoice={inv} shopName={shopName} open={dialog === "share"} onOpenChange={setDialogOpen("share")} />

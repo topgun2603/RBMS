@@ -99,6 +99,7 @@ describe("billing templates", () => {
     "invoice.issued": ["shop", "customer", "number", "amount", "dueDate", "link"],
     "invoice.reminder": ["shop", "customer", "number", "amount", "dueDate", "link"],
     "payment.received": ["shop", "customer", "number", "amount", "balance"],
+    "quotation.sent": ["shop", "customer", "number", "amount", "validUntil", "link"],
   };
   // Long but realistic values: 30-char shop, 24-char customer, 16-char number, crore amount, ~60-char link.
   const sample = {

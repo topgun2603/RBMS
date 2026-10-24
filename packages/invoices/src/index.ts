@@ -12,9 +12,13 @@ import {
   invoiceReminders,
   invoices,
   invoiceSeries,
+  quotations,
+  quotationSeries,
   tillSessions,
 } from "./schema";
 import { InvoicesService, type InvoicesDeps } from "./service";
+import { QuotationsService, type QuotationsDeps } from "./quotations";
+import { quotationsRoutes } from "./quotations-routes";
 
 export * from "./schema";
 export * from "./calc";
@@ -28,6 +32,8 @@ export * from "./credit-notes-calc";
 export * from "./credit-notes";
 export * from "./till-calc";
 export * from "./till";
+export * from "./quotations-calc";
+export * from "./quotations";
 export {
   invoicesRoutes,
   billingItemListSchema,
@@ -82,6 +88,20 @@ export function createInvoices(deps: InvoicesDeps) {
     },
     routes: invoicesRoutes(service),
     features: INVOICE_FEATURES,
+  });
+  return { service, module };
+}
+
+/**
+ * Quotations (estimates) on top of the invoices service: own number series, revisions, public accept / decline page and
+ * conversion into a bill or an order. Mounted at /v1/quotations; gated by the `invoices.quotations` feature.
+ */
+export function createQuotations(deps: QuotationsDeps) {
+  const service = new QuotationsService(deps);
+  const module = defineModule({
+    id: "quotations",
+    tables: { quotations, quotationSeries },
+    routes: quotationsRoutes(service),
   });
   return { service, module };
 }

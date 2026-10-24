@@ -232,6 +232,13 @@
       "when": 1792842899090,
       "tag": "0032_accounting",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792843563322,
+      "tag": "0033_quotations",
+      "breakpoints": true
     }
   ]
 }

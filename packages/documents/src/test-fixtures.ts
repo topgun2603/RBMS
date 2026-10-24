@@ -1,5 +1,5 @@
 import { amountInWordsINR, computeInvoice } from "@srirealtime/gst";
-import type { InvoiceDocData, OrderDocData, PurchaseDocData, PurchaseOrderDocData, StatementDocData } from "./types";
+import type { InvoiceDocData, OrderDocData, PurchaseDocData, PurchaseOrderDocData, QuotationDocData, StatementDocData } from "./types";
 
 const seller = {
   legalName: "Raja Textiles <Pvt>",
@@ -124,3 +124,37 @@ export const samplePurchase = (): PurchaseDocData => {
     shop: seller,
   };
 };
+
+export function sampleQuotation(over: Partial<QuotationDocData> = {}): QuotationDocData {
+  const { lines, ...totals } = computeInvoice(
+    [
+      { description: "Cement 50 kg (OPC)", hsn: "2523", qty: 40, unit: "bag", rate: 36000, gstRate: 28 },
+      { description: "TMT bar 12 mm", hsn: "7214", qty: 2, unit: "ton", rate: 5800000, gstRate: 18, discount: 50000 },
+    ],
+    { sellerState: "33", placeOfSupply: "33" },
+  );
+  return {
+    id: "6f1c2a9e-0000-4000-8000-000000000009",
+    number: "QT/26-27/0007",
+    rev: 1,
+    status: "sent",
+    date: "2026-10-14",
+    validUntil: "2026-10-29",
+    customer: { name: "Kumar Constructions", phone: "+919800000002", email: null, gstin: null, address: "9, Anna Salai\nMadurai", stateCode: "33" },
+    seller,
+    placeOfSupply: "33",
+    interState: false,
+    lines,
+    totals,
+    amountInWords: amountInWordsINR(totals.total),
+    notes: "Site: Anna Nagar, 2nd floor slab",
+    terms: "Prices valid for 15 days. Unloading charges extra.",
+    deliveryText: "2 weeks after advance",
+    advancePercent: 50,
+    advanceAmount: Math.round(totals.total / 2),
+    acceptedBy: null,
+    acceptedAt: null,
+    updatedAt: "2026-10-14T06:00:00Z",
+    ...over,
+  };
+}

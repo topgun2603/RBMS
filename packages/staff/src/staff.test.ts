@@ -68,6 +68,8 @@ describe("built-in templates", () => {
       "payments.receive",
       "pos.till",
       "pos.weigh",
+      "quotations.manage",
+      "quotations.view",
       "serials.view",
     ]);
   });
@@ -87,6 +89,25 @@ describe("built-in templates", () => {
       expect(hasPermission(ctx, key)).toBe(true);
     }
     for (const key of ["inventory.adjust", "catalogue.manage", "settings.manage", "staff.manage"]) expect(hasPermission(ctx, key)).toBe(false);
+  });
+});
+
+describe("quotation permissions", () => {
+  const can = (roles: string[], key: string) => {
+    const perms = resolvePermissions(roles, new Map());
+    return hasPermission({ ...emptyContext(), tenant, user: user(roles, perms) }, key);
+  };
+  it("the counter roles make quotations; the read-only demo and the accountant only see them", () => {
+    for (const role of ["staff", "role:cashier", "role:manager"]) {
+      expect(can([role === "staff" ? "staff" : "staff", role].filter((r, i, a) => a.indexOf(r) === i), "quotations.manage")).toBe(true);
+    }
+    expect(can(["staff", "role:cashier"], "quotations.view")).toBe(true);
+    expect(can(["staff", "role:demo"], "quotations.view")).toBe(true);
+    expect(can(["staff", "role:demo"], "quotations.manage")).toBe(false);
+    expect(can(["staff", "role:accountant"], "quotations.view")).toBe(true);
+    expect(can(["staff", "role:accountant"], "quotations.manage")).toBe(false);
+    expect(can(["staff", "role:delivery"], "quotations.view")).toBe(false);
+    expect(can(["staff", "role:stock-keeper"], "quotations.manage")).toBe(false);
   });
 });
 

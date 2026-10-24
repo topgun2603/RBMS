@@ -490,13 +490,13 @@ export interface ReminderRunResult {
 // ------------------------------------------------------------------ validation
 
 /** Empty strings become null; undefined stays undefined (PATCH: "leave as is"). */
-const opt = <T extends z.ZodTypeAny>(s: T) =>
+export const opt = <T extends z.ZodTypeAny>(s: T) =>
   z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), s.nullable().optional());
 
-const money = z.number().int("Amounts are whole paise").min(0).max(MAX_PAISE);
+export const money = z.number().int("Amounts are whole paise").min(0).max(MAX_PAISE);
 const signedMoney = z.number().int("Amounts are whole paise").min(-MAX_PAISE).max(MAX_PAISE);
-const dateStr = z.string().refine(isValidDate, "Use a valid YYYY-MM-DD date");
-const stateCode = z.union([z.string(), z.number()]).transform((v, ctx) => {
+export const dateStr = z.string().refine(isValidDate, "Use a valid YYYY-MM-DD date");
+export const stateCode = z.union([z.string(), z.number()]).transform((v, ctx) => {
   const c = normalizeStateCode(v);
   if (!c || !isValidStateCode(c)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Unknown GST state code" });
@@ -606,7 +606,7 @@ export const lineInputSchema = z
     return out;
   });
 
-const walkInSchema = z.object({
+export const walkInSchema = z.object({
   name: z.string().trim().min(1).max(120),
   phone: opt(phone),
   email: opt(email),
@@ -854,7 +854,7 @@ interface DraftSource {
   notes: string | null;
 }
 
-const toLineInput = (l: LineTotals): LineInput => {
+export const toLineInput = (l: LineTotals): LineInput => {
   const out: LineInput = { description: l.description, qty: l.qty, rate: l.rate, gstRate: l.gstRate };
   if (l.hsn) out.hsn = l.hsn;
   if (l.unit) out.unit = l.unit;
@@ -866,9 +866,9 @@ const toLineInput = (l: LineTotals): LineInput => {
   return out;
 };
 
-const withoutLines = ({ lines: _lines, ...rest }: InvoiceTotals): Omit<InvoiceTotals, "lines"> => rest;
+export const withoutLines = ({ lines: _lines, ...rest }: InvoiceTotals): Omit<InvoiceTotals, "lines"> => rest;
 
-function snapshotOf(c: {
+export function snapshotOf(c: {
   name: string;
   phone?: string | null;
   email?: string | null;

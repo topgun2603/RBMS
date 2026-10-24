@@ -25,7 +25,18 @@ import { usePublicUrl } from "../lib/links";
 import { useInvoiceAction, useShareInvoice } from "../lib/queries";
 import { PAYMENT_METHODS, type Invoice, type PaymentMethod } from "../lib/types";
 
-export function PaymentDialog({ invoice, open, onOpenChange }: { invoice: Invoice; open: boolean; onOpenChange: (o: boolean) => void }) {
+export function PaymentDialog({
+  invoice,
+  open,
+  onOpenChange,
+  defaultAmount,
+}: {
+  invoice: Invoice;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  /** Paise to start with instead of the whole balance (e.g. the advance a quotation asked for). */
+  defaultAmount?: number;
+}) {
   const { t } = useI18n();
   const action = useInvoiceAction();
   const [amount, setAmount] = React.useState("");
@@ -42,7 +53,7 @@ export function PaymentDialog({ invoice, open, onOpenChange }: { invoice: Invoic
     if (!open) return;
     // Balance changes after a payment; don't reset the form while the success state is showing.
     if (done !== null) return;
-    setAmount(paiseToInput(invoice.balance));
+    setAmount(paiseToInput(defaultAmount ? Math.min(defaultAmount, invoice.balance) : invoice.balance));
     setMethod("cash");
     setDate(todayIST());
     setReference("");

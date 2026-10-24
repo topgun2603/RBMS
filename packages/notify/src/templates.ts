@@ -35,6 +35,12 @@ const INVOICE_REMINDER_TA =
 const PAYMENT_RECEIVED_EN = "{{shop}}: Thank you {{customer}}! We received {{amount}} for bill {{number}}. Balance due: {{balance}}.";
 const PAYMENT_RECEIVED_TA = "{{shop}}: நன்றி {{customer}}! பில் {{number}}-க்கு {{amount}} பெற்றுக்கொண்டோம். மீதி நிலுவை: {{balance}}.";
 
+// Quotations (invoices module, docs/quotations.md). Vars — quotation.sent: shop, customer, number, amount, validUntil, link.
+const QUOTATION_SENT_EN = "{{shop}}: Dear {{customer}}, your quotation {{number}} for {{amount}} is ready (valid till {{validUntil}}). View and accept: {{link}}";
+const QUOTATION_SENT_TA = "{{shop}}: வணக்கம் {{customer}}, உங்கள் மதிப்பீடு {{number}} ({{amount}}) தயாராக உள்ளது ({{validUntil}} வரை செல்லுபடி). பார்க்க / ஏற்க: {{link}}";
+const QUOTATION_SENT_SUBJECT_EN = "Quotation {{number}} from {{shop}}";
+const QUOTATION_SENT_SUBJECT_TA = "{{shop}} இடமிருந்து மதிப்பீடு {{number}}";
+
 // Orders (orders module). Customer messages go out on WhatsApp + email (SMS kept for tenants who switch to it);
 // English SMS stays within GSM-7 and 2 segments. Vars:
 //   order.placed / order.received (to the shop owner): shop, customer, number, amount, items, link
@@ -411,6 +417,8 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...builtin("invoice.reminder", ["sms", "whatsapp"], "ta", INVOICE_REMINDER_TA, null),
   ...builtin("payment.received", ["sms", "whatsapp"], "en", PAYMENT_RECEIVED_EN, null),
   ...builtin("payment.received", ["sms", "whatsapp"], "ta", PAYMENT_RECEIVED_TA, null),
+  ...builtin("quotation.sent", ["sms", "whatsapp", "email"], "en", QUOTATION_SENT_EN, QUOTATION_SENT_SUBJECT_EN),
+  ...builtin("quotation.sent", ["sms", "whatsapp", "email"], "ta", QUOTATION_SENT_TA, QUOTATION_SENT_SUBJECT_TA),
   ...orderTemplates(),
   ...batch3Templates(),
   ...batch5Templates(),

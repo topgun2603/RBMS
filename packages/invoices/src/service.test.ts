@@ -353,6 +353,7 @@ describe("createInvoices", () => {
       "invoices.credit-book",
       "invoices.reports",
       "invoices.gst-reports",
+      "invoices.quotations",
     ]);
   });
 });

@@ -12,6 +12,7 @@ import {
   CalendarDaysIcon,
   ClipboardListIcon,
   CreditCardIcon,
+  FileSignatureIcon,
   FileTextIcon,
   HandCoinsIcon,
   LandmarkIcon,
@@ -31,7 +32,7 @@ import {
 } from "lucide-react";
 import { ModuleDashboard, type NavSection, type RouteDef, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { ACC_POST, ACC_VIEW } from "./lib/accounting";
-import { EXPENSES_PERMISSION } from "./lib/access";
+import { EXPENSES_PERMISSION, QUOTATIONS_MANAGE_PERMISSION, QUOTATIONS_VIEW_PERMISSION } from "./lib/access";
 import { billingMessages } from "./lib/messages";
 
 /** Feature keys the billing UI uses (declared by @srirealtime/invoices, inventory and payments; docs/features.md). */
@@ -42,6 +43,8 @@ export const BILLING_FEATURES = {
   creditBook: "invoices.credit-book",
   reports: "invoices.reports",
   gstReports: "invoices.gst-reports",
+  /** Quotations (estimates) that turn into a bill or an order (@srirealtime/invoices). */
+  quotations: "invoices.quotations",
   inventory: "inventory",
   purchases: "inventory.purchases",
   payments: "payments",
@@ -91,6 +94,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
   };
   const sell = [
     { href: "invoices", label: "billing.nav.invoices", icon: FileTextIcon, feature: F.invoices, mobile: "tab" as const },
+    { href: "quotations", label: "billing.nav.quotations", icon: FileSignatureIcon, feature: F.quotations, permission: QUOTATIONS_VIEW_PERMISSION },
     { href: "credit-book", label: "billing.nav.creditBook", icon: BookOpenIcon, feature: F.creditBook, mobile: "tab" as const },
     { href: "customers", label: "billing.nav.customers", icon: UsersIcon, feature: F.invoices },
   ];
@@ -137,6 +141,10 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "invoices/new", component: page(() => import("./pages/invoice-new")), feature: F.invoices, immersive: true },
     { path: "invoices/:id", component: page(() => import("./pages/invoice-detail")), feature: F.invoices },
     { path: "invoices/:id/edit", component: page(() => import("./pages/invoice-edit")), feature: F.invoices, immersive: true },
+    { path: "quotations", component: page(() => import("./pages/quotations")), feature: F.quotations, permission: QUOTATIONS_VIEW_PERMISSION },
+    { path: "quotations/new", component: page(() => import("./pages/quotation-new")), feature: F.quotations, permission: QUOTATIONS_MANAGE_PERMISSION, immersive: true },
+    { path: "quotations/:id", component: page(() => import("./pages/quotation-detail")), feature: F.quotations, permission: QUOTATIONS_VIEW_PERMISSION },
+    { path: "quotations/:id/edit", component: page(() => import("./pages/quotation-edit")), feature: F.quotations, permission: QUOTATIONS_MANAGE_PERMISSION, immersive: true },
     { path: "credit-notes", component: page(() => import("./pages/credit-notes")), feature: F.invoices },
     { path: "credit-notes/:id", component: page(() => import("./pages/credit-note-detail")), feature: F.invoices },
     { path: "customers", component: page(() => import("./pages/customers")), feature: F.invoices },
@@ -180,6 +188,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { id: "kpi-collected", zone: "kpi", priority: 45, feature: F.invoices, component: widget("CollectedKpiWidget", widgets) },
     { id: "kpi-overdue", zone: "kpi", priority: 50, feature: F.invoices, component: widget("OverdueKpiWidget", widgets) },
     // Needs attention: overdue bills, low / out-of-stock items.
+    { id: "kpi-quotations", zone: "kpi", priority: 52, feature: F.quotations, component: widget("QuotationsKpiWidget", () => import("./widgets/quotations")) },
     { id: "kpi-payables", zone: "kpi", priority: 55, feature: F.purchases, component: widget("PayablesKpiWidget", () => import("./widgets/payables")) },
     { id: "attention", zone: "attention", priority: 10, feature: F.invoices, component: widget("BillingAttentionWidget", widgets) },
     { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, component: widget("SalesTrendWidget", widgets) },
@@ -199,10 +208,12 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     publicRoutes: [
       { path: "i/:token", component: page(() => import("./pages/public-invoice")), feature: F.invoices },
       { path: "s/:token", component: page(() => import("./pages/public-statement")), feature: F.creditBook },
+      { path: "q/:token", component: page(() => import("./pages/public-quotation")), feature: F.quotations },
     ],
     widgets: widgetDefs,
     actions: [
       { id: "new-bill", label: "billing.nav.newBill", href: "invoices/new", icon: PlusIcon, feature: F.invoices, primary: true },
+      { id: "new-quotation", label: "billing.nav.newQuotation", href: "quotations/new", icon: FileSignatureIcon, feature: F.quotations },
       { id: "receive-money", label: "billing.dashboard.quickReceive", href: "credit-book?filter=due", icon: HandCoinsIcon, feature: F.creditBook },
       { id: "add-purchase", label: "billing.dashboard.quickPurchase", href: "purchases/new", icon: BoxesIcon, feature: F.purchases },
     ],
@@ -210,6 +221,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
       { path: "", label: "billing.nav.settings", icon: BuildingIcon, feature: F.invoices, component: page(() => import("./pages/settings-profile")) },
       { path: "payments", label: "billing.nav.onlinePayments", icon: CreditCardIcon, feature: F.payments, component: page(() => import("./pages/settings-payments")) },
       { path: "reminders", label: "billing.nav.reminders", icon: BellRingIcon, feature: F.reminders, component: page(() => import("./pages/settings-reminders")) },
+      { path: "quotations", label: "billing.nav.quotationSettings", icon: FileSignatureIcon, feature: F.quotations, component: page(() => import("./pages/settings-quotations")) },
       { path: "accounting", label: "billing.accounting.nav.settings", icon: LockIcon, feature: F.accounting, component: page(() => import("./pages/accounting-settings")) },
     ],
   };

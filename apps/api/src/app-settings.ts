@@ -80,6 +80,23 @@ export function defineAppSettings(settings: SettingsService) {
     },
   );
 
+  // Quotations (read by the invoices package's quotations service; docs/quotations.md).
+  settings.define(
+    "quotations",
+    z.object({
+      prefix: z.string().regex(/^[A-Z0-9-]{1,6}$/, "1–6 capital letters, digits or hyphens"),
+      /** Days a quotation is valid when none is chosen. */
+      validityDays: z.number().int().min(1).max(365),
+      /** Default terms and conditions printed on quotations; editable on each one. */
+      terms: z.string().max(2000),
+    }),
+    {
+      prefix: "QT",
+      validityDays: 15,
+      terms: "Prices are valid until the date shown. Delivery within the time agreed after the advance is received. Goods once supplied will not be taken back.",
+    },
+  );
+
   // Order handling (read by the orders module through its OrderSettingsPort).
   settings.define(
     "orders",

@@ -407,6 +407,18 @@ To issue a credit note:
 
 The credit note has its own number, GST is worked out from the original bill, and your reports and GST figures take it into account. See all of them under **Credit notes** (button on the Bills page). A credit note can be cancelled only on the same day, and only if no money was refunded.
 
+## Quotations (estimates)
+
+Give a customer a price before they order. A quotation has its own number (for example QT/26-27/0001), a valid-until date and your terms. It never changes stock, sales, GST returns or the credit book. Only the bill or order you make from it does.
+
+1. Open **Quotations** and tap **New quotation**. Pick the customer, add the items, and set the delivery time and any advance you want (for example 50%).
+2. Tap **Save & send**. Send it on WhatsApp, SMS or email, or copy the link. The customer opens the link on their phone, reads the quotation in English or Tamil, and taps **Accept** or **Decline**. You see who answered and when.
+3. When the customer accepts, tap **Make bill** (or **Make order**, if your shop takes orders). The bill is a draft you can still edit. Choose **Issue the bill now** and tick the advance to record the advance as a payment at the same time.
+
+If the price changes, tap **Revise**. The number stays the same and becomes revision 2. The customer's old link points to the new one. A quotation that is not answered by its valid-until date shows as **Expired**: revise it to give new dates.
+
+Make order needs every line to be a saved item. For free-text lines, make a bill.
+
 ## Cancel a bill
 
 Cancel a bill only when it was made by mistake. Needs the **Cancel bills** permission.

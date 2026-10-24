@@ -8,6 +8,7 @@ export const FEATURES = {
   creditBook: "invoices.credit-book",
   reports: "invoices.reports",
   gstReports: "invoices.gst-reports",
+  quotations: "invoices.quotations",
 } as const;
 
 /** Payments' base feature: the public invoice only offers online payment when it is on. */
@@ -57,5 +58,13 @@ export const INVOICE_FEATURES: FeatureDef[] = [
     label: "GST reports",
     description: "GSTR-1/3B summaries with HSN, B2B, B2CL and B2CS exports.",
     dependsOn: [FEATURES.reports],
+  },
+  {
+    key: FEATURES.quotations,
+    module: "invoices",
+    label: "Quotations",
+    description: "Give customers a quotation before the order: share it, let them accept online, then make the bill or order in one tap.",
+    dependsOn: [FEATURES.base],
+    shopToggle: true,
   },
 ];

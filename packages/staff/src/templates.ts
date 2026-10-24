@@ -27,7 +27,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     description:
       "Applies to staff members without a custom role: view everything, create bills (with discounts), receive payments, add customers and use the credit book.",
     // Everything staff could do before roles existed, except cancelling bills and managing stock, catalogue or settings.
-    permissions: ["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book", "pos.till"],
+    permissions: ["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book", "pos.till", "quotations.manage"],
   },
   {
     key: "manager",
@@ -40,6 +40,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "coupons.*",
       "inventory.*",
       "invoices.*",
+      "quotations.*",
       "payments.*",
       "customers.*",
       "reports.*",
@@ -83,6 +84,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     permissions: [
       "invoices.create",
       "invoices.credit-note",
+      "quotations.view",
+      "quotations.manage",
       "payments.receive",
       "customers.create",
       "catalogue.view",
@@ -104,7 +107,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     key: "accountant",
     name: "Accountant",
     description: "Reports, credit book, purchases and expenses, and the accounting books (journal entries, period lock).",
-    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*"],
+    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*", "quotations.view"],
   },
   {
     key: "demo",

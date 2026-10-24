@@ -13,6 +13,7 @@ import {
   type OrderDocPort,
   type PurchaseDocPort,
   type PurchaseOrderDocPort,
+  type QuotationDocPort,
   type StatementDocPort,
   type TillDocPort,
 } from "./types";
@@ -29,6 +30,7 @@ export interface DocumentsDeps {
   purchases?: PurchaseDocPort;
   purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
+  quotations?: QuotationDocPort;
   till?: TillDocPort;
   branding?: BrandingPort;
   log?: LoggerPort;
@@ -56,6 +58,7 @@ export function createDocuments(deps: DocumentsDeps = {}) {
     driver,
     branding: deps.branding,
     invoices: deps.invoices,
+    quotations: deps.quotations,
     log,
     timeoutMs: deps.config?.timeoutMs,
   });
@@ -78,6 +81,7 @@ export { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 export { renderPurchase } from "./renderers/purchase";
 export { renderPurchaseOrder } from "./renderers/purchase-order";
 export { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
+export { renderQuotation, renderQuotationThermal } from "./renderers/quotation";
 export { renderTillReport } from "./renderers/till";
 export { platformInvoiceDoc, renderPlatformInvoice, type PlatformInvoiceDocData, type PlatformInvoiceParty } from "./renderers/platform-invoice";
 export { esc, page, qrSvg, money, fmtDate, fmtDateTime, stateLabel, type QrErrorCorrection } from "./html";

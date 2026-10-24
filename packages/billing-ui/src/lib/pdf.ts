@@ -13,6 +13,8 @@ export const PDF_PATHS = {
   purchaseOrder: (id: string) => `/documents/purchase-order/${id}.pdf`,
   creditNote: (id: string) => `/documents/credit-note/${id}.pdf`,
   creditNoteThermal: (id: string) => `/documents/credit-note-thermal/${id}.pdf`,
+  quotation: (id: string) => `/documents/quotation/${id}.pdf`,
+  quotationThermal: (id: string) => `/documents/quotation-thermal/${id}.pdf`,
 } as const;
 
 /** Fetches a PDF with the session's bearer token and shop header. Errors become ApiError (403 → "no access"). */
