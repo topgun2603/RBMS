@@ -9,8 +9,8 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 | # | Area | Status | Evidence | Effort |
 |---|---|---|---|---|
 | 1 | Double-entry accounting: ledgers, day book, trial balance, P&L, balance sheet | Missing | No such tables/routes. Only `reports/profit` (expenses package) and the customer ledger (`packages/invoices/src/ledger.ts`). Accountants of Tally/Busy/Zoho users need these | L |
-| 2 | Supplier payables: part-payments, supplier ledger/ageing, advances | Missing | `purchases.paid` is a boolean (`packages/inventory/src/schema.ts`); only `POST /purchases/:id/paid`. No payment rows, no supplier statement | M |
-| 3 | Purchase workflow: PO, GRN, purchase returns / debit notes | Missing | Only direct `purchases` (recorded/cancelled). No PO/GRN tables; no debit-note concept (sales credit notes exist) | M |
+| 2 | Supplier payables: part-payments, supplier ledger/ageing, advances | Done (2026-10-23) | `purchase_payments` + `amount_paid`/`due_date` on purchases, supplier opening balance, lump "pay supplier" allocated oldest-first or to chosen bills, reversals, statement + CSV, advances on account (migration 0026; `packages/inventory/src/payables.ts`, `purchasing.ts`; UI: Payables, Supplier statement, Pay dialogs). Old `paid` flag kept (back-filled; `POST /purchases/:id/paid` now records/reverses payments). Not done: bank/cheque clearing, TDS on supplier payments | - |
+| 3 | Purchase workflow: PO, GRN, purchase returns / debit notes | Done (2026-10-23) | `purchase_orders` (draft/sent/partially_received/received/cancelled), `goods_receipts` (partial GRNs add stock, freight/other charges spread by value into cost), PO to bill (receive+bill or convert), `debit_notes` (stock out, balance reduced or refund recorded, numbered PO/GRN/DN per FY). Limits: bill uses PO rates, one bill per GRN, no GRN cancel, no quotes/RFQ, no PO PDF/WhatsApp | - |
 | 4 | Batch / expiry for non-pharmacy stock (FMCG, cosmetics, food) | Partial | Batches+expiry exist only in `packages/medicines`; `packages/inventory` has none | M |
 | 5 | Import from Vyapar / Tally / Busy / Marg / Excel (parties, items, opening balances, history) | Partial | `packages/importexport/src/specs.ts` handles items + customers (CSV/xlsx) only; no vendor-format mappers, no opening balances or past bills. Migration is the main switching barrier | M |
 | 6 | Offline billing (sales queued when internet drops) | Partial | Catalogue cached in IndexedDB (`pos-ui/src/lib/catalog-idb.ts`, `catalog-sync.ts`) and an online flag (`online.ts`), but no offline invoice queue/sync or offline number allocation | L |
@@ -30,9 +30,9 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 | 15 | TDS/TCS (194Q, 206C(1H), 194C etc.) | Missing | No calculation or reports | M |
 | 16 | Stock audit / physical count with variance | Missing | Only `adjust` + movements (`inventory/src/routes.ts`) | S-M |
 | 17 | Stock transfer between branches | Partial | `POST /transfers` is an immediate move (`stockTransfers`); no in-transit/receive-confirm, no challan/e-way for transfer | S-M |
-| 18 | Valuation (FIFO / weighted avg), landed cost, item-wise profit | Partial | `unitCost` per movement and `cost` on items; no freight/duty allocation; no item-margin dataset found in `apps/api/src/kit-reports.ts` | M |
+| 18 | Valuation (FIFO / weighted avg), landed cost, item-wise profit | Partial | `unitCost` per movement and `cost` on items; freight and other charges on purchases / goods receipts are now spread by value into the moving-average cost (no customs duty split, no FIFO); no item-margin dataset found in `apps/api/src/kit-reports.ts` | M |
 | 19 | Packaged reports: by staff, by hour, by category/brand, day/cash book | Partial | Report builder + datasets exist (sales-lines, bills, payments, customers, stock, expenses); canned: top-items, top-customers, sales-trend, ageing | S-M |
-| 20 | Payables ageing | Missing | Receivables ageing done (`/reports/ageing`); payables depend on #2 | S |
+| 20 | Payables ageing | Done (2026-10-23) | `GET /v1/inventory/reports/payables-ageing` (0-30/31-60/61-90/90+ from due date, CSV) + `/payables/summary` dashboard tile + Payables page | - |
 | 21 | Data privacy (DPDP) | Partial | `packages/consent`: consent log, export, delete-account with grace period. Breach process, retention rules, notice templates not found | S-M |
 | 22 | Customer-side full data export / Tally export | Partial | DB backups are vendor-side (`docs/ops.md`); customers get per-entity CSV only; no all-data zip, no Tally XML | M |
 | 23 | Flutter Business app is thin | Partial | `apps/mobile_business/README.md`: billing, orders, products, stock, customers, credit book, expenses; no reports, GST, purchases, e-invoice, offline | L |
@@ -74,11 +74,11 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 
 ## Counts (45 items)
 
-Done 14, Partial 17, Missing 14. By severity: Critical 8, High 15, Medium/Low 22.
+Done 17, Partial 17, Missing 11. By severity: Critical 8, High 15, Medium/Low 22.
 
 ## Recommended order
 
-1. Supplier payments + payables ageing + purchase returns/debit notes (#2, #3, #20)
+1. ~~Supplier payments + payables ageing + purchase returns/debit notes (#2, #3, #20)~~ done 2026-10-23
 2. Offline billing queue (#6) and direct ESC/POS/WebUSB printing (#7)
 3. Vyapar/Tally/Busy importers incl. opening balances (#5) and Tally export (#22)
 4. Simple accounting layer: day book, cash/bank books, P&L, balance sheet, trial balance (#1, #14)

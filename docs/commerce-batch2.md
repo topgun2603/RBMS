@@ -24,7 +24,7 @@ Ports (kit wires them): `CatalogPort` (variants by ids incl. status/channels/ima
 `StoreSettingsPort` (settings namespace `store`), `BrandingPort`, `FeatureGatePort`.
 
 Endpoints (feature `storefront`):
-- Public: `GET /config` → `{ shop: { name, logoUrl, css, contactPhone, contactEmail, social }, open, closedMessage, codEnabled, codMaxAmount, minOrderValue, guestCheckout: false, policies: { shipping, returns, privacy, terms } }`
+- Public: `GET /config` → `{ shop: { name, logoUrl, css, contactPhone, contactEmail, social }, open, closedMessage, codEnabled, codMaxAmount, minOrderValue, guestCheckout: false, policies: { shipping, returns, privacy, terms }, installBanner }`
 - Cart (public, by token): `POST /cart` → `{ token }`; `GET /cart/:token?pincode=` → `PricedCart`; `PUT /cart/:token/lines` `{ variantId, qty }` (0 removes; qty capped by availability and 1–99) → PricedCart;
   `POST /cart/:token/coupon` `{ code }` / `DELETE /cart/:token/coupon` → PricedCart; `POST /cart/:token/pincode` `{ pincode }` → PricedCart; `POST /cart/:token/merge` (shopper) → PricedCart of the shopper's cart.
   ```ts
@@ -39,7 +39,7 @@ Endpoints (feature `storefront`):
   `{ order: { id, number, total, status, paymentStatus }, accessToken, payment: { kind: "order", ref } | null }`. Validates: store open, cart not empty, every line available, min order, COD enabled + under COD max + rate allows COD (adds COD fee),
   delivery option valid for the address pincode; prices always re-read from the catalogue; clears the cart on success.
 - Public tracking: `GET /track/:accessToken` → order status timeline, lines, totals, fulfillment (no address details beyond city/pincode).
-- Settings namespace `store` (defined in apps/api): `{ open: true, closedMessage: "", codEnabled: true, codMaxAmount: 500000, minOrderValue: 0, contactPhone: "", contactEmail: "", social: { instagram, facebook, youtube, whatsapp }, policies: { shipping, returns, privacy, terms } }`.
+- Settings namespace `store` (defined in apps/api): `{ open: true, closedMessage: "", codEnabled: true, codMaxAmount: 500000, minOrderValue: 0, contactPhone: "", contactEmail: "", social: { instagram, facebook, youtube, whatsapp }, policies: { shipping, returns, privacy, terms }, installBanner: true }` (`installBanner`: the storefront's "Install <shop> app" banner, see §6).
 Features: `storefront` (base, label "Online store"), `storefront.wishlist` (shopToggle). Permissions: none (shopper routes check the shopper).
 
 ## 2. `@srirealtime/delivery` (`/v1/delivery`)
@@ -119,3 +119,42 @@ Tables: `cms_home` (tenant pk, draft jsonb, published jsonb, published_at), `cms
 - `GET /v1/tenancy/domains/:id/instructions` → `{ domain, records: [{ type: "TXT", host: "_srikit-verify.<domain>", value: <token> }, { type: "CNAME", host: <domain or www>, value: <CNAME_TARGET> }], status }` (token stored on tenant_domains).
 - Verifier implemented in apps/api with `node:dns/promises` (`resolveTxt`, `resolveCname`); `POST /domains/:id/verify` uses it; job `tenancy.domains.verify` every 30 min for pending domains.
 - Env `CNAME_TARGET` (default `stores.srikit.in`). Feature `custom-domain` declared by tenancy (dependsOn nothing; plan pro). Verified custom domains already resolve tenants (tenancy.resolve).
+
+## 6. Installable storefront (PWA)
+
+Every shop's online store (`apps/store` + `packages/storefront-ui`) installs as its own home-screen app, with the shop's
+name, icon and colours. Same host resolution as the pages (`<slug>.srikit.in` / verified custom domain); a host without a
+shop (unknown subdomain, unverified domain, store switched off) gets 404 for every URL below.
+
+- `GET /manifest.webmanifest` (`server/pwa.tsx` manifestHandler; linked from the root metadata): `name` = shop name,
+  `short_name` ≤ 12 letters (whole words where they fit, counted as read, so Tamil isn't cut mid-letter), `description`
+  (en / ta), `lang` en-IN / ta-IN (the shopper's language cookie when the browser sends it, else en), `start_url`
+  `/?source=pwa` (storefront analytics records these launches as source `pwa`, medium `app`), `scope` `/`, `display`
+  standalone, `theme_color` = brand primary, `background_color` = brand background (dark-mode shops default dark),
+  `categories` from the business pack (gym → fitness/health/sports, restaurant → food, …). Cached 10 min.
+- `GET /app-icon/{192.png,512.png,maskable-512.png,apple-touch-icon.png}`: PNGs drawn with next/og from the shop's logo
+  (PNG/JPEG/GIF/SVG; the dark logo on a dark background), else a lettermark: up to two initials in Plus Jakarta Sans Bold
+  on the brand primary, black or white ink by contrast (a Tamil-only name gets a bag glyph). Maskable icons keep the mark
+  inside the safe zone. The manifest links them with `?v=<hash of name, colours, logo>`; cached a day.
+- Root layout: `<link rel="manifest">`, `apple-touch-icon`, `apple-mobile-web-app-title`, and `theme-color` = brand
+  primary (`storeViewport`).
+- `GET /sw.js`: one service worker for every shop, cache names versioned by the Next build id (`.next/BUILD_ID`, or env
+  `SR_BUILD_ID`); `activate` deletes older `sr-store-*` caches. Install precaches `/offline.html` (the shop-branded,
+  self-contained offline page) and the 192 icon. Rules (`lib/pwa.ts` swStrategy, embedded into the script by source and
+  unit-tested): cache-first for `/_next/static/*` and Google Fonts files; stale-while-revalidate for product images under the
+  uploads URL (`<NEXT_PUBLIC_API_URL>/v1/uploads/`, plus `NEXT_PUBLIC_UPLOADS_URL` when a CDN is used; refetched with CORS so
+  they are storable, which needs the store's origin in the API's `CORS_ORIGINS`: otherwise they load as before, uncached) and the app icons; network-first for page navigations with the offline page as fallback. Never handled:
+  `/cart`, `/checkout`, `/account`, `/order(s)`, `/api`, `/track`, `/booking`, `/job`, RSC fetches, live preview, non-GET.
+  Never stored: responses with set-cookie, `cache-control: private` / `no-store`, `vary: *`, opaque or non-200 (so the
+  dynamic, per-shopper pages are not kept; offline navigations get the offline page).
+- Registration (`client/pwa.tsx`): production builds only, when the browser supports service workers. A new worker takes
+  over at once; the shopper's next navigation then loads in full (never on cart / checkout / order pages).
+- Install banner: Chrome / Android / Edge get "Install <shop> app" (the captured `beforeinstallprompt`) after 2 pages in a
+  visit, never on cart / checkout / account / order / track / table pages or when already installed; iOS Safari gets a short
+  "Share → Add to Home Screen" card instead. "Not now" / close is remembered for 30 days (localStorage). Strings in
+  `lib/messages-pwa.ts` (en + ta); styled with the shop's theme tokens. Owners can switch it off: Settings → Online store →
+  "Show install app banner" (`store.installBanner`, default on, public in `GET /v1/store/config`).
+- Tests: `storefront-ui` `lib/pwa.test.ts` (manifest builder, short names, colours, icons, worker rules and script,
+  offline page, banner eligibility) and `server/pwa-icons.test.ts` (icon rendering, logo fallback); `apps/store/test/e2e.cjs`
+  checks the manifest, icons, offline page and worker on the e2e shop.
+- Later: web push for shoppers (order updates, back-in-stock) on top of this worker; Android TWA / Play Store listing.

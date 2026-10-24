@@ -5,8 +5,8 @@ own app profile, mounting the shared UI modules plus one vertical module.
 
 | App | Port | App profile | Vertical back end | Vertical UI | Demo shop (`pnpm seed`) |
 |---|---|---|---|---|---|
-| `apps/pharmacy` | 3006 | `PH` (with the online store) | `@srirealtime/medicines` (`/v1/medicines`) | `@srirealtime/pharmacy-ui` at `/pharmacy` | `medplus.localhost:3006` |
-| `apps/restaurant` | 3007 | `RS` | `@srirealtime/dining` (`/v1/dining`) | `@srirealtime/restaurant-ui` at `/dine` | `annapoorna.localhost:3007` |
+| `apps/pharmacy` | 3006 | `PH` (with the online store) | `@srirealtime/medicines` (`/v1/medicines`) | `@srirealtime/pharmacy-ui` at `/pharmacy` | `thunai.localhost:3006` (store #22, `pnpm seed:stores thunai`) |
+| `apps/restaurant` | 3007 | `RS` | `@srirealtime/dining` (`/v1/dining`) | `@srirealtime/restaurant-ui` at `/dine` | `arusuvai.localhost:3007` |
 | `apps/services` | 3008 | `SV` | `@srirealtime/bookings`, `jobcards`, `memberships` | `bookings-ui` at `/appointments`, `jobcards-ui` at `/jobs`, `memberships-ui` at `/members` | `glow` (salon), `quickfix` (repair), `ironfit` (gym) `.localhost:3008` |
 
 What a shop sees is still app profile ∩ plan ∩ shop switches (docs/features.md). `PH` is the Billing profile plus
@@ -67,8 +67,13 @@ invoice `issued` / `cancelled` events and the store order `statusChanged` event.
 
 ## Business packs and store themes (`@srirealtime/verticals`, `@srirealtime/branding` theme)
 
-Fifteen trades ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
-cloud_kitchen, grocery, bakery, fresh, electronics, repair, salon, gym, jewellery, hardware, optical, tailoring. A pack
+Twenty-nine trades ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
+cloud_kitchen, grocery, bakery, fresh, electronics, repair, salon, gym, jewellery, hardware, optical, tailoring, organic,
+footwear, stationery, toys, cosmetics, and (EC) crackers (Sivakasi fireworks, made-locally badge), florist_pooja (flowers
+and garlands on the scales: loose flowers by weight, strings by the muzham), mobile_accessories (no serials: phones with
+IMEI stay on electronics), furniture, home_decor, pet_shop, sports (size guide: clothing chart, shoe chart for sports
+shoes), (RS) tea_stall (counter-first: QR table ordering off, like cloud_kitchen) and (SV) spa (books through `/book`,
+no job cards, like salon; `spa` is no longer a salon alias). A pack
 holds the app it runs on, its theme preset, the storefront's words in English and Tamil (search box, "new arrivals",
 hero, call to action, newsletter, categories title), whether the clothing size guide and the "made locally" badge apply,
 starter categories, a starter home page (CMS sections) and product-editor hints.
@@ -80,20 +85,96 @@ starter categories, a starter home page (CMS sections) and product-editor hints.
   badge only for `localMade` packs. The CMS default home (no published home) uses the pack's words too.
 - **New shops:** the on-tenant-created `starter` hook (`apps/api/src/kit-verticals.ts`) saves the trade from sign-up,
   applies the pack's preset, creates the starter categories and publishes the starter home (each step skipped when the
-  shop already has its own). www sign-up offers the 15 trades.
+  shop already has its own). www sign-up offers every pack (`BUSINESS_TYPES`), the chosen app's first.
 - **Product editor** (commerce-ui `usePack()`): name / description placeholders, attribute and option suggestions and
   the category example come from the pack.
 
 **Themes** live in the brand tokens (`tokens.theme`, `packages/branding/src/theme.ts`, also importable as
 `@srirealtime/branding/theme`): `header` (classic, centered, minimal, bold), `hero` (slider, split, full, compact),
 `card` (standard, minimal, framed, overlay), `imageRatio` (portrait, square, landscape), `buttons` (rounded, pill,
-square), `density`, `sections` (plain, tinted, boxed), `motif` (none, kolam, dots, waves, grid), `headings` (display,
+square), `density`, `sections` (plain, tinted, boxed), `motif` (none, kolam, dots, waves, grid, stripes), `headings` (display,
 uppercase, underline). Ten presets (heritage, boutique, fresh, care, bistro, tech, luxe, power, workshop, atelier) set
-every token; tests require each preset's structure to differ, not just its colours. The storefront puts the theme on
+every token, plus one look per trade (`theme-presets-trades.ts`) and one per demo store of the series (`theme-presets-stores.ts`, e.g. `industrial`); tests require each preset's structure to differ, not just its colours. The storefront puts the theme on
 `.sf-root` as `data-sf-*` attributes (CSS variants in storefront-ui `styles.css`), renders the header, hero and card
 variants in their components, follows `--sf-image-ratio` everywhere a product picture is drawn, and loads the shop's
 Google Fonts. Shops edit all of it in **Settings → Appearance** (site-ui): trade, preset gallery, colours, fonts and
 every option, with a live sketch of the store.
+
+## How to add a new store look + demo shop (the "20+ stores" series)
+
+Each store of the series is one believable demo shop with a look of its own. Store #1 is **Murugan Hardwares**
+(`murugan.localhost:3003`, preset `industrial`, trade `hardware`, app EC); store #2 is **Porunai Sweets & Bakery**
+(`porunai.localhost:3003`, preset `mithai` in `theme-presets-porunai.ts`, trade `bakery`, app EC, added the `scallop`
+motif). The recipe they followed:
+
+1. **Pick the trade and the app.** The trade is a business pack (`packages/verticals/src/packs.ts`). The shop must run
+   on an app with the online store (EC, PH, RS or SV; a BL shop has no store and 404s). Keep the pack's `appId` as it is
+   (it is the app sign-up recommends and the app the solution preset's switches are stored for); the demo shop just
+   sets `appId: "EC"` with `businessType: "<trade>"` — `packOrDefault`, `starter.apply` and `solutions.toggles` all
+   accept a shop whose app differs from its pack's.
+2. **Design the look** in `packages/branding/src/theme-presets-stores.ts` (`STORE_PRESETS`, merged into
+   `THEME_PRESETS`, so it shows in Settings → Appearance's preset gallery automatically). Set every colour (primary,
+   accent, background, foreground), both fonts (add new Google Fonts to `STORE_FONTS`; they need 400 and 700 weights
+   and are loaded by name; Tamil falls back to Noto Sans Tamil), radius, mode and **every** theme option.
+   `theme-presets-stores.test.ts` requires ≥ 6 options different from every other preset, a primary and a font pair no
+   other preset uses, contrast ≥ 4.5:1 (text ≥ 7:1 on page and accent) and the mode matching the background. A new
+   option value (store #1 added the `stripes` motif) needs: `THEME_OPTIONS` in theme.ts, the union in
+   storefront-ui `types.ts` (`StoreThemeView`), its CSS in storefront-ui `styles.css` (`[data-sf-<option>="<value>"]`),
+   the editor sketch (site-ui `theme-preview.tsx`) and its label in site-ui `messages.ts` (en + ta).
+   From store #2 on, put the preset in its own file `theme-presets-<slug>.ts` (only a `import type` from theme.ts)
+   with its own `theme-presets-<slug>.test.ts`, and register it with one line in `STORE_PRESETS`: stores built in
+   parallel then don't edit the same lines. Check the structural distance before settling: count the differing options
+   against every preset (store #2's nearest preset differs in 11 of 28).
+3. **Write the store** as data in `apps/api/src/demo-stores/<slug>.ts` (type `DemoStore`, `types.ts`) and add it to
+   `DEMO_STORES` (`demo-stores/index.ts`): shop and billing profile (placeholder GSTIN with a valid check digit,
+   `+9198765000xx` phone), `preset`, store settings and policies, delivery zones, categories (the pack's names, so the
+   starter's categories are reused), 30–60 products (generic names, no brands; HSN, GST rate from `GST_RATES`, unit,
+   MRP ≥ price in paise incl. GST, options/variants, stock), rule collections, coupons, pages, menus and the home.
+   Check the HSN's rate after the GST rate notification in force (store #2 used CGST 9/2025-Central Tax (Rate), from
+   22 Sept 2025: cakes, biscuits, rusk, puffs 1905 at 5%, sweetmeats and namkeen 2106 90 at 5%, plain bread 1905 90 10
+   nil) and say which in the file's header comment. Goods sold loose on the counter scale (trades with the `scales`
+   feature) get `unit: "kg"` and a per-kg price; pre-packed weights are options (`250 g` / `500 g` / `1 kg`) on a
+   `box` / `pack` unit, never `kg`. **Apparel and footwear** (HSN chapters 61, 62, 63 made-ups, headings 6401–6405)
+   are taxed by price, not by one rate: export `products: withPriceBandGst(PRODUCTS)` (`demo-stores/gst-band.ts`
+   gives every such HSN the price-band rule, see "Price-band GST" below) and keep `gstRate` as the fallback. Avoid
+   tax-inclusive prices between ₹2,625 and ₹2,950 (the dead band: billed at 18% and flagged in the editor).
+4. **Home in English and Tamil.** `home(ctx)` returns the CMS home: sections with **stable ids** (`<prefix>-…`, never
+   `starter-…`) and `translations.ta` = section id → the same section's words in Tamil (arrays by position). The
+   storefront shows them to Tamil shoppers (`localizeSections`, `@srirealtime/cms/localize`); only text is taken from a
+   translation, links / pictures / references always come from the section. The home editor (site-ui) edits English
+   only and saves without `translations`, so an owner's edit drops the Tamil words rather than leaving stale ones.
+   Menus, pages and product names are single-language. Typing pitfall: a literal array whose objects differ in shape
+   (`[{ name, description }, { name }]`) infers `description?: undefined`, which `TranslationValue` rejects; build such
+   items with a helper typed `Record<string, string>` (store #2's `dish()`). `image-text` sections take either
+   `imageSide` (the text column is padded on its outer side both ways).
+5. **Photos.** Pick Pexels photos (free licence; search `https://www.pexels.com/search/<query>/`, look at contact
+   sheets, avoid legible brand logos, shop price signs and people who look like customers being quoted; check the
+   picture really shows the product: Pexels titles are often wrong, e.g. "brownies" that are Tirunelveli halwa). Use
+   them by id:
+   `photo: <id>` on products and categories, `ctx.photo(<id>, "wide" | "tile" | "square")` in the home and pages, and
+   credit every one in `photos` (photographer + alt); the photo-credits page is generated from that list. The seed
+   downloads each from the Pexels CDN at a reduced, cropped size and stores it as a public `storefront` file named
+   `<slug>-pexels-<id>-<size>`, which later runs reuse. Offline, products fall back to the generated placeholder.
+6. **Seed** (idempotent: everything is matched by name / slug / code and only created when missing; the home is written
+   only when the shop has none or still shows the untouched starter home):
+   `pnpm --filter @srirealtime/api seed:stores <slug>` (only the demo stores; `pnpm seed` runs them too). While building
+   the home, `seed:stores <slug> --refresh-home` rewrites a home that is still the store's own seeded one. In dev,
+   override `DATABASE_URL` / `REDIS_URL` in the environment if the database runs elsewhere than `.env` says. The seed
+   exits before its store-cache refresh fires, so a running store keeps serving the old home after `--refresh-home`
+   until its time-based revalidate; drop the cache yourself:
+   `curl -X POST -H "content-type: application/json" -H "x-revalidate-secret: dev-store-revalidate-secret" -d '{"keys":["<slug>"],"resources":["home"]}' http://127.0.0.1:3003/api/revalidate`.
+   The seed creates the shop without a sign-up plan, so the on-created `subscription` hook skips it
+   (`signupSubscriptionStart`) and `ensureShop` starts the subscription once it has set the app's plan.
+7. **Test and look.** `apps/api` `src/demo-stores/demo-stores.test.ts` checks every store (catalogue sanity, photo
+   credits, home schema, a Tamil translation for every section, valid pages and menus, one look per store); then the
+   branding, cms, storefront-ui and site-ui tests, one package at a time. Load the home, a category and a product page
+   in English and Tamil in a browser (zero hydration errors, no horizontal overflow, no missing pictures) and compare the
+   screenshots with the other stores of the series: the look must read as a different store, not a recolour. In Git
+   Bash, run browser scripts that take URL paths with `MSYS_NO_PATHCONV=1` (otherwise `/` becomes a Windows path and
+   the navigation fails). Check a phone width too (390 px, with a mobile viewport so a too-wide page widens the layout
+   viewport and shows up in `document.documentElement.scrollWidth`), and toggle the light / dark switch once: the shop's
+   other scheme is derived from its brand colours (`storefront-ui` `lib/scheme.ts`), so check it stays readable. The overflow check misses text clipped inside `overflow: hidden` boxes: read the Tamil product
+   page screenshots too (store #2 found the trust badges clipping Tamil words; Tamil now shows them two per row).
 
 ## Services (`apps/services`, app profile `SV`)
 
@@ -126,7 +207,7 @@ Three engines that sit in the app profiles of several trades. Their features sta
 (`offByDefault` in `apps/api/src/kit.ts`); the business pack switches them on (`features` in
 `packages/verticals/src/packs.ts`), or the owner does in Settings → Features.
 
-- **Weighing scales** (`@srirealtime/scales`, `/v1/scales`, UI at `/weighing`; packs grocery, bakery, fresh; apps BL
+- **Weighing scales** (`@srirealtime/scales`, `/v1/scales`, UI at `/weighing`; packs grocery, bakery, fresh, organic, florist_pooja; apps BL
   and EC): PLUs per catalogue item (by weight or by count, tare), today's price list (writes catalogue prices), CSV
   export for the scale, label preview. Scale labels (EAN-13, prefix 20–29, 5-digit PLU, 5-digit weight) scanned at the
   counter become a weighed line (`qty` = kg).
@@ -198,6 +279,108 @@ Platform → Apps & features → app → Add-ons.
 - Routes: `GET/PUT/DELETE /v1/plans/addons[/:id]`; shop `GET /v1/subscriptions/addons`, `POST /addons`,
   `/addons/preview`, `/addons/:addonId/cancel`, `/addons/payments/:id/cancel`; super-admin
   `/v1/subscriptions/admin/:tenantId/addons` (+ `/comp`, `/:addonId/end`); mock `POST /mock/pay`.
+
+## Layout catalogue (for store builders)
+
+Every home is a list of CMS sections (`packages/cms/src/content.ts`, edited in the shop admin's Home page editor) on a
+page layout (theme options in Settings → Appearance). Two stores should differ in **which** sections they use, their
+order and rhythm, and the page layout, not just colours. Pick from this list; ask for anything missing in
+`docs/layout-requests.md`. Every section also takes the shared **style** (background brand / muted / dark / photo /
+gradient, spacing, width, alignment, entrance animation, hide on phone / desktop) and, new, **Row: half** — two
+neighbouring half sections sit side by side from 1024 px (stacked on phones): pair a testimonial with an offer, a
+gold-rate board with a location, a text story with a newsletter.
+
+### Page layouts (Settings → Appearance → Page layout; `tokens.theme.pageLayout` / `mobileNav`)
+
+Kept apart from `THEME_OPTIONS` (`LAYOUT_OPTIONS` in `packages/branding/src/theme.ts`), so presets don't have to set
+them; a demo store sets them in its preset's `theme` (`{ …, pageLayout: "rail", mobileNav: "tabs" }`; the store-preset
+test accepts these two keys on top of every theme option and checks their values). The seed applies a preset only to a
+new shop (or one still on its trade's look), so an existing demo shop also needs them in its brand tokens once
+(`branding.service.update(tenantId, { tokens: { theme: { pageLayout, mobileNav } } })`, which merges). Stores #1–#5 use
+rail + tabs (Murugan), sidebar + tabs (Porunai), standard + tabs (Cauvery), sidebar (Vayal) and magazine (Thari). All eight combinations of page layout and phone nav are now taken (rail + off by Malligai and QuickFix, the services demo shop: a repair catalogue browsed by device). Store #20 (Thaiyal Tailors, preset `madder-thread`) shares sidebar + tabs with Porunai only. Store #22 (Thunai Pharmacy, preset `saline-blue`, `thunai.localhost:3003`, counter `:3006`) uses rail + tabs and a home with no hero: finder (chips) → need tiles → prescription block → timeline → two comparisons → monthly-box pricing table → shelf → team → FAQ → location → doctor note.
+
+| Option | What changes | Use for |
+| --- | --- | --- |
+| `pageLayout: standard` | Header on top, pages full width (the default). | Most shops. |
+| `pageLayout: rail` | A sticky category rail (pictures or icons, the open category's sub-categories) beside home, listing and product pages on desktop; a category chip strip under the header on phones (home and listings). The transparent-over-banner header is off. | Big catalogues: hardware, grocery, pharmacy, stationery — marketplace feel. |
+| `pageLayout: sidebar` | On desktop the header becomes a fixed 16 rem menu down the left: logo, search, the header menu, categories, language, light/dark, account and cart. Phones keep the normal header. | Boutiques, galleries, portfolios, salons — an app/agency look. |
+| `pageLayout: magazine` | Editorial: home section headings get a numbered kicker ("01 —") and display size, product grids (home and listings) get a 2×2 feature tile every 6th product, text sections run in two columns with a drop cap (not in Tamil), the product title is set large. | Fashion, sarees, jewellery, books, lifestyle. |
+| `mobileNav: tabs` | An app-like bottom tab bar on phones: Home, Categories (a sheet of category tiles), Search, Cart (opens the mini cart, with count), Account; WhatsApp / buy bar / compare tray move above it. | Grocery, pharmacy, food: repeat shoppers on phones. |
+
+### Home sections
+
+Product & catalogue: `collection`, `products`, `product-tabs` (new / bestsellers / sale / a collection, in tabs),
+`bestsellers`, `recommended`, `recently-viewed`, `deal` (one product + countdown), `shop-the-look` (photo with product
+dots), `categories` (12 layouts: circles, cards, slider, chips, big tiles, app icons, story rings, pills, tiles,
+banner row, bento, minimal list), `category-mosaic`.
+Story & trust: `hero` (slider), `hero-split`, `hero-video`, `banner`, `text`, `image-text`, `gallery` (grid / masonry
+/ carousel), `logos`, `usp` (cards / inline / centered / split), `testimonials` (carousel / cards / single), `stats`,
+`timeline`, `team`, `before-after`, `faq`, `location`, `newsletter` (band / split / card / inline), `instagram`,
+`blog-posts`, `reviews-summary`, `offer` (coupon + countdown).
+Trade: `menu-board` (restaurants), `appointment` and `pricing-table` (services, gyms), `gold-rates` (jewellery).
+
+New layout sections (`pages/home-layouts.tsx` in storefront-ui, forms in site-ui `section-forms-layouts.tsx`):
+
+| Type | What the shopper sees | Owner controls | Use for |
+| --- | --- | --- | --- |
+| `flash-sale` | A brand-gradient band ("Live now", "Up to n% off" from real discounts, a d/h/m/s countdown) over a carousel or grid of the sale's products; shows from `startsAt` to `endsAt`, then hides itself (server and client). | Title, text, start / end, products: picked · biggest discounts now · a collection, layout, how many, a button. | Weekend / festival sales, grocery evening deals. |
+| `finder` | 1–3 questions as answer tiles one at a time (wizard, with progress, Back / Skip) or as chip rows (chips); matches load live under it, or (`results: button`) a "Show my list (22)" button opens the filtered listing. Optional picture beside and a second button (WhatsApp). | Questions and answers; each answer filters by category, **tag** (exact; new `tag` filter on `/catalog/public/search` and `/search?tag=`), option/attribute (`Size = 8`), words or a price range, or opens its own page (a class's collection). | Shop by class (stationery), age (toys), concern (beauty), budget, room. |
+| `stories` | A strip of story bubbles (`rings`) or tall 9:16 reels (`reels`, muted clips play while on screen) that open a full-screen viewer: progress bars, tap / arrow keys, pause, a button per story. | Stories: picture, optional video, title, text, link + button text. | Fashion drops, "on the loom this week", new arrivals, recipes. |
+| `category-shelf` | Categories down the side (tabs; chips on phones) with the chosen category's products beside them and "View all in …". | Title, which categories (or the first six), pictures on/off, products per category. | Hardware aisles, grocery departments, pharmacy. |
+| `sticky-story` | A picture that stays in view while numbered chapters scroll past it, crossfading to each chapter's picture (desktop); each picture above its text on phones. | Title, picture side, chapters: eyebrow, heading, text (markdown), picture, button. | Brand / farm / weaving story, how it's made. |
+| `comparison` | A real table of 2–4 products: picture and name, price, stars, the owner's rows, Add buttons; one column can be highlighted ("Most bought"). Scrolls sideways on phones with the feature column pinned. | Products, highlight + badge, show ratings, rows (one value per product). | Electronics, tools, shirts, plans. |
+| `tiles` | "Shop by need" tiles: picture (or an icon from the name), name, a "what helps" note and the product count; each opens its link / collection / tag listing. Row (sideways on phones) or grid. | Title, text, layout, counts on/off; tiles: name, note, picture, collection or tag or link. | Beauty concerns, occasions, projects, rooms. |
+| `size-finder` | "Find your size": Men / Women / Kids toggle, size chips that open the listing in that size (`opt.Size`) and category, optional foot-length box (cm) that marks the size from the UK/India shoe scale. | Title, text, picture, option name, foot-length box, groups (name, category, sizes). | Footwear, school uniforms, rings. |
+| `swatches` | Shade finder: colour swatches of the products' shade option (tabs per product), a skin-tone filter, and the chosen shade's name, price and Add (that variant). | Products (1–6), option name, shades: name, colour, skin tone. | Lipstick, foundation, nail paint, paint, thread, saree colours. |
+
+All of them: English + Tamil words through `translations.ta` (filters, tags, sizes, shade values, links and dates are
+never translated), light and dark, 390 px phones, keyboard and screen readers (tabs, radio groups, `aria-pressed`
+answers, live match counts, a captioned table).
+
+## Price-band GST (apparel and footwear)
+
+From 22 Sept 2025 (Notification No. 9/2025-Central Tax (Rate), 17.09.2025, and the matching IGST / SGST
+notifications) clothing and footwear are taxed by their sale value:
+
+| Goods | 5% (Sch. I) | 18% (Sch. II) |
+| --- | --- | --- |
+| Ch. 61 apparel and clothing accessories, knitted or crocheted | S.No. 388, "of sale value not exceeding Rs 2500 per piece" | S.No. 197, exceeding |
+| Ch. 62 apparel and clothing accessories, not knitted | S.No. 389 | S.No. 198 |
+| Ch. 63 other made-up textile articles, sets (not 6305 32 00, 6305 33 00, 6309) | S.No. 390 | S.No. 199 |
+| 6401–6405 footwear | S.No. 392, "of sale value not exceeding Rs.2500 per pair" | the 6401–6405 entries |
+
+- **What is compared.** "Sale value" is the value of supply under Sec 15 of the CGST Act: the transaction value,
+  which excludes the GST itself, less discounts given before or at the time of supply and shown on the invoice
+  (Sec 15(3)(a)). So the test is on the **taxable value per piece / pair after the bill's discounts**: ₹2,500.00 is
+  5% ("not exceeding"), ₹2,500.01 is 18%, a ₹2,999 kurta marked down to ₹2,399 on the bill is 5%. Each piece is
+  tested on its own (a bill of several pieces is not added up). A credit note issued later does not change the
+  rate of the original supply: it credits at the bill line's rate.
+- **Tax-inclusive (MRP) prices.** For an inclusive price P per piece: P ≤ ₹2,625.00 (2,500 × 1.05) → 5%;
+  P > ₹2,950.00 (2,500 × 1.18) → 18%. Between them no rate is consistent (at 5% the taxable value is above ₹2,500,
+  at 18% it is at or below it); srikit charges **18%** there (never under-pays tax; excess tax collected is simply
+  paid over, Sec 76) and the product editor warns so the shop re-prices to ₹2,625 or less, or above ₹2,950. Brands
+  publish the same cut-offs ("MRP up to ₹2,625 attract 5% GST, while those above ₹2,950 are taxed at 18%").
+- **Model.** `@srirealtime/gst` `rate-rule.ts`: `GstRateRule = { kind: "price-band", threshold: 250000 (paise of
+  taxable value per unit), below: 5, above: 18 }` (`APPAREL_FOOTWEAR_GST_RULE`), `effectiveGstRate(rule | rate,
+  unitTaxable, qty)`, `gstRateForInclusive(rule | rate, inclusive, qty)` (with `deadBand`), `gstRateAtPrice`,
+  `lineGstRate(line)` and `priceBandRuleForHsn(hsn)`. Comparisons are integer (`taxable × 1000 ≤ threshold ×
+  qty-in-thousandths`), so a 3-piece line of ₹7,500.00 taxable is exactly at the threshold.
+- **Catalogue.** `catalog_products.gst_rule` (jsonb, migration `0025_gst_rule`); `gstRate` stays as the fallback /
+  filter value. The editor's "GST by price band (apparel / footwear)" switch sets the rule. Billing items, POS items
+  and store variants are banded at their own price (`gstRate`, `rate`) and carry `gstRule`.
+- **Bills, POS, orders, checkout.** Invoice lines take an optional `gstRule`; `computeLine` re-bands the line on its
+  unit taxable value after the line discount (from `inclusiveTotal` for inclusive lines) and stores the effective
+  `gstRate`, so rate-wise and HSN-wise summaries (GSTR-1 HSN rows are keyed by HSN + rate) group by the rate actually
+  charged; a loyalty / bill discount (`applyBillDiscount`) re-bands too. The POS cart (`cartLineGstRate`) and the
+  billing form do the same client side. Store orders (`computeOrderTotals`) band each line after its coupon and
+  loyalty shares and write the effective rate on the order line, which the order's invoice copies. Credit notes use
+  the original line's rate and split. Products without a rule behave exactly as before.
+
+Sources: the notification's schedule text as reproduced at cmaknowledge.in ("GST Rate Changes Effective 22.09.2025",
+Notification 09/2025-CT(R)) and the CBIC copy of 9/2025-Integrated Tax (Rate); CGST Act Sec 15 and the CBIC GST flyer
+on valuation (discounts before / at supply); the dead band cut-offs as published by brands (e.g. jockey.in "GST
+Regulations"). The notification has been amended since (e.g. by 19/2025-CT(R) and in May 2026 to align with the
+Finance Act, 2026); re-check the entries before changing the rule.
 
 ## Not done yet
 
