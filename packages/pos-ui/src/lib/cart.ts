@@ -58,6 +58,8 @@ export interface CartLine extends CartProduct {
 export interface TaxOptions {
   sellerState: string;
   placeOfSupply: string;
+  /** Composition taxpayer: a bill of supply, no tax added to the prices (the server does the same). */
+  taxFree?: boolean;
 }
 
 let seq = 0;
@@ -184,7 +186,8 @@ export interface CartTotals extends InvoiceTotals {
 
 /** Live totals: exactly computeInvoice over `toLineInput` lines. */
 export function cartTotals(lines: readonly CartLine[], opts: TaxOptions): CartTotals {
-  const totals = computeInvoice(lines.map(toLineInput), opts);
+  const inputs = lines.map(toLineInput);
+  const totals = computeInvoice(opts.taxFree ? inputs.map((l) => ({ ...l, gstRate: 0 as const, gstRule: null })) : inputs, opts);
   return {
     ...totals,
     count: lines.length,

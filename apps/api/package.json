@@ -54,6 +54,7 @@
     "@srirealtime/expenses": "workspace:*",
     "@srirealtime/features": "workspace:*",
     "@srirealtime/gst": "workspace:*",
+    "@srirealtime/gstfiling": "workspace:*",
     "@srirealtime/i18n": "workspace:*",
     "@srirealtime/idempotency": "workspace:*",
     "@srirealtime/importexport": "workspace:*",

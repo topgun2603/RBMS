@@ -86,10 +86,28 @@ export function normalizeSeller(raw: Partial<SellerProfile> | null | undefined):
   out.sendPaymentReceipts = flag(raw?.sendPaymentReceipts, true);
   out.invoicePrefix = sanitizePrefix(out.invoicePrefix ?? DEFAULT_INVOICE_PREFIX);
   if (out.gstin) out.gstin = out.gstin.toUpperCase();
+  // Composition taxpayers (set by GST filing settings, not by the billing profile): only carried when on, so old snapshots stay as they were.
+  if (raw?.taxScheme === "composition") {
+    out.taxScheme = "composition";
+    out.compositionFrom = typeof raw.compositionFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.compositionFrom) ? raw.compositionFrom : null;
+  }
   if (out.stateCode && /^\d{1,2}$/.test(out.stateCode)) out.stateCode = out.stateCode.padStart(2, "0");
   // A GSTIN carries the state; use it when the profile doesn't say.
   if (!out.stateCode && out.gstin && isValidGstin(out.gstin)) out.stateCode = stateFromGstin(out.gstin);
   return out;
+}
+
+/**
+ * True when a bill dated `date` is a bill of supply of a composition taxable person: no tax is charged on it
+ * (Section 10(4) and Rule 49 CGST). Bills dated before the scheme started are untouched.
+ */
+export function isCompositionBill(seller: Pick<SellerProfile, "taxScheme" | "compositionFrom"> | null | undefined, date: string): boolean {
+  return seller?.taxScheme === "composition" && (!seller.compositionFrom || date >= seller.compositionFrom);
+}
+
+/** The same lines at 0% GST (a composition bill): the price charged stays; no tax is added on top of it. */
+export function withoutTax<T extends { gstRate: number; gstRule?: unknown }>(lines: T[]): T[] {
+  return lines.map((l) => ({ ...l, gstRate: 0, gstRule: null }));
 }
 
 /** First day of the IST month of `today` and of the next month, as "YYYY-MM-DD". */

@@ -1,4 +1,5 @@
 import type {
+  GstPaymentSrc,
   CreditNoteSrc,
   DebitNoteSrc,
   ExpenseSrc,
@@ -16,6 +17,7 @@ import type {
 } from "@srirealtime/accounting";
 import type { Db } from "@srirealtime/db";
 import { expenseCategories, expenses, itcOf } from "@srirealtime/expenses";
+import { gstTaxPayments } from "@srirealtime/gstfiling";
 import { todayIST } from "@srirealtime/gst";
 import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, tillSessions, type InvoicesService } from "@srirealtime/invoices";
 import { debitNotes, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@srirealtime/inventory";
@@ -260,6 +262,22 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           vendorGstin: e.vendorGstin,
           paymentMethod: method(e.paymentMethod),
           cancelledOn: e.status === "cancelled" ? istDate(e.updatedAt) : null,
+        }),
+      );
+    },
+
+    /** Composition tax paid by challan (GST filing > Composition): an expense of the shop. */
+    async gstPayments(tenantId) {
+      const rows = await db.select().from(gstTaxPayments).where(and(eq(gstTaxPayments.tenantId, tenantId), eq(gstTaxPayments.kind, "composition")));
+      return rows.map(
+        (r): GstPaymentSrc => ({
+          id: r.id,
+          date: r.paidOn,
+          amount: r.igst + r.cgst + r.sgst + r.cess + r.interest + r.lateFee,
+          mode: method(r.method),
+          status: r.status === "cancelled" ? "cancelled" : "paid",
+          cancelledOn: r.status === "cancelled" ? istDate(r.updatedAt) : null,
+          period: r.period,
         }),
       );
     },

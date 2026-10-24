@@ -11,6 +11,7 @@ import * as listsV2 from "./messages/lists";
 import * as payablesV2 from "./messages/payables";
 import * as accountingV2 from "./messages/accounting";
 import * as quotationsV2 from "./messages/quotations";
+import * as gstV2 from "./messages/gst";
 
 /**
  * billing.* strings for the billing module. Tenant/server overrides from GET /v1/i18n/messages win
@@ -229,6 +230,8 @@ const en: Messages = {
   // invoice document
   "billing.doc.taxInvoice": "Tax Invoice",
   "billing.doc.billOfSupply": "Invoice",
+  "billing.doc.compositionBill": "Bill of Supply",
+  "billing.doc.compositionNote": "Composition taxable person, not eligible to collect tax on supplies.",
   "billing.doc.invoice": "Invoice",
   "billing.doc.number": "Invoice no.",
   "billing.doc.date": "Date",
@@ -581,6 +584,8 @@ const ta: Messages = {
 
   "billing.doc.taxInvoice": "வரி விலைப்பட்டியல் (Tax Invoice)",
   "billing.doc.billOfSupply": "விலைப்பட்டியல்",
+  "billing.doc.compositionBill": "விநியோகப் பட்டியல் (Bill of Supply)",
+  "billing.doc.compositionNote": "கூட்டு வரி செலுத்துவோர் (Composition). வரி வசூலிக்க தகுதியற்றவர்.",
   "billing.doc.invoice": "பில்",
   "billing.doc.number": "பில் எண்",
   "billing.doc.date": "தேதி",
@@ -721,7 +726,7 @@ const ta: Messages = {
   "billing.errors.loadFailed": "ஏற்ற முடியவில்லை",
 };
 
-const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, growthV2, creditNotesV2, listsV2, payablesV2, accountingV2, quotationsV2];
+const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, growthV2, creditNotesV2, listsV2, payablesV2, accountingV2, quotationsV2, gstV2];
 
 export const billingMessages = {
   en: Object.assign({}, en, ...areas.map((a) => a.en)) as Messages,

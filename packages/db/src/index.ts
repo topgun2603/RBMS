@@ -32,6 +32,6 @@ export const timestamps = () => ({
  * The few query helpers the API host (apps/api) needs for its own small cross-module lookups, re-exported so the host
  * doesn't take a direct drizzle-orm dependency. Packages import drizzle-orm themselves.
  */
-export { and, eq, gt, inArray, isNotNull, isNull, like, lt, or, sql, type SQL } from "drizzle-orm";
+export { and, eq, gt, gte, inArray, isNotNull, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
 
 export { runMigrations } from "./migrate";

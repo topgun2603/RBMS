@@ -196,11 +196,12 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const totals = React.useMemo(
     () =>
       computeInvoice(
-        priced.map((p) => p.input!),
+        // Composition taxpayer: a bill of supply, the prices carry no tax (the server does the same).
+        priced.map((p) => (seller.data?.taxScheme === "composition" ? { ...p.input!, gstRate: 0 as const, gstRule: null } : p.input!)),
         { sellerState: sellerState || effectivePos || "33", placeOfSupply: effectivePos || sellerState || "33" },
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `priced` is derived from lines
-    [lines, sellerState, effectivePos],
+    [lines, sellerState, effectivePos, seller.data?.taxScheme],
   );
   const lineTotals = new Map(priced.map((p, i) => [p.line.key, totals.lines[i]]));
   const inter = totals.igst > 0 || (!!sellerState && !!effectivePos && sellerState !== effectivePos);

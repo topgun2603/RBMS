@@ -797,9 +797,10 @@ export class EInvoiceService {
    * GSTINs (another state) files one return per GSTIN, so only bills whose seller GSTIN is the chosen one are exported.
    * The GSTIN is `opts.gstin`, else the e-invoice account's, else the GSTIN on most of the period's bills.
    */
-  async gstr1(tenantId: string, period: string, opts: { gstin?: string | null } = {}): Promise<Gstr1Result & { filename: string }> {
-    const range = periodRange(period);
-    if (!range) throw badRequest("Use the return period as MMYYYY, e.g. 102026");
+  async gstr1(tenantId: string, period: string, opts: { gstin?: string | null; range?: { from: string; to: string } } = {}): Promise<Gstr1Result & { filename: string }> {
+    const monthRange = periodRange(period);
+    if (!monthRange) throw badRequest("Use the return period as MMYYYY, e.g. 102026");
+    const range = opts.range ?? monthRange;
     const [account, all] = await Promise.all([this.accountRow(tenantId), this.invoices.listForPeriod(tenantId, range)]);
     if (opts.gstin && !isValidGstin(opts.gstin)) throw badRequest("Invalid GSTIN");
     const counts = new Map<string, number>();
@@ -810,7 +811,7 @@ export class EInvoiceService {
     const own = normalizeGstin(gstin);
     // Bills without a seller GSTIN (issued before the profile had one) count for the shop's main GSTIN.
     const invoices = all.filter((i) => (i.seller.gstin ? normalizeGstin(i.seller.gstin) === own : !opts.gstin));
-    const res = buildGstr1(invoices, { gstin, period });
+    const res = buildGstr1(invoices, { gstin, period, ...(opts.range ? { range: opts.range } : {}) });
     return { ...res, filename: `GSTR1_${normalizeGstin(gstin)}_${period}.json` };
   }
 }

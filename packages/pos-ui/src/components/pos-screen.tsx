@@ -184,7 +184,7 @@ function Counter() {
   const customer = cart.customer;
   const sellerState = env.sellerState ?? "00";
   const placeOfSupply = (customer.kind === "saved" && customer.customer.stateCode) || sellerState;
-  const totals = React.useMemo(() => cartTotals(lines, { sellerState, placeOfSupply }), [lines, sellerState, placeOfSupply]);
+  const totals = React.useMemo(() => cartTotals(lines, { sellerState, placeOfSupply, taxFree: env.seller.taxScheme === "composition" }), [lines, sellerState, placeOfSupply, env.seller.taxScheme]);
 
   const phone = e164(customerPhone(customer));
   const quoteAmount = useDebounced(totals.total, 400);

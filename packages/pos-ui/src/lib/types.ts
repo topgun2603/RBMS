@@ -88,6 +88,8 @@ export interface SellerProfile {
   stateCode: string | null;
   phone: string | null;
   upiId: string | null;
+  /** "composition": bills of supply with no tax (set from GST filing settings). */
+  taxScheme?: "regular" | "composition";
 }
 
 /** GET /catalog/variants/search, /variants/lookup */

@@ -7,6 +7,7 @@ import {
   debitNotePostings,
   effectiveDate,
   expensePostings,
+  gstPaymentPostings,
   invoicePaymentPostings,
   invoicePostings,
   isBalanced,
@@ -327,5 +328,22 @@ describe("identity and locks", () => {
     expect(effectiveDate("2026-10-01", "2026-09-30")).toEqual({ date: "2026-10-01", late: false });
     expect(effectiveDate("2026-10-01", null)).toEqual({ date: "2026-10-01", late: false });
     expect(effectiveDate("2026-12-31", "2026-12-31").date).toBe("2027-01-01");
+  });
+});
+
+describe("composition tax paid", () => {
+  const pay = { id: "g1", date: "2026-10-18", amount: 1_410, mode: "bank" as const, status: "paid" as const, cancelledOn: null, period: "2026-Q2" };
+  it("is an expense paid from the money account, with no GST account touched", () => {
+    const [p] = gstPaymentPostings(pay);
+    expect(isBalanced(p!.lines)).toBe(true);
+    expect(p!.lines.map((l) => l.account)).toEqual([{ key: SYS.compositionTax }, { method: "bank" }]);
+    expect(p!.lines[0]!.debit).toBe(1_410);
+    expect(p!.lines.some((l) => "key" in l.account && l.account.key.startsWith("gst_"))).toBe(false);
+  });
+  it("is mirrored when cancelled and ignores zero amounts", () => {
+    const ps = gstPaymentPostings({ ...pay, status: "cancelled", cancelledOn: "2026-10-20" });
+    expect(ps.map((p) => p.sourceType)).toEqual(["gst_payment", "gst_payment_cancel"]);
+    expect(ps[1]!.date).toBe("2026-10-20");
+    expect(gstPaymentPostings({ ...pay, amount: 0 })).toEqual([]);
   });
 });

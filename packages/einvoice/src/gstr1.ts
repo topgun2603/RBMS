@@ -124,6 +124,8 @@ export interface Gstr1Options {
   hsnLayout?: "split" | "legacy";
   /** Optional `version` string written into the file (e.g. the offline tool version). */
   version?: string;
+  /** A wider range than the month of `period`: a quarter for QRMP shops, whose quarterly return is named by its last month. */
+  range?: { from: string; to: string };
 }
 
 export interface Gstr1Result {
@@ -217,8 +219,8 @@ function mergeHsn(a: Map<string, HsnAcc>, b: Map<string, HsnAcc>): Map<string, H
 
 /** Builds the GSTR-1 JSON for one return period. Pure. */
 export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Options): Gstr1Result {
-  const range = periodRange(opts.period);
-  if (!range) throw new RangeError(`Invalid return period: ${opts.period} (use MMYYYY)`);
+  const range = opts.range ?? periodRange(opts.period);
+  if (!range || !periodRange(opts.period)) throw new RangeError(`Invalid return period: ${opts.period} (use MMYYYY)`);
   const gstin = normalizeGstin(opts.gstin);
   const warnings: string[] = [];
   const counts = { b2b: 0, b2cl: 0, b2cs: 0, cdnr: 0, cdnur: 0, cancelled: 0, skipped: 0 };

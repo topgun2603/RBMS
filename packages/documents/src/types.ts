@@ -10,6 +10,9 @@ export type DocLocale = "en" | "ta";
 
 /** The shop's details printed on documents (invoices' PublicSeller is assignable to it). */
 export interface DocSeller {
+  /** "composition" from `compositionFrom` on: bills are Bills of Supply with no tax. */
+  taxScheme?: "regular" | "composition" | null;
+  compositionFrom?: string | null;
   legalName: string | null;
   gstin: string | null;
   address: string | null;

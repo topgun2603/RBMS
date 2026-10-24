@@ -403,6 +403,53 @@ export function createBatch3(d: Batch3Deps) {
   }
 
   // ================================================================ e-invoice
+  const loadSalesForPeriod = async (tenantId: string, range: { from: string; to: string }): Promise<EInvoiceSource[]> => {
+      const out: EInvoiceSource[] = [];
+      const hsnCache = new Map<string, string | null>();
+      for (let offset = 0; ; offset += 200) {
+        const page = await d.invoices.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
+        // imported = already filed in the old software. A few bills load at a time (a busy month has thousands).
+        const ids = page.items.filter((s) => s.status !== "draft" && s.number && !s.imported).map((s) => s.id);
+        const bills = await mapLimit(ids, PERIOD_LOAD_CONCURRENCY, async (id) => {
+          const inv = await d.invoices.get(tenantId, id).catch(nullOn404);
+          return inv ? toEInvoiceSource(await withItemHsn(d.invoices, tenantId, inv, hsnCache)) : null;
+        });
+        for (const b of bills) if (b) out.push(b);
+        if (page.items.length < 200) break;
+      }
+      // Credit notes of the period (CDNR / CDNUR; cancelled ones only count in doc_issue).
+      for (let offset = 0; ; offset += 200) {
+        const page = await d.invoices.creditNotes.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
+        const notes = await mapLimit(page.items, PERIOD_LOAD_CONCURRENCY, async (s) => {
+          const cn = await d.invoices.creditNotes.get(tenantId, s.id).catch(nullOn404);
+          const original = cn ? await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404) : null;
+          return cn ? creditNoteSource(cn, original?.total ?? null) : null;
+        });
+        for (const n of notes) if (n) out.push(n);
+        if (page.items.length < 200) break;
+      }
+      return out;
+  };
+
+  // The GST filing screens ask for the same month a few times in a row (GSTR-1 file, checks, GSTR-3B): keep it for a few seconds.
+  const salesCache = new Map<string, { doneAt: number | null; value: Promise<EInvoiceSource[]> }>();
+  const salesForPeriod = (tenantId: string, range: { from: string; to: string }): Promise<EInvoiceSource[]> => {
+    const key = `${tenantId}|${range.from}|${range.to}`;
+    const hit = salesCache.get(key);
+    // Calls that overlap share one load; a finished load is reused for 15 seconds only (a bill issued meanwhile must show).
+    if (hit && (hit.doneAt === null || Date.now() - hit.doneAt < 15_000)) return hit.value;
+    const entry = { doneAt: null as number | null, value: loadSalesForPeriod(tenantId, range) };
+    salesCache.set(key, entry);
+    entry.value.then(
+      () => {
+        entry.doneAt = Date.now();
+      },
+      () => salesCache.delete(key),
+    );
+    if (salesCache.size > 20) for (const [k, v] of salesCache) if (v.doneAt !== null && Date.now() - v.doneAt > 15_000) salesCache.delete(k);
+    return entry.value;
+  };
+
   const einvoice = createEInvoice({
     db,
     config: {
@@ -429,33 +476,7 @@ export function createBatch3(d: Batch3Deps) {
         const original = await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404);
         return creditNoteSource(cn, original?.total ?? null);
       },
-      listForPeriod: async (tenantId, range) => {
-        const out: EInvoiceSource[] = [];
-        const hsnCache = new Map<string, string | null>();
-        for (let offset = 0; ; offset += 200) {
-          const page = await d.invoices.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
-          // imported = already filed in the old software. A few bills load at a time (a busy month has thousands).
-          const ids = page.items.filter((s) => s.status !== "draft" && s.number && !s.imported).map((s) => s.id);
-          const bills = await mapLimit(ids, PERIOD_LOAD_CONCURRENCY, async (id) => {
-            const inv = await d.invoices.get(tenantId, id).catch(nullOn404);
-            return inv ? toEInvoiceSource(await withItemHsn(d.invoices, tenantId, inv, hsnCache)) : null;
-          });
-          for (const b of bills) if (b) out.push(b);
-          if (page.items.length < 200) break;
-        }
-        // Credit notes of the period (CDNR / CDNUR; cancelled ones only count in doc_issue).
-        for (let offset = 0; ; offset += 200) {
-          const page = await d.invoices.creditNotes.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
-          const notes = await mapLimit(page.items, PERIOD_LOAD_CONCURRENCY, async (s) => {
-            const cn = await d.invoices.creditNotes.get(tenantId, s.id).catch(nullOn404);
-            const original = cn ? await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404) : null;
-            return cn ? creditNoteSource(cn, original?.total ?? null) : null;
-          });
-          for (const n of notes) if (n) out.push(n);
-          if (page.items.length < 200) break;
-        }
-        return out;
-      },
+      listForPeriod: (tenantId, range) => salesForPeriod(tenantId, range),
     },
     log,
   });
@@ -596,6 +617,8 @@ export function createBatch3(d: Batch3Deps) {
     support,
     whatsapp,
     einvoice,
+    /** Bills and credit notes of a period as the e-invoice module reads them (shared with GST filing). */
+    salesForPeriod,
     branches,
     developer,
     reports,

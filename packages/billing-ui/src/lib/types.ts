@@ -44,6 +44,9 @@ export interface SellerProfile {
   reminderDays?: number[];
   /** Send a receipt message when an online payment arrives. */
   sendPaymentReceipts?: boolean;
+  /** Set from GST filing settings: "composition" shops issue bills of supply with no tax from `compositionFrom`. */
+  taxScheme?: "regular" | "composition";
+  compositionFrom?: string | null;
 }
 
 export interface SettingsValues<T> {

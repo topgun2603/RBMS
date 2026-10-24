@@ -41,6 +41,8 @@ export function InvoiceDocument({
   const cancelled = inv.status === "cancelled";
   const stamp = quotation ? (["cancelled", "expired", "declined"].includes(quotation.displayStatus) ? quotation.displayStatus : null) : cancelled ? "cancelled" : null;
   const brandName = shopName || seller.legalName || "";
+  // Composition taxable person: a Bill of Supply with no tax, from the day the scheme started (Section 10 and Rule 49 CGST).
+  const composition = !quotation && seller.taxScheme === "composition" && (!seller.compositionFrom || inv.date >= seller.compositionFrom);
   const showUpi = !quotation && !!seller.upiId && inv.balance > 0 && !cancelled && inv.status !== "draft";
   const upi = showUpi
     ? upiLink({
@@ -94,7 +96,7 @@ export function InvoiceDocument({
         </div>
         <div className="shrink-0 sm:text-right">
           <h2 className="font-heading text-xl font-bold tracking-wide text-primary uppercase">
-            {quotation ? t("billing.q.doc.title") : seller.gstin ? t("billing.doc.taxInvoice") : t("billing.doc.billOfSupply")}
+            {quotation ? t("billing.q.doc.title") : composition ? t("billing.doc.compositionBill") : seller.gstin ? t("billing.doc.taxInvoice") : t("billing.doc.billOfSupply")}
           </h2>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm sm:justify-end">
             <dt className="text-muted-foreground">{quotation ? t("billing.q.doc.number") : t("billing.doc.number")}</dt>
@@ -331,6 +333,7 @@ export function InvoiceDocument({
               <p className="whitespace-pre-line">{inv.notes}</p>
             </div>
           )}
+          {composition && <p className="font-semibold">{t("billing.doc.compositionNote")}</p>}
           {(quotation ? quotation.terms : seller.terms) && (
             <div className="space-y-0.5">
               <p className="font-semibold tracking-wide text-muted-foreground uppercase">{t("billing.doc.terms")}</p>

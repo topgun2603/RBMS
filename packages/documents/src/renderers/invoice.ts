@@ -160,7 +160,8 @@ export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext, variant: 
   const upi = cn || qt ? null : invoiceUpi(inv, brandName, "Invoice");
   const words = inv.amountInWords || amountInWordsINR(totals.total);
   const d = (v: string | null | undefined) => fmtDate(v, ctx.locale);
-  const title = qt ? t.quotation : cn ? t.creditNote : seller.gstin ? t.taxInvoice : t.billOfSupply;
+  const composition = !qt && seller.taxScheme === "composition" && (!seller.compositionFrom || inv.date >= seller.compositionFrom);
+  const title = qt ? t.quotation : cn ? t.creditNote : composition ? t.compositionBill : seller.gstin ? t.taxInvoice : t.billOfSupply;
   const refund = cn ? refundLine(cn, t) : null;
   const taxCols = inter ? `<th class="r">IGST</th>` : `<th class="r">CGST</th><th class="r">SGST</th>`;
   const totRow = (label: string, value: string) => `<div class="tot"><dt>${esc(label)}</dt><dd class="num">${esc(value)}</dd></div>`;
@@ -276,7 +277,7 @@ ${lines}
 </section>
 <section class="foot avoid">
   <div class="left">
-    ${cn ? `<div><p class="label">${L("reason")}</p><p>${esc(reasonLabel(cn.reason, t))}</p></div>` : bank}
+    ${composition ? `<div><p class="b">${L("compositionNote")}</p></div>` : ""}${cn ? `<div><p class="label">${L("reason")}</p><p>${esc(reasonLabel(cn.reason, t))}</p></div>` : bank}
     ${inv.notes ? `<div><p class="label">${L("notes")}</p><p>${escLines(inv.notes)}</p></div>` : ""}${qt?.deliveryText ? `<div><p class="label">${L("deliveryTime")}</p><p>${escLines(qt.deliveryText)}</p></div>` : ""}
     ${qt ? (qt.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(qt.terms)}</p></div>` : "") : !cn && seller.terms ? `<div><p class="label">${L("terms")}</p><p class="muted">${escLines(seller.terms)}</p></div>` : ""}${qt?.acceptedBy ? `<p class="b">${esc(t.acceptedBy.replace("{name}", qt.acceptedBy).replace("{date}", d(qt.acceptedAt)))}</p>` : ""}
     ${cancelled && inv.cancelReason ? `<p class="cancel">${L("cancelReason")}: ${esc(inv.cancelReason)}</p>` : ""}
@@ -346,7 +347,8 @@ ${qr ? `<div class="c">${qr}</div>` : ""}`;
   ${s.city || s.pincode ? `<p class="small">${esc([s.city, s.pincode].filter(Boolean).join(" – "))}</p>` : ""}
   ${s.phone ? `<p class="small">${esc(s.phone)}</p>` : ""}
   ${s.gstin ? `<p class="small b">GSTIN: ${esc(s.gstin)}</p>` : ""}
-  <p class="b" style="margin-top:3px">${esc(qt ? t.quotation : cn ? t.creditNote : s.gstin ? t.taxInvoice : t.billOfSupply)}</p>
+  <p class="b" style="margin-top:3px">${esc(qt ? t.quotation : cn ? t.creditNote : s.taxScheme === "composition" && (!s.compositionFrom || inv.date >= s.compositionFrom) ? t.compositionBill : s.gstin ? t.taxInvoice : t.billOfSupply)}</p>
+  ${!qt && s.taxScheme === "composition" && (!s.compositionFrom || inv.date >= s.compositionFrom) ? `<p class="xs c">${esc(t.compositionNote)}</p>` : ""}
 </div>
 ${stampKey ? `<div class="stamp c">${L(stampKey)}</div>` : ""}
 <hr>

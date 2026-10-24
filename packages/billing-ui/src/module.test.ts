@@ -89,6 +89,7 @@ describe("billingModule", () => {
       "/suppliers",
       "/payables",
       "/reports",
+      "/gst",
       "/settings",
     ]);
     // The sidebar has one Settings link; the pages themselves are in the settings rail.
@@ -115,6 +116,7 @@ describe("billingModule", () => {
       "/billing/items",
       "/billing/stock",
       "/billing/reports",
+      "/billing/gst",
       "/settings",
     ]);
     expect(settingsHrefs("anbu", m)).toEqual(["/settings", "/settings/payments"]);
@@ -154,7 +156,7 @@ describe("expenses, profit and PDFs", () => {
       ],
     });
     const insights = m.nav.find((s) => s.id === "insights")!;
-    expect(insights.items.filter((i) => on.check(i.feature, m.features).ok).map((i) => i.href)).toEqual(["reports", "expenses"]);
+    expect(insights.items.filter((i) => on.check(i.feature, m.features).ok).map((i) => i.href)).toEqual(["reports", "gst", "expenses"]);
     expect(m.routes.find((r) => r.path === "expenses")?.feature).toBe("expenses");
     expect(navHrefs("raja", m)).not.toContain("/expenses");
   });
@@ -299,5 +301,105 @@ describe("permission gating (Gated.permission)", () => {
     const route = m.routes.find((r) => r.path === "expenses");
     expect(item?.permission).toBe("expenses.manage");
     expect(route?.permission).toBe("expenses.manage");
+  });
+});
+
+describe("GST center", () => {
+  const { en, ta } = billingMessages;
+  const files = [
+    "pages/gst.tsx",
+    "components/gst/shared.tsx",
+    "components/gst/overview-tab.tsx",
+    "components/gst/gstr1-tab.tsx",
+    "components/gst/gstr3b-tab.tsx",
+    "components/gst/itc-tab.tsx",
+    "components/gst/itc-dialog.tsx",
+    "components/gst/rcm-section.tsx",
+    "components/gst/gstr2b-tab.tsx",
+    "components/gst/composition-tab.tsx",
+    "components/gst/settings-tab.tsx",
+    "lib/gst.ts",
+  ];
+  const profile = ["no_gstin", "invalid_gstin", "no_state"];
+  const g1 = ["seller_gstin_missing", "seller_gstin_other", "buyer_gstin_invalid", "hsn_missing", "hsn_short", "hsn_invalid", "unit_missing", "pos_invalid", "inter_flag_mismatch", "tax_mismatch", "rate_unusual", "duplicate_number", "number_gap", "tax_on_bill_of_supply", "negative_total", "no_documents"];
+  const others = ["overdue", "itc_no_gstin", "itc_lapsed", "itc_rule37", "rcm_unpaid", "composition_inter_state", "composition_tax_charged", "composition_limit", "qrmp_over_5cr", "turnover_over_5cr"];
+  const cells = ["3.1a", "3.1b", "3.1c", "3.1d", "3.1e", "3.2", "4A1", "4A2", "4A3", "4A4", "4A5", "4B1", "4B2", "4D1", "4D2", "5.exempt.inter", "5.exempt.intra", "5.nongst.inter", "5.nongst.intra", "5.1.interest", "5.1.latefee"];
+  const adjustments = ["itc_impg", "itc_isd", "itc_other", "itc_rev_rules", "itc_rev_other", "itc_reclaim", "itc_ineligible", "inward_exempt_inter", "inward_exempt_intra", "inward_nongst_inter", "inward_nongst_intra", "interest", "late_fee", "outward_zero"];
+  const tables = ["b2b", "b2cl", "b2cs", "cdnr", "cdnur", "exp", "nil", "at", "txpd", "docs", "voided"];
+  const dynamic = [
+    ...["error", "warning", "info"].map((x) => `billing.gst.severity.${x}`),
+    ...["gstr1", "gstr3b", "pmt06", "cmp08", "gstr4", "gstr2b"].map((x) => `billing.gst.return.${x}`),
+    ...["overview", "gstr1", "gstr3b", "itc", "gstr2b", "composition", "settings"].map((x) => `billing.gst.tabs.${x}`),
+    ...["regular", "qrmp", "composition"].flatMap((x) => [`billing.gst.scheme.${x}`, `billing.gst.scheme.${x}Body`, `billing.gst.settings.scheme.${x}`]),
+    ...["filed", "overdue", "due_soon", "upcoming"].map((x) => `billing.gst.cal.status.${x}`),
+    ...[...profile, ...g1.map((c) => `g1_${c}`), ...others].map((c) => `billing.gst.issue.${c}`),
+    ...g1.map((c) => `billing.gst.g1.problem.${c}`),
+    ...tables.flatMap((x) => [`billing.gst.g1.table.${x}`, `billing.gst.g1.tableHelp.${x}`]),
+    ...["INTRB2B", "INTRB2C", "INTRAB2B", "INTRAB2C"].map((x) => `billing.gst.g1.nilKind.${x}`),
+    ...["no_gstin", "invalid_gstin", "composition", "lapsed_16_4"].map((x) => `billing.gst.g3.warn.${x}`),
+    ...["outward", "unreg", "itc", "inward"].flatMap((x) => [`billing.gst.g3.group.${x}`, `billing.gst.g3.groupHint.${x}`]),
+    ...cells.map((c) => `billing.gst.cell.${c}`),
+    ...["invoice", "credit_note", "purchase", "expense", "debit_note", "adjustment"].map((x) => `billing.gst.doc.${x}`),
+    ...adjustments.flatMap((x) => [`billing.gst.adj.kinds.${x}`, `billing.gst.adj.help.${x}`]),
+    ...["eligible", "ineligible", "blocked", "reversal"].flatMap((x) => [`billing.gst.itc.status.${x}`, `billing.gst.itc.choice.${x}`, `billing.gst.itc.choiceHelp.${x}`]),
+    "billing.gst.itc.choice.auto",
+    ...["ok", "no_gstin", "no_tax", "composition", "owner_ineligible", "owner_blocked", "owner_reversal", "lapsed_16_4", "rcm_unpaid", "rcm_paid"].map((x) => `billing.gst.itc.reason.${x}`),
+    ...["rule37", "rule38", "rule42", "rule43", "section17_5", "other"].map((x) => `billing.gst.itc.rev.${x}`),
+    ...["oth", "impg", "imps", "isd"].map((x) => `billing.gst.itc.class.${x}`),
+    ...["matched", "fuzzy", "amount_mismatch", "missing_in_books", "accepted", "ignored"].map((x) => `billing.gst.b2.status.${x}`),
+    ...["inv", "cn", "dn"].map((x) => `billing.gst.b2.kind.${x}`),
+    ...["accept", "ignore", "reopen"].map((x) => `billing.gst.b2.done.${x}`),
+    ...["taxable", "igst", "cgst", "sgst", "cess", "date", "number"].map((x) => `billing.gst.b2.diff.${x}`),
+    ...["bank", "cash", "upi", "cheque", "other"].map((x) => `billing.gst.pay.methods.${x}`),
+    ...["registered", "rcmRegistered", "rcmUnregistered", "imports"].map((x) => `billing.gst.g4.inward.${x}`),
+    ...["trader", "manufacturer", "restaurant", "services"].map((x) => `billing.gst.type.${x}`),
+    ...["nil", "exempt", "nongst"].flatMap((x) => [`billing.gst.zero.${x}`, `billing.gst.zeroHelp.${x}`]),
+  ];
+
+  it("defines every billing.gst.* key the screens use, in English and Tamil", () => {
+    const used = new Set<string>(["billing.nav.gst"]);
+    for (const f of files) for (const m of readFileSync(join(__dirname, f), "utf8").matchAll(/["'`](billing\.(?:gst|nav\.gst)[a-zA-Z0-9_.]*)["'`]/g)) used.add(m[1]!);
+    const all = [...used, ...dynamic].filter((k) => !k.endsWith("."));
+    expect(all.filter((k) => !(k in en))).toEqual([]);
+    expect(all.filter((k) => !(k in ta))).toEqual([]);
+  });
+
+  it("has the same keys in both languages", () => {
+    const keys = (m: Record<string, string>) => Object.keys(m).filter((k) => k.startsWith("billing.gst.") || k === "billing.nav.gst").sort();
+    expect(keys(ta)).toEqual(keys(en));
+  });
+
+  it("has Tamil script in every Tamil GST string (apart from names, numbers and symbols)", () => {
+    const keys = Object.keys(en).filter((k) => k.startsWith("billing.gst.") || k === "billing.nav.gst");
+    const latin = keys.filter((k) => !/[஀-௿]/.test(ta[k]!) && !/^[A-Z0-9 ()%/.{}+·#-]+$/i.test(ta[k]!));
+    expect(latin).toEqual([]);
+  });
+
+  it("keeps the same {placeholders} in both languages", () => {
+    const ph = (s: string) => [...new Set([...s.matchAll(/\{(\w+)[,}]/g)].map((m) => m[1]))].sort().join(",");
+    const bad = Object.keys(en).filter((k) => k.startsWith("billing.gst.") && ph(en[k]!) !== ph(ta[k]!));
+    expect(bad).toEqual([]);
+  });
+
+  it("adds the GST page to the insights group behind the GST reports feature and reports.view", () => {
+    const m = billingModule();
+    const item = m.nav.find((s) => s.id === "insights")?.items.find((i) => i.href === "gst");
+    expect(item?.label).toBe("billing.nav.gst");
+    expect(item?.feature).toBe("invoices.gst-reports");
+    expect(item?.permission).toBe("reports.view");
+    const route = m.routes.find((r) => r.path === "gst");
+    expect(route?.feature).toBe("invoices.gst-reports");
+    expect(route?.permission).toBe("reports.view");
+  });
+
+  it("numbers quarters like the back end (Q1 = April to June, the key carries the year of the last month)", async () => {
+    const { quarterOfMonth, parseQuarter, quarterOptions } = await import("./lib/gst");
+    expect(quarterOfMonth("2026-04").key).toBe("2026-Q1");
+    expect(quarterOfMonth("2026-09").key).toBe("2026-Q2");
+    expect(quarterOfMonth("2026-10").months).toEqual(["2026-10", "2026-11", "2026-12"]);
+    expect(quarterOfMonth("2027-02").key).toBe("2027-Q4");
+    expect(parseQuarter("2027-Q4")?.from).toBe("2027-01-01");
+    expect(parseQuarter("2026-Q3")?.to).toBe("2026-12-31");
+    expect(quarterOptions("2026-10-24", 3)).toEqual(["2026-Q3", "2026-Q2", "2026-Q1"]);
   });
 });

@@ -89,11 +89,13 @@ import {
   applyBillDiscount,
   balanceOf,
   deriveStatus,
+  isCompositionBill,
   isOverdue,
   monthRange,
   normalizeSeller,
   OPEN_STATUSES,
   paymentProblem,
+  withoutTax,
 } from "./logic";
 import {
   noopLogger,
@@ -2121,7 +2123,8 @@ export class InvoicesService {
     if (src.dueDate && src.dueDate < src.date) throw badRequest("Due date can't be before the invoice date");
     // Without a seller state (profile incomplete) drafts are computed as intra-state; issue() recomputes.
     const sellerState = seller.stateCode ?? placeOfSupply;
-    const totals = computeInvoice(src.lines, { sellerState, placeOfSupply });
+    // A composition taxpayer's bill of supply carries no tax (Section 10(4) CGST); bills before the scheme started are untouched.
+    const totals = computeInvoice(isCompositionBill(seller, src.date) ? withoutTax(src.lines) : src.lines, { sellerState, placeOfSupply });
     if (totals.total > MAX_PAISE) throw badRequest("Invoice total is too large");
     return {
       customerId,
@@ -2472,7 +2475,8 @@ export class InvoicesService {
     preset?: PresetNumber,
   ): Promise<InvoiceRow> {
     if (draft.status !== "draft") throw badRequest("Only drafts can be issued");
-    let totals = this.assertIssuable(draft.lines.map(toLineInput), draft.placeOfSupply, seller);
+    const issueLines = draft.lines.map(toLineInput);
+    let totals = this.assertIssuable(isCompositionBill(seller, draft.date) ? withoutTax(issueLines) : issueLines, draft.placeOfSupply, seller);
     let stored: StoredInvoiceTotals = withoutLines(totals);
     if (redemption) {
       // The points were redeemed against this exact bill amount.

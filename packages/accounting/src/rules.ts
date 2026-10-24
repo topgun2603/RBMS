@@ -17,6 +17,7 @@ import type {
   InvoiceSrc,
   OpeningParty,
   PurchaseSrc,
+  GstPaymentSrc,
   ReceiptSrc,
   StockAdjustmentSrc,
   SupplierPaymentSrc,
@@ -277,6 +278,19 @@ export function expensePostings(e: ExpenseSrc, o: RuleOptions): Posting[] {
   return out;
 }
 
+/**
+ * Composition tax paid by challan: an expense (a composition taxable person collects no GST, so there is no output tax
+ * to settle and no input credit), paid from the money account of the payment method.
+ */
+export function gstPaymentPostings(p: GstPaymentSrc): Posting[] {
+  if (p.amount <= 0) return [];
+  const lines = [dr(key(SYS.compositionTax), p.amount), cr(money(p.mode), p.amount)];
+  const what = `Composition tax paid for ${p.period}`;
+  const out: Posting[] = [{ sourceType: "gst_payment", sourceId: p.id, date: p.date, narration: what, lines }];
+  if (p.status === "cancelled") out.push({ sourceType: "gst_payment_cancel", sourceId: p.id, date: later(p.date, p.cancelledOn), narration: `Cancelled: ${what}`, lines: mirror(lines) });
+  return out;
+}
+
 export function tillPostings(t: TillSrc): Posting[] {
   const out: Posting[] = [];
   if (t.status === "closed" && t.closedOn && t.difference) {
@@ -388,6 +402,8 @@ export const SOURCE_TYPES = [
   "till_difference",
   "till_cash",
   "stock_adjustment",
+  "gst_payment",
+  "gst_payment_cancel",
 ] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
@@ -411,4 +427,6 @@ export const SOURCE_LABELS: Readonly<Record<SourceType, string>> = {
   till_difference: "Till cash difference",
   till_cash: "Till cash in/out",
   stock_adjustment: "Stock added or written off",
+  gst_payment: "Composition tax paid",
+  gst_payment_cancel: "Composition tax payment cancelled",
 };

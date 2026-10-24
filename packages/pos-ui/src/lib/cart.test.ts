@@ -184,3 +184,16 @@ describe("serial-tracked units", () => {
     expect(r.lines[0]!.qty).toBe(2.005);
   });
 });
+
+describe("composition shop (bill of supply)", () => {
+  it("adds no tax and keeps the price the customer sees, for MRP and exclusive lines", () => {
+    const lines = [productToLine(saree, 2), productToLine(shirt)];
+    const regular = cartTotals(lines, intra);
+    const bos = cartTotals(lines, { ...intra, taxFree: true });
+    expect(bos.cgst + bos.sgst + bos.igst).toBe(0);
+    // MRP line: the charged amount is unchanged; exclusive line: the rate is the price.
+    expect(bos.lines[0]!.total).toBe(regular.lines[0]!.total);
+    expect(bos.lines[1]!.total).toBe(84_700);
+    expect(regular.cgst + regular.sgst).toBeGreaterThan(0);
+  });
+});

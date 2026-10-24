@@ -12,6 +12,7 @@ import {
   CalendarDaysIcon,
   ClipboardListIcon,
   CreditCardIcon,
+  FileCheck2Icon,
   FileSignatureIcon,
   FileTextIcon,
   HandCoinsIcon,
@@ -108,6 +109,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
   ];
   const insights = [
     { href: "reports", label: "billing.nav.reports", icon: BarChart3Icon, feature: F.reports },
+    { href: "gst", label: "billing.nav.gst", icon: FileCheck2Icon, feature: F.gstReports, permission: "reports.view" },
     { href: "expenses", label: "billing.nav.expenses", icon: ReceiptIndianRupeeIcon, feature: F.expenses, permission: EXPENSES_PERMISSION },
   ];
 
@@ -163,6 +165,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "suppliers/:id", component: page(() => import("./pages/supplier-detail")), feature: F.purchases },
     { path: "payables", component: page(() => import("./pages/payables")), feature: F.purchases },
     { path: "reports", component: page(() => import("./pages/reports")), feature: F.reports },
+    { path: "gst", component: page(() => import("./pages/gst")), feature: F.gstReports, permission: "reports.view" },
     { path: "expenses", component: page(() => import("./pages/expenses")), feature: F.expenses, permission: EXPENSES_PERMISSION },
     // Accounting: static segments first, so "accounting/journal/new" isn't read as an id.
     { path: "accounting", component: page(() => import("./pages/accounting")), feature: F.accounting, permission: ACC_VIEW },

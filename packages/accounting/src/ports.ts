@@ -156,6 +156,19 @@ export interface StockAdjustmentSrc {
   itemName: string | null;
 }
 
+/** Composition tax paid by challan (CMP-08), entered in GST filing. Paid in full from the money account. */
+export interface GstPaymentSrc {
+  id: string;
+  date: string;
+  /** Paise: central + State/UT tax (+ interest and late fee). */
+  amount: number;
+  mode: MoneyMethod;
+  status: "paid" | "cancelled";
+  /** IST date it was cancelled. */
+  cancelledOn: string | null;
+  period: string;
+}
+
 export interface OpeningParty {
   id: string;
   name: string;
@@ -173,6 +186,8 @@ export interface SourcesPort {
   debitNotes(tenantId: string): Promise<DebitNoteSrc[]>;
   expenses(tenantId: string): Promise<ExpenseSrc[]>;
   tills(tenantId: string): Promise<TillSrc[]>;
+  /** Composition tax paid (GST filing); leave out when the shop has no such payments. */
+  gstPayments?(tenantId: string): Promise<GstPaymentSrc[]>;
   /** Valued stock adjustments; leave out for shops that do not track stock. */
   stockAdjustments?(tenantId: string): Promise<StockAdjustmentSrc[]>;
   openingBalances(tenantId: string): Promise<{ customers: OpeningParty[]; suppliers: OpeningParty[] }>;

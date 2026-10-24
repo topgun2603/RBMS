@@ -3,6 +3,9 @@ import type { DocLocale } from "./types";
 const en = {
   taxInvoice: "Tax Invoice",
   billOfSupply: "Invoice",
+  /** Composition taxable person (Section 10 CGST Act; Rule 49): title and the wording the law asks for. */
+  compositionBill: "Bill of Supply",
+  compositionNote: "Composition taxable person, not eligible to collect tax on supplies.",
   invoice: "Invoice",
   receipt: "Receipt",
   number: "Invoice no.",
@@ -171,6 +174,8 @@ export type Labels = Record<LabelKey, string>;
 const ta: Labels = {
   taxInvoice: "வரி விலைப்பட்டியல் (Tax Invoice)",
   billOfSupply: "விலைப்பட்டியல் (Invoice)",
+  compositionBill: "விநியோகப் பட்டியல் (Bill of Supply)",
+  compositionNote: "கூட்டு வரி செலுத்துவோர் (Composition). வரி வசூலிக்க தகுதியற்றவர்.",
   invoice: "பில்",
   receipt: "ரசீது (Receipt)",
   number: "பில் எண்",

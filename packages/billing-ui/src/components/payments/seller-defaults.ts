@@ -1,7 +1,7 @@
 import type { SellerProfile } from "../../lib/types";
 
 /** Server defaults of the `billing` settings namespace (apps/api/src/app-settings.ts). */
-export const SELLER_DEFAULTS: Required<SellerProfile> = {
+export const SELLER_DEFAULTS: Required<Omit<SellerProfile, "taxScheme" | "compositionFrom">> = {
   legalName: "",
   gstin: "",
   address: "",

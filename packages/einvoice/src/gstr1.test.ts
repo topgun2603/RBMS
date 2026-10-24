@@ -226,3 +226,20 @@ describe("buildGstr1: credit notes", () => {
     expect(r.json.b2cs.find((b) => b.sply_ty === "INTRA" && b.rt === 5)).toMatchObject({ txval: 1150, camt: 28.75, samt: 28.75 });
   });
 });
+
+describe("buildGstr1 for a quarter (QRMP)", () => {
+  const all: EInvoiceSource[] = [
+    invoice({ id: "1", number: "INV/26-27/0040", date: "2026-10-02" }),
+    invoice({ id: "2", number: "INV/26-27/0041", date: "2026-11-20" }),
+    invoice({ id: "3", number: "INV/26-27/0042", date: "2026-12-31" }),
+    invoice({ id: "4", number: "INV/26-27/0043", date: "2027-01-02" }),
+  ];
+  it("takes every bill of the range and names the file by the quarter's last month", () => {
+    const r = buildGstr1(all, { gstin: SELLER_GSTIN, period: "122026", range: { from: "2026-10-01", to: "2026-12-31" } });
+    expect(r.json.fp).toBe("122026");
+    expect(r.counts.b2b).toBe(3);
+    expect(r.warnings.some((w) => w.includes("INV/26-27/0043"))).toBe(true);
+    // Without the range only the month counts, as before.
+    expect(buildGstr1(all, { gstin: SELLER_GSTIN, period: "122026" }).counts.b2b).toBe(1);
+  });
+});

@@ -58,6 +58,7 @@ export const SYS = {
   cashShortExcess: "cash_short_excess",
   otherExpense: "other_expense",
   stockAdjustment: "stock_adjustment",
+  compositionTax: "composition_tax",
 } as const;
 export type SysKey = (typeof SYS)[keyof typeof SYS];
 
@@ -118,6 +119,7 @@ export const STANDARD_CHART: readonly ChartRow[] = [
   { code: "5900", name: "Round off", type: "expense", group: "indirect", key: SYS.roundOff, about: "Paise rounded to the rupee on bills and purchases." },
   { code: "5910", name: "Cash short and excess", type: "expense", group: "indirect", key: SYS.cashShortExcess, about: "Differences found when the till was counted." },
   { code: "5920", name: "Stock gains and write-offs", type: "expense", group: "indirect", key: SYS.stockAdjustment, about: "Value of stock added or written off by hand (found stock, damage, theft). Opening stock goes to Opening balance equity instead." },
+  { code: "5930", name: "Composition tax", type: "expense", group: "indirect", key: SYS.compositionTax, about: "Tax a composition taxable person pays on turnover (CMP-08). It is an expense: a composition shop collects no GST and has no input credit." },
   { code: "5990", name: "Other expenses", type: "expense", group: "indirect", key: SYS.otherExpense, about: "Anything that does not fit another expense account." },
 ];
 

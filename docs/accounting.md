@@ -90,6 +90,7 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Expense cancelled | `expense_cancel` | mirror | mirror |
 | Till closed with a difference | `till_difference` | Cash (excess) or Cash short and excess (short) | the other side |
 | Cash put in / taken out of the drawer by hand | `till_cash` | Cash / Till cash in-out (to review) | the other side |
+| Composition tax paid by challan (GST filing > Composition) | `gst_payment` (and `gst_payment_cancel` when cancelled) | Composition tax (expense, account 5930) | Money account (by method) |
 | Opening stock (`opening` movement) | `stock_adjustment` | Stock in hand | Opening balance equity |
 | Stock added/removed by hand (`adjustment`) | `stock_adjustment` | Stock in hand / Stock gains and write-offs | the other side |
 | Customer and supplier opening balances | `opening_parties` | Debtors (customers who owed), Creditors (suppliers we had paid in advance) | Creditors, Debtors for the opposite, and Opening balance equity for the difference |

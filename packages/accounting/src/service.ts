@@ -36,6 +36,7 @@ import {
   debitNotePostings,
   effectiveDate,
   expensePostings,
+  gstPaymentPostings,
   invoicePaymentPostings,
   invoicePostings,
   isBalanced,
@@ -939,7 +940,7 @@ export class AccountingService {
 
   private async loadDocs(tenantId: string) {
     const s = this.deps.sources;
-    const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments] = await Promise.all([
+    const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments] = await Promise.all([
       s.invoices(tenantId),
       s.invoicePayments(tenantId),
       s.receipts(tenantId),
@@ -952,8 +953,9 @@ export class AccountingService {
       s.openingBalances(tenantId),
       s.shopStateCode(tenantId),
       s.stockAdjustments ? s.stockAdjustments(tenantId) : Promise.resolve([]),
+      s.gstPayments ? s.gstPayments(tenantId) : Promise.resolve([]),
     ]);
-    return { invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments };
+    return { invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments };
   }
 
   private postingsOf(docs: Awaited<ReturnType<AccountingService["loadDocs"]>>, o: RuleOptions): Posting[] {
@@ -967,6 +969,7 @@ export class AccountingService {
       ...docs.debitNotes.flatMap((d) => debitNotePostings(d, o)),
       ...docs.expenses.flatMap((d) => expensePostings(d, o)),
       ...docs.tills.flatMap((d) => tillPostings(d)),
+      ...docs.gstPayments.flatMap((d) => gstPaymentPostings(d)),
       ...(o.valueStock === false ? [] : docs.stockAdjustments.flatMap((d) => stockAdjustmentPostings(d))),
     ];
   }

@@ -27,6 +27,12 @@ export interface SellerProfile {
   reminderDays: number[];
   /** Thank-you message when a bill is paid online (default true). */
   sendPaymentReceipts: boolean;
+  /**
+   * Tax scheme of the shop, filled in by the host from GST filing settings (not stored in the billing profile).
+   * "composition" from `compositionFrom` on: new bills are bills of supply with no tax (Section 10 CGST Act).
+   */
+  taxScheme?: "regular" | "composition";
+  compositionFrom?: string | null;
 }
 
 export const DEFAULT_REMINDER_DAYS: readonly number[] = [1, 7, 15];

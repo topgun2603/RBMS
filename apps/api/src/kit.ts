@@ -14,6 +14,8 @@ import { createDocuments, page, type DocSeller } from "@srirealtime/documents";
 import { createExpenses } from "@srirealtime/expenses";
 import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "@srirealtime/accounting";
 import { accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
+import { createGstFiling } from "@srirealtime/gstfiling";
+import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
@@ -141,6 +143,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   /** Developer webhooks (EventsPort). Never throws; a no-op until batch 3 exists. */
   // Bill, payment and credit-note events also nudge the books (debounced; see kit-accounting.ts and docs/accounting.md).
   let accountingRef: ReturnType<typeof createAccounting> | undefined;
+  // GST filing (created after batch 3): the composition scheme of the shop reaches the invoice engine through the seller profile.
+  let gstFilingRef: ReturnType<typeof createGstFiling> | undefined;
   const emit = (tenantId: string, type: string, data: unknown) => {
     if (accountingRef && /^(invoice|payment|credit_note)\./.test(type)) accountingRef.service.kick(tenantId);
     return b3 ? b3.events.emit(tenantId, type, data) : Promise.resolve();
@@ -363,7 +367,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   const invoices = createInvoices({
     items: catalogue.itemSource,
     db,
-    seller: { get: (tenantId) => billingProfile.get({ tenantId }) },
+    seller: {
+      get: async (tenantId) => ({ ...(await billingProfile.get({ tenantId })), ...(gstFilingRef ? await gstFilingRef.service.schemeFor(tenantId) : {}) }),
+    },
     entitlements: opts.skipInvoiceQuota ? undefined : plans.service,
     now: clock,
     branding: {
@@ -1287,6 +1293,26 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   });
   b3 = batch3;
 
+  // ---- GST filing depth: GSTR-3B, ITC and GSTR-2B reconciliation, reverse charge, composition, GSTR-1 extras (docs/gst-filing.md).
+  const gstFiling = createGstFiling({
+    db,
+    sources: gstFilingSources({
+      db,
+      profile: (tenantId) => billingProfile.get({ tenantId }),
+      salesForPeriod: (tenantId, range) => batch3.salesForPeriod(tenantId, range),
+    }),
+    gstr1: {
+      build: async (tenantId, o) => {
+        const r = await batch3.einvoice.service.gstr1(tenantId, o.period, { gstin: o.gstin ?? null, ...(o.from && o.to ? { range: { from: o.from, to: o.to } } : {}) });
+        return { ...r, json: r.json as unknown as Record<string, unknown>, counts: { ...r.counts } };
+      },
+    },
+    ledger: gstFilingLedger({ accounting: accounting.service, isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key) }),
+    log,
+    now: clock,
+  });
+  gstFilingRef = gstFiling;
+
   defineJob(MARKETPLACE_SETTLE_JOB, async () => {
     log.info(await batch3.marketplace.service.settleDue(), "marketplace: delivered sales settled");
   });
@@ -1491,6 +1517,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     analytics.module,
     expenses.module,
     accounting.module,
+    gstFiling.module,
     medicines.module,
     dining.module,
     aggregators.module,
@@ -1542,6 +1569,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     analytics,
     expenses,
     accounting,
+    gstFiling,
     medicines,
     dining,
     aggregators,
