@@ -15,6 +15,6 @@ export default async function BillingPage() {
   const icons = [<ReceiptIndianRupeeIcon key="1" />, <BookOpenCheckIcon key="2" />, <ScanBarcodeIcon key="3" />, <BoxesIcon key="4" />, <BarChart3Icon key="5" />, <UsersIcon key="6" />, <ScaleIcon key="7" />, <LayersIcon key="8" />, <StoreIcon key="9" />];
   const tones = [undefined, "bg-marigold/20 text-marigold-ink", undefined, "bg-leaf/15 text-leaf", undefined, "bg-marigold/20 text-marigold-ink", "bg-leaf/15 text-leaf", undefined, "bg-marigold/20 text-marigold-ink"];
   const features = icons.map((icon, i) => ({ icon, title: t(`billing.f.${i + 1}.title`), body: t(`billing.f.${i + 1}.body`), tone: tones[i] }));
-  const faq = [3, 7, 8, 10, 12, 1].map((n) => ({ q: t(`faq.home.${n}.q`), a: t(`faq.home.${n}.a`) }));
+  const faq = [3, 7, 8, 12, 13, 10].map((n) => ({ q: t(`faq.home.${n}.q`), a: t(`faq.home.${n}.a`) }));
   return <ProductPage t={t} product="billing" path="/billing" features={features} faq={faq} mock={<InvoiceMockup className="w-full max-w-[380px]" />} />;
 }

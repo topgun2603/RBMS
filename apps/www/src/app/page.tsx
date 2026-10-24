@@ -150,7 +150,7 @@ export default async function HomePage() {
 
       <HowItWorks t={t} />
       <Testimonials t={t} />
-      <FaqSection t={t} items={faqItems(t, "faq.home", 12)} />
+      <FaqSection t={t} items={faqItems(t, "faq.home", 13)} />
       <CtaBand t={t} />
     </>
   );
