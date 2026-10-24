@@ -60,6 +60,7 @@ async function main() {
   const config = resolveAiConfig({
     NODE_ENV: "development",
     ANTHROPIC_API_KEY: live ? key : undefined,
+    ANTHROPIC_WORKSPACE_ID: process.env.ANTHROPIC_WORKSPACE_ID || undefined,
     AI_PROVIDER: live ? "auto" : "mock",
     AI_ENABLED: true,
     AI_MODEL_LIGHT: process.env.AI_MODEL_LIGHT || undefined,
