@@ -1,0 +1,1443 @@
+{
+  "@@locale": "en",
+  "appTitle": "srikit Business",
+  "@appTitle": {
+    "description": "App name. The brand stays in Latin letters in every language."
+  },
+  "loading": "Opening…",
+  "restoreFailedTitle": "Couldn't reach srikit",
+  "retry": "Try again",
+  "cancel": "Cancel",
+  "signInTitle": "Sign in",
+  "signInSubtitle": "Enter your mobile number. We'll send you a 6-digit code.",
+  "phoneLabel": "Mobile number",
+  "phoneInvalid": "Enter a valid 10-digit mobile number",
+  "emailLabel": "Email",
+  "useEmail": "Sign in with email instead",
+  "usePhone": "Sign in with mobile number",
+  "sendCode": "Send code",
+  "codeSentTo": "Enter the code sent to {phone}",
+  "@codeSentTo": {
+    "placeholders": {
+      "phone": {
+        "type": "String",
+        "example": "+91 98765 43210"
+      }
+    }
+  },
+  "codeLabel": "6-digit code",
+  "codeInvalid": "Enter the 6-digit code",
+  "verifyCode": "Verify and sign in",
+  "changeNumber": "Change number",
+  "resendCode": "Send the code again",
+  "codeResent": "A new code is on its way",
+  "testNumberHint": "This is a test number: use the test code.",
+  "errorNetwork": "No connection to the server. Check your internet and try again.",
+  "errorTimeout": "The server is taking too long. Try again.",
+  "errorGeneric": "Something went wrong. Try again.",
+  "pickShopTitle": "Choose a shop",
+  "noShops": "You're not part of any shop yet. Ask the owner to add your number, or start a shop on the srikit website.",
+  "shopSuspended": "Suspended",
+  "openingShop": "Opening {shop}…",
+  "@openingShop": {
+    "placeholders": {
+      "shop": {
+        "type": "String",
+        "example": "Anna Stores"
+      }
+    }
+  },
+  "roleOwner": "Owner",
+  "roleAdmin": "Admin",
+  "roleStaff": "Staff",
+  "roleMember": "Member",
+  "tabHome": "Home",
+  "tabBill": "Bill",
+  "tabOrders": "Orders",
+  "tabMore": "More",
+  "hello": "Hello, {name}",
+  "@hello": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Anna"
+      }
+    }
+  },
+  "dashThisMonth": "This month",
+  "dashBilled": "Billed",
+  "dashCollected": "Collected",
+  "dashBills": "Bills",
+  "dashToCollect": "To collect",
+  "dashLastMonth": "Last month {amount}",
+  "@dashLastMonth": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,23,456"
+      }
+    }
+  },
+  "dashOverdue": "{count, plural, =0{No overdue bills} =1{1 overdue bill} other{{count} overdue bills}}",
+  "@dashOverdue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashRecent": "Recent bills",
+  "dashNoBills": "No bills yet",
+  "dashDraft": "Draft",
+  "dashBillingOff": "Billing isn't turned on for this shop.",
+  "dashNoAccess": "Ask the shop owner for staff access to see the day's numbers.",
+  "moreShop": "Shop",
+  "switchShop": "Switch shop",
+  "language": "Language",
+  "languageEnglish": "English",
+  "languageTamil": "தமிழ்",
+  "signOut": "Sign out",
+  "signOutConfirm": "Sign out of srikit Business on this phone?",
+  "signedInAs": "Signed in as {name}",
+  "@signedInAs": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "+91 98765 43210"
+      }
+    }
+  },
+  "appVersion": "Version {version}",
+  "@appVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "0.1.0"
+      }
+    }
+  },
+  "updateRequiredTitle": "Update the app",
+  "updateRequiredBody": "This version of srikit Business is no longer supported. Update it from the store to keep billing and managing your shop.",
+  "updateVersions": "Your version {current} · needed {minimum} or newer",
+  "@updateVersions": {
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "0.1.0"
+      },
+      "minimum": {
+        "type": "String",
+        "example": "0.2.0"
+      }
+    }
+  },
+  "updateYourVersion": "Your version {current}",
+  "@updateYourVersion": {
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "0.1.0"
+      }
+    }
+  },
+  "updateNow": "Update",
+  "updateCheckAgain": "I've updated, check again",
+  "updateAvailable": "A new version of srikit Business is available.",
+  "updateLater": "Later",
+  "tillNotOpened": "Day not opened",
+  "tillOpenSince": "Day open · {time}",
+  "@tillOpenSince": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "09:30"
+      }
+    }
+  },
+  "tillClosed": "Day closed",
+  "tillOpenDay": "Open day",
+  "tillRegister": "Counter name",
+  "tillOpeningCash": "Cash in the drawer to start (₹)",
+  "tillNoPermission": "You don't have permission for the till.",
+  "tillNotOpenedHint": "You can bill without opening the day, but those bills won't count in the till.",
+  "tillToday": "Today (X report)",
+  "tillCashInOut": "Cash in / out",
+  "tillCloseDay": "Close day",
+  "tillBills": "Bills",
+  "tillSales": "Sales",
+  "tillCashExpected": "Cash expected",
+  "tillOpening": "Opening cash",
+  "tillOnCredit": "On credit",
+  "tillRefunds": "Refunds",
+  "tillCashNet": "Cash in/out (net)",
+  "tillCashIn": "Cash in",
+  "tillCashOut": "Cash out",
+  "tillAmount": "Amount (₹)",
+  "tillReason": "Reason",
+  "tillNoEntries": "No cash in or out yet",
+  "tillCounted": "Cash counted (₹)",
+  "tillCountedLabel": "Counted",
+  "tillNote": "Note (optional)",
+  "tillDifference": "Difference",
+  "tillMatches": "Matches",
+  "tillExtra": "Extra {amount}",
+  "@tillExtra": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹20"
+      }
+    }
+  },
+  "tillShort": "Short {amount}",
+  "@tillShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹20"
+      }
+    }
+  },
+  "save": "Save",
+  "methodCash": "Cash",
+  "methodUpi": "UPI",
+  "methodCard": "Card",
+  "methodBank": "Bank",
+  "methodCheque": "Cheque",
+  "methodOther": "Other",
+  "methodCredit": "On credit",
+  "searchItems": "Search items or type a code",
+  "scanBarcode": "Scan barcode",
+  "scanHint": "Point the camera at a barcode",
+  "codeNotFound": "No item for {code}",
+  "@codeNotFound": {
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "example": "8901234567890"
+      }
+    }
+  },
+  "noResults": "No items found",
+  "cartEmpty": "Search or scan to add items",
+  "itemAdded": "Added {name}",
+  "@itemAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Toor Dal"
+      }
+    }
+  },
+  "remove": "Remove",
+  "editLine": "Edit line",
+  "qtyLabel": "Quantity",
+  "priceLabel": "Price (₹)",
+  "priceLocked": "Changing the price or discount needs the discount permission",
+  "discountLabel": "Discount",
+  "discountRupees": "₹ off",
+  "discountPercent": "% off",
+  "apply": "Apply",
+  "serialLabel": "S/N {serial}",
+  "@serialLabel": {
+    "placeholders": {
+      "serial": {
+        "type": "String",
+        "example": "861234567890123"
+      }
+    }
+  },
+  "customerTitle": "Customer",
+  "customerNone": "No customer",
+  "customerWalkIn": "Walk-in",
+  "walkInDefaultName": "Walk-in Customer",
+  "customerSearch": "Search by mobile or name",
+  "customerAdd": "Add customer",
+  "customerName": "Name",
+  "customerPhoneOptional": "Mobile (optional)",
+  "customerUseWalkIn": "Bill as walk-in",
+  "customerClear": "Remove customer",
+  "customerOwes": "Owes {amount}",
+  "@customerOwes": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,200"
+      }
+    }
+  },
+  "customerNameRequired": "Enter a name",
+  "estimate": "Estimate",
+  "estimateNote": "The final total is worked out when the bill is made",
+  "itemsCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "charge": "Charge ≈ {amount}",
+  "@charge": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹490"
+      }
+    }
+  },
+  "makingBill": "Making the bill…",
+  "billNumber": "Bill {number}",
+  "@billNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "INV-0042"
+      }
+    }
+  },
+  "subtotalLabel": "Subtotal",
+  "taxableLabel": "Taxable value",
+  "cgstLabel": "CGST",
+  "sgstLabel": "SGST",
+  "igstLabel": "IGST",
+  "roundOffLabel": "Round off",
+  "totalLabel": "Total",
+  "toPay": "To pay {amount}",
+  "@toPay": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹490"
+      }
+    }
+  },
+  "cashReceived": "Cash received (₹)",
+  "upiAmount": "UPI (₹)",
+  "cardAmount": "Card (₹)",
+  "creditAmount": "On credit (₹)",
+  "upiReceived": "UPI payment received",
+  "referenceOptional": "Reference (optional)",
+  "changeDue": "Change {amount}",
+  "@changeDue": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹10"
+      }
+    }
+  },
+  "shortBy": "Short by {amount}",
+  "@shortBy": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹10"
+      }
+    }
+  },
+  "problemOverNonCash": "UPI, card and credit can't be more than the bill",
+  "problemUpiUnconfirmed": "Confirm that the UPI payment was received",
+  "problemCreditNeedsCustomer": "Credit needs a saved customer",
+  "problemCreditUnavailable": "The credit book isn't on for this shop",
+  "completePayment": "Complete",
+  "paymentFailed": "A payment couldn't be recorded.",
+  "finishWithout": "Finish without it",
+  "leaveBillTitle": "Cancel this bill?",
+  "leaveBillBody": "The bill is already made. Cancel it, or stay and take the payment.",
+  "cancelBill": "Cancel bill",
+  "stay": "Stay",
+  "saleComplete": "Sale complete",
+  "giveChange": "Give change",
+  "addedToCredit": "{amount} added to the customer's credit",
+  "@addedToCredit": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹200"
+      }
+    }
+  },
+  "paymentsMissing": "The bill is saved, but {amount} of payments couldn't be recorded. Add them from the bill on the web.",
+  "@paymentsMissing": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹200"
+      }
+    }
+  },
+  "creditLimitWarning": "This customer is now over their credit limit.",
+  "shareWhatsApp": "Share on WhatsApp",
+  "shareText": "Bill {number} for {amount}: {url}",
+  "@shareText": {
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "INV-0042"
+      },
+      "amount": {
+        "type": "String",
+        "example": "₹490"
+      },
+      "url": {
+        "type": "String",
+        "example": "https://example.com/b/x"
+      }
+    }
+  },
+  "couldNotOpenWhatsApp": "Couldn't open WhatsApp",
+  "printReceipt": "Print",
+  "printPreviewTitle": "Receipt preview",
+  "printComingNext": "Bluetooth printers come next. This is what will print.",
+  "newBill": "New bill",
+  "closeLabel": "Close",
+  "orderStatusPlaced": "New",
+  "orderStatusConfirmed": "Confirmed",
+  "orderStatusPacked": "Packed",
+  "orderStatusShipped": "Shipped",
+  "orderStatusDelivered": "Delivered",
+  "orderStatusCancelled": "Cancelled",
+  "orderStatusReturned": "Returned",
+  "orderActionConfirm": "Confirm",
+  "orderActionPack": "Mark packed",
+  "orderActionShip": "Mark shipped",
+  "orderActionDeliver": "Mark delivered",
+  "orderActionCancel": "Cancel order",
+  "orderActionReturn": "Mark returned",
+  "paymentPaid": "Paid",
+  "paymentCod": "COD",
+  "paymentPending": "Pending",
+  "paymentRefunded": "Refunded",
+  "paymentPartRefunded": "Part refunded",
+  "paymentUnpaid": "Unpaid",
+  "channelStore": "Online store",
+  "channelManual": "Manual",
+  "channelPos": "Counter",
+  "channelMarketplace": "Marketplace",
+  "ordersAll": "All",
+  "ordersSearch": "Search orders",
+  "ordersEmpty": "No orders",
+  "orderTitle": "Order {number}",
+  "@orderTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "ORD/26-27/0001"
+      }
+    }
+  },
+  "orderItems": "Items",
+  "shipToLabel": "Ship to",
+  "customerNoteLabel": "Customer note",
+  "orderShipping": "Shipping",
+  "orderCodFee": "COD fee",
+  "orderPaidLabel": "Paid",
+  "orderBalance": "Balance due",
+  "orderPayments": "Payments",
+  "orderNoPayments": "No payments yet",
+  "orderTimeline": "Timeline",
+  "orderShipment": "Shipment",
+  "carrierLabel": "Courier",
+  "trackingNumberLabel": "Tracking number",
+  "trackingUrlLabel": "Tracking link",
+  "trackingUrlInvalid": "Enter a link starting with http:// or https://",
+  "shipTitle": "Ship the order",
+  "cancelOrderTitle": "Cancel the order?",
+  "cancelReasonRequired": "Give a reason",
+  "cancelReasonCustomer": "Customer asked",
+  "cancelReasonStock": "Out of stock",
+  "cancelReasonPayment": "Payment problem",
+  "cancelReasonDuplicate": "Duplicate order",
+  "cancelReasonAddress": "Address problem",
+  "keepOrder": "Keep order",
+  "returnTitle": "Mark the order returned?",
+  "returnBody": "The items go back into stock and the invoice is cancelled. Record any refund on the web.",
+  "skipTo": "Skip to",
+  "recordPayment": "Record payment",
+  "orderPayAmountInvalid": "Enter an amount up to {amount}",
+  "@orderPayAmountInvalid": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹500.00"
+      }
+    }
+  },
+  "makeInvoice": "Make invoice",
+  "invoiceLabel": "Invoice {number}",
+  "@invoiceLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "INV-0042"
+      }
+    }
+  },
+  "codDeliverNote": "Marking it delivered records the COD balance as paid.",
+  "orderChanged": "This order changed meanwhile. Showing the latest.",
+  "eventStatus": "Moved to {status}",
+  "@eventStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String",
+        "example": "Confirmed"
+      }
+    }
+  },
+  "eventPayment": "Payment {amount} · {method}",
+  "@eventPayment": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹500.00"
+      },
+      "method": {
+        "type": "String",
+        "example": "Cash"
+      }
+    }
+  },
+  "eventRefund": "Refund {amount}",
+  "@eventRefund": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹500.00"
+      }
+    }
+  },
+  "eventFulfillment": "Shipping details updated",
+  "productsTitle": "Products",
+  "stockTitle": "Stock",
+  "productNew": "New product",
+  "productsSearch": "Search by name, SKU or barcode",
+  "allCategories": "All categories",
+  "productArchived": "Archived",
+  "productDraft": "Draft",
+  "productsEmpty": "No products",
+  "variantsCount": "{count, plural, =1{1 variant} other{{count} variants}}",
+  "@variantsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockNotTracked": "Not tracked",
+  "stockOut": "Out of stock",
+  "stockLow": "Low · {qty}",
+  "@stockLow": {
+    "placeholders": {
+      "qty": {
+        "type": "String",
+        "example": "3"
+      }
+    }
+  },
+  "stockQty": "{qty} in stock",
+  "@stockQty": {
+    "placeholders": {
+      "qty": {
+        "type": "String",
+        "example": "12"
+      }
+    }
+  },
+  "productArchiveTitle": "Archive this product?",
+  "productArchiveBody": "It disappears from the store and the counter. You can make it active again later.",
+  "productArchive": "Archive",
+  "productUnarchive": "Make active",
+  "productTax": "GST {rate}% · {mode}",
+  "@productTax": {
+    "placeholders": {
+      "rate": {
+        "type": "String",
+        "example": "5"
+      },
+      "mode": {
+        "type": "String",
+        "example": "incl."
+      }
+    }
+  },
+  "taxIncluded": "price includes GST",
+  "taxExtra": "GST added on top",
+  "percentOff": "{percent}% off",
+  "@percentOff": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "skuLabel": "SKU",
+  "barcodeLabel": "Barcode",
+  "mrpLabel": "MRP (₹)",
+  "codeFieldInvalid": "{field}: up to 64 characters, no spaces",
+  "@codeFieldInvalid": {
+    "placeholders": {
+      "field": {
+        "type": "String",
+        "example": "Barcode"
+      }
+    }
+  },
+  "variantsFeatureNeeded": "Only the price can be changed here: MRP, barcode and SKU need the \"Variants and options\" feature.",
+  "qtyInvalid": "Enter a quantity",
+  "qtyDecimals": "Quantity allows up to 3 decimals",
+  "qtyMoreThanZero": "Quantity must be more than 0",
+  "openingStockFailed": "The product is saved, but the opening stock wasn't.",
+  "productName": "Product name",
+  "categoryLabel": "Category",
+  "noCategory": "No category",
+  "priceIncludesGst": "Price includes GST",
+  "gstRateLabel": "GST rate",
+  "unitLabel": "Unit",
+  "openingStock": "Opening stock",
+  "stockValue": "Stock value {amount}",
+  "@stockValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,20,000"
+      }
+    }
+  },
+  "stockLowOut": "{low} low · {out} out",
+  "@stockLowOut": {
+    "placeholders": {
+      "low": {
+        "type": "int"
+      },
+      "out": {
+        "type": "int"
+      }
+    }
+  },
+  "stockFilterLow": "Low",
+  "stockFilterOut": "Out",
+  "allLocations": "All locations",
+  "stockEmpty": "Nothing here",
+  "stockAvailable": "{available} available · {reserved} reserved for orders",
+  "@stockAvailable": {
+    "placeholders": {
+      "available": {
+        "type": "String",
+        "example": "10"
+      },
+      "reserved": {
+        "type": "String",
+        "example": "2"
+      }
+    }
+  },
+  "stockAdjust": "Adjust stock",
+  "reorderLevel": "Low-stock level: {qty}",
+  "@reorderLevel": {
+    "placeholders": {
+      "qty": {
+        "type": "String",
+        "example": "5"
+      }
+    }
+  },
+  "avgCost": "Average cost {cost} · value {value}",
+  "@avgCost": {
+    "placeholders": {
+      "cost": {
+        "type": "String",
+        "example": "₹100.00"
+      },
+      "value": {
+        "type": "String",
+        "example": "₹1,000.00"
+      }
+    }
+  },
+  "stockMovements": "Movements",
+  "stockNoMovements": "No movements yet",
+  "loadMore": "Load more",
+  "moveOpening": "Opening stock",
+  "moveAdjustment": "Adjustment",
+  "moveSale": "Sale",
+  "moveSaleCancel": "Sale cancelled",
+  "moveSaleReturn": "Sale return",
+  "moveSaleReturnCancel": "Return cancelled",
+  "movePurchase": "Purchase",
+  "movePurchaseCancel": "Purchase cancelled",
+  "moveTransferOut": "Transfer out",
+  "moveTransferIn": "Transfer in",
+  "stockNow": "Now: {qty}",
+  "@stockNow": {
+    "placeholders": {
+      "qty": {
+        "type": "String",
+        "example": "12 pcs"
+      }
+    }
+  },
+  "stockAfter": "After: {qty}",
+  "@stockAfter": {
+    "placeholders": {
+      "qty": {
+        "type": "String",
+        "example": "15 pcs"
+      }
+    }
+  },
+  "adjustAdd": "Add",
+  "adjustRemove": "Remove",
+  "adjustSet": "Set to",
+  "stockNegativeWarning": "Stock will go below zero.",
+  "balanceDueShort": "Due",
+  "balanceAdvanceShort": "Advance",
+  "balanceSettledShort": "Settled",
+  "ledgerBalDue": "due",
+  "ledgerBalAdvance": "adv.",
+  "ledgerTypeOpening": "Opening balance",
+  "ledgerTypeInvoice": "Bill",
+  "ledgerTypePayment": "Payment",
+  "ledgerTypeReceipt": "Receipt",
+  "ledgerTypeCancel": "Bill cancelled",
+  "ledgerTypeCreditNote": "Credit note",
+  "ledgerTypeRefund": "Refund",
+  "ageCurrent": "Not yet due",
+  "age1to30": "1–30 days",
+  "age31to60": "31–60 days",
+  "age61to90": "61–90 days",
+  "age90plus": "Over 90 days",
+  "expenseCatRent": "Rent",
+  "expenseCatSalaries": "Salaries",
+  "expenseCatElectricity": "Electricity",
+  "expenseCatTransport": "Transport",
+  "expenseCatPackaging": "Packaging",
+  "expenseCatMarketing": "Marketing",
+  "expenseCatRepairs": "Repairs",
+  "expenseCatOther": "Other",
+  "statementMessageDue": "Hello {name}, your balance with {shop} is {amount}. See your statement: {url}",
+  "@statementMessageDue": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      },
+      "shop": {
+        "type": "String",
+        "example": "Anna Stores"
+      },
+      "amount": {
+        "type": "String",
+        "example": "₹1,200.00"
+      },
+      "url": {
+        "type": "String",
+        "example": "https://anna.srikit.in/s/abc"
+      }
+    }
+  },
+  "statementMessageAdvance": "Hello {name}, you have an advance of {amount} with {shop}. See your statement: {url}",
+  "@statementMessageAdvance": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      },
+      "shop": {
+        "type": "String",
+        "example": "Anna Stores"
+      },
+      "amount": {
+        "type": "String",
+        "example": "₹500.00"
+      },
+      "url": {
+        "type": "String",
+        "example": "https://anna.srikit.in/s/abc"
+      }
+    }
+  },
+  "statementMessageSettled": "Hello {name}, your account with {shop} is fully settled. Thank you! Statement: {url}",
+  "@statementMessageSettled": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      },
+      "shop": {
+        "type": "String",
+        "example": "Anna Stores"
+      },
+      "url": {
+        "type": "String",
+        "example": "https://anna.srikit.in/s/abc"
+      }
+    }
+  },
+  "sortLabel": "Sort",
+  "sortBiggestDue": "Biggest dues first",
+  "sortOldestDue": "Oldest due first",
+  "sortLastPayment": "Latest payment first",
+  "sortName": "Name",
+  "creditBookTitle": "Credit book",
+  "toReceive": "To receive",
+  "advanceHeld": "Advance held",
+  "customersWithDues": "Customers with dues",
+  "creditBookSearch": "Search by name or phone",
+  "overdueFor": "Overdue for",
+  "customersNoMatch": "No matching customers",
+  "creditBookNoDues": "No one owes you. Bills given on credit show up here.",
+  "creditBookNoAdvances": "No advances. Money customers pay ahead of their bills shows up here.",
+  "creditBookEmpty": "Your credit book is empty. Add customers and bill them on credit to track what they owe.",
+  "dueSince": "Due since {date}",
+  "@dueSince": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "3 Sep"
+      }
+    }
+  },
+  "lastActivity": "Last activity {date}",
+  "@lastActivity": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "3 Sep"
+      }
+    }
+  },
+  "noActivity": "No activity yet",
+  "overdueAmount": "{amount} overdue",
+  "@overdueAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,200.00"
+      }
+    }
+  },
+  "receiveFrom": "Receive payment from {name}",
+  "@receiveFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "remindName": "Send a reminder to {name}",
+  "@remindName": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "remindSent": "Reminder sent to {name}",
+  "@remindSent": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "remindFailed": "Couldn't send the reminder: {reason}",
+  "@remindFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "No WhatsApp number"
+      }
+    }
+  },
+  "remindViaWhatsApp": "Use WhatsApp",
+  "amountRequired": "Enter an amount",
+  "amountInvalid": "Enter a valid amount",
+  "dateNotFuture": "Pick a date up to today",
+  "tooLong": "That is too long",
+  "receivePayment": "Receive payment",
+  "receiveHint": "From {name}. It settles the oldest bills first; anything extra is kept as advance.",
+  "@receiveHint": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "amountReceived": "Amount received",
+  "balanceDueOf": "Balance due: {amount}",
+  "@balanceDueOf": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,200.00"
+      }
+    }
+  },
+  "alreadyAdvance": "{name} already has {amount} advance.",
+  "@alreadyAdvance": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      },
+      "amount": {
+        "type": "String",
+        "example": "₹500.00"
+      }
+    }
+  },
+  "dateLabel": "Date",
+  "noteOptional": "Note (optional)",
+  "saveReceipt": "Save receipt",
+  "receivedAmount": "{amount} received",
+  "@receivedAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,200.00"
+      }
+    }
+  },
+  "receivedFrom": "From {name} on {date}",
+  "@receivedFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      },
+      "date": {
+        "type": "String",
+        "example": "21 Oct 2026"
+      }
+    }
+  },
+  "settledAgainst": "Settled against",
+  "billNumberShort": "Bill {number}",
+  "@billNumberShort": {
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "INV-0042"
+      }
+    }
+  },
+  "noOpenBills": "There were no open bills, so the whole amount is kept as advance.",
+  "keptAsAdvance": "Kept as advance",
+  "done": "Done",
+  "customersTitle": "Customers",
+  "customersHasDues": "Has dues",
+  "customersAdd": "Add customer",
+  "customersEdit": "Edit customer",
+  "customersSearch": "Search by name, phone or GSTIN",
+  "customersEmpty": "No customers yet. Save regular customers to bill them faster and track what they owe.",
+  "customersLastBill": "Last bill {date}",
+  "@customersLastBill": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "3 Sep"
+      }
+    }
+  },
+  "customersOverLimit": "Over credit limit",
+  "couldNotOpen": "Couldn't open that on this phone",
+  "customerCall": "Call",
+  "shareStatement": "Share statement",
+  "sendReminder": "Send reminder",
+  "ledgerTitle": "Ledger",
+  "ledgerOf": "Ledger · {name}",
+  "@ledgerOf": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "customerBills": "Bills",
+  "customerNoBills": "No bills for this customer yet.",
+  "customerMoreBills": "{count} older bills on the web",
+  "@customerMoreBills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "billBalance": "Balance {amount}",
+  "@billBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹200.00"
+      }
+    }
+  },
+  "balanceDue": "Balance due",
+  "balanceAdvance": "Advance received",
+  "balanceSettled": "All settled",
+  "balanceDueHint": "{name} owes you this amount.",
+  "@balanceDueHint": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "balanceAdvanceHint": "{name} has paid this much ahead. It will be used for the next bills.",
+  "@balanceAdvanceHint": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "balanceSettledHint": "Nothing pending from {name}.",
+  "@balanceSettledHint": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "creditLimit": "Credit limit",
+  "creditUsed": "{used} of {limit} used",
+  "@creditUsed": {
+    "placeholders": {
+      "used": {
+        "type": "String",
+        "example": "₹800.00"
+      },
+      "limit": {
+        "type": "String",
+        "example": "₹1,000.00"
+      }
+    }
+  },
+  "creditOver": "Over the limit by {amount}",
+  "@creditOver": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹200.00"
+      }
+    }
+  },
+  "creditAvailable": "{amount} still available",
+  "@creditAvailable": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹200.00"
+      }
+    }
+  },
+  "creditLimitHint": "Leave empty for no limit. You'll see a warning when a bill crosses it.",
+  "customerCreated": "{name} added",
+  "@customerCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Murugan"
+      }
+    }
+  },
+  "customerUpdated": "Customer updated",
+  "customerFormHint": "Only the name is required. Add a GSTIN for business buyers.",
+  "requiredField": "Required",
+  "customerPhone": "Phone",
+  "customerEmail": "Email",
+  "customerAddress": "Address",
+  "emailInvalid": "Enter a valid email",
+  "gstinInvalid": "Enter a valid 15-character GSTIN",
+  "openingBalance": "Opening balance",
+  "openingBalanceHint": "Old balance from before you started billing here.",
+  "openingOwes": "They owe me",
+  "openingAdvance": "Paid in advance",
+  "expensesTitle": "Expenses",
+  "expenseTitle": "Expense",
+  "expenseAdd": "Add expense",
+  "expenseCategories": "Categories",
+  "periodThisMonth": "This month",
+  "periodLastMonth": "Last month",
+  "periodThisFy": "This financial year",
+  "periodCustom": "Pick dates",
+  "periodRange": "{from} – {to}",
+  "@periodRange": {
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "1 Apr 2026"
+      },
+      "to": {
+        "type": "String",
+        "example": "21 Oct 2026"
+      }
+    }
+  },
+  "summaryFor": "Summary for {from} – {to}",
+  "@summaryFor": {
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "1 Oct"
+      },
+      "to": {
+        "type": "String",
+        "example": "21 Oct"
+      }
+    }
+  },
+  "expensesSpent": "Spent",
+  "expensesGst": "GST paid",
+  "expensesEntries": "Entries",
+  "expensesByCategory": "Spent by category",
+  "expensesListTotals": "{count, plural, =1{1 expense} other{{count} expenses}} · {amount} · GST {gst}",
+  "@expensesListTotals": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String",
+        "example": "₹12,000.00"
+      },
+      "gst": {
+        "type": "String",
+        "example": "₹540.00"
+      }
+    }
+  },
+  "expensesEmpty": "No expenses in this period. Record rent, salaries and bills here to see your real profit.",
+  "expenseCancelledBadge": "Cancelled",
+  "expensePickCategory": "Choose a category",
+  "expenseCreated": "Expense of {amount} recorded",
+  "@expenseCreated": {
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₹1,200.00"
+      }
+    }
+  },
+  "expenseUpdated": "Expense saved",
+  "expenseCancel": "Cancel expense",
+  "expenseCancelTitle": "Cancel this expense?",
+  "expenseCancelBody": "It stays on record, marked cancelled, and is left out of totals and the profit report.",
+  "expenseCancelled": "Expense cancelled",
+  "expenseCancelledHint": "This expense is cancelled and left out of totals.",
+  "keepIt": "Keep it",
+  "expenseAmount": "Amount",
+  "expenseAmountHint": "Enter the amount you paid, including GST.",
+  "expenseCategory": "Category",
+  "expensePaidBy": "Paid by",
+  "expenseNoteHint": "What was it for?",
+  "expenseReferenceHint": "Bill no., UPI ref or cheque no.",
+  "expenseGstInside": "GST {gst} inside the amount · ITC {itc}",
+  "@expenseGstInside": {
+    "placeholders": {
+      "gst": {
+        "type": "String",
+        "example": "₹54.00"
+      },
+      "itc": {
+        "type": "String",
+        "example": "₹54.00"
+      }
+    }
+  },
+  "categoriesHint": "Group your spending. Built-in categories can be renamed but not deleted.",
+  "categoryNew": "New category name",
+  "categoryAdd": "Add",
+  "categoryRename": "Rename",
+  "categoryBuiltin": "Built-in category",
+  "categoryDeleteTitle": "Delete the {name} category?",
+  "@categoryDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Tea"
+      }
+    }
+  },
+  "categoryDeleteBody": "Only categories with no expenses can be deleted.",
+  "delete": "Delete",
+  "ledgerEmpty": "No entries in this period. Pick a longer date range to see older entries.",
+  "ledgerBilled": "Billed",
+  "ledgerReceived": "Received",
+  "ledgerClosing": "Closing balance",
+  "ledgerBroughtForward": "Balance as of {date}",
+  "@ledgerBroughtForward": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "1 Apr 2026"
+      }
+    }
+  },
+  "useAsTerminal": "Use this phone as a POS terminal",
+  "pairTitle": "Pair this phone with a terminal",
+  "pairSubtitle": "In srikit on the web, open Settings → POS terminals, pick the terminal and show its pairing code.",
+  "pairScan": "Scan the pairing QR",
+  "pairCodeLabel": "Pairing code",
+  "pairButton": "Pair",
+  "pairing": "Pairing…",
+  "pairBackToSignIn": "Sign in as owner or staff instead",
+  "pairErrorFormat": "Enter the 8-character code, like ABCD-2345",
+  "pairErrorInvalid": "This pairing code is wrong or has expired. Ask for a new one.",
+  "pairErrorTooMany": "Too many tries. Wait a few minutes and try again.",
+  "pairErrorFeatureOff": "POS terminals are not on for this shop's plan.",
+  "pairRevoked": "This phone was unpaired from its terminal. Pair it again.",
+  "terminalOffline": "Can't reach the server. Check the internet and try again.",
+  "terminalFeatureOff": "This terminal can't be used: the feature is off for the shop.",
+  "lockTitle": "Enter your PIN",
+  "shopAndTerminal": "{shop} · {terminal}",
+  "@shopAndTerminal": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      },
+      "terminal": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock": "Unlock",
+  "pinInvalid": "{count, plural, =0{Wrong PIN.} =1{Wrong PIN. 1 try left.} other{Wrong PIN. {count} tries left.}}",
+  "@pinInvalid": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pinWrong": "Wrong PIN.",
+  "pinLocked": "Too many wrong PINs. Try again in {time}.",
+  "@pinLocked": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pinNotAllowed": "You can't use this terminal. Ask the owner for access.",
+  "lockedIdle": "Locked after a while without use.",
+  "sessionEnded": "Your session ended. Enter your PIN again.",
+  "teamMember": "Team member",
+  "noPinYet": "No PIN yet",
+  "pinClear": "Clear",
+  "pinBack": "Delete",
+  "lockButton": "Lock",
+  "switchCashier": "Switch cashier",
+  "cashierLabel": "Cashier: {name}",
+  "@cashierLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "terminalSettings": "Terminal",
+  "syncItems": "Sync items",
+  "catalogueStatus": "{count} items · synced {time}",
+  "@catalogueStatus": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogueNotSynced": "Items not synced yet",
+  "catalogueSyncFailed": "Could not sync items: {error}",
+  "@catalogueSyncFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unpairPhone": "Unpair this phone",
+  "unpairTitle": "Unpair this phone?",
+  "unpairBody": "It stops being {terminal}. To use it again, pair it with a new code.",
+  "@unpairBody": {
+    "placeholders": {
+      "terminal": {
+        "type": "String"
+      }
+    }
+  },
+  "unpair": "Unpair",
+  "enterWeightTitle": "Weight of {item}",
+  "@enterWeightTitle": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "weightKgLabel": "Weight (kg)",
+  "weightInvalid": "Enter a weight above 0, up to 999.999 kg",
+  "add": "Add",
+  "ticketAdded": "Weigh ticket {code} added",
+  "@ticketAdded": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketNotFound": "No weigh ticket {code}.",
+  "@ticketNotFound": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketUsed": "Ticket {code} is already billed.",
+  "@ticketUsed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketExpired": "Ticket {code} has expired (tickets are valid for the day).",
+  "@ticketExpired": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketCancelled": "Ticket {code} was cancelled.",
+  "@ticketCancelled": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketDuplicate": "Ticket {code} is already on this bill.",
+  "@ticketDuplicate": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketEmpty": "Ticket {code} has no lines.",
+  "@ticketEmpty": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketLabel": "Ticket {code}",
+  "@ticketLabel": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "removeTicketTitle": "Remove ticket {code}?",
+  "@removeTicketTitle": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "removeTicketBody": "All its lines leave the bill.",
+  "ticketUseFailed": "Ticket {code} could not be marked as billed: {error}",
+  "@ticketUseFailed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "weighingTitle": "Weighing station",
+  "weighItem": "Weigh {item}",
+  "@weighItem": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "countItem": "How many {item}?",
+  "@countItem": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "grossLabel": "Weight on the scale (kg)",
+  "tareLabel": "Tare (kg)",
+  "netWeight": "Net {kg} kg",
+  "@netWeight": {
+    "placeholders": {
+      "kg": {
+        "type": "String"
+      }
+    }
+  },
+  "netInvalid": "Net weight must be more than 0 and at most 999.999 kg",
+  "manualScale": "No scale connected: type the weight.",
+  "addToTicket": "Add to ticket",
+  "ticketLines": "{count, plural, =0{No lines yet} =1{1 line} other{{count} lines}}",
+  "@ticketLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "issueTicket": "Issue ticket · ≈ {amount}",
+  "@issueTicket": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "issuing": "Issuing…",
+  "ticketTitle": "Weigh ticket",
+  "ticketHint": "Hand this to the customer; the counter scans the code.",
+  "printTicket": "Print ticket",
+  "nextCustomer": "Next customer",
+  "todayTickets": "Today's tickets",
+  "noTicketsToday": "No tickets today",
+  "cancelTicket": "Cancel ticket",
+  "cancelTicketTitle": "Cancel ticket {code}?",
+  "@cancelTicketTitle": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "ticketStatusOpen": "Open",
+  "ticketStatusUsed": "Billed",
+  "ticketStatusCancelled": "Cancelled",
+  "byWeight": "By weight",
+  "weighFirst": "Pick an item to weigh"
+}

@@ -1,0 +1,17 @@
+name: srikit_theme
+description: Material 3 ThemeData built from srikit brand tokens (GET /v1/branding).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

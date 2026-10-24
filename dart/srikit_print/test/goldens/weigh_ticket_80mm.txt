@@ -1,0 +1,20 @@
+                 Murugan Stores
+                  WEIGH TICKET
+Terminal: Weighing 1
+Date: 22-10-2026 10:30
+------------------------------------------------
+Tomato                                     49.36
+  1.234 kg x 40.00/kg
+  Tare 0.050 kg
+Country Tomato                             30.00
+  0.500 kg x 60.00/kg
+Basmati Rice Premium Long Grain Loose     353.38
+  2.750 kg x 128.50/kg
+Coconut                                    70.00
+  2 pcs x 35.00/pcs
+------------------------------------------------
+TOTAL                                  Rs 502.74
+------------------------------------------------
+      ||||||||||||||||||||||||||||||||||||
+                  W26102200017
+        Pay at the counter. Valid today.

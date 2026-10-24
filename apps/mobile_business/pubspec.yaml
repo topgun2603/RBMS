@@ -1,0 +1,36 @@
+name: srikit_business
+description: srikit Business — the owners' and staff app for every trade.
+publish_to: none
+# Keep in step with appVersion in lib/src/config.dart (sent in the x-client header).
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  mobile_scanner: ^7.4.2
+  path_provider: ^2.1.5
+  srikit_api:
+    path: ../../dart/srikit_api
+  srikit_kit:
+    path: ../../dart/srikit_kit
+  srikit_print:
+    path: ../../dart/srikit_print
+  srikit_theme:
+    path: ../../dart/srikit_theme
+  url_launcher: ^6.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  http: ^1.2.0
+
+flutter:
+  uses-material-design: true
+  generate: true

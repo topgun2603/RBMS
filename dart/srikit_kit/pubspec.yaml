@@ -1,0 +1,23 @@
+name: srikit_kit
+description: Shared app plumbing for srikit Flutter apps — session, auth, shop switching, feature / permission gates.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  srikit_api:
+    path: ../srikit_api
+  srikit_theme:
+    path: ../srikit_theme
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  http: ^1.2.0
