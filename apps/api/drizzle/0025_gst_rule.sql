@@ -1,0 +1,1 @@
+ALTER TABLE "catalog_products" ADD COLUMN "gst_rule" jsonb;

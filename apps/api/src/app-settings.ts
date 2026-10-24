@@ -107,6 +107,12 @@ export function defineAppSettings(settings: SettingsService) {
       codMaxAmount: z.number().int().min(0).max(100_000_000),
       /** Paise, on goods after discount; 0 = none. */
       minOrderValue: z.number().int().min(0).max(100_000_000),
+      /** Home delivery (default on); off = pickup only. */
+      deliveryEnabled: z.boolean().optional(),
+      /** Pickup / takeaway: shoppers collect at the shop (default off). */
+      pickupEnabled: z.boolean().optional(),
+      /** Where and when to collect, shown at checkout. */
+      pickupNote: z.string().max(300).optional(),
       contactPhone: z.string().max(20),
       contactEmail: z.string().email().or(z.literal("")),
       social: z.object({ instagram: url.optional(), facebook: url.optional(), youtube: url.optional(), whatsapp: z.string().max(20).optional() }),
@@ -119,6 +125,19 @@ export function defineAppSettings(settings: SettingsService) {
       }),
       /** The shop's trade (@srirealtime/verticals pack id): storefront wording, size guide, starter content. "" = the app's default. */
       businessType: z.string().max(40),
+      /** Show shoppers the "Install <shop> app" banner (installable storefront / PWA). */
+      installBanner: z.boolean(),
+      /**
+       * Trust badges and the announcement fallback (storefront-ui lib/trust.ts): "auto" derives returns from the returns
+       * policy and the trade, payment from the trade; `badges` (the owner's own, up to 4) replace the derived ones.
+       */
+      trust: z
+        .object({
+          returns: z.enum(["auto", "easy", "replace", "exchange", "none"]),
+          payment: z.enum(["auto", "online", "confirm", "visit"]),
+          badges: z.array(z.object({ title: z.string().trim().min(1).max(40), text: z.string().trim().max(80), titleTa: z.string().trim().max(60), textTa: z.string().trim().max(120) })).max(4),
+        })
+        .optional(),
     }),
     {
       open: true,
@@ -126,13 +145,18 @@ export function defineAppSettings(settings: SettingsService) {
       codEnabled: true,
       codMaxAmount: 500_000,
       minOrderValue: 0,
+      deliveryEnabled: true,
+      pickupEnabled: false,
+      pickupNote: "",
       contactPhone: "",
       contactEmail: "",
       social: { instagram: "", facebook: "", youtube: "", whatsapp: "" },
       policies: { shipping: "", returns: "", privacy: "", terms: "" },
       businessType: "",
+      installBanner: true,
+      trust: { returns: "auto", payment: "auto", badges: [] },
     },
-    { publicKeys: ["open", "closedMessage", "codEnabled", "codMaxAmount", "minOrderValue", "contactPhone", "contactEmail", "social", "policies", "businessType"] },
+    { publicKeys: ["open", "closedMessage", "codEnabled", "codMaxAmount", "minOrderValue", "deliveryEnabled", "pickupEnabled", "pickupNote", "contactPhone", "contactEmail", "social", "policies", "businessType", "installBanner", "trust"] },
   );
 
   // Product review moderation (read by the reviews module).

@@ -27,6 +27,12 @@ export const envSchema = z.object({
   /** Where shops point their custom domain (CNAME), shown in the DNS instructions. */
   CNAME_TARGET: z.string().default("stores.srikit.in"),
   SESSION_TTL_DAYS: z.coerce.number().default(30),
+  /** Sessions of the srikit mobile apps (`x-client` header): days, sliding with use. */
+  MOBILE_SESSION_TTL_DAYS: z.coerce.number().default(90),
+  /** Lowest app versions allowed to call the API, e.g. "business=1.0.0,shops=1.0.0" (older apps get 426). */
+  MOBILE_MIN_VERSIONS: optionalString(),
+  /** Newest app versions in the stores, same format (apps offer an update when older). */
+  MOBILE_LATEST_VERSIONS: optionalString(),
   OTP_TTL_MINUTES: z.coerce.number().default(10),
   /**
    * Development/test only: a fixed OTP (4–10 digits) for the test identities in TEST_OTP_TARGETS (comma-separated exact

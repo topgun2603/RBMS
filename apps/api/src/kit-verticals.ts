@@ -1,5 +1,7 @@
 import { themePreset } from "@srirealtime/branding";
-import { badRequest, defineModule, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@srirealtime/core";
+import { variantLookupSchema } from "@srirealtime/catalogue";
+import { weighTicketSchema } from "@srirealtime/pos";
+import { badRequest, defineModule, documented, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@srirealtime/core";
 import { grants } from "@srirealtime/features";
 import { and, eq, inArray, isNull, sql, type Db } from "@srirealtime/db";
 import { settingsValues } from "@srirealtime/settings";
@@ -340,8 +342,23 @@ export interface ResolvedCode {
   itemId: string;
   qty?: number;
   serial?: string;
+  /** A complete answer of its own instead of a catalogue item (POS weigh tickets: `{ weighTicket }`). */
+  answer?: Record<string, unknown>;
 }
 export type CodeResolver = (tenantId: string, code: string) => Promise<ResolvedCode | null>;
+
+/** `GET /v1/counter/resolve` as JSON (API document, mobile client): the catalogue lookup plus the label's weight or the unit's serial. */
+export const counterResolveSchema = z.union([
+  z.object({
+    variant: variantLookupSchema,
+    /** Weight / quantity from a weighing-scale label. */
+    qty: z.number().optional(),
+    /** The unit's serial number or IMEI. */
+    serial: z.string().optional(),
+  }),
+  /** A POS weigh ticket ("W" + 11 digits), in any state: check `status` and `expiresAt`. */
+  z.object({ weighTicket: weighTicketSchema }),
+]);
 
 /**
  * `GET /v1/counter/resolve?code=` for the POS: weighing-scale labels, serial numbers / IMEIs… Each engine registers a
@@ -352,7 +369,8 @@ export function createCounter(deps: { variants(tenantId: string, ids: string[]):
   const resolvers: { name: string; run: CodeResolver }[] = [];
   const codeQuery = z.object({ code: z.string().trim().min(3).max(64) });
   const routes = async (app: FastifyInstance) => {
-    app.get("/resolve", { config: { permission: ["invoices.create", "invoices.view"] } }, async (req) => {
+    // Billing is enough: a cashier scans scale labels, IMEIs and weigh tickets (the built-in cashier has no invoices.view).
+    app.get("/resolve", documented({ query: codeQuery, response: counterResolveSchema }, { permission: "invoices.create" }), async (req) => {
       requireRole(req.ctx, "owner", "admin", "staff");
       const tenantId = requireTenant(req.ctx).id;
       const { code } = codeQuery.parse(req.query ?? {});
@@ -362,6 +380,7 @@ export function createCounter(deps: { variants(tenantId: string, ids: string[]):
           return null;
         });
         if (!hit) continue;
+        if (hit.answer) return hit.answer;
         const [variant] = await deps.variants(tenantId, [hit.itemId]);
         if (!variant) continue;
         return { variant, ...(hit.qty !== undefined ? { qty: hit.qty } : {}), ...(hit.serial ? { serial: hit.serial } : {}) };

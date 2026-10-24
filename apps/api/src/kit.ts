@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createAnalytics, ANALYTICS_JOBS } from "@srirealtime/analytics";
-import { createAuth } from "@srirealtime/auth";
+import { createAuth, storeOriginsFor } from "@srirealtime/auth";
 import { createBranding } from "@srirealtime/branding";
 import { createAudit } from "@srirealtime/audit";
 import { CATALOGUE_VENDOR_ROUTE_KEYS, createCatalogue, isPublicRef } from "@srirealtime/catalogue";
@@ -29,6 +29,7 @@ import { isSuperAdmin, type SrModule } from "@srirealtime/core";
 import { createDb } from "@srirealtime/db";
 import { createFeatures } from "@srirealtime/features";
 import { createI18n } from "@srirealtime/i18n";
+import { createIdempotency } from "@srirealtime/idempotency";
 import { createInventory } from "@srirealtime/inventory";
 import { createInvoices } from "@srirealtime/invoices";
 import { createJobs } from "@srirealtime/jobs";
@@ -52,6 +53,7 @@ import {
   dnsDomainVerifier,
   fulfillmentPort,
   storeAvailabilityPort,
+  storePublicAvailability,
   storeBaseUrl,
   storeCatalogPort,
   storeOrdersPort,
@@ -69,6 +71,7 @@ import {
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
 import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
+import { createMobile, parseVersionList } from "./kit-mobile";
 import { createKitOps } from "./kit-ops";
 import { createMessages } from "./kit-messages";
 import { findOrderForReview, resolveReviewProducts, reviewRequestsPort } from "./kit-reviews";
@@ -79,12 +82,24 @@ import { orders as ordersTable } from "@srirealtime/orders";
 import type { CreditNote, Invoice } from "@srirealtime/invoices";
 import { and, eq } from "@srirealtime/db";
 import { createStoreRevalidator, storeRevalidateConfig } from "./kit-store-revalidate";
+import { createPosWiring } from "./kit-pos";
 
 /**
  * Composition root: builds every module and connects them through their ports.
  * Packages never import each other; all cross-module wiring lives here.
  */
-export function createKit(env: Env, log: Logger) {
+export interface KitOptions {
+  /**
+   * Clock override for the services that take one (invoices, inventory, expenses, medicines, dining, jewellery). Only the
+   * demo-history seed (demo-history/) passes it, to date generated activity in the past; the server never does.
+   */
+  now?: () => Date;
+  /** Bills don't count against the plan's monthly invoice quota (history generation only). */
+  skipInvoiceQuota?: boolean;
+}
+
+export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
+  const clock = opts.now;
   const { db, close: closeDb } = createDb(env.DATABASE_URL);
 
   // Error reporter, metrics and readiness probes (docs/ops.md); the job observer reports final job failures.
@@ -108,6 +123,9 @@ export function createKit(env: Env, log: Logger) {
   let serialsRef: ReturnType<typeof createSerials> | undefined;
   // Jewellery: tagged pieces are sold / back in stock with their bills.
   let jewelleryRef: ReturnType<typeof createJewellery> | undefined;
+  // POS terminals (docs/pos-terminals.md): created after batch 3 (branches); the plan usage source and the bill
+  // cancelled hook reach it lazily.
+  let posRef: ReturnType<typeof createPosWiring> | undefined;
   const lineItemIds = (inv: { lines: { itemId?: string | null }[] }) =>
     inv.lines.map((l) => l.itemId).filter((x): x is string => Boolean(x));
   // Restaurant orders and kitchen tickets (created after invoices and catalogue); the order hooks reach it lazily.
@@ -130,6 +148,11 @@ export function createKit(env: Env, log: Logger) {
       staff: {
         count: async (tenantId) => (await tenancy.service.seatCounts(tenantId)).get(tenantId) ?? 0,
         countAll: () => tenancy.service.seatCounts(),
+      },
+      // Non-deleted POS terminals (plan limit `pos_terminals`).
+      pos_terminals: {
+        count: async (tenantId) => (posRef ? ((await posRef.service.countTerminals(tenantId)).get(tenantId) ?? 0) : 0),
+        countAll: async () => (posRef ? posRef.service.countTerminals() : new Map()),
       },
     },
     // Plan add-ons (docs/verticals.md "Plan add-ons"): the shop's active add-ons come from subscriptions (batch 5,
@@ -214,6 +237,7 @@ export function createKit(env: Env, log: Logger) {
     db,
     config: {
       sessionTtlDays: env.SESSION_TTL_DAYS,
+      mobileSessionTtlDays: env.MOBILE_SESSION_TTL_DAYS,
       otpTtlMinutes: env.OTP_TTL_MINUTES,
       googleClientIds: env.GOOGLE_CLIENT_ID ? [env.GOOGLE_CLIENT_ID] : [],
       testOtp,
@@ -229,6 +253,15 @@ export function createKit(env: Env, log: Logger) {
     permissions: { permissionsFor: (tenantId, roles) => staff.resolver.permissionsFor(tenantId, roles) },
     // Where `POST /v1/auth/handoff { tenantId }` sends the user (batch 5 is created below).
     handoffTargets: { appUrl: (userId, tenantId) => b5!.handoffTargets.appUrl(userId, tenantId) },
+    // Shopper sign-in through the landing site: the storefront origins of one shop (docs/firebase-auth.md section 7).
+    storeOrigins: {
+      shop: async (slug) => {
+        const t = await tenancy.service.getBySlug(slug);
+        if (!t || t.status !== "active") return null;
+        const domains = (await tenancy.service.listDomains(t.id)).filter((d) => d.verified).map((d) => d.domain);
+        return { id: t.id, slug: t.slug, name: t.name, origins: storeOriginsFor(env.STORE_PUBLIC_URL, t.slug, domains) };
+      },
+    },
     // Sign-ins, handoffs and super-admin user changes (no shop / no user yet for the host hook).
     audit: audit.service,
     log,
@@ -315,7 +348,8 @@ export function createKit(env: Env, log: Logger) {
     items: catalogue.itemSource,
     db,
     seller: { get: (tenantId) => billingProfile.get({ tenantId }) },
-    entitlements: plans.service,
+    entitlements: opts.skipInvoiceQuota ? undefined : plans.service,
+    now: clock,
     branding: {
       get: async (tenantId) => {
         const b = await branding.service.get(tenantId);
@@ -375,6 +409,8 @@ export function createKit(env: Env, log: Logger) {
         await b3?.loyalty.hooks.invoiceCancelled(tenantId, inv.id);
         await medicinesRef?.service.onInvoiceCancelled(tenantId, inv.id);
         await serialsRef?.service.onInvoiceCancelled(tenantId, inv.id);
+        // Weigh tickets billed on it can be scanned again.
+        await posRef?.service.reopenForInvoice(tenantId, inv.id);
         if (jewelleryRef && (await isEnabled(tenantId, "jewellery"))) {
           await jewelleryRef.service.setStatusByItems(tenantId, lineItemIds(inv), "in_stock");
         }
@@ -413,6 +449,7 @@ export function createKit(env: Env, log: Logger) {
 
   const inventory = createInventory({
     db,
+    now: clock,
     events,
     catalog: catalogue.itemCatalog,
     sellerState: {
@@ -521,6 +558,11 @@ export function createKit(env: Env, log: Logger) {
    * Restaurants: a store order the shop confirms goes to the kitchen as a dining order (KOTs per station); cancelling it
    * cancels the tickets; delivering it closes the dining order.
    */
+  async function soldOutDishes(tenantId: string, variantIds: string[]): Promise<Set<string>> {
+    if (!diningRef || !(await isEnabled(tenantId, "dining"))) return new Set();
+    return diningRef.service.soldOutItems(tenantId, variantIds);
+  }
+
   async function diningOrderSync(tenantId: string, o: Order, to: string) {
     if (!diningRef || !(await isEnabled(tenantId, "dining"))) return;
     const ref = `order:${o.id}`;
@@ -711,7 +753,9 @@ export function createKit(env: Env, log: Logger) {
         return { name: await shopName(tenantId), logoUrl: b.logoUrl, css: b.css, theme: { ...b.tokens.theme }, fonts };
       },
     },
-    availability: storeAvailabilityPort(inventory.service, isEnabled, async (tenantId) => (await orderSettings.get({ tenantId })).allowBackorder === true),
+    availability: storeAvailabilityPort(inventory.service, isEnabled, async (tenantId) => (await orderSettings.get({ tenantId })).allowBackorder === true, soldOutDishes),
+    onlinePayments: async (tenantId) => (await payments.service.isEnabled(tenantId)).enabled,
+    publicAvailability: storePublicAvailability(inventory.service, isEnabled, soldOutDishes),
     coupons: coupons.service,
     // A shop without zones gets delivery's implicit "All India" free rate, so checkout works out of the box.
     delivery: {
@@ -799,6 +843,7 @@ export function createKit(env: Env, log: Logger) {
 
   const expenses = createExpenses({
     db,
+    now: clock,
     sales: {
       gstTotals: async (tenantId, from, to) => {
         const t = (await invoices.service.gstSummary(tenantId, { from, to })).totals;
@@ -844,6 +889,7 @@ export function createKit(env: Env, log: Logger) {
 
   const medicines = createMedicines({
     db,
+    now: clock,
     stock: inventoryStock,
     featureGate: features.gate,
     log,
@@ -888,9 +934,11 @@ export function createKit(env: Env, log: Logger) {
       const inv = await invoices.service.create(
         tenant,
         {
-          date: todayIST(),
+          date: todayIST(clock?.()),
           issue: true,
-          customer: input.customer ? { name: input.customer.name, phone: input.customer.phone ?? undefined } : undefined,
+          ...(input.customer?.customerId
+            ? { customerId: input.customer.customerId, ...(input.customer.dueDate ? { dueDate: input.customer.dueDate } : {}) }
+            : { customer: input.customer ? { name: input.customer.name, phone: input.customer.phone ?? undefined } : undefined }),
           notes: input.notes ?? undefined,
           tillSessionId: input.tillSessionId ?? undefined,
           lines: input.lines.map((l) => ({
@@ -927,6 +975,7 @@ export function createKit(env: Env, log: Logger) {
 
   const dining = createDining({
     db,
+    now: clock,
     billing: billFromLines,
     // Rates are the catalogue's GST-exclusive rates (bills add GST on top, as at the counter).
     menu: {
@@ -971,6 +1020,7 @@ export function createKit(env: Env, log: Logger) {
   const jobcards = createJobcards({
     db,
     billing: billFromLines,
+    now: clock,
     notify: { statusChanged: (tenantId, job) => messages.jobcards.statusChanged(tenantId, job), approvalDecided: jobApprovalNotice },
     serials: { unavailable: (tenantId, itemId, codes) => serials.service.unavailableFor(tenantId, itemId, codes) },
     log,
@@ -982,6 +1032,7 @@ export function createKit(env: Env, log: Logger) {
     billing: billFromLines,
     prices: { items: (tenantId, ids) => catalogue.service.getItems(tenantId, ids) },
     notify: messages.bookings,
+    now: clock,
     log,
   });
   bookingsRef = bookings;
@@ -993,6 +1044,7 @@ export function createKit(env: Env, log: Logger) {
     settings: { get: (tenantId) => membershipSettings.get({ tenantId }), set: (tenantId, patch) => membershipSettings.setTenant(tenantId, patch) },
     reminders: messages.memberships.reminders,
     notify: messages.memberships.notify,
+    now: clock,
     log,
   });
 
@@ -1177,12 +1229,16 @@ export function createKit(env: Env, log: Logger) {
   });
   const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, log });
   const solutions = createSolutions({ db, starter, presets, features: features.service, tenancy: tenancy.service });
+  // Mobile apps (docs/market-plan.md, M0): forced updates and retry-safe writes.
+  const mobile = createMobile({ min: parseVersionList(env.MOBILE_MIN_VERSIONS), latest: parseVersionList(env.MOBILE_LATEST_VERSIONS) });
+  const idempotency = createIdempotency(db);
   // POS: scanned codes no item barcode matches (scale labels, serials / IMEIs); engines register resolvers.
   const counter = createCounter({ variants: (tenantId, ids) => catalogue.service.getVariants(tenantId, ids), log });
   // Jewellery: the daily metal rate reprices tagged pieces; old gold taken in is paid onto the bill.
   const jewellerySettings = settings.service.handle("jewellery");
   const jewellery = createJewellery({
     db,
+    now: clock,
     catalog: {
       variants: async (tenantId, ids) => (await catalogue.service.getVariants(tenantId, ids)).map((v) => ({ id: v.id, name: v.name })),
       // The engine prices GST-exclusive; products sold at tax-inclusive prices get the GST added in.
@@ -1202,6 +1258,38 @@ export function createKit(env: Env, log: Logger) {
   });
   jewelleryRef = jewellery;
 
+  // POS terminals: pairing, device tokens, staff PINs, catalogue sync, weigh tickets (kit-pos.ts).
+  const pos = createPosWiring({
+    db,
+    appSecret: env.APP_SECRET,
+    apiOrigin: env.API_PUBLIC_URL,
+    auth: auth.service,
+    tenancy: tenancy.service,
+    staffPermissions: (tenantId, roles) => staff.resolver.permissionsFor(tenantId, roles),
+    features: {
+      isEnabled,
+      enabledKeys: async (tenantId) => {
+        const ref = await tenancy.service.getRef(tenantId);
+        return ref ? (await features.service.resolve(ref)).enabled : [];
+      },
+    },
+    quota: plans.service,
+    shopName,
+    branch: async (tenantId, branchId) => {
+      const b = await batch3.branches.service.get(tenantId, branchId).catch(() => null);
+      return b ? { id: b.id, locationId: b.stockLocationId, active: b.active } : null;
+    },
+    billExists: async (tenantId, invoiceId) => Boolean(await invoices.service.get(tenantId, invoiceId).catch(() => null)),
+    audit: audit.service,
+    log,
+  });
+  posRef = pos;
+  // Weigh-ticket codes ("W" + 11 digits) answer `{ weighTicket }`, in any state (the client reads status / expiry).
+  counter.add("pos.weigh-ticket", async (tenantId, code) => {
+    if (!(await isEnabled(tenantId, "pos.weighing"))) return null;
+    const ticket = await pos.service.findTicketCode(tenantId, code);
+    return ticket ? { itemId: "", answer: { weighTicket: ticket } } : null;
+  });
   counter.add("scales", async (tenantId, code) => {
     if (!(await isEnabled(tenantId, "scales"))) return null;
     const hit = await scales.service.resolveCode(tenantId, code);
@@ -1268,7 +1356,10 @@ export function createKit(env: Env, log: Logger) {
     offByDefault(scales.module),
     offByDefault(jewellery.module),
     ownerCanSwitch(memberships.module),
+    pos.module,
     solutions,
+    idempotency.module,
+    mobile.module,
     ...batch3.modules,
     ...batch5.modules,
   ];
@@ -1317,6 +1408,7 @@ export function createKit(env: Env, log: Logger) {
     subscriptions: batch5.subscriptions,
     modules,
     /** Runs a job defined in the kit once, in this process (scripts, e2e). */
+    pos,
     async runJob(name: string) {
       const handler = jobHandlers.get(name);
       if (!handler) throw new Error(`Unknown job "${name}" (known: ${[...jobHandlers.keys()].join(", ")})`);
@@ -1334,16 +1426,25 @@ export function createKit(env: Env, log: Logger) {
     /** The server's `/ready`, `/version`, `/metrics` options. */
     ops: kitOps.serverOps(jobs.service),
     /**
-     * Order matters: tenancy resolves the tenant; an API key (`Bearer sk_…`) then sets tenant + key principal; auth loads
-     * a session user's roles in the tenant (it ignores API keys); branches picks `ctx.branch` from both.
+     * Order matters: tenancy resolves the tenant; the POS device hook (`x-device-token`) then sets `ctx.device` and, when
+     * no shop was given, the terminal's shop (a mismatch is refused); an API key (`Bearer sk_…`) then sets tenant + key
+     * principal; auth loads a session user's roles in the tenant (it ignores API keys, and accepts a terminal-bound PIN
+     * session only with that terminal's device); branches picks `ctx.branch` from all of them (a device's own branch first).
      */
-    contextHooks: [tenancy.contextHook, batch3.developer.apiKeyHook, auth.contextHook, batch3.branches.contextHook],
+    contextHooks: [tenancy.contextHook, pos.deviceHook, batch3.developer.apiKeyHook, auth.contextHook, batch3.branches.contextHook],
     /**
-     * Global preHandlers, after the context hooks: API keys refused on key management / platform routes, each route's
-     * `config.feature`, then `config.permission` (skipped for marketplace sellers on the catalogue product routes,
-     * which the catalogue scopes to the seller's own products itself).
+     * Global preHandlers, after the context hooks: app versions below the minimum refused, API keys refused on key
+     * management / platform routes, each route's `config.feature`, then `config.permission` (skipped for marketplace
+     * sellers on the catalogue product routes, which the catalogue scopes to the seller's own products itself), and
+     * last the `Idempotency-Key` check (so only allowed requests claim a key).
      */
-    preHandlers: [batch3.developer.apiKeyGuard, featureCheck(features.preHandler), permissionCheck(staff.preHandler)],
+    preHandlers: [
+      mobile.updateGuard,
+      batch3.developer.apiKeyGuard,
+      featureCheck(features.preHandler),
+      permissionCheck(staff.preHandler),
+      idempotency.preHandler,
+    ],
     /** Records every successful mutating request in the audit log; tells the online store to refresh what changed. */
     onResponse: [
       audit.onResponse,
@@ -1353,6 +1454,8 @@ export function createKit(env: Env, log: Logger) {
         log,
       }).onResponse,
     ],
+    /** Keeps the answer to an `Idempotency-Key` write so a retry from a phone doesn't bill twice. */
+    onSend: [idempotency.onSend],
     async start() {
       for (const m of modules) await m.start?.();
       // Once per boot, in every process (idempotent; guarded against in-flight reservations).

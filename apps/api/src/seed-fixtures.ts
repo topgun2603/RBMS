@@ -49,6 +49,9 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       ...BATCH3_BL,
       // Trades (off until the business pack or the owner turns them on): weighing scales for grocery / bakery / fresh.
       "scales.*",
+      // POS terminals (docs/pos-terminals.md): paired counters + PIN unlock; the weighing station is off until a
+      // pack with scales (or the owner) turns it on.
+      "pos.*",
       // Batch 5: Plan & billing (every app and plan).
       "subscriptions",
     ],
@@ -88,6 +91,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "scales.*",
       "serials.*",
       "jewellery.*",
+      // POS terminals and the weighing station (off by default).
+      "pos.*",
       // Batch 5: Plan & billing (every app and plan).
       "subscriptions",
     ],
@@ -121,6 +126,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "reviews",
       "analytics",
       "custom-domain",
+      // POS terminals (counters with PIN unlock).
+      "pos.*",
       "subscriptions",
     ],
   },
@@ -157,6 +164,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "reports.advanced",
       // Tables, running orders, KOTs per station, kitchen display, QR table ordering, bills from orders.
       "dining.*",
+      // POS terminals (counters with PIN unlock).
+      "pos.*",
       "subscriptions",
     ],
   },
@@ -226,14 +235,24 @@ const PLAN_ADDITIONS: Record<string, string[]> = {
     "chat",
     "loyalty",
     ...VERTICALS_PAID,
+    // POS terminals and the weighing station from starter up (docs/pos-terminals.md).
+    "pos.*",
     "subscriptions",
   ],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "subscriptions"],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "subscriptions"],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions"],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions"],
+};
+/** Limits added to the plans package's defaults: paired POS terminals (-1 = unlimited). */
+export const PLAN_LIMIT_ADDITIONS: Record<string, Record<string, number>> = {
+  free: { pos_terminals: 1 },
+  starter: { pos_terminals: 2 },
+  pro: { pos_terminals: 5 },
+  enterprise: { pos_terminals: -1 },
 };
 const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   ...plan,
   modules: [...new Set([...(plan.modules ?? []), ...(PLAN_ADDITIONS[plan.id] ?? [])])],
+  limits: { ...(plan.limits ?? {}), ...(PLAN_LIMIT_ADDITIONS[plan.id] ?? {}) },
 });
 
 type AppId = "BL" | "EC" | "PH" | "RS" | "SV";

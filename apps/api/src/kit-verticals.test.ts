@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { FeatureDef } from "@srirealtime/core";
 import { PACKS } from "@srirealtime/verticals";
-import { createSolutionPresets, defaultPreset, effectivePreset, includedFor, switchableFor } from "./kit-verticals";
+import { toLookup, type ProductRow, type VariantRow } from "@srirealtime/catalogue";
+import { emptyContext, type RequestContext } from "@srirealtime/core";
+import Fastify from "fastify";
+import type { Logger } from "pino";
+import { counterResolveSchema, createCounter, createSolutionPresets, defaultPreset, effectivePreset, includedFor, switchableFor } from "./kit-verticals";
 
 const def = (key: string, extra: Partial<FeatureDef> = {}): FeatureDef => ({
   key,
@@ -46,6 +50,9 @@ describe("solution presets", () => {
     expect(defaultPreset(PACKS.gym, sw)).toEqual(["invoices.credit-book", "memberships", "bookings"]);
     // repair: serial numbers on, no memberships
     expect(defaultPreset(PACKS.repair, sw)).toEqual(["invoices.credit-book", "jobcards", "jobcards.tracking", "bookings", "serials", "serials.warranty"]);
+    // spa: like the salon, bookings and memberships without job cards
+    expect(defaultPreset(PACKS.spa, sw)).toEqual(defaultPreset(PACKS.salon, sw));
+    expect(defaultPreset(PACKS.spa, sw)).toEqual(["invoices.credit-book", "memberships", "bookings"]);
   });
 
   it("a stored preset is narrowed to what the app can switch now", () => {
@@ -71,5 +78,74 @@ describe("solution presets", () => {
     expect(reset.switchable.find((d) => d.key === "jobcards")).toMatchObject({ on: false, byDefault: false });
     const summary = await presets.summary();
     expect(summary.gym).toEqual({ on: 3, switchable: 7, customised: false });
+  });
+});
+
+describe("counter resolve", () => {
+  const TENANT = "11111111-1111-4111-8111-111111111111";
+  const at = new Date("2026-10-01T05:00:00Z");
+  // A catalogue lookup shaped by the catalogue's own toLookup.
+  const lookup = toLookup(
+    {
+      id: "33333333-3333-4333-8333-333333333333",
+      tenantId: TENANT,
+      productId: "22222222-2222-4222-8222-222222222222",
+      sku: null,
+      barcode: null,
+      title: "",
+      optionValues: {},
+      price: 4000,
+      mrp: null,
+      cost: null,
+      weightGrams: null,
+      position: 0,
+      isDefault: true,
+      deletedAt: null,
+      createdAt: at,
+      updatedAt: at,
+    } as VariantRow,
+    {
+      id: "22222222-2222-4222-8222-222222222222",
+      tenantId: TENANT,
+      name: "Tomato",
+      slug: "tomato",
+      categoryId: null,
+      hsn: "0702",
+      gstRate: 0,
+      unit: "kg",
+      taxInclusive: false,
+      status: "active",
+      channels: ["billing", "pos"],
+      images: [],
+      createdAt: at,
+      updatedAt: at,
+    } as unknown as ProductRow,
+  );
+
+  it("answers a scale label with the variant and weight, matching counterResolveSchema", async () => {
+    const counter = createCounter({ variants: async () => [lookup], log: { warn() {} } as unknown as Logger });
+    counter.add("scales", async (_t, code) => (code.startsWith("21") ? { itemId: lookup.id, qty: 1.25 } : null));
+    const app = Fastify();
+    app.decorateRequest("ctx", null as never);
+    app.addHook("onRequest", async (req) => {
+      req.ctx = {
+        ...emptyContext(),
+        tenant: { id: TENANT, slug: "sri", planId: "pro", appId: "BL" },
+        user: { id: "u1", sessionId: "s1", platformRoles: [], tenantRoles: ["staff"] },
+      } as RequestContext;
+    });
+    let config: unknown;
+    app.addHook("onRoute", (r) => {
+      config = r.config;
+    });
+    await app.register(counter.module.routes!, { prefix: "/v1/counter" });
+    expect(config).toMatchObject({ permission: "invoices.create" });
+    const res = await app.inject({ url: "/v1/counter/resolve?code=2100012012500" });
+    expect(res.statusCode, res.body).toBe(200);
+    const json = res.json();
+    expect(counterResolveSchema.parse(json)).toEqual(json);
+    expect(json.qty).toBe(1.25);
+    expect((await app.inject({ url: "/v1/counter/resolve?code=999" })).statusCode).not.toBe(200);
+    await app.close();
   });
 });

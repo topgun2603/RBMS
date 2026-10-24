@@ -1,0 +1,1502 @@
+import { withPriceBandGst } from "./gst-band";
+import type { DemoProduct, DemoStore } from "./types";
+
+/**
+ * Store #17 of the series: Maidhanam Sports, Bells Road, Triplicane, Chennai (maidhanam.localhost:3003). A sports shop
+ * two streets from the Chepauk stadium, on the online store app (EC) with the `sports` trade (the clothing size chart
+ * for jerseys and track pants, the shoe chart for sports shoes) and the "turf-chalk" look (pitch green and scoreboard
+ * amber on chalk white, chalk-line grid, a magazine page layout with the bottom tab bar on phones).
+ * Maidhanam (மைதானம்) is Tamil for the ground. Cricket first (bats, balls, stumps, helmets), then badminton, football,
+ * home fitness, sportswear and shoes, carrom / chess / table tennis, and team kits and trophies for the clubs, schools
+ * and offices around Triplicane. Names are generic (no brands); prices are typical Chennai shop prices in 2026, GST
+ * included. Address, phone and GSTIN are placeholders like the other demo shops.
+ *
+ * GST (CGST notification 9/2025-Central Tax (Rate) of 17 Sept 2025, in force from 22 Sept 2025, which replaced
+ * 1/2017; the 12% slab is gone):
+ * - Sports goods of 9506 other than articles and equipment for general physical exercise (cricket bats, balls, stumps
+ *   and helmets, badminton rackets and shuttlecocks, footballs, table-tennis bats, marker cones): 12% -> 5%.
+ * - Chess sets, carrom boards and other board games of 9504: 12% -> 5%.
+ * - Exercise equipment of 9506 91 (dumbbells, kettlebells, exercise and yoga mats, resistance bands, skipping ropes):
+ *   18%, unchanged. Sports and travel bags of 4202: 18%. Trophies, statuettes and medals of base metal (8306) and
+ *   whistles (9208): 18% (not among the goods moved to 5%).
+ * - Apparel (jerseys 6109, track pants and shorts 6103, white sports trousers 6203, socks 6115) and sports footwear
+ *   (6402, 6404) by price from 22 Sept 2025: 5% up to Rs 2,500 per piece / pair before GST, 18% above (`withPriceBandGst`,
+ *   @srirealtime/gst rate-rule.ts; CGST notification 9/2025 Schedule I S.No. 388-392 and Schedule II S.No. 197-199).
+ *   The cushioned long-run shoe and the moulded-stud football boots are the 18% pairs.
+ * - Racket stringing and bat knocking-in at the counter (repair of other goods, SAC 998729): 18%.
+ * Sources: CBIC notification 9/2025-CT(Rate) Schedules I and II as summarised by the West Bengal Commercial Taxes
+ * Directorate ("Monthly GST Updates [Part B] Rate, September 2025": chess / carrom board, sports goods 12% -> 5%) and
+ * Tally's rate-change table (9504, 9506 at 5%); the same entries as pambaram.ts (store #11).
+ */
+
+const rs = (rupees: number) => Math.round(rupees * 100);
+const PHONE = "+919876500019";
+const WHATSAPP = "919876500019";
+const waLink = (text: string) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
+
+/** Variants of one option: [value, price Rs, MRP Rs, stock]. */
+function one(option: string, rows: [string, number, number, number][]): Pick<DemoProduct, "options" | "variants"> {
+  return {
+    options: [{ name: option, values: rows.map((r) => r[0]) }],
+    variants: rows.map(([value, price, mrp, stock]) => ({ values: { [option]: value }, price: rs(price), mrp: rs(mrp), stock })),
+  };
+}
+
+const single = (price: number, mrp: number, stock: number): Pick<DemoProduct, "variants"> => ({ variants: [{ price: rs(price), mrp: rs(mrp), stock }] });
+
+/** One size row at one price; the middle sizes get the most stock. */
+const sized = (option: string, sizes: string[], price: number, mrp: number) => {
+  const mid = (sizes.length - 1) / 2;
+  return one(
+    option,
+    sizes.map((s, i) => [s, price, mrp, Math.max(2, 9 - Math.round(Math.abs(i - mid) * 2))]),
+  );
+};
+
+const uk = (...n: (number | string)[]) => n.map((x) => `UK ${x}`);
+const SHOE_MEN = uk(6, 7, 8, 9, 10, 11);
+const SHOE_WOMEN = uk(3, 4, 5, 6, 7, 8);
+const SHOE_UNISEX = uk(5, 6, 7, 8, 9, 10);
+const SHOE_KIDS = uk("10C", "11C", "12C", "13C", 1, 2, 3);
+const WEAR = ["S", "M", "L", "XL", "XXL"];
+
+const CRICKET = "Cricket";
+const BATS = "Bats";
+const BALLS = "Balls & stumps";
+const PROTECT = "Protection & bags";
+const BADMINTON = "Badminton";
+const FOOTBALL = "Football";
+const FITNESS = "Fitness";
+const WEAR_CAT = "Sportswear";
+const SHOES = "Sports shoes";
+const INDOOR = "Indoor games";
+const TEAM = "Team kits & trophies";
+
+const FIT = "\n\nExchange within 7 days if it is unused, with the bill. We are two streets from Chepauk: come and try it before you buy.";
+
+const PRODUCTS_BASE: DemoProduct[] = [
+  // ---- cricket: bats (9506 99, 5%)
+  {
+    name: "English willow bat, Grade 2",
+    category: BATS,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-EWB",
+    photo: 9420724,
+    tags: ["cricket", "bestseller", "matchday"],
+    description: `A Grade 2 English willow blade with a clean face, 8 to 10 straight grains and a thick edge. Ready to play after a light knock-in; we knock it in at the counter for Rs 150. Cane handle, anti-scuff sheet and a toe guard included.${FIT}`,
+    attributes: { Sport: "Cricket", Willow: "English willow, Grade 2", Grains: "8-10", Weight: "1,150-1,200 g", Level: "Club, college" },
+    ...one("Size", [
+      ["Short Handle", 6_490, 7_200, 5],
+      ["Harrow", 6_290, 7_000, 4],
+      ["Size 6", 5_990, 6_700, 3],
+    ]),
+  },
+  {
+    name: "Kashmir willow bat",
+    category: BATS,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-KWB",
+    photo: 5367483,
+    tags: ["cricket", "beginner", "bestseller"],
+    description: `The bat most Triplicane lanes learn on: Kashmir willow, hard-wearing and forgiving, with a full-length cane handle and a rubber grip. Pick the size by height (the bat guide has the chart) and let the child grow into the next one.${FIT}`,
+    attributes: { Sport: "Cricket", Willow: "Kashmir willow", Weight: "850-1,100 g", Level: "Beginner, school, lane" },
+    ...one("Size", [
+      ["Size 3 (age 7-8)", 790, 950, 6],
+      ["Size 4 (age 9-10)", 890, 1_050, 6],
+      ["Size 5 (age 11-12)", 1_090, 1_250, 7],
+      ["Size 6 (age 13-14)", 1_190, 1_390, 6],
+      ["Short Handle", 1_390, 1_590, 8],
+    ]),
+  },
+  // ---- cricket: balls and stumps
+  {
+    name: "Leather cricket ball, 4-piece, 156 g",
+    category: BALLS,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-LB4",
+    photo: 7702229,
+    tags: ["cricket", "bestseller", "matchday"],
+    description: `A hand-stitched four-piece ball with a proud seam and a lacquered red shine, for league and college matches. Holds its shape for about two long innings; polish with a cloth, never wax.${FIT}`,
+    attributes: { Sport: "Cricket", Construction: "4-piece, hand-stitched", Weight: "156 g", Colour: "Red" },
+    ...single(520, 590, 40),
+  },
+  {
+    name: "Leather practice ball, 2-piece",
+    category: BALLS,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-LB2",
+    photo: 30401506,
+    tags: ["cricket", "under-499", "beginner"],
+    description: `A machine-stitched two-piece leather ball for nets and weekend practice. Harder than a tennis ball, softer on the pocket than a match ball.${FIT}`,
+    attributes: { Sport: "Cricket", Construction: "2-piece, machine-stitched", Weight: "156 g", Colour: "Red" },
+    ...single(290, 340, 60),
+  },
+  {
+    name: "Club ball, dark red, 4-piece",
+    category: BALLS,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-CB4",
+    photo: 5519470,
+    tags: ["cricket"],
+    description: `A dark-red, matt-finish ball that shows the seam under floodlights and swings a little in the evening. Four pieces, hand-stitched, sold by the piece or in a box of six for team practice.${FIT}`,
+    attributes: { Sport: "Cricket", Construction: "4-piece, hand-stitched", Weight: "156 g", Colour: "Dark red" },
+    ...one("Pack", [
+      ["1 ball", 690, 780, 30],
+      ["Box of 6", 3_790, 4_380, 8],
+    ]),
+  },
+  {
+    name: "Wooden stumps set with bails",
+    category: BALLS,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-STP",
+    photo: 20652472,
+    tags: ["cricket", "beginner", "matchday"],
+    description: `Three seasoned wooden stumps with a pair of bails and a rubber-tipped base, 28 inches tall (full size). For the maidan, the street and the school ground.${FIT}`,
+    attributes: { Sport: "Cricket", Height: "28 in (full size)", Material: "Seasoned hardwood", Includes: "3 stumps, 2 bails" },
+    ...one("Set", [
+      ["1 set", 790, 890, 16],
+      ["2 sets (both ends)", 1_490, 1_780, 8],
+    ]),
+  },
+  // ---- cricket: protection and bags
+  {
+    name: "Batting helmet with steel grille",
+    category: PROTECT,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-HLM",
+    photo: 30401162,
+    tags: ["cricket", "matchday"],
+    description: `A moulded ABS shell with a steel grille, a chin strap and a foam liner that you can wash. Cricket faces a 156 g ball at speed: wear it in the nets, not just in the match.${FIT}`,
+    attributes: { Sport: "Cricket", Shell: "ABS", Grille: "Steel", Liner: "Washable foam" },
+    ...sized("Size", ["Small (54-56 cm)", "Medium (56-58 cm)", "Large (58-60 cm)"], 1_590, 1_790),
+  },
+  {
+    name: "Sports kit bag, 60 litre",
+    category: PROTECT,
+    hsn: "4202",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-BAG",
+    photo: 5384399,
+    tags: ["cricket", "football", "team"],
+    description: `A 60-litre duffel for a bat, pads, helmet and shoes: a long zip opening, a ventilated shoe pocket and padded shoulder straps. Water-resistant polyester that has survived a Chennai monsoon.${FIT}`,
+    attributes: { Capacity: "60 litre", Material: "Water-resistant polyester", Pockets: "Shoe pocket, 2 side pockets" },
+    ...one("Colour", [
+      ["Purple", 2_190, 2_490, 6],
+      ["Black", 2_190, 2_490, 7],
+    ]),
+  },
+  // ---- badminton (9506 59 rackets, 9506 99 shuttles, 5%)
+  {
+    name: "Aluminium badminton rackets, pair with cover",
+    category: BADMINTON,
+    hsn: "950659",
+    gstRate: 5,
+    unit: "pair",
+    sku: "MS-BRA",
+    photo: 6307231,
+    tags: ["badminton", "under-499", "beginner", "bestseller"],
+    description: `Two light aluminium rackets with steel shafts, a full cover and a rubber grip: the pair every terrace and beach game starts with. Strung at the factory; we re-string at the counter for Rs 200.${FIT}`,
+    attributes: { Sport: "Badminton", Frame: "Aluminium", Shaft: "Steel", Weight: "100 g each", Level: "Beginner, family" },
+    ...single(449, 599, 30),
+  },
+  {
+    name: "Graphite racket, 85 g, 4U",
+    category: BADMINTON,
+    hsn: "950659",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-BRG",
+    photo: 13116204,
+    tags: ["badminton", "matchday"],
+    description: `An all-graphite racket for the club player: 85 g (4U), head-light for quick drives, strung at 24 lb with a replaceable grip. Free stringing at your tension on the first string.${FIT}`,
+    attributes: { Sport: "Badminton", Frame: "Graphite", Weight: "85 g (4U)", Balance: "Head-light", Level: "Club" },
+    ...one("Grip", [
+      ["G4", 1_890, 2_190, 8],
+      ["G5", 1_890, 2_190, 6],
+    ]),
+  },
+  {
+    name: "Carbon-steel racket, 88 g, even balance",
+    category: BADMINTON,
+    hsn: "950659",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-BRC",
+    photo: 8286363,
+    tags: ["badminton"],
+    description: `The step between beginner and club: a carbon-fibre shaft on a steel-reinforced head, even balance and a forgiving sweet spot. 88 g, strung at 22 lb.${FIT}`,
+    attributes: { Sport: "Badminton", Frame: "Carbon and steel", Weight: "88 g", Balance: "Even", Level: "Improver" },
+    ...one("Grip", [
+      ["G4", 1_290, 1_490, 8],
+      ["G5", 1_290, 1_490, 6],
+    ]),
+  },
+  {
+    name: "Two-racket family set with 3 shuttles",
+    category: BADMINTON,
+    hsn: "950659",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-BRF",
+    photo: 32874231,
+    tags: ["badminton", "beginner", "matchday"],
+    description: `Two rackets, three shuttles and a carry bag: a gift for a birthday or the first holiday game. Light enough for children from ten, strong enough for the parents.${FIT}`,
+    attributes: { Sport: "Badminton", Includes: "2 rackets, 3 shuttles, bag", Weight: "95 g each", Level: "Family" },
+    ...single(899, 1_099, 14),
+  },
+  {
+    name: "Feather shuttlecocks, tube of 6",
+    category: BADMINTON,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "tube",
+    sku: "MS-SFD",
+    photo: 6878113,
+    tags: ["badminton", "bestseller"],
+    description: `Duck-feather shuttles on a cork base with a stitched skirt: steady flight, good for indoor courts. Choose slow (76) for an AC hall, medium (77) for a fan-cooled court.${FIT}`,
+    attributes: { Sport: "Badminton", Feather: "Duck", Base: "Cork", Count: "6" },
+    ...one("Speed", [
+      ["Slow (76)", 590, 650, 20],
+      ["Medium (77)", 590, 650, 24],
+    ]),
+  },
+  {
+    name: "Tournament goose-feather shuttles, tube of 12",
+    category: BADMINTON,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "tube",
+    sku: "MS-SFG",
+    photo: 7438726,
+    tags: ["badminton"],
+    description: `Selected goose feathers on a cork-and-leather base: a durable, even flight for tournaments and coaching. A tube of twelve lasts a month of daily play.${FIT}`,
+    attributes: { Sport: "Badminton", Feather: "Goose", Base: "Cork, leather-covered", Count: "12" },
+    ...one("Speed", [
+      ["Slow (76)", 1_890, 2_150, 10],
+      ["Medium (77)", 1_890, 2_150, 12],
+    ]),
+  },
+  {
+    name: "Nylon shuttles, tube of 6",
+    category: BADMINTON,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "tube",
+    sku: "MS-SNY",
+    photo: 9467266,
+    tags: ["badminton", "under-499", "beginner"],
+    description: `Yellow nylon shuttles for outdoor games and school practice: they take wind and rough floors and rarely break. Six in a tube.${FIT}`,
+    attributes: { Sport: "Badminton", Skirt: "Nylon", Base: "Cork", Count: "6" },
+    ...single(320, 370, 50),
+  },
+  // ---- football (9506 62 balls, 5%; boots 6402, price band)
+  {
+    name: "Football, size 5, machine-stitched",
+    category: FOOTBALL,
+    hsn: "950662",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-FB5",
+    photo: 12039815,
+    tags: ["football", "bestseller", "matchday"],
+    description: `A 32-panel PU ball with a butyl bladder that keeps its air for days. Size 5 for adults and teens, 4 for ages 8 to 12, 3 for the little ones. Pumped and ready.${FIT}`,
+    attributes: { Sport: "Football", Cover: "PU, 32 panels", Bladder: "Butyl", Surface: "Grass, turf" },
+    ...one("Size", [
+      ["Size 3", 590, 690, 12],
+      ["Size 4", 690, 790, 14],
+      ["Size 5", 790, 950, 20],
+    ]),
+  },
+  {
+    name: "Training footballs, set of 3, size 5",
+    category: FOOTBALL,
+    hsn: "950662",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-FBT",
+    photo: 36618476,
+    tags: ["football", "team"],
+    description: `Three rubber-cover training balls for the coach's net bag: scuff-proof on the maidan's hard ground, with a hand pump needle included.${FIT}`,
+    attributes: { Sport: "Football", Cover: "Rubber", Includes: "3 balls, pump needle", Surface: "Maidan, hard ground" },
+    ...single(1_590, 1_890, 10),
+  },
+  {
+    name: "Kids' rubber football, size 3",
+    category: FOOTBALL,
+    hsn: "950662",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-FBK",
+    photo: 39309596,
+    tags: ["football", "under-499"],
+    description: `A bright green-and-orange rubber ball for children under eight: soft on the shins and impossible to lose in the grass.${FIT}`,
+    attributes: { Sport: "Football", Cover: "Rubber", Age: "Under 8", Size: "3" },
+    ...single(349, 399, 24),
+  },
+  {
+    name: "Football boots, moulded studs",
+    category: FOOTBALL,
+    hsn: "640219",
+    gstRate: 18,
+    unit: "pair",
+    sku: "MS-FBO",
+    photo: 32574010,
+    tags: ["football", "new"],
+    description: `Moulded-stud boots for firm ground: a synthetic upper, a padded collar and a studded plate that grips both turf and the dry maidan. Between sizes? Take the bigger one.${FIT}`,
+    attributes: { Sport: "Football", Upper: "Synthetic", Studs: "Moulded, firm ground", Closure: "Lace-up" },
+    ...sized("Size", SHOE_MEN, 3_499, 3_899),
+  },
+  // ---- fitness (9506 91, 18%)
+  {
+    name: "Hex rubber dumbbells, pair",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pair",
+    sku: "MS-DBH",
+    photo: 3931367,
+    tags: ["home-gym", "bestseller"],
+    description: `Rubber-coated hexagon dumbbells with a knurled chrome handle: they do not roll off the rack and will not scar your floor. Sold as a pair.${FIT}`,
+    attributes: { Material: "Rubber-coated cast iron", Handle: "Knurled chrome", Sold: "Pair" },
+    ...one("Weight", [
+      ["2 kg each", 790, 950, 14],
+      ["4 kg each", 1_390, 1_590, 12],
+      ["6 kg each", 1_990, 2_290, 8],
+      ["10 kg each", 3_290, 3_690, 5],
+    ]),
+  },
+  {
+    name: "Vinyl dumbbells, pair",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pair",
+    sku: "MS-DBV",
+    photo: 16567048,
+    tags: ["home-gym", "under-499"],
+    description: `Vinyl-coated hex dumbbells for warm-ups, physio and walking workouts. Easy to grip, easy on the carpet. Sold as a pair.${FIT}`,
+    attributes: { Material: "Vinyl-coated iron", Sold: "Pair" },
+    ...one("Weight", [
+      ["1 kg each", 349, 449, 20],
+      ["1.5 kg each", 449, 549, 20],
+      ["2 kg each", 549, 649, 16],
+    ]),
+  },
+  {
+    name: "Cast-iron kettlebell",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-KB",
+    photo: 27810157,
+    tags: ["home-gym"],
+    description: `A single-piece cast-iron kettlebell with a flat base and a wide handle that takes two hands for swings. Powder-coated, so it does not leave black marks.${FIT}`,
+    attributes: { Material: "Cast iron, powder-coated", Handle: "Wide, smooth" },
+    ...one("Weight", [
+      ["4 kg", 790, 950, 10],
+      ["8 kg", 1_390, 1_650, 8],
+      ["12 kg", 1_990, 2_350, 6],
+      ["16 kg", 2_590, 2_990, 4],
+    ]),
+  },
+  {
+    name: "Exercise mat, 10 mm, rolled",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-MAT10",
+    photo: 4325439,
+    tags: ["home-gym"],
+    description: `A 10 mm NBR foam mat for floor work, stretching and sit-ups, with a carry strap. Wipe it with a damp cloth. 183 x 61 cm.${FIT}`,
+    attributes: { Thickness: "10 mm", Material: "NBR foam", Size: "183 x 61 cm" },
+    ...one("Colour", [
+      ["Black", 549, 699, 12],
+      ["Blue", 549, 699, 8],
+    ]),
+  },
+  {
+    name: "Yoga mat, 6 mm, anti-slip",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-YOG",
+    photo: 40074772,
+    tags: ["home-gym", "bestseller"],
+    description: `A 6 mm TPE yoga mat with a textured, anti-slip surface that stays put on marble. Light, odour-free and easy to carry to the park or terrace.${FIT}`,
+    attributes: { Thickness: "6 mm", Material: "TPE", Size: "183 x 61 cm" },
+    ...one("Colour", [
+      ["Orange", 599, 799, 10],
+      ["Green", 599, 799, 10],
+      ["Blue", 599, 799, 9],
+    ]),
+  },
+  {
+    name: "Resistance loop bands, set of 5",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "set",
+    sku: "MS-RB5",
+    photo: 6740819,
+    tags: ["home-gym"],
+    description: `Five latex loop bands from light to extra-heavy, with a carry pouch and an exercise sheet. For glute work, physio, travel workouts and pull-up assistance.${FIT}`,
+    attributes: { Material: "Natural latex", Includes: "5 bands, pouch, sheet" },
+    ...single(549, 699, 22),
+  },
+  {
+    name: "Speed skipping rope, foam grip",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-SK1",
+    photo: 45056,
+    tags: ["home-gym", "under-499", "bestseller"],
+    description: `A coated-wire rope with foam handles and ball-bearing swivels: fast and tangle-free. Adjust the length by cutting the plastic end cap.${FIT}`,
+    attributes: { Rope: "Coated steel wire", Grip: "Foam, ball bearing", Length: "Adjustable, up to 10 ft" },
+    ...single(249, 299, 40),
+  },
+  {
+    name: "Steel-wire skipping rope, rubber grip",
+    category: FITNESS,
+    hsn: "950691",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-SK2",
+    photo: 8032841,
+    tags: ["home-gym", "under-499"],
+    description: `A thin steel-wire rope with ribbed rubber handles for boxers, athletes and school PT classes: it keeps its speed on a rough floor.${FIT}`,
+    attributes: { Rope: "Steel wire", Grip: "Rubber", Length: "Adjustable, up to 10 ft" },
+    ...single(349, 399, 30),
+  },
+  // ---- sportswear (apparel band; 6109, 6103, 6203, 6115)
+  {
+    name: "Team football jersey, sublimated",
+    category: WEAR_CAT,
+    hsn: "610910",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-JER",
+    photo: 17955586,
+    tags: ["football", "team", "bestseller"],
+    description: `A dry-fit polyester jersey with a sublimated print that does not fade or crack in the wash. Order 12 or more with your team name and numbers: see the team orders page. Sizes are in the size guide on this page.${FIT}`,
+    attributes: { Fabric: "Polyester, dry-fit", Print: "Sublimated", Fit: "Regular" },
+    ...sized("Size", WEAR, 499, 599),
+  },
+  {
+    name: "Fleece joggers",
+    category: WEAR_CAT,
+    hsn: "610342",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-JOG",
+    photo: 31961168,
+    tags: ["new"],
+    description: `Brushed-fleece joggers with an elastic drawstring waist, ankle cuffs and two pockets: for cool Chennai mornings, the gym and the flight home. Pick your waist from the size guide.${FIT}`,
+    attributes: { Fabric: "Cotton-poly fleece", Fit: "Relaxed", Pockets: "2" },
+    ...one("Colour", [
+      ["Black", 899, 1_099, 14],
+      ["Charcoal", 899, 1_099, 10],
+      ["Grey melange", 899, 1_099, 12],
+    ]),
+  },
+  {
+    name: "Polyester track pants with side stripe",
+    category: WEAR_CAT,
+    hsn: "610342",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-TRK",
+    photo: 9488415,
+    tags: ["team", "matchday"],
+    description: `Light polyester track pants with a contrast side stripe, zip pockets and an elastic waist: for the ground, the school PT class and the club tracksuit.${FIT}`,
+    attributes: { Fabric: "Polyester", Fit: "Regular", Pockets: "2, zipped" },
+    ...sized("Size", WEAR, 749, 899),
+  },
+  {
+    name: "Training shorts, quick-dry",
+    category: WEAR_CAT,
+    hsn: "610342",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-SHT",
+    photo: 33417703,
+    tags: ["football", "team", "under-499"],
+    description: `Quick-dry shorts with an elastic waist and mesh panels, knee-length for football, running and the gym.${FIT}`,
+    attributes: { Fabric: "Polyester mesh", Fit: "Regular", Length: "Above the knee" },
+    ...sized("Size", WEAR, 449, 549),
+  },
+  {
+    name: "2-in-1 running shorts with phone pocket",
+    category: WEAR_CAT,
+    hsn: "610342",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-S21",
+    photo: 33417698,
+    tags: ["new"],
+    description: `A loose outer short over a fitted liner with a zipped back pocket for a phone and keys. No chafing on a 10 km run on the Marina.${FIT}`,
+    attributes: { Fabric: "Polyester, elastane liner", Fit: "Regular", Pockets: "Zipped phone pocket" },
+    ...sized("Size", WEAR, 649, 799),
+  },
+  {
+    name: "White sports trousers with side stripe",
+    category: WEAR_CAT,
+    hsn: "620343",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-WHT",
+    photo: 5739194,
+    tags: ["cricket", "team"],
+    description: `Match-day whites: a stretch polyester-cotton trouser with a single side stripe, elastic-drawstring waist and a stain-release finish for grass and clay. Worn by club cricketers and umpires.${FIT}`,
+    attributes: { Fabric: "Polyester-cotton stretch", Colour: "White", Use: "Cricket, tennis, umpiring" },
+    ...sized("Size", WEAR, 899, 1_099),
+  },
+  {
+    name: "Knee-high football socks, 2 pairs",
+    category: WEAR_CAT,
+    hsn: "611595",
+    gstRate: 5,
+    unit: "pack",
+    sku: "MS-SOK",
+    photo: 9519514,
+    tags: ["football", "under-499", "team"],
+    description: `Two pairs of ribbed knee-high socks with a cushioned foot and a stretch top that sits over shin guards.${FIT}`,
+    attributes: { Fabric: "Cotton-nylon-elastane", Pack: "2 pairs" },
+    ...one("Fit", [
+      ["Junior (UK 1-5)", 299, 349, 20],
+      ["Senior (UK 6-11)", 299, 349, 24],
+    ]),
+  },
+  {
+    name: "Striped sports socks, 3 pairs",
+    category: WEAR_CAT,
+    hsn: "611595",
+    gstRate: 5,
+    unit: "pack",
+    sku: "MS-SK3",
+    photo: 5741053,
+    tags: ["under-499"],
+    description: `Three pairs of tube socks with a coloured stripe, knee-high, for tennis, squash and school PT. Light cushioning at the heel and toe.${FIT}`,
+    attributes: { Fabric: "Cotton-nylon-elastane", Pack: "3 pairs" },
+    ...one("Fit", [
+      ["Free size (UK 5-10)", 349, 399, 30],
+    ]),
+  },
+  // ---- sports shoes (6402 / 6404, price band)
+  {
+    name: "Everyday running shoe, white and orange",
+    category: SHOES,
+    hsn: "640411",
+    gstRate: 5,
+    unit: "pair",
+    sku: "MS-SH1",
+    photo: 40231614,
+    tags: ["running", "bestseller", "new"],
+    description: `A breathable mesh upper, an EVA cushioned midsole and a flexible rubber outsole: for the Marina morning walk and a 5 km run. Wear a thumb's width in front of the toes.${FIT}`,
+    attributes: { Upper: "Mesh", Midsole: "EVA", Outsole: "Rubber", Use: "Running, walking" },
+    ...sized("Size", SHOE_MEN, 1_899, 2_299),
+  },
+  {
+    name: "Cushioned long-run shoe",
+    category: SHOES,
+    hsn: "640411",
+    gstRate: 5,
+    unit: "pair",
+    sku: "MS-SH2",
+    photo: 40231621,
+    tags: ["running", "new"],
+    description: `A double-density foam midsole, a knit upper and a rocker sole for half-marathons and long Sunday runs. Our best running pair for heavier runners.${FIT}`,
+    attributes: { Upper: "Engineered knit", Midsole: "Dual-density foam", Outsole: "Carbon rubber", Use: "Long-distance running" },
+    ...sized("Size", SHOE_MEN, 3_199, 3_499),
+  },
+  {
+    name: "Women's chunky training shoe, white",
+    category: SHOES,
+    hsn: "640411",
+    gstRate: 5,
+    unit: "pair",
+    sku: "MS-SH3",
+    photo: 11324518,
+    tags: ["running"],
+    description: `A white lace-up trainer with a chunky cushioned sole, stable enough for gym circuits and light enough for a day of walking.${FIT}`,
+    attributes: { Upper: "Mesh and synthetic", Midsole: "Cushioned EVA", Use: "Gym, walking" },
+    ...sized("Size", SHOE_WOMEN, 2_290, 2_590),
+  },
+  {
+    name: "Badminton and court shoe",
+    category: SHOES,
+    hsn: "640411",
+    gstRate: 5,
+    unit: "pair",
+    sku: "MS-SH4",
+    photo: 29699313,
+    tags: ["badminton", "matchday"],
+    description: `A non-marking gum sole with a firm heel counter and toe protection for quick lateral moves on wooden and synthetic courts. Not for outdoor roads.${FIT}`,
+    attributes: { Upper: "Mesh with TPU overlays", Outsole: "Non-marking gum rubber", Use: "Badminton, squash, volleyball" },
+    ...sized("Size", SHOE_UNISEX, 2_490, 2_799),
+  },
+  {
+    name: "Kids' lace-up sports shoe",
+    category: SHOES,
+    hsn: "640411",
+    gstRate: 5,
+    unit: "pair",
+    sku: "MS-SH5",
+    photo: 7880203,
+    tags: ["kids"],
+    description: `A grippy, light sports shoe for school PT and weekend games. Wide toe box and a padded collar. Measure the foot and leave 1.5 cm for growth.${FIT}`,
+    attributes: { Upper: "Mesh", Outsole: "Non-marking rubber", Use: "School PT, play" },
+    ...sized("Size", SHOE_KIDS, 1_090, 1_290),
+  },
+  // ---- indoor games (9504, 9506 40; 5%)
+  {
+    name: "Carrom board with coins and striker",
+    category: INDOOR,
+    hsn: "950490",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-CAR",
+    photo: 36398022,
+    tags: ["indoor", "bestseller"],
+    description: `A smooth plywood playing surface with a polished edge, net pockets, 19 coins, a striker and a tin of boric powder. Used in Triplicane's terraces and tea shops for generations.${FIT}`,
+    attributes: { Board: "Plywood, polished", Includes: "19 coins, striker, powder", Level: "Family, club" },
+    ...one("Size", [
+      ["26 inch", 1_750, 2_050, 6],
+      ["32 inch", 2_890, 3_290, 5],
+    ]),
+  },
+  {
+    name: "Wooden chess set with folding board",
+    category: INDOOR,
+    hsn: "950440",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-CHS",
+    photo: 6114955,
+    tags: ["indoor"],
+    description: `Weighted wooden pieces with a felted base on a 14-inch folding board that doubles as the storage box. Chennai's favourite game, from the school club to the Sunday tournament.${FIT}`,
+    attributes: { Pieces: "Weighted wood, felted", Board: "14 inch, folding", Level: "Beginner, club" },
+    ...single(690, 790, 14),
+  },
+  {
+    name: "Tournament chess board with wooden pieces",
+    category: INDOOR,
+    hsn: "950440",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-CHT",
+    photo: 17768376,
+    tags: ["indoor"],
+    description: `A tournament-size 20-inch board with 2.25-inch king pieces, hand-polished, in a cloth carry bag. Square sizes match the FIDE standard for clubs and schools.${FIT}`,
+    attributes: { Pieces: "Polished wood, 2.25 in king", Board: "20 inch", Level: "Club, tournament" },
+    ...single(1_490, 1_790, 8),
+  },
+  {
+    name: "Table-tennis bat, 2-star",
+    category: INDOOR,
+    hsn: "950640",
+    gstRate: 5,
+    unit: "pcs",
+    sku: "MS-TT1",
+    photo: 29548833,
+    tags: ["indoor", "under-499"],
+    description: `A 5-ply blade with a flared handle and 2 mm pimples-in rubber: spin and control for league beginners. Cover included.${FIT}`,
+    attributes: { Blade: "5-ply wood", Rubber: "2 mm, pimples-in", Level: "Beginner, school" },
+    ...single(449, 549, 30),
+  },
+  {
+    name: "Table-tennis set, 2 bats and 3 balls",
+    category: INDOOR,
+    hsn: "950640",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-TT2",
+    photo: 16686174,
+    tags: ["indoor", "beginner"],
+    description: `Two bats and three 40 mm balls in a zipped pouch, for the dining table, a clubhouse or a school break.${FIT}`,
+    attributes: { Includes: "2 bats, 3 balls, pouch", Balls: "40 mm" },
+    ...single(890, 1_090, 16),
+  },
+  // ---- team kits and trophies (8306 and 9208 at 18%; 9506 cones at 5%)
+  {
+    name: "Gold cup trophy",
+    category: TEAM,
+    hsn: "830629",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-TRO",
+    photo: 6532363,
+    tags: ["team", "bestseller"],
+    description: `A gold-plated cup trophy on a black marble-effect base, with a free engraved plate (up to three lines). Order a day ahead for school sports day, the office carnival or a Sunday league.${FIT}`,
+    attributes: { Material: "Gold-plated metal, resin base", Engraving: "Free plate, 3 lines" },
+    ...one("Height", [
+      ["8 inch", 590, 690, 20],
+      ["10 inch", 790, 920, 16],
+      ["12 inch", 1_090, 1_290, 10],
+    ]),
+  },
+  {
+    name: "Winner's cup with engraved plate",
+    category: TEAM,
+    hsn: "830629",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-CUP",
+    photo: 5286746,
+    tags: ["team"],
+    description: `A twin-handle winner's cup with a wreath crest and an engraved brass plate, on a heavy base. Lifts like a trophy at the end of a season.${FIT}`,
+    attributes: { Material: "Plated metal, brass plate", Height: "11 inch", Engraving: "Included" },
+    ...single(1_490, 1_750, 8),
+  },
+  {
+    name: "Medals, gold silver bronze, set of 3",
+    category: TEAM,
+    hsn: "830629",
+    gstRate: 18,
+    unit: "set",
+    sku: "MS-MDL",
+    photo: 7267542,
+    tags: ["team", "matchday"],
+    description: `Gold, silver and bronze medals with 32 mm discs and red-white-blue ribbons. A set of three for a podium; a pack of 30 for a school sports day.${FIT}`,
+    attributes: { Material: "Zinc alloy, plated", Disc: "32 mm", Ribbon: "Red, white and blue" },
+    ...one("Pack", [
+      ["Set of 3", 390, 450, 40],
+      ["Pack of 30 (10 sets)", 3_200, 3_800, 10],
+    ]),
+  },
+  {
+    name: "Gold medal with ribbon, pack of 10",
+    category: TEAM,
+    hsn: "830629",
+    gstRate: 18,
+    unit: "pack",
+    sku: "MS-MD1",
+    photo: 7267540,
+    tags: ["team"],
+    description: `Ten identical gold medals with a "1" crest and red ribbons: for quiz winners, house events and annual days. Printed stickers for the reverse are free.${FIT}`,
+    attributes: { Material: "Zinc alloy, plated", Disc: "50 mm", Ribbon: "Red" },
+    ...single(490, 590, 20),
+  },
+  {
+    name: "Referee whistle, metal, with lanyard",
+    category: TEAM,
+    hsn: "920890",
+    gstRate: 18,
+    unit: "pcs",
+    sku: "MS-WHS",
+    photo: 7207354,
+    tags: ["team", "under-499"],
+    description: `A loud metal whistle with a nickel finish and a neck lanyard: for the PT teacher, coach and umpire.${FIT}`,
+    attributes: { Material: "Nickel-plated metal", Includes: "Lanyard" },
+    ...single(129, 159, 60),
+  },
+  {
+    name: "Training disc cones, set of 20",
+    category: TEAM,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-CON",
+    photo: 2128220,
+    tags: ["team", "football"],
+    description: `Twenty low-profile disc cones in four colours with a stand: for dribbling drills, agility ladders and marking a pitch on the maidan.${FIT}`,
+    attributes: { Material: "Flexible PE", Includes: "20 discs, stand", Colours: "4" },
+    ...single(399, 499, 25),
+  },
+  {
+    name: "Tall marker cones, 9 inch, set of 6",
+    category: TEAM,
+    hsn: "950699",
+    gstRate: 5,
+    unit: "set",
+    sku: "MS-TCN",
+    photo: 31579491,
+    tags: ["team", "under-499"],
+    description: `Six bright orange 9-inch cones with weighted rims, for marking a race, a goal mouth or a training course.${FIT}`,
+    attributes: { Material: "Flexible PE", Height: "9 inch" },
+    ...single(449, 549, 18),
+  },
+];
+
+const PHOTOS: Record<number, { by: string; alt: string }> = {
+  9420724: { by: "Mahafuzur Rahman", alt: "A cricket bat and ball on grass, seen from above" },
+  5367483: { by: "Aqib Shahid", alt: "Cricket bats leaning against a brick wall" },
+  7702229: { by: "Manoj Poosam", alt: "A red leather cricket ball with its seam" },
+  30401506: { by: "Manoj Poosam", alt: "A red cricket ball in sunlight" },
+  5519470: { by: "Jurie Maree", alt: "A dark-red cricket ball casting a shadow" },
+  20652472: { by: "Imtiaz Ahmed", alt: "A cricket ball in front of the stumps" },
+  30401162: { by: "Manoj Poosam", alt: "A blue cricket helmet with a steel grille" },
+  5384399: { by: "Allan Mas", alt: "Hands packing gear into a purple sports bag" },
+  29463867: { by: "Patrick Case", alt: "A cricketer playing a shot on a sunny day" },
+  6307231: { by: "Lisa A", alt: "Two blue badminton rackets and shuttlecocks on white" },
+  13116204: { by: "Kurt Chun", alt: "A badminton racket with three shuttlecocks" },
+  8286363: { by: "Pew Nguyen", alt: "A badminton racket and a shuttlecock on grass" },
+  32874231: { by: "Fatma Kılıç", alt: "Two badminton rackets and a shuttlecock on grass" },
+  6878113: { by: "Saif71.com", alt: "Shuttlecocks arranged on a badminton racket" },
+  7438726: { by: "Saif71.com", alt: "Three white badminton shuttlecocks on a dark background" },
+  9467266: { by: "Ashish Chaurasiya", alt: "A pile of yellow nylon shuttlecocks" },
+  12039815: { by: "Mario Ortiz", alt: "A football on a grass field" },
+  36618476: { by: "BASTIAN WARDANA", alt: "Three footballs on a green field" },
+  39309596: { by: "Mahmoud Zakariya", alt: "Green and orange footballs on a wooden floor" },
+  32574010: { by: "Nobleseed Nobleseed", alt: "Turquoise football boots on a shiny surface" },
+  3931367: { by: "Andrea Piacquadio", alt: "Two black hex dumbbells on a gym floor" },
+  16567048: { by: "Marga Ramos García", alt: "Two vinyl dumbbells on a white surface" },
+  27810157: { by: "Jonathan Borba", alt: "A kettlebell on a gym floor" },
+  40074772: { by: "Valentin Ivantsov", alt: "Yoga mats in orange, green and blue" },
+  4325439: { by: "cottonbro studio", alt: "Rolled exercise mats in a basket" },
+  6740819: { by: "Mikhail Nilov", alt: "Sneakers, resistance bands and straps laid flat" },
+  45056: { by: "Dom J", alt: "A black and orange skipping rope on white" },
+  8032841: { by: "MART PRODUCTION", alt: "A black skipping rope coiled on a woven mat" },
+  17955586: { by: "Israel Torres", alt: "The back of a player in a football jersey on a grass pitch" },
+  31961168: { by: "Ebenezer Idowu", alt: "Folded joggers in black, brown and grey" },
+  9488415: { by: "cottonbro studio", alt: "Green track pants with a stripe" },
+  33417703: { by: "Wesley Davi", alt: "Athletic shorts on an outdoor track" },
+  33417698: { by: "Wesley Davi", alt: "Running shorts with a phone pocket" },
+  5739194: { by: "cottonbro studio", alt: "White sports trousers with a side stripe" },
+  5741053: { by: "cottonbro studio", alt: "Knee-high striped socks on a clay court" },
+  9519514: { by: "Anastasia Shuraeva", alt: "Knee-high white football socks in front of a goal" },
+  40231614: { by: "Tường Chopper", alt: "A white and orange running shoe on a blue surface" },
+  40231621: { by: "Tường Chopper", alt: "A pair of white and orange running shoes on purple" },
+  11324518: { by: "Hurrah suhail", alt: "White training shoes on a red background" },
+  29699313: { by: "ALOK DAS", alt: "Court shoes with a racket on an orange backdrop" },
+  7880203: { by: "MART PRODUCTION", alt: "Sneakers with a yoga mat and water bottle on grass" },
+  36398022: { by: "Alex Grandidier", alt: "Hands playing a wooden board game outdoors" },
+  6114955: { by: "Vlada Karpovich", alt: "Wooden chess pieces on a chessboard" },
+  17768376: { by: "Gabriel Schincariol Cavalcante", alt: "A chessboard with pieces set for play" },
+  29548833: { by: "miniperde", alt: "A red table-tennis bat on a green and blue table" },
+  16686174: { by: "Martina Martinez", alt: "Two table-tennis bats and a ball on blue" },
+  6532363: { by: "Nataliya Vaitkevich", alt: "Golden trophies on a light background" },
+  5286746: { by: "Raquel Tinoco", alt: "Hands holding a shiny trophy" },
+  7267542: { by: "DS stories", alt: "Gold and silver medals with red ribbons" },
+  7267540: { by: "DS stories", alt: "A gold medal with a red ribbon" },
+  7207354: { by: "cottonbro studio", alt: "A coach's hand holding a whistle" },
+  2128220: { by: "Ruslan Alekso", alt: "Training cones on a football field" },
+  31579491: { by: "Hassan Bouamoud", alt: "An orange cone on a synthetic pitch" },
+  38656923: { by: "Margo Evardson", alt: "Trophies lined up on a wooden table" },
+  6345322: { by: "Kaboompics.com", alt: "Trophies and medals on a desk" },
+  8007075: { by: "SHVETS production", alt: "A shuttlecock on a red indoor badminton court" },
+  10448088: { by: "Erik Zepeda", alt: "Two hex dumbbells on green turf" },
+  3660204: { by: "eric anada", alt: "Badminton rackets and shuttlecocks on an indoor court" },
+  6250930: { by: "Anna Shvets", alt: "Two hands holding trophies against a yellow backdrop" },
+};
+
+const HOURS = [
+  { label: "Mon - Sat", value: "9:30 am - 9:30 pm" },
+  { label: "Sunday", value: "9:00 am - 2:00 pm" },
+];
+
+const FAQ = [
+  {
+    q: "How do I choose a cricket bat?",
+    a: "Go by **height**, then by weight. Children under 4 ft 6 in take Size 3 to 5, teenagers Size 6 or Short Handle, adults Short Handle or Harrow. Hold it by the handle with the blade on the floor: you should lift it comfortably with one hand. Kashmir willow suits nets and lane cricket; **English willow** is for leather-ball matches. See the bat guide.",
+  },
+  {
+    q: "Do you knock in and string?",
+    a: "Yes. We **knock in** an English willow bat at the counter for Rs 150 (ready in 2 days) and **string** rackets at your tension for Rs 200 (same day if you come before 5 pm). Stringing is free on the first string of a racket bought here.",
+  },
+  {
+    q: "Can I order jerseys for my team?",
+    a: "Yes: 12 or more jerseys, with your team name, numbers and sponsor line. Send your size list on WhatsApp, approve the design, and we deliver in 8 to 10 days. See the team orders page; 10% off orders above Rs 5,000 with the code TEAM10.",
+  },
+  {
+    q: "What if the size is wrong?",
+    a: "Exchange within **7 days** if it is unused and you have the bill. At the shop we swap it on the spot; online we collect the old size when we deliver the new one. Shoes and jerseys: check the size guide on the product page.",
+  },
+];
+
+const FAQ_TA = [
+  {
+    q: "கிரிக்கெட் பேட்டை எப்படித் தேர்வது?",
+    a: "முதலில் **உயரம்**, பிறகு எடை. 4 அடி 6 அங்குலத்துக்குக் கீழுள்ள குழந்தைகளுக்கு சைஸ் 3 முதல் 5, பதின்ம வயதினருக்கு சைஸ் 6 அல்லது ஷார்ட் ஹேண்டில், பெரியவர்களுக்கு ஷார்ட் ஹேண்டில் அல்லது ஹாரோ. பிளேடு தரையில் இருக்க கைப்பிடியைப் பிடியுங்கள்: ஒரு கையால் சுலபமாகத் தூக்க முடிய வேண்டும். கஷ்மீர் வில்லோ நெட்ஸ், தெரு கிரிக்கெட்டுக்கு; **இங்கிலிஷ் வில்லோ** லெதர் பால் போட்டிகளுக்கு. பேட் வழிகாட்டியைப் பாருங்கள்.",
+  },
+  {
+    q: "நாக்-இன், ஸ்ட்ரிங்கிங் செய்து தருவீர்களா?",
+    a: "ஆம். இங்கிலிஷ் வில்லோ பேட்டை கவுண்டரில் ரூ 150-க்கு **நாக்-இன்** செய்கிறோம் (2 நாளில் தயார்), ராக்கெட்டை உங்கள் டென்ஷனில் ரூ 200-க்கு **ஸ்ட்ரிங்** செய்கிறோம் (மாலை 5 மணிக்குள் வந்தால் அதே நாள்). இங்கே வாங்கிய ராக்கெட்டுக்கு முதல் ஸ்ட்ரிங் இலவசம்.",
+  },
+  {
+    q: "என் அணிக்கு ஜெர்சி ஆர்டர் செய்யலாமா?",
+    a: "ஆம்: 12 அல்லது அதற்கு மேல், உங்கள் அணிப் பெயர், எண்கள், ஸ்பான்சர் வரியுடன். அளவுப் பட்டியலை வாட்ஸ்அப்பில் அனுப்புங்கள், வடிவமைப்பை ஒப்புக்கொள்ளுங்கள், 8 முதல் 10 நாளில் டெலிவரி. அணி ஆர்டர்கள் பக்கத்தைப் பாருங்கள்; ரூ 5,000-க்கு மேல் TEAM10 குறியீட்டில் 10% தள்ளுபடி.",
+  },
+  {
+    q: "அளவு தவறானால் என்ன செய்வது?",
+    a: "பயன்படுத்தாமல் பில்லுடன் **7 நாட்களுக்குள்** மாற்றலாம். கடையில் உடனே மாற்றுவோம்; ஆன்லைனில் புதிய அளவைக் கொண்டு வரும்போது பழையதை எடுத்துக் கொள்வோம். ஷூ, ஜெர்சிக்கு தயாரிப்புப் பக்கத்தின் அளவு வழிகாட்டியைப் பாருங்கள்.",
+  },
+];
+
+const TEAM_TEXT = "Hello Maidhanam Sports, we need team jerseys. Team name: … Number of jerseys: … Colours: … Sizes: …";
+const stat = (label: string, suffix?: string): Record<string, string> => (suffix ? { label, suffix } : { label });
+
+const RACKET_ROWS = [
+  { label: "Weight", values: ["100 g", "85 g (4U)", "88 g"] },
+  { label: "Balance", values: ["Even", "Head-light", "Even"] },
+  { label: "Frame", values: ["Aluminium", "Graphite", "Carbon and steel"] },
+  { label: "Best for", values: ["First games", "Fast club drives", "Improvers"] },
+];
+const RACKET_ROWS_TA = [
+  { label: "எடை", values: ["100 g", "85 g (4U)", "88 g"] },
+  { label: "சமநிலை", values: ["சம எடை", "தலை இலகு", "சம எடை"] },
+  { label: "சட்டம்", values: ["அலுமினியம்", "கிராஃபைட்", "கார்பன், ஸ்டீல்"] },
+  { label: "ஏற்றது", values: ["முதல் ஆட்டங்கள்", "வேகமான கிளப் ஆட்டம்", "முன்னேறுபவர்கள்"] },
+];
+
+/** A markdown size table. */
+const table = (head: string[], rows: (string | number)[][]) => `| ${head.join(" | ")} |\n|${head.map(() => "---").join("|")}|\n${rows.map((r) => `| ${r.join(" | ")} |`).join("\n")}`;
+const WEAR_TABLE = table(
+  ["Size", "Chest (in)", "Waist (in)", "Length (in)"],
+  [
+    ["S", "36-38", "28-30", 27],
+    ["M", "38-40", "30-32", 28],
+    ["L", "40-42", "32-34", 29],
+    ["XL", "42-44", "34-36", 30],
+    ["XXL", "44-46", "36-38", 31],
+  ],
+);
+const SHOE_TABLE = table(
+  ["UK / IND", "EU", "US (men)", "Foot length (cm)"],
+  [
+    [6, 39, 7, "24.6"],
+    [7, "40.5", 8, "25.4"],
+    [8, 42, 9, "26.2"],
+    [9, 43, 10, "27.1"],
+    [10, "44.5", 11, "27.9"],
+    [11, 46, 12, "28.8"],
+  ],
+);
+const BAT_TABLE = table(
+  ["Player height", "Bat size", "Bat length (in)"],
+  [
+    ["4 ft 0 - 4 ft 3", "Size 3", 30],
+    ["4 ft 3 - 4 ft 6", "Size 4", 31],
+    ["4 ft 6 - 4 ft 9", "Size 5", 32],
+    ["4 ft 9 - 5 ft 0", "Size 6", 33],
+    ["5 ft 0 - 5 ft 6", "Harrow", 34],
+    ["5 ft 6 and above", "Short Handle", 34.5],
+  ],
+);
+
+export const MAIDHANAM: DemoStore = {
+  shop: {
+    slug: "maidhanam",
+    appId: "EC",
+    businessType: "sports",
+    planId: "pro",
+    name: "Maidhanam Sports",
+    primary: "#0d5c34",
+    billing: {
+      legalName: "Maidhanam Sports",
+      gstin: "33AAJFM5316D1ZN",
+      address: "14, Bells Road, Triplicane",
+      city: "Chennai",
+      pincode: "600005",
+      stateCode: "33",
+      phone: PHONE,
+      invoicePrefix: "MS",
+      upiId: "maidhanamsports@okicici",
+    },
+    // Counter services (repair of other goods, SAC 998729: 18%); rates are GST-exclusive.
+    items: [
+      { name: "Racket stringing", hsn: "998729", unit: "pcs", rate: 16_949, gstRate: 18 },
+      { name: "Cricket bat knocking-in", hsn: "998729", unit: "pcs", rate: 12_712, gstRate: 18 },
+    ],
+  },
+  preset: "turf-chalk",
+  store: {
+    open: true,
+    codEnabled: true,
+    codMaxAmount: 1_000_000,
+    minOrderValue: 0,
+    contactPhone: PHONE,
+    contactEmail: "hello@maidhanamsports.in",
+    social: { whatsapp: PHONE, instagram: "https://instagram.com/maidhanamsports" },
+    policies: {
+      shipping:
+        "**Chennai (600xxx):** next day by our own delivery, free above Rs 999, else Rs 49.\n\n**Rest of Tamil Nadu:** 2-3 days by courier, Rs 79, free above Rs 1,499.\n\n**Rest of India:** 3-6 days by courier, Rs 129, free above Rs 2,499. Bats, rackets and stumps ship in a rigid carton.",
+      returns:
+        "Exchange within 7 days of delivery, free, for unused goods with the bill (we collect the old one when we deliver the new one). If an item arrives damaged or not as described, send a photo on WhatsApp within 48 hours and we replace it or refund in full. Worn socks, shoes, jerseys with printed names, engraved trophies and used shuttles cannot be returned; a bat with a manufacturing defect is covered for 3 months (not for cracks from play or knocking-in).",
+      privacy: "We use your details only to deliver your order and send your GST bill. Team lists you send on WhatsApp are deleted when the order is delivered.",
+      terms:
+        "Prices include GST: 5% on sports goods, games and on apparel and shoes up to Rs 2,500 a piece, 18% on exercise equipment, bags, trophies, whistles and apparel or shoes above Rs 2,500. Wood varies in grain and shade from the pictures. Match-day deals run 6-9 pm daily.",
+    },
+    businessType: "sports",
+  },
+  zones: [
+    {
+      name: "Chennai",
+      pincodePrefixes: ["600"],
+      rate: { name: "Next-day delivery", type: "free_above", amount: 4_900, freeAbove: 99_900, etaMinDays: 1, etaMaxDays: 1, codAllowed: true, codFee: 0 },
+    },
+    {
+      name: "Rest of Tamil Nadu",
+      states: ["33"],
+      rate: { name: "Courier (2-3 days)", type: "free_above", amount: 7_900, freeAbove: 149_900, etaMinDays: 2, etaMaxDays: 3, codAllowed: true, codFee: 4_000 },
+    },
+    {
+      name: "Rest of India",
+      states: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "26", "27", "29", "30", "31", "32", "34", "35", "36", "37", "38"],
+      rate: { name: "Courier (3-6 days)", type: "free_above", amount: 12_900, freeAbove: 249_900, etaMinDays: 3, etaMaxDays: 6, codAllowed: false, codFee: 0 },
+    },
+  ],
+  categories: [
+    { name: CRICKET, description: "Bats, balls, stumps, helmets and kit bags, from the lane to the league.", photo: 29463867 },
+    { name: BATS, description: "English and Kashmir willow bats for every age.", photo: 9420724, parent: CRICKET },
+    { name: BALLS, description: "Leather match and practice balls, wooden stumps and bails.", photo: 7702229, parent: CRICKET },
+    { name: PROTECT, description: "Helmets and kit bags.", photo: 30401162, parent: CRICKET },
+    { name: BADMINTON, description: "Rackets, feather and nylon shuttles, court shoes.", photo: 8007075 },
+    { name: FOOTBALL, description: "Match and training balls, boots and cones.", photo: 12039815 },
+    { name: FITNESS, description: "Dumbbells, kettlebells, mats, bands and skipping ropes for home workouts.", photo: 10448088 },
+    { name: WEAR_CAT, description: "Jerseys, track pants, shorts, whites and socks, with a size guide.", photo: 17955586 },
+    { name: SHOES, description: "Running, training, court and kids' sports shoes in UK sizes.", photo: 40231614 },
+    { name: INDOOR, description: "Carrom boards, chess sets and table-tennis bats.", photo: 6114955 },
+    { name: TEAM, description: "Trophies, medals, whistles and cones for schools, clubs and offices.", photo: 38656923 },
+  ],
+  // Apparel / footwear: GST by price band (5% up to Rs 2,500 a piece, 18% above).
+  products: withPriceBandGst(PRODUCTS_BASE),
+  collections: [
+    { name: "New in", slug: "new-in", description: "Fresh on the shelves this month.", rule: { sort: "new" } },
+    { name: "Match-day deals", slug: "match-day", description: "The evening counter: bats, balls, helmets and court shoes at their sharpest prices.", rule: { tag: "matchday", sort: "price-asc" } },
+    { name: "Cricket", slug: "cricket", description: "Bats, balls, stumps, helmets, whites and kit bags.", rule: { tag: "cricket", sort: "price-desc" } },
+    { name: "Badminton", slug: "badminton", description: "Rackets, shuttles and court shoes.", rule: { tag: "badminton", sort: "price-asc" } },
+    { name: "Football", slug: "football", description: "Balls, boots, jerseys, socks and cones.", rule: { tag: "football", sort: "price-asc" } },
+    { name: "Gym at home", slug: "gym-at-home", description: "Dumbbells, kettlebells, mats, bands and skipping ropes.", rule: { tag: "home-gym", sort: "price-asc" } },
+    { name: "Indoor games", slug: "indoor-games", description: "Carrom, chess and table tennis.", rule: { category: INDOOR, sort: "price-asc" } },
+    { name: "Beginner kits", slug: "beginner", description: "A first bat, a first racket, a first set of stumps.", rule: { tag: "beginner", sort: "price-asc" } },
+    { name: "Team orders", slug: "team-orders", description: "Jerseys, bags, balls, trophies, whistles and cones for clubs, schools and offices.", rule: { tag: "team", sort: "price-asc" } },
+    { name: "Under Rs 499", slug: "under-499", description: "Good gear at Rs 499 or less.", rule: { tag: "under-499", sort: "price-asc" } },
+    { name: "Bestsellers", slug: "bestsellers", description: "What Triplicane keeps coming back for.", rule: { tag: "bestseller", sort: "price-asc" } },
+    { name: "Running", slug: "running", description: "Running and training shoes.", rule: { tag: "running", sort: "price-asc" } },
+    { name: "On offer", slug: "on-offer", description: "Items below their MRP right now.", rule: { onSale: true, sort: "price-asc" } },
+  ],
+  coupons: [
+    {
+      code: "MATCHDAY",
+      description: "Rs 100 off your first order above Rs 999",
+      type: "flat",
+      value: 10_000,
+      minOrder: 99_900,
+      channels: ["store"],
+    },
+    {
+      code: "TEAM10",
+      description: "Team orders: 10% off above Rs 5,000 (up to Rs 1,500)",
+      type: "percent",
+      value: 10,
+      minOrder: 500_000,
+      maxDiscount: 150_000,
+      channels: ["store", "manual"],
+    },
+  ],
+  home: ({ photo, category, product }) => {
+    return {
+      seo: {
+        title: "Maidhanam Sports, Triplicane: cricket, badminton, football, fitness",
+        description:
+          "Cricket bats and balls, badminton rackets, footballs, home-gym gear, sportswear and shoes, carrom and chess, trophies and team jerseys, with a size guide, 7-day exchange and next-day delivery in Chennai.",
+        imageUrl: photo(29463867),
+      },
+      sections: [
+        {
+          type: "hero",
+          id: "mh-hero",
+          slides: [
+            {
+              imageUrl: photo(29463867),
+              heading: "Cricket season starts on Bells Road.",
+              subheading: "English and Kashmir willow bats, match balls, helmets and whites, two streets from Chepauk. Knocked in at the counter.",
+              cta: { label: "Shop cricket", href: "/collections/cricket" },
+            },
+            {
+              imageUrl: photo(3660204),
+              heading: "A racket for every rally.",
+              subheading: "Aluminium, graphite and carbon rackets, feather and nylon shuttles, strung while you wait.",
+              cta: { label: "Shop badminton", href: "/collections/badminton" },
+            },
+            {
+              imageUrl: photo(36618476),
+              heading: "Footballs, boots and cones for the maidan.",
+              subheading: "Size 3, 4 and 5 balls, moulded-stud boots, jerseys and socks for your team.",
+              cta: { label: "Shop football", href: "/collections/football" },
+            },
+            {
+              imageUrl: photo(10448088),
+              heading: "A gym in your corner of the flat.",
+              subheading: "Dumbbells, kettlebells, mats, bands and skipping ropes, delivered next day in Chennai.",
+              cta: { label: "Gym at home", href: "/collections/gym-at-home" },
+            },
+          ],
+        },
+        {
+          type: "tiles",
+          id: "mh-sports",
+          title: "Pick your game",
+          text: "Eleven sections, one counter. Tap a sport to see everything we stock for it.",
+          layout: "row",
+          showCounts: true,
+          items: [
+            { label: "Cricket", note: "Bats, balls, stumps, helmets", imageUrl: photo(9420724, "square"), collectionSlug: "cricket" },
+            { label: "Badminton", note: "Rackets, shuttles, shoes", imageUrl: photo(13116204, "square"), collectionSlug: "badminton" },
+            { label: "Football", note: "Balls, boots, jerseys", imageUrl: photo(12039815, "square"), collectionSlug: "football" },
+            { label: "Gym at home", note: "Dumbbells, mats, ropes", imageUrl: photo(3931367, "square"), collectionSlug: "gym-at-home" },
+            { label: "Indoor games", note: "Carrom, chess, table tennis", imageUrl: photo(29548833, "square"), collectionSlug: "indoor-games" },
+            { label: "Team orders", note: "Jerseys, trophies, medals", imageUrl: photo(5286746, "square"), collectionSlug: "team-orders" },
+          ],
+        },
+        {
+          type: "flash-sale",
+          id: "mh-matchday",
+          title: "Match-day deals",
+          text: "The evening counter: every day from 6 to 9 pm, bats, balls, helmets and court shoes at their sharpest prices.",
+          endsAt: "2027-03-31T23:59:00+05:30",
+          daily: { from: "18:00", to: "21:00" },
+          source: "collection",
+          collectionSlug: "match-day",
+          layout: "grid",
+          limit: 4,
+          cta: { label: "All match-day deals", href: "/collections/match-day" },
+        },
+        {
+          type: "comparison",
+          id: "mh-rackets",
+          title: "Which racket?",
+          text: "Three rackets, three kinds of player. The heavier the head, the more power; the lighter, the faster your drives.",
+          productIds: [product("Aluminium badminton rackets, pair with cover"), product("Graphite racket, 85 g, 4U"), product("Carbon-steel racket, 88 g, even balance")],
+          highlightId: product("Carbon-steel racket, 88 g, even balance"),
+          highlightLabel: "Best step up",
+          showRating: false,
+          rows: RACKET_ROWS,
+        },
+        { type: "collection", id: "mh-cricket", title: "Cricket season", collectionSlug: "cricket", layout: "carousel", limit: 12 },
+        {
+          type: "deal",
+          id: "mh-deal",
+          title: "Bat of the week",
+          text: "English willow, Grade 2: a clean face and straight grains for club cricket. We knock it in for you, ready in two days.",
+          productId: product("English willow bat, Grade 2"),
+        },
+        {
+          type: "offer",
+          id: "mh-team",
+          eyebrow: "Team orders - 12 or more",
+          heading: "Your team, your colours, on the pitch in 10 days",
+          text: "Sublimated jerseys with your team name, numbers and sponsor line, plus balls, cones, whistles and a trophy for the final. 10% off orders above Rs 5,000.",
+          code: "TEAM10",
+          cta: { label: "Send your list on WhatsApp", href: waLink(TEAM_TEXT) },
+          style: { background: "image", imageUrl: photo(6250930), overlay: 55, padding: "spacious" },
+        },
+        {
+          type: "size-finder",
+          id: "mh-size",
+          title: "Find your size",
+          text: "Pick whose shoes or kit and tap a size, or type your foot length in centimetres (heel to longest toe, measured in the evening) and we pick the shoe size for you.",
+          imageUrl: photo(3931367, "tile"),
+          optionName: "Size",
+          footLength: true,
+          groups: [
+            { label: "Men's shoes", sizes: SHOE_MEN, categoryId: category(SHOES) },
+            { label: "Women's shoes", sizes: SHOE_WOMEN, categoryId: category(SHOES) },
+            { label: "Jerseys & track pants", sizes: WEAR, categoryId: category(WEAR_CAT) },
+          ],
+          style: { background: "muted" },
+        },
+        {
+          type: "usp",
+          id: "mh-why",
+          layout: "split",
+          title: "Why Triplicane plays here",
+          text: "A counter run by people who still play on Sundays.",
+          items: [
+            { icon: "check", title: "Try before you buy", text: "Feel the bat's pick-up, test the racket's grip" },
+            { icon: "star", title: "Knocked in and strung", text: "Bats ready in 2 days, rackets same day" },
+            { icon: "tag", title: "Team rates", text: "10% off jersey and kit orders above Rs 5,000" },
+            { icon: "truck", title: "Next day in Chennai", text: "Free above Rs 999" },
+          ],
+        },
+        {
+          type: "stats",
+          id: "mh-stats",
+          title: "Two streets from Chepauk",
+          items: [
+            { value: 31, suffix: "+", label: "Seasons on Bells Road" },
+            { value: 180, suffix: "+", label: "Teams kitted every year" },
+            { value: 600, suffix: "+", label: "Bats knocked in a season" },
+            { value: 7, label: "Days to swap a size, free" },
+          ],
+          style: { background: "dark" },
+        },
+        {
+          type: "testimonials",
+          id: "mh-reviews",
+          title: "From the boundary",
+          layout: "cards",
+          items: [
+            { quote: "Ordered 16 jerseys for our office team on WhatsApp, approved the design the same night, and they were on the ground in nine days. Numbers did not fade after a month of washing.", name: "Prakash R.", role: "Captain, T. Nagar league", rating: 5 },
+            { quote: "They picked my Harrow bat by height and weight, knocked it in, and it middled the ball from the first over. Fair price, no pushing the costly one.", name: "Imran S.", role: "Club cricketer, Triplicane", rating: 5 },
+            { quote: "String tension on my graphite racket matched my old one exactly. Same-day stringing is a lifesaver before a tournament.", name: "Divya K.", role: "Badminton player, Mylapore", rating: 5 },
+          ],
+        },
+        { type: "faq", id: "mh-faq", title: "Bats, stringing, team orders and exchange", items: FAQ },
+        {
+          type: "newsletter",
+          id: "mh-newsletter",
+          layout: "inline",
+          heading: "Team-kit and season offers",
+          text: "One short note when a new season's kit lands or a team offer opens. No spam.",
+        },
+        {
+          type: "location",
+          id: "mh-location",
+          title: "Come and feel the weight",
+          address: "14, Bells Road, Triplicane, Chennai 600005",
+          hours: HOURS,
+          phone: PHONE,
+          whatsapp: PHONE,
+          coords: "13.0617, 80.2799",
+        },
+      ],
+      translations: {
+        ta: {
+          "mh-hero": {
+            slides: [
+              {
+                heading: "கிரிக்கெட் சீசன் பெல்ஸ் ரோட்டில் தொடங்குகிறது.",
+                subheading: "இங்கிலிஷ், கஷ்மீர் வில்லோ பேட்கள், மேட்ச் பந்துகள், ஹெல்மெட், வெள்ளை உடைகள்: சேப்பாக்கத்திலிருந்து இரண்டு தெரு தூரம். கவுண்டரிலேயே நாக்-இன் செய்து தருகிறோம்.",
+                cta: { label: "கிரிக்கெட் பொருட்கள்" },
+              },
+              {
+                heading: "ஒவ்வொரு ராலிக்கும் ஒரு ராக்கெட்.",
+                subheading: "அலுமினியம், கிராஃபைட், கார்பன் ராக்கெட்கள், இறகு, நைலான் ஷட்டில்கள்: காத்திருக்கும் நேரத்திலேயே ஸ்ட்ரிங் போடுகிறோம்.",
+                cta: { label: "பேட்மிண்டன் பொருட்கள்" },
+              },
+              {
+                heading: "மைதானத்துக்கான கால்பந்து, பூட்ஸ், கோன்கள்.",
+                subheading: "சைஸ் 3, 4, 5 பந்துகள், மோல்டட் ஸ்டட் பூட்ஸ், உங்கள் அணிக்கான ஜெர்சிகள், சாக்ஸ்.",
+                cta: { label: "கால்பந்து பொருட்கள்" },
+              },
+              {
+                heading: "வீட்டின் ஒரு மூலையில் ஒரு ஜிம்.",
+                subheading: "டம்பெல்கள், கெட்டில்பெல், மேட்கள், பேண்டுகள், ஸ்கிப்பிங் கயிறுகள்: சென்னையில் மறுநாள் டெலிவரி.",
+                cta: { label: "வீட்டு ஜிம்" },
+              },
+            ],
+          },
+          "mh-sports": {
+            title: "உங்கள் ஆட்டத்தைத் தேர்ந்தெடுங்கள்",
+            text: "பதினொரு பிரிவுகள், ஒரே கவுண்டர். ஒரு விளையாட்டைத் தொட்டு அதற்கு நாங்கள் வைத்திருப்பவை அனைத்தையும் பாருங்கள்.",
+            items: [
+              { label: "கிரிக்கெட்", note: "பேட், பந்து, ஸ்டம்ப், ஹெல்மெட்" },
+              { label: "பேட்மிண்டன்", note: "ராக்கெட், ஷட்டில், ஷூ" },
+              { label: "கால்பந்து", note: "பந்து, பூட்ஸ், ஜெர்சி" },
+              { label: "வீட்டு ஜிம்", note: "டம்பெல், மேட், கயிறு" },
+              { label: "உள்ளரங்க விளையாட்டுகள்", note: "கேரம், சதுரங்கம், டேபிள் டென்னிஸ்" },
+              { label: "அணி ஆர்டர்கள்", note: "ஜெர்சி, கோப்பை, பதக்கம்" },
+            ],
+          },
+          "mh-matchday": {
+            title: "மேட்ச்-டே சலுகைகள்",
+            text: "மாலைக் கவுண்டர்: தினமும் மாலை 6 முதல் 9 மணி வரை பேட், பந்து, ஹெல்மெட், கோர்ட் ஷூ மிகக் குறைந்த விலையில்.",
+            cta: { label: "அனைத்து மேட்ச்-டே சலுகைகள்" },
+          },
+          "mh-rackets": {
+            title: "எந்த ராக்கெட்?",
+            text: "மூன்று ராக்கெட், மூன்று வகை வீரர்கள். தலை கனமாக இருந்தால் வலிமை அதிகம்; இலகுவாக இருந்தால் டிரைவ் வேகம் அதிகம்.",
+            highlightLabel: "சிறந்த அடுத்த படி",
+            rows: RACKET_ROWS_TA,
+          },
+          "mh-cricket": { title: "கிரிக்கெட் சீசன்" },
+          "mh-deal": { title: "இந்த வாரப் பேட்", text: "இங்கிலிஷ் வில்லோ, கிரேடு 2: கிளப் கிரிக்கெட்டுக்கான சுத்தமான முகமும் நேரான தானியங்களும். நாங்கள் நாக்-இன் செய்து தருகிறோம், இரண்டு நாளில் தயார்." },
+          "mh-team": {
+            eyebrow: "அணி ஆர்டர்கள் · 12 அல்லது அதற்கு மேல்",
+            heading: "உங்கள் அணி, உங்கள் நிறங்கள், 10 நாளில் மைதானத்தில்",
+            text: "உங்கள் அணிப் பெயர், எண்கள், ஸ்பான்சர் வரியுடன் ஜெர்சிகள்; இறுதிப் போட்டிக்கு பந்து, கோன், விசில், கோப்பை. ரூ 5,000-க்கு மேல் 10% தள்ளுபடி.",
+            cta: { label: "உங்கள் பட்டியலை வாட்ஸ்அப்பில் அனுப்புங்கள்" },
+          },
+          "mh-size": {
+            title: "உங்கள் அளவைக் கண்டறியுங்கள்",
+            text: "யாருடைய ஷூ அல்லது உடை என்று தேர்ந்து ஒரு அளவைத் தொடுங்கள், அல்லது பாத நீளத்தைச் சென்டிமீட்டரில் (குதிகால் முதல் நீளமான விரல் வரை, மாலையில் அளந்தது) இடுங்கள்; ஷூ அளவை நாங்கள் தேர்ந்தெடுப்போம்.",
+            groups: [{ label: "ஆண்கள் ஷூ" }, { label: "பெண்கள் ஷூ" }, { label: "ஜெர்சி, ட்ராக் பேண்ட்" }],
+          },
+          "mh-why": {
+            title: "திருவல்லிக்கேணி இங்கே ஏன் விளையாடுகிறது",
+            text: "ஞாயிறுதோறும் இன்னும் விளையாடுபவர்கள் நடத்தும் கவுண்டர்.",
+            items: [
+              { title: "வாங்கும் முன் பாருங்கள்", text: "பேட்டின் எடையை உணருங்கள், ராக்கெட்டின் பிடியைச் சோதியுங்கள்" },
+              { title: "நாக்-இன், ஸ்ட்ரிங்", text: "பேட் 2 நாளில், ராக்கெட் அதே நாள்" },
+              { title: "அணிக்கான விலை", text: "ரூ 5,000-க்கு மேல் ஜெர்சி, கிட் ஆர்டர்களுக்கு 10% தள்ளுபடி" },
+              { title: "சென்னையில் மறுநாள்", text: "ரூ 999-க்கு மேல் இலவசம்" },
+            ],
+          },
+          "mh-stats": {
+            title: "சேப்பாக்கத்திலிருந்து இரண்டு தெரு",
+            items: [stat("ஆண்டுகளாக பெல்ஸ் ரோட்டில்", "+"), stat("ஒவ்வொரு ஆண்டும் அணிகளுக்கு கிட்", "+"), stat("ஒரு சீசனில் நாக்-இன் பேட்கள்", "+"), stat("நாட்களில் இலவச அளவு மாற்றம்")],
+          },
+          "mh-reviews": {
+            title: "எல்லைக்கோட்டிலிருந்து",
+            items: [
+              { quote: "அலுவலக அணிக்காக 16 ஜெர்சிகளை வாட்ஸ்அப்பில் ஆர்டர் செய்தேன்; அன்றிரவே வடிவமைப்பை ஒப்புக்கொண்டேன்; ஒன்பது நாளில் மைதானத்துக்கு வந்துவிட்டன. ஒரு மாதம் துவைத்த பிறகும் எண்கள் மங்கவில்லை.", role: "கேப்டன், தி. நகர் லீக்" },
+              { quote: "என் உயரம், எடை பார்த்து ஹாரோ பேட்டைத் தேர்ந்தெடுத்து நாக்-இன் செய்து தந்தார்கள்; முதல் ஓவரிலிருந்தே நடு பிளேடில் பந்து பட்டது. நியாயமான விலை, விலை உயர்ந்ததைத் திணிக்கவில்லை.", role: "கிளப் கிரிக்கெட் வீரர், திருவல்லிக்கேணி" },
+              { quote: "என் கிராஃபைட் ராக்கெட்டின் ஸ்ட்ரிங் டென்ஷன் பழையதுடன் அப்படியே பொருந்தியது. போட்டிக்கு முன் அதே நாள் ஸ்ட்ரிங்கிங் பெரிய உதவி.", role: "பேட்மிண்டன் வீராங்கனை, மயிலாப்பூர்" },
+            ],
+          },
+          "mh-faq": { title: "பேட், ஸ்ட்ரிங்கிங், அணி ஆர்டர், மாற்றம்", items: FAQ_TA },
+          "mh-newsletter": { heading: "அணிக் கிட், சீசன் சலுகைகள்", text: "புதிய சீசன் கிட் வந்ததும் அல்லது அணிச் சலுகை தொடங்கியதும் ஒரு சிறு செய்தி. ஸ்பேம் இல்லை." },
+          "mh-location": {
+            title: "வந்து எடையை உணருங்கள்",
+            address: "14, பெல்ஸ் ரோடு, திருவல்லிக்கேணி, சென்னை 600005",
+            hours: [
+              { label: "திங்கள் - சனி", value: "காலை 9:30 - இரவு 9:30" },
+              { label: "ஞாயிறு", value: "காலை 9:00 - மதியம் 2:00" },
+            ],
+          },
+        },
+      },
+    };
+  },
+  pages: [
+    {
+      slug: "about",
+      title: "Our story",
+      blocks: ({ photo }) => [
+        { type: "heading", level: 2, text: "Maidhanam Sports, Bells Road, since 1994" },
+        {
+          type: "paragraph",
+          markdown:
+            "Maidhanam (மைதானம்) means the ground. We opened in **1994** in a single room on Bells Road, two streets from the Chepauk stadium, to sell bats and balls to the boys who played on the Marina and in the lanes of Triplicane. Match days still mean a queue at the counter at 6 pm.\n\nToday we stock cricket, badminton, football, home fitness, sportswear and shoes, carrom, chess and table tennis, and we kit **180+ teams** a year, from school sides to office leagues. Bats are knocked in and rackets strung at the counter.",
+        },
+        { type: "image", url: photo(6345322, "tile"), alt: "Trophies and medals on a desk" },
+        { type: "paragraph", markdown: "Open Monday to Saturday 9:30 am - 9:30 pm, Sunday 9:00 am - 2:00 pm. Call or WhatsApp **+91 98765 00019**." },
+      ],
+    },
+    {
+      slug: "size-guide",
+      title: "Kit and shoe size guide",
+      blocks: () => [
+        { type: "heading", level: 2, text: "Jerseys, track pants and shorts" },
+        { type: "paragraph", markdown: `${WEAR_TABLE}\n\nMeasure over a thin T-shirt. Between two sizes? Take the bigger one for football, the smaller for running.` },
+        { type: "heading", level: 2, text: "Shoes" },
+        {
+          type: "paragraph",
+          markdown: `${SHOE_TABLE}\n\nStand on a sheet of paper, mark your heel and longest toe, and measure the gap in **centimetres** (evening, both feet, use the longer). Leave a thumb's width (about 1 cm) in front of the toes; 1.5 cm for children. UK and Indian (IND) sizes are the same.`,
+        },
+        { type: "heading", level: 2, text: "Exchange" },
+        { type: "paragraph", markdown: "Wrong size? **Exchange within 7 days**, unused, with the bill." },
+        { type: "button", label: "Ask us on WhatsApp", href: waLink("Hello Maidhanam Sports, I need help with a size. Item: … My height / foot length: …"), style: "primary" },
+      ],
+    },
+    {
+      slug: "bat-guide",
+      title: "How to choose a cricket bat",
+      blocks: () => [
+        { type: "heading", level: 2, text: "Start with height" },
+        { type: "paragraph", markdown: BAT_TABLE },
+        { type: "heading", level: 2, text: "Willow, grade and weight" },
+        {
+          type: "paragraph",
+          markdown:
+            "- **Kashmir willow:** harder, heavier, forgiving and cheap. Right for nets, school and lane cricket with a leather or hard-tennis ball.\n- **English willow:** lighter for its size, with a larger sweet spot and more pick-up. Grade 1 has 8 to 12 straight grains and no marks; Grade 2 is slightly less perfect and much cheaper.\n- **Weight:** you should lift it comfortably in one hand and play a straight drive without the toe dropping. Heavier is not better.\n- **Knock-in:** an English willow bat needs 6 hours of knocking before a hard ball. We do it at the counter for Rs 150.",
+        },
+        { type: "faq", items: FAQ.slice(0, 2) },
+      ],
+    },
+    {
+      slug: "team-orders",
+      title: "Team orders",
+      blocks: ({ photo }) => [
+        { type: "heading", level: 2, text: "Jerseys and kit for your team" },
+        {
+          type: "paragraph",
+          markdown:
+            "1. Send your team name, the number of jerseys (12 or more), colours and sizes on WhatsApp.\n2. We send a design for approval the same day.\n3. Pay 50% to start; the rest on delivery.\n4. Delivery in **8 to 10 days** in Chennai and Tamil Nadu.\n\nThe price includes your team name, numbers and one sponsor line on the back. Use the code **TEAM10** for 10% off orders above Rs 5,000 (up to Rs 1,500).",
+        },
+        { type: "image", url: photo(6250930, "tile"), alt: "Two hands holding trophies against a yellow backdrop" },
+        { type: "button", label: "Send your list on WhatsApp", href: waLink(TEAM_TEXT), style: "primary" },
+      ],
+    },
+    {
+      slug: "photo-credits",
+      title: "Photo credits",
+      blocks: () => [
+        { type: "heading", level: 2, text: "Photo credits" },
+        {
+          type: "paragraph",
+          markdown: `Photos on this demo store are from [Pexels](https://www.pexels.com), used under the [Pexels licence](https://www.pexels.com/license/). People shown are photographers' models, not our customers or staff.\n\n| Photo | Photographer | Source |\n|---|---|---|\n${Object.entries(
+            PHOTOS,
+          )
+            .map(([id, p]) => `| ${p.alt} | ${p.by} | [pexels.com/photo/${id}](https://www.pexels.com/photo/${id}/) |`)
+            .join("\n")}`,
+        },
+      ],
+    },
+  ],
+  menus: {
+    header: [
+      {
+        label: "Cricket",
+        type: "category",
+        ref: "cricket",
+        children: [
+          { label: "Bats", type: "category", ref: "bats" },
+          { label: "Balls & stumps", type: "category", ref: "balls-and-stumps" },
+          { label: "Protection & bags", type: "category", ref: "protection-and-bags" },
+        ],
+      },
+      { label: "Badminton", type: "category", ref: "badminton" },
+      { label: "Football", type: "category", ref: "football" },
+      { label: "Fitness", type: "category", ref: "fitness" },
+      {
+        label: "Wear",
+        type: "category",
+        ref: "sportswear",
+        children: [{ label: "Sports shoes", type: "category", ref: "sports-shoes" }],
+      },
+      {
+        label: "Games & teams",
+        type: "category",
+        ref: "indoor-games",
+        children: [{ label: "Team kits & trophies", type: "category", ref: "team-kits-and-trophies" }],
+      },
+      { label: "Match-day deals", type: "collection", ref: "match-day" },
+    ],
+    footer: [
+      {
+        label: "Help",
+        type: "url",
+        children: [
+          { label: "Size guide", type: "page", ref: "size-guide" },
+          { label: "Choosing a cricket bat", type: "page", ref: "bat-guide" },
+          { label: "Track your order", type: "url", href: "/track" },
+          { label: "WhatsApp us", type: "url", href: `https://wa.me/${WHATSAPP}` },
+        ],
+      },
+      {
+        label: "Shop",
+        type: "url",
+        children: [
+          { label: "Team orders", type: "page", ref: "team-orders" },
+          { label: "Beginner kits", type: "collection", ref: "beginner" },
+          { label: "Our story", type: "page", ref: "about" },
+          { label: "Photo credits", type: "page", ref: "photo-credits" },
+        ],
+      },
+    ],
+  },
+  photos: PHOTOS,
+};

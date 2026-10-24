@@ -19,6 +19,7 @@ const app = await buildServer({
   contextHooks: kit.contextHooks,
   preHandlers: kit.preHandlers,
   onResponse: kit.onResponse,
+  onSend: kit.onSend,
   modules: kit.modules,
   routeRules: kit.routeRules,
   routeCollector: kit.routeCollector,

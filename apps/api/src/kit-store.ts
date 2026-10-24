@@ -100,6 +100,7 @@ export function storeCatalogPort(catalogue: Catalogue): StoreCatalogPort {
         weightGrams: v.weightGrams,
         taxInclusive: v.taxInclusive,
         gstRate: v.gstRate,
+        gstRule: v.gstRule ?? null,
         status: v.status,
         channels: v.channels,
       })),
@@ -129,15 +130,40 @@ export function storeAvailabilityPort(
   inventory: Inventory,
   isEnabled: FeatureGatePort["isEnabled"],
   allowBackorder: (tenantId: string) => Promise<boolean>,
+  soldOut: SoldOutPort = async () => new Set(),
 ): AvailabilityPort {
   return {
     availability: async (tenantId, variantIds): Promise<VariantAvailability[]> => {
       if (variantIds.length === 0) return [];
+      // Dishes the kitchen marked "sold out today" (made-to-order food has no stock, only this switch).
+      const out = await soldOut(tenantId, variantIds);
+      const gone = (itemId: string): VariantAvailability => ({ itemId, available: 0, tracked: true });
       if (!(await isEnabled(tenantId, "inventory")) || (await allowBackorder(tenantId))) {
-        return variantIds.map((itemId) => ({ itemId, available: 0, tracked: false }));
+        return variantIds.map((itemId) => (out.has(itemId) ? gone(itemId) : { itemId, available: 0, tracked: false }));
       }
-      return chunked(variantIds, async (itemIds) => (await inventory.availability(tenantId, { itemIds })).items);
+      const rows = await chunked(variantIds, async (itemIds) => (await inventory.availability(tenantId, { itemIds })).items);
+      return rows.map((r) => (out.has(r.itemId) ? gone(r.itemId) : r));
     },
+  };
+}
+
+/** Variant ids the shop marked sold out today (restaurants: dining menu); empty without the dining feature. */
+export type SoldOutPort = (tenantId: string, variantIds: string[]) => Promise<Set<string>>;
+
+/**
+ * `GET /store/availability`: what the storefront shows as "in stock" / "low stock". Inventory's flags for shops that
+ * track stock; for the others everything is in stock except the dishes marked sold out today. Never a 403: shops without
+ * stock tracking (restaurants, services) simply have nothing to report.
+ */
+export function storePublicAvailability(inventory: Inventory, isEnabled: FeatureGatePort["isEnabled"], soldOut: SoldOutPort) {
+  return async (tenantId: string, variantIds: string[]): Promise<{ itemId: string; inStock: boolean; lowStock: boolean }[]> => {
+    if (variantIds.length === 0) return [];
+    const out = await soldOut(tenantId, variantIds);
+    if (await isEnabled(tenantId, "inventory")) {
+      const rows = await chunked(variantIds, async (itemIds) => (await inventory.publicAvailability(tenantId, { itemIds })).items);
+      return rows.map((r) => (out.has(r.itemId) ? { itemId: r.itemId, inStock: false, lowStock: false } : r));
+    }
+    return variantIds.map((itemId) => ({ itemId, inStock: !out.has(itemId), lowStock: false }));
   };
 }
 

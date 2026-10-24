@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appUrlFor, signupBillingDefaults } from "./kit-batch5";
+import { appUrlFor, signupBillingDefaults, signupSubscriptionStart } from "./kit-batch5";
 
 describe("appUrlFor", () => {
   const setting = "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/";
@@ -23,5 +23,18 @@ describe("signupBillingDefaults", () => {
     });
     expect(signupBillingDefaults("Glow Salon & Spa", null)).toEqual({ legalName: "Glow Salon & Spa", invoicePrefix: "GSS" });
     expect(signupBillingDefaults("ஸ்ரீ", null).invoicePrefix).toBe("INV");
+  });
+});
+
+describe("signupSubscriptionStart", () => {
+  it("starts the plan a sign-up chose", () => {
+    expect(signupSubscriptionStart("t1", "u1", { planId: "EC-starter", interval: "yearly" })).toEqual({ tenantId: "t1", ownerUserId: "u1", planId: "EC-starter", interval: "yearly" });
+    expect(signupSubscriptionStart("t1", "u1", { planId: "EC-starter" })?.interval).toBe("monthly");
+  });
+  it("skips a shop created without a plan (seed / admin: the plan and its subscription come right after)", () => {
+    expect(signupSubscriptionStart("t1", "u1", null)).toBeNull();
+    expect(signupSubscriptionStart("t1", "u1", {})).toBeNull();
+    expect(signupSubscriptionStart("t1", "u1", { planId: "  " })).toBeNull();
+    expect(signupSubscriptionStart("t1", "u1", { businessType: "organic" } as never)).toBeNull();
   });
 });

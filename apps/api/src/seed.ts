@@ -3,12 +3,12 @@ import { env } from "./env";
 import { createKit, type Kit } from "./kit";
 import { ensureShop, seedPlansAndProfiles, seedRestaurantSetup, seedStoreCatalogue, seedStoreContent, STORE_PRODUCTS, type ShopSpec } from "./seed-fixtures";
 import { seedProductImages } from "./seed-images";
+import { DEMO_STORES, seedDemoStore } from "./demo-stores";
 
 /**
  * Idempotent. Upserts the default plans and app profiles and, if SEED_SUPERADMIN is set, grants that user super-admin
  * and (unless SEED_DEMO=false) creates demo shops owned by them: two Billing shops (raja → pro, kumar → starter) and one
- * Ecommerce shop (anbu → pro, app EC: billing without credit book, reminders or purchases), a pharmacy (medplus → pro,
- * app PH) and a restaurant (annapoorna → pro, app RS). Existing demo shops get
+ * Ecommerce shop (anbu → pro, app EC: billing without credit book, reminders or purchases). Existing demo shops get
  * their plan and app set on every run. Shared fixtures live in seed-fixtures.ts; the e2e shops in seed-e2e.ts.
  */
 const log = pino({ level: "info" });
@@ -83,56 +83,6 @@ const DEMO_SHOPS: ShopSpec[] = [
     items: [
       { name: "Kurti (cotton)", hsn: "6204", unit: "pcs", rate: 79_900, gstRate: 5 },
       { name: "Silk dupatta", hsn: "6214", unit: "pcs", rate: 119_900, gstRate: 5 },
-    ],
-  },
-  {
-    slug: "medplus",
-    appId: "PH",
-    businessType: "pharmacy",
-    planId: "pro",
-    name: "MedPlus Pharmacy",
-    primary: "#059669",
-    billing: {
-      legalName: "MedPlus Pharmacy",
-      gstin: "33AAMFM4321P1Z0",
-      address: "22, Hospital Road",
-      city: "Salem",
-      pincode: "636001",
-      stateCode: "33",
-      phone: "+919876500004",
-      invoicePrefix: "MP",
-      upiId: "medpluspharmacy@okaxis",
-    },
-    items: [
-      { name: "Paracetamol 650 mg (strip of 15)", hsn: "3004", unit: "strip", rate: 3_200, gstRate: 12 },
-      { name: "Azithromycin 500 mg (strip of 3)", hsn: "3004", unit: "strip", rate: 11_950, gstRate: 12 },
-      { name: "Cough syrup 100 ml", hsn: "3004", unit: "btl", rate: 11_500, gstRate: 12 },
-      { name: "Digital thermometer", hsn: "9025", unit: "pcs", rate: 24_900, gstRate: 18 },
-    ],
-  },
-  {
-    slug: "annapoorna",
-    appId: "RS",
-    businessType: "restaurant",
-    planId: "pro",
-    name: "Annapoorna Restaurant",
-    primary: "#ea580c",
-    billing: {
-      legalName: "Annapoorna Restaurant",
-      gstin: "33AAAFA9876R1ZQ",
-      address: "5, Cross Cut Road",
-      city: "Coimbatore",
-      pincode: "641012",
-      stateCode: "33",
-      phone: "+919876500005",
-      invoicePrefix: "AR",
-      upiId: "annapoorna@okhdfcbank",
-    },
-    items: [
-      { name: "Masala dosa", hsn: "9963", unit: "plate", rate: 9_000, gstRate: 5 },
-      { name: "Idli (2 pcs)", hsn: "9963", unit: "plate", rate: 4_500, gstRate: 5 },
-      { name: "South Indian meals", hsn: "9963", unit: "plate", rate: 18_000, gstRate: 5 },
-      { name: "Filter coffee", hsn: "9963", unit: "cup", rate: 3_000, gstRate: 5 },
     ],
   },
   {
@@ -311,7 +261,11 @@ if (env.SEED_SUPERADMIN) {
   await kit.auth.service.setPlatformRoles(user.id, [...roles]);
   log.info({ userId: user.id }, "super-admin ready — sign in with OTP to this phone/email");
 
-  if (process.env.SEED_DEMO !== "false") await seedDemoShops(kit, user.id);
+  if (process.env.SEED_DEMO !== "false") {
+    await seedDemoShops(kit, user.id);
+    // The demo stores of the store-look series (demo-stores/): a full catalogue, home, pages and photos each.
+    for (const store of DEMO_STORES) await seedDemoStore(kit, store, user.id, log);
+  }
 }
 
 await kit.stop();

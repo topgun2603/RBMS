@@ -119,6 +119,21 @@ export function signupBillingDefaults(name: string, s: Pick<SignupDetails, "stat
   return billing;
 }
 
+/**
+ * The subscription a new shop starts with, from its sign-up details: null when there is no plan to start (a shop
+ * created by the seed / admin carries `signup.businessType` only and gets its plan, and then its subscription via
+ * `ensure`, right after creation). Real sign-ups always carry a validated plan id.
+ */
+export function signupSubscriptionStart(
+  tenantId: string,
+  ownerUserId: string,
+  s: Partial<Pick<SignupDetails, "planId" | "interval">> | null,
+): { tenantId: string; ownerUserId: string; planId: string; interval: SignupDetails["interval"] } | null {
+  const planId = typeof s?.planId === "string" ? s.planId.trim() : "";
+  if (!planId) return null;
+  return { tenantId, ownerUserId, planId, interval: s?.interval === "yearly" ? "yearly" : "monthly" };
+}
+
 export function createBatch5(d: Batch5Deps) {
   const { env, log, db, tenancy, auth, notify, plans, settings, branding } = d;
   const dev = env.NODE_ENV !== "production";
@@ -269,9 +284,9 @@ export function createBatch5(d: Batch5Deps) {
     // Sign-up's plan: a 14-day trial of a paid plan (once per owner) or the free plan. Shops created elsewhere get
     // their subscription lazily from their plan (`ensure`).
     run: async ({ tenant, ownerUserId, details }) => {
-      const s = signupOf(details);
-      if (!s) return;
-      await subs.service.startForNewTenant({ tenantId: tenant.id, ownerUserId, planId: s.planId, interval: s.interval });
+      const start = signupSubscriptionStart(tenant.id, ownerUserId, signupOf(details));
+      if (!start) return;
+      await subs.service.startForNewTenant(start);
     },
   });
 

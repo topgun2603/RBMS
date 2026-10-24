@@ -7,6 +7,7 @@ import Fastify, {
   type FastifyBaseLogger,
   type FastifyInstance,
   type onResponseAsyncHookHandler,
+  type onSendAsyncHookHandler,
   type preHandlerAsyncHookHandler,
 } from "fastify";
 import { ZodError } from "zod";
@@ -22,6 +23,8 @@ export interface ServerOptions {
   preHandlers?: preHandlerAsyncHookHandler[];
   /** Global onResponse hooks, e.g. the audit log of successful mutating requests. They must never throw. */
   onResponse?: onResponseAsyncHookHandler[];
+  /** Global onSend hooks, e.g. keeping the answer to an `Idempotency-Key` request. */
+  onSend?: onSendAsyncHookHandler[];
   modules: SrModule[];
   /** Annotates module routes while they are registered (e.g. host-side `config.permission`), then checks every rule matched. */
   routeRules?: { register(app: FastifyInstance): void; assertAllMatched(): void };
@@ -127,6 +130,7 @@ export async function buildServer(opts: ServerOptions) {
     for (const hook of opts.contextHooks) hook(api);
     for (const handler of opts.preHandlers ?? []) api.addHook("preHandler", handler);
     for (const handler of opts.onResponse ?? []) api.addHook("onResponse", handler);
+    for (const handler of opts.onSend ?? []) api.addHook("onSend", handler);
 
     opts.routeRules?.register(api);
     opts.routeCollector?.register(api);

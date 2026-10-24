@@ -99,6 +99,8 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   ),
   "GET /v1/inventory/reports/stock": "reports.view",
   "GET /v1/inventory/reports/purchases": ["reports.view", "inventory.purchases"],
+  "GET /v1/inventory/reports/payables-ageing": ["reports.view", "inventory.purchases"],
+  "GET /v1/inventory/payables/summary": "inventory.purchases",
 
   // ---- payments (owner/admin routes already)
   "PUT /v1/payments/account": "settings.manage",
