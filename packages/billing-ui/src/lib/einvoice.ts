@@ -80,6 +80,8 @@ export interface Gstr1Summary {
   warnings: string[];
   counts: { b2b: number; b2cl: number; b2cs: number; cancelled: number; skipped: number };
   filename?: string;
+  /** The GSTR-1 file itself (`fp` = its month, MMYYYY): the card saves this instead of building it again. */
+  json?: { fp?: string } & Record<string, unknown>;
 }
 
 // ------------------------------------------------------------------ signed QR

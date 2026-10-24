@@ -91,6 +91,8 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   "GET /v1/invoices/reports/sales-trend": "reports.view",
   "GET /v1/invoices/reports/sales-register": "reports.view",
   "GET /v1/invoices/reports/gst-summary": "reports.view",
+  "GET /v1/einvoice/gstr1": "reports.view",
+  "GET /v1/einvoice/gstr1.json": "reports.view",
   "GET /v1/invoices/reports/payments": "reports.view",
   "GET /v1/invoices/reports/ageing": "reports.view",
   "GET /v1/invoices/reports/top-items": "reports.view",

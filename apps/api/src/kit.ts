@@ -961,6 +961,12 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   const billFromLines = {
     createBill: async (tenant: Parameters<LinesBillingPort["createBill"]>[0], input: SharedBillInput, opts: { branchId: string | null }) => {
       const inv = await invoices.service.create(
+      // A line without HSN/SAC takes its item's (membership plans, job-card parts, bookings), so GSTR-1's HSN table has no blank rows.
+      const itemHsn = new Map<string, string | null>();
+      for (const l of input.lines) {
+        if (l.hsn || !l.itemId || itemHsn.has(l.itemId)) continue;
+        itemHsn.set(l.itemId, await invoices.service.getItem(tenant.id, l.itemId).then((i) => i.hsn ?? null, () => null));
+      }
         tenant,
         {
           date: todayIST(clock?.()),
@@ -976,7 +982,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
             qty: l.qty,
             rate: l.rate,
             gstRate: l.gstRate as never,
-            hsn: l.hsn ?? undefined,
+            hsn: l.hsn ?? (l.itemId ? itemHsn.get(l.itemId) : null) ?? undefined,
             unit: l.unit ?? undefined,
             ...(typeof l.inclusiveTotal === "number" ? { inclusiveTotal: l.inclusiveTotal } : {}),
             ...(l.serials?.length ? { serials: l.serials } : {}),

@@ -23,15 +23,25 @@ import { useHasPermission } from "../../lib/access";
 import { defaultGstr1Period, gstr1Periods } from "../../lib/einvoice";
 import { useGstr1Summary } from "../../lib/queries-growth";
 
-const FEATURE = "gst-einvoice";
-const PERMISSION = "einvoice.manage";
+// Every GST-registered shop files GSTR-1: same gate as the GST summary, not e-invoicing.
+const FEATURE = "invoices.gst-reports";
+const PERMISSION = "reports.view";
 
-/** GSTR-1 JSON download for a month (feature `gst-einvoice`, permission `einvoice.manage`). Renders nothing otherwise. */
+/** GSTR-1 JSON download for a month (feature `invoices.gst-reports`, permission `reports.view`). Renders nothing otherwise. */
 export function Gstr1Card() {
   const on = useFeature(FEATURE);
   const allowed = useHasPermission(PERMISSION);
   if (!on || !allowed) return null;
   return <Gstr1CardInner />;
+}
+
+function saveJson(json: unknown, filename: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function Gstr1CardInner() {
@@ -46,7 +56,10 @@ function Gstr1CardInner() {
   const download = async () => {
     setBusy(true);
     try {
-      await apiDownload("/einvoice/gstr1.json", { period }, `GSTR1_${period}.json`);
+      // The check above already built this month's file (a busy month takes a while): save that one. Otherwise ask again.
+      const ready = summary.data && !summary.isPlaceholderData && summary.data.json?.fp === period ? summary.data : null;
+      if (ready?.json) saveJson(ready.json, ready.filename ?? `GSTR1_${period}.json`);
+      else await apiDownload("/einvoice/gstr1.json", { period }, `GSTR1_${period}.json`);
       toast.success(t("billing.gstr1.downloaded"));
     } catch (err) {
       toast.error(describeError(err, t));

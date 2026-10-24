@@ -57,7 +57,7 @@ describe("einvoice routes", () => {
     expect(configs["POST /v1/einvoice/invoices/:invoiceId/irn/cancel"]).toMatchObject({ feature: "gst-einvoice", permission: "einvoice.manage" });
     expect(configs["POST /v1/einvoice/invoices/:invoiceId/ewb"]).toMatchObject({ feature: "gst-ewaybill", permission: "einvoice.manage" });
     expect(configs["POST /v1/einvoice/invoices/:invoiceId/ewb/cancel"]).toMatchObject({ feature: "gst-ewaybill" });
-    expect(configs["GET /v1/einvoice/gstr1.json"]).toMatchObject({ feature: "gst-einvoice", permission: "einvoice.manage" });
+    expect(configs["GET /v1/einvoice/gstr1.json"]).toMatchObject({ feature: "invoices.gst-reports", permission: "reports.view" });
     expect(configs["GET /v1/einvoice/invoices/:invoiceId"]).toEqual({ feature: "gst-einvoice" });
     expect(configs["PUT /v1/einvoice/account"]).toMatchObject({ permission: "einvoice.manage" });
   });

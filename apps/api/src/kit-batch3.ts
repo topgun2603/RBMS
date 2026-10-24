@@ -422,7 +422,7 @@ export function createBatch3(d: Batch3Deps) {
       getInvoice: async (tenantId, invoiceId) => {
         const inv = await d.invoices.get(tenantId, invoiceId).catch(nullOn404);
         // Bills imported from another product are history: never e-invoiced here.
-        if (inv) return inv.imported ? null : toEInvoiceSource(inv);
+        if (inv) return inv.imported ? null : toEInvoiceSource(await withItemHsn(d.invoices, tenantId, inv));
         // A credit note id: e-invoiced as document type CRN referencing its bill.
         const cn = await d.invoices.creditNotes.get(tenantId, invoiceId).catch(nullOn404);
         if (!cn) return null;
@@ -431,23 +431,27 @@ export function createBatch3(d: Batch3Deps) {
       },
       listForPeriod: async (tenantId, range) => {
         const out: EInvoiceSource[] = [];
+        const hsnCache = new Map<string, string | null>();
         for (let offset = 0; ; offset += 200) {
           const page = await d.invoices.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
-          for (const s of page.items) {
-            if (s.status === "draft" || !s.number || s.imported) continue; // imported = already filed in the old software
-            const inv = await d.invoices.get(tenantId, s.id).catch(nullOn404);
-            if (inv) out.push(toEInvoiceSource(inv));
-          }
+          // imported = already filed in the old software. A few bills load at a time (a busy month has thousands).
+          const ids = page.items.filter((s) => s.status !== "draft" && s.number && !s.imported).map((s) => s.id);
+          const bills = await mapLimit(ids, PERIOD_LOAD_CONCURRENCY, async (id) => {
+            const inv = await d.invoices.get(tenantId, id).catch(nullOn404);
+            return inv ? toEInvoiceSource(await withItemHsn(d.invoices, tenantId, inv, hsnCache)) : null;
+          });
+          for (const b of bills) if (b) out.push(b);
           if (page.items.length < 200) break;
         }
         // Credit notes of the period (CDNR / CDNUR; cancelled ones only count in doc_issue).
         for (let offset = 0; ; offset += 200) {
           const page = await d.invoices.creditNotes.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
-          for (const s of page.items) {
+          const notes = await mapLimit(page.items, PERIOD_LOAD_CONCURRENCY, async (s) => {
             const cn = await d.invoices.creditNotes.get(tenantId, s.id).catch(nullOn404);
             const original = cn ? await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404) : null;
-            if (cn) out.push(creditNoteSource(cn, original?.total ?? null));
-          }
+            return cn ? creditNoteSource(cn, original?.total ?? null) : null;
+          });
+          for (const n of notes) if (n) out.push(n);
           if (page.items.length < 200) break;
         }
         return out;
@@ -677,6 +681,46 @@ export function creditNoteSource(cn: CreditNote, invoiceTotal: number | null): E
     docType: "CRN",
     precedingDoc: { number: cn.invoiceNumber, date: cn.invoiceDate, ...(invoiceTotal !== null ? { total: invoiceTotal } : {}) },
   };
+}
+
+/** Bills loaded at once for a GSTR-1 period: well under the database pool (10), so the shop's other requests keep going. */
+const PERIOD_LOAD_CONCURRENCY = 6;
+
+/** Runs `fn` over `items` with at most `limit` in flight; results keep the input order. */
+async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+/**
+ * Bill lines saved without HSN/SAC (e.g. membership bills before the item's code was copied onto the line) take their
+ * item's code, so GSTR-1's HSN table and the e-invoice don't get blank rows. The bill itself is not changed.
+ */
+async function withItemHsn(
+  invoicesService: { getItem(tenantId: string, id: string): Promise<{ hsn?: string | null }> },
+  tenantId: string,
+  inv: Invoice,
+  cache = new Map<string, string | null>(),
+): Promise<Invoice> {
+  if (!inv.lines.some((l) => !l.hsn && l.itemId)) return inv;
+  const lines = [];
+  for (const l of inv.lines) {
+    if (l.hsn || !l.itemId) {
+      lines.push(l);
+      continue;
+    }
+    if (!cache.has(l.itemId)) cache.set(l.itemId, await invoicesService.getItem(tenantId, l.itemId).then((i) => i.hsn ?? null, () => null));
+    lines.push({ ...l, hsn: cache.get(l.itemId) ?? l.hsn });
+  }
+  return { ...inv, lines };
 }
 
 function toEInvoiceSource(inv: Invoice): EInvoiceSource {

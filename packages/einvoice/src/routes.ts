@@ -14,6 +14,8 @@ const body = (req: { body: unknown }) => (req.body ?? {}) as Record<string, unkn
 const tenantOf = (req: { ctx: RequestContext }) => requireTenant(req.ctx).id;
 
 const read = (feature: string) => ({ config: { feature } });
+/** GSTR-1 download: same gate as the GST summary report. */
+const GSTR1 = { config: { feature: "invoices.gst-reports", permission: "reports.view" } };
 const manage = (feature: string, audit?: { action: string; entity: string; idParam?: string } | false) => ({
   config: { feature, permission: EINVOICE_PERMISSION, ...(audit !== undefined ? { audit } : {}) },
 });
@@ -24,7 +26,9 @@ const manage = (feature: string, audit?: { action: string; entity: string; idPar
  * - Per bill: `GET /invoices/:invoiceId` (status + history), `GET /invoices/:invoiceId/preview` (NIC JSON + issues),
  *   `POST /invoices/:invoiceId/irn`, `POST /invoices/:invoiceId/irn/cancel`, `POST /invoices/:invoiceId/ewb`,
  *   `POST /invoices/:invoiceId/ewb/cancel`
- * - GSTR-1: `GET /gstr1.json?period=MMYYYY` (the file), `GET /gstr1?period=MMYYYY` (`{ json, warnings, counts }`)
+ * - GSTR-1: `GET /gstr1.json?period=MMYYYY` (the file), `GET /gstr1?period=MMYYYY` (`{ json, warnings, counts }`).
+ *   Every GST-registered shop files GSTR-1, so these follow the GST reports (feature `invoices.gst-reports`, permission
+ *   `reports.view`), not e-invoicing.
  */
 export function einvoiceRoutes(service: EInvoiceService) {
   return async (app: FastifyInstance) => {
@@ -95,14 +99,14 @@ export function einvoiceRoutes(service: EInvoiceService) {
         },
       );
 
-      staff.get("/gstr1.json", manage(EINVOICE_FEATURE), async (req, reply) => {
+      staff.get("/gstr1.json", GSTR1, async (req, reply) => {
         const { period, gstin } = periodQuery.parse(req.query ?? {});
         const res = await service.gstr1(tenantOf(req), period, { gstin });
         reply.header("content-disposition", `attachment; filename="${res.filename}"`);
         reply.header("x-gstr1-warnings", String(res.warnings.length));
         return res.json;
       });
-      staff.get("/gstr1", manage(EINVOICE_FEATURE), async (req) => {
+      staff.get("/gstr1", GSTR1, async (req) => {
         const { period, gstin } = periodQuery.parse(req.query ?? {});
         return service.gstr1(tenantOf(req), period, { gstin });
       });
