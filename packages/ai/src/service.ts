@@ -120,6 +120,11 @@ export class AiService {
     return this.deps.config;
   }
 
+  /** The shop's credits right now (for estimates before a batch starts). */
+  balance(tenantId: string): Promise<CreditBalance> {
+    return this.deps.credits.balance(tenantId);
+  }
+
   // ------------------------------------------------------------------ run
 
   /**
@@ -407,7 +412,7 @@ export class AiService {
         enabled: settings.enabled && settings.features[f.key] !== false,
         allowed: settings.features[f.key] !== false,
       })),
-      settings: { enabled: settings.enabled, maskGstin: settings.maskGstin, storePrompts: settings.storePrompts },
+      settings: { enabled: settings.enabled, maskGstin: settings.maskGstin, storePrompts: settings.storePrompts, autoHsn: settings.autoHsn === true },
     };
   }
 

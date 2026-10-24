@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "kind": "receipt",
+  "vendor": "SRI GANESH FUELS (SAMPLE)",
+  "date": "2026-10-21",
+  "amount": 1250,
+  "vendorGstin": "33AAAFS9012F1ZL",
+  "category": "Transport",
+  "paymentMode": "cash"
+}

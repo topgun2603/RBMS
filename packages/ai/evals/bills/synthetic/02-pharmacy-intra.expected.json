@@ -1,0 +1,72 @@
+{
+  "synthetic": true,
+  "shopApp": "pharmacy",
+  "supplier": {
+    "name": "Annai Pharma Distributors",
+    "gstin": "33AABCA7745P1ZB",
+    "state": "Tamil Nadu"
+  },
+  "invoice": {
+    "number": "APD-23871",
+    "date": "2026-10-15"
+  },
+  "lines": [
+    {
+      "description": "Paracetamol 500mg Tablets",
+      "hsn": "3004",
+      "qty": 100,
+      "rate": 21.5,
+      "discount": 0,
+      "gstRate": 12,
+      "batch": "PCM2209",
+      "expiry": "2028-08"
+    },
+    {
+      "description": "Amoxicillin 500mg Capsules",
+      "hsn": "3004",
+      "qty": 40,
+      "rate": 78.4,
+      "discount": 0,
+      "gstRate": 12,
+      "batch": "AMX7731B",
+      "expiry": "2027-11"
+    },
+    {
+      "description": "Cetirizine 10mg Tablets",
+      "hsn": "3004",
+      "qty": 60,
+      "rate": 18.9,
+      "discount": 0,
+      "gstRate": 12,
+      "batch": "CTZ0455",
+      "expiry": "2028-03"
+    },
+    {
+      "description": "ORS Powder Orange 21.8 g",
+      "hsn": "3004",
+      "qty": 120,
+      "rate": 15.2,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": "ORS1188",
+      "expiry": "2027-06"
+    },
+    {
+      "description": "Vitamin D3 60000 IU Softgel",
+      "hsn": "2936",
+      "qty": 30,
+      "rate": 104.4,
+      "discount": 0,
+      "gstRate": 12,
+      "batch": "VD3-9021",
+      "expiry": "2027-09"
+    }
+  ],
+  "totals": {
+    "taxable": 11376,
+    "cgst": 618.72,
+    "sgst": 618.72,
+    "igst": 0,
+    "total": 12613
+  }
+}

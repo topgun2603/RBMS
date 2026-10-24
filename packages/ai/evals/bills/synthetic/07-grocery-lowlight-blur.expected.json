@@ -1,0 +1,62 @@
+{
+  "synthetic": true,
+  "shopApp": "grocery",
+  "supplier": {
+    "name": "Kovai Super Distributors",
+    "gstin": "33AAMFK6204L1Z8",
+    "state": "Tamil Nadu"
+  },
+  "invoice": {
+    "number": "KSD/3306",
+    "date": "2026-10-20"
+  },
+  "lines": [
+    {
+      "description": "Parle-G Gold Biscuit 250 g",
+      "hsn": "1905",
+      "qty": 48,
+      "rate": 22.62,
+      "discount": 0,
+      "gstRate": 18,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Colgate Strong Teeth 200 g",
+      "hsn": "3306",
+      "qty": 24,
+      "rate": 96.61,
+      "discount": 0,
+      "gstRate": 18,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Idhayam Gingelly Oil 500 ml",
+      "hsn": "1515",
+      "qty": 30,
+      "rate": 214.29,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Ponni Boiled Rice 26 kg",
+      "hsn": "1006",
+      "qty": 8,
+      "rate": 1180,
+      "discount": 0,
+      "gstRate": 0,
+      "batch": null,
+      "expiry": null
+    }
+  ],
+  "totals": {
+    "taxable": 19273.1,
+    "cgst": 467.12,
+    "sgst": 467.12,
+    "igst": 0,
+    "total": 20207
+  }
+}

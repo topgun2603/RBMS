@@ -1,0 +1,72 @@
+{
+  "synthetic": true,
+  "shopApp": "grocery",
+  "supplier": {
+    "name": "Bengaluru Spice & Packaging Co.",
+    "gstin": "29AAEFB5503R1Z2",
+    "state": "Karnataka"
+  },
+  "invoice": {
+    "number": "BSP/2026/1204",
+    "date": "2026-10-09"
+  },
+  "lines": [
+    {
+      "description": "MTR Sambar Powder 200 g",
+      "hsn": "0910",
+      "qty": 48,
+      "rate": 62.5,
+      "discount": 150,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Everest Turmeric Powder 100 g",
+      "hsn": "0910",
+      "qty": 60,
+      "rate": 24.76,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Catch Black Pepper 50 g",
+      "hsn": "0904",
+      "qty": 36,
+      "rate": 51.43,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Poly Bag 12x16 Heavy (Pack of 100)",
+      "hsn": "3923",
+      "qty": 25,
+      "rate": 88,
+      "discount": 66,
+      "gstRate": 18,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Aluminium Foil 72 m Roll",
+      "hsn": "7607",
+      "qty": 18,
+      "rate": 214.4,
+      "discount": 0,
+      "gstRate": 18,
+      "batch": null,
+      "expiry": null
+    }
+  ],
+  "totals": {
+    "taxable": 12180.28,
+    "cgst": 0,
+    "sgst": 0,
+    "igst": 1388.13,
+    "total": 13568
+  }
+}

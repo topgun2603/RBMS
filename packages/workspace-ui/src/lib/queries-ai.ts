@@ -64,6 +64,8 @@ export interface AiSettingsValues {
   features: Record<string, boolean>;
   maskGstin: boolean;
   storePrompts: boolean;
+  /** Suggest HSN and GST when the item name box loses focus (about 1 credit each). */
+  autoHsn?: boolean;
 }
 
 export interface AiPing {

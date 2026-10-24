@@ -7,7 +7,7 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { APPAREL_FOOTWEAR_GST_RULE, deadBandOf, exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
 import { BadgePercentIcon, EyeIcon, FileTextIcon, ImagesIcon, PencilIcon, PlusIcon, SearchIcon, TagsIcon, Trash2Icon } from "lucide-react";
 import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@srirealtime/web";
+import { DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, useHsnSuggest, useI18n } from "@srirealtime/web";
 import { CategorySelect } from "../category-select";
 import { GstRateSelect, MoneyInput, Optional, Section } from "../bits";
 import { ImageManager } from "../image-manager";
@@ -21,7 +21,10 @@ type Ctx = { canManage: boolean; variantsOn: boolean; multi: boolean; isNew: boo
 
 // ---------------------------------------------------------------- basics
 
-export function BasicsSection() {
+/** The name box tells the pricing section (another part of the form) that it lost focus, so AI can auto-suggest the HSN. */
+const NAME_BLUR_EVENT = "sr:product-name-blur";
+
+export function BasicsSection({ productId }: { productId?: string }) {
   const { t, locale } = useI18n();
   const pack = usePack();
   const form = useFormContext<ProductFormValues>();
@@ -36,7 +39,16 @@ export function BasicsSection() {
           <FormItem>
             <FormLabel>{t("commerce.editor.name")}</FormLabel>
             <FormControl>
-              <Input className="text-base" autoComplete="off" placeholder={locale === "ta" ? t("commerce.editor.namePlaceholder") : pack.editor.namePlaceholder} {...field} />
+              <Input
+                className="text-base"
+                autoComplete="off"
+                placeholder={locale === "ta" ? t("commerce.editor.namePlaceholder") : pack.editor.namePlaceholder}
+                {...field}
+                onBlur={() => {
+                  field.onBlur();
+                  window.dispatchEvent(new Event(NAME_BLUR_EVENT));
+                }}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -53,6 +65,27 @@ export function BasicsSection() {
                   {t("commerce.editor.description")}
                   <Optional />
                 </FormLabel>
+                <DescribeButton
+                  productId={productId}
+                  getFacts={() => {
+                    const v = form.getValues();
+                    return {
+                      name: v.name,
+                      brand: v.brand || undefined,
+                      attributes: Object.fromEntries(v.attributes.filter((a) => a.key.trim() && a.value.trim()).map((a) => [a.key.trim(), a.value.trim()])),
+                      options: v.options.map((o) => ({ name: o.name, values: o.values })),
+                      price: rupeesToPaise(v.variants[0]?.price ?? "") ?? undefined,
+                      unit: v.unit || undefined,
+                      tags: v.tags,
+                      description: v.description,
+                    };
+                  }}
+                  onApply={(a) => {
+                    form.setValue("description", a.descriptionEn, { shouldDirty: true });
+                    if (a.seoTitle && !form.getValues("seoTitle")) form.setValue("seoTitle", a.seoTitle.slice(0, 70), { shouldDirty: true });
+                    if (a.seoDescription && !form.getValues("seoDescription")) form.setValue("seoDescription", a.seoDescription.slice(0, 160), { shouldDirty: true });
+                  }}
+                />
                 <TabsList className="h-8">
                   <TabsTrigger value="write" className="h-6 px-2 text-xs">
                     <PencilIcon className="size-3" /> {t("commerce.editor.write")}
@@ -133,6 +166,15 @@ export function PricingSection({ canManage, multi }: Ctx) {
   const { t } = useI18n();
   const form = useFormContext<ProductFormValues>();
   const [gstRate, taxInclusive, first, gstBand] = useWatch({ control: form.control, name: ["gstRate", "taxInclusive", "variants.0", "gstBand"] });
+  const [nameNow, hsnNow] = useWatch({ control: form.control, name: ["name", "hsn"] });
+  const hsnAi = useHsnSuggest({ name: nameNow, price: rupeesToPaise(first?.price ?? "") ?? undefined, hasHsn: (hsnNow ?? "").trim() !== "" });
+  const autoRef = React.useRef(hsnAi.auto);
+  autoRef.current = hsnAi.auto;
+  React.useEffect(() => {
+    const on = () => autoRef.current();
+    window.addEventListener(NAME_BLUR_EVENT, on);
+    return () => window.removeEventListener(NAME_BLUR_EVENT, on);
+  }, []);
 
   return (
     <Section id="pricing" icon={BadgePercentIcon} title={t("commerce.editor.pricing")} description={multi ? t("commerce.editor.pricingMultiHint") : t("commerce.editor.pricingHint")}>
@@ -238,6 +280,15 @@ export function PricingSection({ canManage, multi }: Ctx) {
           )}
         />
       </div>
+
+      <HsnSuggestPanel
+        state={hsnAi}
+        onApply={(a) => {
+          form.setValue("hsn", a.hsn, { shouldDirty: true });
+          form.setValue("gstBand", !!a.gstRule, { shouldDirty: true });
+          form.setValue("gstRate", String(a.gstRate), { shouldDirty: true });
+        }}
+      />
 
       <FormField
         control={form.control}

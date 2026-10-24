@@ -53,6 +53,8 @@ export const aiEn: Messages = {
   "workspace.ai.privacy.gstinHint": "Keeps only the state and the last characters of a GSTIN in what is sent.",
   "workspace.ai.privacy.debug": "Keep prompts for debugging",
   "workspace.ai.privacy.debugHint": "Stores the (hidden) text and the reply of each use for 7 days, to help fix problems. Off by default.",
+  "workspace.ai.privacy.autoHsn": "Suggest HSN and GST when I leave the item name box",
+  "workspace.ai.privacy.autoHsnHint": "Each suggestion uses about 1 credit. Off by default; the \"Suggest HSN & GST\" button always works.",
 
   "workspace.ai.runs.title": "Recent uses",
   "workspace.ai.runs.subtitle": "Only what was used and what it cost. Your questions and the answers are not stored.",
@@ -121,6 +123,8 @@ export const aiTa: Messages = {
   "workspace.ai.privacy.gstinHint": "அனுப்புவதில் GSTIN-இன் மாநிலமும் கடைசி எழுத்துகளும் மட்டும் இருக்கும்.",
   "workspace.ai.privacy.debug": "பிழைத்திருத்தத்திற்காக உரையைச் சேமி",
   "workspace.ai.privacy.debugHint": "பிரச்சினைகளைச் சரிசெய்ய, ஒவ்வொரு பயன்பாட்டின் (மறைக்கப்பட்ட) உரையையும் பதிலையும் 7 நாட்கள் சேமிக்கும். இயல்பாக நிறுத்தத்தில் இருக்கும்.",
+  "workspace.ai.privacy.autoHsn": "பொருளின் பெயர் பெட்டியை விட்டு வெளியேறும்போது HSN, GST பரிந்துரைக்கவும்",
+  "workspace.ai.privacy.autoHsnHint": "ஒவ்வொரு பரிந்துரைக்கும் சுமார் 1 கிரெடிட் ஆகும். இயல்பாக நிறுத்தப்பட்டுள்ளது; \"HSN & GST பரிந்துரை\" பொத்தான் எப்போதும் வேலை செய்யும்.",
 
   "workspace.ai.runs.title": "சமீபத்திய பயன்பாடுகள்",
   "workspace.ai.runs.subtitle": "எது பயன்பட்டது, எவ்வளவு செலவு என்பது மட்டும். உங்கள் கேள்விகளும் பதில்களும் சேமிக்கப்படாது.",

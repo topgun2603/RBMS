@@ -157,6 +157,11 @@ export { Splash } from "./components/splash";
 export { SettingsNav } from "./components/settings-nav";
 export { PlanBanner } from "./components/plan-banner";
 export { AiDraftBanner, sendAiFeedback, type AiDraftBannerProps, type AiOutcome } from "./components/ai-draft";
+export { HsnSuggestPanel, useHsnSuggest, type HsnApply, type HsnSuggestState, type HsnSuggestionView } from "./components/ai-assist/hsn-suggest";
+export { DescribeButton, toMarkdown, type DescribeApply, type DescribeFacts } from "./components/ai-assist/describe-dialog";
+export { AiHelpButton } from "./components/ai-assist/help-panel";
+export { TamilReviewButton, TamilReviewDialog, TranslateToTamilButton } from "./components/ai-assist/translate-bulk";
+export { useAiAssistAllowed, useAiAssistStatus, helperOn, type AiAssistStatus } from "./components/ai-assist/use-assist";
 export { UpgradeDialog, UpgradeDialogHost, limitName } from "./components/upgrade-dialog";
 export {
   BranchSwitcher,

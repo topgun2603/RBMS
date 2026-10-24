@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { describeError, useDebounced, useI18n, useModuleNavigate } from "@srirealtime/web";
-import { CheckIcon, Link2Icon, Loader2Icon, PackageIcon, PlusIcon, StickyNoteIcon, Trash2Icon, UnlinkIcon } from "lucide-react";
+import { AiDraftBanner, api, describeError, sendAiFeedback, useDebounced, useI18n, useModuleNavigate, type AiOutcome } from "@srirealtime/web";
+import { CheckIcon, Link2Icon, Loader2Icon, PackageIcon, PlusIcon, ScanLineIcon, StickyNoteIcon, Trash2Icon, UnlinkIcon } from "lucide-react";
 import { computeInvoice, isValidGstin } from "@srirealtime/gst";
 import {
   AnimatedNumber,
@@ -26,13 +26,16 @@ import {
 import { cleanQty } from "./stock-meta";
 import { SupplierPicker, supplierPartyState, type SupplierParty } from "./supplier-picker";
 import { GstRateSelect } from "../gst-rate-select";
-import { UnitList } from "../item-dialog";
+import { ItemDialog, UnitList } from "../item-dialog";
+import { ScanDialog } from "../ai/scan-dialog";
+import { ScanFlags, aiLowClass } from "../ai/scan-bits";
 import { MoneyInput } from "../money-input";
 import { money, paiseToInput, parseQty, rupeesToPaise, stateLabel, todayIST } from "../../lib/format";
 import { useItems, useSellerProfile } from "../../lib/queries";
 import { useCreatePurchase } from "../../lib/queries-v2";
 import { useCreatePurchaseOrder } from "../../lib/queries-payables";
-import type { GstRate, Item, LineInput, PurchaseInput } from "../../lib/types";
+import type { BillDraft, ScanResult } from "../../lib/ai-scan";
+import type { GstRate, Item, LineInput, PurchaseInput, Supplier } from "../../lib/types";
 
 interface LineDraft {
   key: string;
@@ -44,6 +47,15 @@ interface LineDraft {
   rate: string;
   discount: string;
   gstRate: string;
+  batchNo: string;
+  /** YYYY-MM-DD */
+  expiry: string;
+  /** Fields a scan was unsure about; each clears when the person edits it. */
+  ai: string[];
+  /** A scanned line no saved item matched: offers to create the item. */
+  createNew: boolean;
+  /** Printed MRP per unit (paise) from a scan; 0 when none. Used as the selling price of a new item. */
+  mrp: number;
 }
 
 let keySeq = 0;
@@ -58,11 +70,16 @@ const blankLine = (gstRate = "5"): LineDraft => ({
   rate: "",
   discount: "",
   gstRate,
+  batchNo: "",
+  expiry: "",
+  ai: [],
+  createNew: false,
+  mrp: 0,
 });
 
 const isBlank = (l: LineDraft) => !l.description.trim() && !l.rate.trim();
 
-type LineError = Partial<Record<"description" | "qty" | "rate" | "discount" | "hsn", string>>;
+type LineError = Partial<Record<"description" | "qty" | "rate" | "discount" | "hsn" | "expiry" | "gstRate", string>>;
 
 function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError } {
   const errors: LineError = {};
@@ -74,6 +91,7 @@ function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError }
   if (rate === null) errors.rate = "billing.validation.amount";
   if (discount === null) errors.discount = "billing.validation.amount";
   if (l.hsn.trim() && !/^[0-9]{2,8}$/.test(l.hsn.trim())) errors.hsn = "billing.validation.hsn";
+  if (!l.gstRate.trim()) errors.gstRate = "billing.validation.required";
   if (qty !== null && qty > 0 && rate !== null && discount !== null && discount > Math.round(qty * rate)) {
     errors.discount = "billing.validation.discount";
   }
@@ -83,6 +101,8 @@ function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError }
   if (l.hsn.trim()) input.hsn = l.hsn.trim();
   if (l.unit.trim()) input.unit = l.unit.trim();
   if (discount) input.discount = discount;
+  if (l.batchNo.trim()) input.batchNo = l.batchNo.trim();
+  if (l.expiry) input.expiry = l.expiry;
   return { input, errors };
 }
 
@@ -111,6 +131,10 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
   const [submitted, setSubmitted] = React.useState(false);
   const [focusKey, setFocusKey] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
+  // AI scan of a supplier bill: a draft in this form, never saved by the AI.
+  const [scanOpen, setScanOpen] = React.useState(false);
+  const [ai, setAi] = React.useState<{ runId: string; credits: number; mock: boolean; draft: BillDraft; snapshot: string; lowHeader: string[]; outcome: AiOutcome | null } | null>(null);
+  const [newItemFor, setNewItemFor] = React.useState<string | null>(null);
 
   const ownState = seller.data?.stateCode || "";
   const supplierState = supplierPartyState(party);
@@ -128,7 +152,67 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
   const inter = totals.igst > 0 || sellerState !== placeOfSupply;
   const itc = totals.cgst + totals.sgst + totals.igst;
 
-  const updateLine = (key: string, patch: Partial<LineDraft>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  const updateLine = (key: string, patch: Partial<LineDraft>) =>
+    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch, ai: l.ai.filter((f) => !(f in patch)) } : l)));
+  const touch = (field: string) => setAi((a) => (a ? { ...a, lowHeader: a.lowHeader.filter((f) => f !== field) } : a));
+  const formState = () => JSON.stringify({ party: party.kind === "saved" ? party.supplier.id : party, billNumber, date, lines: lines.map((l) => [l.itemId, l.description, l.hsn, l.qty, l.unit, l.rate, l.discount, l.gstRate, l.batchNo, l.expiry]) });
+
+  /** Fill the form from a scan. Replaces what is there (the person chose to scan); nothing is saved. */
+  const applyScan = async (res: ScanResult<BillDraft>) => {
+    const d = res.draft;
+    let nextParty: SupplierParty = { kind: "none" };
+    if (d.supplier.match) {
+      try {
+        const sup = await api.get<Supplier>(`/inventory/suppliers/${d.supplier.match.id}`);
+        nextParty = { kind: "saved", supplier: sup };
+      } catch {
+        nextParty = { kind: "none" };
+      }
+    }
+    if (nextParty.kind === "none" && d.supplier.name) nextParty = { kind: "oneoff", name: d.supplier.name, gstin: d.supplier.gstin ?? "", stateCode: d.supplier.stateCode ?? "" };
+    const next: LineDraft[] = d.lines.map((l) => ({
+      key: newKey(),
+      itemId: l.itemId,
+      description: l.itemName ?? l.description,
+      hsn: l.hsn ?? "",
+      qty: l.qty === null ? "" : String(l.qty),
+      unit: l.unit || "pcs",
+      rate: l.rate === null ? "" : paiseToInput(l.rate),
+      discount: l.discount ? paiseToInput(l.discount) : "",
+      gstRate: l.gstRate === null ? "" : String(l.gstRate),
+      batchNo: l.batchNo ?? "",
+      expiry: l.expiry ?? "",
+      ai: [...l.lowFields, ...(l.match === "fuzzy" ? ["description"] : [])],
+      createNew: l.createNew,
+      mrp: l.mrp ?? 0,
+    }));
+    const nextLines = next.length ? next : [blankLine()];
+    setParty(nextParty);
+    setBillNumber(d.invoice.number ?? "");
+    setDate(d.invoice.date ?? todayIST());
+    setLines(nextLines);
+    setSubmitted(false);
+    setDone(false);
+    const low = [...d.lowFields];
+    if (nextParty.kind === "none") low.push("supplier");
+    setAi({ runId: res.runId, credits: res.credits, mock: res.provider === "mock", draft: d, snapshot: "", lowHeader: low, outcome: null });
+    toast.success(t("billing.ai.bill.filled", { count: nextLines.length }));
+  };
+  // the snapshot is taken after the draft has been applied to the state
+  React.useEffect(() => {
+    if (ai && ai.snapshot === "") setAi((a) => (a && a.snapshot === "" ? { ...a, snapshot: formState() } : a));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per draft
+  }, [ai?.runId, lines]);
+  const reportOutcome = (outcome: AiOutcome) => {
+    setAi((a) => (a ? { ...a, outcome: a.outcome ?? outcome } : a));
+    if (outcome === "rejected") {
+      setParty({ kind: "none" });
+      setBillNumber("");
+      setDate(todayIST());
+      setLines([blankLine()]);
+      setAi(null);
+    }
+  };
   const addLine = () => {
     const l = blankLine(lines[lines.length - 1]?.gstRate ?? "5");
     setLines((ls) => [...ls, l]);
@@ -197,6 +281,7 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
     }
     try {
       const saved = await create.mutateAsync(body);
+      if (ai && !ai.outcome) void sendAiFeedback(ai.runId, formState() === ai.snapshot ? "accepted" : "edited").catch(() => undefined);
       setDone(true);
       toast.success(t("billing.purchaseForm.saved", { number: saved.billNumber || body.billNumber }));
       window.setTimeout(() => navigate(`purchases/${saved.id}`, { replace: true }), 900);
@@ -210,13 +295,32 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
   return (
     <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="grid min-w-0 gap-section">
+        {!order && (
+          <>
+            {ai ? (
+              <div className="grid gap-3" data-testid="ai-bill-draft">
+                <AiDraftBanner runId={ai.runId} credits={ai.credits} mock={ai.mock} onOutcome={reportOutcome} />
+                <ScanFlags flags={ai.draft.flags} />
+                {ai.draft.notes && <p className="text-meta text-muted-foreground">{t("billing.ai.billNote", { note: ai.draft.notes })}</p>}
+              </div>
+            ) : (
+              <Button type="button" variant="outline" className="h-11 justify-self-start" onClick={() => setScanOpen(true)} data-testid="scan-bill">
+                <ScanLineIcon /> {t("billing.ai.bill.button")}
+              </Button>
+            )}
+            <ScanDialog kind="bill" open={scanOpen} onOpenChange={setScanOpen} onDraft={(r) => void applyScan(r)} />
+          </>
+        )}
         {/* Supplier */}
-        <Card>
+        <Card className={cn(ai?.lowHeader.some((f) => f.startsWith("supplier")) && "ring-2 ring-warning/60")}>
           <CardHeader>
             <CardTitle className="text-sm">{t("billing.purchaseForm.supplier")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <SupplierPicker value={party} onChange={setParty} invalid={submitted && !!partyError} />
+            <SupplierPicker value={party} onChange={(p) => { setParty(p); setAi((a) => (a ? { ...a, lowHeader: a.lowHeader.filter((f) => !f.startsWith("supplier")) } : a)); }} invalid={submitted && !!partyError} />
+            {ai?.draft.supplier.name && party.kind !== "saved" && (
+              <p className="mt-1.5 text-meta text-muted-foreground">{t("billing.ai.supplierNew", { name: ai.draft.supplier.name })}</p>
+            )}
             {submitted && partyError && <p className="mt-1.5 text-meta text-destructive">{partyError}</p>}
           </CardContent>
         </Card>
@@ -225,7 +329,7 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
         <Card>
           <CardContent className="grid items-start gap-4 sm:grid-cols-3">
             {!order && (
-            <div className="grid content-start gap-1.5">
+            <div className={cn("grid content-start gap-1.5", aiLowClass(!!ai?.lowHeader.includes("invoice.number")))}>
               <Label htmlFor="pur-bill">{t("billing.purchaseForm.billNumber")}</Label>
               <Input
                 id="pur-bill"
@@ -235,14 +339,14 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
                 value={billNumber}
                 aria-invalid={submitted && !!billError}
                 aria-describedby={submitted && billError ? "pur-bill-err" : undefined}
-                onChange={(e) => setBillNumber(e.target.value)}
+                onChange={(e) => { setBillNumber(e.target.value); touch("invoice.number"); }}
               />
               {submitted && billError && <p id="pur-bill-err" className="text-xs text-destructive">{billError}</p>}
             </div>
             )}
-            <div className="grid content-start gap-1.5">
+            <div className={cn("grid content-start gap-1.5", aiLowClass(!!ai?.lowHeader.includes("invoice.date")))}>
               <Label htmlFor="pur-date">{t("billing.purchaseForm.date")}</Label>
-              <Input id="pur-date" type="date" value={date} max={todayIST()} onChange={(e) => setDate(e.target.value || todayIST())} />
+              <Input id="pur-date" type="date" value={date} max={todayIST()} onChange={(e) => { setDate(e.target.value || todayIST()); touch("invoice.date"); }} />
             </div>
             {order ? (
               <div className="grid content-start gap-1.5">
@@ -305,6 +409,8 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
                       lineTotal={lt?.total}
                       taxAmount={lt ? lt.cgst + lt.sgst + lt.igst : undefined}
                       autoFocus={focusKey === l.key}
+                      scanned={!!ai}
+                      onCreateItem={l.createNew && !l.itemId ? () => setNewItemFor(l.key) : undefined}
                       onChange={(patch) => updateLine(l.key, patch)}
                       onRemove={() => removeLine(l.key)}
                       onEnterLast={i === lines.length - 1 ? addLine : undefined}
@@ -370,6 +476,11 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
                 <PackageIcon className="size-3.5" aria-hidden /> {t("billing.purchaseForm.stockNote", { count: linked })}
               </p>
             )}
+            {ai && ai.draft.printed.total !== null && (
+              <p className={cn("mt-1 rounded-lg px-2.5 py-2 text-meta", ai.lowHeader.includes("totals") ? "bg-warning/10 text-warning-ink ring-1 ring-warning/60" : "bg-muted/50 text-muted-foreground")} data-testid="ai-printed-total">
+                {t("billing.ai.printedTotal", { printed: money(ai.draft.printed.total), ours: money(totals.total) })}
+              </p>
+            )}
             <p className="mt-1 text-meta text-muted-foreground">
               {supplierState ? stateLabel(supplierState) : t("billing.purchaseForm.supplierStateUnknown")} → {stateLabel(placeOfSupply)}
             </p>
@@ -402,6 +513,21 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
           </Button>
         </div>
       </div>
+
+      {(() => {
+        const target = lines.find((l) => l.key === newItemFor);
+        return (
+          <ItemDialog
+            open={!!target}
+            onOpenChange={(o) => !o && setNewItemFor(null)}
+            initial={{ name: target?.description ?? "", hsn: target?.hsn || null, unit: target?.unit || "pcs", rate: target?.mrp || rupeesToPaise(target?.rate ?? "") || 0, gstRate: (Number(target?.gstRate) || 0) as GstRate }}
+            onSaved={(item) => {
+              if (target) updateLine(target.key, { itemId: item.id, description: item.name, createNew: false });
+              setNewItemFor(null);
+            }}
+          />
+        );
+      })()}
 
       <AnimatePresence>
         {done && (
@@ -446,6 +572,8 @@ function LineRow({
   onChange,
   onRemove,
   onEnterLast,
+  onCreateItem,
+  scanned,
 }: {
   index: number;
   line: LineDraft;
@@ -456,9 +584,14 @@ function LineRow({
   onChange: (patch: Partial<LineDraft>) => void;
   onRemove: () => void;
   onEnterLast?: () => void;
+  onCreateItem?: () => void;
+  /** The form holds a scanned bill: batch and expiry can be filled in. */
+  scanned?: boolean;
 }) {
   const { t } = useI18n();
   const id = `pline-${line.key}`;
+  const low = (f: string) => aiLowClass(line.ai.includes(f));
+  const [showBatch, setShowBatch] = React.useState(false);
   const qtyRef = React.useRef<HTMLInputElement>(null);
 
   const pickItem = (item: Item) => {
@@ -487,7 +620,7 @@ function LineRow({
     <div className="grid gap-3 rounded-xl border bg-muted/20 p-3 sm:p-4" role="group" aria-label={t("billing.form.lineN", { n: index + 1 })}>
       <div className="flex items-start gap-2">
         <span className="mt-3 w-5 shrink-0 text-center text-xs font-medium text-muted-foreground tabular-nums">{index + 1}</span>
-        <div className="min-w-0 flex-1">
+        <div className={cn("min-w-0 flex-1", low("description"))}>
           <ItemSearch
             id={`${id}-desc`}
             value={line.description}
@@ -501,6 +634,11 @@ function LineRow({
             <p className={cn("mt-1 flex items-center gap-1 text-xs", line.itemId ? "text-success-ink" : "text-muted-foreground")}>
               {line.itemId ? <Link2Icon className="size-3" aria-hidden /> : <UnlinkIcon className="size-3" aria-hidden />}
               {line.itemId ? t("billing.purchaseForm.linked") : t("billing.purchaseForm.notLinked")}
+              {onCreateItem && (
+                <button type="button" className="ml-2 font-medium text-primary underline underline-offset-2" onClick={onCreateItem} data-testid="create-item">
+                  {t("billing.ai.createItem")}
+                </button>
+              )}
             </p>
           )}
         </div>
@@ -516,7 +654,7 @@ function LineRow({
         </Button>
       </div>
       <div className="grid grid-cols-3 items-start gap-x-2 gap-y-3 sm:grid-cols-6 sm:pl-7">
-        <div className="grid content-start gap-1.5">
+        <div className={cn("grid content-start gap-1.5", low("qty"))}>
           <Label htmlFor={`${id}-qty`} className="text-xs text-muted-foreground">
             {t("billing.form.qty")}
           </Label>
@@ -533,19 +671,20 @@ function LineRow({
           />
           <FieldError msg={errors.qty} />
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className={cn("grid content-start gap-1.5", low("unit"))}>
           <Label htmlFor={`${id}-unit`} className="text-xs text-muted-foreground">
             {t("billing.form.unit")}
           </Label>
           <Input id={`${id}-unit`} list="sr-units" autoComplete="off" size="sm" maxLength={16} value={line.unit} onChange={(e) => onChange({ unit: e.target.value })} />
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className={cn("grid content-start gap-1.5", low("gstRate"))}>
           <Label htmlFor={`${id}-gst`} className="text-xs text-muted-foreground">
             {t("billing.form.gst")}
           </Label>
           <GstRateSelect id={`${id}-gst`} value={line.gstRate} onChange={(gstRate) => onChange({ gstRate })} size="sm" className="w-full" />
+          <FieldError msg={errors.gstRate} />
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className={cn("grid content-start gap-1.5", low("rate"))}>
           <Label htmlFor={`${id}-rate`} className="text-xs text-muted-foreground">
             {t("billing.purchaseForm.costPrice")}
           </Label>
@@ -559,7 +698,7 @@ function LineRow({
           />
           <FieldError msg={errors.rate} />
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className={cn("grid content-start gap-1.5", low("discount"))}>
           <Label htmlFor={`${id}-disc`} className="text-xs text-muted-foreground">
             {t("billing.form.discount")}
           </Label>
@@ -574,7 +713,7 @@ function LineRow({
           />
           <FieldError msg={errors.discount} />
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className={cn("grid content-start gap-1.5", low("hsn"))}>
           <Label htmlFor={`${id}-hsn`} className="text-xs text-muted-foreground">
             {t("billing.form.hsn")}
           </Label>
@@ -592,6 +731,26 @@ function LineRow({
           <FieldError msg={errors.hsn} />
         </div>
       </div>
+      {(showBatch || line.batchNo || line.expiry || line.ai.includes("batchNo") || line.ai.includes("expiry")) ? (
+        <div className="grid grid-cols-2 items-start gap-x-2 gap-y-3 sm:grid-cols-6 sm:pl-7">
+          <div className={cn("col-span-1 grid content-start gap-1.5 sm:col-span-3", low("batchNo"))}>
+            <Label htmlFor={`${id}-batch`} className="text-xs text-muted-foreground">
+              {t("billing.ai.batchNo")}
+            </Label>
+            <Input id={`${id}-batch`} autoComplete="off" size="sm" maxLength={60} className="font-mono" value={line.batchNo} onChange={(e) => onChange({ batchNo: e.target.value })} />
+          </div>
+          <div className={cn("col-span-1 grid content-start gap-1.5 sm:col-span-3", low("expiry"))}>
+            <Label htmlFor={`${id}-expiry`} className="text-xs text-muted-foreground">
+              {t("billing.ai.expiry")}
+            </Label>
+            <Input id={`${id}-expiry`} type="date" size="sm" value={line.expiry} onChange={(e) => onChange({ expiry: e.target.value })} />
+          </div>
+        </div>
+      ) : scanned ? (
+        <button type="button" className="justify-self-start text-xs text-muted-foreground underline underline-offset-2 sm:pl-7" onClick={() => setShowBatch(true)}>
+          {t("billing.ai.addBatch")}
+        </button>
+      ) : null}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground sm:pl-7">
         {lineTotal !== undefined ? (
           <>

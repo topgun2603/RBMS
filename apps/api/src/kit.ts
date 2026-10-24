@@ -17,6 +17,8 @@ import { accountingReconcile, accountingSources, accountingStock } from "./kit-a
 import { createGstFiling } from "@srirealtime/gstfiling";
 import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
 import { createAiKit } from "./kit-ai";
+import { createAiAssistKit } from "./kit-ai-assist";
+import { createAiVision } from "./kit-ai-vision";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
@@ -1325,10 +1327,6 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   });
   gstFilingRef = gstFiling;
 
-  defineJob(MARKETPLACE_SETTLE_JOB, async () => {
-    log.info(await batch3.marketplace.service.settleDue(), "marketplace: delivered sales settled");
-  });
-  defineJob(MARKETPLACE_PAYOUT_REFRESH_JOB, async () => {
   // ---- AI foundation (docs/ai.md): provider (Claude, or the mock without a key), credits on the plans module, run log.
   const ai = createAiKit({
     db,
@@ -1342,11 +1340,27 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
     log,
   });
+  // Phase 1 vision helpers (scan a supplier bill / expense receipt): drafts only, see kit-ai-vision.ts.
+  const aiVision = createAiVision({
+    ai: ai.service,
+    inventory: inventory.service,
+    items: invoices.service,
+    expenses: expenses.service,
+    billingProfile,
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    now: clock,
+  });
   defineJob("ai.purge-debug", async () => {
     const n = await ai.service.purgeDebug();
     if (n) log.info({ cleared: n }, "ai: stored debug prompts older than 7 days cleared");
   });
+  // Phase 1 AI text helpers (docs/ai.md): HSN, descriptions + bulk Tamil translation job, import mapping, help assistant.
+  const aiAssist = createAiAssistKit({ db, ai: ai.service, catalogue: catalogue.service, jobs: jobs.service, storeSettings, log });
 
+  defineJob(MARKETPLACE_SETTLE_JOB, async () => {
+    log.info(await batch3.marketplace.service.settleDue(), "marketplace: delivered sales settled");
+  });
+  defineJob(MARKETPLACE_PAYOUT_REFRESH_JOB, async () => {
     const n = await batch3.marketplace.service.refreshAllPayouts();
     if (n) log.info({ refreshed: n }, "marketplace: processing payouts refreshed");
   });
@@ -1549,13 +1563,15 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     expenses.module,
     accounting.module,
     gstFiling.module,
+    ai.module,
+    ai.adminModule,
+    aiAssist.module,
+    aiVision,
     medicines.module,
     dining.module,
     aggregators.module,
     ownerCanSwitch(jobcards.module),
     ownerCanSwitch(bookings.module),
-    ai.module,
-    ai.adminModule,
     counter.module,
     offByDefault(serials.module),
     offByDefault(scales.module),
@@ -1603,12 +1619,13 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     expenses,
     accounting,
     gstFiling,
+    ai,
+    aiAssist,
     medicines,
     dining,
     aggregators,
     serials,
     scales,
-    ai,
     jewellery,
     jobcards,
     bookings,
@@ -1706,6 +1723,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await jobs.service.schedule("inventory.expiry-alerts", "30 7 * * *");
       await jobs.service.schedule("payments.retry", "*/15 * * * *");
       await jobs.service.schedule("audit.purge", "15 4 * * *");
+      await jobs.service.schedule("ai.purge-debug", "25 4 * * *");
       await jobs.service.schedule("store.carts.purge", "45 3 * * *");
       await jobs.service.schedule(DELIVERY_TRACK_JOB, "0 */2 * * *");
       await jobs.service.schedule(ANALYTICS_JOBS.rollup, "5 * * * *");
@@ -1719,7 +1737,6 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       for (const m of [...modules].reverse()) await m.stop?.();
       await batch3.stop();
       await kitOps.stop();
-      await jobs.service.schedule("ai.purge-debug", "25 4 * * *");
       await closeDb();
     },
   };

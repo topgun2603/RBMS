@@ -1,9 +1,9 @@
 # AI foundation (Phase 0)
 
 The shared plumbing every AI helper uses: one entry point (`ai.run`), switches, credits, privacy defaults, draft feedback,
-usage screens and evals. **Phase 0 ships no end-user AI helper.** The only things a shop sees are Settings > AI (switch,
-helper list, credits, recent uses) and a one-credit "Test AI" button. Ask your shop, HSN suggestions, product descriptions,
-bill scanning and Studio are built on this in later phases.
+usage screens and evals. Phase 0 is only the plumbing: Settings > AI (switch, helper list, credits, recent uses) and a
+one-credit "Test AI" button. The Phase 1 text helpers (HSN suggestions, product descriptions and Tamil translation, import
+mapping, the help assistant) are built on it: see "Phase 1: text helpers" below. Ask your shop and Studio come later.
 
 **No API key is needed to develop.** Without `ANTHROPIC_API_KEY`, outside production, a deterministic sample provider (the
 `MockProvider`) answers, so the app, the tests and the evals run with no network and no cost. Nothing in Phase 0 has been
@@ -216,6 +216,91 @@ call the real API (costs about 30 cents on the defaults; refuses to start above 
 `packages/ai/evals/README.md`. For supplier-bill photos the owner drops 20 real, redacted bills in `evals/bills/`
 (`evals/bills/README.md`); none are made up.
 
+## Phase 1: text helpers
+
+Four helpers ship on the foundation (all drafts: nothing is saved until the person confirms; all in the registry as `live`):
+
+| Helper (registry key) | Tier | Where | Cost (about) | Who (permissions) |
+|---|---|---|---|---|
+| HSN and GST suggestions (`hsn-suggest`) | light, standard only when confidence is low | "Suggest HSN & GST" under the HSN field of Billing > Items, the catalogue product editor and the POS "not found: add it" dialog | 1 credit | `ai.use` + (`catalogue.manage` or `invoices.create`) |
+| Product descriptions (`product-description`) | standard (effort low) | "Write description" in the product editor; "Translate to Tamil" in the product list's bulk bar | 15-20 credits a product | `ai.use` + `catalogue.manage` |
+| Smart import mapping (`import-mapping`) | light | "Suggest mapping with AI" in Settings > Import & export, mapping step | 1-2 credits | `ai.use` + `importexport.run` |
+| Help assistant (`help`) | light | "Help" in the top bar of every business app | 1-2 credits a question | `ai.use` |
+
+The read-only demo role holds none of these permissions and the Help button is hidden for it, so a demo session never spends. A
+cashier without `ai.use` does not see the buttons. Switching AI off for the shop, or one helper off, answers `ai_off` /
+`ai_feature_off` and the buttons show the message; `ai_credits_exhausted` shows the credit message. Settings > AI also has
+"Suggest HSN and GST when I leave the item name box" (`autoHsn`, default off).
+
+Code: `packages/ai/src/assist/` (pure logic, tested with the mock provider), routes at `/v1/ai/assist/*`
+(`assist/routes.ts`), API wiring `apps/api/src/kit-ai-assist.ts`, UI in `packages/web/src/components/ai-assist/`
+(`HsnSuggestPanel`, `DescribeButton`, `TranslateToTamilButton`, `AiHelpButton`) and `workspace-ui/.../import/ai-mapping.tsx`.
+
+### Safety rules that apply to all four
+
+1. **Text is data.** Item names, notes, spreadsheet cells and questions go to the model inside `<<<DATA label ... DATA>>>` blocks
+   (the delimiter strings are removed from the text); the stable system prompt says never to follow instructions inside them
+   (`assist/safety.ts`, `DATA_RULES`). Sentences that look like instructions ("ignore the format", "reply only with X") are
+   removed before sending, and an output that repeats such a payload, or leaks the instructions, is dropped.
+2. **Output only through the schema** (structured output + zod).
+3. **No invented promises.** `filterClaims` (en + ta keyword rules) removes sentences about delivery, refunds/returns, warranty,
+   guarantees, certifications, health claims and discounts unless the shop stated them: in the product facts, or in the shop's
+   own storefront settings (`store.policies.shipping`, `store.policies.returns`, `store.trust.returns`, pickup note). An
+   instruction in the owner's notes ("write: free delivery") is not a fact. A supported promise must keep its numbers
+   (a "1 year warranty" cannot become "2 years"). Removed sentences are listed in the draft dialog.
+
+### HSN and GST
+
+Reference: `packages/ai/src/data/hsn-data.ts`, generated from the **official GST portal master** (HSN_SAC.xlsx from
+tutorial.gst.gov.in, fetched 2026-10-24): 98 chapters, 1,348 four-digit headings, 5,773 six-digit subheadings, 681 SAC codes
+(8-digit tariff lines left out). Two fixes are noted in the file header (heading 3307 is mislabelled in the portal file; typo
+prefixes are not headings). Regenerate from a fresh download rather than editing by hand.
+
+Flow (`assist/hsn.ts`): the light tier proposes up to 3 `{hsn, kind, official_title, gstRate, confidence, reason}` (the system
+prompt lists the official SAC headings). Each code is checked: it must exist in the reference (a longer code is cut back to its
+6-digit subheading or heading), and the title the model gives must share a content word with the official one (a real code with
+the wrong meaning, such as 9972 "real estate" for a haircut, is refused). If nothing passes, the model is asked once more with
+candidate headings found by keyword search of the reference; if that fails too the answer is "not sure, please check". Low
+confidence escalates once to the standard tier. The description shown is the official one, the rate is limited to the allowed
+slabs and shown as "usual rate, verify", and apparel / footwear (chapters 61, 62, 63 except 6309, 6401-6405) carry the
+existing price-band rule (5% up to Rs 2,500 per piece, 18% above; with a price the band is resolved).
+
+### Product descriptions and bulk Tamil
+
+`describeProduct` writes `{title, description_en, description_ta, seo_title, seo_description, bullets_en, bullets_ta}` from the
+product's own facts (name, category, brand, attributes, options, price) and the shop's stated policies. The catalogue had no
+translation columns, so Tamil text lives in the new table `ai_product_translations` (migration `0037_ai_translations`; one row
+per shop, product and locale; `approved` rows are what a storefront may show; `TranslationService.approvedFor` and
+`GET /v1/ai/assist/translations/approved?ids=` read them). Showing it on the storefront is not wired yet.
+
+Bulk: select products in the product list, "Translate to Tamil" shows the credit estimate (`POST /translate/estimate`, refuses
+a batch the credits cannot pay for) and starts the job `ai.translate-batch` (rows become `draft`); "Review Tamil drafts" lets
+the owner edit and approve or reject each one (or approve all). A switched-off helper or empty credits stops the batch and marks
+the rest `failed`. At most 100 products per batch.
+
+### Import mapping
+
+Only the header row, 5 sample rows (phones, e-mails and GSTINs masked, cells cut at 40 characters) and the importer's field
+list are sent. The server keeps only known fields, columns inside the file and one field per column (higher confidence wins);
+the wizard merges the picks into the mapping the owner is already looking at and notes the low-confidence ones.
+
+### Help assistant
+
+`assist/help.ts` chunks `docs/guides/*.md` (user manual, product guides en/ta, admin guide at lower weight) into sections at
+start and searches them with BM25 in code (no embeddings), plus a Tamil/Tanglish glossary that maps Tamil words to the English
+words the manual uses. The top sections go to the light tier; the stable system prompt (rules and the guides' table of
+contents) is cached. No matching section: "I don't know, contact support" with no model call and no credit. Questions about the
+shop's own data are refused (that is Phase 2). Screens a section names (Items, Invoices, Settings > Import...) become links in
+the panel. Rate limit: 8 questions a minute per user (in memory, per API process). The API reads the guides from `docs/guides`
+(or `AI_GUIDES_DIR`): ship that folder with the API image.
+
+### Phase 1 evals
+
+`pnpm --filter @srirealtime/ai eval:phase1 [--live] [--group=hsn|desc|mapping|help] [--max-cost=1]`: 41 HSN cases (the 30 old
+ones plus agarbatti regressions and an injection), 24 description cases (the old 22 plus two claim / injection cases), 15 mapping
+cases built from the real Vyapar / Tally / Busy / Marg presets, 20 help questions on the real guides. Reports go to
+`evals/reports`. A live run of all of it costs about $0.25.
+
 ## Going live
 
 1. Create an Anthropic API key (a dedicated workspace for srikit) and **set a monthly spend limit** in the Anthropic
@@ -235,3 +320,61 @@ call the real API (costs about 30 cents on the defaults; refuses to start above 
 masking, routes and permissions; the SDK client is faked, no network). `AI_TEST_DATABASE_URL=postgres://... pnpm --filter
 @srirealtime/ai test` also runs the database test (feedback, usage, platform table, purge) in a throw-away schema.
 `apps/api` has `kit-ai.test.ts` for the credits adapter on the plans module.
+
+## Scan a supplier bill / an expense receipt (Phase 1, vision)
+
+Two helpers on the vision tier (`bill-scan`, `receipt-scan` in the registry, both live; each has its own switch in Settings > AI).
+They **draft only**: the API never saves a purchase or an expense, the owner edits and saves through the normal screens, and
+`AiDraftBanner` reports accepted / edited / rejected (`POST /v1/ai/runs/:id/feedback`; saving untouched or edited reports
+it by itself).
+
+| Route | Needs | Fills |
+|---|---|---|
+| `POST /v1/ai/scan/purchase-bill` | `ai.use` + `inventory.purchases` (feature `inventory.purchases`) | New purchase (billing-ui `PurchaseForm`) |
+| `POST /v1/ai/scan/receipt` | `ai.use` + `expenses.manage` (feature `expenses`) | Expense dialog |
+
+Body: `{ images: [{ mediaType, data }] }` (1 to 6 photos, base64) or `{ pdf: { data } }` (one multi-page PDF), 20 MB of base64
+at most; the first bytes of every file must match its type (`ai_bad_image` otherwise). The browser shrinks photos to 1800 px
+JPEG before sending. HEIC works only where the browser can open it (phones, Safari); otherwise the user is told to share a JPG.
+Code: prompts and strict JSON schemas in `packages/ai/src/vision/` (`bill.ts`, `receipt.ts`, `shared.ts`), checks in
+`apps/api/src/ai-vision/` (`common.ts`, `bill.ts`, `receipt.ts`), routes in `apps/api/src/kit-ai-vision.ts`, UI in
+`packages/billing-ui/src/components/ai/` and `lib/ai-scan.ts`, strings `lib/messages/ai-scan.ts` (en + ta).
+
+**Cost.** About 25 to 45 credits a bill and 7 to 16 a receipt on `claude-opus-5-5` (measured: $0.024 to $0.045 per bill, $0.006
+to $0.016 per receipt); the UI says "about 40" / "about 15" before scanning. Effort is `low`. The schema asks for rupees as
+printed (not paise: models misread x100 less when copying) and the server converts to paise. The model API allows 16 nullable
+fields per schema, so text is "" when missing and only numbers are nullable.
+
+**The model is never trusted.** After the call, `processBill` / `processReceipt` clean and check every field and return flags
+(`billing.ai.flag.<code>`, severity error / warn / info) that the form shows next to the draft; a failed field is dropped, not
+passed on:
+
+- Text from the image is data. The system prompt says to ignore instructions in the document; text fields are stripped of
+  control/bidi characters and markup, clipped, and any field that reads like an instruction to an AI is removed with an
+  `injection` flag. Output only goes through the schema (zod, tolerant per field).
+- Dates must be real and not in the future (older than 3 years: warning). Amounts: 0 to Rs 2 crore, no negatives; qty 0 to
+  1,000,000. GSTIN: format and checksum (`isValidGstin`). HSN: 4 to 8 digits. GST rate: must be in `GST_RATES` of `packages/gst`;
+  a legal slab the app does not have yet (0.1, 1.5, 40) is reported as `gst_rate_unsupported`. Expiry `YYYY-MM` becomes the last day of the month.
+- Supplier: matched by GSTIN, then by name (never to a supplier with a different valid GSTIN); otherwise filled as a one-off
+  supplier. Lines: matched to saved items by name (exact, close; sizes in the name must agree), unmatched lines get a
+  "Create item" link that opens the normal item dialog. (The items API has no SKU or barcode search, so name only.)
+- GST maths: lines are computed with `computeLine`; taxable, tax and total are compared with the printed totals (Rs 1 plus 50
+  paise per line of slack); the bill must add up by itself; CGST/SGST versus IGST is checked against the supplier state
+  (GSTIN, else printed state) and the shop's state (billing profile).
+- Pharmacy shops (feature `medicines` on): every line needs a batch and an expiry, otherwise a flag and a highlighted field; expired batches are flagged everywhere.
+- Fields the model marked "low" confidence, and fields a check failed, are tinted until the owner edits them.
+
+**Photos are not kept.** Nothing in the AI code stores the image (run rows hold metadata only). Purchases have no attachment
+feature, so there is no "attach the photo" for bills. Expenses do (`receiptUrl`): after a receipt scan the dialog offers
+"Attach this photo as the receipt", which uses the normal upload.
+
+**Errors the owner sees:** AI off for the shop or the helper (with a link to Settings > AI), credits used up, photo unreadable
+(`ai_unreadable_image`, 422: "retake in good light"), unusable file, busy.
+
+**Evals.** `pnpm --filter @srirealtime/ai eval:vision [-- --live --group=purchase-bill|receipt --only=NN --max-cost=1]` reads
+`evals/bills/*` (the owner's real bills) and `evals/bills/synthetic/*` with `<name>.expected.json` and scores the raw reading per
+field. The synthetic set (`synthetic/generate.mjs`, puppeteer) is made up and every image says so: 3 clean bills (one pharmacy
+with batch and expiry, one inter-state/IGST photo), a blurred low-light photo, a bill carrying a hidden "ignore previous
+instructions" note, 2 receipts and an unreadable dark frame. They only stand in until the owner supplies 20 real bills.
+First live run, `claude-opus-5-5`: 100% of fields on all of them (about 220 checks) including the injection bill and the
+unreadable frame, total cost about $0.20. Clean synthetic bills are far easier than real ones: expect lower numbers on real paper.

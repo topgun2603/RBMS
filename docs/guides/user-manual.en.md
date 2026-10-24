@@ -322,6 +322,20 @@ To pay a supplier later, open **Payables**. It shows what you owe each supplier 
 
 To send goods back, open the purchase and choose **Return goods**. A **debit note** is issued, stock goes down and the bill's balance drops. A purchase can be cancelled, which takes its stock back out.
 
+### Scan a supplier bill instead of typing it
+
+On **New purchase**, press **Scan supplier bill**, take a photo of the bill (or choose a photo or a PDF) and wait a few seconds. The form is filled in for you: supplier, bill number, date and every item line. Anything the AI was unsure about, or that does not add up, is tinted and listed above the form; fix those, and compare the "bill total as printed" in the summary with the total on your paper. Medicine shops must have a batch and expiry on every line. Nothing is saved until you press **Save purchase**. A scan uses about 40 AI credits; the owner can switch it off in Settings > AI.
+
+## AI helpers for items and imports (optional)
+
+These need **AI** to be switched on in **Settings > AI** (the owner does this; each helper has its own switch) and the **Use AI helpers** permission. Every answer is a draft: nothing is saved until you press the normal **Save**. Each use costs a few AI credits (see Settings > AI for what is left this month).
+
+- **Suggest HSN & GST.** In **Add item** (Billing), in the product page of the catalogue and in the counter's "not found: add it" box, type the item name and press **Suggest HSN & GST**. You see up to three HSN codes with the official description. Press **Use this** to fill in the HSN and the usual GST rate, then check the rate yourself; it is only the usual rate. For clothes and footwear the price-band rule (5% up to Rs 2,500 a piece, 18% above) is shown. If it says "Not sure", look the code up on the GST portal. The owner can also switch on "Suggest HSN and GST when I leave the item name box" in Settings > AI.
+- **Write description.** On a product page press **Write description**. AI writes an English and a Tamil description, a search title and description and key points, using only the facts on the product and your store settings. It never adds delivery, refund, warranty or health promises that you did not state; anything it left out for that reason is listed. Press **Use English** to put the English text and search texts in the form, or **Save Tamil text** to keep the Tamil text with the product.
+- **Translate to Tamil (many products).** In **Products**, tick the products and press **Translate to Tamil**. You see about how many credits it will use, then it drafts the Tamil names and descriptions in the background. Press **Review Tamil drafts**, read each one, correct it if needed and **Approve** (or **Reject**). Nothing is final until you approve it.
+- **Suggest mapping with AI.** In **Settings > Import & export**, after you choose your file, press **Suggest mapping with AI** above the column list. Only the heading row and five sample rows are sent (phone numbers, e-mails and GSTINs are hidden). Check the matched columns and change any that are wrong before you start the import.
+- **Help.** The **Help** button at the top of every screen answers "how do I..." questions in Tamil or English from this manual and links to the screen it talks about. It does not look at your sales or customers. If the manual does not cover the question it says so and asks you to contact support.
+
 ## Common problems
 
 | What you see | What to do |
@@ -749,6 +763,10 @@ Open **Expenses** (needs the **Manage expenses** permission) to record rent, sal
 6. Tap save.
 
 The page totals **Spent**, **GST paid** and **ITC you can claim**, with spending by category and month. A cancelled expense stays on record but is left out of totals. The **Profit** report then shows gross profit (sales less purchases) and net profit (less expenses after ITC), and the GST you will have to pay for the period.
+
+### Scan a receipt for an expense
+
+In **Add expense**, press **Scan receipt**, photograph the receipt and check the amount, date, category and payment method it fills in. Use **Attach this photo as the receipt** to keep the photo with the expense. A scan uses about 15 AI credits.
 
 ## Common problems
 

@@ -261,6 +261,13 @@ function PrivacyCard({ values, canEdit, busy, onPatch }: Omit<CardProps, "status
             <span className="text-meta text-muted-foreground">{t("workspace.ai.privacy.debugHint")}</span>
           </span>
         </Label>
+        <Label className="flex items-start gap-3 font-normal">
+          <Switch checked={values.autoHsn === true} disabled={!canEdit || busy} onCheckedChange={(autoHsn) => void onPatch({ autoHsn })} aria-label={t("workspace.ai.privacy.autoHsn")} />
+          <span className="grid gap-0.5">
+            <span className="font-medium">{t("workspace.ai.privacy.autoHsn")}</span>
+            <span className="text-meta text-muted-foreground">{t("workspace.ai.privacy.autoHsnHint")}</span>
+          </span>
+        </Label>
       </div>
     </SectionCard>
   );

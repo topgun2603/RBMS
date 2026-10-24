@@ -24,9 +24,10 @@ import {
   Switch,
   toast,
 } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, HsnSuggestPanel, useHsnSuggest, useI18n } from "@srirealtime/web";
 import type { CartProduct } from "../lib/cart";
 import { adjustItemStock, createCatalogProduct, lookupCode } from "../lib/api";
+import { rupeesToPaise } from "../lib/format";
 import { fromLookup } from "../lib/products";
 import {
   emptyQuickAdd,
@@ -89,6 +90,8 @@ export function QuickAddDialog({
   }, [target?.code]);
 
   const set = <K extends keyof QuickAddForm>(k: K, v: QuickAddForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+  // AI "Suggest HSN & GST": the counter form has no HSN box, so only the usual GST rate is applied (shown with the HSN for reference).
+  const hsnAi = useHsnSuggest({ name: form.name, price: rupeesToPaise(form.price) ?? undefined });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,7 +194,7 @@ export function QuickAddDialog({
                 </Field>
                 <Field invalid={!!errors.name}>
                   <FieldLabel>{t("pos.quickAdd.name")}</FieldLabel>
-                  <Input autoFocus value={form.name} onChange={(e) => set("name", e.target.value)} />
+                  <Input autoFocus value={form.name} onChange={(e) => set("name", e.target.value)} onBlur={() => hsnAi.auto()} />
                   <FieldError>{errors.name ? t("pos.quickAdd.nameInvalid") : null}</FieldError>
                 </Field>
               </FieldRow>
@@ -203,6 +206,7 @@ export function QuickAddDialog({
                 </Field>
                 {gstField}
               </FieldRow>
+              <HsnSuggestPanel state={hsnAi} onApply={(a) => set("gstRate", a.gstRate)} />
               {inclusive}
               <FieldRow cols={2}>
                 <Field invalid={!!errors.mrp}>

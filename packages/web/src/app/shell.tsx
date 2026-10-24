@@ -42,7 +42,8 @@ import { readStored, setStoredTenant, SIDEBAR_KEY, writeStored } from "../lib/se
 import { getTenantStrategy } from "../lib/tenant";
 import { BUILT_IN_SETTINGS } from "./builtins";
 import { buildNavModel, joinPath } from "./model";
-import { useWebApp } from "./navigation";
+import { AiHelpButton } from "../components/ai-assist/help-panel";
+import { useSettingsHref, useWebApp } from "./navigation";
 import { useSession, useVisible, useVisibleSettings } from "./session";
 import type { IconType, MountedModule, QuickAction } from "./types";
 
@@ -101,6 +102,16 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
   const { sections, primary } = useShellNav();
   const [collapsed, setCollapsed] = React.useState(false);
   React.useEffect(() => setCollapsed(readStored(SIDEBAR_KEY) === "1"), []);
+  const settingsHref = useSettingsHref();
+  /** The help assistant names screens by key ("items", "settings/import"); link them to this app's menu. */
+  const resolveScreen = React.useCallback(
+    (key: string) => {
+      if (key.startsWith("settings/")) return settingsHref(key.slice("settings/".length));
+      const last = (h: string) => h.split("?")[0]!.replace(/\/+$/, "").split("/").pop();
+      return sections.flatMap((x) => x.items).find((i) => last(i.href) === key)?.href ?? null;
+    },
+    [sections, settingsHref],
+  );
 
   return (
     <AppShell
@@ -126,6 +137,7 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
             </Button>
           )}
           <BranchSwitcher />
+          <AiHelpButton resolveScreen={resolveScreen} />
           <LocaleSwitcher />
           <ThemeToggle />
           <UserMenu />

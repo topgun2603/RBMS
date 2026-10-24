@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "shopApp": "grocery",
+  "supplier": {
+    "name": "Murugan Provision Stores (Wholesale)",
+    "gstin": "33AAJPM3318N1ZJ",
+    "state": "Tamil Nadu"
+  },
+  "invoice": {
+    "number": "MPS-5521",
+    "date": "2026-10-18"
+  },
+  "lines": [
+    {
+      "description": "Basmati Rice 25 kg Bag",
+      "hsn": "1006",
+      "qty": 10,
+      "rate": 1650,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Toor Dal 1 kg",
+      "hsn": "0713",
+      "qty": 80,
+      "rate": 142,
+      "discount": 0,
+      "gstRate": 0,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Sugar 1 kg",
+      "hsn": "1701",
+      "qty": 100,
+      "rate": 41.9,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Tea Dust 250 g",
+      "hsn": "0902",
+      "qty": 30,
+      "rate": 82.5,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    }
+  ],
+  "totals": {
+    "taxable": 34525,
+    "cgst": 579.13,
+    "sgst": 579.12,
+    "igst": 0,
+    "total": 35683
+  },
+  "injection": true
+}

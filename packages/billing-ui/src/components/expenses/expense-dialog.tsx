@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BanIcon, CheckCircle2Icon, FileTextIcon, ImagePlusIcon, InfoIcon, Loader2Icon, XIcon } from "lucide-react";
+import { BanIcon, CheckCircle2Icon, FileTextIcon, ImagePlusIcon, InfoIcon, Loader2Icon, ScanLineIcon, XIcon } from "lucide-react";
 import { isValidGstin } from "@srirealtime/gst";
 import {
   Button,
@@ -27,6 +27,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import {
+  AiDraftBanner,
   ConfirmDialog,
   describeError,
   Form,
@@ -36,8 +37,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  sendAiFeedback,
   useI18n,
+  type AiOutcome,
 } from "@srirealtime/web";
+import { ScanDialog } from "../ai/scan-dialog";
+import { ScanFlags, aiLowClass } from "../ai/scan-bits";
 import { GstRateSelect } from "../gst-rate-select";
 import { MoneyInput } from "../money-input";
 import { money, paiseToInput, rupeesToPaise, todayIST } from "../../lib/format";
@@ -52,6 +57,7 @@ import {
   type Expense,
   type ExpensePaymentMethod,
 } from "../../lib/expenses";
+import type { ReceiptDraft, ScanResult } from "../../lib/ai-scan";
 
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "billing.validation.required"),
@@ -84,6 +90,9 @@ const toValues = (e: Expense | null, categoryId: string): Values => ({
   receiptUrl: e?.receiptUrl ?? "",
 });
 
+/** Same values give the same text whatever the key order (form values vs parsed values). */
+const stable = (o: Record<string, unknown>) => JSON.stringify(Object.keys(o).sort().map((k) => [k, String(o[k] ?? "").trim()]));
+
 const isPdf = (url: string) => /\.pdf($|\?)/i.test(url);
 
 /** Add or edit an expense: amount incl. GST with the GST and ITC worked out live, receipt photo, cancel. */
@@ -98,17 +107,60 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
   const fallbackCategory = categories.data?.find((c) => c.builtin && c.name === "Other")?.id ?? categories.data?.[0]?.id ?? "";
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(expense, fallbackCategory) });
   const readOnly = expense?.status === "cancelled";
+  // AI scan of a receipt: fills this form as a draft; the person saves it as usual.
+  const [scanOpen, setScanOpen] = React.useState(false);
+  const [ai, setAi] = React.useState<{ runId: string; credits: number; mock: boolean; draft: ReceiptDraft; low: string[]; snapshot: string; outcome: AiOutcome | null } | null>(null);
+  const [scanFile, setScanFile] = React.useState<File | null>(null);
+  const LOW_FIELD: Record<string, string> = { vendor: "vendorName", category: "categoryId", paymentMode: "paymentMethod" };
+  const isLow = (name: string) => !!ai?.low.some((f) => (LOW_FIELD[f] ?? f) === name);
 
   React.useEffect(() => {
     if (open) {
       form.reset(toValues(expense, fallbackCategory));
       setUploadPct(null);
+      setAi(null);
+      setScanFile(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when (re)opened
   }, [open, expense?.id]);
   React.useEffect(() => {
     if (open && !form.getValues("categoryId") && fallbackCategory) form.setValue("categoryId", fallbackCategory);
   }, [open, fallbackCategory, form]);
+
+  React.useEffect(() => {
+    const sub = form.watch((_v, { name }) => {
+      if (name) setAi((a) => (a && a.low.length ? { ...a, low: a.low.filter((f) => (LOW_FIELD[f] ?? f) !== name) } : a));
+    });
+    return () => sub.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- LOW_FIELD is a constant
+  }, [form]);
+
+  const applyScan = (res: ScanResult<ReceiptDraft>, files: File[]) => {
+    const d = res.draft;
+    const base = toValues(null, fallbackCategory);
+    form.reset({
+      ...base,
+      date: d.date ?? base.date,
+      categoryId: d.categoryId ?? base.categoryId,
+      amount: d.amount === null ? "" : paiseToInput(d.amount),
+      gstRate: String(d.gstRate ?? 0),
+      vendorName: d.vendor ?? "",
+      vendorGstin: d.vendorGstin ?? "",
+      paymentMethod: d.paymentMode ?? "cash",
+      note: d.note ?? "",
+    });
+    setScanFile(files[0] ?? null);
+    setAi({ runId: res.runId, credits: res.credits, mock: res.provider === "mock", draft: d, low: d.lowFields, snapshot: stable(form.getValues()), outcome: null });
+    toast.success(t("billing.ai.receipt.filled"));
+  };
+  const reportOutcome = (outcome: AiOutcome) => {
+    setAi((a) => (a ? { ...a, outcome: a.outcome ?? outcome } : a));
+    if (outcome === "rejected") {
+      form.reset(toValues(null, fallbackCategory));
+      setAi(null);
+      setScanFile(null);
+    }
+  };
 
   const [amountText, rateText, gstinText, receiptUrl] = form.watch(["amount", "gstRate", "vendorGstin", "receiptUrl"]);
   const amount = rupeesToPaise(amountText) ?? 0;
@@ -153,6 +205,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
           receiptUrl: v.receiptUrl || null,
         },
       });
+      if (ai && !ai.outcome) void sendAiFeedback(ai.runId, stable(v) === ai.snapshot ? "accepted" : "edited").catch(() => undefined);
       toast.success(expense ? t("billing.expenses.updated") : t("billing.expenses.created", { amount: money(rupeesToPaise(v.amount)) }));
       onOpenChange(false);
     } catch (err) {
@@ -170,6 +223,23 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
             <DialogTitle>{expense ? t("billing.expenses.editTitle") : t("billing.expenses.addTitle")}</DialogTitle>
             <DialogDescription>{readOnly ? t("billing.expenses.cancelledHint") : t("billing.expenses.dialogHint")}</DialogDescription>
           </DialogHeader>
+          {!expense && (
+            ai ? (
+              <div className="grid gap-3" data-testid="ai-receipt-draft">
+                <AiDraftBanner runId={ai.runId} credits={ai.credits} mock={ai.mock} onOutcome={reportOutcome} />
+                <ScanFlags flags={ai.draft.flags} />
+                {scanFile && !receiptUrl && (
+                  <Button type="button" variant="outline" size="sm" className="justify-self-start" disabled={uploadPct !== null} onClick={() => void onReceipt(scanFile)} data-testid="attach-scan">
+                    <ImagePlusIcon /> {t("billing.ai.receipt.attach")}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Button type="button" variant="outline" className="h-11 justify-self-start" onClick={() => setScanOpen(true)} data-testid="scan-receipt">
+                <ScanLineIcon /> {t("billing.ai.receipt.button")}
+              </Button>
+            )
+          )}
           <Form {...form}>
             <form onSubmit={onSubmit} className="grid gap-5" noValidate>
               <fieldset disabled={readOnly} className="grid gap-4">
@@ -178,7 +248,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="amount"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("amount"))}>
                         <FormLabel>{t("billing.expenses.amount")}</FormLabel>
                         <FormControl>
                           <MoneyInput autoFocus className="text-lg font-semibold" placeholder="0" {...field} />
@@ -192,7 +262,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="date"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("date"))}>
                         <FormLabel>{t("billing.expenses.date")}</FormLabel>
                         <FormControl>
                           <Input type="date" max={todayIST()} {...field} />
@@ -207,7 +277,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="categoryId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("categoryId"))}>
                         <FormLabel>{t("billing.expenses.category")}</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger className="w-full" aria-label={t("billing.expenses.category")}>
@@ -229,7 +299,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="gstRate"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("gstRate"))}>
                         <FormLabel>{t("billing.expenses.gstRate")}</FormLabel>
                         <GstRateSelect value={field.value} onChange={field.onChange} className="w-full" aria-label={t("billing.expenses.gstRate")} />
                         <FormMessage />
@@ -260,7 +330,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="vendorName"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("vendorName"))}>
                         <FormLabel>{t("billing.expenses.vendor")}</FormLabel>
                         <FormControl>
                           <Input autoComplete="off" placeholder={t("billing.expenses.vendorPlaceholder")} {...field} />
@@ -273,7 +343,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="vendorGstin"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("vendorGstin"))}>
                         <FormLabel>{t("billing.expenses.vendorGstin")}</FormLabel>
                         <div className="relative">
                           <FormControl>
@@ -307,7 +377,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                   control={form.control}
                   name="paymentMethod"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={aiLowClass(isLow("paymentMethod"))}>
                       <FormLabel>{t("billing.expenses.method")}</FormLabel>
                       <ChipGroup
                         aria-label={t("billing.expenses.method")}
@@ -324,7 +394,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                     control={form.control}
                     name="note"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={aiLowClass(isLow("note"))}>
                         <FormLabel>{t("billing.expenses.note")}</FormLabel>
                         <FormControl>
                           <Textarea rows={3} placeholder={t("billing.expenses.notePlaceholder")} {...field} />
@@ -427,6 +497,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
           </Form>
         </DialogContent>
       </Dialog>
+      <ScanDialog kind="receipt" open={scanOpen} onOpenChange={setScanOpen} onDraft={applyScan} />
       <ConfirmDialog
         open={confirmCancel}
         onOpenChange={setConfirmCancel}

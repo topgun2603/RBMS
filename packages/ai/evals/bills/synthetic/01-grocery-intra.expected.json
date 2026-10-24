@@ -1,0 +1,82 @@
+{
+  "synthetic": true,
+  "shopApp": "grocery",
+  "supplier": {
+    "name": "Sri Vinayaga Wholesale Traders",
+    "gstin": "33AAHFS2190K1Z2",
+    "state": "Tamil Nadu"
+  },
+  "invoice": {
+    "number": "SVW/24-25/0877",
+    "date": "2026-10-12"
+  },
+  "lines": [
+    {
+      "description": "Aashirvaad Whole Wheat Atta 5 kg",
+      "hsn": "1101",
+      "qty": 20,
+      "rate": 245,
+      "discount": 0,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Tata Salt 1 kg",
+      "hsn": "2501",
+      "qty": 50,
+      "rate": 24,
+      "discount": 0,
+      "gstRate": 0,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Fortune Sunflower Oil 1 L Pouch",
+      "hsn": "1512",
+      "qty": 40,
+      "rate": 118,
+      "discount": 94.4,
+      "gstRate": 5,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Britannia Good Day Cashew 100 g",
+      "hsn": "1905",
+      "qty": 60,
+      "rate": 9.52,
+      "discount": 0,
+      "gstRate": 18,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Surf Excel Easy Wash 1 kg",
+      "hsn": "3402",
+      "qty": 12,
+      "rate": 132,
+      "discount": 0,
+      "gstRate": 18,
+      "batch": null,
+      "expiry": null
+    },
+    {
+      "description": "Maggi Masala Noodles 70 g",
+      "hsn": "1902",
+      "qty": 100,
+      "rate": 11.43,
+      "discount": 0,
+      "gstRate": 12,
+      "batch": null,
+      "expiry": null
+    }
+  ],
+  "totals": {
+    "taxable": 14023.8,
+    "cgst": 500.69,
+    "sgst": 500.69,
+    "igst": 0,
+    "total": 15025
+  }
+}

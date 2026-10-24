@@ -47,6 +47,7 @@ import { describeError, QueryError, useFeatures, useI18n, type Translator } from
 import { CountTile, Dropzone } from "../bits";
 import { downloadTemplate, useCommitImport, useImporters, useImportJob, useImportSources, usePreviewImport } from "../../lib/queries";
 import type { ImportJob, ImportSource, Importer, Mapping, PreviewResult } from "../../lib/types";
+import { SuggestMappingButton } from "./ai-mapping";
 import { ErrorRowsButton, RollbackButton, RollbackResult } from "./job-status";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -392,6 +393,24 @@ function PreviewStep({
         <div className="border-b px-4 py-3 sm:px-5">
           <h3 className="font-heading text-base font-semibold">{t("workspace.import.mappingTitle")}</h3>
           <p className="text-meta text-muted-foreground">{t("workspace.import.mappingHint")}</p>
+          <div className="mt-2">
+            <SuggestMappingButton
+              importer={importer}
+              preview={preview}
+              onApply={(ai) =>
+                setMapping((m) => {
+                  // The AI's picks win; a field it left empty keeps what the automatic match found.
+                  const next: Mapping = { ...m };
+                  for (const [field, col] of Object.entries(ai)) {
+                    if (col === null) continue;
+                    for (const [k, v] of Object.entries(next)) if (v === col && k !== field) next[k] = null;
+                    next[field] = col;
+                  }
+                  return next;
+                })
+              }
+            />
+          </div>
         </div>
         <ul className="grid divide-y sm:grid-cols-2 sm:divide-y-0">
           {importer.columns.map((c) => {

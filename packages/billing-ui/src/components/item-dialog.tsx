@@ -18,7 +18,7 @@ import {
 } from "@srirealtime/ui";
 import { GstRateSelect } from "./gst-rate-select";
 import { MoneyInput } from "./money-input";
-import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFeature, useI18n } from "@srirealtime/web";
+import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, useFeature, useHsnSuggest, useI18n } from "@srirealtime/web";
 import { ItemBatchToggle } from "./inventory/item-batch-toggle";
 import { cleanQty } from "./inventory/stock-meta";
 import { formatQty, paiseToInput, parseQty, rupeesToPaise, UNITS } from "../lib/format";
@@ -69,6 +69,9 @@ export function ItemDialog({
   const adjust = useAdjustStock();
   const inventory = useFeature("inventory");
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(item ?? initial) });
+  // AI "Suggest HSN & GST" (draft only; the owner presses "Use this").
+  const [nameNow, rateNow, hsnNow] = form.watch(["name", "rate", "hsn"]);
+  const hsnAi = useHsnSuggest({ name: nameNow, price: rupeesToPaise(rateNow) ?? undefined, hasHsn: hsnNow.trim() !== "" });
 
   React.useEffect(() => {
     if (open) form.reset(toValues(item ?? initial));
@@ -125,7 +128,15 @@ export function ItemDialog({
                 <FormItem>
                   <FormLabel>{t("billing.items.name")}</FormLabel>
                   <FormControl>
-                    <Input autoFocus autoComplete="off" {...field} />
+                    <Input
+                      autoFocus
+                      autoComplete="off"
+                      {...field}
+                      onBlur={() => {
+                        field.onBlur();
+                        hsnAi.auto();
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -184,6 +195,13 @@ export function ItemDialog({
                 )}
               />
             </div>
+            <HsnSuggestPanel
+              state={hsnAi}
+              onApply={(a) => {
+                form.setValue("hsn", a.hsn, { shouldDirty: true });
+                form.setValue("gstRate", String(a.gstRate), { shouldDirty: true });
+              }}
+            />
             {!item && inventory && (
               <div className="grid gap-3 rounded-xl border border-dashed bg-muted/30 p-3">
                 <p className="flex items-center gap-2 text-sm font-medium">

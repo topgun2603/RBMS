@@ -377,7 +377,7 @@ export function ProductEditor({ product }: { product?: Product }) {
         <form onSubmit={submit} noValidate aria-label={isNew ? t("commerce.editor.newTitle") : t("commerce.editor.editTitle")}>
           <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
-              <BasicsSection />
+              <BasicsSection productId={product?.id} />
               <MediaSection />
               <PricingSection {...ctx} />
               <VariantsSection

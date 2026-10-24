@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "kind": "receipt",
+  "vendor": "Coimbatore Power Distribution (SAMPLE)",
+  "date": "2026-10-18",
+  "amount": 3482,
+  "vendorGstin": null,
+  "category": "Electricity",
+  "paymentMode": "upi"
+}
