@@ -32,6 +32,7 @@ import {
 import { BrandMark } from "../components/brand-mark";
 import { BranchSwitcher } from "../components/branch-switcher";
 import { LocaleSwitcher } from "../components/locale-switcher";
+import { DemoBanner } from "../components/demo-banner";
 import { PlanBanner } from "../components/plan-banner";
 import { UpgradeDialogHost } from "../components/upgrade-dialog";
 import { ThemeToggle } from "../components/theme-toggle";
@@ -138,6 +139,7 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
         close: t("web.common.close"),
       }}
     >
+      <DemoBanner />
       {!immersive && <PlanBanner />}
       <div className="pb-28 md:pb-0 print:pb-0" data-print-root>
         <PageTransition routeKey={pathname}>{children}</PageTransition>

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createAnalytics, ANALYTICS_JOBS } from "@srirealtime/analytics";
-import { createAuth, storeOriginsFor } from "@srirealtime/auth";
+import { authSessions, createAuth, SlidingWindow, storeOriginsFor } from "@srirealtime/auth";
+import { DEMO_DEFAULT_LIMITS, demoAuthModule, demoGuard, parseDemoShops } from "./demo-auth";
 import { createBranding } from "@srirealtime/branding";
 import { createAudit } from "@srirealtime/audit";
 import { CATALOGUE_VENDOR_ROUTE_KEYS, createCatalogue, isPublicRef } from "@srirealtime/catalogue";
@@ -25,7 +26,7 @@ import { createOnboarding } from "@srirealtime/onboarding";
 import { createReviews } from "@srirealtime/reviews";
 import { createStaff } from "@srirealtime/staff";
 import { createStorefront } from "@srirealtime/storefront";
-import { isSuperAdmin, type SrModule } from "@srirealtime/core";
+import { isSuperAdmin, randomToken, sha256, type SrModule } from "@srirealtime/core";
 import { createDb } from "@srirealtime/db";
 import { createFeatures } from "@srirealtime/features";
 import { createI18n } from "@srirealtime/i18n";
@@ -1345,6 +1346,40 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     cms.module,
     onboarding.module,
     analytics.module,
+  // Read-only live demo (demo-auth.ts): `POST /v1/auth/demo`, and the guard that keeps demo sessions read-only.
+  const demoDeps = {
+    shops: parseDemoShops(env.DEMO_SHOPS),
+    tenants: tenancy.service,
+    users: {
+      async ensureDemoUser(slug: string) {
+        const { user } = await auth.service.findOrCreateByTarget(`demo+${slug}@demo.invalid`, { name: "Demo visitor" });
+        if (!user.platformRoles.includes("demo") || user.platformRoles.length !== 1) await auth.service.setPlatformRoles(user.id, ["demo"]);
+        return { id: user.id };
+      },
+    },
+    memberships: tenancy.service,
+    sessions: {
+      async createDemoSession(userId: string, meta: { ip?: string | null; userAgent?: string | null }, expiresAt: Date) {
+        const token = randomToken();
+        await db.insert(authSessions).values({ userId, tokenHash: sha256(token), expiresAt, ip: meta.ip ?? null, userAgent: meta.userAgent ? meta.userAgent.slice(0, 512) : null });
+        return { token };
+      },
+    },
+    handoffs: {
+      create: (userId: string, meta: { ip?: string | null }, tenantId: string) => auth.service.createHandoff(userId, meta, tenantId),
+      appUrl: (userId: string, tenantId: string) => auth.service.handoffAppUrl(userId, tenantId),
+    },
+    limiter: new SlidingWindow(DEMO_DEFAULT_LIMITS.perWindow, DEMO_DEFAULT_LIMITS.windowMs),
+    loginUrl(appUrl: string, code: string) {
+      const u = new URL(appUrl);
+      u.pathname = `${u.pathname.replace(/\/+$/, "")}/login`;
+      u.searchParams.set("handoff", code);
+      return u.toString();
+    },
+    log,
+  };
+  if (demoDeps.shops.size > 0) log.info({ shops: [...demoDeps.shops] }, "demo: read-only live demo enabled");
+
     expenses.module,
     medicines.module,
     dining.module,
@@ -1391,6 +1426,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     delivery,
     reviews,
     cms,
+    demoAuthModule(demoDeps),
     onboarding,
     analytics,
     expenses,
@@ -1431,7 +1467,20 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
      * principal; auth loads a session user's roles in the tenant (it ignores API keys, and accepts a terminal-bound PIN
      * session only with that terminal's device); branches picks `ctx.branch` from all of them (a device's own branch first).
      */
-    contextHooks: [tenancy.contextHook, pos.deviceHook, batch3.developer.apiKeyHook, auth.contextHook, batch3.branches.contextHook],
+    contextHooks: [
+      tenancy.contextHook,
+      pos.deviceHook,
+      batch3.developer.apiKeyHook,
+      auth.contextHook,
+      // Demo sessions: read-only, one shop, short-lived (right after auth has filled the user).
+      demoGuard({
+        sessionCreatedAt: async (id) => (await db.select({ at: authSessions.createdAt }).from(authSessions).where(eq(authSessions.id, id)).limit(1))[0]?.at ?? null,
+        revoke: async (id, userId) => {
+          await auth.service.revokeSession(id, userId);
+        },
+      }),
+      batch3.branches.contextHook,
+    ],
     /**
      * Global preHandlers, after the context hooks: app versions below the minimum refused, API keys refused on key
      * management / platform routes, each route's `config.feature`, then `config.permission` (skipped for marketplace

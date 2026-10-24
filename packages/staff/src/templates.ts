@@ -107,6 +107,13 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage"],
   },
   {
+    key: "demo",
+    name: "Demo (read only)",
+    description:
+      "For the read-only live demo accounts: view everything, including the credit book, kitchen, job cards, bookings and medicine batches. The API also refuses every write for demo sessions, whatever this role holds.",
+    permissions: ["*.view", "invoices.credit-book", "inventory.purchases", "dining.*", "jobcards.*", "bookings.*", "memberships.*", "medicines.*"],
+  },
+  {
     key: "delivery",
     name: "Delivery",
     description: "Sees orders and marks them shipped or delivered.",

@@ -125,12 +125,12 @@ export interface CompareGroup {
 
 /** Rows shown per group, by feature key. Keys no plan grants are dropped, so the table follows the catalogue. */
 const MODULE_GROUPS: { key: string; rows: string[] }[] = [
-  { key: "billing", rows: ["invoices", "invoices.whatsapp", "invoices.reports", "invoices.credit-book", "invoices.gst-reports", "inventory", "payments", "expenses", "gst-einvoice", "gst-ewaybill", "multi-branch"] },
+  { key: "billing", rows: ["invoices", "invoices.whatsapp", "invoices.reports", "invoices.credit-book", "invoices.gst-reports", "inventory", "pos", "payments", "expenses", "gst-einvoice", "gst-ewaybill", "multi-branch"] },
   { key: "store", rows: ["storefront", "catalogue.variants", "delivery", "coupons", "reviews", "cms.blog", "custom-domain", "marketplace"] },
   { key: "growth", rows: ["loyalty", "chat", "support", "whatsapp", "analytics", "reports.advanced"] },
   { key: "team", rows: ["staff", "importexport", "audit", "developer"] },
 ];
-const LIMIT_ROWS = ["invoices_per_month", "staff", "storage_mb", "sms_per_month", "whatsapp_per_month"];
+const LIMIT_ROWS = ["invoices_per_month", "staff", "pos_terminals", "storage_mb", "sms_per_month", "whatsapp_per_month"];
 const FEATURE_ROWS = ["remove_branding", "priority_support"];
 
 function limitText(t: Translator, locale: Locale | string, key: string, v: number | undefined): CellValue {

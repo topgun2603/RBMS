@@ -278,3 +278,45 @@ export function NotifyChip({ kind, detail, className, delay = 0 }: { kind: ChipK
     </motion.div>
   );
 }
+
+/** A counter terminal: pairing code, cashier PIN and a weigh ticket with a barcode. */
+export function PosMockup({ className }: { className?: string }) {
+  const { t } = useSite();
+  const bars = [2, 1, 3, 1, 1, 2, 3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 2];
+  return (
+    <div className={cn("grid w-full max-w-[420px] gap-4 sm:grid-cols-[1.1fr_1fr]", className)} aria-hidden="true">
+      <Card className="gap-3 rounded-2xl p-4 shadow-www">
+        <p className="font-display text-sm font-bold">{t("mock.pos.terminal")}</p>
+        <div>
+          <p className="text-xs text-muted-foreground">{t("mock.pos.pair")}</p>
+          <p className="mt-1 rounded-lg bg-tint px-3 py-2 text-center font-mono text-base font-bold tracking-widest tabular-nums">K7M4 9QXA</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{t("mock.pos.pin")}</p>
+          <div className="mt-1 flex justify-center gap-2">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={cn("size-3 rounded-full border", i < 3 ? "border-primary bg-primary" : "bg-card")} />
+            ))}
+          </div>
+        </div>
+      </Card>
+      <Card className="gap-2 rounded-2xl border-dashed p-4 shadow-www">
+        <p className="font-display text-sm font-bold">{t("mock.pos.ticket")}</p>
+        <p className="text-sm">{t("mock.pos.item")}</p>
+        <p className="flex justify-between text-xs text-muted-foreground">
+          <span>{t("mock.pos.weight")}</span>
+          <span className="tabular-nums">2.350 kg</span>
+        </p>
+        <p className="flex justify-between text-sm font-semibold">
+          <span>{t("mock.pos.total")}</span>
+          <span className="tabular-nums">₹376.00</span>
+        </p>
+        <div className="mt-1 flex h-9 items-stretch gap-[2px]">
+          {bars.map((w, i) => (
+            <span key={i} className="bg-foreground" style={{ width: w * 2 }} />
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}

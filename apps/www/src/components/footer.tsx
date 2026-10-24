@@ -10,6 +10,8 @@ export function SiteFooter({ t }: { t: Translator }) {
       links: [
         { href: "/billing", label: t("nav.billing") },
         { href: "/online-store", label: t("nav.onlineStore") },
+        { href: "/industries", label: t("nav.industries") },
+        { href: "/demo", label: t("nav.demo") },
         { href: "/pricing", label: t("nav.pricing") },
       ],
     },

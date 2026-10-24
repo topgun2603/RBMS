@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotionSafe, useScroll, useTransform 
 import { useSite } from "./site-context";
 import { CreditBookMockup, InvoiceMockup, NotifyChip, PhoneStoreMockup } from "./mockups";
 
-const WORDS = ["hero.word.1", "hero.word.2", "hero.word.3", "hero.word.4", "hero.word.5", "hero.word.6"];
+const WORDS = ["hero.word.1", "hero.word.2", "hero.word.3", "hero.word.4", "hero.word.5", "hero.word.6", "hero.word.7", "hero.word.8", "hero.word.9", "hero.word.10"];
 
 /** "Billing and online store for your <shop / grocery store / …>": the last words roll through shop types. */
 export function HeroHeadline() {

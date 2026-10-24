@@ -26,6 +26,7 @@ import { pageMetadata } from "@/lib/seo";
 import { HeroBackdrop, HeroHeadline, HeroVisual } from "@/components/hero";
 import { InvoiceMockup, PhoneStoreMockup } from "@/components/mockups";
 import { Lift, Marquee } from "@/components/motion-bits";
+import { DemoBand, PosSection, StoreHighlights, TradesSection } from "@/components/home-sections";
 import { Container, CtaBand, Eyebrow, FaqSection, FeatureGrid, HowItWorks, SectionHeading, Testimonials, TrialNotes, faqItems } from "@/components/sections";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,13 +35,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const strip = [
     { icon: <ReceiptIndianRupeeIcon />, label: t("strip.gst") },
     { icon: <LanguagesIcon />, label: t("strip.tamil") },
     { icon: <QrCodeIcon />, label: t("strip.upi") },
     { icon: <SmartphoneIcon />, label: t("strip.phone") },
     { icon: <PrinterIcon />, label: t("strip.print") },
+    { icon: <StoreIcon />, label: t("strip.trades") },
+    { icon: <ScanBarcodeIcon />, label: t("strip.counters") },
   ];
   const features = [
     { icon: <ReceiptIndianRupeeIcon />, title: t("features.gst.title"), body: t("features.gst.body") },
@@ -98,6 +101,9 @@ export default async function HomePage() {
         </Marquee>
       </div>
 
+      <TradesSection t={t} locale={locale} />
+      <DemoBand t={t} />
+
       {/* Two products */}
       <section className="section-y" aria-labelledby="products-title">
         <Container>
@@ -131,6 +137,9 @@ export default async function HomePage() {
         </Container>
       </section>
 
+      <PosSection t={t} />
+      <StoreHighlights t={t} />
+
       {/* Feature grid */}
       <section className="section-y bg-tint" aria-labelledby="features-title">
         <Container>
@@ -141,7 +150,7 @@ export default async function HomePage() {
 
       <HowItWorks t={t} />
       <Testimonials t={t} />
-      <FaqSection t={t} items={faqItems(t, "faq.home", 6)} />
+      <FaqSection t={t} items={faqItems(t, "faq.home", 12)} />
       <CtaBand t={t} />
     </>
   );

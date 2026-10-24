@@ -60,3 +60,10 @@ export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@sri
 
 /** The trades a shop can pick at sign-up: the 15 business packs (@srirealtime/verticals). */
 export { BUSINESS_TYPES, PACKS } from "@srirealtime/verticals";
+
+/**
+ * Demo storefronts, e.g. "https://{slug}.srikit.in". Unset = no demo links are shown (never defaulted to localhost).
+ * Read at build/start time, so set it in .env.local / the deploy environment.
+ */
+export const DEMO_STORE_URL = (process.env.NEXT_PUBLIC_DEMO_STORE_URL || "").trim();
+export const demoStoreUrl = (slug: string): string | null => (DEMO_STORE_URL.includes("{slug}") ? DEMO_STORE_URL.replace("{slug}", slug) : null);

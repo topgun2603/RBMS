@@ -31,6 +31,8 @@ import { BUSINESS_TYPES, PACKS, SHOP_DOMAIN, type AppId } from "@/lib/site";
 import { GST_STATES, isGstinShape, slugShapeOk, slugify, stateLabel } from "@/lib/states";
 import { useSite } from "./site-context";
 import { OtpSignIn } from "./otp-sign-in";
+import { GoogleButton, useGoogleAvailable } from "./google-button";
+import { firebasePhoneMessage, isFirebaseError, signInWithGoogle } from "@srirealtime/web/firebase-phone";
 import { IntervalToggle } from "./interval-toggle";
 
 const STEPS = ["need", "signin", "shop", "plan", "create"] as const;
@@ -67,6 +69,9 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
   const [step, setStep] = React.useState<Step>("need");
   const [dir, setDir] = React.useState(1);
   const [user, setUser] = React.useState<User | null>(null);
+  const google = useGoogleAvailable();
+  const [googleBusy, setGoogleBusy] = React.useState(false);
+  const [googleError, setGoogleError] = React.useState<string | null>(null);
   const wantedTier = tierFromParam(initialPlan, Object.values(plans ?? {}).flat());
   const [draft, setDraft] = React.useState<Draft>(() => ({
     app: initialApp,
@@ -245,6 +250,30 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
               {step === "signin" && (
                 <div className="mx-auto max-w-md space-y-5">
                   <StepTitle title={t("otp.title")} sub={t("otp.sub")} />
+                  {googleError && (
+                    <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      {googleError}
+                    </p>
+                  )}
+                  {google && (
+                    <GoogleButton
+                      busy={googleBusy}
+                      testId="signup-google"
+                      onClick={async () => {
+                        setGoogleBusy(true);
+                        setGoogleError(null);
+                        try {
+                          const r = await api.firebaseSignIn(await signInWithGoogle({ locale }));
+                          setUser(r.user);
+                          go("shop");
+                        } catch (err) {
+                          setGoogleError(isFirebaseError(err) ? firebasePhoneMessage(err, locale) : errorMessage(err, t));
+                        } finally {
+                          setGoogleBusy(false);
+                        }
+                      }}
+                    />
+                  )}
                   <OtpSignIn
                     askName
                     onSignedIn={(r) => {

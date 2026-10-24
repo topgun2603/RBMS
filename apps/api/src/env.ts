@@ -40,6 +40,8 @@ export const envSchema = z.object({
    */
   TEST_OTP_CODE: optionalString(),
   TEST_OTP_TARGETS: optionalString(),
+  /** Shop slugs (comma-separated) that offer the read-only live demo, `POST /v1/auth/demo` (docs/demo-access.md). Unset = no demo sign-in. */
+  DEMO_SHOPS: optionalString(),
   GOOGLE_CLIENT_ID: optionalString(),
   /**
    * Firebase project id for phone sign-in (docs/firebase-auth.md): `POST /v1/auth/firebase` accepts its Phone

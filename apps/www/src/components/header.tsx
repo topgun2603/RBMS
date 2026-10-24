@@ -13,6 +13,8 @@ import { useSite } from "./site-context";
 import { Logo } from "./logo";
 
 const NAV = [
+  { href: "/industries", key: "nav.industries" },
+  { href: "/demo", key: "nav.demo" },
   { href: "/billing", key: "nav.billing" },
   { href: "/online-store", key: "nav.onlineStore" },
   { href: "/pricing", key: "nav.pricing" },
@@ -91,9 +93,9 @@ export function SiteHeader() {
           <Logo />
         </Link>
 
-        <nav className="ml-6 hidden items-center gap-1 lg:flex" aria-label={t("nav.products")}>
+        <nav className="ml-3 hidden items-center gap-0.5 xl:flex" aria-label={t("nav.products")}>
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className={cn("relative rounded-full px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-ring", active(n.href) ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            <Link key={n.href} href={n.href} className={cn("relative rounded-full px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-ring", active(n.href) ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
               {active(n.href) && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-full bg-accent" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
               <span className="relative">{t(n.key)}</span>
             </Link>
@@ -103,7 +105,7 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <LocaleSwitch className="hidden sm:inline-flex" />
           <ThemeToggle />
-          <Button asChild variant="ghost" className="hidden lg:inline-flex">
+          <Button asChild variant="ghost" className="hidden md:inline-flex">
             <Link href="/login">{t("nav.login")}</Link>
           </Button>
           <Button asChild className="group hidden rounded-full sm:inline-flex" data-testid="header-trial">
@@ -114,7 +116,7 @@ export function SiteHeader() {
           </Button>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full lg:hidden" aria-label={t("nav.menu")}>
+              <Button variant="ghost" size="icon" className="rounded-full xl:hidden" aria-label={t("nav.menu")}>
                 <MenuIcon className="size-5" />
               </Button>
             </SheetTrigger>
