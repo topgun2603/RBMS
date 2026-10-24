@@ -319,7 +319,10 @@ export type ManualOrderInput = z.input<typeof manualOrderSchema>;
 /** Storefront checkout. Line prices are never accepted from the client. */
 export const checkoutSchema = z.object({
   customer: customerSchema.extend({ phone }),
-  shippingAddress: addressSchema,
+  /** Required for delivery; a pickup (takeaway) order has none. */
+  shippingAddress: addressSchema.nullable().optional(),
+  /** "pickup": the shopper collects at the shop (no address; the order's carrier reads "Pickup"). */
+  fulfilment: z.enum(["delivery", "pickup"]).default("delivery"),
   billingAddress: addressSchema.nullable().optional(),
   lines: z.array(z.object({ variantId: z.string().uuid(), qty })).min(1).max(100),
   couponCode: opt(z.string().trim().max(64)),
@@ -336,7 +339,7 @@ export const checkoutSchema = z.object({
   /** Shop branch the order belongs to (the host passes the default branch for storefront orders). */
   branchId: opt(z.string().uuid()),
   loyaltyPoints: loyaltyPoints.optional(),
-});
+}).refine((b) => b.fulfilment === "pickup" || !!b.shippingAddress, { message: "Enter the delivery address", path: ["shippingAddress"] });
 export type CheckoutInput = z.input<typeof checkoutSchema>;
 
 export const statusInputSchema = z.object({
@@ -542,6 +545,8 @@ interface PlaceDraft {
   allowBackorder?: boolean;
   markPaid?: { method: OrderPaymentMethod; reference: string | null };
   createdBy: string | null;
+  /** Collected at the shop (a takeaway order): the fulfilment says so. */
+  pickup?: boolean;
 }
 
 interface EffectContext {
@@ -908,7 +913,8 @@ export class OrdersService {
     return this.place(tenantId, {
       channel: "store",
       customer: cleanCustomer(b.customer),
-      shippingAddress: cleanAddress(b.shippingAddress),
+      shippingAddress: b.fulfilment === "pickup" ? null : cleanAddress(b.shippingAddress ?? undefined),
+      pickup: b.fulfilment === "pickup",
       billingAddress: cleanAddress(b.billingAddress),
       requests: b.lines.map((l) => ({ variantId: l.variantId, qty: l.qty })),
       allowPriceOverride: false,
@@ -1066,7 +1072,7 @@ export class OrdersService {
         status: "placed",
         paymentStatus: derivePaymentStatus({ total: totals.total, paid, refunded: 0, paymentMethod: draft.paymentMethod }),
         paymentMethod: draft.paymentMethod,
-        fulfillment: {},
+        fulfillment: draft.pickup ? { carrier: "Pickup" } : {},
         stockState: "none",
         couponCode,
         invoiceId: null,

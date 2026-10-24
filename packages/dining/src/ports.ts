@@ -22,7 +22,7 @@ export interface BillResult {
 export interface BillingPort {
   createBill(
     tenant: TenantRef,
-    input: { lines: BillLine[]; customer: { name: string; phone: string | null } | null; notes: string | null; tillSessionId: string | null },
+    input: { lines: BillLine[]; customer: { name: string; phone: string | null; customerId?: string; dueDate?: string } | null; notes: string | null; tillSessionId: string | null },
     opts: { branchId: string | null },
   ): Promise<BillResult>;
 }

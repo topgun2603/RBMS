@@ -13,7 +13,7 @@ import { cardBadges, freshIds, hoverEffects } from "../lib/cards";
 import { gridClass, listClass, type GridColumns, type GridLayout } from "../lib/grid";
 import { isService, serviceAction, type ServiceAction } from "../lib/service-item";
 import type { Product, ProductSummary } from "../types";
-import { Price, Stars, StoreImage } from "../components/bits";
+import { FoodMark, Price, Stars, StoreImage } from "../components/bits";
 import { call, errorMessage } from "./api";
 import { useCardStock } from "./card-stock";
 import { CompareToggle } from "./compare";
@@ -283,6 +283,7 @@ export function ProductCardView({ product, rating, eager, fresh = false, classNa
           )}
         >
           <Link href={href} className="outline-none after:absolute after:inset-0 after:z-[1] after:rounded-[var(--sf-radius-card)] focus-visible:after:shadow-[var(--sf-focus)]">
+            <FoodMark diet={product.diet} t={t} />
             {product.name}
           </Link>
         </h3>
@@ -330,6 +331,7 @@ export function ProductRowView({ product, rating, eager, fresh = false }: { prod
         {product.categoryName && <p className="truncate text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{product.categoryName}</p>}
         <h3 className="line-clamp-2 text-sm leading-snug font-semibold sm:text-base">
           <Link href={href} className="outline-none after:absolute after:inset-0 after:z-[1] after:rounded-[var(--sf-radius-card)] focus-visible:after:shadow-[var(--sf-focus)]">
+            <FoodMark diet={product.diet} t={t} />
             {product.name}
           </Link>
         </h3>
@@ -390,7 +392,7 @@ interface GridProps {
 export function RevealProductGrid({ products, ratings, eagerCount = 0, layout = "full", columns, className }: GridProps) {
   const fresh = freshIds(products);
   return (
-    <RevealGroup as="ul" className={cn("grid", gridClass(layout, columns), className)} stagger={0.05}>
+    <RevealGroup as="ul" className={cn("sf-pgrid grid", gridClass(layout, columns), className)} stagger={0.05} data-cols={columns}>
       {products.map((p, i) => (
         <RevealItem as="li" key={p.id}>
           <ProductCardView product={p} rating={ratings?.[p.id]} eager={i < eagerCount} fresh={fresh.has(p.id)} />
@@ -410,7 +412,7 @@ export function LiveProductGrid({ products, ratings, eagerCount = 0, layout = "s
   const list = view === "list";
   return (
     <LayoutGroup>
-      <ul className={cn("grid", list ? listClass(layout) : gridClass(layout, columns), className)} data-testid="product-grid" data-view={view}>
+      <ul className={cn("sf-pgrid grid", list ? listClass(layout) : gridClass(layout, columns), className)} data-testid="product-grid" data-view={view} data-cols={columns}>
         <AnimatePresence initial={false} mode="popLayout">
           {products.map((p, i) => (
             <motion.li

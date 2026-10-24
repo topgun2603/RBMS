@@ -2,6 +2,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, ChevronDownIcon, ClockIcon, InstagramIcon, MapPinIcon, MessageCircleIcon, NavigationIcon, PhoneIcon, QuoteIcon, StarIcon } from "lucide-react";
 import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { osmEmbedUrl } from "../lib/map";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { Reveal } from "@srirealtime/ui/motion";
 import { Carousel } from "../client/carousel";
@@ -34,6 +35,8 @@ const TONE: Record<Exclude<NonNullable<SectionStyle["background"]>, "none">, str
 };
 const PAD_TONED = { compact: "py-[calc(var(--sf-section)*0.55)]", normal: "py-[calc(var(--sf-section)*0.9)]", spacious: "py-[calc(var(--sf-section)*1.45)]" } as const;
 const PAD_PLAIN = { compact: "-my-[calc(var(--sf-section)*0.3)]", normal: "", spacious: "py-[calc(var(--sf-section)*0.5)]" } as const;
+/** Compact on the page's first section: no gap above it to tighten, so only the gap below shrinks (not pulled under the header). */
+const PAD_PLAIN_FIRST = { ...PAD_PLAIN, compact: "-mb-[calc(var(--sf-section)*0.3)]" } as const;
 
 /**
  * Wraps one section in its style: a background band (brand, muted, dark, gradient, or a photo under a dark overlay),
@@ -41,7 +44,7 @@ const PAD_PLAIN = { compact: "-my-[calc(var(--sf-section)*0.3)]", normal: "", sp
  * style the section renders exactly as before. The animation uses <Reveal>, which never ships `opacity: 0` in the
  * server HTML (only sections below the fold are hidden, after hydration) and does nothing with reduced motion.
  */
-export function SectionFrame({ section, children }: { section: HomeSection; children: React.ReactNode }) {
+export function SectionFrame({ section, children, first = false }: { section: HomeSection; children: React.ReactNode; /** The page's first section (compact spacing then never pulls it up under the header). */ first?: boolean }) {
   const st = section.style;
   if (!hasStyle(st)) return <>{children}</>;
   const bg = st.background && st.background !== "none" && !(st.background === "image" && !st.imageUrl) ? st.background : null;
@@ -70,7 +73,7 @@ export function SectionFrame({ section, children }: { section: HomeSection; chil
       data-section={section.type}
       data-sf-align={st.align}
       data-sf-width={bg ? undefined : st.width}
-      className={cn("sf-sec", bg && "sf-unboxed", !bg && PAD_PLAIN[pad], st.hideOnMobile && "max-md:hidden", st.hideOnDesktop && "md:hidden")}
+      className={cn("sf-sec", bg && "sf-unboxed", !bg && (first ? PAD_PLAIN_FIRST : PAD_PLAIN)[pad], st.hideOnMobile && "max-md:hidden", st.hideOnDesktop && "md:hidden")}
     >
       {anim ? (
         <Reveal y={anim === "rise" ? 32 : 0} duration={anim === "rise" ? 0.7 : 0.6}>
@@ -400,7 +403,8 @@ export function TestimonialsSection({ s, t }: { s: HomeSectionOf<"testimonials">
         <QuoteIcon className="size-8 text-primary/35" aria-hidden />
         {it.rating ? <StarsRow n={it.rating} t={t} /> : null}
       </div>
-      <blockquote className="mt-4 flex-1 font-display text-lg leading-relaxed text-card-foreground/90">“{it.quote}”</blockquote>
+      {/* Quotes in the body font: display faces (Cinzel and other all-caps faces) turn long quotes into shouting. */}
+      <blockquote className="mt-4 flex-1 font-sans text-lg leading-relaxed text-card-foreground/90">“{it.quote}”</blockquote>
       <figcaption className="mt-6 flex items-center gap-3 border-t pt-4">
         <Avatar name={it.name} photoUrl={it.photoUrl} size="size-10" />
         <span className="min-w-0">
@@ -484,13 +488,14 @@ export function LocationSection({ s, t, config }: { s: HomeSectionOf<"location">
   if (!s.address && !phone && !whatsapp && !pin) return null;
   const query = pin ? `${pin.lat},${pin.lng}` : `${config.shop.name} ${s.address ?? ""}`.trim();
   const directions = (s.mapLink && safeHref(s.mapLink)) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-  const d = 0.006;
-  const map = pin ? `https://www.openstreetmap.org/export/embed.html?bbox=${pin.lng - d}%2C${pin.lat - d}%2C${pin.lng + d}%2C${pin.lat + d}&layer=mapnik&marker=${pin.lat}%2C${pin.lng}` : null;
+
+  const map = osmEmbedUrl(pin);
   const wa = whatsapp.replace(/\D/g, "");
   return (
     <Container>
       <Heading title={s.title} center={centered(s)} />
-      <div className="grid overflow-hidden rounded-[var(--sf-radius-card)] bg-card text-card-foreground shadow-card ring-1 ring-border md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      {/* In a half-width row (.sf-pair, styles.css) the map stacks under the details. */}
+      <div className="sf-location grid overflow-hidden rounded-[var(--sf-radius-card)] bg-card text-card-foreground shadow-card ring-1 ring-border md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <div className="flex flex-col gap-6 p-6 sm:p-8">
           {s.address && (
             <div className="flex gap-3">
@@ -544,7 +549,7 @@ export function LocationSection({ s, t, config }: { s: HomeSectionOf<"location">
               <span aria-hidden className="absolute inset-0 flex items-center justify-center bg-tint-2 text-primary">
                 <MapPinIcon className="size-10 animate-bounce motion-reduce:animate-none" />
               </span>
-              <iframe title={t("sections.mapTitle", { name: config.shop.name })} src={map} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" className="absolute inset-0 size-full border-0" />
+              <iframe title={t("sections.mapTitle", { name: config.shop.name })} src={map} loading="eager" referrerPolicy="strict-origin-when-cross-origin" className="absolute inset-0 size-full border-0" />
               {/* Always a way out to a full map app (and the fallback when the embed is blocked). */}
               <a
                 href={directions}

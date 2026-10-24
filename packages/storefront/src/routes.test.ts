@@ -25,6 +25,7 @@ function stubService() {
     getBundle: vi.fn(ok),
     mergeCart: vi.fn(ok),
     track: vi.fn(ok),
+    publicAvailability: vi.fn(ok),
     checkout: vi.fn(ok),
     me: vi.fn(ok),
     updateMe: vi.fn(ok),
@@ -85,6 +86,7 @@ const PUBLIC: Inject[] = [
   { method: "GET", url: `/v1/store/promotions?productId=${ID}` },
   { method: "GET", url: "/v1/store/bundles?limit=4" },
   { method: "GET", url: "/v1/store/bundles/pooja-combo" },
+  { method: "GET", url: `/v1/store/availability?itemIds=${ID}` },
 ];
 
 const SHOPPER: Inject[] = [

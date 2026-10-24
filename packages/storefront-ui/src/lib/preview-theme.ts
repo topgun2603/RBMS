@@ -1,4 +1,4 @@
-import { DEFAULT_STORE_THEME, themeDataAttributes } from "@srirealtime/branding/theme";
+import { DEFAULT_STORE_THEME, layoutDataAttributes, themeDataAttributes } from "@srirealtime/branding/theme";
 import { brandTokensSchema, toCssText, type BrandTokens } from "@srirealtime/branding/tokens";
 
 /*
@@ -60,6 +60,6 @@ export function previewThemeFrom(input: unknown): PreviewTheme | null {
   const tokens = parsePreviewTokens(input);
   if (!tokens) return null;
   const patch = configPatchFor(tokens);
-  const attributes = themeDataAttributes({ ...DEFAULT_STORE_THEME, ...(tokens.theme ?? {}) });
+  const attributes = { ...themeDataAttributes({ ...DEFAULT_STORE_THEME, ...(tokens.theme ?? {}) }), ...layoutDataAttributes(tokens.theme) };
   return { tokens, css: storeCssText(patch.css), attributes, fontsHref: fontsHrefFor(patch.fonts), fonts: patch.fonts };
 }

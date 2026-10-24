@@ -20,7 +20,7 @@ const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-
  * tracking (`/jobcards/public/*`).
  */
 const ALLOWED =
-  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|serials\/public|features(?=$))(\/|$|\?)/;
+  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest|config|handoff\/redeem)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|serials\/public|features(?=$))(\/|$|\?)/;
 
 /** Pure: may the browser reach this API path (`/v1/...`, without the query) through the store proxy? */
 export function isProxyAllowed(path: string, method = "GET"): boolean {
@@ -28,6 +28,27 @@ export function isProxyAllowed(path: string, method = "GET"): boolean {
   // The feature list and the seller pages/cards are read-only.
   if ((path === "/v1/features" || path.startsWith("/v1/marketplace/")) && method.toUpperCase() !== "GET") return false;
   return true;
+}
+
+/**
+ * How many times a request is retried when the API can't be reached (connection refused / reset: the API restarting
+ * or a pooled connection closed under load). Reads (GET / HEAD: availability, cards, search) twice; writes never, since
+ * the API may already have done them (a failed analytics beacon is answered 204 instead, see proxyHandler).
+ */
+export function proxyRetries(method: string): number {
+  const m = method.toUpperCase();
+  return m === "GET" || m === "HEAD" ? 2 : 0;
+}
+
+async function fetchWithRetry(input: string, init: RequestInit, retries: number): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      if (attempt >= retries || init.signal?.aborted) throw err;
+      await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+    }
+  }
 }
 
 export async function proxyHandler(req: Request): Promise<Response> {
@@ -49,8 +70,10 @@ export async function proxyHandler(req: Request): Promise<Response> {
   const body = method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();
   let res: Response;
   try {
-    res = await fetch(`${API_ORIGIN}${path}${url.search}`, { method, headers, body, cache: "no-store", redirect: "manual", signal: req.signal });
+    res = await fetchWithRetry(`${API_ORIGIN}${path}${url.search}`, { method, headers, body, cache: "no-store", redirect: "manual", signal: req.signal }, proxyRetries(method));
   } catch {
+    // Page-view / event beacons are best effort: a busy or restarting API never shows up as a failed request.
+    if (path.startsWith("/v1/analytics/public/")) return new Response(null, { status: 204 });
     return Response.json({ error: { code: "network_error", message: "Store API unreachable" } }, { status: 502 });
   }
   const out = new Headers();

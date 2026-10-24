@@ -1,16 +1,16 @@
 import { categoryKinds, type ListKind } from "../lib/service-item";
-import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRightIcon } from "lucide-react";
 import { organizationJsonLd, STORE_PATHS, websiteSearchJsonLd } from "@srirealtime/cms/seo";
-import { apiGetSafe, getRequestInfo, requireStore } from "../server/api";
+import { apiGetFresh, apiGetSafe, getRequestInfo, requireStore } from "../server/api";
 import { getRatings } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { Markdown, safeHref } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
-import type { CollectionPage, HomeSection, List, PostSummary, ProductSummary, PublicHome, PublicMetalRates, Rating, Recommendations, SearchResult, ShopReviewSummary, StoreConfig } from "../types";
+import { localizeSections } from "@srirealtime/cms/localize";
+import type { CollectionPage, HomeSection, List, PostSummary, Product, ProductSummary, PublicHome, PublicMetalRates, Rating, Recommendations, SearchResult, ShopReviewSummary, StoreConfig } from "../types";
 import { Reveal } from "@srirealtime/ui/motion";
 import { percentOff } from "../lib/format";
 import { freshIds } from "../lib/cards";
@@ -20,6 +20,8 @@ import { TrustBadges } from "../components/trust";
 import { Carousel, HeroSlider } from "../client/carousel";
 import { RecentlyViewedStrip } from "../client/recently-viewed";
 import { ExpiryGate } from "../client/home-sections";
+import { WindowGate } from "../client/home-layouts";
+import { CategoryShelfSection, ComparisonSection, FinderSection, FlashSaleSection, flashSaleOutside, SizeFinderSection, StickyStorySection, StoriesSection, SwatchesSection, TilesSection } from "./home-layouts";
 import {
   AppointmentSection,
   BeforeAfterSection,
@@ -58,7 +60,8 @@ import {
   type ShelfData,
 } from "./home-shelves";
 
-export const getHome = () => apiGetSafe<PublicHome>("/cms/public/home", { sections: [], seo: null, isDefault: true, publishedAt: null }, { revalidate: 60 });
+// An empty home is re-checked uncached (apiGetFresh): a failed or stale-empty answer never sticks for a minute.
+export const getHome = () => apiGetFresh<PublicHome>("/cms/public/home", { sections: [], seo: null, isDefault: true, publishedAt: null }, (h) => !h.sections?.length, { revalidate: 60 });
 
 export async function homeMetadata(): Promise<Metadata> {
   const home = await getHome();
@@ -105,6 +108,43 @@ async function loadShelves(sections: HomeSection[], t: Translator): Promise<Map<
         case "bestsellers":
           out.set(i, { products: await recs("bestsellers", s.limit) });
           return;
+        case "flash-sale":
+          // Picked / collection products come resolved; "biggest discounts" are fresh on every revalidation.
+          if (s.source === "sale") out.set(i, { products: (await recs("sale", s.limit)).filter((p) => percentOff(p.priceMin, p.mrp) > 0) });
+          return;
+        case "category-shelf": {
+          const shelves = await Promise.all(
+            s.categories.map(async (c) => {
+              const r = await apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 120, query: { categoryId: c.id, limit: s.limit } });
+              return { categoryId: c.id, items: r?.items ?? [] };
+            }),
+          );
+          out.set(i, { shelves });
+          return;
+        }
+        case "swatches": {
+          // The shades are the products' variants: their details, once per product (cached like the product page).
+          const details = await Promise.all(s.products.map((p) => apiGetSafe<Product | null>(`/catalog/public/products/${encodeURIComponent(p.slug)}`, null, { revalidate: 60 })));
+          out.set(i, { details: new Map(details.filter((d): d is Product => !!d).map((d) => [d.id, d])) });
+          return;
+        }
+        case "tiles": {
+          if (!s.showCounts) return;
+          // How many products each tile leads to: its collection's, else its tag's (unknown for a plain link).
+          const counts = await Promise.all(
+            s.items.map(async (it) => {
+              if (it.collectionSlug) {
+                // 0 / no answer is re-checked uncached (apiGetFresh), so an empty count never sticks for five minutes.
+                const c = await apiGetFresh<CollectionPage | null>(`/catalog/public/collections/${encodeURIComponent(it.collectionSlug)}`, null, (v) => !v?.total, { revalidate: 300, query: { limit: 1 } });
+                return c?.total ?? null;
+              }
+              if (it.tag) return (await apiGetFresh<SearchResult | null>("/catalog/public/search", null, (v) => !v?.total, { revalidate: 300, query: { tag: it.tag, limit: 1 } }))?.total ?? null;
+              return null;
+            }),
+          );
+          out.set(i, { counts });
+          return;
+        }
         case "recommended":
           out.set(i, { products: await recs("home", s.limit) });
           return;
@@ -133,7 +173,7 @@ async function loadShelves(sections: HomeSection[], t: Translator): Promise<Map<
 async function categoryCounts(sections: HomeSection[]): Promise<CategoryCounts | undefined> {
   if (!sections.some((s) => s.type === "categories" && s.showCounts)) return undefined;
   const [r, sample] = await Promise.all([
-    apiGetSafe<SearchResult | null>("/catalog/public/search", null, { revalidate: 300, query: { limit: 1 } }),
+    apiGetFresh<SearchResult | null>("/catalog/public/search", null, (v) => !v?.facets?.categories?.length, { revalidate: 300, query: { limit: 1 } }),
     // What each category holds (products, services or both) for "8 services" / "12 items": the first 100 items.
     apiGetSafe<List<ProductSummary>>("/catalog/public/products", { items: [], total: 0 }, { revalidate: 300, query: { limit: 100 } }),
   ]);
@@ -152,13 +192,34 @@ function productIdsOf(s: HomeSection, d: ShelfData | undefined): string[] {
   if (s.type === "collection" || s.type === "products") return s.products.map((p) => p.id);
   if (s.type === "deal") return [s.product.id];
   if (s.type === "shop-the-look") return s.hotspots.map((h) => h.product.id);
+  if (s.type === "comparison") return s.products.map((p) => p.id);
+  if (s.type === "flash-sale") return [...s.products, ...(d?.products ?? [])].map((p) => p.id);
+  if (s.type === "category-shelf") return (d?.shelves ?? []).flatMap((x) => x.items.map((p) => p.id));
   return [...(d?.products ?? []), ...(d?.tabs ?? []).flatMap((x) => x.items)].map((p) => p.id);
+}
+
+/**
+ * Rows of the home page: two neighbouring sections with `style.span: "half"` share a row (side by side from 1024px);
+ * any other section, or a half one without a half neighbour, takes the whole row.
+ */
+export function pairHalves<S extends { style?: { span?: string } }>(sections: readonly S[]): { s: S; i: number }[][] {
+  const rows: { s: S; i: number }[][] = [];
+  for (let i = 0; i < sections.length; i++) {
+    const s = sections[i]!;
+    const next = sections[i + 1];
+    if (s.style?.span === "half" && next?.style?.span === "half") {
+      rows.push([{ s, i }, { s: next, i: i + 1 }]);
+      i++;
+    } else rows.push([{ s, i }]);
+  }
+  return rows;
 }
 
 export async function HomePage() {
   const [info, config, home] = await Promise.all([getRequestInfo(), requireStore(), getHome()]);
   const now = Date.now();
-  const sections = home.sections.filter((s) => !offerEnded(s, now));
+  // The shop's own words in the shopper's language (Tamil) where the home has them.
+  const sections = localizeSections(home.sections, home.translations, info.locale).filter((s) => !offerEnded(s, now) && !flashSaleOutside(s, now));
   const [shelves, counts] = await Promise.all([loadShelves(sections, info.t), categoryCounts(sections)]);
   const ids = sections.flatMap((s, i) => productIdsOf(s, shelves.get(i)));
   const [ratings, rates] = await Promise.all([getRatings(ids), sections.some((s) => s.type === "gold-rates") ? getMetalRates() : Promise.resolve(null)]);
@@ -177,31 +238,47 @@ export async function HomePage() {
       />
       {!heroHeading && <h1 className="sr-only">{config.shop.name}</h1>}
       <div className="sf-home flex flex-col gap-[var(--sf-section)] pb-4">
-        {sections.map((s, i) => (
-          // `display: contents` keeps the flex gaps; the id lets the live preview select, outline and scroll to it; the
-          // type lets styles.css drop the footer signup when the page has its own newsletter section.
-          <div key={s.id ?? i} data-section-id={s.id} data-section-type={s.type} className="contents">
-            {s.type === "offer" || s.type === "deal" ? (
-              <ExpiryGate endsAt={s.endsAt}>
-                <SectionFrame section={s}>
-                  <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} locale={info.locale} />
+        {pairHalves(sections).map((row) => {
+          const one = (s: HomeSection, i: number, half: boolean) => (
+            // `display: contents` keeps the flex gaps; the id lets the live preview select, outline and scroll to it; the
+            // type lets styles.css drop the footer signup when the page has its own newsletter section. Half sections
+            // are real boxes in a two-column row (styles.css `.sf-pair`).
+            <div key={s.id ?? i} data-section-id={s.id} data-section-type={s.type} className={half ? "sf-half min-w-0" : "contents"}>
+              {s.type === "flash-sale" ? (
+                <WindowGate startsAt={s.startsAt} endsAt={s.endsAt} daily={s.daily}>
+                  <SectionFrame section={s} first={i === 0}>
+                    <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} locale={info.locale} data={shelves.get(i)} />
+                  </SectionFrame>
+                </WindowGate>
+              ) : s.type === "offer" || s.type === "deal" ? (
+                <ExpiryGate endsAt={s.endsAt}>
+                  <SectionFrame section={s} first={i === 0}>
+                    <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} locale={info.locale} />
+                  </SectionFrame>
+                </ExpiryGate>
+              ) : (
+                <SectionFrame section={s} first={i === 0}>
+                  <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} rates={rates} locale={info.locale} data={shelves.get(i)} counts={counts?.counts} kinds={counts?.kinds} />
                 </SectionFrame>
-              </ExpiryGate>
-            ) : (
-              <SectionFrame section={s}>
-                <HomeSectionView section={s} index={i} t={t} ratings={ratings} config={config} rates={rates} locale={info.locale} data={shelves.get(i)} counts={counts?.counts} kinds={counts?.kinds} />
-              </SectionFrame>
-            )}
-            {/* Trust row right under the hero, unless the shop has its own "Why shop with us" (usp) section. */}
-            {i === 0 && HERO_TYPES.has(s.type) && !hasUsp && (
-              <Container className="sf-unboxed -mt-[calc(var(--sf-section)*0.55)]">
-                <Reveal>
-                  <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />
-                </Reveal>
-              </Container>
-            )}
-          </div>
-        ))}
+              )}
+              {/* Trust row right under the hero, unless the shop has its own "Why shop with us" (usp) section. */}
+              {i === 0 && HERO_TYPES.has(s.type) && !hasUsp && (
+                <Container className="sf-unboxed -mt-[calc(var(--sf-section)*0.55)]">
+                  <Reveal>
+                    <TrustBadges t={t} config={config} locale={info.locale} compact />
+                  </Reveal>
+                </Container>
+              )}
+            </div>
+          );
+          if (row.length === 2)
+            return (
+              <div key={`pair-${row[0]!.s.id ?? row[0]!.i}`} className="sf-pair mx-auto grid w-full max-w-7xl items-start gap-y-[var(--sf-section)] lg:grid-cols-2" data-testid="section-pair">
+                {row.map(({ s, i }) => one(s, i, true))}
+              </div>
+            );
+          return one(row[0]!.s, row[0]!.i, false);
+        })}
         {/* Renders nothing (no gap) until the shopper has history; a recently-viewed section takes its place. */}
         {!sections.some((s) => s.type === "recently-viewed") && <RecentlyViewedStrip className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8" />}
       </div>
@@ -319,7 +396,8 @@ export function HomeSectionView({
             <div className="group aspect-[4/3] overflow-hidden md:aspect-auto md:h-full md:min-h-[400px]">
               <StoreImage src={s.imageUrl} alt={s.heading} className="transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none" />
             </div>
-            <div className="px-6 pb-8 md:px-0 md:py-12 md:pe-12">
+            {/* Pad the text's outer edge (the image side bleeds to the card edge, the gap covers the inner side). */}
+            <div className={`sf-image-text-copy px-6 pb-8 md:py-12 ${s.imageSide === "right" ? "md:ps-12 md:pe-0" : "md:ps-0 md:pe-12"}`}>
               <h2 className="sf-heading font-display text-h2 font-semibold">{s.heading}</h2>
               <Markdown source={s.markdown} className="mt-4 text-foreground/80" />
               {s.cta && (
@@ -392,5 +470,23 @@ export function HomeSectionView({
       return <BlogPostsSection s={s} t={t} posts={data?.posts ?? []} locale={locale} />;
     case "reviews-summary":
       return <ReviewsSummarySection s={s} t={t} data={data?.reviews} locale={locale} />;
+    case "flash-sale":
+      return <FlashSaleSection s={s} t={t} products={s.source === "sale" ? (data?.products ?? []) : s.products} ratings={ratings} index={index} locale={locale} />;
+    case "finder":
+      return <FinderSection s={s} t={t} index={index} />;
+    case "stories":
+      return <StoriesSection s={s} t={t} />;
+    case "category-shelf":
+      return <CategoryShelfSection s={s} t={t} shelves={data?.shelves ?? []} ratings={ratings} index={index} />;
+    case "sticky-story":
+      return <StickyStorySection s={s} index={index} />;
+    case "comparison":
+      return <ComparisonSection s={s} t={t} ratings={ratings} />;
+    case "tiles":
+      return <TilesSection s={s} t={t} counts={data?.counts} />;
+    case "size-finder":
+      return <SizeFinderSection s={s} t={t} index={index} />;
+    case "swatches":
+      return <SwatchesSection s={s} t={t} details={data?.details} index={index} />;
   }
 }

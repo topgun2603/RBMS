@@ -22,7 +22,8 @@
     --sf-gutter: clamp(1rem, 0.6rem + 1.6vw, 2rem);
 
     /* Radii for retail surfaces (cards follow the tenant --radius). */
-    --sf-radius-card: calc(var(--radius) + 0.5rem);
+    /* A square theme (--radius: 0) keeps square cards; any other radius gets the +0.5rem softening. */
+    --sf-radius-card: calc(var(--radius) + clamp(0rem, var(--radius) * 100, 0.5rem));
     --sf-radius-pill: 9999px;
 
     /* Brand-derived tints + gradients. */
@@ -361,13 +362,35 @@ html {
 
 /* Button shape: rounded · pill · square. Text buttons only (icon buttons keep their circles). */
 .sf-root .sf-btn,
-.sf-root [data-slot="button"].rounded-full:not([class*="size-"]) {
+.sf-root [data-slot="button"].rounded-full:not([class^="size-"]):not([class*=" size-"]),
+.sf-root :is(a, button, input).rounded-full:is([class*=" px-5"], [class*=" px-6"], [class*=" px-7"]) {
   border-radius: var(--sf-button-radius, 9999px);
 }
+/*
+ * The shadcn Button's own classes contain "size-" (`[&_svg:not([class*='size-'])]:size-4`), so the old
+ * `:not([class*="size-"])` skipped every Button (add to cart, buy now). Icon buttons are told apart by a `size-*`
+ * class token instead. Wide-padded pill links / inputs (image-text CTA, newsletter, empty states) are text buttons too.
+ */
 
 /* Brand gradient: the warm festive blend belongs to the kolam (heritage) look; other themes use their own colour. */
 .sf-root:not([data-sf-motif="kolam"]) {
   --sf-gradient: linear-gradient(120deg, color-mix(in oklch, var(--primary) 86%, black) 0%, var(--primary) 100%);
+}
+/*
+ * Text sits on the brand gradient in --primary-foreground (announcement bar, flash sale band, countdowns, brand
+ * heroes). --primary-foreground is chosen for --primary (≥ 4.5:1), so the gradient only moves away from it: darker
+ * under white text, lighter under dark text (the lightened brand of a derived dark scheme), never towards it — so
+ * every stop keeps at least the primary's own contrast, in both schemes, for every preset. (Without relative colours
+ * the gradients above stay.)
+ */
+@supports (color: oklch(from red l c h)) {
+  .sf-root {
+    --sf-away: oklch(from var(--primary-foreground) clamp(0, (0.5 - l) * 1000, 1) 0 0);
+    --sf-gradient: linear-gradient(120deg, color-mix(in oklch, var(--primary) 80%, var(--sf-away)) 0%, var(--primary) 55%, color-mix(in oklch, var(--primary) 90%, var(--sf-away)) 100%);
+  }
+  .sf-root:not([data-sf-motif="kolam"]) {
+    --sf-gradient: linear-gradient(120deg, color-mix(in oklch, var(--primary) 86%, var(--sf-away)) 0%, var(--primary) 100%);
+  }
 }
 
 /* Motifs on brand blocks (hero without a photo, newsletter, testimonials). */
@@ -396,6 +419,24 @@ html {
     linear-gradient(135deg, color-mix(in oklch, var(--primary) 70%, black) 0%, var(--primary) 100%);
   background-size: 32px 32px, 32px 32px, auto;
 }
+/* Hazard stripes (industrial): dark diagonal bands over the brand colour, like site tape. */
+.sf-root[data-sf-motif="stripes"] .sf-brand-hero {
+  background-image:
+    repeating-linear-gradient(-45deg, rgb(0 0 0 / 0.16) 0 18px, transparent 18px 36px),
+    linear-gradient(135deg, color-mix(in oklch, var(--primary) 82%, black) 0%, var(--primary) 100%);
+  background-size: auto, auto;
+}
+/* Sweet-box lace (mithai): scalloped top and bottom edges and a dotted lattice in the accent colour (saffron). */
+.sf-root[data-sf-motif="scallop"] .sf-brand-hero {
+  background-image:
+    radial-gradient(circle at 50% 0, color-mix(in oklch, var(--accent) 85%, transparent) 9px, transparent 9.5px),
+    radial-gradient(circle at 50% 100%, color-mix(in oklch, var(--accent) 85%, transparent) 9px, transparent 9.5px),
+    radial-gradient(circle, color-mix(in oklch, var(--accent) 26%, transparent) 1.6px, transparent 1.8px),
+    linear-gradient(150deg, color-mix(in oklch, var(--primary) 80%, black) 0%, var(--primary) 100%);
+  background-size: 26px 13px, 26px 13px, 18px 18px, auto;
+  background-position: 0 0, 0 100%, 0 0, 0 0;
+  background-repeat: repeat-x, repeat-x, repeat, no-repeat;
+}
 .sf-root:not([data-sf-motif="kolam"]) .sf-brand-hero::after {
   display: none;
 }
@@ -414,12 +455,133 @@ html {
   background-image: linear-gradient(rgb(0 0 0 / 0.04) 1px, transparent 1px), linear-gradient(90deg, rgb(0 0 0 / 0.04) 1px, transparent 1px);
   background-size: 28px 28px;
 }
+.sf-root[data-sf-motif="stripes"] .kolam {
+  background-image: repeating-linear-gradient(-45deg, color-mix(in oklch, var(--primary) 9%, transparent) 0 10px, transparent 10px 28px);
+  background-size: auto;
+}
+.sf-root[data-sf-motif="scallop"] .kolam {
+  background-image:
+    radial-gradient(circle at 50% 0, color-mix(in oklch, var(--primary) 10%, transparent) 7px, transparent 7.5px),
+    radial-gradient(circle, color-mix(in oklch, var(--primary) 7%, transparent) 1.3px, transparent 1.5px);
+  background-size: 20px 10px, 16px 16px;
+  background-repeat: repeat-x, repeat;
+}
+
+/*
+ * Trust badges (components/trust.tsx), laid out by the width they get (container queries on .sf-trust-box): all in one
+ * row when there is room (under the hero, the footer), two per row in a narrow buy column (rail / sidebar page layouts)
+ * or on a phone, one per row when even two don't fit. Never four cells too narrow for "Secure payments". Compact = icon
+ * + title (product page, under the hero); full = with a line of text (footer). Tamil words are longer: wider steps.
+ */
+.sf-trust-box {
+  container-type: inline-size;
+}
+.sf-trust {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@container (min-width: 19rem) {
+  .sf-trust[data-compact] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (min-width: 21rem) {
+  .sf-trust:not([data-compact]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (min-width: 40rem) {
+  .sf-trust {
+    gap: 0.75rem;
+  }
+  .sf-trust[data-compact] {
+    gap: 0.5rem;
+    grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+  }
+}
+@container (min-width: 50rem) {
+  .sf-trust:not([data-compact]) {
+    grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+  }
+}
+/* Tamil: two per row only from 20rem (compact) / 30rem (full), all in a row from 48rem / 60rem. */
+@container (max-width: 19.99rem) {
+  html:lang(ta) .sf-trust[data-compact] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container (max-width: 29.99rem) {
+  html:lang(ta) .sf-trust:not([data-compact]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container (min-width: 40rem) and (max-width: 47.99rem) {
+  html:lang(ta) .sf-trust[data-compact] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (min-width: 50rem) and (max-width: 59.99rem) {
+  html:lang(ta) .sf-trust:not([data-compact]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Half-width rows (`.sf-pair`, two sections side by side from 1024 px): sections built for the full width adapt instead
+ * of cramping. Deal: picture over the text, compact countdown. Location: the map under the details. Shop the look:
+ * the product list under the photo, two per row.
+ */
+@media (min-width: 1024px) {
+  .sf-pair .sf-deal {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+  .sf-pair .sf-deal-media > span:first-child {
+    aspect-ratio: 16 / 10;
+    height: auto;
+    min-height: 0;
+  }
+  .sf-pair .sf-deal-body {
+    padding: 0 1.5rem 2rem;
+  }
+  .sf-pair .sf-countdown {
+    gap: 0.375rem;
+  }
+  .sf-pair .sf-countdown > [aria-hidden] {
+    min-width: 3rem;
+    padding-inline: 0.375rem;
+  }
+  .sf-pair .sf-countdown > [aria-hidden] > :first-child {
+    font-size: 1.5rem;
+  }
+  .sf-pair .sf-countdown > [aria-hidden] > :last-child {
+    letter-spacing: 0.04em;
+  }
+  .sf-pair .sf-location {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sf-pair .sf-location > :last-child {
+    min-height: 240px;
+  }
+  .sf-pair .sf-look {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+  .sf-pair .sf-look ol {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+}
 
 /* Section headings: display (default) · uppercase (small, tracked, sans) · underline (accent bar). */
 .sf-root[data-sf-headings="uppercase"] :is(.sf-heading, .sf-hero-title) {
   font-family: var(--font-heading);
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+/* Tamil has no capitals, and tracking pulls its letter clusters apart: no letter-spacing in Tamil. */
+html:lang(ta) .sf-root[data-sf-headings="uppercase"] :is(.sf-heading, .sf-hero-title) {
+  letter-spacing: normal;
 }
 .sf-root[data-sf-headings="uppercase"] .sf-heading {
   font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
@@ -434,6 +596,25 @@ html {
   margin-top: 0.5rem;
   border-radius: 9999px;
   background: var(--primary);
+}
+/* The bar sits under the middle of a centred heading (section alignment "center", centred blocks), at the start otherwise. */
+.sf-root[data-sf-headings="underline"] :is(.text-center, .sf-sec[data-sf-align="center"]) .sf-heading::after,
+.sf-root[data-sf-headings="underline"] .sf-heading.text-center::after {
+  margin-inline: auto;
+}
+.sf-root[data-sf-headings="underline"] .sf-sec[data-sf-align="start"] .text-center:not(.sf-keep-center) .sf-heading::after,
+.sf-root[data-sf-headings="underline"] .text-center :is(.text-start, .text-left) .sf-heading::after {
+  margin-inline: 0;
+}
+
+/*
+ * Display headings never widen the page: a long Tamil word (or a long English one in a narrow column) wraps inside
+ * its box instead of setting the min-content width of the hero, the half-width row or the phone page. `anywhere`
+ * (not `break-word`) also lowers the min-content size, so flex / grid parents can shrink them.
+ */
+.sf-root :is(.sf-hero-title, .sf-heading, .text-display, .text-h1, .text-h2, .text-h3) {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /* Section style: plain · tinted (every other section on a full-width brand tint) · boxed (sections as cards). */
@@ -473,6 +654,31 @@ html {
 }
 .sf-root[data-sf-header="bold"] .sf-header :is(nav a, nav button):not(.sf-pop *):hover {
   background: color-mix(in oklch, var(--primary-foreground) 14%, transparent);
+}
+/*
+ * Search on a brand-coloured bar: the field takes the bar's own text colour (primary-foreground, which the tokens keep
+ * readable on primary), so the placeholder and icon read on any brand colour (it was muted grey on e.g. hi-vis
+ * yellow). Focused, it turns back into a normal card-coloured field.
+ */
+.sf-root[data-sf-header="bold"] .sf-header:not([data-clear]) form[role="search"]:not(.sf-pop *) input {
+  border-color: color-mix(in oklch, var(--primary-foreground) 40%, transparent);
+  background: color-mix(in oklch, var(--primary-foreground) 10%, var(--primary));
+  color: var(--primary-foreground);
+}
+.sf-root[data-sf-header="bold"] .sf-header:not([data-clear]) form[role="search"]:not(.sf-pop *) input::placeholder,
+.sf-root[data-sf-header="bold"] .sf-header:not([data-clear]) form[role="search"]:not(.sf-pop *) > svg {
+  color: color-mix(in oklch, var(--primary-foreground) 82%, var(--primary));
+  opacity: 1;
+}
+.sf-root[data-sf-header="bold"] .sf-header:not([data-clear]) form[role="search"]:not(.sf-pop *) input:focus {
+  background: var(--card);
+  color: var(--card-foreground);
+}
+.sf-root[data-sf-header="bold"] .sf-header:not([data-clear]) form[role="search"]:not(.sf-pop *) input:focus::placeholder {
+  color: var(--muted-foreground);
+}
+.sf-root[data-sf-header="bold"] .sf-header:not([data-clear]) form[role="search"]:not(.sf-pop *):focus-within > svg {
+  color: var(--muted-foreground);
 }
 
 /*
@@ -728,5 +934,164 @@ html {
   .group\/card:focus-within .sf-compare-chip,
   .sf-compare-chip:focus-visible {
     opacity: 1;
+  }
+}
+
+/* Card buttons under the picture (cardButton "always"): long labels (Tamil "Choose options") wrap inside the button
+   instead of spilling out of its fixed height on narrow cards. */
+.sf-root [data-testid="quick-add"] {
+  height: auto;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.5rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+/* Product details as tabs: the tab row wraps. A scrolling row still widens the buy column to its full length, which
+   pushed the whole product page sideways with the long Tamil tab titles. */
+.sf-root [data-details="tabs"] [data-slot="tabs-list"] {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+/* Tamil display headings: the stacked vowel signs need more leading than Latin (1.02 made 3-line hero headings touch),
+   and the long words read better a step smaller. */
+html:lang(ta) .sf-root .text-display {
+  font-size: calc(var(--sf-text-display) * 0.86);
+  line-height: 1.24;
+}
+html:lang(ta) .sf-root .text-h1 {
+  line-height: 1.3;
+}
+html:lang(ta) .sf-root .text-h2 {
+  line-height: 1.32;
+}
+
+/* ------------------------------------------------------------------ layouts
+ * Half sections, the sticky story, the page layouts (theme `pageLayout`: rail / sidebar / magazine) and the phone tab
+ * bar (`mobileNav: tabs`). Markup: pages/home.tsx (pairs), pages/home-layouts.tsx, client/page-shell.tsx.
+ */
+
+/* Sticky story: the chapter in the middle of the screen shows its picture (client StickyStoryWatch sets data-active). */
+.sf-sticky-story [data-story-img] {
+  opacity: 0;
+}
+.sf-sticky-story:is([data-active="0"]) [data-story-img="0"],
+.sf-sticky-story[data-active="1"] [data-story-img="1"],
+.sf-sticky-story[data-active="2"] [data-story-img="2"],
+.sf-sticky-story[data-active="3"] [data-story-img="3"],
+.sf-sticky-story[data-active="4"] [data-story-img="4"],
+.sf-sticky-story[data-active="5"] [data-story-img="5"] {
+  opacity: 1;
+}
+
+/* Rail: the category rail beside the page (desktop); the page column keeps its own container padding. */
+@media (min-width: 64rem) {
+  .sf-root[data-sf-page-layout="rail"] .sf-shell {
+    display: flex;
+    align-items: flex-start;
+    max-width: 100rem;
+    margin-inline: auto;
+  }
+  .sf-root[data-sf-page-layout="rail"] .sf-rail {
+    align-self: stretch;
+    border-inline-end: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  }
+}
+
+/* Sidebar: the header becomes the fixed vertical menu on desktop (client SideNav); the page moves over. */
+@media (min-width: 64rem) {
+  .sf-root[data-sf-page-layout="sidebar"] {
+    padding-inline-start: 16rem;
+  }
+  .sf-root[data-sf-page-layout="sidebar"] .sf-header {
+    display: none;
+  }
+  .sf-root[data-sf-page-layout="sidebar"] .fixed.inset-x-0:not(.sf-tabbar) {
+    inset-inline-start: 16rem;
+  }
+  .sf-root[data-sf-page-layout="sidebar"] .fixed.left-4 {
+    left: 17rem;
+  }
+}
+
+/* Magazine: numbered editorial headings, feature tiles in product grids, text in columns, a large product title. */
+.sf-root[data-sf-page-layout="magazine"] .sf-home {
+  counter-reset: sf-mag;
+}
+.sf-root[data-sf-page-layout="magazine"] .sf-home h2.sf-heading {
+  counter-increment: sf-mag;
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+.sf-root[data-sf-page-layout="magazine"] .sf-home h2.sf-heading::before {
+  content: counter(sf-mag, decimal-leading-zero);
+  display: block;
+  width: 100%;
+  margin-bottom: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in oklch, currentColor 35%, transparent);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  color: var(--primary);
+}
+.sf-root[data-sf-page-layout="magazine"] .sf-home .sf-on-tone h2.sf-heading::before {
+  color: inherit;
+}
+html:lang(ta) .sf-root[data-sf-page-layout="magazine"] .sf-home h2.sf-heading {
+  font-size: clamp(1.6rem, 1.1rem + 1.8vw, 2.6rem);
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+@media (min-width: 48rem) {
+  .sf-root[data-sf-page-layout="magazine"] .sf-pgrid:not([data-view="list"]) {
+    grid-auto-flow: dense;
+  }
+  /* No feature tile in a two-column grid (listingColumns "2"): a 2×2 tile would be the whole row, a ~900 px poster. */
+  .sf-root[data-sf-page-layout="magazine"] .sf-pgrid:not([data-view="list"]):not([data-cols="2"]) > li:nth-child(6n + 1) {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+}
+@media (min-width: 64rem) {
+  .sf-root[data-sf-page-layout="magazine"] [data-section-type="text"] .sf-container {
+    max-width: 80rem;
+    text-align: start;
+  }
+  .sf-root[data-sf-page-layout="magazine"] [data-section-type="text"] .sf-prose {
+    columns: 2;
+    column-gap: 3.5rem;
+  }
+}
+html:not(:lang(ta)) .sf-root[data-sf-page-layout="magazine"] [data-section-type="text"] .sf-prose > p:first-child::first-letter {
+  float: inline-start;
+  margin: 0.06em 0.12em 0 0;
+  font-family: var(--font-heading);
+  font-size: 3.4em;
+  line-height: 0.9;
+  color: var(--primary);
+}
+.sf-root[data-sf-page-layout="magazine"] [data-testid="product-name"] {
+  font-size: clamp(2.1rem, 1.3rem + 2.4vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+html:lang(ta) .sf-root[data-sf-page-layout="magazine"] [data-testid="product-name"] {
+  font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.5rem);
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+/* Phone tab bar: room for it under the page, and bottom-fixed bits (WhatsApp, buy bar, compare tray) sit above it. */
+@media (max-width: 47.99rem) {
+  .sf-root[data-sf-mobile-nav="tabs"] {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  .sf-root[data-sf-mobile-nav="tabs"] .fixed[class*="bottom-"]:not(.sf-tabbar) {
+    translate: 0 calc(-4rem - env(safe-area-inset-bottom));
   }
 }

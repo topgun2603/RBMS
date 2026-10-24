@@ -1,4 +1,5 @@
 import type { FeatureGatePort, TenantRef } from "@srirealtime/core";
+import type { GstRateRule } from "@srirealtime/gst";
 
 export type { FeatureGatePort };
 
@@ -21,7 +22,10 @@ export interface StoreVariant {
   image: string | null;
   weightGrams: number | null;
   taxInclusive: boolean;
+  /** The rate at `price` (a price-band product's band at its list price). */
   gstRate: number;
+  /** Price-band GST (apparel / footwear); the estimate re-bands the line after its discount. */
+  gstRule?: GstRateRule | null;
   /** Product status. */
   status: "active" | "draft" | "archived";
   /** Product channels, e.g. ["store", "billing"]. */
@@ -223,7 +227,9 @@ export interface CheckoutOrderAddress {
 /** Same shape as orders' `CheckoutInput`. */
 export interface CheckoutOrderInput {
   customer: { name: string; phone: string; email?: string | null; accountId: string; locale?: string | null };
-  shippingAddress: CheckoutOrderAddress;
+  /** Null for a pickup order. */
+  shippingAddress: CheckoutOrderAddress | null;
+  fulfilment?: "delivery" | "pickup";
   billingAddress?: CheckoutOrderAddress | null;
   lines: { variantId: string; qty: number }[];
   couponCode?: string | null;
@@ -304,12 +310,29 @@ export interface StoreSettings {
   codMaxAmount: number;
   /** Paise, on goods after discount. */
   minOrderValue: number;
+  /** Home delivery (default on). Off: pickup only. */
+  deliveryEnabled?: boolean;
+  /** Pickup / takeaway: the shopper collects at the shop (default off). */
+  pickupEnabled?: boolean;
+  /** Where and when to collect ("Counter 1, ready in 20 minutes"). */
+  pickupNote?: string;
   contactPhone: string;
   contactEmail: string;
   social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
   /** @srirealtime/verticals pack id; "" = the app's default. */
   businessType?: string;
+  /** Show the storefront's "Install <shop> app" banner (default on). */
+  installBanner?: boolean;
+  /** Trust badges / announcement fallback overrides (storefront-ui lib/trust.ts); missing = derived. */
+  trust?: StoreTrustSettings;
+}
+
+/** The owner's trust settings: "auto" = derived from the returns policy and the trade; own badges replace the derived ones. */
+export interface StoreTrustSettings {
+  returns: "auto" | "easy" | "replace" | "exchange" | "none";
+  payment: "auto" | "online" | "confirm" | "visit";
+  badges: { title: string; text: string; titleTa: string; textTa: string }[];
 }
 
 /** Settings namespace `store` (apps/api). May return a partial object; defaults fill the rest. */

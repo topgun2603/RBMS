@@ -57,9 +57,11 @@ function sessionId(): string {
 function utm(): StoreEvent["utm"] | undefined {
   try {
     const p = new URLSearchParams(location.search);
-    const source = p.get("utm_source") ?? undefined;
+    // Launches from the installed app open the manifest's start_url "/?source=pwa" (lib/pwa): source "pwa", medium "app".
+    const pwa = !p.get("utm_source") && p.get("source") === "pwa";
+    const source = pwa ? "pwa" : (p.get("utm_source") ?? undefined);
     if (!source) return undefined;
-    return { source, medium: p.get("utm_medium") ?? undefined, campaign: p.get("utm_campaign") ?? undefined };
+    return { source, medium: (pwa ? "app" : p.get("utm_medium")) ?? undefined, campaign: p.get("utm_campaign") ?? undefined };
   } catch {
     return undefined;
   }

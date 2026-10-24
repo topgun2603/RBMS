@@ -1,3 +1,4 @@
+import type { GstRateRule } from "@srirealtime/gst";
 import type { Channel, ProductImage, ProductOption, ProductStatus, Seo } from "./schema";
 
 export interface ListResult<T> {
@@ -51,6 +52,8 @@ export interface Product {
   categoryId: string | null;
   hsn: string | null;
   gstRate: number;
+  /** Price-band GST (apparel / footwear); null = flat `gstRate`. */
+  gstRule?: GstRateRule | null;
   unit: string;
   taxInclusive: boolean;
   status: ProductStatus;
@@ -149,7 +152,10 @@ export interface CatalogItem {
   /** As stored on the variant (incl. GST when taxInclusive). */
   price: number;
   taxInclusive: boolean;
+  /** The rate at this variant's price: the product's `gstRate`, or its rule's band at `price` (before any discount). */
   gstRate: number;
+  /** The product's price-band GST rule, when it has one: bill lines are re-banded on their taxable value after discounts. */
+  gstRule?: GstRateRule | null;
   image: string | null;
   /** When the variant was created (billing's Item.createdAt). */
   createdAt: Date;
@@ -179,6 +185,8 @@ export type PublicVariant = Omit<Variant, "cost">;
  * "Enquire" for services instead of the cart, stock and delivery blocks.
  */
 export type PublicItemKind = "product" | "service";
+/** Food mark of a dish. */
+export type PublicDiet = "veg" | "egg" | "non-veg";
 
 /** The booking side of a service item (from bookings, through `BookableServicesPort`). */
 export interface PublicServiceInfo {
@@ -200,6 +208,8 @@ export interface PublicProduct
   kind: PublicItemKind;
   /** Set for services (`kind: "service"`). */
   service?: PublicServiceInfo | null;
+  /** Veg / egg / non-veg mark of a dish (from its tags); omitted for anything else. */
+  diet?: PublicDiet;
 }
 
 export interface PublicProductSummary {
@@ -225,6 +235,8 @@ export interface PublicProductSummary {
   kind?: PublicItemKind;
   /** Set for services. */
   service?: PublicServiceInfo | null;
+  /** Veg / egg / non-veg mark of a dish (from its tags); omitted for anything else. */
+  diet?: PublicDiet;
 }
 
 export type PublicCategory = Omit<Category, "productCount" | "createdAt" | "updatedAt" | "active">;

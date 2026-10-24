@@ -56,6 +56,30 @@ export function draftFromPreset(p: ThemePreset): AppearanceDraft {
   };
 }
 
+/**
+ * "Reset to preset": the preset's colours, fonts and every option again. The page layout and phone navigation come
+ * from the preset when it sets them; otherwise the shop's own stay (they are its structure, like when picking a preset).
+ */
+export function resetToPreset(draft: AppearanceDraft, p: ThemePreset): AppearanceDraft {
+  const next = draftFromPreset(p);
+  return { ...next, theme: { ...next.theme, pageLayout: next.theme.pageLayout ?? draft.theme.pageLayout, mobileNav: next.theme.mobileNav ?? draft.theme.mobileNav } };
+}
+
+/** True when the draft no longer matches its preset (colours, fonts or options were changed after picking it). */
+export function differsFromPreset(draft: AppearanceDraft, p: ThemePreset): boolean {
+  const { theme, ...rest } = resetToPreset(draft, p);
+  const { theme: current, ...currentRest } = draft;
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  return (
+    !same(rest.colors, currentRest.colors) ||
+    rest.fontSans !== currentRest.fontSans ||
+    rest.fontHeading !== currentRest.fontHeading ||
+    rest.radius !== currentRest.radius ||
+    rest.mode !== currentRest.mode ||
+    Object.entries(theme).some(([k, v]) => v !== undefined && (current as Record<string, unknown>)[k] !== v)
+  );
+}
+
 export function useBrandingTokens() {
   return useQuery({ queryKey: ak.branding, queryFn: () => api.get<BrandingResponse>("/branding") });
 }

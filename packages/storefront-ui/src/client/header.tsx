@@ -67,7 +67,7 @@ export function NavLink({ href, className, children, onClick }: { href: string; 
   );
 }
 
-export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
+export function Logo({ className, compact, wrap }: { className?: string; compact?: boolean; /** Long names take two lines instead of an ellipsis (the sidebar page layout's narrow menu). */ wrap?: boolean }) {
   const { shell } = useStore();
   const logo = imageUrl(shell.logoUrl);
   return (
@@ -80,7 +80,7 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
           <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[image:var(--sf-gradient)] font-display text-lg font-bold text-primary-foreground shadow-sm shadow-primary/30">
             {shell.name.trim().charAt(0).toUpperCase()}
           </span>
-          <span className={cn("truncate font-display text-lg font-semibold tracking-tight", compact && "max-sm:sr-only")}>{shell.name}</span>
+          <span className={cn(wrap ? "line-clamp-2 leading-tight [overflow-wrap:anywhere]" : "truncate", "font-display text-lg font-semibold tracking-tight", compact && "max-sm:sr-only")}>{shell.name}</span>
         </>
       )}
     </Link>
@@ -114,15 +114,41 @@ export function LocaleSwitch({ className }: { className?: string }) {
 
 const THEME_KEY = "sr_theme";
 
+/** The shop's own scheme: StoreLayout marks .sf-root (React-rendered, so it survives a client re-render of <html>). */
+const darkShop = () => document.querySelector(".sf-root")?.getAttribute("data-sf-scheme") === "dark";
+
+/** Puts the page in light or dark (`sf-light` = a dark shop shown light; see lib/scheme). */
+function applyScheme(dark: boolean) {
+  const d = document.documentElement;
+  d.classList.toggle("dark", dark);
+  d.classList.toggle("sf-light", !dark && darkShop());
+}
+
+/** The saved choice, else the shop's own scheme (what the inline head script applied). */
+function savedDark(): boolean {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(THEME_KEY);
+  } catch {
+    /* ignore */
+  }
+  return saved === "dark" || saved === "light" ? saved === "dark" : darkShop();
+}
+
 /** Light / dark switch (the choice is applied before paint by the inline script in StoreLayout). */
 export function ThemeToggle({ className }: { className?: string }) {
   const { t } = useStore();
   const [dark, setDark] = React.useState(false);
-  React.useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
+  React.useEffect(() => {
+    // Re-applied on mount too: a client re-render of the root layout resets <html>'s classes to the server's.
+    const d = savedDark();
+    applyScheme(d);
+    setDark(d);
+  }, []);
   const toggle = () => {
     const next = !dark;
     setDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    applyScheme(next);
     try {
       localStorage.setItem(THEME_KEY, next ? "dark" : "light");
     } catch {
@@ -140,7 +166,10 @@ export function ThemeToggle({ className }: { className?: string }) {
   );
 }
 
-/** Inline script for StoreLayout: applies the saved theme before first paint (no flash). */
+/**
+ * Inline script for a light shop: applies the saved theme before first paint. StoreLayout uses lib/scheme
+ * `themeScript`, which also knows a dark shop's default.
+ */
 export const THEME_SCRIPT = `try{if(localStorage.getItem("${THEME_KEY}")==="dark")document.documentElement.classList.add("dark")}catch(e){}`;
 
 /** Sends a page_view on every client navigation. */

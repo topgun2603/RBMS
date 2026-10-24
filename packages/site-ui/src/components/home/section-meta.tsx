@@ -49,6 +49,15 @@ import {
   TagIcon,
   TruckIcon,
   TypeIcon,
+  ZapIcon,
+  ListFilterIcon,
+  CircleDotIcon,
+  PanelLeftIcon,
+  BookImageIcon,
+  TableIcon,
+  Grid2x2CheckIcon,
+  RulerIcon,
+  PaletteIcon,
 } from "lucide-react";
 import type { HomeSectionType } from "../../lib/content";
 import { uspIconKey } from "../../lib/sections";
@@ -91,6 +100,15 @@ export const SECTION_ICONS: Record<HomeSectionType, Icon> = {
   "pricing-table": ReceiptTextIcon,
   "blog-posts": BookOpenIcon,
   "reviews-summary": StarHalfIcon,
+  "flash-sale": ZapIcon,
+  finder: ListFilterIcon,
+  stories: CircleDotIcon,
+  "category-shelf": PanelLeftIcon,
+  "sticky-story": BookImageIcon,
+  comparison: TableIcon,
+  tiles: Grid2x2CheckIcon,
+  "size-finder": RulerIcon,
+  swatches: PaletteIcon,
 };
 
 /** Storefront USP icon keys → lucide icons (the storefront uses the same meanings). */
@@ -536,6 +554,142 @@ export function SectionThumb({ type, className }: { type: HomeSectionType; class
               </g>
             )),
           )}
+        </svg>
+      );
+    case "flash-sale":
+      return (
+        <svg {...common}>
+          <rect x="4" y="5" width="112" height="22" rx="4" fill={accent} opacity="0.85" />
+          <path d="M14 9l-5 8h4l-2 6 6-9h-4l2-5z" fill="#fff" />
+          {bar(22, 11, 30, 4, "#fff")}
+          {bar(22, 18, 20, 3, "#fff", 0.7)}
+          {[0, 1, 2, 3].map((i) => (
+            <rect key={i} x={70 + i * 11} y="10" width="9" height="12" rx="2" fill="#fff" opacity="0.35" />
+          ))}
+          {[0, 1, 2, 3].map((i) => (
+            <g key={i}>
+              <rect x={6 + i * 28} y="32" width="24" height="24" rx="3" fill={paper} stroke={line} />
+              {bar(6 + i * 28, 60, 18, 3)}
+            </g>
+          ))}
+        </svg>
+      );
+    case "finder":
+      return (
+        <svg {...common}>
+          <rect x="6" y="6" width="108" height="60" rx="5" fill={paper} stroke={line} />
+          {[0, 1, 2].map((i) => (
+            <rect key={i} x={14 + i * 32} y="12" width="28" height="3" rx="1.5" fill={accent} opacity={i === 0 ? 0.9 : 0.25} />
+          ))}
+          {bar(14, 22, 52, 5, accent, 0.7)}
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              <rect x={14 + i * 32} y="33" width="28" height="24" rx="3" fill={i === 1 ? accent : "transparent"} opacity={i === 1 ? 0.2 : 1} stroke={i === 1 ? accent : line} />
+              {bar(18 + i * 32, 50, 16, 3, i === 1 ? accent : line)}
+            </g>
+          ))}
+        </svg>
+      );
+    case "stories":
+      return (
+        <svg {...common}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <g key={i}>
+              <circle cx={16 + i * 22} cy="30" r="10" fill="none" stroke={accent} strokeWidth="2" opacity={1 - i * 0.12} />
+              <circle cx={16 + i * 22} cy="30" r="7" fill={accent} opacity="0.22" />
+              {bar(9 + i * 22, 46, 14, 3)}
+            </g>
+          ))}
+        </svg>
+      );
+    case "category-shelf":
+      return (
+        <svg {...common}>
+          <rect x="6" y="8" width="30" height="56" rx="4" fill={paper} stroke={line} />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <rect key={i} x="10" y={13 + i * 10} width="22" height="6" rx="2" fill={i === 1 ? accent : line} opacity={i === 1 ? 0.85 : 0.7} />
+          ))}
+          {[0, 1].map((r) =>
+            [0, 1, 2].map((c) => (
+              <g key={`${r}${c}`}>
+                <rect x={42 + c * 25} y={8 + r * 29} width="22" height="19" rx="3" fill={paper} stroke={line} />
+                {bar(42 + c * 25, 30 + r * 29, 14, 2.5)}
+              </g>
+            )),
+          )}
+        </svg>
+      );
+    case "sticky-story":
+      return (
+        <svg {...common}>
+          <rect x="6" y="6" width="50" height="60" rx="5" fill={accent} opacity="0.22" />
+          <rect x="6" y="6" width="50" height="60" rx="5" fill="none" stroke={accent} strokeDasharray="3 3" opacity="0.5" />
+          {[0, 1, 2].map((i) => (
+            <g key={i} opacity={i === 1 ? 1 : 0.45}>
+              {bar(64, 10 + i * 20, 10, 3, accent, 0.9)}
+              {bar(64, 16 + i * 20, 40, 4, accent, 0.6)}
+              {bar(64, 23 + i * 20, 48, 3)}
+            </g>
+          ))}
+        </svg>
+      );
+    case "tiles":
+      return (
+        <svg {...common}>
+          {[0, 1, 2, 3].map((i) => (
+            <g key={i}>
+              <rect x={6 + i * 28} y="10" width="24" height="52" rx="4" fill={paper} stroke={line} />
+              <rect x={9 + i * 28} y="13" width="18" height="18" rx="3" fill={accent} opacity={0.2 + i * 0.1} />
+              {bar(9 + i * 28, 36, 16, 3.5, accent, 0.8)}
+              {bar(9 + i * 28, 43, 18, 2.5)}
+              {bar(9 + i * 28, 49, 12, 2.5)}
+            </g>
+          ))}
+        </svg>
+      );
+    case "swatches":
+      return (
+        <svg {...common}>
+          {bar(8, 10, 34, 5, accent, 0.7)}
+          {["#9b111e", "#c2185b", "#d77a61", "#c8a08a", "#8d5524", "#6b2737", "#e0a899", "#a0522d"].map((c, i) => (
+            <circle key={i} cx={14 + (i % 4) * 14} cy={30 + Math.floor(i / 4) * 14} r="5.5" fill={c} stroke={i === 2 ? "currentColor" : "none"} strokeWidth="1.5" />
+          ))}
+          <rect x="68" y="18" width="46" height="44" rx="4" fill={paper} stroke={line} />
+          <circle cx="78" cy="30" r="5" fill="#d77a61" />
+          {bar(86, 28, 22, 3)}
+          <rect x="74" y="48" width="34" height="8" rx="4" fill={accent} />
+        </svg>
+      );
+    case "size-finder":
+      return (
+        <svg {...common}>
+          <rect x="6" y="6" width="108" height="60" rx="5" fill={accent} opacity="0.1" />
+          {bar(12, 12, 40, 5, accent, 0.7)}
+          <rect x="12" y="22" width="56" height="10" rx="5" fill={paper} stroke={line} />
+          <rect x="13" y="23" width="18" height="8" rx="4" fill={accent} />
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <rect key={i} x={12 + i * 16} y="38" width="13" height="11" rx="2.5" fill={i === 2 ? accent : "transparent"} stroke={i === 2 ? accent : line} />
+          ))}
+          <rect x="12" y="54" width="24" height="8" rx="2" fill={paper} stroke={line} />
+        </svg>
+      );
+    case "comparison":
+      return (
+        <svg {...common}>
+          <rect x="6" y="6" width="108" height="60" rx="4" fill={paper} stroke={line} />
+          <rect x="72" y="6" width="21" height="60" fill={accent} opacity="0.14" />
+          {[0, 1, 2].map((c) => (
+            <rect key={c} x={52 + c * 21} y="10" width="16" height="14" rx="2" fill={accent} opacity={0.25 + c * 0.1} />
+          ))}
+          {[0, 1, 2, 3].map((r) => (
+            <g key={r}>
+              <rect x="6" y={29 + r * 9} width="108" height="0.8" fill={line} />
+              {bar(10, 32 + r * 9, 30, 3)}
+              {[0, 1, 2].map((c) => (
+                <React.Fragment key={c}>{bar(54 + c * 21, 32 + r * 9, 12, 3, accent, 0.55)}</React.Fragment>
+              ))}
+            </g>
+          ))}
         </svg>
       );
   }

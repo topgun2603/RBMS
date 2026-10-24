@@ -1,4 +1,5 @@
 import type { CartPricingResult, CouponContextLine, CouponEvaluationResult, DeliveryOption, OfferGift, OfferNudge, StoreVariant, VariantAvailability } from "./ports";
+import { effectiveGstRate, type GstRateRule } from "@srirealtime/gst";
 import type { StoredCartLine } from "./schema";
 
 /** Per-line quantity bounds (whole units). */
@@ -128,6 +129,8 @@ export interface LineCalc {
   weightGrams: number;
   taxInclusive: boolean;
   gstRate: number;
+  /** Price-band GST rule (apparel / footwear), when the product has one. */
+  gstRule?: GstRateRule | null;
   /** The unit price differs from the one stored when the line was set (even when another flag wins). */
   priceChanged: boolean;
 }
@@ -199,7 +202,7 @@ export function priceLines(
       if (qty < wanted) line.problem = "qty_reduced";
       else if (priceChanged) line.problem = "price_changed";
     }
-    calcs.push({ line, categoryId: v.categoryId, weightGrams: v.weightGrams ?? 0, taxInclusive: v.taxInclusive, gstRate: v.gstRate, priceChanged });
+    calcs.push({ line, categoryId: v.categoryId, weightGrams: v.weightGrams ?? 0, taxInclusive: v.taxInclusive, gstRate: v.gstRate, ...(v.gstRule ? { gstRule: v.gstRule } : {}), priceChanged });
   }
   return { calcs, removed };
 }
@@ -225,7 +228,9 @@ export function estimateTaxExtra(calcs: readonly LineCalc[], discount: number, l
   calcs.forEach((c, i) => {
     if (!c.line.available || c.taxInclusive || !c.gstRate) return;
     const share = lineDiscounts ? Math.min(lineDiscounts[i] ?? 0, c.line.lineTotal) : Math.round((discount * c.line.lineTotal) / subtotal);
-    tax += Math.round(((c.line.lineTotal - share) * c.gstRate) / 100);
+    // Price-band products are taxed at the band of the piece's value after its discount share.
+    const rate = c.gstRule ? effectiveGstRate(c.gstRule, c.line.lineTotal - share, c.line.qty) : c.gstRate;
+    tax += Math.round(((c.line.lineTotal - share) * rate) / 100);
   });
   return Math.max(0, tax);
 }

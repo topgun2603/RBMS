@@ -55,6 +55,8 @@ export function apiSearchQuery(p: Params, fixed: { categoryId?: string; q?: stri
   const q: Record<string, string | string[] | number | undefined> = {
     q: fixed.q ?? valuesOf(p, "q")[0],
     categoryId: fixed.categoryId ?? valuesOf(p, "cat")[0],
+    // Product tags, all required (the home finder's "See all" links carry one per answered question).
+    tag: tagsOf(p),
     priceMin: rupeesToPaise(valuesOf(p, "min")[0]),
     priceMax: rupeesToPaise(valuesOf(p, "max")[0]),
     inStock: valuesOf(p, "stock")[0] === "1" ? "1" : undefined,
@@ -64,6 +66,12 @@ export function apiSearchQuery(p: Params, fixed: { categoryId?: string; q?: stri
   };
   for (const [k, v] of Object.entries(p)) if ((k.startsWith("attr.") || k.startsWith("opt.")) && v !== undefined) q[k] = Array.isArray(v) ? v : [v];
   return q;
+}
+
+/** `tag` values of a listing URL (repeated or comma-separated), at most five; undefined when none. */
+function tagsOf(p: Params): string[] | undefined {
+  const tags = [...new Set(valuesOf(p, "tag").flatMap((v) => v.split(",")).map((v) => v.trim().toLowerCase()).filter(Boolean))].slice(0, 5);
+  return tags.length ? tags : undefined;
 }
 
 export function currentPage(p: Params): number {

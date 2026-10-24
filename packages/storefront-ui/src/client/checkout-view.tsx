@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BanknoteIcon, Loader2Icon, LockIcon, MapPinIcon, PencilIcon, PlusIcon, ShieldCheckIcon, SmartphoneIcon, TruckIcon } from "lucide-react";
+import { BanknoteIcon, Loader2Icon, LockIcon, MapPinIcon, PencilIcon, PlusIcon, ShieldCheckIcon, SmartphoneIcon, StoreIcon, TruckIcon, UserIcon } from "lucide-react";
 import { Button } from "@srirealtime/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@srirealtime/ui/components/radio-group";
 import { toast } from "@srirealtime/ui/components/sonner";
@@ -179,7 +179,23 @@ export function CheckoutView() {
   const [addressId, setAddressId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [optionId, setOptionId] = React.useState<string | null>(null);
-  const [method, setMethod] = React.useState<"online" | "cod">("online");
+  // Online payment only when the shop has it set up; made-to-order food shops often take cash on delivery / at the counter only.
+  const onlineOn = shell.onlinePayments ?? featureOn(shell.features, "payments");
+  const [method, setMethod] = React.useState<"online" | "cod">(onlineOn ? "online" : "cod");
+  // How the shopper gets the order: delivered, or collected at the shop (pickup / takeaway).
+  const deliveryOn = shell.deliveryEnabled !== false;
+  const pickupOn = shell.pickupEnabled === true;
+  const [fulfil, setFulfil] = React.useState<"delivery" | "pickup">(deliveryOn ? "delivery" : "pickup");
+  const pickup = fulfil === "pickup" && pickupOn;
+  const [pickupName, setPickupName] = React.useState("");
+  const [pickupPhone, setPickupPhone] = React.useState("");
+  React.useEffect(() => {
+    if (auth.user) {
+      setPickupName((v) => v || auth.user?.name || "");
+      setPickupPhone((v) => v || auth.user?.phone?.replace(/^\+91/, "") || "");
+    }
+  }, [auth.user]);
+  const pickupContactOk = pickupName.trim().length > 0 && /^[6-9]\d{9}$/.test(pickupPhone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, ""));
   const [note, setNote] = React.useState("");
   const [placing, setPlacing] = React.useState(false);
   const [issues, setIssues] = React.useState<string[]>([]);
@@ -216,7 +232,7 @@ export function CheckoutView() {
   }, [addresses.data, addressId]);
 
   // Delivery options for the chosen address's PIN code (cart pincode → priced delivery options).
-  const pincode = address?.pincode ?? null;
+  const pincode = !pickup ? (address?.pincode ?? null) : null;
   React.useEffect(() => {
     if (!pincode || !cart.token) return;
     if (c?.pincode === pincode && c.delivery) return;
@@ -224,26 +240,29 @@ export function CheckoutView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pincode, cart.token]);
 
-  const options: DeliveryOption[] = c?.pincode === pincode && c?.delivery?.serviceable ? c.delivery.options : [];
+  const options: DeliveryOption[] = !pickup && c?.pincode === pincode && c?.delivery?.serviceable ? c.delivery.options : [];
   React.useEffect(() => {
     if (!options.length) return setOptionId(null);
     if (!optionId || !options.some((o) => o.id === optionId)) setOptionId(options.slice().sort((a, b) => a.amount - b.amount)[0]!.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.map((o) => o.id).join(",")]);
   const option = options.find((o) => o.id === optionId) ?? null;
+  // Pickup has no delivery option: nothing to pay for, and cash is paid at the counter.
+  const ready = pickup ? pickupContactOk : !!address && !!option;
 
   const freeShip = !!c?.coupon?.valid && c.coupon.freeShipping;
-  const shipping = option ? (freeShip ? 0 : option.amount) : null;
+  const shipping = pickup ? 0 : option ? (freeShip ? 0 : option.amount) : null;
   const goodsTotal = c ? c.total + (c.taxExtra ?? 0) : 0;
-  const codPossible = shell.codEnabled && !!option?.codAllowed;
-  const codFee = method === "cod" && option ? option.codFee : 0;
+  const codPossible = shell.codEnabled && (pickup || !!option?.codAllowed);
+  const codFee = method === "cod" && option && !pickup ? option.codFee : 0;
   const estimated = goodsTotal + (shipping ?? 0) + codFee;
   const payable = totalAfterPoints(estimated, points > 0 ? pointsOff : 0);
-  const codOverMax = shell.codMaxAmount > 0 && goodsTotal + (shipping ?? 0) + (option?.codFee ?? 0) > shell.codMaxAmount;
+  const codOverMax = shell.codMaxAmount > 0 && goodsTotal + (shipping ?? 0) + (pickup ? 0 : (option?.codFee ?? 0)) > shell.codMaxAmount;
   const codAvailable = codPossible && !codOverMax;
   React.useEffect(() => {
-    if (method === "cod" && !codAvailable) setMethod("online");
-  }, [codAvailable, method]);
+    if (method === "cod" && !codAvailable && onlineOn) setMethod("online");
+    if (method === "online" && !onlineOn && codAvailable) setMethod("cod");
+  }, [codAvailable, method, onlineOn]);
 
   if (placed) {
     return (
@@ -277,15 +296,20 @@ export function CheckoutView() {
   }
 
   const blocked = c.lines.some((l) => !l.available || l.problem === "qty_reduced");
-  const canPlace = !!auth.token && !!address && !!option && !blocked && shell.open && !placing;
+  const belowMin = shell.minOrderValue > 0 && c.subtotal - c.discount < shell.minOrderValue;
+  const canPlace = !!auth.token && ready && !blocked && !belowMin && shell.open && !placing;
 
   const place = async () => {
-    if (!canPlace || !address || !option || !cart.token) return;
+    if (!canPlace || !cart.token || (!pickup && (!address || !option))) return;
     setPlacing(true);
     setIssues([]);
     try {
       const r = await call<CheckoutResult>("/store/checkout", {
-        body: { cartToken: cart.token, addressId: address.id, deliveryOptionId: option.id, paymentMethod: method, ...(note.trim() ? { customerNote: note.trim() } : {}), ...(loyaltyOn && points > 0 ? { loyaltyPoints: points } : {}) },
+        body: {
+          cartToken: cart.token,
+          ...(pickup ? { fulfilment: "pickup", address: { name: pickupName.trim(), phone: pickupPhone.trim() } } : { addressId: address!.id, deliveryOptionId: option!.id }),
+          paymentMethod: method, ...(note.trim() ? { customerNote: note.trim() } : {}), ...(loyaltyOn && points > 0 ? { loyaltyPoints: points } : {}),
+        },
       });
       setPlaced(true);
       cart.reset();
@@ -323,6 +347,41 @@ export function CheckoutView() {
           </Step>
         ) : (
           <>
+            {deliveryOn && pickupOn && (
+              <section className="rounded-3xl border bg-card p-5 shadow-[var(--elevation-1)] sm:p-6" aria-label={t("checkout.fulfil")} data-testid="fulfil-choice">
+                <RadioGroup name="fulfil" value={fulfil} onValueChange={(v) => setFulfil(v as "delivery" | "pickup")} className="grid gap-2 sm:grid-cols-2" aria-label={t("checkout.fulfil")}>
+                  <OptionCard group="fulfil" value="delivery" selected={fulfil === "delivery"} testId="fulfil-delivery">
+                    <TruckIcon className="size-5 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">{t("checkout.fulfilDelivery")}</span>
+                      <span className="block text-xs text-muted-foreground">{t("checkout.fulfilDeliveryHint")}</span>
+                    </span>
+                  </OptionCard>
+                  <OptionCard group="fulfil" value="pickup" selected={fulfil === "pickup"} testId="fulfil-pickup">
+                    <StoreIcon className="size-5 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">{t("checkout.fulfilPickup")}</span>
+                      <span className="block text-xs text-muted-foreground">{t("checkout.fulfilPickupHint")}</span>
+                    </span>
+                  </OptionCard>
+                </RadioGroup>
+              </section>
+            )}
+            {pickup ? (
+              <Step n={1} title={t("checkout.pickupContact")} done={pickupContactOk} icon={<UserIcon />}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    {t("checkout.pickupName")}
+                    <input value={pickupName} onChange={(e) => setPickupName(e.target.value)} maxLength={120} autoComplete="name" data-testid="pickup-name" className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30" />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    {t("checkout.pickupPhone")}
+                    <input value={pickupPhone} onChange={(e) => setPickupPhone(e.target.value)} inputMode="tel" autoComplete="tel" maxLength={16} data-testid="pickup-phone" className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-[3px] focus:ring-ring/30" />
+                  </label>
+                </div>
+              </Step>
+            ) : (
+            <>
             {/* 1 — address */}
             <Step
               n={1}
@@ -408,10 +467,20 @@ export function CheckoutView() {
               )}
             </Step>
 
+            </>
+            )}
+
             {/* 3 — payment */}
-            <Step n={3} title={t("checkout.payment")} icon={<LockIcon />}>
+            <Step n={pickup ? 2 : 3} title={t("checkout.payment")} icon={<LockIcon />}>
+              {pickup && (
+                <p className="mb-3 flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-sm" data-testid="pickup-note">
+                  <StoreIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span>{shell.pickupNote || t("checkout.pickupDefaultNote")}</span>
+                </p>
+              )}
               <form onSubmit={(e) => e.preventDefault()}>
                 <RadioGroup name="pay" value={method} onValueChange={(v) => setMethod(v as "online" | "cod")} className="grid gap-2" aria-label={t("checkout.payment")}>
+                  {onlineOn && (
                   <OptionCard group="pay" value="online" selected={method === "online"} testId="pay-online">
                     <SmartphoneIcon className="size-5 shrink-0 text-primary" />
                     <span className="min-w-0 flex-1">
@@ -420,14 +489,15 @@ export function CheckoutView() {
                       <PaymentIcons t={t} cod={false} className="mt-2" />
                     </span>
                   </OptionCard>
+                  )}
                   {shell.codEnabled && (
                     <OptionCard group="pay" value="cod" selected={method === "cod"} disabled={!codAvailable} testId="pay-cod">
                       <BanknoteIcon className="size-5 shrink-0 text-primary" />
                       <span className="flex-1">
-                        <span className="block text-sm font-semibold">{t("checkout.cod")}</span>
-                        <span className="block text-xs text-muted-foreground">{codAvailable ? t("checkout.codHint") : t("checkout.codUnavailable")}</span>
+                        <span className="block text-sm font-semibold">{pickup ? t("checkout.codPickup") : t("checkout.cod")}</span>
+                        <span className="block text-xs text-muted-foreground">{codAvailable ? (pickup ? t("checkout.codPickupHint") : t("checkout.codHint")) : t("checkout.codUnavailable")}</span>
                       </span>
-                      {codAvailable && option && option.codFee > 0 && <span className="text-xs font-semibold text-muted-foreground">+{money(option.codFee)}</span>}
+                      {codAvailable && option && !pickup && option.codFee > 0 && <span className="text-xs font-semibold text-muted-foreground">+{money(option.codFee)}</span>}
                     </OptionCard>
                   )}
                 </RadioGroup>
@@ -474,6 +544,7 @@ export function CheckoutView() {
               ))}
             </ul>
           )}
+          {belowMin && <p className="text-sm text-warning-ink" data-testid="min-order">{t("cart.minOrder", { amount: money(shell.minOrderValue) })}</p>}
           {!shell.open && <p className="text-sm text-warning-ink">{shell.closedMessage || t("store.closed")}</p>}
           <motion.div whileTap={canPlace ? { scale: 0.98 } : undefined}>
             <Button size="lg" className="relative h-13 w-full overflow-hidden rounded-full bg-[image:var(--sf-gradient)] text-base" disabled={!canPlace || payment.busy} onClick={place} data-testid="place-order" aria-busy={placing || payment.busy}>

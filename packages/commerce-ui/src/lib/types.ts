@@ -1,3 +1,4 @@
+import type { GstRateRule } from "@srirealtime/gst";
 /**
  * API shapes of `/v1/catalog` (packages/catalogue/src/types.ts) and the parts of `/v1/inventory` and `/v1/uploads`
  * this module uses. Money is integer paise; dates arrive as ISO strings.
@@ -101,6 +102,8 @@ export interface Product {
   categoryId: string | null;
   hsn: string | null;
   gstRate: number;
+  /** Price-band GST (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above); null = flat `gstRate`. */
+  gstRule?: GstRateRule | null;
   unit: string;
   taxInclusive: boolean;
   status: ProductStatus;
@@ -146,6 +149,8 @@ export interface ProductFields {
   categoryId?: string | null;
   hsn?: string | null;
   gstRate: number;
+  /** Price-band GST (apparel / footwear); null = flat `gstRate`. */
+  gstRule?: GstRateRule | null;
   unit?: string;
   taxInclusive: boolean;
   status: ProductStatus;

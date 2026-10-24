@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
 import { getRequestInfo, StoreLayout, storeRootMetadata } from "@srirealtime/storefront-ui";
+import { storeViewport } from "@srirealtime/storefront-ui/pwa";
 import "./globals.css";
 
 /* Store faces: Plus Jakarta Sans + Noto Sans Tamil (tenant branding fonts get these as fallbacks); Fraunces for display. */
@@ -12,12 +13,10 @@ export function generateMetadata(): Promise<Metadata> {
   return storeRootMetadata();
 }
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-  themeColor: "#ffffff",
-};
+/** theme-color in the shop's brand primary (matches its web app manifest). */
+export function generateViewport(): Promise<Viewport> {
+  return storeViewport();
+}
 
 /** Server-rendered for SEO: the shop comes from the request host (see @srirealtime/storefront-ui lib/tenant). */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -4,7 +4,7 @@ import type { Db } from "@srirealtime/db";
 import { and, count, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { addressInputSchema, addressPatchSchema, MAX_ADDRESSES, normalizeIndianMobile, pincodeSchema, PINCODE_RE } from "./address";
-import { checkoutBodySchema, checkoutError, normalizeStoreSettings, validateCheckout } from "./checkout";
+import { checkoutBodySchema, checkoutError, normalizeStoreSettings, normalizeTrust, validateCheckout } from "./checkout";
 import {
   noopLogger,
   type AvailabilityPort,
@@ -24,6 +24,7 @@ import {
   type StoreProductSummary,
   type StoreSettings,
   type StoreSettingsPort,
+  type StoreTrustSettings,
   type StoreVariant,
 } from "./ports";
 import { buildBundleView, bundleLines, bundleRefs, toBadge, type BundleView, type OfferBadge } from "./promotions";
@@ -82,6 +83,10 @@ export interface StorefrontDeps {
   branding: BrandingPort;
   /** Without it stock isn't checked (everything counts as in stock). */
   availability?: AvailabilityPort;
+  /** Whether the shop can take online payments right now (a connected gateway). Without it the `payments` feature decides. */
+  onlinePayments?: (tenantId: string) => Promise<boolean>;
+  /** Public stock flags for `GET /store/availability` (without it everything counts as in stock). */
+  publicAvailability?: (tenantId: string, variantIds: string[]) => Promise<{ itemId: string; inStock: boolean; lowStock: boolean }[]>;
   /** Without it coupon codes are reported invalid (`not_found`). */
   coupons?: CouponPort;
   /** Without it a single free "Standard delivery" option is offered (FALLBACK_DELIVERY). */
@@ -139,6 +144,8 @@ export interface WishlistItem {
 
 export interface StoreConfig {
   shop: {
+    /** The shop's address; sign-in through the landing site names the shop with it. */
+    slug: string;
     name: string;
     logoUrl: string | null;
     css: string;
@@ -157,8 +164,17 @@ export interface StoreConfig {
   codEnabled: boolean;
   codMaxAmount: number;
   minOrderValue: number;
+  /** Shoppers can pay online (feature on and a gateway connected). */
+  onlinePayments: boolean;
+  deliveryEnabled: boolean;
+  pickupEnabled: boolean;
+  pickupNote: string;
   guestCheckout: false;
   policies: { shipping: string; returns: string; privacy: string; terms: string };
+  /** Show the "Install <shop> app" banner (installable storefront). */
+  installBanner: boolean;
+  /** Trust badges / announcement overrides ("auto" = derived by the storefront). */
+  trust: StoreTrustSettings;
 }
 
 export interface CheckoutResult {
@@ -276,6 +292,18 @@ export class StorefrontService {
     }
   }
 
+  /** Online payment is offered when the feature is on and a gateway is connected (dev: the mock gateway). */
+  private async onlinePaymentsOn(tenantId: string): Promise<boolean> {
+    if (!(await this.featureOn(tenantId, "payments"))) return false;
+    if (!this.deps.onlinePayments) return true;
+    try {
+      return await this.deps.onlinePayments(tenantId);
+    } catch (err) {
+      this.log.warn({ err, tenantId }, "storefront: payments check failed");
+      return false;
+    }
+  }
+
   private async storeSettings(tenantId: string): Promise<StoreSettings> {
     return normalizeStoreSettings(await this.deps.settings.get(tenantId));
   }
@@ -283,9 +311,10 @@ export class StorefrontService {
   // ================================================================ config
 
   async config(tenant: TenantRef): Promise<StoreConfig> {
-    const [s, b] = await Promise.all([this.storeSettings(tenant.id), this.deps.branding.get(tenant.id)]);
+    const [s, b, onlinePayments] = await Promise.all([this.storeSettings(tenant.id), this.deps.branding.get(tenant.id), this.onlinePaymentsOn(tenant.id)]);
     return {
       shop: {
+        slug: tenant.slug,
         name: b.name || tenant.slug,
         logoUrl: b.logoUrl,
         css: b.css,
@@ -301,6 +330,10 @@ export class StorefrontService {
       codEnabled: s.codEnabled,
       codMaxAmount: s.codMaxAmount,
       minOrderValue: s.minOrderValue,
+      onlinePayments,
+      deliveryEnabled: s.deliveryEnabled !== false,
+      pickupEnabled: s.pickupEnabled === true,
+      pickupNote: s.pickupNote ?? "",
       guestCheckout: false,
       policies: {
         shipping: s.policies.shipping ?? "",
@@ -308,7 +341,17 @@ export class StorefrontService {
         privacy: s.policies.privacy ?? "",
         terms: s.policies.terms ?? "",
       },
+      installBanner: s.installBanner !== false,
+      trust: s.trust ?? normalizeTrust(null),
     };
+  }
+
+  /** In stock / low stock per item (variant) id, for product pages and cards. Items the shop doesn't track are in stock. */
+  async publicAvailability(tenantId: string, query: unknown): Promise<{ items: { itemId: string; inStock: boolean; lowStock: boolean }[]; total: number }> {
+    const { itemIds } = z.object({ itemIds: z.string().transform((v) => [...new Set(v.split(",").map((x) => x.trim()).filter(Boolean))].slice(0, 200)) }).parse(query ?? {});
+    if (!itemIds.every((id) => z.string().uuid().safeParse(id).success)) throw new AppError(400, "validation", "Invalid item ids");
+    const items = this.deps.publicAvailability ? await this.deps.publicAvailability(tenantId, itemIds) : itemIds.map((itemId) => ({ itemId, inStock: true, lowStock: false }));
+    return { items, total: items.length };
   }
 
   // ================================================================ customers
@@ -869,7 +912,7 @@ export class StorefrontService {
     const settings = await this.storeSettings(tenantId);
     const cart = await this.price(row, { customer, withDelivery: false });
     const addr = addressInputSchema.safeParse(rawAddress ?? {});
-    const quote = addr.success
+    const quote = b.fulfilment !== "pickup" && addr.success
       ? await this.quote(tenantId, {
           pincode: addr.data.pincode,
           stateCode: addr.data.stateCode,
@@ -882,34 +925,38 @@ export class StorefrontService {
       settings,
       cart,
       address: rawAddress,
+      fulfilment: b.fulfilment,
       deliveryOptionId: b.deliveryOptionId,
       quote,
       paymentMethod: b.paymentMethod,
-      onlinePaymentsEnabled: b.paymentMethod === "online" ? await this.featureOn(tenantId, "payments") : true,
+      onlinePaymentsEnabled: b.paymentMethod === "online" ? await this.onlinePaymentsOn(tenantId) : true,
     });
     if (!check.ok) throw checkoutError(check.issues);
     const { plan } = check;
 
-    const shippingAddress: CheckoutOrderAddress = {
-      name: plan.address.name,
-      phone: plan.address.phone,
-      line1: plan.address.line1,
-      line2: plan.address.line2 ?? null,
-      landmark: plan.address.landmark ?? null,
-      city: plan.address.city,
-      district: plan.address.district ?? null,
-      stateCode: plan.address.stateCode,
-      pincode: plan.address.pincode,
-      country: "IN",
-    };
+    const shippingAddress: CheckoutOrderAddress | null = plan.address
+      ? {
+          name: plan.address.name,
+          phone: plan.address.phone,
+          line1: plan.address.line1,
+          line2: plan.address.line2 ?? null,
+          landmark: plan.address.landmark ?? null,
+          city: plan.address.city,
+          district: plan.address.district ?? null,
+          stateCode: plan.address.stateCode,
+          pincode: plan.address.pincode,
+          country: "IN",
+        }
+      : null;
     const order = await this.deps.orders.createFromCheckout(tenant, {
       customer: {
-        name: customer.name || plan.address.name,
-        phone: customer.phone || plan.address.phone,
+        name: customer.name || plan.contact.name,
+        phone: customer.phone || plan.contact.phone,
         email: customer.email,
         accountId: customer.id,
       },
       shippingAddress,
+      fulfilment: plan.pickup ? "pickup" : "delivery",
       lines: cart.lines.map((l) => ({ variantId: l.variantId, qty: l.qty })),
       couponCode: cart.coupon?.valid ? cart.coupon.code : null,
       paymentMethod: b.paymentMethod,
@@ -919,7 +966,7 @@ export class StorefrontService {
       ...(b.loyaltyPoints ? { loyaltyPoints: b.loyaltyPoints } : {}),
     });
 
-    await this.afterOrder(row, customer, plan.address);
+    await this.afterOrder(row, customer, plan.contact);
     return {
       order: { id: order.id, number: order.number, total: order.total, status: order.status, paymentStatus: order.paymentStatus },
       accessToken: order.accessToken,

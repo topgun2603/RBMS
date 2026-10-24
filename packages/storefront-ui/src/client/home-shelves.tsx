@@ -154,7 +154,8 @@ export function LookHotspots({ imageUrl, alt, hotspots }: { imageUrl: string; al
   const reduced = useReducedMotionSafe();
   const [open, setOpen] = React.useState<number | null>(null);
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-10">
+    // In a half-width row (.sf-pair, styles.css) the product list goes under the photo, two per row.
+    <div className="sf-look grid items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-10">
       <div className="relative overflow-hidden rounded-[var(--sf-radius-card)] bg-muted shadow-card">
         <StoreImage src={imageUrl} alt={alt} className="aspect-[4/5] h-auto sm:aspect-[4/3]" />
         {hotspots.map((h, i) => (
@@ -204,7 +205,25 @@ const fmt = (n: number, decimals: number, locale: string) => n.toLocaleString(lo
  * A number that counts up once when it scrolls into view. The server HTML has the real value (crawlers, no JS);
  * with reduced motion, or when it's already on screen at load, it simply stays there.
  */
-export function CountUp({ value, prefix = "", suffix = "", className }: { value: number; prefix?: string; suffix?: string; className?: string }) {
+/**
+ * A stat's suffix as shown: a word ("yrs", "days", "ஆண்டுகள்") gets a (non-breaking) space after the number — the CMS
+ * trims "47 yrs" to "yrs" — while signs and single-letter units stay attached ("4000+", "98%", "10k").
+ */
+export function statSuffix(suffix: string): string {
+  const s = suffix.trim();
+  return /^[\p{L}\p{M}]{2,}/u.test(s) ? `\u00a0${s}` : s;
+}
+
+/** A stat's prefix as shown: a word ("Over", "Rs") is followed by a non-breaking space; "₹" or "+" stay attached. */
+export function statPrefix(prefix: string): string {
+  const s = prefix.trim();
+  return /[\p{L}\p{M}]{2,}$/u.test(s) ? `${s}\u00a0` : s;
+}
+
+/** A stat number that counts up (see below), with its prefix / suffix spaced by statPrefix / statSuffix. */
+export function CountUp({ value, prefix: rawPrefix = "", suffix: rawSuffix = "", className }: { value: number; prefix?: string; suffix?: string; className?: string }) {
+  const prefix = statPrefix(rawPrefix);
+  const suffix = statSuffix(rawSuffix);
   const { locale } = useStore();
   const reduced = useReducedMotionSafe();
   const decimals = Number.isInteger(value) ? 0 : Math.min(2, (String(value).split(".")[1] ?? "").length);

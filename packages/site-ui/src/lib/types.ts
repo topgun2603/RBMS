@@ -43,7 +43,10 @@ export interface CategoryRef {
   image: string | null;
 }
 
-type Static = Exclude<HomeSection, { type: "hero" | "categories" | "collection" | "products" | "category-mosaic" | "deal" | "shop-the-look" }>;
+type Static = Exclude<
+  HomeSection,
+  { type: "hero" | "categories" | "collection" | "products" | "category-mosaic" | "deal" | "shop-the-look" | "flash-sale" | "comparison" | "category-shelf" | "swatches" }
+>;
 
 export interface ResolvedHeroSection {
   type: "hero";
@@ -103,8 +106,25 @@ export interface ResolvedCategoryMosaicSection {
   title: string;
   categories: CategoryRef[];
 }
+/** Flash sale with its products (empty for `source: "sale"`: the storefront loads the biggest discounts). */
+export interface ResolvedFlashSaleSection extends Omit<Extract<HomeSection, { type: "flash-sale" }>, "productIds"> {
+  products: PublicProductSummary[];
+}
+export interface ResolvedComparisonSection extends Omit<Extract<HomeSection, { type: "comparison" }>, "productIds"> {
+  products: PublicProductSummary[];
+}
+export interface ResolvedSwatchesSection extends Omit<Extract<HomeSection, { type: "swatches" }>, "productIds"> {
+  products: PublicProductSummary[];
+}
+export interface ResolvedCategoryShelfSection extends Omit<Extract<HomeSection, { type: "category-shelf" }>, "categoryIds"> {
+  categories: CategoryRef[];
+}
 /** What `GET /cms/home/preview` returns per section (the storefront's resolved shape). */
 export type ResolvedHomeSection =
+  | ResolvedFlashSaleSection
+  | ResolvedComparisonSection
+  | ResolvedCategoryShelfSection
+  | ResolvedSwatchesSection
   | ResolvedHeroSection
   | ResolvedCategoriesSection
   | ResolvedCategoryMosaicSection
@@ -252,12 +272,30 @@ export interface StoreSettings {
   codMaxAmount: number;
   /** Paise; 0 = none. */
   minOrderValue: number;
+  /** Home delivery (default on); off = pickup only. */
+  deliveryEnabled?: boolean;
+  /** Pickup / takeaway (default off). */
+  pickupEnabled?: boolean;
+  /** Where and when to collect, shown at checkout. */
+  pickupNote?: string;
   contactPhone: string;
   contactEmail: string;
   social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
   /** The shop's trade (@srirealtime/verticals pack id); "" = the app's default. Edited on Settings → Appearance. */
   businessType?: string;
+  /** Show shoppers the "Install <shop> app" banner (installable storefront; default on). */
+  installBanner?: boolean;
+  /** Trust badges / offers ribbon: "auto" = from the returns policy and the trade; own badges replace the automatic ones. */
+  trust?: StoreTrust;
+}
+
+export const TRUST_RETURNS = ["auto", "easy", "replace", "exchange", "none"] as const;
+export const TRUST_PAYMENT = ["auto", "online", "confirm", "visit"] as const;
+export interface StoreTrust {
+  returns: (typeof TRUST_RETURNS)[number];
+  payment: (typeof TRUST_PAYMENT)[number];
+  badges: { title: string; text: string; titleTa: string; textTa: string }[];
 }
 
 export interface SettingsValues<T> {

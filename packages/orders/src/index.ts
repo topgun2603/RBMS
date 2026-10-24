@@ -12,7 +12,21 @@ export * from "./service";
 export * from "./features";
 export * from "./csv";
 export { orderPurchaseStats } from "./stats";
-export { ordersRoutes, requirePermission } from "./routes";
+export {
+  ordersRoutes,
+  requirePermission,
+  orderAddressSchema,
+  orderCustomerSchema,
+  orderEventSchema,
+  orderFulfillmentSchema,
+  orderLineSchema,
+  orderListSchema,
+  orderSchema,
+  orderSummarySchema,
+  ordersSummarySchema,
+  orderTaxLineSchema,
+  orderTotalsSchema,
+} from "./routes";
 
 /**
  * Orders from the online store, manual entry and (later) POS: FY numbering, a fixed status flow with side effects

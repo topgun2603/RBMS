@@ -12,6 +12,8 @@ export interface List<T> {
 
 export interface StoreConfig {
   shop: {
+    /** The shop's address (its slug); sign-in through the landing site names the shop with it. Older APIs leave it out. */
+    slug?: string;
     name: string;
     logoUrl: string | null;
     css: string;
@@ -30,8 +32,21 @@ export interface StoreConfig {
   codEnabled: boolean;
   codMaxAmount: number;
   minOrderValue: number;
+  /** Online payment offered (a gateway is connected); older APIs leave it out (then the `payments` feature decides). */
+  onlinePayments?: boolean;
+  /** Home delivery on (default true) / pickup (takeaway) on (default false); older APIs leave them out. */
+  deliveryEnabled?: boolean;
+  pickupEnabled?: boolean;
+  /** Where and when to collect. */
+  pickupNote?: string;
   guestCheckout: false;
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
+  /** The owner's trust badge settings (lib/trust.ts); older APIs leave it out (= derived). */
+  trust?: {
+    returns?: "auto" | "easy" | "replace" | "exchange" | "none";
+    payment?: "auto" | "online" | "confirm" | "visit";
+    badges?: { title: string; text?: string; titleTa?: string; textTa?: string }[];
+  };
 }
 
 export interface Branding {
@@ -87,6 +102,8 @@ export interface ProductSummary {
   /** "service" for things the shop does (bookable or by enquiry); older APIs leave it out (= product). */
   kind?: "product" | "service";
   service?: ServiceInfo | null;
+  /** Veg mark of a dish; older APIs leave it out. */
+  diet?: "veg" | "egg" | "non-veg";
 }
 
 export interface Category {
@@ -132,6 +149,8 @@ export interface Product {
   categorySlug: string | null;
   hsn: string | null;
   gstRate: number;
+  /** Price-band GST (apparel / footwear: 5% up to ₹2,500 a piece before GST, 18% above); each variant at its own price. */
+  gstRule?: import("@srirealtime/gst").GstRateRule | null;
   unit: string;
   taxInclusive: boolean;
   tags: string[];
@@ -149,6 +168,7 @@ export interface Product {
   /** "service": shown with "Book now" / "Enquire" instead of the cart (older APIs leave it out = product). */
   kind?: "product" | "service";
   service?: ServiceInfo | null;
+  diet?: "veg" | "egg" | "non-veg";
 }
 
 export interface Facets {
@@ -263,6 +283,8 @@ export interface SectionStyle {
   animation?: "none" | "fade" | "rise";
   hideOnMobile?: boolean;
   hideOnDesktop?: boolean;
+  /** half: sits beside the next half section on larger screens. */
+  span?: "full" | "half";
 }
 
 type CategoryRef = { id: string; name: string; slug: string; image: string | null };
@@ -328,7 +350,107 @@ type Sections =
       plans: { name: string; price?: number; period?: string; description?: string; features: string[]; highlight: boolean; badge?: string; cta?: Cta }[];
     }
   | { type: "blog-posts"; title?: string; limit: number; tag?: string }
-  | { type: "reviews-summary"; title?: string; limit: number };
+  | { type: "reviews-summary"; title?: string; limit: number }
+  | {
+      type: "flash-sale";
+      title?: string;
+      text?: string;
+      startsAt?: string;
+      endsAt: string;
+      /** Only between these shop times (IST, "HH:MM") each day; lib/flash-window.ts. */
+      daily?: { from: string; to: string };
+      source: "pick" | "sale" | "collection";
+      collectionSlug?: string;
+      layout: ShelfLayout;
+      limit: number;
+      cta?: Cta;
+      /** Picked / collection products; empty for `sale` (the page loads the biggest discounts). */
+      products: ProductSummary[];
+    }
+  | {
+      type: "finder";
+      title?: string;
+      text?: string;
+      layout: "wizard" | "chips";
+      /** Older APIs leave it out (= inline). */
+      results?: "inline" | "button";
+      buttonLabel?: string;
+      imageUrl?: string;
+      cta?: Cta;
+      questions: { label: string; options: FinderOption[] }[];
+      limit: number;
+    }
+  | {
+      type: "stories";
+      title?: string;
+      layout: "rings" | "reels";
+      items: { imageUrl: string; videoUrl?: string; title: string; text?: string; href?: string; ctaLabel?: string }[];
+    }
+  | { type: "category-shelf"; title: string; showImages: boolean; limit: number; categories: CategoryRef[] }
+  | {
+      type: "sticky-story";
+      title?: string;
+      imageSide: "left" | "right";
+      chapters: { eyebrow?: string; heading: string; markdown: string; imageUrl: string; alt: string; cta?: Cta }[];
+    }
+  | {
+      type: "comparison";
+      title?: string;
+      text?: string;
+      highlightId?: string;
+      highlightLabel?: string;
+      showRating: boolean;
+      rows: { label: string; values: string[] }[];
+      products: ProductSummary[];
+    }
+  | { type: "tiles"; title?: string; text?: string; layout: "row" | "grid"; showCounts: boolean; items: TileItem[] }
+  | {
+      type: "swatches";
+      title?: string;
+      text?: string;
+      optionName: string;
+      /** A second option picked first (e.g. "Phone model"); see client/home-layouts Swatches. */
+      alsoOption?: string;
+      alsoLabel?: string;
+      shades: { value: string; hex: string; depth?: SkinDepth }[];
+      products: ProductSummary[];
+    }
+  | {
+      type: "size-finder";
+      title?: string;
+      text?: string;
+      imageUrl?: string;
+      optionName: string;
+      footLength: boolean;
+      groups: { label: string; categoryId?: string; sizes: string[] }[];
+    };
+
+export type SkinDepth = "fair" | "wheatish" | "dusky" | "deep";
+
+export interface TileItem {
+  label: string;
+  note?: string;
+  imageUrl?: string;
+  collectionSlug?: string;
+  tag?: string;
+  href?: string;
+}
+
+/** A finder answer and the filter it applies (cms `finderOptionSchema`). Prices in paise. */
+export interface FinderOption {
+  label: string;
+  imageUrl?: string;
+  categoryId?: string;
+  /** Exact product tag. */
+  tag?: string;
+  filterName?: string;
+  filterValue?: string;
+  keywords?: string;
+  priceMin?: number;
+  priceMax?: number;
+  /** Opens this page instead of the filtered list. */
+  href?: string;
+}
 
 export type CategoryLayout =
   | "circles"
@@ -362,6 +484,8 @@ export interface PublicHome {
   seo: Seo | null;
   isDefault: boolean;
   publishedAt: string | null;
+  /** The home's words in other languages by section id (`localizeSections` from @srirealtime/cms/localize). */
+  translations?: Partial<Record<string, Record<string, unknown>>>;
 }
 
 export type Block =
@@ -725,6 +849,8 @@ export interface Tracking {
 
 /** What the server hands every client component through <StoreProvider>. */
 export interface StoreShell {
+  /** The shop's slug ('' when the API didn't send it). */
+  slug: string;
   name: string;
   logoUrl: string | null;
   open: boolean;
@@ -732,6 +858,13 @@ export interface StoreShell {
   codEnabled: boolean;
   codMaxAmount: number;
   minOrderValue: number;
+  /** Online payment offered (a gateway is connected); older APIs leave it out (then the `payments` feature decides). */
+  onlinePayments?: boolean;
+  /** Home delivery on (default true) / pickup (takeaway) on (default false); older APIs leave them out. */
+  deliveryEnabled?: boolean;
+  pickupEnabled?: boolean;
+  /** Where and when to collect. */
+  pickupNote?: string;
   contactPhone: string;
   contactEmail: string;
   /** The shop's WhatsApp number or link (services' "Enquire on WhatsApp"). */
@@ -757,7 +890,7 @@ export interface StoreThemeView {
   buttons: "rounded" | "pill" | "square";
   density: "comfortable" | "compact";
   sections: "plain" | "tinted" | "boxed";
-  motif: "none" | "kolam" | "dots" | "waves" | "grid";
+  motif: "none" | "kolam" | "dots" | "waves" | "grid" | "stripes" | "scallop";
   headings: "display" | "uppercase" | "underline";
   headerStyle: "glass" | "solid" | "transparent";
   sticky: "always" | "scroll-up" | "never";
@@ -778,6 +911,10 @@ export interface StoreThemeView {
   categoryHeader: "simple" | "banner" | "none";
   subcategories: "chips" | "off";
   compare: "on" | "off";
+  /** Page layout (branding LAYOUT_OPTIONS): standard · rail (category rail) · sidebar (vertical menu) · magazine. */
+  pageLayout: "standard" | "rail" | "sidebar" | "magazine";
+  /** Phones: an app-like bottom tab bar. */
+  mobileNav: "off" | "tabs";
 }
 
 // ------------------------------------------------------------------ batch 4: chat, help centre, sellers, loyalty

@@ -30,7 +30,7 @@ export function SortSelect({ value, options }: { value: string; options: { value
         if (o) router.push(o.href, { scroll: false });
       }}
     >
-      <SelectTrigger className="min-w-44 rounded-full bg-card px-4 text-sm font-medium" aria-label={t("list.sort")}>
+      <SelectTrigger className="min-w-36 rounded-full bg-card px-4 text-sm font-medium max-sm:flex-1 sm:min-w-44" aria-label={t("list.sort")}>
         <ArrowUpDownIcon className="size-4 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>

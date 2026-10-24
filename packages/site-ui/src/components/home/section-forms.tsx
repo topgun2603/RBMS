@@ -44,6 +44,7 @@ import {
   TimelineFields,
   UspLayoutFields,
 } from "./section-forms-shelves";
+import { CategoryShelfFields, ComparisonFields, FinderFields, FlashSaleFields, SizeFinderFields, StickyStoryFields, StoriesFields, SwatchesFields, TilesFields } from "./section-forms-layouts";
 
 interface Props<T extends SectionForm["type"]> {
   form: FormOf<T>;
@@ -127,6 +128,24 @@ export function SectionFields(props: { form: SectionForm; onChange: (f: SectionF
       return <BlogPostsFields {...(p as Props<"blog-posts">)} />;
     case "reviews-summary":
       return <ReviewsSummaryFields {...(p as Props<"reviews-summary">)} />;
+    case "flash-sale":
+      return <FlashSaleFields {...(p as Props<"flash-sale">)} />;
+    case "finder":
+      return <FinderFields {...(p as Props<"finder">)} />;
+    case "stories":
+      return <StoriesFields {...(p as Props<"stories">)} />;
+    case "category-shelf":
+      return <CategoryShelfFields {...(p as Props<"category-shelf">)} />;
+    case "sticky-story":
+      return <StickyStoryFields {...(p as Props<"sticky-story">)} />;
+    case "comparison":
+      return <ComparisonFields {...(p as Props<"comparison">)} />;
+    case "tiles":
+      return <TilesFields {...(p as Props<"tiles">)} />;
+    case "size-finder":
+      return <SizeFinderFields {...(p as Props<"size-finder">)} />;
+    case "swatches":
+      return <SwatchesFields {...(p as Props<"swatches">)} />;
   }
 }
 
@@ -466,5 +485,23 @@ export function sectionSummary(f: SectionForm, t: (k: string, v?: Record<string,
     case "blog-posts":
     case "reviews-summary":
       return f.title || t(`site.home.type.${f.type}`);
+    case "flash-sale":
+      return f.title || (f.source === "pick" ? t("site.home.productsCount", { count: f.productIds.length }) : t(`site.layouts.flashSource.${f.source}`));
+    case "finder":
+      return f.title || f.questions.map((q) => q.label).filter(Boolean).join(" · ");
+    case "stories":
+      return f.title || t("site.layouts.storiesCount", { count: f.items.length });
+    case "category-shelf":
+      return f.title || (f.mode === "all" ? t("site.layouts.shelfFirst") : t("site.home.categoriesCount", { count: f.categoryIds.length }));
+    case "sticky-story":
+      return f.title || f.chapters.map((c) => c.heading).filter(Boolean).join(" → ");
+    case "comparison":
+      return f.title || t("site.home.productsCount", { count: f.productIds.length });
+    case "tiles":
+      return f.title || f.items.map((i) => i.label).filter(Boolean).join(" · ");
+    case "size-finder":
+      return f.title || f.groups.map((g) => g.label).filter(Boolean).join(" · ");
+    case "swatches":
+      return f.title || t("site.layouts.shadesCount", { count: f.shades.length });
   }
 }

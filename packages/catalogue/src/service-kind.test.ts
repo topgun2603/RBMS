@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { itemKind } from "./logic";
+import { dietOf, itemKind } from "./logic";
 import { CatalogueService, type BookableServicesPort } from "./service";
 
 describe("itemKind", () => {
@@ -14,6 +14,25 @@ describe("itemKind", () => {
     expect(itemKind({ unit: "pcs", hsn: "8471" })).toBe("product");
     expect(itemKind({ unit: "pcs", tags: ["Service", "repair"] })).toBe("service");
     expect(itemKind({ unit: "kg", tags: ["servicing-kit"] })).toBe("product");
+  });
+});
+
+describe("food is sold, not booked", () => {
+  it("restaurant food and drink (SAC 99633x) is a product that goes in the cart", () => {
+    expect(itemKind({ unit: "plate", hsn: "996331", tags: ["veg"] })).toBe("product");
+    expect(itemKind({ unit: "cup", hsn: "996332" })).toBe("product");
+    expect(itemKind({ unit: "pcs", hsn: "9963 31" })).toBe("product");
+    // other 9963 services (rooms) and a service tag or unit still read as services
+    expect(itemKind({ unit: "night", hsn: "996311" })).toBe("service");
+    expect(itemKind({ unit: "plate", hsn: "996331", tags: ["service"] })).toBe("service");
+  });
+  it("reads the veg mark from tags", () => {
+    expect(dietOf(["tiffin", "Veg"])).toBe("veg");
+    expect(dietOf(["non-veg", "veg"])).toBe("non-veg");
+    expect(dietOf(["Non Veg"])).toBe("non-veg");
+    expect(dietOf(["egg", "bakery"])).toBe("egg");
+    expect(dietOf(["bestseller"])).toBeNull();
+    expect(dietOf(null)).toBeNull();
   });
 });
 

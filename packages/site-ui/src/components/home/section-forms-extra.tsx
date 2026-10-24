@@ -23,6 +23,7 @@ import { MarkdownField } from "../markdown-field";
 import { VideoField } from "../media-video-field";
 import { CategoryPicker } from "../pickers";
 import { CtaFields, ItemTools, moveIn } from "./form-parts";
+import { coordsFromText } from "../../lib/map-link";
 
 /*
  * Forms for the richer home sections (split / video hero, offer, gallery, logos, mosaic, FAQ, location, menu board,
@@ -479,7 +480,7 @@ export function LocationFields({ form, onChange, errors, disabled, idp }: Props<
       <div className="grid items-start gap-3 sm:grid-cols-2">
         <TextField id={`${idp}-ph`} type="tel" label={t("site.home.phone")} optional placeholder="+91 98765 43210" value={form.phone} maxLength={20} disabled={disabled} error={errors.phone} onChange={(phone) => onChange({ ...form, phone })} />
         <TextField id={`${idp}-wa`} type="tel" label={t("site.home.whatsapp")} optional placeholder="+91 98765 43210" value={form.whatsapp} maxLength={20} disabled={disabled} error={errors.whatsapp} onChange={(whatsapp) => onChange({ ...form, whatsapp })} />
-        <TextField id={`${idp}-geo`} label={t("site.home.coords")} optional hint={t("site.home.coordsHint")} placeholder="9.9252, 78.1198" value={form.coords} maxLength={40} disabled={disabled} error={errors.coords} onChange={(coords) => onChange({ ...form, coords })} />
+        <TextField id={`${idp}-geo`} label={t("site.home.coords")} optional hint={t("site.home.coordsHint")} placeholder="9.9252, 78.1198" value={form.coords} maxLength={400} disabled={disabled} error={errors.coords} onChange={(raw) => onChange({ ...form, coords: coordsFromText(raw) ?? raw })} />
         <TextField id={`${idp}-map`} label={t("site.home.mapLink")} optional hint={t("site.home.mapLinkHint")} placeholder="https://maps.app.goo.gl/…" value={form.mapLink} disabled={disabled} error={errors.mapLink} onChange={(mapLink) => onChange({ ...form, mapLink })} />
       </div>
       <Repeat
@@ -714,6 +715,17 @@ export function StyleFields({ value, onChange, errors, disabled, idp }: { value:
         />
       </div>
       {v.animation && v.animation !== "none" && <p className="-mt-2 text-meta text-muted-foreground">{t("site.style.motionHint")}</p>}
+      <Chips
+        label={t("site.style.span")}
+        value={v.span}
+        onChange={(span) => set({ span })}
+        disabled={disabled}
+        options={[
+          { value: "", label: t("site.style.span.full") },
+          { value: "half", label: t("site.style.span.half") },
+        ]}
+      />
+      {v.span === "half" && <p className="-mt-2 text-meta text-muted-foreground">{t("site.style.spanHint")}</p>}
       <div className="grid gap-2 sm:grid-cols-2">
         <Toggle id={`${idp}-hm`} label={t("site.style.hideOnMobile")} checked={v.hideOnMobile} onChange={(hideOnMobile) => set({ hideOnMobile, ...(hideOnMobile ? { hideOnDesktop: false } : {}) })} disabled={disabled} />
         <Toggle id={`${idp}-hd`} label={t("site.style.hideOnDesktop")} checked={v.hideOnDesktop} onChange={(hideOnDesktop) => set({ hideOnDesktop, ...(hideOnDesktop ? { hideOnMobile: false } : {}) })} disabled={disabled} />

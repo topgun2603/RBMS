@@ -15,7 +15,10 @@ import { STORE_PATHS } from "./seo/paths";
 
 // ------------------------------------------------------------------ resolved (public) shapes
 
-type Static = Exclude<HomeSection, { type: "hero" | "categories" | "collection" | "products" | "category-mosaic" | "deal" | "shop-the-look" }>;
+type Static = Exclude<
+  HomeSection,
+  { type: "hero" | "categories" | "collection" | "products" | "category-mosaic" | "deal" | "shop-the-look" | "flash-sale" | "comparison" | "category-shelf" | "swatches" }
+>;
 
 export interface ResolvedHeroSlide extends Omit<HeroSlide, "imageUrl"> {
   /** Null only in the default home (no image chosen yet): render a branded background. */
@@ -76,7 +79,34 @@ export interface ResolvedCategoryMosaicSection extends HiddenFlag {
   categories: CatalogCategoryRef[];
 }
 
+/**
+ * A flash sale with its products: picked ones in order, or the collection's. `source: "sale"` comes back with no
+ * products: the storefront loads the biggest discounts itself (they change by the hour).
+ */
+export interface ResolvedFlashSaleSection extends HiddenFlag, Omit<HomeSectionOf<"flash-sale">, "productIds" | "hidden" | "style"> {
+  products: PublicProductSummary[];
+}
+
+/** Products side by side; each row keeps one value per product still on sale (values of gone products are dropped). */
+export interface ResolvedComparisonSection extends HiddenFlag, Omit<HomeSectionOf<"comparison">, "productIds" | "hidden" | "style"> {
+  products: PublicProductSummary[];
+}
+
+/** The categories a category shelf lists (their products are loaded by the storefront, per category). */
+export interface ResolvedCategoryShelfSection extends HiddenFlag, Omit<HomeSectionOf<"category-shelf">, "categoryIds" | "hidden" | "style"> {
+  categories: CatalogCategoryRef[];
+}
+
+/** The shade finder's products, in order (their variants are loaded by the storefront). */
+export interface ResolvedSwatchesSection extends HiddenFlag, Omit<HomeSectionOf<"swatches">, "productIds" | "hidden" | "style"> {
+  products: PublicProductSummary[];
+}
+
 export type ResolvedHomeSection =
+  | ResolvedSwatchesSection
+  | ResolvedFlashSaleSection
+  | ResolvedComparisonSection
+  | ResolvedCategoryShelfSection
   | ResolvedHeroSection
   | ResolvedCategoriesSection
   | ResolvedCategoryMosaicSection
@@ -93,6 +123,8 @@ export interface PublicHome {
   /** True when the shop hasn't published a home yet and this is the generated one. */
   isDefault: boolean;
   publishedAt: string | null;
+  /** The home's words in other languages, by section id (`localizeSections` applies them); omitted when there are none. */
+  translations?: HomeDoc["translations"];
 }
 
 export interface ResolveDeps {
@@ -119,6 +151,8 @@ function inOrder<T extends { id: string }>(ids: readonly string[], rows: readonl
 export const ALL_CATEGORIES_LIMIT = 24;
 /** Tiles a category mosaic shows when no categories are picked. */
 export const MOSAIC_DEFAULT_TILES = 5;
+/** Categories a category shelf lists when none are picked. */
+export const SHELF_DEFAULT_CATEGORIES = 6;
 
 /** One section with its catalogue data; null when that data is gone (the section is dropped). */
 export async function resolveSection(tenantId: string, section: HomeSection, deps: ResolveDeps): Promise<ResolvedHomeSection | null> {
@@ -183,6 +217,41 @@ export async function resolveSection(tenantId: string, section: HomeSection, dep
       if (!hotspots.length) return null;
       const { hotspots: _hs, hidden: _h, style: _s, ...rest } = section;
       return { ...rest, ...hid, hotspots };
+    }
+    case "flash-sale": {
+      const { productIds, hidden: _h, style: _s, ...rest } = section;
+      let products: PublicProductSummary[] = [];
+      if (section.source === "pick") products = inOrder(productIds, await catalog.productsByIds(tenantId, productIds)).slice(0, section.limit);
+      else if (section.source === "collection") products = section.collectionSlug ? ((await catalog.collection(tenantId, section.collectionSlug, section.limit))?.products ?? []).slice(0, section.limit) : [];
+      if (section.source !== "sale" && !products.length) return null;
+      return { ...rest, ...hid, products };
+    }
+    case "comparison": {
+      const { productIds, hidden: _h, style: _s, rows, ...rest } = section;
+      const found = new Map((await catalog.productsByIds(tenantId, productIds)).map((p) => [p.id, p]));
+      const kept = productIds.map((pid, i) => ({ i, p: found.get(pid) })).filter((x, j, all) => x.p && all.findIndex((y) => y.p?.id === x.p!.id) === j);
+      if (kept.length < 2) return null;
+      return {
+        ...rest,
+        ...(rest.highlightId && !found.has(rest.highlightId) ? { highlightId: undefined } : {}),
+        ...hid,
+        products: kept.map((x) => x.p!),
+        rows: rows.map((r) => ({ label: r.label, values: kept.map((x) => r.values[x.i] ?? "") })),
+      };
+    }
+    case "swatches": {
+      const { productIds, hidden: _h, style: _s, ...rest } = section;
+      const products = inOrder(productIds, await catalog.productsByIds(tenantId, productIds));
+      if (!products.length) return null;
+      return { ...rest, ...hid, products };
+    }
+    case "category-shelf": {
+      const { categoryIds, hidden: _h, style: _s, ...rest } = section;
+      const rows = categoryIds?.length
+        ? inOrder(categoryIds, await catalog.categories(tenantId, categoryIds))
+        : (await catalog.categories(tenantId)).slice(0, SHELF_DEFAULT_CATEGORIES);
+      if (!rows.length) return null;
+      return { ...rest, ...hid, categories: rows };
     }
     default: {
       const { hidden: _h, ...rest } = section;
@@ -262,7 +331,13 @@ export async function publicHome(
 ): Promise<PublicHome> {
   if (!published) return defaultHome(tenantId, deps);
   const sections = await resolveSections(tenantId, Array.isArray(published.sections) ? published.sections : [], deps);
-  return { sections, seo: published.seo ?? null, isDefault: false, publishedAt: publishedAt ? publishedAt.toISOString() : null };
+  return {
+    sections,
+    seo: published.seo ?? null,
+    isDefault: false,
+    publishedAt: publishedAt ? publishedAt.toISOString() : null,
+    ...(published.translations ? { translations: published.translations } : {}),
+  };
 }
 
 // ------------------------------------------------------------------ menus

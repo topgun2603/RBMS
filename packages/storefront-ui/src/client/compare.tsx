@@ -325,7 +325,7 @@ export function CompareView() {
   const avail = useQuery({
     queryKey: ["compare-stock", variantIds.join(",")],
     enabled: variantIds.length > 0,
-    queryFn: () => call<List<Availability>>("/inventory/public/availability", { auth: false, query: { itemIds: variantIds.join(",") } }).catch(() => ({ items: [], total: 0 })),
+    queryFn: () => call<List<Availability>>("/store/availability", { auth: false, query: { itemIds: variantIds.join(",") } }).catch(() => ({ items: [], total: 0 })),
   });
 
   if (!ready || (ids.length > 0 && products.isPending)) {

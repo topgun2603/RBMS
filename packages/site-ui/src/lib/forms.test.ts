@@ -27,7 +27,22 @@ describe("store settings form", () => {
     expect(fromStoreForm(form)).toEqual({
       ...live,
       social: { instagram: "https://instagram.com/anbufashions", facebook: "", youtube: "", whatsapp: "+919876500003" },
+      installBanner: true,
+      deliveryEnabled: true,
+      pickupEnabled: false,
+      pickupNote: "",
+      trust: { returns: "auto", payment: "auto", badges: [] },
     });
+  });
+
+  it("trust badges: modes and the owner's own badges round-trip; empty titles are dropped", () => {
+    const own = { returns: "replace" as const, payment: "confirm" as const, badges: [{ title: "Licensed stock", text: "PESO licence 12/2025", titleTa: "உரிமம் பெற்றவை", textTa: "" }] };
+    const form = toStoreForm({ ...live, trust: own });
+    expect(form).toMatchObject({ trustReturns: "replace", trustPayment: "confirm" });
+    expect(fromStoreForm(form).trust).toEqual(own);
+    expect(fromStoreForm({ ...form, trustBadges: [...form.trustBadges, { title: " ", text: "x", titleTa: "", textTa: "" }] }).trust?.badges).toHaveLength(1);
+    expect(toStoreForm({ ...live, trust: { returns: "weird" as never, payment: "auto", badges: [] } }).trustReturns).toBe("auto");
+    expect(storeFormSchema.safeParse({ ...form, trustBadges: Array(5).fill(own.badges[0]) }).success).toBe(false);
   });
 
   it("defaults match the API's", () => {

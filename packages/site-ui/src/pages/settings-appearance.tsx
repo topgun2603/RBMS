@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRightIcon, BriefcaseIcon, CheckIcon, ExternalLinkIcon, LayoutGridIcon, LayoutListIcon, LayoutTemplateIcon, PaletteIcon, PanelTopIcon, ShirtIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
+import { ArrowRightIcon, BriefcaseIcon, RotateCcwIcon, CheckIcon, ExternalLinkIcon, LayoutDashboardIcon, LayoutGridIcon, LayoutListIcon, LayoutTemplateIcon, PaletteIcon, PanelTopIcon, ShirtIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
 import { Button, ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { THEME_OPTIONS, THEME_PRESETS, themePreset, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
+import { LAYOUT_OPTIONS, THEME_OPTIONS, THEME_PRESETS, themePreset, type LayoutOptionKey, type LayoutTheme, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
+import { MobileNavSketch, PageLayoutPicker } from "../components/page-layout-thumbs";
 import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@srirealtime/verticals";
 import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
@@ -14,7 +15,7 @@ import { LivePreview } from "../components/live-preview";
 import { appearanceTokens, previewViewOfPath } from "../components/live-preview-drafts";
 import { useUnsavedGuard } from "../components/unsaved-guard";
 import { useIsManager } from "../lib/access";
-import { draftFrom, draftFromPreset, useBrandingTokens, useSaveAppearance, useSaveBusinessType, type AppearanceDraft } from "../lib/appearance";
+import { differsFromPreset, draftFrom, draftFromPreset, resetToPreset, useBrandingTokens, useSaveAppearance, useSaveBusinessType, type AppearanceDraft } from "../lib/appearance";
 import { useStoreSettings } from "../lib/queries";
 import { useStoreUrl } from "../lib/store-url";
 
@@ -102,6 +103,13 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
     // Show the page the change is on.
     showView(PRODUCT_PAGE_KEYS.has(k) ? "product" : LISTING_PAGE_KEYS.has(k) ? "listing" : "home");
   };
+  /** Page layout and phone navigation (branding LAYOUT_OPTIONS); a preset keeps them (they are the shop's structure). */
+  const setLayout = <K extends LayoutOptionKey>(k: K, v: LayoutTheme[K]) => {
+    setDraft((d) => ({ ...d, theme: { ...d.theme, [k]: v } }));
+    showView(k === "pageLayout" && v === "rail" ? "listing" : "home");
+  };
+  const pickPreset = (next: AppearanceDraft) =>
+    setDraft((d) => ({ ...next, theme: { ...next.theme, pageLayout: next.theme.pageLayout ?? d.theme.pageLayout, mobileNav: next.theme.mobileNav ?? d.theme.mobileNav } }));
   const settingsHref = useSettingsHref();
   const choices = (keys: readonly ThemeOptionKey[]) =>
     keys.map((k) => (
@@ -130,6 +138,9 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
   };
 
   const recommended = themePreset(pack.preset);
+  // The shop's own preset, when its colours / fonts / options were changed since: "Reset to <preset>" puts it back.
+  const currentPreset = draft.preset ? themePreset(draft.preset) : undefined;
+  const canReset = !!currentPreset && canEdit && differsFromPreset(draft, currentPreset);
   return (
     <form onSubmit={submit} className="grid gap-section">
       <div className="grid items-start gap-section xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
@@ -150,7 +161,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
             <p className="text-meta text-muted-foreground">{pack.tagline}</p>
             {recommended && draft.preset !== recommended.id && canEdit && (
               <div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setDraft(draftFromPreset(recommended))}>
+                <Button type="button" variant="outline" size="sm" onClick={() => pickPreset(draftFromPreset(recommended))}>
                   <SparklesIcon /> {t("site.appearance.useRecommended", { name: recommended.name })}
                 </Button>
               </div>
@@ -158,6 +169,14 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
           </Section>
 
           <Section icon={LayoutTemplateIcon} title={t("site.appearance.presetsTitle")} description={t("site.appearance.presetsBody")}>
+            {canReset && currentPreset && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Button type="button" variant="outline" size="sm" onClick={() => setDraft((d) => resetToPreset(d, currentPreset))} data-testid="reset-preset">
+                  <RotateCcwIcon /> {t("site.appearance.resetPreset", { name: currentPreset.name })}
+                </Button>
+                <span className="text-meta text-muted-foreground">{t("site.appearance.resetPresetHint")}</span>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
               {THEME_PRESETS.map((p) => {
                 const on = draft.preset === p.id;
@@ -167,7 +186,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
                     type="button"
                     disabled={!canEdit}
                     aria-pressed={on}
-                    onClick={() => setDraft(draftFromPreset(p))}
+                    onClick={() => pickPreset(draftFromPreset(p))}
                     className={cn(
                       "group grid gap-2 rounded-xl border p-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
                       on ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/50",
@@ -230,6 +249,20 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
 
           <Section icon={LayoutListIcon} title={t("site.appearance.listingTitle")} description={t("site.appearance.listingBody")}>
             {choices(LISTING_KEYS)}
+          </Section>
+
+          <Section icon={LayoutDashboardIcon} title={t("site.appearance.pageLayoutTitle")} description={t("site.appearance.pageLayoutBody")}>
+            <PageLayoutPicker value={draft.theme.pageLayout ?? "standard"} onChange={(v) => setLayout("pageLayout", v)} disabled={!canEdit} />
+            <div className="flex items-end gap-4">
+              <MobileNavSketch tabs={draft.theme.mobileNav === "tabs"} className="h-20 w-auto shrink-0 text-primary" />
+              <Choice
+                label={t("site.appearance.opt.mobileNav.label")}
+                value={draft.theme.mobileNav ?? "off"}
+                onChange={(v) => setLayout("mobileNav", v)}
+                disabled={!canEdit}
+                options={LAYOUT_OPTIONS.mobileNav.map((v) => ({ value: v, label: t(`site.appearance.opt.mobileNav.${v}`) }))}
+              />
+            </div>
           </Section>
 
           <Section icon={SlidersHorizontalIcon} title={t("site.appearance.layoutTitle")} description={t("site.appearance.layoutBody")}>

@@ -8,6 +8,7 @@ import { LOCALE_COOKIE, translatorFor, type Locale, type Translator } from "../l
 import type { AuthUser, PricedCart, StoreShell } from "../types";
 import { call, getToken, setCookie, setToken, setUnauthorizedHandler } from "./api";
 import { track } from "./analytics";
+import { redeemHandoff } from "./central-sign-in";
 
 export const CART_COOKIE = "sr_cart";
 
@@ -234,6 +235,23 @@ export function StoreProvider({ shell, locale, children }: { shell: StoreShell; 
     },
     [ensureToken, queryClient, replace],
   );
+
+  // Back from the landing site in redirect mode (popup blocked / small phones): redeem `?handoff=` for this store's session.
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("handoff");
+    if (!code) return;
+    url.searchParams.delete("handoff");
+    window.history.replaceState(null, "", url.pathname + (url.search || "") + url.hash);
+    redeemHandoff(code)
+      .then(async (r) => {
+        await signIn(r.token, r.user);
+        toast.success(t("auth.signedIn"));
+      })
+      .catch(() => undefined);
+    // Once per page load: the code is single-use.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const signOut = React.useCallback(async () => {
     await call("/auth/logout", { method: "POST" }).catch(() => undefined);

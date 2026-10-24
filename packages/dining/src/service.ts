@@ -113,7 +113,15 @@ export const billInput = z
   .object({
     /** Line ids per bill for a split; leave out for one bill. Lines not listed go on a last bill. */
     splits: z.array(z.array(z.string().uuid()).max(200)).max(20).optional(),
-    customer: z.object({ name: z.string().trim().min(1).max(120), phone: optText(20) }).nullish(),
+    customer: z
+      .object({
+        name: z.string().trim().min(1).max(120),
+        phone: optText(20),
+        /** A saved billing customer (credit book) and the date the bill falls due. */
+        customerId: z.string().uuid().optional(),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      })
+      .nullish(),
     tillSessionId: z.string().uuid().nullish(),
   })
   .strict();
@@ -415,6 +423,16 @@ export class DiningService {
       .select()
       .from(diningMenuItems)
       .where(and(eq(diningMenuItems.tenantId, tenantId), itemIds ? inArray(diningMenuItems.itemId, itemIds.slice(0, 1000)) : undefined));
+  }
+
+  /** Of these items (variant ids), the ones the shop marked sold out today (dining menu `available` off). */
+  async soldOutItems(tenantId: string, itemIds: string[]): Promise<Set<string>> {
+    if (itemIds.length === 0) return new Set();
+    const rows = await this.db
+      .select({ itemId: diningMenuItems.itemId })
+      .from(diningMenuItems)
+      .where(and(eq(diningMenuItems.tenantId, tenantId), eq(diningMenuItems.available, false), inArray(diningMenuItems.itemId, itemIds.slice(0, 1000))));
+    return new Set(rows.map((r) => r.itemId));
   }
 
   async saveMenuItem(tenantId: string, itemId: string, input: unknown): Promise<DiningMenuItemRow> {

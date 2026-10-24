@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BanknoteIcon, ExternalLinkIcon, ScrollTextIcon, Share2Icon, StoreIcon, PhoneIcon } from "lucide-react";
-import { Button, ChipGroup, Input, Label, Skeleton, Switch, Textarea, toast } from "@srirealtime/ui";
+import { BadgeCheckIcon, BanknoteIcon, ExternalLinkIcon, PlusIcon, ScrollTextIcon, Share2Icon, StoreIcon, PhoneIcon, Trash2Icon, TruckIcon } from "lucide-react";
+import { Button, ChipGroup, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch, Textarea, toast } from "@srirealtime/ui";
 import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Page, PageHeading, QueryError, SettingsNav, useI18n } from "@srirealtime/web";
 import { MoneyInput, ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { MarkdownField } from "../components/markdown-field";
@@ -14,7 +14,7 @@ import { money, rupeesToPaise } from "../lib/format";
 import { fromStoreForm, storeFormSchema, toStoreForm, type StoreFormValues } from "../lib/store-form";
 import { useSaveStoreSettings, useStoreSettings } from "../lib/queries";
 import { useStoreUrl } from "../lib/store-url";
-import type { StoreSettings } from "../lib/types";
+import { TRUST_PAYMENT, TRUST_RETURNS, type StoreSettings } from "../lib/types";
 
 export default function StoreSettingsPage() {
   const { t } = useI18n();
@@ -53,6 +53,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
   const open = useWatch({ control: form.control, name: "open" });
   const cod = useWatch({ control: form.control, name: "codEnabled" });
   const policyValues = useWatch({ control: form.control, name: [...POLICIES] });
+  const badges = useFieldArray({ control: form.control, name: "trustBadges" });
   const dirty = form.formState.isDirty;
   const guard = useUnsavedGuard(dirty && !save.isPending);
   const disabled = !canEdit || save.isPending;
@@ -124,10 +125,67 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
               )}
             />
           )}
+          <FormField
+            control={form.control}
+            name="installBanner"
+            render={({ field }) => (
+              <Label htmlFor="st-install" className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3 font-normal">
+                <span className="grid gap-0.5">
+                  <span className="text-sm font-medium">{t("site.store.installBanner")}</span>
+                  <span className="text-xs text-muted-foreground">{t("site.store.installBannerHint")}</span>
+                </span>
+                <Switch id="st-install" checked={field.value} disabled={disabled} onCheckedChange={field.onChange} />
+              </Label>
+            )}
+          />
           {storeUrl && (
             <a href={storeUrl("/")} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline">
               <ExternalLinkIcon className="size-4" /> {t("site.common.viewStore")}
             </a>
+          )}
+        </Section>
+
+        <Section icon={TruckIcon} tone="text-info-ink" title={t("site.store.fulfilTitle")} description={t("site.store.fulfilHint")}>
+          <FormField
+            control={form.control}
+            name="deliveryEnabled"
+            render={({ field }) => (
+              <Label htmlFor="st-delivery" className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3 font-normal">
+                <span className="grid gap-0.5">
+                  <span className="text-sm font-medium">{t("site.store.delivery")}</span>
+                  <span className="text-xs text-muted-foreground">{t("site.store.deliveryHint")}</span>
+                </span>
+                <Switch id="st-delivery" checked={field.value} disabled={disabled} onCheckedChange={field.onChange} />
+              </Label>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="pickupEnabled"
+            render={({ field }) => (
+              <Label htmlFor="st-pickup" className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3 font-normal">
+                <span className="grid gap-0.5">
+                  <span className="text-sm font-medium">{t("site.store.pickup")}</span>
+                  <span className="text-xs text-muted-foreground">{t("site.store.pickupHint")}</span>
+                </span>
+                <Switch id="st-pickup" checked={field.value} disabled={disabled} onCheckedChange={field.onChange} />
+              </Label>
+            )}
+          />
+          {form.watch("pickupEnabled") && (
+            <FormField
+              control={form.control}
+              name="pickupNote"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("site.store.pickupNote")}</FormLabel>
+                  <FormControl>
+                    <Textarea rows={2} maxLength={300} placeholder={t("site.store.pickupNotePlaceholder")} disabled={disabled} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
         </Section>
 
@@ -225,6 +283,80 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
               </Button>
             </div>
           ))}
+        </Section>
+
+        <Section icon={BadgeCheckIcon} tone="text-success-ink" title={t("site.store.trustTitle")} description={t("site.store.trustHint")}>
+          <div className="grid items-start gap-4 sm:grid-cols-2">
+            {(
+              [
+                ["trustReturns", TRUST_RETURNS, "site.store.trustReturns"],
+                ["trustPayment", TRUST_PAYMENT, "site.store.trustPayment"],
+              ] as const
+            ).map(([name, values, label]) => (
+              <FormField
+                key={name}
+                control={form.control}
+                name={name}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t(label)}</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
+                      <FormControl>
+                        <SelectTrigger className="w-full" data-testid={`st-${name}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {values.map((v) => (
+                          <SelectItem key={v} value={v}>
+                            {t(`${label}.${v}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            ))}
+          </div>
+          <div className="grid gap-3">
+            <div>
+              <p className="text-sm font-medium">{t("site.store.trustOwn")}</p>
+              <p className="text-meta text-muted-foreground">{t("site.store.trustOwnHint")}</p>
+            </div>
+            {badges.fields.map((b, i) => (
+              <div key={b.id} className="flex items-start gap-2 rounded-xl border p-3" data-testid="st-trust-badge">
+                <div className="grid min-w-0 flex-1 items-start gap-3 sm:grid-cols-2">
+                  {(["title", "text", "titleTa", "textTa"] as const).map((k) => (
+                    <FormField
+                      key={k}
+                      control={form.control}
+                      name={`trustBadges.${i}.${k}`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t(`site.store.trustBadge${k[0]!.toUpperCase()}${k.slice(1)}`)}</FormLabel>
+                          <FormControl>
+                            <Input {...field} disabled={disabled} maxLength={k === "title" ? 40 : k === "text" ? 80 : k === "titleTa" ? 60 : 120} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="mt-6 shrink-0" disabled={disabled} onClick={() => badges.remove(i)} aria-label={t("site.store.trustRemove", { n: i + 1 })}>
+                  <Trash2Icon />
+                </Button>
+              </div>
+            ))}
+            {badges.fields.length < 4 && (
+              <div>
+                <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => badges.append({ title: "", text: "", titleTa: "", textTa: "" })}>
+                  <PlusIcon /> {t("site.store.trustAdd")}
+                </Button>
+              </div>
+            )}
+          </div>
         </Section>
 
         {canEdit && <SaveBar dirty={dirty} saving={save.isPending} onDiscard={() => form.reset(initial)} />}

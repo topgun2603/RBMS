@@ -8,6 +8,18 @@ import { hashHue, imageUrl, initialsOf, money, percentOff } from "../lib/format"
 
 type T = (key: string, vars?: Record<string, string | number | null | undefined>) => string;
 
+/** The Indian food mark: a green dot in a square for veg, brown for egg, red for non-veg (dishes only). */
+export function FoodMark({ diet, t, className }: { diet?: "veg" | "egg" | "non-veg" | null; t: T; className?: string }) {
+  if (!diet) return null;
+  const colour = diet === "veg" ? "border-emerald-600 text-emerald-600" : diet === "egg" ? "border-amber-700 text-amber-700" : "border-red-600 text-red-600";
+  const label = t(diet === "veg" ? "food.veg" : diet === "egg" ? "food.egg" : "food.nonVeg");
+  return (
+    <span role="img" aria-label={label} title={label} data-testid="food-mark" data-diet={diet} className={cn("me-1.5 inline-flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border-[1.5px] bg-white align-[-1px]", colour, className)}>
+      <span className="size-1.5 rounded-full bg-current" />
+    </span>
+  );
+}
+
 /** Product / content image; a branded placeholder (initials on a soft brand tint) when there's none. */
 export function StoreImage({
   src,
@@ -147,12 +159,14 @@ export function Breadcrumbs({ items, className }: { items: { name: string; href?
 
 export function SectionTitle({ title, eyebrow, href, linkLabel, badge, className }: { title: string; eyebrow?: string; href?: string; linkLabel?: string; badge?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("sf-section-title mb-6 flex items-end justify-between gap-4 sm:mb-8", className)}>
-      <div className="min-w-0">
+    // Wraps: a long (Tamil) title keeps its width and "View all" drops below it instead of squeezing it to one word a line.
+    <div className={cn("sf-section-title mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 sm:mb-8", className)}>
+      <div className="min-w-0 flex-[1_1_15rem]">
         {eyebrow && <p className="mb-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">{eyebrow}</p>}
-        <h2 className="sf-heading flex flex-wrap items-center gap-3 font-display text-h2 font-semibold">
+        {/* Block (not flex), so the "underline" heading bar follows the text alignment. */}
+        <h2 className="sf-heading font-display text-h2 font-semibold">
           {title}
-          {badge}
+          {badge && <span className="ms-3 inline-flex align-middle">{badge}</span>}
         </h2>
       </div>
       {href && linkLabel && (

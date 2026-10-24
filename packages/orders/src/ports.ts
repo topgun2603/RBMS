@@ -1,3 +1,4 @@
+import type { GstRateRule } from "@srirealtime/gst";
 import type { OrderPaymentStatus, OrderStatus } from "./schema";
 import type { Order } from "./service";
 
@@ -17,7 +18,10 @@ export interface CatalogItem {
   /** Paise as listed (incl. GST when `taxInclusive`). */
   price: number;
   taxInclusive: boolean;
+  /** The rate at `price` (a price-band product's band at its list price). */
   gstRate: number;
+  /** Price-band GST (apparel / footwear): the order re-bands each line on its value after coupon / loyalty discounts. */
+  gstRule?: GstRateRule | null;
   image: string | null;
   /** Needed for category coupons; optional until the catalogue adds it to CatalogItem. */
   categoryId?: string | null;

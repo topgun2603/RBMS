@@ -144,6 +144,51 @@ export const SECTION_FIXTURES: HomeSectionInput[] = [
   },
   { type: "blog-posts", title: "From the blog", limit: 3, tag: "care" },
   { type: "reviews-summary", title: "Reviews", limit: 6 },
+  { type: "flash-sale", title: "Midnight sale", text: "Six hours only", startsAt: "2026-11-01T12:30:00.000Z", endsAt: "2026-11-01T18:30:00.000Z", source: "pick", productIds: [P1, P2], layout: "grid", limit: 8, cta: { label: "All offers", href: "/products" } },
+  { type: "flash-sale", endsAt: "2026-11-01T18:30:00.000Z", source: "collection", collectionSlug: "new-arrivals" },
+  {
+    type: "finder",
+    title: "Find the right bag",
+    layout: "chips",
+    results: "button",
+    buttonLabel: "Show my list",
+    imageUrl: "https://cdn.example.in/f.jpg",
+    cta: { label: "Send your list on WhatsApp", href: "https://wa.me/919876500088" },
+    limit: 6,
+    questions: [
+      { label: "Which class?", options: [{ label: "LKG–UKG", filterName: "Class", filterValue: "LKG-UKG", imageUrl: "https://cdn.example.in/k.jpg" }, { label: "Class 1–5", categoryId: C1, tag: "class-1-5", href: "/collections/class-1-5" }] },
+      { label: "Budget", options: [{ label: "Under ₹500", priceMax: 50000 }, { label: "Premium", keywords: "premium", priceMin: 100000 }] },
+    ],
+  },
+  { type: "stories", title: "New this week", layout: "reels", items: [{ imageUrl: "https://cdn.example.in/s1.jpg", videoUrl: "https://cdn.example.in/s1.mp4", title: "Drape it", text: "Three ways", href: "/c/sarees", ctaLabel: "Shop sarees" }, { imageUrl: "https://cdn.example.in/s2.jpg", title: "Bridal" }] },
+  { type: "category-shelf", title: "Shop by aisle", categoryIds: [C1], showImages: false, limit: 6 },
+  { type: "category-shelf" },
+  {
+    type: "sticky-story",
+    title: "From loom to you",
+    imageSide: "right",
+    chapters: [
+      { eyebrow: "Step 1", heading: "The yarn", markdown: "Pure **silk**", imageUrl: "https://cdn.example.in/c1.jpg", alt: "Yarn", cta: { label: "Our weavers", href: "/pages/about" } },
+      { heading: "The loom", imageUrl: "https://cdn.example.in/c2.jpg" },
+    ],
+  },
+  {
+    type: "tiles",
+    title: "Shop by concern",
+    text: "What helps",
+    layout: "grid",
+    showCounts: false,
+    items: [
+      { label: "Acne & oily skin", note: "Niacinamide, salicylic acid", imageUrl: "https://cdn.example.in/acne.jpg", collectionSlug: "acne" },
+      { label: "Dry skin", tag: "dry-skin" },
+      { label: "Hair fall", href: "/pages/hair" },
+    ],
+  },
+  { type: "tiles", items: [{ label: "Bridal" }] },
+  { type: "size-finder", title: "Find your size", text: "UK / India sizes", imageUrl: "https://cdn.example.in/feet.jpg", optionName: "Size", footLength: true, groups: [{ label: "Men", categoryId: C1, sizes: ["6", "7", "8"] }, { label: "Kids", sizes: ["10C", "11C"] }] },
+  { type: "size-finder", groups: [{ label: "All", sizes: ["S", "M", "L"] }] },
+  { type: "swatches", title: "Find your shade", text: "Lipsticks", optionName: "Shade", productIds: [P1, P2], shades: [{ value: "Ruby", hex: "#9b111e", depth: "dusky" }, { value: "Nude", hex: "#c8a08a" }] },
+  { type: "comparison", title: "Which one?", text: "Side by side", productIds: [P1, P2], highlightId: P2, highlightLabel: "Our pick", showRating: false, rows: [{ label: "Sole", values: ["Rubber", "PU"] }, { label: "Warranty", values: ["6 months"] }] },
 ];
 
 export const BLOCK_FIXTURES: BlockInput[] = [

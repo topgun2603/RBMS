@@ -14,6 +14,11 @@ describe("section style frame", () => {
   it("leaves unstyled sections exactly as they were", () => {
     expect(html(<SectionFrame section={text()}>X</SectionFrame>)).toBe("X");
     expect(html(<SectionFrame section={text({ hideOnMobile: false })}>X</SectionFrame>)).toBe("X");
+    // Compact spacing tightens the gaps on both sides, except above the page's first section (no pull under the header).
+    expect(html(<SectionFrame section={text({ padding: "compact" })}>X</SectionFrame>)).toContain("-my-[calc(var(--sf-section)*0.3)]");
+    const first = html(<SectionFrame section={text({ padding: "compact" })} first>X</SectionFrame>);
+    expect(first).toContain("-mb-[calc(var(--sf-section)*0.3)]");
+    expect(first).not.toContain("-my-");
   });
 
   it("puts the section on a band with spacing, width and hide rules", () => {
@@ -84,7 +89,7 @@ describe("trade sections", () => {
   it("location: an 'Open in Google Maps' way out on the map, and a labelled tile (not a bare pin) without coordinates", () => {
     const s: HomeSectionOf<"location"> = { type: "location", address: "14 Race Course Road, Coimbatore", hours: [], coords: "11.0016, 76.9752" };
     const withMap = html(<LocationSection s={s} t={t} config={config} />);
-    expect(withMap).toContain('loading="lazy"');
+    expect(withMap).toContain('loading="eager"');
     expect(withMap).toMatch(/data-testid="map-open"[^>]*>.*Open in Google Maps/);
     expect(withMap).toContain("https://www.google.com/maps/search/?api=1&amp;query=11.0016%2C76.9752");
     const noPin = html(<LocationSection s={{ ...s, coords: undefined }} t={t} config={config} />);

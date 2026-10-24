@@ -31,7 +31,8 @@ export type CardBadge = { kind: "sale" | "new" | "low" | "out"; label: string };
 export function cardBadges({ pct, fresh, stock }: { pct: number; fresh: boolean; stock: CardStock | null }, t: (key: string, vars?: Record<string, string | number>) => string): CardBadge[] {
   if (stock === "out") return [{ kind: "out", label: t("product.outOfStock") }];
   const out: CardBadge[] = [];
-  if (pct > 0) out.push({ kind: "sale", label: t("product.off", { pct }) });
+  // The tile's own short label ("55% சலுகை" in Tamil, not the product page's longer "55% தள்ளுபடி").
+  if (pct > 0) out.push({ kind: "sale", label: t("card.off", { pct }) });
   if (stock === "low") out.push({ kind: "low", label: t("card.fewLeft") });
   if (fresh) out.push({ kind: "new", label: t("card.new") });
   return out.slice(0, 2);

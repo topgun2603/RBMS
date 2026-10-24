@@ -12,7 +12,7 @@ import { z } from "zod";
 // ------------------------------------------------------------------ limits
 
 export const CMS_LIMITS = {
-  sections: 40,
+  sections: 60,
   blocks: 100,
   heroSlides: 8,
   menuItems: 40,
@@ -48,6 +48,18 @@ export const CMS_LIMITS = {
   planFeatures: 12,
   blogLimit: 12,
   reviewsLimit: 12,
+  finderQuestions: 3,
+  finderOptions: 8,
+  stories: 12,
+  shelfCategories: 8,
+  chapters: 6,
+  compareProducts: 4,
+  compareRows: 12,
+  tiles: 12,
+  sizeGroups: 4,
+  sizes: 20,
+  swatchProducts: 6,
+  shades: 60,
   /** Paise (₹10 lakh). */
   price: 100_000_000,
 } as const;
@@ -181,6 +193,15 @@ export const HOME_SECTION_TYPES = [
   "pricing-table",
   "blog-posts",
   "reviews-summary",
+  "flash-sale",
+  "finder",
+  "stories",
+  "category-shelf",
+  "sticky-story",
+  "comparison",
+  "tiles",
+  "size-finder",
+  "swatches",
 ] as const;
 export type HomeSectionType = (typeof HOME_SECTION_TYPES)[number];
 
@@ -195,6 +216,8 @@ export const SECTION_PADDINGS = ["compact", "normal", "spacious"] as const;
 export const SECTION_WIDTHS = ["contained", "full"] as const;
 export const SECTION_ALIGNS = ["start", "center"] as const;
 export const SECTION_ANIMATIONS = ["none", "fade", "rise"] as const;
+/** full: the whole row (the default) · half: two half sections in a row sit side by side on larger screens. */
+export const SECTION_SPANS = ["full", "half"] as const;
 
 /** An enum that falls back to "not set" (the default look) when stored content has a value this build doesn't know. */
 const lenient = <T extends [string, ...string[]]>(values: T) => z.enum(values).optional().catch(undefined);
@@ -202,6 +225,7 @@ const lenient = <T extends [string, ...string[]]>(values: T) => z.enum(values).o
 /**
  * Optional look of any home section; a field left out means the theme's default. Background `image` needs `imageUrl`
  * (darkened by `overlay` %); `gradient` blends the brand colours. Hide on phones (< 768px) or on larger screens.
+ * `span: half` pairs the section with the next half section (side by side from 1024px; stacked on phones).
  */
 export const sectionStyleSchema = z
   .object({
@@ -214,6 +238,7 @@ export const sectionStyleSchema = z
     animation: lenient([...SECTION_ANIMATIONS]),
     hideOnMobile: z.boolean().optional(),
     hideOnDesktop: z.boolean().optional(),
+    span: lenient([...SECTION_SPANS]),
   })
   .superRefine((st, ctx) => {
     if (st.background === "image" && !st.imageUrl) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["imageUrl"], message: "Required" });
@@ -830,6 +855,277 @@ export const reviewsSummarySectionSchema = z.object({
   limit: z.coerce.number().int().min(1).max(CMS_LIMITS.reviewsLimit).default(6),
 });
 
+// ---- layout sections: flash sale, finder, stories, category shelf, sticky story, comparison
+
+/** Where a flash sale takes its products: picked by hand · the biggest discounts · a collection (`collectionSlug`). */
+export const FLASH_SALE_SOURCES = ["pick", "sale", "collection"] as const;
+const dateTime = z.string().datetime({ offset: true });
+
+/** "HH:MM" shop time (IST), "24:00" = midnight at the end of the day. */
+const clockTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$/, "Use HH:MM");
+
+/**
+ * A timed sale over several products: a countdown band over a shelf. Shows from `startsAt` (omitted = now) until
+ * `endsAt`, then hides itself; with `daily` only between those times each day ("every day 18:00–21:00", shop time,
+ * may run past midnight), counting down to the end of the day's window. `pick` needs `productIds`, `collection` needs
+ * `collectionSlug` (the editor checks both; a section without products is simply not shown).
+ */
+export const flashSaleSectionSchema = z.object({
+  type: z.literal("flash-sale"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  /** Default "Flash sale". */
+  title: text(CMS_LIMITS.heading).optional(),
+  text: text(400).optional(),
+  startsAt: dateTime.optional(),
+  endsAt: dateTime,
+  daily: z
+    .object({ from: clockTime, to: clockTime })
+    .refine((d) => d.from !== d.to, { message: "The daily window needs a different start and end", path: ["to"] })
+    .optional(),
+  source: variant([...FLASH_SALE_SOURCES], "pick"),
+  productIds: z.array(uuid).max(CMS_LIMITS.ids).default([]),
+  collectionSlug: refSlug.optional(),
+  layout: z.enum(SHELF_LAYOUTS).default("carousel"),
+  limit: shelfLimit(8),
+  cta: ctaSchema.optional(),
+});
+
+/** wizard: one question at a time with a progress bar, then the matches · chips: every question as a row of chips, matches update live. */
+export const FINDER_LAYOUTS = ["wizard", "chips"] as const;
+
+/**
+ * One answer of a finder question and what it filters: a category, a product tag (`tag`, exact: "class-1-5", "acne"),
+ * a product option / attribute (`filterName` = `filterValue`, e.g. Age = 3-5 years, Size = 8, Skin type = Oily), words
+ * to search (`keywords`) and a price range in paise. Answers to different questions combine (all must match).
+ */
+export const finderOptionSchema = z.object({
+  label: requiredText(CMS_LIMITS.label),
+  imageUrl: urlSchema.optional(),
+  categoryId: uuid.optional(),
+  tag: z.string().trim().toLowerCase().min(1).max(40).optional(),
+  filterName: text(60).optional(),
+  filterValue: text(200).optional(),
+  keywords: text(120).optional(),
+  priceMin: paise.optional(),
+  priceMax: paise.optional(),
+  /** Opens this page instead of the filtered list (a class's collection, a size guide …). */
+  href: hrefSchema.optional(),
+});
+export type FinderOption = z.output<typeof finderOptionSchema>;
+
+/** inline: the matching products show under the questions · button: a "Show" button opens the matching list. */
+export const FINDER_RESULTS = ["inline", "button"] as const;
+
+/** "Shop by finder": up to 3 questions (age, class, concern, size …) → a filtered product list and a link to all matches. */
+export const finderSectionSchema = z.object({
+  type: z.literal("finder"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  /** Default "Find the right one". */
+  title: text(CMS_LIMITS.heading).optional(),
+  text: text(400).optional(),
+  layout: variant([...FINDER_LAYOUTS], "wizard"),
+  results: variant([...FINDER_RESULTS], "inline"),
+  /** The "Show" button's words ("Show my list"); default "Show matches". */
+  buttonLabel: text(CMS_LIMITS.label).optional(),
+  /** A picture beside the questions on larger screens. */
+  imageUrl: urlSchema.optional(),
+  /** A second button (e.g. "Send your school list on WhatsApp"). */
+  cta: ctaSchema.optional(),
+  questions: z
+    .array(z.object({ label: requiredText(CMS_LIMITS.heading), options: z.array(finderOptionSchema).min(2).max(CMS_LIMITS.finderOptions) }))
+    .min(1)
+    .max(CMS_LIMITS.finderQuestions),
+  /** Matches shown under the questions (the rest are one tap away). */
+  limit: z.coerce.number().int().min(2).max(12).default(8),
+});
+
+/** rings: round story bubbles · reels: tall 9:16 cards in a swipe row. Either opens a full-screen story viewer. */
+export const STORY_LAYOUTS = ["rings", "reels"] as const;
+
+/** A strip of short stories / reels (picture or muted video, a line of text and a link), tapped open full screen. */
+export const storiesSectionSchema = z.object({
+  type: z.literal("stories"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).optional(),
+  layout: variant([...STORY_LAYOUTS], "rings"),
+  items: z
+    .array(
+      z.object({
+        imageUrl: urlSchema,
+        /** A short .mp4 / .webm clip; the picture is its poster. */
+        videoUrl: urlSchema.optional(),
+        title: requiredText(CMS_LIMITS.label),
+        text: text(200).optional(),
+        href: hrefSchema.optional(),
+        ctaLabel: text(CMS_LIMITS.label).optional(),
+      }),
+    )
+    .min(1)
+    .max(CMS_LIMITS.stories),
+});
+
+/** A category list beside a product grid: pick a category on the side (chips on phones), its products show. Ids omitted = the first categories. */
+export const categoryShelfSectionSchema = z.object({
+  type: z.literal("category-shelf"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).default(""),
+  categoryIds: z.array(uuid).max(CMS_LIMITS.shelfCategories).optional(),
+  /** Category pictures in the side list. */
+  showImages: z.boolean().default(true),
+  limit: shelfLimit(8),
+});
+
+/** A picture that stays in view while chapters of text scroll past it; each chapter brings its own picture. */
+export const stickyStorySectionSchema = z.object({
+  type: z.literal("sticky-story"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).optional(),
+  imageSide: z.enum(["left", "right"]).default("left"),
+  chapters: z
+    .array(
+      z.object({
+        eyebrow: text(CMS_LIMITS.label).optional(),
+        heading: requiredText(CMS_LIMITS.heading),
+        markdown: markdown(3000).default(""),
+        imageUrl: urlSchema,
+        alt: text(CMS_LIMITS.alt).default(""),
+        cta: ctaSchema.optional(),
+      }),
+    )
+    .min(1)
+    .max(CMS_LIMITS.chapters),
+});
+
+/**
+ * 2–4 products side by side: picture, price, rating and Add, then the owner's rows (one value per product, in the
+ * products' order). `highlightId` marks the recommended one ("Best pick" or `highlightLabel`).
+ */
+export const comparisonSectionSchema = z.object({
+  type: z.literal("comparison"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).optional(),
+  text: text(400).optional(),
+  productIds: z.array(uuid).min(2).max(CMS_LIMITS.compareProducts),
+  highlightId: uuid.optional(),
+  highlightLabel: text(30).optional(),
+  showRating: z.boolean().default(true),
+  rows: z
+    .array(z.object({ label: requiredText(CMS_LIMITS.label), values: z.array(text(120)).max(CMS_LIMITS.compareProducts).default([]) }))
+    .max(CMS_LIMITS.compareRows)
+    .default([]),
+});
+
+/** row: one row (a sideways scroll on phones) · grid: two per row on phones, up to six on desktop. */
+export const TILE_LAYOUTS = ["row", "grid"] as const;
+
+/**
+ * "Shop by need" tiles (concern, occasion, project, room): picture or icon, name, a one-line note and how many
+ * products. A tile opens `href`, else its collection, else its tag's listing; the count comes from the collection or
+ * the tag.
+ */
+export const tilesSectionSchema = z.object({
+  type: z.literal("tiles"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).optional(),
+  text: text(400).optional(),
+  layout: variant([...TILE_LAYOUTS], "row"),
+  showCounts: z.boolean().default(true),
+  items: z
+    .array(
+      z.object({
+        label: requiredText(CMS_LIMITS.label),
+        /** "Niacinamide, salicylic acid, sunscreen". */
+        note: text(160).optional(),
+        imageUrl: urlSchema.optional(),
+        collectionSlug: refSlug.optional(),
+        tag: z.string().trim().toLowerCase().min(1).max(40).optional(),
+        href: hrefSchema.optional(),
+      }),
+    )
+    .min(1)
+    .max(CMS_LIMITS.tiles),
+});
+
+/**
+ * "Find your size": a group toggle (Men / Women / Kids) over size chips; a chip opens the listing filtered to that
+ * size (`opt.<optionName>`, in the group's category). With `footLength`, a foot-length box (cm) picks the size from the
+ * UK / India shoe chart (adult sizes "3"–"13", children's "8C"–"13C").
+ */
+export const sizeFinderSectionSchema = z.object({
+  type: z.literal("size-finder"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).optional(),
+  text: text(400).optional(),
+  imageUrl: urlSchema.optional(),
+  /** The product option the sizes are values of. */
+  optionName: requiredText(60).default("Size"),
+  footLength: z.boolean().default(false),
+  groups: z
+    .array(
+      z.object({
+        label: requiredText(CMS_LIMITS.label),
+        categoryId: uuid.optional(),
+        sizes: z.array(requiredText(20)).min(1).max(CMS_LIMITS.sizes),
+      }),
+    )
+    .min(1)
+    .max(CMS_LIMITS.sizeGroups),
+});
+
+/** Skin depth tags for face shades (a filter over the swatches). */
+export const SKIN_DEPTHS = ["fair", "wheatish", "dusky", "deep"] as const;
+
+/**
+ * Shade finder: colour swatches of products' shade option (lipstick, foundation, nail paint, paint, thread); tapping a
+ * swatch shows the shade and adds that variant. `shades` gives each option value its colour (and an optional skin
+ * depth for the filter); values without one show a neutral swatch with their initial. With `alsoOption` (case colour
+ * × phone model) the shopper picks the other option's value first.
+ */
+export const swatchesSectionSchema = z.object({
+  type: z.literal("swatches"),
+  id: clientId,
+  hidden: sectionHidden,
+  style: sectionStyle,
+  title: text(CMS_LIMITS.heading).optional(),
+  text: text(400).optional(),
+  optionName: requiredText(60).default("Shade"),
+  /**
+   * A second option the shopper picks first (a case's "Phone model"): the swatches then show that value's colours,
+   * with the exact variant's price, and Add adds that variant. Omitted = one-option products (the first variant of
+   * each shade).
+   */
+  alsoOption: text(60).optional(),
+  /** The picker's label (default "Your <alsoOption>"). */
+  alsoLabel: text(60).optional(),
+  productIds: z.array(uuid).min(1).max(CMS_LIMITS.swatchProducts),
+  shades: z
+    .array(
+      z.object({
+        value: requiredText(80),
+        hex: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Use a colour like #b0413e"),
+        depth: z.enum(SKIN_DEPTHS).optional(),
+      }),
+    )
+    .max(CMS_LIMITS.shades)
+    .default([]),
+});
+
 export const homeSectionSchema = z.discriminatedUnion("type", [
   heroSectionSchema,
   categoriesSectionSchema,
@@ -866,6 +1162,15 @@ export const homeSectionSchema = z.discriminatedUnion("type", [
   pricingTableSectionSchema,
   blogPostsSectionSchema,
   reviewsSummarySectionSchema,
+  flashSaleSectionSchema,
+  finderSectionSchema,
+  storiesSectionSchema,
+  categoryShelfSectionSchema,
+  stickyStorySectionSchema,
+  comparisonSectionSchema,
+  tilesSectionSchema,
+  sizeFinderSectionSchema,
+  swatchesSectionSchema,
 ]);
 export type HomeSection = z.output<typeof homeSectionSchema>;
 export type HomeSectionInput = z.input<typeof homeSectionSchema>;
@@ -882,10 +1187,26 @@ export const seoSchema = z.object({
 });
 export type SeoFields = z.output<typeof seoSchema>;
 
+/** A translated word, or a list / object of them (the shape of the section it translates; see localize.ts). */
+type TranslationValue = string | TranslationValue[] | { [key: string]: TranslationValue };
+const translationValue: z.ZodType<TranslationValue> = z.lazy(() =>
+  z.union([z.string().max(CMS_LIMITS.markdownSection), z.array(translationValue).max(60), z.record(z.string().max(60), translationValue)]),
+);
+
+/**
+ * The home page's words in other languages (`{ ta: { "<section id>": { heading: "…", items: [{ q: "…" }] } } }`):
+ * the storefront shows them to shoppers browsing in that language (`localizeSections`, @srirealtime/cms/localize).
+ * Only words are taken from a translation; links, pictures and references always come from the section.
+ */
+export const homeTranslationsSchema = z
+  .object({ ta: z.record(z.string().max(80), z.record(z.string().max(60), translationValue)).optional() })
+  .refine((t) => JSON.stringify(t).length <= 200_000, "Translations are too long");
+
 /** What `PUT /home` takes and the draft/published columns hold. */
 export const homeDocSchema = z.object({
   sections: z.array(homeSectionSchema).max(CMS_LIMITS.sections),
   seo: seoSchema.optional(),
+  translations: homeTranslationsSchema.optional(),
 });
 export type HomeDoc = z.output<typeof homeDocSchema>;
 export type HomeDocInput = z.input<typeof homeDocSchema>;

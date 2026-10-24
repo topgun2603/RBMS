@@ -8,6 +8,7 @@ import { CmsService, type CmsDeps } from "./service";
 
 export * from "./schema";
 export * from "./content";
+export * from "./localize";
 export * from "./list";
 export * from "./slug";
 export * from "./ports";

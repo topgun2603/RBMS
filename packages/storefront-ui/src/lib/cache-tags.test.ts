@@ -15,6 +15,7 @@ describe("store cache tags", () => {
     expect(cacheResource("/store/bundles")).toBe("offers");
     expect(cacheResource("/catalog/public/products/kurti")).toBe("catalog");
     expect(cacheResource("/inventory/public/availability")).toBe("catalog");
+    expect(cacheResource("/store/availability")).toBe("catalog");
     expect(cacheResource("/features")).toBe("features");
     expect(cacheResource("/reviews/public/ratings")).toBe("reviews");
     // The booking page's services and staff: refreshed when staff change services (API kit-store-revalidate).

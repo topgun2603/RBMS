@@ -164,6 +164,11 @@ export interface VariantConditions {
   options?: Record<string, string[]>;
   /** Only these variant ids (in stock). */
   variantIds?: string[] | null;
+  /**
+   * An option filter also matches a product attribute of the same name (the storefront shows an option and an
+   * attribute both called "Cut" as one filter, so `opt.Cut=Whole` finds either).
+   */
+  optionsMatchAttributes?: boolean;
 }
 
 /**
@@ -176,7 +181,12 @@ export function variantExistsSql(c: VariantConditions): SQL | null {
   if (c.priceMax !== undefined) conds.push(sql`cv.price <= ${c.priceMax}`);
   for (const [name, values] of Object.entries(c.options ?? {})) {
     if (values.length === 0) continue;
-    conds.push(sql`(cv.option_values ->> ${name}::text) in (${sql.join(values.map((v) => sql`${v}`), sql`, `)})`);
+    const list = sql.join(values.map((v) => sql`${v}`), sql`, `);
+    conds.push(
+      c.optionsMatchAttributes
+        ? sql`((cv.option_values ->> ${name}::text) in (${list}) or (${catalogProducts.attributes} ->> ${name}::text) in (${list}))`
+        : sql`(cv.option_values ->> ${name}::text) in (${list})`,
+    );
   }
   if (c.variantIds) {
     conds.push(
@@ -197,6 +207,7 @@ export function attributeSql(attrs: Record<string, string[]>): SQL[] {
 // ------------------------------------------------------------------ query string
 
 const MAX_FILTER_KEYS = 10;
+const MAX_TAGS = 5;
 const MAX_FILTER_VALUES = 20;
 const paise = z.coerce.number().int().min(0).max(2_000_000_000);
 const bool = z
@@ -207,6 +218,15 @@ const bool = z
 const baseSearchSchema = z.object({
   q: z.string().max(200).optional(),
   categoryId: z.string().uuid().optional(),
+  /**
+   * Product tags ("class-1-5", "acne"), all of which a product must have (AND): `tag=a`, repeated `tag=a&tag=b` or
+   * `tag=a,b`. The home finder sends one per answered question; tag links send one.
+   */
+  tag: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((v) => [...new Set((Array.isArray(v) ? v : v === undefined ? [] : [v]).flatMap((x) => x.split(",")).map((x) => x.trim().toLowerCase()).filter(Boolean))])
+    .pipe(z.array(z.string().max(40)).max(MAX_TAGS)),
   priceMin: paise.optional(),
   priceMax: paise.optional(),
   inStock: bool,
@@ -215,7 +235,11 @@ const baseSearchSchema = z.object({
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
 });
 
-export interface SearchQuery extends z.output<typeof baseSearchSchema> {
+export interface SearchQuery extends Omit<z.output<typeof baseSearchSchema>, "tag"> {
+  /** Every tag the product must have (AND); empty = no tag filter. */
+  tags: string[];
+  /** The first of `tags` (older callers). */
+  tag?: string;
   parsed: ParsedQuery;
   /** `attr.<Name>=<value>` (repeat the parameter for several values; any of them matches). */
   attributes: Record<string, string[]>;
@@ -245,9 +269,9 @@ function prefixed(raw: RawSearchQuery, prefix: string): Record<string, string[]>
 
 /** Validates `GET /public/search`; a price range given the wrong way round is swapped. */
 export function parseSearchQuery(raw: RawSearchQuery = {}): SearchQuery {
-  const b = baseSearchSchema.parse(raw);
+  const { tag: tags, ...b } = baseSearchSchema.parse(raw);
   if (b.priceMin !== undefined && b.priceMax !== undefined && b.priceMin > b.priceMax) [b.priceMin, b.priceMax] = [b.priceMax, b.priceMin];
-  return { ...b, parsed: parseQuery(b.q), attributes: prefixed(raw, "attr."), options: prefixed(raw, "opt.") };
+  return { ...b, tags, tag: tags[0], parsed: parseQuery(b.q), attributes: prefixed(raw, "attr."), options: prefixed(raw, "opt.") };
 }
 
 // ------------------------------------------------------------------ facets (pure parts)
@@ -276,17 +300,24 @@ export const FACET_SCOPE: Record<keyof SearchFacets, FacetDimension[]> = {
 export const MAX_FACET_VALUES = 30;
 export const MAX_FACET_KEYS = 20;
 
-/** Rows `{ key, value, count }` → `{ [key]: [{ value, count }] }`, values by count desc then value; empty values dropped. */
-export function groupFacetRows(rows: readonly { key: string; value: string; count: number | string }[]): Record<string, FacetValue[]> {
-  const byKey = new Map<string, FacetValue[]>();
+/**
+ * Rows `{ key, value, count, rank? }` → `{ [key]: [{ value, count }] }`; empty values dropped. Values with a `rank`
+ * (option facets: the value's position in the products' own option lists, so sizes read S, M, L, XL and not
+ * alphabetically) come in rank order; otherwise by count desc then value.
+ */
+export function groupFacetRows(rows: readonly { key: string; value: string; count: number | string; rank?: number | string | null }[]): Record<string, FacetValue[]> {
+  const byKey = new Map<string, (FacetValue & { rank?: number })[]>();
   for (const r of rows) {
     const value = (r.value ?? "").trim();
     const count = Number(r.count);
     if (!value || !(count > 0)) continue;
+    const rank = r.rank === null || r.rank === undefined || r.rank === "" || !Number.isFinite(Number(r.rank)) ? undefined : Number(r.rank);
     const list = byKey.get(r.key) ?? [];
     const existing = list.find((x) => x.value === value);
-    if (existing) existing.count += count;
-    else list.push({ value, count });
+    if (existing) {
+      existing.count += count;
+      if (rank !== undefined) existing.rank = existing.rank === undefined ? rank : Math.min(existing.rank, rank);
+    } else list.push(rank === undefined ? { value, count } : { value, count, rank });
     byKey.set(r.key, list);
   }
   const keys = [...byKey.entries()]
@@ -295,9 +326,64 @@ export function groupFacetRows(rows: readonly { key: string; value: string; coun
     .slice(0, MAX_FACET_KEYS);
   const out: Record<string, FacetValue[]> = {};
   for (const k of keys.sort((a, b) => a.key.localeCompare(b.key))) {
-    out[k.key] = k.values.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value)).slice(0, MAX_FACET_VALUES);
+    const ranked = k.values.some((v) => v.rank !== undefined);
+    out[k.key] = k.values
+      .sort((a, b) => (ranked ? optionOrder(a, b) : 0) || b.count - a.count || a.value.localeCompare(b.value))
+      .slice(0, MAX_FACET_VALUES)
+      .map(({ value, count }) => ({ value, count }));
   }
   return out;
+}
+
+const LETTER_SIZES = ["xxs", "xs", "s", "m", "l", "xl", "xxl", "2xl", "xxxl", "3xl", "4xl", "5xl"];
+const letterSize = (v: string) => LETTER_SIZES.indexOf(v.trim().toLowerCase());
+const leadingNumber = (v: string) => {
+  const m = /^\s*(?:uk|us|eu|size)?\s*(\d+(?:\.\d+)?)/i.exec(v);
+  return m ? Number(m[1]) : null;
+};
+
+/**
+ * Option values in a sensible order: letter sizes on the S–M–L–XL ladder, then sizes that start with a number in
+ * numeric order (28, 30, 32 · UK 6, UK 7), then the rest in the products' own option order (`rank`).
+ */
+function optionOrder(a: { value: string; rank?: number }, b: { value: string; rank?: number }): number {
+  const kind = (v: string) => (letterSize(v) >= 0 ? 0 : leadingNumber(v) !== null ? 1 : 2);
+  const ka = kind(a.value);
+  const kb = kind(b.value);
+  if (ka !== kb) return ka - kb;
+  if (ka === 0) return letterSize(a.value) - letterSize(b.value);
+  if (ka === 1) return leadingNumber(a.value)! - leadingNumber(b.value)! || a.value.localeCompare(b.value, "en", { numeric: true });
+  return (a.rank ?? Infinity) - (b.rank ?? Infinity);
+}
+
+/**
+ * An option and an attribute with the same name ("Cut") are one filter to a shopper: fold the attribute's values into
+ * the option facet (values unioned, counts added; a product rarely has both) and drop the attribute facet. The search
+ * matches `opt.<Name>` on either (`optionsMatchAttributes`).
+ */
+export function mergeSameNameFacets(
+  attributes: Record<string, FacetValue[]>,
+  options: Record<string, FacetValue[]>,
+): { attributes: Record<string, FacetValue[]>; options: Record<string, FacetValue[]> } {
+  const attrsOut: Record<string, FacetValue[]> = {};
+  const optsOut: Record<string, FacetValue[]> = { ...options };
+  for (const [name, values] of Object.entries(attributes)) {
+    const opt = options[name];
+    if (!opt) {
+      attrsOut[name] = values;
+      continue;
+    }
+    // The option's own order stays (sizes S, M, L); values only the attribute has follow, by count.
+    const merged = opt.map((v) => ({ ...v }));
+    const extra: FacetValue[] = [];
+    for (const v of values) {
+      const hit = merged.find((m) => m.value === v.value);
+      if (hit) hit.count += v.count;
+      else extra.push({ ...v });
+    }
+    optsOut[name] = [...merged, ...extra.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))].slice(0, MAX_FACET_VALUES);
+  }
+  return { attributes: attrsOut, options: optsOut };
 }
 
 /**

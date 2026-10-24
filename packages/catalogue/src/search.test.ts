@@ -8,6 +8,7 @@ import {
   categoryPath,
   FACET_SCOPE,
   groupFacetRows,
+  mergeSameNameFacets,
   nameTierSql,
   normalizeText,
   parseQuery,
@@ -146,6 +147,12 @@ describe("matching and ranking SQL", () => {
     expect(variantExistsSql({})).toBeNull();
   });
 
+  it("lets an option filter also match a same-named product attribute", () => {
+    const { sql: text, params } = render(variantExistsSql({ options: { Cut: ["Whole"] }, optionsMatchAttributes: true })!);
+    expect(text).toContain('((cv.option_values ->> $1::text) in ($2) or ("catalog_products"."attributes" ->> $3::text) in ($4))');
+    expect(params).toEqual(["Cut", "Whole", "Cut", "Whole"]);
+  });
+
   it("filters attributes by key and any of the values", () => {
     const [cond] = attributeSql({ Fabric: ["Cotton", "Silk"], Empty: [] });
     expect(render(cond!)).toMatchObject({ sql: '("catalog_products"."attributes" ->> $1::text) in ($2, $3)', params: ["Fabric", "Cotton", "Silk"] });
@@ -201,6 +208,38 @@ describe("facets", () => {
     });
     const many = Array.from({ length: 40 }, (_, i) => ({ key: "K", value: `v${i}`, count: 1 }));
     expect(groupFacetRows(many).K).toHaveLength(30);
+  });
+
+  it("keeps option values in the products' option order (sizes S, M, L, XL, not by count or alphabet)", () => {
+    const out = groupFacetRows([
+      { key: "Size", value: "XL", count: 9, rank: 4 },
+      { key: "Size", value: "L", count: 2, rank: 3 },
+      { key: "Size", value: "S", count: 2, rank: 1 },
+      { key: "Size", value: "M", count: 5, rank: "2" },
+      { key: "Size", value: "Free size", count: 1, rank: null },
+    ]);
+    expect(out.Size!.map((v) => v.value)).toEqual(["S", "M", "L", "XL", "Free size"]);
+    expect(out.Size![0]).toEqual({ value: "S", count: 2 });
+    // The option order survives folding a same-name attribute into it.
+    const merged = mergeSameNameFacets({ Size: [{ value: "XXL", count: 7 }, { value: "M", count: 1 }] }, out);
+    expect(merged.options.Size!.map((v) => v.value)).toEqual(["S", "M", "L", "XL", "Free size", "XXL"]);
+  });
+
+  it("merges an attribute facet into the option facet of the same name", () => {
+    const merged = mergeSameNameFacets(
+      { Cut: [{ value: "Whole", count: 2 }, { value: "Boneless", count: 1 }], Origin: [{ value: "Trichy", count: 4 }] },
+      { Cut: [{ value: "Whole", count: 3 }, { value: "Steaks", count: 2 }], Weight: [{ value: "1 kg", count: 5 }] },
+    );
+    expect(merged.attributes).toEqual({ Origin: [{ value: "Trichy", count: 4 }] });
+    expect(merged.options).toEqual({
+      Cut: [
+        { value: "Whole", count: 5 },
+        { value: "Steaks", count: 2 },
+        { value: "Boneless", count: 1 },
+      ],
+      Weight: [{ value: "1 kg", count: 5 }],
+    });
+    expect(mergeSameNameFacets({}, {})).toEqual({ attributes: {}, options: {} });
   });
 
   it("rolls category counts up to ancestors and keeps only known (active) categories", () => {

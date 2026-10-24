@@ -11,6 +11,8 @@ export interface BillingItemRecord {
   unit: string;
   rate: number;
   gstRate: number;
+  /** Price-band GST rule of the product (apparel / footwear); `gstRate`/`rate` are its band at the variant's price. */
+  gstRule?: CatalogItem["gstRule"];
   createdAt: Date;
   categoryId?: string | null;
   /** False for draft/archived products. */
@@ -53,6 +55,7 @@ export const toBillingItem = (i: CatalogItem): BillingItemRecord => ({
   unit: i.unit,
   rate: i.rate,
   gstRate: i.gstRate,
+  ...(i.gstRule ? { gstRule: i.gstRule } : {}),
   createdAt: i.createdAt,
 });
 

@@ -78,7 +78,7 @@ export function ProductGallery({
           ref={strip}
           onScroll={onScroll}
           className={cn(
-            "-mx-4 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none sm:mx-0 sm:rounded-3xl",
+            "-mx-4 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scrollbar-none sm:mx-0 sm:rounded-[calc(var(--sf-radius-card)*4/3)]",
             !compact && !slider && "lg:hidden",
             slider && "lg:gap-3 lg:rounded-none",
           )}
@@ -90,7 +90,7 @@ export function ProductGallery({
               type="button"
               key={i}
               onClick={() => open(i)}
-              className={cn("aspect-[var(--sf-image-ratio,4/5)] w-full shrink-0 snap-center overflow-hidden bg-muted sm:rounded-3xl", slider && "lg:w-[calc((100%-1.5rem)/2.5)] lg:snap-start lg:rounded-[var(--sf-radius-card)]")}
+              className={cn("aspect-[var(--sf-image-ratio,4/5)] w-full shrink-0 snap-center overflow-hidden bg-muted sm:rounded-[calc(var(--sf-radius-card)*4/3)]", slider && "lg:w-[calc((100%-1.5rem)/2.5)] lg:snap-start lg:rounded-[var(--sf-radius-card)]")}
               aria-label={hasImages ? `${t("product.zoom")}: ${t("product.image", { n: i + 1, total: list.length })}` : undefined}
               tabIndex={i === index ? 0 : -1}
               data-gallery-main={i === index ? "" : undefined}
@@ -151,7 +151,7 @@ export function ProductGallery({
               setZoom({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
             }}
             onPointerLeave={() => setZoom(null)}
-            className={cn("relative hidden aspect-[var(--sf-image-ratio,4/5)] w-full overflow-hidden rounded-3xl bg-muted focus-ring lg:block", hasImages && "cursor-zoom-in")}
+            className={cn("relative hidden aspect-[var(--sf-image-ratio,4/5)] w-full overflow-hidden rounded-[calc(var(--sf-radius-card)*4/3)] bg-muted focus-ring lg:block", hasImages && "cursor-zoom-in")}
             aria-label={hasImages ? `${t("product.zoom")}: ${t("product.image", { n: index + 1, total: list.length })}` : name}
             data-gallery-main=""
           >

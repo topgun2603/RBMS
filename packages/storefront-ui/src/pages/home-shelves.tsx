@@ -53,6 +53,12 @@ export interface ShelfData {
   products?: ProductSummary[];
   posts?: PostSummary[];
   reviews?: { summary: ShopReviewSummary; products: ReadonlyMap<string, ProductSummary> };
+  /** category-shelf: products per category (pages/home-layouts.tsx). */
+  shelves?: { categoryId: string; items: ProductSummary[] }[];
+  /** swatches: each product's details (variants with their option values), by product id. */
+  details?: ReadonlyMap<string, import("../types").Product>;
+  /** tiles: product count per tile (by position; null = unknown). */
+  counts?: (number | null)[];
 }
 
 type Ratings = ReadonlyMap<string, Rating>;
@@ -125,7 +131,8 @@ export function UspSection({ s, t }: { s: HomeSectionOf<"usp">; t: Translator })
                 <Icon className="size-6 shrink-0 text-primary" aria-hidden />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">{it.title}</span>
-                  {it.text && <span className="block truncate text-xs text-muted-foreground">{it.text}</span>}
+                  {/* Wraps (two lines at most) instead of cutting: Tamil sub-lines run long in a quarter-width cell. */}
+                  {it.text && <span className="line-clamp-2 block text-xs text-muted-foreground">{it.text}</span>}
                 </span>
               </li>
             );
@@ -332,14 +339,15 @@ export function DealSection({ s, t, rating }: { s: HomeSectionOf<"deal">; t: Tra
   const band = onBand(s);
   return (
     <Container>
-      <div className={cn("grid items-center gap-8 overflow-hidden rounded-[var(--sf-radius-card)] md:grid-cols-2 md:gap-12", !band && "bg-tint-1 ring-1 ring-primary/10")} data-testid="deal">
-        <Link href={STORE_PATHS.product(p.slug)} className="group relative block overflow-hidden bg-muted focus-ring md:h-full">
+      {/* In a half-width row (.sf-pair, styles.css) the picture stacks over the text and the countdown is compact. */}
+      <div className={cn("sf-deal grid items-center gap-8 overflow-hidden rounded-[var(--sf-radius-card)] md:grid-cols-2 md:gap-12", !band && "bg-tint-1 ring-1 ring-primary/10")} data-testid="deal">
+        <Link href={STORE_PATHS.product(p.slug)} className="sf-deal-media group relative block overflow-hidden bg-muted focus-ring md:h-full">
           <span className="block aspect-square md:aspect-auto md:h-full md:min-h-[420px]">
             <StoreImage src={p.image} alt={p.name} className="transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none" />
           </span>
           {pct > 0 && <span className="absolute start-4 top-4 rounded-full bg-sale px-3 py-1.5 text-sm font-bold text-white shadow">{t("product.off", { pct })}</span>}
         </Link>
-        <div className={cn("grid gap-5 px-6 pb-8 md:px-0 md:py-12 md:pe-12", band && "md:ps-0")}>
+        <div className={cn("sf-deal-body grid min-w-0 gap-5 px-6 pb-8 md:px-0 md:py-12 md:pe-12", band && "md:ps-0")}>
           <p className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-primary uppercase">
             <span aria-hidden className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" />

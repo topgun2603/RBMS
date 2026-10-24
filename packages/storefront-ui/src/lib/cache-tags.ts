@@ -19,7 +19,7 @@ export function cacheResource(path: string): StoreCacheResource {
   const [a = "", b = "", c = ""] = seg;
   let r: string;
   if (a === "cms") r = b === "public" ? c : b;
-  else if (a === "store") r = b === "promotions" || b === "bundles" ? "offers" : b;
+  else if (a === "store") r = b === "promotions" || b === "bundles" ? "offers" : b === "availability" ? "catalog" : b;
   else if (a === "catalog" || a === "inventory") r = "catalog";
   else if (a === "coupons") r = "offers";
   else r = a;

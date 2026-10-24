@@ -1,6 +1,6 @@
 import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
 import Fastify, { type FastifyInstance } from "fastify";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 import type { CatalogPort, ShopPort } from "./ports";
 import {
@@ -88,6 +88,15 @@ function makePreview(saved: { draft: unknown; published: unknown } = { draft: nu
 }
 
 describe("CmsPreview", () => {
+  // The default draft store reads the real clock; pin it to NOW so the fixed token expiry never goes stale.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("issues tenant-bound tokens", async () => {
     const { preview } = makePreview();
     const { token, expiresAt, ttlSeconds } = preview.issue(T, "u1");
@@ -140,7 +149,7 @@ describe("CmsPreview", () => {
     const { preview } = makePreview();
     const { token } = preview.issue(T, "u1");
     await expect(preview.putDraft(T, token, { extra: 1 })).rejects.toBeInstanceOf(ZodError);
-    await expect(preview.putDraft(T, token, { home: { sections: Array.from({ length: 41 }, () => ({})) } })).rejects.toBeInstanceOf(ZodError);
+    await expect(preview.putDraft(T, token, { home: { sections: Array.from({ length: 61 }, () => ({})) } })).rejects.toBeInstanceOf(ZodError);
     await expect(preview.putDraft(T, token, { tokens: { blob: "x".repeat(600 * 1024) } })).rejects.toMatchObject({ status: 400 });
   });
 });

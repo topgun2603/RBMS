@@ -1,18 +1,29 @@
 import * as React from "react";
+import { ShoeSizeChart } from "../client/shoe-size-chart";
 
 type T = (key: string, vars?: Record<string, string | number | null | undefined>) => string;
 
-export type SizeKind = "top" | "bottom" | "saree";
+export type SizeKind = "top" | "bottom" | "saree" | "shoe-men" | "shoe-women" | "shoe-kids";
 
-/** Which default chart fits a product (from its category / name). */
+/** Footwear words (and the footwear trade's id) that switch to the shoe chart. Not "oxford" / "derby": shirts too. */
+const SHOE_RE =
+  /\b(footwear|shoes?|sandals?|chappals?|slippers?|heels|juttis?|mojaris?|kolhapuris?|sneakers?|loafers?|boots?|floaters?|flip-?flops?|clogs?|slides|brogues?|moccasins?|bellies|ballerinas?|wedges)\b|காலணி|செருப்பு/;
+const KIDS_RE = /\b(kids?|child|children|boys?|girls?|school|toddlers?|baby|infants?)\b|குழந்தை/;
+const WOMEN_RE = /\b(women|womens|ladies|lady|heels|juttis?|bellies|ballerinas?|wedges)\b|பெண்/;
+
+/**
+ * Which default chart fits a product (from its shop's trade, category and name). Footwear gets the shoe chart, opened on
+ * the kids' / women's / men's tab by the words it finds; clothing keeps the blouse / bottom / top charts.
+ */
 export function sizeKindFor(...hints: (string | null | undefined)[]): SizeKind {
   const s = hints.filter(Boolean).join(" ").toLowerCase();
+  if (SHOE_RE.test(s)) return KIDS_RE.test(s) ? "shoe-kids" : WOMEN_RE.test(s) ? "shoe-women" : "shoe-men";
   if (/saree|sari|புடவை|blouse/.test(s)) return "saree";
   if (/bottom|palazzo|pant|trouser|legging|skirt|churidar|salwar|jean|dhoti|veshti/.test(s)) return "bottom";
   return "top";
 }
 
-const CHARTS: Record<SizeKind, { cols: string[]; rows: (string | number)[][] }> = {
+const CHARTS: Record<"top" | "bottom" | "saree", { cols: string[]; rows: (string | number)[][] }> = {
   top: {
     cols: ["size", "bust", "waist", "length"],
     rows: [
@@ -48,7 +59,8 @@ const CHARTS: Record<SizeKind, { cols: string[]; rows: (string | number)[][] }> 
 };
 
 /** Default size chart (inches) with how-to-measure notes. Shops can replace it with a CMS page at /size-guide. */
-export function SizeChart({ kind, t }: { kind: SizeKind; t: T }) {
+export function SizeChart({ kind, t, guideHref }: { kind: SizeKind; t: T; /** Footwear: link to the shop's own size guide page under the chart. */ guideHref?: string }) {
+  if (kind === "shoe-men" || kind === "shoe-women" || kind === "shoe-kids") return <ShoeSizeChart initial={kind === "shoe-kids" ? "kids" : kind === "shoe-women" ? "women" : "men"} guideHref={guideHref} />;
   const chart = CHARTS[kind];
   return (
     <div className="grid gap-4 text-sm">

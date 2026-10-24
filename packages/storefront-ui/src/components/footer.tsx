@@ -1,4 +1,3 @@
-import { packFor } from "@srirealtime/verticals";
 import * as React from "react";
 import Link from "next/link";
 import { ArrowUpIcon, ChevronDownIcon, FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
@@ -246,6 +245,7 @@ export function StoreFooter({
   help = false,
   variant = "columns",
   logoUrl = null,
+  locale = "en",
 }: {
   config: StoreConfig;
   menu: MenuItem[];
@@ -253,6 +253,8 @@ export function StoreFooter({
   help?: boolean;
   variant?: StoreThemeView["footer"];
   logoUrl?: string | null;
+  /** The shopper's language (Tamil words of the trade's trust promise and the owner's own badges). */
+  locale?: string;
 }) {
   const { shop, policies } = config;
   const social = [
@@ -285,7 +287,7 @@ export function StoreFooter({
             ))}
           </nav>
           <SocialLinks social={social} t={t} className="[&_a]:size-8" />
-          <PaymentIcons t={t} cod={config.codEnabled} className="justify-center" />
+          <PaymentIcons t={t} cod={config.codEnabled} config={config} className="justify-center" />
           <BackToTop t={t} />
         </div>
       </footer>
@@ -322,7 +324,7 @@ export function StoreFooter({
               )}
             </div>
           )}
-          <PaymentIcons t={t} cod={config.codEnabled} className="justify-center" />
+          <PaymentIcons t={t} cod={config.codEnabled} config={config} className="justify-center" />
         </div>
         <div className="border-t">
           <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
@@ -364,7 +366,7 @@ export function StoreFooter({
       )}
 
       <div className="mx-auto w-full max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
-        <TrustBadges t={t} cod={config.codEnabled} returns={!!policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} />
+        <TrustBadges t={t} config={config} locale={locale} />
       </div>
 
       {!bigBand && (
@@ -449,7 +451,7 @@ export function StoreFooter({
       <div className="border-t">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
           <p>{rights}</p>
-          <PaymentIcons t={t} cod={config.codEnabled} />
+          <PaymentIcons t={t} cod={config.codEnabled} config={config} />
           <div className="flex items-center gap-4">
             <p>{t("footer.poweredBy")}</p>
             <BackToTop t={t} />

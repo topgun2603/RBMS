@@ -35,6 +35,16 @@ function motifBackground(motif: StoreTheme["motif"], primary: string): React.CSS
         backgroundImage: `linear-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.09) 1px, transparent 1px), ${base}`,
         backgroundSize: "20px 20px, 20px 20px, auto",
       };
+    case "stripes":
+      return { backgroundImage: `repeating-linear-gradient(-45deg, rgb(0 0 0 / 0.16) 0 8px, transparent 8px 16px), ${base}` };
+    case "scallop":
+      // Sweet-box lace: scalloped top and bottom edges (the store draws them in the shop's accent colour).
+      return {
+        backgroundImage: `radial-gradient(circle at 50% 0, rgb(253 227 173 / 0.85) 5px, transparent 5.5px), radial-gradient(circle at 50% 100%, rgb(253 227 173 / 0.85) 5px, transparent 5.5px), radial-gradient(circle, rgb(253 227 173 / 0.25) 1px, transparent 1.2px), ${base}`,
+        backgroundSize: "14px 7px, 14px 7px, 10px 10px, auto",
+        backgroundPosition: "0 0, 0 100%, 0 0, 0 0",
+        backgroundRepeat: "repeat-x, repeat-x, repeat, no-repeat",
+      };
     default:
       return { backgroundImage: base };
   }

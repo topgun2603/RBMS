@@ -84,6 +84,24 @@ const samples = Object.fromEntries(
     "planFeature",
     "blogTitle",
     "reviewsTitle",
+    "flashTitle",
+    "finderTitle",
+    "finderQuestion",
+    "finderOptionA",
+    "finderOptionB",
+    "storiesTitle",
+    "shelfTitle",
+    "storyTitle",
+    "chapterHeading",
+    "compareTitle",
+    "compareRow",
+    "tilesTitle",
+    "tileLabel",
+    "sizeTitle",
+    "sizeMen",
+    "sizeWomen",
+    "sizeKids",
+    "swatchesTitle",
   ].map((k) => [k, `sample ${k}`]),
 ) as unknown as SectionSamples;
 
@@ -152,6 +170,11 @@ describe("new sections", () => {
     if (f.type === "instagram") return { ...f, handle: "@shop", images: [{ url: img, alt: "", href: "" }] };
     if (f.type === "deal") return { ...f, productId: IDS.P1 };
     if (f.type === "shop-the-look") return { ...f, imageUrl: img, hotspots: [{ x: "40", y: "60.5", productId: IDS.P1 }] };
+    if (f.type === "finder") return { ...f, questions: f.questions.map((q) => ({ ...q, options: q.options.map((o, i) => ({ ...o, filterName: "Age", filterValue: String(i) })) })) };
+    if (f.type === "stories") return { ...f, items: [{ imageUrl: img, videoUrl: "", title: "New in", text: "", href: "", ctaLabel: "" }] };
+    if (f.type === "sticky-story") return { ...f, chapters: f.chapters.map((c) => ({ ...c, imageUrl: img })) };
+    if (f.type === "comparison") return { ...f, productIds: [IDS.P1, IDS.P2] };
+    if (f.type === "swatches") return { ...f, productIds: [IDS.P1] };
     return f;
   };
 

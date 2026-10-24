@@ -9,6 +9,7 @@ import type {
   ProductEventData,
   ProductSummary,
   PublicItemKind,
+  PublicDiet,
   Variant,
 } from "./types";
 
@@ -229,16 +230,35 @@ export function productEventData(
 /** Units that mean "work done", not goods ("Haircut · 1 service", "PT · 1 session", "Repair · 1 job"). */
 const SERVICE_UNITS = new Set(["service", "services", "svc", "job", "jobs", "session", "sessions", "visit", "visits", "hr", "hrs", "hour", "hours", "sitting", "sittings", "appointment", "consultation", "class", "classes"]);
 
+const FOOD_SAC = /^99633/;
+
 /**
  * Product or service, from what the catalogue already knows: a service unit, a SAC code (GST service codes start
  * with 99) or a "service" tag. Bookings links (see `BookableServicesPort`) make an item a service as well.
  */
 export function itemKind(p: { unit?: string | null; hsn?: string | null; tags?: readonly string[] | null }): PublicItemKind {
   if (p.unit && SERVICE_UNITS.has(p.unit.trim().toLowerCase())) return "service";
-  if (p.hsn && /^99\d{2,6}$/.test(p.hsn.replace(/\s+/g, ""))) return "service";
+  // Food and drink served by a restaurant, café, cloud kitchen or caterer (SAC 99633x) is sold, not booked: it is
+  // ordered online like a product (cart, delivery or pickup). A "service" tag or unit still makes it a service.
+  const sac = p.hsn?.replace(/\s+/g, "");
+  if (sac && /^99\d{2,6}$/.test(sac) && !FOOD_SAC.test(sac)) return "service";
   if (p.tags?.some((t) => /^services?$/i.test(t.trim()))) return "service";
   return "product";
 }
+
+/** Veg / egg / non-veg mark of a dish, from its tags ("veg", "egg", "non-veg"); null for anything else. */
+export function dietOf(tags: readonly string[] | null | undefined): PublicDiet | null {
+  const set = new Set((tags ?? []).map((t) => t.trim().toLowerCase().replace(/[\s_]+/g, "-")));
+  if (set.has("non-veg") || set.has("nonveg")) return "non-veg";
+  if (set.has("egg")) return "egg";
+  if (set.has("veg") || set.has("vegetarian")) return "veg";
+  return null;
+}
+
+const dietField = (tags: readonly string[] | null | undefined): { diet?: PublicDiet } => {
+  const diet = dietOf(tags);
+  return diet ? { diet } : {};
+};
 
 export const toPublicVariant = ({ cost: _cost, ...v }: Variant): PublicVariant => v;
 
@@ -255,6 +275,7 @@ export function toPublicProduct(
     ...priceRange(variants),
     variants: variants.map(toPublicVariant),
     kind: itemKind(p),
+    ...dietField(p.tags),
   };
 }
 
@@ -281,6 +302,7 @@ export function toPublicSummary(
     taxInclusive: p.taxInclusive,
     createdAt: p.createdAt,
     kind: itemKind(p),
+    ...dietField(p.tags),
   };
 }
 

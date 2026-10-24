@@ -22,7 +22,7 @@ function flush() {
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += 200) chunks.push(ids.slice(i, i + 200));
   void Promise.all(
-    chunks.map((c) => call<List<Availability>>("/inventory/public/availability", { query: { itemIds: c.join(",") }, auth: false }).catch(() => ({ items: [], total: 0 }))),
+    chunks.map((c) => call<List<Availability>>("/store/availability", { query: { itemIds: c.join(",") }, auth: false }).catch(() => ({ items: [], total: 0 }))),
   ).then((lists) => {
     const all = new Map<string, Row>(lists.flatMap((l) => l.items.map((a) => [a.itemId, { inStock: a.inStock, lowStock: a.lowStock }] as const)));
     for (const b of batch) b.resolve(all);

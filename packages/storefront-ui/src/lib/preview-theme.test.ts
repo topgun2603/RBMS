@@ -33,7 +33,7 @@ describe("preview theme (pure)", () => {
 
   it("fills defaults for a minimal token set", () => {
     const th = previewThemeFrom({ colors: { primary: "#112233" } })!;
-    expect(th.attributes).toEqual(themeDataAttributes(DEFAULT_STORE_THEME));
+    expect(th.attributes).toEqual({ ...themeDataAttributes(DEFAULT_STORE_THEME), "data-sf-page-layout": "standard", "data-sf-mobile-nav": "off" });
     expect(th.fonts).toEqual(["Inter"]);
   });
 });

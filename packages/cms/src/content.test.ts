@@ -78,10 +78,10 @@ describe("home sections", () => {
     expect(ok(homeSectionSchema, { type: "collection", collectionSlug: "x", limit: 49 })).toBe(false);
   });
 
-  it("caps sections at 40 and hero slides at 8", () => {
+  it("caps sections at 60 and hero slides at 8", () => {
     const text = { type: "text", markdown: "x" };
-    expect(ok(homeDocSchema, { sections: Array(40).fill(text) })).toBe(true);
-    expect(ok(homeDocSchema, { sections: Array(41).fill(text) })).toBe(false);
+    expect(ok(homeDocSchema, { sections: Array(60).fill(text) })).toBe(true);
+    expect(ok(homeDocSchema, { sections: Array(61).fill(text) })).toBe(false);
     const slide = { imageUrl: "/a.jpg" };
     expect(ok(homeSectionSchema, { type: "hero", slides: Array(9).fill(slide) })).toBe(false);
   });

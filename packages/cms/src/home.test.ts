@@ -23,7 +23,7 @@ const product: PublicProductSummary = {
 const catalog: CatalogPort = {
   categories: vi.fn(async () => [{ id: "c1", name: "Sarees", slug: "sarees", image: null }]),
   collection: vi.fn(async (_t: string, slug: string) => ({ name: "New", slug, products: [product] })),
-  productsByIds: vi.fn(async () => [product]),
+  productsByIds: vi.fn(async (_t: string, ids: string[]) => [...new Set(ids)].map((id) => ({ ...product, id }))),
   newest: vi.fn(async () => [product]),
 };
 const shop = { info: async () => ({ name: "Anbu Fashions", tagline: null }) };
@@ -65,6 +65,15 @@ const sample: Record<(typeof HOME_SECTION_TYPES)[number], Record<string, unknown
   "pricing-table": { type: "pricing-table", plans: [{ name: "Monthly", price: 150000, period: "/ month", features: ["All machines"], highlight: true }, { name: "Trial" }] },
   "blog-posts": { type: "blog-posts", tag: "Care" },
   "reviews-summary": { type: "reviews-summary" },
+  "flash-sale": { type: "flash-sale", endsAt: "2026-11-01T18:30:00.000Z", productIds: [P1] },
+  finder: { type: "finder", questions: [{ label: "Age", options: [{ label: "0-2", filterName: "Age", filterValue: "0-2 years" }, { label: "3-5" }] }] },
+  stories: { type: "stories", items: [{ imageUrl: "/s1.jpg", title: "New in" }] },
+  "category-shelf": { type: "category-shelf" },
+  "sticky-story": { type: "sticky-story", chapters: [{ heading: "Woven by hand", imageUrl: "/c1.jpg" }] },
+  comparison: { type: "comparison", productIds: [P1, "a2222222-2222-4222-8222-222222222222"] },
+  tiles: { type: "tiles", items: [{ label: "Acne", collectionSlug: "acne" }] },
+  "size-finder": { type: "size-finder", groups: [{ label: "Men", sizes: ["UK 6", "UK 7"] }] },
+  swatches: { type: "swatches", productIds: [P1], shades: [{ value: "Ruby", hex: "#9b111e", depth: "dusky" }] },
 };
 
 describe("new section types", () => {

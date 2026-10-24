@@ -19,7 +19,7 @@ import { freshIds } from "../lib/cards";
 import { Markdown, stripLeadingHeading } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
 import type { Availability, CmsPage, List, Product, ProductSummary, Promotions, Recommendations, ReviewList, SearchResult, SellerCard, SellerLookup, StoreThemeView } from "../types";
-import { Breadcrumbs, Container, JsonLd, SectionTitle, Stars } from "../components/bits";
+import { Breadcrumbs, Container, FoodMark, JsonLd, SectionTitle, Stars } from "../components/bits";
 import { ProductCard, ProductGrid, ProductGridSkeleton } from "../components/product-card";
 import { RailSkeleton } from "../components/skeletons";
 import { SizeChart, sizeKindFor } from "../components/size-guide";
@@ -64,7 +64,7 @@ export async function ProductPage({ slug }: { slug: string }) {
   const hasSizes = !!packFor(config.shop.businessType)?.sizeGuide && product.options.some((o) => /size|அளவு/i.test(o.name) && o.values.length > 0);
   const [avail, reviews, guidePage, seller, promos] = await Promise.all([
     ids.length
-      ? apiGetSafe<List<Availability>>("/inventory/public/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } })
+      ? apiGetSafe<List<Availability>>("/store/availability", { items: [], total: 0 }, { revalidate: 15, query: { itemIds: ids.join(",") } })
       : Promise.resolve<List<Availability>>({ items: [], total: 0 }),
     apiGetSafe<ReviewList>(`/reviews/public/products/${product.id}/reviews`, emptyReviews, { revalidate: 60, query: { limit: 5 } }),
     hasSizes ? apiGetSafe<CmsPage | null>("/cms/public/pages/size-guide", null, { revalidate: 300 }) : Promise.resolve(null),
@@ -75,7 +75,12 @@ export async function ProductPage({ slug }: { slug: string }) {
   const availability: AvailabilityMap = Object.fromEntries(avail.items.map((a) => [a.itemId, { inStock: a.inStock, lowStock: a.lowStock }]));
   const anyInStock = avail.items.length === 0 || avail.items.some((a) => a.inStock);
   // The shop's own size guide page when it has one, else a sensible default chart for the category.
-  const sizeGuide = !hasSizes ? undefined : guidePage?.blocks.length ? <Blocks blocks={guidePage.blocks} /> : <SizeChart kind={sizeKindFor(product.categoryName, product.name)} t={t} />;
+  // Footwear always gets the interactive shoe chart (men / women / kids tabs), with a link to the shop's own guide page.
+  const sizeKind = sizeKindFor(config.shop.businessType, product.categoryName, product.name);
+  const shoeChart = sizeKind.startsWith("shoe-");
+  const sizeGuide = !hasSizes ? undefined : shoeChart ? (
+    <SizeChart key="size-chart" kind={sizeKind} t={t} guideHref={guidePage?.blocks.length ? "/pages/size-guide" : undefined} />
+  ) : guidePage?.blocks.length ? <Blocks blocks={guidePage.blocks} /> : <SizeChart key="size-chart" kind={sizeKind} t={t} />;
   const def = product.variants.find((v) => v.isDefault) ?? product.variants[0];
   const pct = percentOff(def?.price ?? product.priceMin, def?.mrp);
 
@@ -96,6 +101,7 @@ export async function ProductPage({ slug }: { slug: string }) {
     <div>
       {(product.brand || product.categoryName) && <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{product.brand ?? product.categoryName}</p>}
       <h1 className="mt-2 font-display text-h1 font-semibold text-balance" data-testid="product-name">
+        <FoodMark diet={product.diet} t={t} className="size-5 [&>span]:size-2.5" />
         {product.name}
       </h1>
       {reviews.summary.count > 0 && (
@@ -118,7 +124,7 @@ export async function ProductPage({ slug }: { slug: string }) {
       <OfferBadgeList offers={promos.offers} t={t} locale={info.locale} />
       <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} stickyBar={theme.stickyBuy === "on"} />
       {theme.compare === "on" && <CompareToggle product={{ id: product.id, slug: product.slug, name: product.name, image: product.images[0]?.url ?? null }} variant="page" className="justify-self-start" />}
-      {theme.productTrust === "on" && <TrustBadges t={t} cod={config.codEnabled} returns={!!config.policies.returns?.trim()} local={!!packFor(config.shop.businessType)?.localMade} compact />}
+      {theme.productTrust === "on" && <TrustBadges t={t} config={config} locale={info.locale} compact />}
     </>
   );
   const details = (

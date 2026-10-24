@@ -113,8 +113,8 @@ export function Countdown({ endsAt, className }: { endsAt: string; className?: s
     [r.seconds, t("sections.seconds")],
   ] as const;
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <span className="sr-only">
+    <div className={cn("sf-countdown flex items-center gap-2", className)}>
+      <span className="sr-only" suppressHydrationWarning>
         {t("sections.endsIn")} {r.days > 0 ? `${r.days} ${t("sections.days")} ` : ""}
         {r.hours} {t("sections.hours")} {r.minutes} {t("sections.minutes")}
       </span>
@@ -239,7 +239,8 @@ export function QuoteRotator({ items }: { items: Quote[] }) {
               ))}
             </div>
           ) : null}
-          <blockquote className="font-display text-2xl leading-snug text-balance sm:text-3xl">“{q.quote}”</blockquote>
+          {/* The body font: display faces (Cinzel and other all-caps faces) turn long quotes into shouting. */}
+          <blockquote className="font-sans text-2xl leading-snug font-medium text-balance sm:text-3xl">“{q.quote}”</blockquote>
           <figcaption className="mt-7 flex items-center justify-center gap-3">
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element

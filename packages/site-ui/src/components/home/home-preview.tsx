@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, ChevronDownIcon, ClockIcon, CopyIcon, EyeOffIcon, HistoryIcon, ImageIcon, InstagramIcon, MapPinIcon, MonitorIcon, PlayIcon, SmartphoneIcon, StarIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ClockIcon, CopyIcon, EyeOffIcon, HistoryIcon, ImageIcon, InstagramIcon, MapPinIcon, MonitorIcon, PlayIcon, SmartphoneIcon, StarIcon, ZapIcon } from "lucide-react";
 import { cn, Skeleton } from "@srirealtime/ui";
 import { absoluteUrl, useI18n } from "@srirealtime/web";
 import { money } from "../../lib/format";
@@ -35,6 +35,7 @@ export function HomePreview({
   selectedId?: string | null;
 }) {
   const { t } = useI18n();
+  const paired = pairedHalves(sections);
   const seg = (on: boolean) =>
     cn("inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", on ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground");
   return (
@@ -71,7 +72,7 @@ export function HomePreview({
           ) : sections.length === 0 ? (
             <p className="px-6 py-16 text-center text-sm text-muted-foreground">{t("site.preview.empty")}</p>
           ) : (
-            <div className="grid gap-6 pb-6">
+            <div className="grid gap-6 pb-6 @lg:grid-cols-2">
               {sections.map((s, i) => {
                 const hidden = "hidden" in s && s.hidden === true;
                 return (
@@ -79,7 +80,9 @@ export function HomePreview({
                     key={s.id ?? `${s.type}-${i}`}
                     data-hidden={hidden || undefined}
                     className={cn(
-                      "relative transition-shadow",
+                      "relative transition-shadow min-w-0",
+                      // Two neighbouring half sections share a row on wide screens, as on the storefront.
+                      !paired.has(i) && "@lg:col-span-2",
                       hidden && "rounded-lg outline-1 outline-offset-2 outline-muted-foreground/40 outline-dashed",
                       selectedId && s.id === selectedId && "ring-2 ring-primary ring-offset-2 ring-offset-background",
                     )}
@@ -103,6 +106,19 @@ export function HomePreview({
       </div>
     </div>
   );
+}
+
+/** Indexes of sections that sit beside a neighbour (`style.span: "half"` pairs, like the storefront's pages/home.tsx). */
+export function pairedHalves(sections: readonly { style?: { span?: string } }[]): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < sections.length - 1; i++) {
+    if (sections[i]?.style?.span === "half" && sections[i + 1]?.style?.span === "half") {
+      out.add(i);
+      out.add(i + 1);
+      i++;
+    }
+  }
+  return out;
 }
 
 function Img({ src, className, alt = "" }: { src: string | null | undefined; className?: string; alt?: string }) {
@@ -843,5 +859,229 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
         </div>
       );
     }
+    case "flash-sale":
+      return (
+        <div className="mx-4 overflow-hidden rounded-xl bg-primary/8 ring-1 ring-primary/15">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-primary px-4 py-3 text-primary-foreground">
+            <p className="flex items-center gap-1.5 font-heading text-lg font-semibold">
+              <ZapIcon className="size-4 fill-current" aria-hidden /> {s.title || t("site.layouts.flashTitlePlaceholder")}
+            </p>
+            <div className="flex gap-1">
+              {["01", "12", "34", "56"].map((n, i) => (
+                <span key={i} className="rounded-md bg-black/15 px-1.5 py-0.5 font-heading text-sm font-bold tabular-nums ring-1 ring-white/20">
+                  {n}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="py-3">
+            {s.products.length ? <ProductRow products={s.products} layout={s.layout} /> : s.source === "sale" ? <ShelfSketch n={s.layout === "grid" ? 4 : 5} row={s.layout !== "grid"} /> : <Placeholder>{t("site.preview.noProducts")}</Placeholder>}
+          </div>
+          {s.source === "sale" && <p className="px-4 pb-3 text-[11px] text-muted-foreground">{t("site.layouts.flashSaleHint")}</p>}
+        </div>
+      );
+    case "finder":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.layouts.finderTitlePlaceholder")}</Title>
+          <div className="mx-4 grid gap-3 rounded-xl border bg-card p-4">
+            {s.layout === "wizard" && (
+              <div className="flex gap-1" aria-hidden>
+                {s.questions.map((_, i) => (
+                  <span key={i} className={cn("h-1 flex-1 rounded-full", i === 0 ? "bg-primary" : "bg-muted")} />
+                ))}
+              </div>
+            )}
+            {(s.layout === "wizard" ? s.questions.slice(0, 1) : s.questions).map((q, qi) => (
+              <div key={qi} className="grid gap-2">
+                <p className="text-sm font-semibold">{q.label || "…"}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {q.options.map((o, oi) => (
+                    <span key={oi} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium", oi === 0 && "border-primary bg-primary/10 text-primary")}>
+                      {o.imageUrl && <Img src={o.imageUrl} className="size-4 rounded-full" />}
+                      {o.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <ShelfSketch n={4} />
+        </div>
+      );
+    case "stories":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          {s.items.length ? (
+            <div className="flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+              {s.items.map((it, i) =>
+                s.layout === "reels" ? (
+                  <div key={i} className="relative w-24 shrink-0 overflow-hidden rounded-xl @lg:w-28">
+                    <Img src={it.imageUrl} className="aspect-[9/16] w-full" />
+                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-[11px] leading-tight font-semibold text-white">{it.title}</span>
+                    {it.videoUrl && <PlayIcon className="absolute end-1.5 top-1.5 size-3.5 fill-white text-white" aria-hidden />}
+                  </div>
+                ) : (
+                  <div key={i} className="grid w-16 shrink-0 justify-items-center gap-1 text-center">
+                    <span className="rounded-full bg-primary p-[2px]">
+                      <Img src={it.imageUrl} className="size-14 rounded-full border-2 border-background" />
+                    </span>
+                    <span className="line-clamp-2 text-[11px] leading-tight">{it.title}</span>
+                  </div>
+                ),
+              )}
+            </div>
+          ) : (
+            <Placeholder>{t("site.layouts.addStoriesHint")}</Placeholder>
+          )}
+        </div>
+      );
+    case "category-shelf":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          {s.categories.length ? (
+            <div className="grid gap-3 px-4 @lg:grid-cols-[9rem_1fr]">
+              <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] @lg:flex-col @lg:rounded-xl @lg:border @lg:p-1.5">
+                {s.categories.map((c, i) => (
+                  <span key={c.id} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap @lg:rounded-lg @lg:border-0", i === 0 && "bg-primary text-primary-foreground")}>
+                    {s.showImages && <Img src={c.image} className="size-5 rounded-full" />}
+                    {c.name}
+                  </span>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2 @lg:grid-cols-3">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <span key={i} className="aspect-[4/5] rounded-lg bg-primary/8 ring-1 ring-border" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Placeholder>{t("site.preview.noCategories")}</Placeholder>
+          )}
+        </div>
+      );
+    case "sticky-story":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title}</Title>
+          <div className={cn("grid gap-4 px-4 @lg:grid-cols-2", s.imageSide === "right" && "@lg:[&>*:first-child]:order-2")}>
+            <Img src={s.chapters[0]?.imageUrl || null} alt={s.chapters[0]?.alt} className="hidden aspect-[4/5] w-full rounded-xl @lg:flex" />
+            <div className="grid content-start gap-5">
+              {s.chapters.map((c, i) => (
+                <div key={i} className="grid gap-1.5">
+                  <Img src={c.imageUrl || null} className="aspect-[4/3] w-full rounded-xl @lg:hidden" />
+                  <p className="text-[11px] font-bold tracking-wider text-primary uppercase">
+                    {String(i + 1).padStart(2, "0")} {c.eyebrow}
+                  </p>
+                  <p className="font-heading text-base font-semibold">{c.heading}</p>
+                  {c.markdown && <Markdown source={c.markdown} className="line-clamp-3 text-xs text-muted-foreground" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    case "comparison":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.layouts.compareTitlePlaceholder")}</Title>
+          {s.products.length >= 2 ? (
+            <div className="mx-4 overflow-x-auto rounded-xl border">
+              <table className="w-full min-w-[22rem] text-xs">
+                <thead>
+                  <tr className="border-b">
+                    <th className="p-2" />
+                    {s.products.map((p) => (
+                      <th key={p.id} className={cn("p-2 text-start align-top font-medium", p.id === s.highlightId && "bg-primary/8")}>
+                        {p.id === s.highlightId && <span className="mb-1 inline-block rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{s.highlightLabel || t("site.layouts.compareBadgePlaceholder")}</span>}
+                        <Img src={p.image} className="mb-1 aspect-square w-14 rounded" />
+                        <span className="line-clamp-2">{p.name}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  <tr>
+                    <th className="p-2 text-start font-semibold">{t("site.layouts.comparePrice")}</th>
+                    {s.products.map((p) => (
+                      <td key={p.id} className={cn("p-2 tabular-nums", p.id === s.highlightId && "bg-primary/8")}>
+                        {money(p.priceMin)}
+                      </td>
+                    ))}
+                  </tr>
+                  {s.rows.map((r, ri) => (
+                    <tr key={ri}>
+                      <th className="p-2 text-start font-semibold">{r.label}</th>
+                      {s.products.map((p, pi) => (
+                        <td key={p.id} className={cn("p-2", p.id === s.highlightId && "bg-primary/8")}>
+                          {r.values[pi] || "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Placeholder>{t("site.layouts.comparePickHint")}</Placeholder>
+          )}
+        </div>
+      );
+    case "tiles":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.layouts.tilesTitlePlaceholder")}</Title>
+          <div className={cn("gap-2 px-4", s.layout === "row" ? "flex overflow-x-auto [scrollbar-width:none]" : "grid grid-cols-2 @lg:grid-cols-4")}>
+            {s.items.map((it, i) => (
+              <div key={i} className={cn("grid content-start gap-1.5 rounded-lg border p-1.5", s.layout === "row" && "w-28 shrink-0")}>
+                <Img src={it.imageUrl || null} className="aspect-square w-full rounded-md" />
+                <p className="text-xs leading-tight font-semibold">{it.label}</p>
+                {it.note && <p className="line-clamp-2 text-[10px] leading-tight text-muted-foreground">{it.note}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "swatches":
+      return (
+        <div className="grid gap-3">
+          <Title>{s.title || t("site.layouts.swatchesTitlePlaceholder")}</Title>
+          {s.products.length ? (
+            <div className="grid gap-2 px-4">
+              <p className="text-xs font-semibold">{s.products.map((p) => p.name).join(" · ")}</p>
+              <div className="flex flex-wrap gap-2">
+                {s.shades.map((sh, i) => (
+                  <span key={i} title={sh.value} className="size-8 rounded-full ring-1 ring-border" style={{ background: sh.hex }} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Placeholder>{t("site.layouts.comparePickHint")}</Placeholder>
+          )}
+        </div>
+      );
+    case "size-finder":
+      return (
+        <div className="mx-4 grid gap-3 rounded-xl bg-primary/8 p-4">
+          <p className="font-heading text-lg font-semibold">{s.title || t("site.layouts.sizeTitlePlaceholder")}</p>
+          <div className="flex flex-wrap gap-1">
+            {s.groups.map((g, i) => (
+              <span key={i} className={cn("rounded-full px-3 py-1 text-xs font-semibold", i === 0 ? "bg-primary text-primary-foreground" : "border text-muted-foreground")}>
+                {g.label}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(s.groups[0]?.sizes ?? []).map((z) => (
+              <span key={z} className="flex h-8 min-w-9 items-center justify-center rounded-md border-2 bg-background px-2 text-xs font-semibold tabular-nums">
+                {z}
+              </span>
+            ))}
+          </div>
+          {s.footLength && <span className="h-8 w-28 rounded-md border bg-background" aria-hidden />}
+        </div>
+      );
   }
 }

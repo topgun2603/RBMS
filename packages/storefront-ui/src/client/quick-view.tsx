@@ -34,7 +34,7 @@ export function QuickView({ slug, onClose }: { slug: string | null; onClose: () 
   const p = product.data;
   const avail = useQuery({
     queryKey: ["availability", p?.id],
-    queryFn: () => call<List<Availability>>("/inventory/public/availability", { query: { itemIds: p!.variants.map((v) => v.id).join(",") }, auth: false }).catch(() => ({ items: [], total: 0 })),
+    queryFn: () => call<List<Availability>>("/store/availability", { query: { itemIds: p!.variants.map((v) => v.id).join(",") }, auth: false }).catch(() => ({ items: [], total: 0 })),
     enabled: !!p,
     staleTime: 15_000,
   });
@@ -68,7 +68,7 @@ export function QuickView({ slug, onClose }: { slug: string | null; onClose: () 
                 {(p.brand || p.categoryName) && <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">{p.brand ?? p.categoryName}</p>}
                 <h2 className="mt-1 font-display text-h3 leading-tight font-semibold sm:text-2xl">{p.name}</h2>
               </div>
-              <PurchasePanel product={p} availability={availability} compact onAdded={onClose} sizeGuide={packFor(shell.businessType)?.sizeGuide ? <SizeChart kind={sizeKindFor(p.categoryName, p.name)} t={t} /> : undefined} />
+              <PurchasePanel product={p} availability={availability} compact onAdded={onClose} sizeGuide={packFor(shell.businessType)?.sizeGuide ? <SizeChart kind={sizeKindFor(shell.businessType, p.categoryName, p.name)} t={t} /> : undefined} />
               <Link href={STORE_PATHS.product(p.slug)} onClick={onClose} className="group inline-flex items-center gap-1.5 text-sm font-semibold text-primary focus-ring">
                 {t("product.fullDetails")}
                 <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />

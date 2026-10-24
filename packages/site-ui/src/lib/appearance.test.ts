@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_STORE_THEME, THEME_OPTIONS, THEME_PRESETS, type ThemeOptionKey } from "@srirealtime/branding/theme";
-import { draftFrom, draftFromPreset } from "./appearance";
+import { differsFromPreset, draftFrom, draftFromPreset, resetToPreset } from "./appearance";
 import { siteMessages } from "./messages";
 
 const tokens = { colors: { primary: "#112233" }, fontSans: "Inter", radius: 0.5, mode: "light" as const };
@@ -25,5 +25,18 @@ describe("appearance editor", () => {
   it("a preset brings its header, card and product page choices", () => {
     const luxe = THEME_PRESETS.find((p) => p.id === "luxe")!;
     expect(draftFromPreset(luxe).theme).toMatchObject({ card: "editorial", footer: "centered", productLayout: "grid", sticky: "scroll-up" });
+  });
+
+  it("resets an edited look to its preset (keeping the shop's page layout unless the preset has one)", () => {
+    const luxe = THEME_PRESETS.find((p) => p.id === "luxe")!;
+    const picked = { ...draftFromPreset(luxe), theme: { ...draftFromPreset(luxe).theme, pageLayout: "rail" as const } };
+    expect(differsFromPreset(picked, luxe)).toBe(false);
+    const edited = { ...picked, colors: { ...picked.colors, primary: "#123456" }, theme: { ...picked.theme, card: "minimal" as const } };
+    expect(differsFromPreset(edited, luxe)).toBe(true);
+    const reset = resetToPreset(edited, luxe);
+    expect(reset.colors.primary).toBe(luxe.colors.primary);
+    expect(reset.theme.card).toBe(luxe.theme.card);
+    expect(reset.theme.pageLayout).toBe(luxe.theme.pageLayout ?? "rail");
+    expect(differsFromPreset(reset, luxe)).toBe(false);
   });
 });

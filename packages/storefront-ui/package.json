@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./preview": "./src/preview.ts"
+    "./preview": "./src/preview.ts",
+    "./pwa": "./src/pwa.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

@@ -32,7 +32,7 @@ import {
   type PublicCollectionPage,
 } from "./collections";
 import { CATALOGUE_FEATURE_KEYS } from "./features";
-import { exclusiveOf, GST_RATES } from "@srirealtime/gst";
+import { effectiveGstRate, exclusiveOf, gstRateAtPrice, GST_RATES, isGstRateRule, type GstRateRule } from "@srirealtime/gst";
 import {
   buildTree,
   descendantIds,
@@ -79,6 +79,7 @@ import {
   buildSearchText,
   categoryPath,
   groupFacetRows,
+  mergeSameNameFacets,
   MAX_CANDIDATES,
   minPriceSql,
   nameTierSql,
@@ -260,6 +261,11 @@ const opt = <T extends z.ZodTypeAny>(s: T) =>
 const money = z.number().int("Amounts are whole paise").min(0).max(MAX_PAISE);
 const hsn = z.string().trim().regex(/^[0-9]{2,8}$/, "HSN/SAC must be 2–8 digits");
 const gstRate = z.number().refine((v) => (GST_RATES as readonly number[]).includes(v), `GST rate must be one of ${GST_RATES.join(", ")}`);
+/** Price-band GST (apparel / footwear: `{ kind: "price-band", threshold: 250000, below: 5, above: 18 }`). */
+const gstRule = z
+  .object({ kind: z.literal("price-band"), threshold: money.refine((v) => v > 0, "The threshold must be above zero"), below: gstRate, above: gstRate })
+  .refine((r) => isGstRateRule(r), "A GST price band needs a lower rate up to the threshold and a higher one above it")
+  .transform((r) => r as GstRateRule);
 const unit = z.string().trim().min(1).max(16);
 const slug = z.string().trim().toLowerCase().max(80).regex(SLUG_RE, "Use lowercase letters, digits and hyphens");
 const code = z.string().trim().min(1).max(64).regex(/^\S+$/, "No spaces allowed");
@@ -330,6 +336,7 @@ const productFields = {
   categoryId: opt(uuid),
   hsn: opt(hsn),
   gstRate: gstRate.default(0),
+  gstRule: opt(gstRule),
   unit: unit.default("pcs"),
   taxInclusive: z.boolean().default(false),
   status: z.enum(PRODUCT_STATUSES).default("active"),
@@ -370,6 +377,7 @@ export const productPatchSchema = z.object({
   categoryId: productFields.categoryId,
   hsn: productFields.hsn,
   gstRate: gstRate.optional(),
+  gstRule: opt(gstRule),
   unit: unit.optional(),
   taxInclusive: z.boolean().optional(),
   status: z.enum(PRODUCT_STATUSES).optional(),
@@ -609,6 +617,7 @@ const toProductBase = (p: ProductRow): Omit<Product, "variants"> => ({
   categoryId: p.categoryId,
   hsn: p.hsn,
   gstRate: p.gstRate,
+  gstRule: p.gstRule ?? null,
   unit: p.unit,
   taxInclusive: p.taxInclusive,
   status: p.status,
@@ -639,6 +648,8 @@ const toCategory = (c: CategoryRow, productCount = 0): Category => ({
 });
 
 export function toCatalogItem(v: VariantRow, p: ProductRow): CatalogItem {
+  // A price-band product: the rate at this variant's own price (bill lines re-band after discounts via `gstRule`).
+  const rate = p.gstRule ? gstRateAtPrice(p.gstRule, v.price, p.taxInclusive) : p.gstRate;
   return {
     id: v.id,
     productId: p.id,
@@ -647,10 +658,11 @@ export function toCatalogItem(v: VariantRow, p: ProductRow): CatalogItem {
     barcode: v.barcode,
     hsn: p.hsn,
     unit: p.unit,
-    rate: exclusiveOf(v.price, p.gstRate, p.taxInclusive),
+    rate: exclusiveOf(v.price, rate, p.taxInclusive),
     price: v.price,
     taxInclusive: p.taxInclusive,
-    gstRate: p.gstRate,
+    gstRate: rate,
+    ...(p.gstRule ? { gstRule: p.gstRule } : {}),
     image: p.images?.[0]?.url ?? null,
     createdAt: v.createdAt,
     categoryId: p.categoryId ?? null,
@@ -1159,6 +1171,7 @@ export class CatalogueService {
               categoryId: b.categoryId ?? null,
               hsn: b.hsn ?? null,
               gstRate: b.gstRate,
+              gstRule: b.gstRule ?? null,
               unit: b.unit,
               taxInclusive: b.taxInclusive,
               status,
@@ -1205,6 +1218,7 @@ export class CatalogueService {
     }
     if (b.hsn !== undefined) set.hsn = b.hsn;
     if (b.gstRate !== undefined) set.gstRate = b.gstRate;
+    if (b.gstRule !== undefined) set.gstRule = b.gstRule ?? null;
     if (b.unit !== undefined) set.unit = b.unit;
     if (b.taxInclusive !== undefined) set.taxInclusive = b.taxInclusive;
     const listing = await this.listingPlan(tenantId, current.vendorId ?? null, Boolean(scope), b.status, current.status);
@@ -2188,11 +2202,14 @@ export class CatalogueService {
         this.publicWhere(tenantId),
         match ?? undefined,
         categoryIds && !omit.includes("category") ? inArray(catalogProducts.categoryId, categoryIds) : undefined,
+        // Every tag (AND): the finder combines one tag per answered question.
+        s.tags.length ? sql`${catalogProducts.tags} @> array[${sql.join(s.tags.map((x) => sql`${x}`), sql`, `)}]::text[]` : undefined,
         ...attrs,
         variantExistsSql({
           priceMin: omit.includes("price") ? undefined : s.priceMin,
           priceMax: omit.includes("price") ? undefined : s.priceMax,
           options: s.options,
+          optionsMatchAttributes: true,
           variantIds: inStockIds,
         }) ?? undefined,
       )!;
@@ -2252,8 +2269,13 @@ export class CatalogueService {
           cross join lateral jsonb_each_text(${catalogProducts.attributes}) kv
           where ${full} group by kv.key, kv.value`,
       ),
-      this.db.execute<{ key: string; value: string; count: number }>(
-        sql`select kv.key, kv.value, count(distinct ${catalogProducts.id})::int as count from ${catalogProducts}
+      // rank: the value's average position in the products' own option lists (S, M, L, XL — not alphabetical).
+      this.db.execute<{ key: string; value: string; count: number; rank: number | null }>(
+        sql`select kv.key, kv.value, count(distinct ${catalogProducts.id})::int as count,
+          avg((select o.idx from jsonb_array_elements(${catalogProducts.options}) opt
+            cross join lateral jsonb_array_elements_text(opt->'values') with ordinality o(val, idx)
+            where opt->>'name' = kv.key and o.val = kv.value limit 1))::float as rank
+          from ${catalogProducts}
           join ${catalogVariants} on ${catalogVariants.productId} = ${catalogProducts.id} and ${catalogVariants.tenantId} = ${tenantId}
             and ${catalogVariants.deletedAt} is null
           cross join lateral jsonb_each_text(${catalogVariants.optionValues}) kv
@@ -2263,8 +2285,7 @@ export class CatalogueService {
     return {
       categories: rollupCategoryCounts(categories, direct),
       price: priceFacet(price),
-      attributes: groupFacetRows([...attributeRows]),
-      options: groupFacetRows([...optionRows]),
+      ...mergeSameNameFacets(groupFacetRows([...attributeRows]), groupFacetRows([...optionRows])),
     };
   }
 
@@ -2902,7 +2923,8 @@ export class CatalogueService {
         if (productSet.name !== undefined) await this.refreshSearchText(tx, tenantId, [p.id]);
       }
       if (b.rate !== undefined) {
-        const price = inclusiveOf(b.rate, b.gstRate ?? p.gstRate, p.taxInclusive);
+        // A price-band product grosses up at the band of the new (exclusive) rate.
+        const price = inclusiveOf(b.rate, b.gstRate ?? (p.gstRule ? effectiveGstRate(p.gstRule, b.rate) : p.gstRate), p.taxInclusive);
         await tx.update(catalogVariants).set({ price }).where(and(eq(catalogVariants.tenantId, tenantId), eq(catalogVariants.id, v.id)));
       }
     });

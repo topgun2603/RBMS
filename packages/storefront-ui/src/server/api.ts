@@ -112,6 +112,19 @@ export async function apiGetSafe<T>(path: string, fallback: T, opts?: GetOptions
   }
 }
 
+/**
+ * Like apiGetSafe, for answers that are empty when something upstream is wrong or just changed (a home with no
+ * sections, a tile count of 0): an empty cached answer is checked once more uncached, so it never sticks for the
+ * revalidate period (the API restarting mid-seed, a store seeded right after its first visit). A failure is never
+ * cached (Next's data cache keeps only 200 responses; the fallback is per request), and a non-empty answer keeps the
+ * normal cache. See lib/cache-tags for the instant refresh after staff edits.
+ */
+export async function apiGetFresh<T>(path: string, fallback: T, isEmpty: (v: T) => boolean, opts: GetOptions = {}): Promise<T> {
+  const first = await apiGetSafe<T>(path, fallback, opts);
+  if (!isEmpty(first) || (opts.revalidate ?? 60) === 0) return first;
+  return apiGetSafe<T>(path, first, { ...opts, revalidate: 0 });
+}
+
 /** Shop config, or null when the host has no shop (unknown subdomain / unverified domain). */
 export const getConfig = cache(async (): Promise<StoreConfig | null> => {
   const info = await getRequestInfo();
@@ -162,6 +175,7 @@ export async function getShell(config: StoreConfig, branding: Branding | null): 
   const info = await getRequestInfo();
   const [cart, features] = await Promise.all([getCart(), getFeatures()]);
   return {
+    slug: config.shop.slug ?? info.slug ?? "",
     name: config.shop.name,
     logoUrl: config.shop.logoUrl ?? branding?.logoUrl ?? null,
     open: config.open,
@@ -169,6 +183,10 @@ export async function getShell(config: StoreConfig, branding: Branding | null): 
     codEnabled: config.codEnabled,
     codMaxAmount: config.codMaxAmount,
     minOrderValue: config.minOrderValue,
+    onlinePayments: config.onlinePayments,
+    deliveryEnabled: config.deliveryEnabled,
+    pickupEnabled: config.pickupEnabled,
+    pickupNote: config.pickupNote,
     contactPhone: config.shop.contactPhone,
     contactEmail: config.shop.contactEmail,
     whatsapp: config.shop.social?.whatsapp ?? null,
@@ -209,6 +227,8 @@ const THEME_DEFAULTS: StoreThemeView = {
   categoryHeader: "simple",
   subcategories: "off",
   compare: "off",
+  pageLayout: "standard",
+  mobileNav: "off",
 };
 
 /** The shop's theme variants with defaults for anything missing (older APIs send none). */

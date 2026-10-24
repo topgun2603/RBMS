@@ -143,7 +143,7 @@ export const shelvesTa: Messages = {
   "rec.total": "{count, plural, one {# பொருளுக்கு} other {# பொருட்களுக்கு}} மொத்தம்",
   "rec.addSelected": "தேர்ந்தவற்றைக் கூடையில் சேர்",
   "rec.added": "{count, plural, one {# பொருள்} other {# பொருட்கள்}} கூடையில் சேர்க்கப்பட்டன",
-  "rec.choose": "விருப்பங்களைத் தேர்வு செய்",
+  "rec.choose": "தேர்வு செய்",
   "rec.chooseHint": "அளவு அல்லது விருப்பங்கள் உள்ளன: முதலில் தேர்வு செய்யுங்கள்",
   "rec.cartTitle": "இவையும் தேவைப்படலாம்",
   "rec.forYou": "உங்களுக்காகப் பரிந்துரைக்கப்பட்டவை",

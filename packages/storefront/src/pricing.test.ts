@@ -174,6 +174,14 @@ describe("priceLines / buildPricedCart", () => {
     expect(estimateTaxExtra(priced.calcs, 2000)).toBe(Math.round((10000 - 1000) * 0.18));
   });
 
+  it("estimates price-band GST (apparel / footwear) on the piece's value after its discount", () => {
+    const rule = { kind: "price-band" as const, threshold: 250_000, below: 5 as const, above: 18 as const };
+    const priced = priceLines([{ variantId: V1, qty: 2 }], [variant(V1, { price: 260_000, taxInclusive: false, gstRate: 18, gstRule: rule })], []);
+    expect(estimateTaxExtra(priced.calcs, 0)).toBe(Math.round(520_000 * 0.18));
+    // ₹300 off the line → ₹2,450 a piece: 5%.
+    expect(estimateTaxExtra(priced.calcs, 0, [30_000])).toBe(Math.round(490_000 * 0.05));
+  });
+
   it("couponContext covers only available lines", () => {
     const priced = priceLines([{ variantId: V1, qty: 2 }, { variantId: V2, qty: 1 }], [variant(V1), variant(V2)], [stock(V2, 0)]);
     expect(couponContext(priced.calcs)).toEqual({ subtotal: 99800, lines: [{ productId: "p-1", categoryId: "cat-1", amount: 99800 }] });

@@ -1,5 +1,18 @@
 // Pure order rules: status machine with side-effect plans, pricing/GST totals, payment status. No I/O.
-import { computeInvoice, exclusiveOf, formatINR, isGstRate, isInterState, lineAmount, type GstRate, type LineInput } from "@srirealtime/gst";
+import {
+  computeInvoice,
+  effectiveGstRate,
+  exclusiveOf,
+  formatINR,
+  gstRateAtPrice,
+  gstRateForInclusive,
+  isGstRate,
+  isInterState,
+  lineAmount,
+  type GstRate,
+  type GstRateRule,
+  type LineInput,
+} from "@srirealtime/gst";
 import type { CatalogItem, OrderSettings } from "./ports";
 import type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus, StockState } from "./schema";
 import type { OrderLine, OrderTotals } from "./types";
@@ -244,6 +257,8 @@ export interface BaseLine {
   price: number;
   rate: number;
   gstRate: GstRate;
+  /** Price-band GST rule of the product (apparel / footwear); `computeOrderTotals` re-bands the line after discounts. */
+  gstRule?: GstRateRule | null;
   hsn: string | null;
   taxInclusive: boolean;
   /** qty × price, as charged. */
@@ -271,8 +286,9 @@ export function buildBaseLines(items: readonly CatalogItem[], requests: readonly
   if (missing.length || badGst.length) return { ok: false, missing, badGst };
   const lines = requests.map((r): BaseLine => {
     const item = byId.get(r.variantId)!;
-    const gstRate = item.gstRate as GstRate;
     const price = opts.allowPriceOverride && r.price !== undefined && r.price !== null ? r.price : item.price;
+    // A price-band product is banded at the price charged (a staff price override can move it).
+    const gstRate = (item.gstRule ? gstRateAtPrice(item.gstRule, price, item.taxInclusive) : item.gstRate) as GstRate;
     return {
       variantId: item.id,
       productId: item.productId,
@@ -285,6 +301,7 @@ export function buildBaseLines(items: readonly CatalogItem[], requests: readonly
       price,
       rate: exclusiveOf(price, gstRate, item.taxInclusive),
       gstRate,
+      ...(item.gstRule ? { gstRule: item.gstRule } : {}),
       hsn: item.hsn ?? null,
       taxInclusive: item.taxInclusive,
       gross: lineAmount(r.qty, price),
@@ -380,7 +397,23 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
     const share = Math.min(discountsCharged[i]!, l.gross);
     return Math.min(Math.max(Math.round(opts.loyaltyDiscounts?.[i] ?? 0), 0), l.gross - share);
   });
-  const inputs: LineInput[] = base.map((l, i) => {
+  // Price-band lines (apparel / footwear) are taxed at the band of their value after the coupon and loyalty shares
+  // (Sec 15(3)(a): discounts on the invoice reduce the value of supply), so rate and gstRate are worked out per line.
+  const banded = base.map((l, i) => {
+    if (!l.gstRule) return l;
+    const share = Math.min(discountsCharged[i]!, l.gross);
+    const charged = l.gross - share - loyaltyCharged[i]!;
+    let gstRate: number;
+    if (l.taxInclusive) gstRate = gstRateForInclusive(l.gstRule, charged, l.qty).rate;
+    else {
+      // Exclusive price: the loyalty share is charged money, converted at the rate it lands in (two passes settle it).
+      const amount = lineAmount(l.qty, l.price);
+      gstRate = effectiveGstRate(l.gstRule, amount - share - exclusiveOf(loyaltyCharged[i]!, l.gstRate, true), l.qty);
+      gstRate = effectiveGstRate(l.gstRule, amount - share - exclusiveOf(loyaltyCharged[i]!, gstRate, true), l.qty);
+    }
+    return { ...l, gstRate: gstRate as GstRate, rate: exclusiveOf(l.price, gstRate, l.taxInclusive) };
+  });
+  const inputs: LineInput[] = banded.map((l, i) => {
     const amount = lineAmount(l.qty, l.rate);
     const share = Math.min(discountsCharged[i]!, l.gross);
     const loyalty = loyaltyCharged[i]!;
@@ -410,7 +443,7 @@ export function computeOrderTotals(base: readonly BaseLine[], opts: TotalsOption
   if (shippingCharged > 0) inputs.push(serviceLine(SHIPPING_DESCRIPTION, shippingCharged));
   if (codFee > 0) inputs.push(serviceLine(COD_FEE_DESCRIPTION, codFee));
   const computed = computeInvoice(inputs, { sellerState: opts.sellerState, placeOfSupply: opts.placeOfSupply });
-  const lines: OrderLine[] = base.map((l, i) => {
+  const lines: OrderLine[] = banded.map((l, i) => {
     const c = computed.lines[i]!;
     return {
       variantId: l.variantId,

@@ -8,6 +8,7 @@ import { toast } from "@srirealtime/ui/components/sonner";
 import { ToggleGroup, ToggleGroupItem } from "@srirealtime/ui/components/toggle-group";
 import { cn } from "@srirealtime/ui/lib/utils";
 import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { gstRateAtPrice } from "@srirealtime/gst";
 import { etaRange, imageUrl, money, percentOff } from "../lib/format";
 import type { DeliveryQuote, PincodeInfo, Product } from "../types";
 import { call, errorMessage } from "./api";
@@ -146,7 +147,14 @@ export function PurchasePanel({
             )}
           </AnimatePresence>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{product.taxInclusive ? t("product.inclTax") : t("product.plusGst")}</p>
+        <p className="mt-1 text-xs text-muted-foreground" data-testid="tax-note">
+          {product.gstRule
+            ? // Price-band GST (apparel / footwear): the rate depends on the selected size's price.
+              t(product.taxInclusive ? "product.inclGstRate" : "product.plusGstRate", { rate: gstRateAtPrice(product.gstRule, price, product.taxInclusive) })
+            : product.taxInclusive
+              ? t("product.inclTax")
+              : t("product.plusGst")}
+        </p>
       </div>
 
       {options.map((o) => (

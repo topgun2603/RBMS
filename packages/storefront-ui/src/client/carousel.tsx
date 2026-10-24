@@ -213,6 +213,8 @@ export function HeroSlider({ slides, shopName }: { slides: HeroSlide[]; shopName
           style={{ opacity: fade }}
           className={cn(
             "absolute inset-0 z-[2] mx-auto flex w-full max-w-7xl px-4 sm:px-6 lg:px-8",
+            // The prev/next arrows (md+, 16px inset + 48px) would sit over the text's start: clear them (lg too, after lg:px-8).
+            n > 1 && "md:px-20 lg:px-20",
             variant === "full" ? "items-center justify-center text-center" : variant === "compact" ? "items-center" : "items-end pb-16 sm:items-center sm:pb-0",
           )}
         >

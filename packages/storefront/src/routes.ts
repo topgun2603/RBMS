@@ -68,6 +68,8 @@ export function storefrontRoutes(service: StorefrontService) {
       const { slug } = slugParam.parse(req.params);
       return service.getBundle(storeOf(req.ctx).id, slug);
     });
+    /** Stock flags by item id (`?itemIds=a,b`): inventory for stocked shops, "sold out today" for dishes, else all in stock. */
+    app.get("/availability", BASE, async (req) => service.publicAvailability(storeOf(req.ctx).id, req.query));
     app.get("/track/:accessToken", BASE, async (req) => {
       const { accessToken } = accessParam.parse(req.params);
       return service.track(storeOf(req.ctx).id, accessToken);

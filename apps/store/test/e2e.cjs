@@ -112,6 +112,31 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, `store-${nam
     await shot(page, "home-desktop");
   });
 
+  await step("installable: manifest, app icons, offline page, service worker", async () => {
+    const r = await page.evaluate(async () => {
+      const link = document.querySelector('link[rel="manifest"]');
+      const apple = document.querySelector('link[rel="apple-touch-icon"]');
+      const theme = document.querySelector('meta[name="theme-color"]');
+      const res = await fetch(link ? link.getAttribute("href") : "/manifest.webmanifest");
+      const m = await res.json();
+      const icons = await Promise.all((m.icons || []).map((i) => fetch(i.src).then((x) => `${x.status} ${x.headers.get("content-type")}`)));
+      const offline = await fetch("/offline.html").then((x) => x.status);
+      const sw = await fetch("/sw.js").then((x) => `${x.status} ${x.headers.get("content-type")}`);
+      return { link: !!link, apple: !!apple, theme: theme && theme.getAttribute("content"), status: res.status, m, icons, offline, sw };
+    });
+    if (!r.link || !r.apple) throw new Error("manifest / apple-touch-icon link missing");
+    if (r.status !== 200) throw new Error(`manifest HTTP ${r.status}`);
+    const m = r.m;
+    if (!m.name || !m.short_name || [...m.short_name].length > 12) throw new Error(`manifest names: ${m.name} / ${m.short_name}`);
+    if (m.start_url !== "/?source=pwa" || m.scope !== "/" || m.display !== "standalone") throw new Error(`manifest start/scope/display: ${m.start_url} ${m.scope} ${m.display}`);
+    if (!/^#[0-9a-f]{6}$/.test(m.theme_color) || m.theme_color !== r.theme) throw new Error(`theme_color ${m.theme_color} vs meta ${r.theme}`);
+    if (m.icons.length !== 3 || !m.icons.some((i) => i.purpose === "maskable")) throw new Error("manifest icons");
+    if (!r.icons.every((s) => s === "200 image/png")) throw new Error(`icons: ${r.icons.join(", ")}`);
+    if (r.offline !== 200) throw new Error(`offline page HTTP ${r.offline}`);
+    if (!/^200 application\/javascript/.test(r.sw)) throw new Error(`sw.js: ${r.sw}`);
+    console.log(`      manifest: ${m.short_name} · ${m.theme_color} · ${m.categories.join("/")}`);
+  });
+
   await step("product: pick size, add to cart", async () => {
     await page.goto(`${BASE}/p/${PRODUCT}`, { waitUntil: "networkidle2", timeout: 120000 });
     await page.evaluate(() => [...document.querySelectorAll("fieldset button")].find((b) => b.textContent.trim() === "M")?.click());

@@ -9,6 +9,11 @@ import {
   USP_ICONS,
   type CATEGORY_COLUMNS,
   type CATEGORY_LAYOUTS,
+  type FINDER_LAYOUTS,
+  type FINDER_RESULTS,
+  type FLASH_SALE_SOURCES,
+  type STORY_LAYOUTS,
+  type TILE_LAYOUTS,
   type NEWSLETTER_LAYOUTS,
   type PRODUCT_TAB_SOURCES,
   type SHELF_LAYOUTS,
@@ -40,6 +45,8 @@ export interface StyleForm {
   animation: "" | NonNullable<SectionStyle["animation"]>;
   hideOnMobile: boolean;
   hideOnDesktop: boolean;
+  /** "" = the whole row · half = beside the next half section. */
+  span: "" | "half";
 }
 
 export type Diet = "" | "veg" | "nonveg" | "egg";
@@ -112,6 +119,73 @@ export interface PlanForm {
   ctaHref: string;
 }
 
+export type FlashSaleSource = (typeof FLASH_SALE_SOURCES)[number];
+export type FinderLayout = (typeof FINDER_LAYOUTS)[number];
+export type FinderResults = (typeof FINDER_RESULTS)[number];
+export type StoryLayout = (typeof STORY_LAYOUTS)[number];
+export interface FinderOptionForm {
+  label: string;
+  imageUrl: string;
+  categoryId: string;
+  tag: string;
+  filterName: string;
+  filterValue: string;
+  keywords: string;
+  /** Rupees as typed; stored in paise. */
+  priceMin: string;
+  priceMax: string;
+  /** Opens this page instead of the filtered list. */
+  href: string;
+}
+export interface FinderQuestionForm {
+  label: string;
+  options: FinderOptionForm[];
+}
+export interface StoryForm {
+  imageUrl: string;
+  videoUrl: string;
+  title: string;
+  text: string;
+  href: string;
+  ctaLabel: string;
+}
+export interface ChapterForm {
+  eyebrow: string;
+  heading: string;
+  markdown: string;
+  imageUrl: string;
+  alt: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
+export type TileLayout = (typeof TILE_LAYOUTS)[number];
+export interface TileForm {
+  label: string;
+  note: string;
+  imageUrl: string;
+  collectionSlug: string;
+  tag: string;
+  href: string;
+}
+export type SkinDepth = "" | "fair" | "wheatish" | "dusky" | "deep";
+export interface ShadeForm {
+  value: string;
+  /** "#b0413e". */
+  hex: string;
+  depth: SkinDepth;
+}
+export interface SizeGroupForm {
+  label: string;
+  categoryId: string;
+  /** Comma- or space-separated sizes as typed ("6, 7, 8"). */
+  sizes: string;
+}
+export interface CompareRowForm {
+  label: string;
+  /** One per product, in the products' order. */
+  values: string[];
+}
+
 type Forms =
   | { type: "hero"; id?: string; slides: SlideForm[] }
   | { type: "categories"; id?: string; title: string; mode: "all" | "pick"; categoryIds: string[]; layout: CategoryLayout; showCounts: boolean; columns: CategoryColumns }
@@ -178,7 +252,58 @@ type Forms =
   | { type: "team"; id?: string; title: string; text: string; members: MemberForm[] }
   | { type: "pricing-table"; id?: string; title: string; text: string; plans: PlanForm[] }
   | { type: "blog-posts"; id?: string; title: string; limit: string; tag: string }
-  | { type: "reviews-summary"; id?: string; title: string; limit: string };
+  | { type: "reviews-summary"; id?: string; title: string; limit: string }
+  | {
+      type: "flash-sale";
+      id?: string;
+      title: string;
+      text: string;
+      /** `datetime-local` values, local time; "" = from now. */
+      startsAt: string;
+      endsAt: string;
+      /** Every day between these shop times ("HH:MM"); both "" = all day. "00:00" as the end = until midnight. */
+      dailyFrom: string;
+      dailyTo: string;
+      source: FlashSaleSource;
+      productIds: string[];
+      collectionSlug: string;
+      layout: ShelfLayout;
+      limit: string;
+      ctaLabel: string;
+      ctaHref: string;
+    }
+  | {
+      type: "finder";
+      id?: string;
+      title: string;
+      text: string;
+      layout: FinderLayout;
+      results: FinderResults;
+      buttonLabel: string;
+      imageUrl: string;
+      ctaLabel: string;
+      ctaHref: string;
+      limit: string;
+      questions: FinderQuestionForm[];
+    }
+  | { type: "stories"; id?: string; title: string; layout: StoryLayout; items: StoryForm[] }
+  | { type: "category-shelf"; id?: string; title: string; mode: "all" | "pick"; categoryIds: string[]; showImages: boolean; limit: string }
+  | { type: "sticky-story"; id?: string; title: string; imageSide: "left" | "right"; chapters: ChapterForm[] }
+  | { type: "comparison"; id?: string; title: string; text: string; productIds: string[]; highlightId: string; highlightLabel: string; showRating: boolean; rows: CompareRowForm[] }
+  | { type: "tiles"; id?: string; title: string; text: string; layout: TileLayout; showCounts: boolean; items: TileForm[] }
+  | { type: "size-finder"; id?: string; title: string; text: string; imageUrl: string; optionName: string; footLength: boolean; groups: SizeGroupForm[] }
+  | {
+      type: "swatches";
+      id?: string;
+      title: string;
+      text: string;
+      optionName: string;
+      /** A second option the shopper picks first ("Phone model"), and the picker's label; "" = none. */
+      alsoOption: string;
+      alsoLabel: string;
+      productIds: string[];
+      shades: ShadeForm[];
+    };
 
 /** One section in the editor: its own fields plus the shared style (all "" = theme defaults). */
 export type SectionForm = Forms & { style?: StyleForm };
@@ -223,13 +348,21 @@ export function localInputToIso(v: string): string {
 }
 
 export const emptySlide = (): SlideForm => ({ imageUrl: "", mobileImageUrl: "", heading: "", subheading: "", ctaLabel: "", ctaHref: "" });
-export const emptyStyle = (): StyleForm => ({ background: "", imageUrl: "", overlay: "", padding: "", width: "", align: "", animation: "", hideOnMobile: false, hideOnDesktop: false });
+export const emptyStyle = (): StyleForm => ({ background: "", imageUrl: "", overlay: "", padding: "", width: "", align: "", animation: "", hideOnMobile: false, hideOnDesktop: false, span: "" });
 export const emptyTestimonial = (): TestimonialForm => ({ quote: "", name: "", role: "", rating: "", photoUrl: "" });
 export const emptyDish = (): DishForm => ({ name: "", description: "", price: "", diet: "" });
 export const emptyTab = (source: TabSource = "new"): TabForm => ({ label: "", source, collectionSlug: "" });
 export const emptyStat = (): StatForm => ({ value: "", prefix: "", suffix: "", label: "" });
 export const emptyMilestone = (): MilestoneForm => ({ when: "", title: "", text: "", imageUrl: "" });
 export const emptyMember = (): MemberForm => ({ name: "", role: "", photoUrl: "", bio: "", instagram: "", facebook: "", linkedin: "", website: "" });
+export const emptyFinderOption = (): FinderOptionForm => ({ label: "", imageUrl: "", categoryId: "", tag: "", filterName: "", filterValue: "", keywords: "", priceMin: "", priceMax: "", href: "" });
+export const emptyStory = (): StoryForm => ({ imageUrl: "", videoUrl: "", title: "", text: "", href: "", ctaLabel: "" });
+export const emptyChapter = (): ChapterForm => ({ eyebrow: "", heading: "", markdown: "", imageUrl: "", alt: "", ctaLabel: "", ctaHref: "" });
+export const emptyTile = (): TileForm => ({ label: "", note: "", imageUrl: "", collectionSlug: "", tag: "", href: "" });
+export const emptyShade = (): ShadeForm => ({ value: "", hex: "#b0413e", depth: "" });
+export const emptySizeGroup = (): SizeGroupForm => ({ label: "", categoryId: "", sizes: "" });
+/** "6, 7, 8" → ["6", "7", "8"] (commas or new lines, so "UK 8" stays one size; duplicates dropped). */
+export const sizeList = (v: string) => [...new Set(v.split(/[,\n]+/).map((x) => x.trim()).filter(Boolean))];
 export const emptyPlan = (): PlanForm => ({ name: "", price: "", period: "", description: "", features: "", highlight: false, badge: "", ctaLabel: "", ctaHref: "" });
 /** A typed count ("8") → number, or the raw text for the schema to report. */
 const count = (v: string) => {
@@ -249,6 +382,7 @@ export function toStyleForm(st: SectionStyle | undefined): StyleForm {
     animation: st?.animation ?? "",
     hideOnMobile: st?.hideOnMobile === true,
     hideOnDesktop: st?.hideOnDesktop === true,
+    span: st?.span === "half" ? "half" : "",
   };
 }
 
@@ -265,6 +399,7 @@ export function fromStyleForm(f: StyleForm | undefined): Record<string, unknown>
     ...(f.animation ? { animation: f.animation } : {}),
     ...(f.hideOnMobile ? { hideOnMobile: true } : {}),
     ...(f.hideOnDesktop ? { hideOnDesktop: true } : {}),
+    ...(f.span === "half" ? { span: "half" } : {}),
   };
   return Object.keys(out).length ? out : undefined;
 }
@@ -513,6 +648,134 @@ function toFields(section: HomeSection | HomeSectionInput): Forms {
       return { type: "blog-posts", ...idOf(x.id), title: s(x.title), limit: String(x.limit ?? 3), tag: s(x.tag) };
     case "reviews-summary":
       return { type: "reviews-summary", ...idOf(x.id), title: s(x.title), limit: String(x.limit ?? 6) };
+    case "flash-sale":
+      return {
+        type: "flash-sale",
+        ...idOf(x.id),
+        title: s(x.title),
+        text: s(x.text),
+        startsAt: isoToLocalInput(x.startsAt),
+        endsAt: isoToLocalInput(x.endsAt),
+        dailyFrom: x.daily?.from ?? "",
+        dailyTo: x.daily?.to === "24:00" ? "00:00" : (x.daily?.to ?? ""),
+        source: x.source ?? "pick",
+        productIds: [...(x.productIds ?? [])],
+        collectionSlug: s(x.collectionSlug),
+        layout: x.layout ?? "carousel",
+        limit: String(x.limit ?? 8),
+        ctaLabel: s(x.cta?.label),
+        ctaHref: s(x.cta?.href),
+      };
+    case "finder":
+      return {
+        type: "finder",
+        ...idOf(x.id),
+        title: s(x.title),
+        text: s(x.text),
+        layout: x.layout ?? "wizard",
+        results: x.results ?? "inline",
+        buttonLabel: s(x.buttonLabel),
+        imageUrl: s(x.imageUrl),
+        ctaLabel: s(x.cta?.label),
+        ctaHref: s(x.cta?.href),
+        limit: String(x.limit ?? 8),
+        questions: x.questions.map((q) => ({
+          label: s(q.label),
+          options: q.options.map((o) => ({
+            label: s(o.label),
+            imageUrl: s(o.imageUrl),
+            categoryId: s(o.categoryId),
+            tag: s(o.tag),
+            filterName: s(o.filterName),
+            filterValue: s(o.filterValue),
+            keywords: s(o.keywords),
+            priceMin: toRupees(o.priceMin),
+            priceMax: toRupees(o.priceMax),
+            href: s(o.href),
+          })),
+        })),
+      };
+    case "stories":
+      return {
+        type: "stories",
+        ...idOf(x.id),
+        title: s(x.title),
+        layout: x.layout ?? "rings",
+        items: x.items.map((i) => ({ imageUrl: s(i.imageUrl), videoUrl: s(i.videoUrl), title: s(i.title), text: s(i.text), href: s(i.href), ctaLabel: s(i.ctaLabel) })),
+      };
+    case "category-shelf":
+      return {
+        type: "category-shelf",
+        ...idOf(x.id),
+        title: s(x.title),
+        mode: x.categoryIds?.length ? "pick" : "all",
+        categoryIds: [...(x.categoryIds ?? [])],
+        showImages: x.showImages !== false,
+        limit: String(x.limit ?? 8),
+      };
+    case "sticky-story":
+      return {
+        type: "sticky-story",
+        ...idOf(x.id),
+        title: s(x.title),
+        imageSide: x.imageSide ?? "left",
+        chapters: x.chapters.map((c) => ({
+          eyebrow: s(c.eyebrow),
+          heading: s(c.heading),
+          markdown: s(c.markdown),
+          imageUrl: s(c.imageUrl),
+          alt: s(c.alt),
+          ctaLabel: s(c.cta?.label),
+          ctaHref: s(c.cta?.href),
+        })),
+      };
+    case "comparison": {
+      const n = x.productIds.length;
+      return {
+        type: "comparison",
+        ...idOf(x.id),
+        title: s(x.title),
+        text: s(x.text),
+        productIds: [...x.productIds],
+        highlightId: s(x.highlightId),
+        highlightLabel: s(x.highlightLabel),
+        showRating: x.showRating !== false,
+        rows: (x.rows ?? []).map((r) => ({ label: s(r.label), values: Array.from({ length: n }, (_, i) => s(r.values?.[i])) })),
+      };
+    }
+    case "tiles":
+      return {
+        type: "tiles",
+        ...idOf(x.id),
+        title: s(x.title),
+        text: s(x.text),
+        layout: x.layout ?? "row",
+        showCounts: x.showCounts !== false,
+        items: x.items.map((i) => ({ label: s(i.label), note: s(i.note), imageUrl: s(i.imageUrl), collectionSlug: s(i.collectionSlug), tag: s(i.tag), href: s(i.href) })),
+      };
+    case "size-finder":
+      return {
+        type: "size-finder",
+        ...idOf(x.id),
+        title: s(x.title),
+        text: s(x.text),
+        imageUrl: s(x.imageUrl),
+        optionName: s(x.optionName ?? "Size"),
+        footLength: x.footLength === true,
+        groups: x.groups.map((g) => ({ label: s(g.label), categoryId: s(g.categoryId), sizes: (g.sizes ?? []).join(", ") })),
+      };
+    case "swatches":
+      return {
+        type: "swatches",
+        ...idOf(x.id),
+        title: s(x.title),
+        text: s(x.text),
+        optionName: s(x.optionName ?? "Shade"),
+        alsoOption: s(x.alsoOption),
+        alsoLabel: s(x.alsoLabel),
+        productIds: [...x.productIds],
+        shades: (x.shades ?? []).map((sh) => ({ value: s(sh.value), hex: s(sh.hex), depth: sh.depth ?? "" })),
+      };
   }
 }
 
@@ -783,7 +1046,127 @@ function fromFields(f: Forms): HomeSectionInput {
       return { type: "blog-posts", ...idOf(f.id), ...opt("title", f.title), limit: count(f.limit), ...opt("tag", f.tag) };
     case "reviews-summary":
       return { type: "reviews-summary", ...idOf(f.id), ...opt("title", f.title), limit: count(f.limit) };
+    case "flash-sale":
+      return {
+        type: "flash-sale",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        ...(f.startsAt.trim() ? { startsAt: localInputToIso(f.startsAt.trim()) } : {}),
+        endsAt: f.endsAt.trim() ? localInputToIso(f.endsAt.trim()) : "",
+        ...flashDaily(f),
+        source: f.source,
+        productIds: f.source === "pick" ? f.productIds : [],
+        ...(f.source === "collection" ? opt("collectionSlug", f.collectionSlug) : {}),
+        layout: f.layout,
+        limit: count(f.limit),
+        ...cta(f.ctaLabel, f.ctaHref),
+      };
+    case "finder":
+      return {
+        type: "finder",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        layout: f.layout,
+        results: f.results,
+        ...opt("buttonLabel", f.buttonLabel),
+        ...opt("imageUrl", f.imageUrl),
+        ...cta(f.ctaLabel, f.ctaHref),
+        limit: count(f.limit),
+        questions: f.questions.map((q) => ({
+          label: q.label.trim(),
+          options: q.options.map((o) => ({
+            label: o.label.trim(),
+            ...opt("imageUrl", o.imageUrl),
+            ...opt("categoryId", o.categoryId),
+            ...opt("tag", o.tag),
+            ...opt("filterName", o.filterName),
+            ...opt("filterValue", o.filterValue),
+            ...opt("keywords", o.keywords),
+            ...priceAs("priceMin", o.priceMin),
+            ...priceAs("priceMax", o.priceMax),
+            ...opt("href", o.href),
+          })),
+        })),
+      };
+    case "stories":
+      return {
+        type: "stories",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        layout: f.layout,
+        items: f.items.map((i) => ({ imageUrl: i.imageUrl.trim(), ...opt("videoUrl", i.videoUrl), title: i.title.trim(), ...opt("text", i.text), ...opt("href", i.href), ...opt("ctaLabel", i.ctaLabel) })),
+      };
+    case "category-shelf":
+      return { type: "category-shelf", ...idOf(f.id), title: f.title.trim(), ...(f.mode === "pick" ? { categoryIds: f.categoryIds } : {}), showImages: f.showImages, limit: count(f.limit) };
+    case "sticky-story":
+      return {
+        type: "sticky-story",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        imageSide: f.imageSide,
+        chapters: f.chapters.map((c) => ({ ...opt("eyebrow", c.eyebrow), heading: c.heading.trim(), markdown: c.markdown, imageUrl: c.imageUrl.trim(), alt: c.alt.trim(), ...cta(c.ctaLabel, c.ctaHref) })),
+      };
+    case "comparison":
+      return {
+        type: "comparison",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        productIds: f.productIds,
+        ...(f.highlightId && f.productIds.includes(f.highlightId) ? { highlightId: f.highlightId } : {}),
+        ...opt("highlightLabel", f.highlightLabel),
+        showRating: f.showRating,
+        rows: f.rows.map((r) => ({ label: r.label.trim(), values: trimEnd(f.productIds.map((_, i) => (r.values[i] ?? "").trim())) })),
+      };
+    case "tiles":
+      return {
+        type: "tiles",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        layout: f.layout,
+        showCounts: f.showCounts,
+        items: f.items.map((i) => ({ label: i.label.trim(), ...opt("note", i.note), ...opt("imageUrl", i.imageUrl), ...opt("collectionSlug", i.collectionSlug), ...opt("tag", i.tag), ...opt("href", i.href) })),
+      };
+    case "size-finder":
+      return {
+        type: "size-finder",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        ...opt("imageUrl", f.imageUrl),
+        optionName: f.optionName.trim() || "Size",
+        footLength: f.footLength,
+        groups: f.groups.map((g) => ({ label: g.label.trim(), ...opt("categoryId", g.categoryId), sizes: sizeList(g.sizes) })),
+      };
+    case "swatches":
+      return {
+        type: "swatches",
+        ...idOf(f.id),
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        optionName: f.optionName.trim() || "Shade",
+        ...opt("alsoOption", f.alsoOption),
+        ...(f.alsoOption.trim() ? opt("alsoLabel", f.alsoLabel) : {}),
+        productIds: f.productIds,
+        shades: f.shades.map((sh) => ({ value: sh.value.trim(), hex: sh.hex.trim(), ...(sh.depth ? { depth: sh.depth } : {}) })),
+      };
   }
+}
+
+/** Drops trailing blanks (a row's last products without a value), so a stored row round-trips as it was. */
+function trimEnd(values: string[]): string[] {
+  let n = values.length;
+  while (n > 0 && !values[n - 1]) n--;
+  return values.slice(0, n);
+}
+
+/** Rupees typed in the editor → paise under `key` (omitted when blank; raw text when it isn't a number). */
+function priceAs(key: "priceMin" | "priceMax", v: string): Record<string, number> {
+  const r = rupees(v) as { price?: number };
+  return r.price === undefined ? {} : { [key]: r.price };
 }
 
 /** A plan's features textarea → one feature per non-empty line. */
@@ -813,13 +1196,55 @@ export type SectionCheck = { ok: true; value: HomeSection; errors: FieldErrors }
 /** Validates a form with the cms schema. Error messages are the schema's (English); the UI maps them to keys by code. */
 export function checkSection(f: SectionForm): SectionCheck {
   const r = homeSectionSchema.safeParse(fromSectionForm(f));
-  if (r.success) return { ok: true, value: r.data, errors: {} };
+  const extra = layoutChecks(f);
+  if (r.success && !Object.keys(extra).length) return { ok: true, value: r.data, errors: {} };
   const errors: FieldErrors = {};
-  for (const issue of r.error.issues) {
-    const key = formPath(issue.path) || "_";
-    if (!errors[key]) errors[key] = issueCode(issue);
-  }
+  if (!r.success)
+    for (const issue of r.error.issues) {
+      const key = formPath(issue.path) || "_";
+      if (!errors[key]) errors[key] = issueCode(issue);
+    }
+  for (const [k, v] of Object.entries(extra)) if (!errors[k]) errors[k] = v;
   return { ok: false, errors };
+}
+
+/** The flash sale's daily window for the CMS (`daily`), or nothing when both times are empty; "00:00" as the end = midnight ("24:00"). */
+function flashDaily(f: { dailyFrom: string; dailyTo: string }): { daily?: { from: string; to: string } } {
+  const from = f.dailyFrom.trim();
+  const to = f.dailyTo.trim();
+  if (!from || !to) return {};
+  return { daily: { from, to: to === "00:00" ? "24:00" : to } };
+}
+
+/**
+ * Checks across fields of the layout sections that the schema can't express (a section in the discriminated union
+ * must be a plain object): a flash sale needs its products / collection and an end after its start; a finder answer
+ * should filter something.
+ */
+export function layoutChecks(f: SectionForm): FieldErrors {
+  const e: FieldErrors = {};
+  if (f.type === "flash-sale") {
+    if (f.source === "pick" && f.productIds.length === 0) e.productIds = "minItems";
+    if (f.source === "collection" && !f.collectionSlug.trim()) e.collectionSlug = "required";
+    const start = f.startsAt.trim() ? Date.parse(f.startsAt) : NaN;
+    const end = f.endsAt.trim() ? Date.parse(f.endsAt) : NaN;
+    if (Number.isFinite(start) && Number.isFinite(end) && end <= start) e.endsAt = "endBeforeStart";
+    // A daily window needs both times, and different ones.
+    const from = f.dailyFrom.trim();
+    const to = f.dailyTo.trim();
+    if (from && !to) e.dailyTo = "required";
+    else if (to && !from) e.dailyFrom = "required";
+    else if (from && from === to) e.dailyTo = "invalid";
+  }
+  if (f.type === "finder")
+    f.questions.forEach((q, qi) =>
+      q.options.forEach((o, oi) => {
+        const filters = o.href.trim() || o.categoryId || o.tag.trim() || (o.filterName.trim() && o.filterValue.trim()) || o.keywords.trim() || o.priceMin.trim() || o.priceMax.trim();
+        if (o.label.trim() && !filters) e[`questions.${qi}.options.${oi}.filter`] = "noFilter";
+        if (!!o.filterName.trim() !== !!o.filterValue.trim()) e[`questions.${qi}.options.${oi}.${o.filterName.trim() ? "filterValue" : "filterName"}`] = "required";
+      }),
+    );
+  return e;
 }
 
 /** Short, translatable reason for an issue: "required", "tooLong", "url", "tooMany", "invalid". */
@@ -899,6 +1324,24 @@ export interface SectionSamples {
   planFeature: string;
   blogTitle: string;
   reviewsTitle: string;
+  flashTitle: string;
+  finderTitle: string;
+  finderQuestion: string;
+  finderOptionA: string;
+  finderOptionB: string;
+  storiesTitle: string;
+  shelfTitle: string;
+  storyTitle: string;
+  chapterHeading: string;
+  compareTitle: string;
+  compareRow: string;
+  tilesTitle: string;
+  tileLabel: string;
+  sizeTitle: string;
+  sizeMen: string;
+  sizeWomen: string;
+  sizeKids: string;
+  swatchesTitle: string;
 }
 
 let seq = 0;
@@ -1014,6 +1457,55 @@ function newFields(type: HomeSectionType, x: SectionSamples, id: string): Forms 
       return { type, id, title: x.blogTitle, limit: "3", tag: "" };
     case "reviews-summary":
       return { type, id, title: x.reviewsTitle, limit: "6" };
+    case "flash-sale": {
+      // A sale that ends tomorrow night, so the countdown shows straight away.
+      const end = new Date();
+      end.setDate(end.getDate() + 1);
+      end.setHours(23, 59, 0, 0);
+      return { type, id, title: x.flashTitle, text: "", startsAt: "", endsAt: isoToLocalInput(end.toISOString()), dailyFrom: "", dailyTo: "", source: "sale", productIds: [], collectionSlug: "", layout: "carousel", limit: "8", ctaLabel: "", ctaHref: "" };
+    }
+    case "finder":
+      return {
+        type,
+        id,
+        title: x.finderTitle,
+        text: "",
+        layout: "wizard",
+        results: "inline",
+        buttonLabel: "",
+        imageUrl: "",
+        ctaLabel: "",
+        ctaHref: "",
+        limit: "8",
+        questions: [{ label: x.finderQuestion, options: [{ ...emptyFinderOption(), label: x.finderOptionA }, { ...emptyFinderOption(), label: x.finderOptionB }] }],
+      };
+    case "stories":
+      return { type, id, title: x.storiesTitle, layout: "rings", items: [] };
+    case "category-shelf":
+      return { type, id, title: x.shelfTitle, mode: "all", categoryIds: [], showImages: true, limit: "8" };
+    case "sticky-story":
+      return { type, id, title: x.storyTitle, imageSide: "left", chapters: [{ ...emptyChapter(), heading: x.chapterHeading, markdown: x.textBody }] };
+    case "comparison":
+      return { type, id, title: x.compareTitle, text: "", productIds: [], highlightId: "", highlightLabel: "", showRating: true, rows: [{ label: x.compareRow, values: [] }] };
+    case "tiles":
+      return { type, id, title: x.tilesTitle, text: "", layout: "row", showCounts: true, items: [{ ...emptyTile(), label: x.tileLabel }] };
+    case "size-finder":
+      return {
+        type,
+        id,
+        title: x.sizeTitle,
+        text: "",
+        imageUrl: "",
+        optionName: "Size",
+        footLength: true,
+        groups: [
+          { label: x.sizeMen, categoryId: "", sizes: "6, 7, 8, 9, 10, 11" },
+          { label: x.sizeWomen, categoryId: "", sizes: "3, 4, 5, 6, 7, 8" },
+          { label: x.sizeKids, categoryId: "", sizes: "8C, 9C, 10C, 11C, 12C, 13C, 1, 2, 3" },
+        ],
+      };
+    case "swatches":
+      return { type, id, title: x.swatchesTitle, text: "", optionName: "Shade", alsoOption: "", alsoLabel: "", productIds: [], shades: [] };
   }
 }
 
@@ -1048,6 +1540,17 @@ export const SECTION_LIST_LIMITS = {
   planFeatures: CMS_LIMITS.planFeatures,
   blogLimit: CMS_LIMITS.blogLimit,
   reviewsLimit: CMS_LIMITS.reviewsLimit,
+  finderQuestions: CMS_LIMITS.finderQuestions,
+  finderOptions: CMS_LIMITS.finderOptions,
+  stories: CMS_LIMITS.stories,
+  shelfCategories: CMS_LIMITS.shelfCategories,
+  chapters: CMS_LIMITS.chapters,
+  compareProducts: CMS_LIMITS.compareProducts,
+  compareRows: CMS_LIMITS.compareRows,
+  tiles: CMS_LIMITS.tiles,
+  sizeGroups: CMS_LIMITS.sizeGroups,
+  swatchProducts: CMS_LIMITS.swatchProducts,
+  shades: CMS_LIMITS.shades,
 } as const;
 
 /**
@@ -1089,6 +1592,8 @@ export interface PreviewLookups {
 export const ALL_CATEGORIES_LIMIT = 24;
 /** Same as the storefront's mosaic without picked categories. */
 export const MOSAIC_DEFAULT_TILES = 5;
+/** Same as the storefront's category shelf without picked categories. */
+export const SHELF_DEFAULT_CATEGORIES = 6;
 
 /**
  * Approximates what the storefront will show for unsaved edits: static sections come straight from the form;
@@ -1153,6 +1658,55 @@ function resolveOne(f: SectionForm, lk: PreviewLookups): ResolvedHomeSection {
       };
     case "category-mosaic":
       return { type: "category-mosaic", ...id, title: f.title.trim(), categories: pickCats(f.categoryIds, MOSAIC_DEFAULT_TILES) };
+    case "category-shelf":
+      return { type: "category-shelf", ...id, title: f.title.trim(), showImages: f.showImages, limit: Number(f.limit) || 8, categories: pickCats(f.mode === "pick" ? f.categoryIds : [], SHELF_DEFAULT_CATEGORIES) };
+    case "flash-sale": {
+      const limit = Math.max(1, Math.min(CMS_LIMITS.shelfLimit, Number(f.limit) || 8));
+      const products =
+        f.source === "pick"
+          ? f.productIds.map((pid) => lk.products.get(pid)).filter((p): p is PublicProductSummary => !!p)
+          : f.source === "collection"
+            ? (lk.collections.get(f.collectionSlug.trim())?.products ?? [])
+            : [];
+      return {
+        type: "flash-sale",
+        ...id,
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        ...(f.startsAt.trim() ? { startsAt: localInputToIso(f.startsAt.trim()) } : {}),
+        endsAt: f.endsAt.trim() ? localInputToIso(f.endsAt.trim()) : new Date(Date.now() + 86_400_000).toISOString(),
+        ...flashDaily(f),
+        source: f.source,
+        ...(f.collectionSlug.trim() ? { collectionSlug: f.collectionSlug.trim() } : {}),
+        layout: f.layout,
+        limit,
+        products: products.slice(0, limit),
+      };
+    }
+    case "swatches":
+      return {
+        type: "swatches",
+        ...id,
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        optionName: f.optionName || "Shade",
+        ...opt("alsoOption", f.alsoOption),
+        ...(f.alsoOption.trim() ? opt("alsoLabel", f.alsoLabel) : {}),
+        shades: f.shades.filter((sh) => sh.value.trim()).map((sh) => ({ value: sh.value, hex: /^#[0-9a-fA-F]{6}$/.test(sh.hex) ? sh.hex : "#d6d3d1", ...(sh.depth ? { depth: sh.depth } : {}) })),
+        products: f.productIds.map((pid) => lk.products.get(pid)).filter((p): p is PublicProductSummary => !!p),
+      };
+    case "comparison":
+      return {
+        type: "comparison",
+        ...id,
+        ...opt("title", f.title),
+        ...opt("text", f.text),
+        ...(f.highlightId ? { highlightId: f.highlightId } : {}),
+        ...opt("highlightLabel", f.highlightLabel),
+        showRating: f.showRating,
+        products: f.productIds.map((pid) => lk.products.get(pid)).filter((p): p is PublicProductSummary => !!p),
+        rows: f.rows.filter((r) => r.label.trim()).map((r) => ({ label: r.label.trim(), values: f.productIds.map((_, i) => r.values[i] ?? "") })),
+      };
     case "collection": {
       const c = lk.collections.get(f.collectionSlug.trim());
       const limit = Math.max(1, Math.min(CMS_LIMITS.collectionLimit, Number(f.limit) || 12));
@@ -1262,6 +1816,19 @@ function previewDefaults(f: SectionForm): Record<string, unknown> {
     case "blog-posts":
     case "reviews-summary":
       return { limit: Number(f.limit) || 3 };
+    case "finder":
+      return {
+        limit: Number(f.limit) || 8,
+        questions: f.questions.filter((q) => q.label.trim()).map((q) => ({ label: q.label, options: q.options.filter((o) => o.label.trim()).map((o) => ({ label: o.label, ...opt("imageUrl", o.imageUrl) })) })),
+      };
+    case "stories":
+      return { items: f.items.filter((i) => i.imageUrl.trim() && i.title.trim()).map((i) => ({ imageUrl: i.imageUrl, title: i.title, ...opt("videoUrl", i.videoUrl), ...opt("text", i.text) })) };
+    case "tiles":
+      return { items: f.items.filter((i) => i.label.trim()).map((i) => ({ label: i.label, ...opt("note", i.note), ...opt("imageUrl", i.imageUrl) })) };
+    case "size-finder":
+      return { optionName: f.optionName || "Size", groups: f.groups.filter((g) => g.label.trim()).map((g) => ({ label: g.label, sizes: sizeList(g.sizes) })) };
+    case "sticky-story":
+      return { chapters: f.chapters.filter((c) => c.heading.trim() || c.imageUrl.trim()).map((c) => ({ heading: c.heading, markdown: c.markdown, imageUrl: c.imageUrl, alt: c.alt, ...opt("eyebrow", c.eyebrow) })) };
     default:
       return {};
   }
@@ -1276,6 +1843,9 @@ export function referencedIds(forms: readonly SectionForm[]) {
     if (f.type === "products") f.productIds.forEach((id) => products.add(id));
     else if (f.type === "deal" && f.productId) products.add(f.productId);
     else if (f.type === "shop-the-look") f.hotspots.forEach((h) => h.productId && products.add(h.productId));
+    else if (f.type === "comparison" || f.type === "swatches" || (f.type === "flash-sale" && f.source === "pick")) f.productIds.forEach((id) => products.add(id));
+    else if (f.type === "flash-sale" && f.source === "collection" && f.collectionSlug.trim()) collections.add(f.collectionSlug.trim());
+    else if (f.type === "category-shelf") categories = true;
     else if (f.type === "collection" && f.collectionSlug.trim()) collections.add(f.collectionSlug.trim());
     else if (f.type === "categories" || f.type === "category-mosaic") categories = true;
   }

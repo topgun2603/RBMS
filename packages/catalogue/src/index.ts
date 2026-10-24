@@ -25,6 +25,14 @@ export {
   isCatalogueVendorCandidate,
   isCatalogueVendorRoute,
   vendorIdOf,
+  categoryListSchema,
+  categorySchema,
+  productListSchema,
+  productSchema,
+  productSummarySchema,
+  variantLookupSchema,
+  variantSchema,
+  variantSearchResultSchema,
   type CatalogueRouteOptions,
 } from "./routes";
 

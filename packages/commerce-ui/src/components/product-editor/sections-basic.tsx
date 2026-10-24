@@ -4,7 +4,7 @@ import { usePack } from "../../lib/pack";
 
 import * as React from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { exclusiveOf } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE, deadBandOf, exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
 import { BadgePercentIcon, EyeIcon, FileTextIcon, ImagesIcon, PencilIcon, PlusIcon, SearchIcon, TagsIcon, Trash2Icon } from "lucide-react";
 import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@srirealtime/web";
@@ -132,7 +132,7 @@ export function MediaSection() {
 export function PricingSection({ canManage, multi }: Ctx) {
   const { t } = useI18n();
   const form = useFormContext<ProductFormValues>();
-  const [gstRate, taxInclusive, first] = useWatch({ control: form.control, name: ["gstRate", "taxInclusive", "variants.0"] });
+  const [gstRate, taxInclusive, first, gstBand] = useWatch({ control: form.control, name: ["gstRate", "taxInclusive", "variants.0", "gstBand"] });
 
   return (
     <Section id="pricing" icon={BadgePercentIcon} title={t("commerce.editor.pricing")} description={multi ? t("commerce.editor.pricingMultiHint") : t("commerce.editor.pricingHint")}>
@@ -197,7 +197,8 @@ export function PricingSection({ canManage, multi }: Ctx) {
           render={({ field }) => (
             <FormItem>
               <FormLabel htmlFor="product-gst-rate">{t("commerce.editor.gstRate")}</FormLabel>
-              <GstRateSelect id="product-gst-rate" value={field.value} onChange={field.onChange} className="w-full" aria-label={t("commerce.editor.gstRate")} />
+              <GstRateSelect id="product-gst-rate" value={gstBand ? String(APPAREL_FOOTWEAR_GST_RULE.below) : field.value} onChange={field.onChange} disabled={gstBand} className="w-full" aria-label={t("commerce.editor.gstRate")} />
+              {gstBand && <FormDescription>{t("commerce.editor.gstBandRates")}</FormDescription>}
               <FormMessage />
             </FormItem>
           )}
@@ -256,7 +257,33 @@ export function PricingSection({ canManage, multi }: Ctx) {
         )}
       />
 
-      <PriceBreakdown price={rupeesToPaise(first?.price ?? "")} mrp={rupeesToPaise(first?.mrp ?? "")} cost={canManage ? rupeesToPaise(first?.cost ?? "") : null} gstRate={Number(gstRate)} inclusive={taxInclusive} label={multi ? first?.title || undefined : undefined} />
+      <FormField
+        control={form.control}
+        name="gstBand"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-center justify-between gap-4 rounded-xl border bg-muted/20 px-4 py-3">
+            <div className="space-y-0.5">
+              <FormLabel htmlFor="gst-band" className="text-sm">
+                {t("commerce.editor.gstBand")}
+              </FormLabel>
+              <FormDescription>{t("commerce.editor.gstBandHint")}</FormDescription>
+            </div>
+            <FormControl>
+              <Switch id="gst-band" checked={field.value} onCheckedChange={field.onChange} data-testid="gst-band" />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+
+      <PriceBreakdown
+        price={rupeesToPaise(first?.price ?? "")}
+        mrp={rupeesToPaise(first?.mrp ?? "")}
+        cost={canManage ? rupeesToPaise(first?.cost ?? "") : null}
+        gstRate={Number(gstRate)}
+        gstRule={gstBand ? APPAREL_FOOTWEAR_GST_RULE : null}
+        inclusive={taxInclusive}
+        label={multi ? first?.title || undefined : undefined}
+      />
     </Section>
   );
 }
@@ -266,7 +293,8 @@ export function PriceBreakdown({
   price,
   mrp,
   cost,
-  gstRate,
+  gstRate: flatRate,
+  gstRule,
   inclusive,
   label,
 }: {
@@ -274,6 +302,8 @@ export function PriceBreakdown({
   mrp: number | null;
   cost: number | null;
   gstRate: number;
+  /** Price-band GST: the breakdown uses the band at `price`. */
+  gstRule?: GstRateRule | null;
   inclusive: boolean;
   label?: string;
 }) {
@@ -281,6 +311,9 @@ export function PriceBreakdown({
   if (price === null) {
     return <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">{t("commerce.editor.breakdownEmpty")}</p>;
   }
+  const gstRate = gstRule ? gstRateAtPrice(gstRule, price, inclusive) : flatRate;
+  const dead = gstRule && inclusive ? deadBandOf(gstRule) : null;
+  const inDeadBand = dead !== null && price > dead.from && price <= dead.to;
   const taxable = exclusiveOf(price, gstRate, inclusive);
   const gst = inclusive ? price - taxable : Math.round((price * gstRate) / 100);
   const pays = taxable + gst;
@@ -320,6 +353,11 @@ export function PriceBreakdown({
           )}
         </div>
       </dl>
+      {inDeadBand && dead && (
+        <p className="border-t border-border/60 bg-warning/10 px-4 py-2 text-xs text-warning-ink" role="status" data-testid="gst-dead-band">
+          {t("commerce.editor.gstBandDead", { from: money(dead.from), to: money(dead.to) })}
+        </p>
+      )}
     </div>
   );
 }

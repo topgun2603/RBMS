@@ -1,13 +1,20 @@
-import { forbidden, isSuperAdmin, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { documented, forbidden, isSuperAdmin, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { CollectionInput, CollectionListQuery, CollectionPatch, CollectionProductsQuery } from "./collections";
 import { csvDisposition, toCsv, type CsvColumn } from "./csv";
 import { CATALOGUE_FEATURE_KEYS, CATALOGUE_PERMISSIONS } from "./features";
 import { itemName, paiseToRupees, todayIST } from "./logic";
+import { CHANNELS, PRODUCT_STATUSES } from "./schema";
 import {
   codeQuerySchema,
   idsQuerySchema,
+  productInputSchema,
+  productListQuerySchema,
+  productPatchSchema,
+  variantInputSchema,
+  variantPatchSchema,
+  variantSearchQuerySchema,
   type CatalogueService,
   type CategoryInput,
   type GenerateVariantsInput,
@@ -26,12 +33,150 @@ import type { ProductScope } from "./types";
 const idParam = z.object({ id: z.string().uuid() });
 const slugParam = z.object({ slug: z.string().trim().min(1).max(120) });
 const formatQuery = z.object({ format: z.enum(["json", "csv"]).default("json") });
+/** A price-band GST rule (`@srirealtime/gst` rate-rule.ts). */
+export const gstRuleSchema = z.object({ kind: z.literal("price-band"), threshold: z.number().int(), below: z.number(), above: z.number() });
 const body = (req: { body: unknown }) => (req.body ?? {}) as Record<string, unknown>;
 const query = (req: { query: unknown }) => (req.query ?? {}) as Record<string, string | undefined>;
 const tid = (req: { ctx: RequestContext }) => requireTenant(req.ctx).id;
 
 const BASE = { config: { feature: CATALOGUE_FEATURE_KEYS.base } };
+
+// ---- response shapes for the API document and the mobile client (JSON: dates are ISO strings, money in paise)
+/** A sellable variant as the staff lookups return it (`VariantLookup`): POS search and barcode / SKU scans. */
+export const variantLookupSchema = z.object({
+  /** Variant id (the bill line's `itemId`). */
+  id: z.string().uuid(),
+  productId: z.string().uuid(),
+  /** "Product" or "Product – M / Red". */
+  name: z.string(),
+  sku: z.string().nullable(),
+  barcode: z.string().nullable(),
+  hsn: z.string().nullable(),
+  unit: z.string(),
+  /** GST-exclusive paise per unit (what a bill line's `rate` takes). */
+  rate: z.number().int(),
+  /** As stored on the variant (includes GST when `taxInclusive`). */
+  price: z.number().int(),
+  taxInclusive: z.boolean(),
+  /** The rate at this variant's price (a price-band product's band before discounts). */
+  gstRate: z.number(),
+  /** Price-band GST rule of the product (apparel / footwear), when set: bill lines re-band after discounts. */
+  gstRule: gstRuleSchema.nullish(),
+  image: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  categoryId: z.string().uuid().nullable().optional(),
+  productName: z.string(),
+  /** "" for the default variant of a simple product. */
+  title: z.string(),
+  optionValues: z.record(z.string(), z.string()),
+  mrp: z.number().int().nullable(),
+  cost: z.number().int().nullable(),
+  weightGrams: z.number().int().nullable(),
+  position: z.number().int(),
+  isDefault: z.boolean(),
+  status: z.enum(PRODUCT_STATUSES),
+  channels: z.array(z.enum(CHANNELS)),
+});
+export const variantSearchResultSchema = z.object({ items: z.array(variantLookupSchema), total: z.number().int() });
 const VARIANTS = { config: { feature: CATALOGUE_FEATURE_KEYS.variants } };
+const isoDateTime = z.string().datetime();
+const paise = z.number().int();
+const seoSchema = z.object({ title: z.string().optional(), description: z.string().optional() });
+/** A variant as products return it (`Variant`). Money in paise; `price` includes GST when the product is tax-inclusive. */
+export const variantSchema = z.object({
+  id: z.string().uuid(),
+  productId: z.string().uuid(),
+  sku: z.string().nullable(),
+  barcode: z.string().nullable(),
+  /** "M / Red"; "" for the default variant of a simple product. */
+  title: z.string(),
+  optionValues: z.record(z.string(), z.string()),
+  price: paise,
+  mrp: paise.nullable(),
+  /** Never shown publicly. */
+  cost: paise.nullable(),
+  weightGrams: z.number().int().nullable(),
+  position: z.number().int(),
+  isDefault: z.boolean(),
+});
+/** A full product with its live variants (`Product`): the get, create and update answers. */
+export const productSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  brand: z.string().nullable(),
+  categoryId: z.string().uuid().nullable(),
+  hsn: z.string().nullable(),
+  gstRate: z.number(),
+  /** Price-band GST (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above); null = flat `gstRate`. */
+  gstRule: gstRuleSchema.nullish(),
+  unit: z.string(),
+  taxInclusive: z.boolean(),
+  status: z.enum(PRODUCT_STATUSES),
+  channels: z.array(z.enum(CHANNELS)),
+  tags: z.array(z.string()),
+  attributes: z.record(z.string(), z.string()),
+  options: z.array(z.object({ name: z.string(), values: z.array(z.string()) })),
+  images: z.array(z.object({ url: z.string(), alt: z.string().nullish() })),
+  seo: seoSchema.nullable(),
+  /** Marketplace seller owning the product; null = the shop's own product. */
+  vendorId: z.string().uuid().nullable(),
+  variants: z.array(variantSchema),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+/** A row of the staff product list (`ProductSummary`). */
+export const productSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string(),
+  status: z.enum(PRODUCT_STATUSES),
+  categoryId: z.string().uuid().nullable(),
+  categoryName: z.string().nullable(),
+  /** First image URL. */
+  image: z.string().nullable(),
+  priceMin: paise,
+  priceMax: paise,
+  variantCount: z.number().int(),
+  channels: z.array(z.enum(CHANNELS)),
+  vendorId: z.string().uuid().nullable(),
+  updatedAt: isoDateTime,
+  /**
+   * With stock on (inventory feature): units on hand over tracked variants and the worst variant status; null = no
+   * tracked variant. Absent when the shop doesn't track stock.
+   */
+  stock: z.object({ qty: z.number(), status: z.enum(["ok", "low", "out"]) }).nullable().optional(),
+});
+export const productListSchema = z.object({
+  items: z.array(productSummarySchema),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+  /** `status` (and `stock`: ok / low / out / untracked, when stock is on): products per value under the other filters. */
+  facets: z.record(z.string(), z.record(z.string(), z.number().int())),
+});
+export const categorySchema = z.object({
+  id: z.string().uuid(),
+  parentId: z.string().uuid().nullable(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  sort: z.number().int(),
+  active: z.boolean(),
+  seo: seoSchema.nullable(),
+  /** Non-deleted products directly in this category. */
+  productCount: z.number().int(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+/** Every category of the shop (flat, by sort then name; `parentId` gives the tree). */
+export const categoryListSchema = z.object({ items: z.array(categorySchema), total: z.number().int() });
+const okSchema = z.object({ ok: z.literal(true) });
+/** A BASE route with its API document shapes. */
+const base = (schema: Parameters<typeof documented>[0]) => documented(schema, BASE.config);
+
 /** Collection writes also declare `catalogue.manage` (enforced by the host's staff preHandler). */
 const MANAGE = { config: { feature: CATALOGUE_FEATURE_KEYS.base, permission: CATALOGUE_PERMISSIONS[0].key } };
 
@@ -192,7 +337,7 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
       });
 
       // categories
-      staff.get("/categories", BASE, async (req) => service.listCategories(tid(req)));
+      staff.get("/categories", base({ response: categoryListSchema }), async (req) => service.listCategories(tid(req)));
       staff.get("/categories/tree", BASE, async (req) => service.categoryTree(tid(req)));
       staff.post("/categories", BASE, async (req) => service.createCategory(tid(req), body(req) as CategoryInput));
       staff.put("/categories/order", BASE, async (req) => service.reorderCategories(tid(req), body(req) as { ids: string[] }));
@@ -207,7 +352,7 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
       });
 
       // products
-      staff.get("/products", BASE, async (req, reply) => {
+      staff.get("/products", base({ query: productListQuerySchema, response: productListSchema }), async (req, reply) => {
         const q = query(req);
         const { format } = formatQuery.parse(q);
         if (format !== "csv") return service.listProducts(tid(req), q as ProductListQuery, ...scopeArgs(req));
@@ -217,23 +362,23 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
         reply.header("content-disposition", csvDisposition(`products-${todayIST()}`));
         return toCsv(rows, PRODUCT_CSV_COLUMNS);
       });
-      staff.post("/products", BASE, async (req) => service.createProduct(tid(req), body(req) as ProductInput, ...scopeArgs(req)));
-      staff.get("/products/:id", BASE, async (req) => {
+      staff.post("/products", base({ body: productInputSchema, response: productSchema }), async (req) => service.createProduct(tid(req), body(req) as ProductInput, ...scopeArgs(req)));
+      staff.get("/products/:id", base({ response: productSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.getProduct(tid(req), id, ...scopeArgs(req));
       });
-      staff.patch("/products/:id", BASE, async (req) => {
+      staff.patch("/products/:id", base({ body: productPatchSchema, response: productSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.updateProduct(tid(req), id, body(req) as ProductPatch, ...scopeArgs(req));
       });
-      staff.delete("/products/:id", BASE, async (req) => {
+      staff.delete("/products/:id", base({ response: okSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         await service.deleteProduct(tid(req), id, ...scopeArgs(req));
         return { ok: true };
       });
 
       // variant writes
-      staff.post("/products/:id/variants", VARIANTS, async (req) => {
+      staff.post("/products/:id/variants", documented({ body: variantInputSchema, response: variantSchema }, VARIANTS.config), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.addVariant(tid(req), id, body(req) as VariantInput, ...scopeArgs(req));
       });
@@ -241,11 +386,11 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
         const { id } = idParam.parse(req.params);
         return service.generateVariants(tid(req), id, body(req) as GenerateVariantsInput, ...scopeArgs(req));
       });
-      staff.patch("/variants/:id", VARIANTS, async (req) => {
+      staff.patch("/variants/:id", documented({ body: variantPatchSchema, response: variantSchema }, VARIANTS.config), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.updateVariant(tid(req), id, body(req) as Partial<VariantInput>, ...scopeArgs(req));
       });
-      staff.delete("/variants/:id", VARIANTS, async (req) => {
+      staff.delete("/variants/:id", documented({ response: okSchema }, VARIANTS.config), async (req) => {
         const { id } = idParam.parse(req.params);
         await service.deleteVariant(tid(req), id, ...scopeArgs(req));
         return { ok: true };
@@ -273,11 +418,13 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
         const { ids } = idsQuerySchema.parse(query(req));
         return { items: await service.getVariants(tid(req), ids) };
       });
-      staff.get("/variants/lookup", BASE, async (req) => {
+      staff.get("/variants/lookup", base({ query: codeQuerySchema, response: variantLookupSchema }), async (req) => {
         const { code } = codeQuerySchema.parse(query(req));
         return service.lookupCode(tid(req), code);
       });
-      staff.get("/variants/search", BASE, async (req) => service.searchVariants(tid(req), query(req) as VariantSearchQuery));
+      staff.get("/variants/search", base({ query: variantSearchQuerySchema, response: variantSearchResultSchema }), async (req) =>
+        service.searchVariants(tid(req), query(req) as VariantSearchQuery),
+      );
     });
   };
 }

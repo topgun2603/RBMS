@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { exclusiveOf } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE, exclusiveOf, gstRateAtPrice } from "@srirealtime/gst";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArchiveIcon,
@@ -259,7 +259,9 @@ export function ProductEditor({ product }: { product?: Product }) {
             // Variant writes need "catalogue.variants". A simple product's price still saves through the billing
             // items facade (rate is GST-exclusive; the API converts it back for tax-inclusive products).
             const { price, ...rest } = body;
-            if (price !== undefined) await api.patch(`/invoices/items/${sv.id}`, { rate: exclusiveOf(price, Number(v.gstRate), v.taxInclusive) });
+            // A price-band product converts at the band of this price (the API grosses up at the band of the rate).
+            const rate = v.gstBand ? gstRateAtPrice(APPAREL_FOOTWEAR_GST_RULE, price ?? 0, v.taxInclusive) : Number(v.gstRate);
+            if (price !== undefined) await api.patch(`/invoices/items/${sv.id}`, { rate: exclusiveOf(price, rate, v.taxInclusive) });
             if (Object.keys(rest).length > 0) failures.push(t("commerce.editor.needsVariants"));
           }
         } catch (err) {

@@ -1,3 +1,4 @@
+import { APPAREL_FOOTWEAR_GST_RULE } from "@srirealtime/gst";
 import { z } from "zod";
 import { cartesian, comboKey, orNull, paiseToInput, rupeesToPaise, SLUG_RE, variantTitle } from "../../lib/format";
 import type { Channel, Product, ProductCreateInput, ProductFields, ProductStatus, Variant, VariantInput } from "../../lib/types";
@@ -48,6 +49,8 @@ export const productFormSchema = z
     categoryId: z.string().nullable(),
     images: z.array(z.object({ url: z.string(), alt: z.string().nullable().optional() })).max(20),
     gstRate: z.string(),
+    /** GST by price band (apparel / footwear: 5% up to ₹2,500 a piece before GST, 18% above). */
+    gstBand: z.boolean(),
     hsn: z
       .string()
       .trim()
@@ -126,6 +129,7 @@ export function toFormValues(p?: Product | null): ProductFormValues {
       categoryId: null,
       images: [],
       gstRate: "5",
+      gstBand: false,
       hsn: "",
       unit: "pcs",
       taxInclusive: true,
@@ -148,6 +152,7 @@ export function toFormValues(p?: Product | null): ProductFormValues {
     categoryId: p.categoryId,
     images: p.images.map((i) => ({ url: i.url, alt: i.alt ?? "" })),
     gstRate: String(p.gstRate),
+    gstBand: Boolean(p.gstRule),
     hsn: p.hsn ?? "",
     unit: p.unit || "pcs",
     taxInclusive: p.taxInclusive,
@@ -181,7 +186,9 @@ export function productFields(v: ProductFormValues): ProductFields {
     brand: orNull(v.brand),
     categoryId: v.categoryId,
     hsn: orNull(v.hsn),
-    gstRate: Number(v.gstRate),
+    // A price-band product keeps the lower band as its listed rate (filters, older clients); the rule decides per price.
+    gstRate: v.gstBand ? APPAREL_FOOTWEAR_GST_RULE.below : Number(v.gstRate),
+    gstRule: v.gstBand ? { ...APPAREL_FOOTWEAR_GST_RULE } : null,
     unit: v.unit.trim() || "pcs",
     taxInclusive: v.taxInclusive,
     status: v.status as ProductStatus,
