@@ -24,8 +24,11 @@ import { moneyShort } from "../lib/format";
 import { fromBillingItem, fromLookup } from "../lib/products";
 import type { ProductSummary } from "../lib/types";
 import { usePos } from "./pos-context";
+import { useCatalog } from "./catalog-provider";
+import { fromPosItem, searchCatalog } from "../lib/catalog-sync";
 
 const HOME = "__home";
+const ALL = "__all";
 
 export interface ProductPanelProps {
   searchRef: React.RefObject<HTMLInputElement | null>;
@@ -44,25 +47,45 @@ export interface ProductPanelProps {
 export function ProductPanel(props: ProductPanelProps) {
   const { t } = useI18n();
   const { has } = usePos();
+  const catalog = useCatalog();
+  // The full catalogue on this device (POS terminals): search, categories and scans work from it, also offline.
+  const cached = catalog.available && catalog.ready && !!catalog.index;
   const { query, onQuery } = props;
   const [category, setCategory] = React.useState<string>(HOME);
-  const q = useDebounced(query.trim(), 150);
-  const categories = useCategories(has.catalogue);
-  const search = useVariantSearch(q, has.catalogue);
-  const items = useBillingItems(q, !has.catalogue && q.length > 0);
+  const q = useDebounced(query.trim(), cached ? 60 : 150);
+  const categories = useCategories(has.catalogue && !cached);
+  const search = useVariantSearch(q, has.catalogue && !cached);
+  const items = useBillingItems(q, !has.catalogue && !cached && q.length > 0);
 
+  const cachedResults = React.useMemo(() => (cached && q ? searchCatalog(catalog.index!, q).map(fromPosItem) : null), [cached, q, catalog.index]);
   const results: CartProduct[] | null = q
-    ? has.catalogue
-      ? (search.data?.items.map(fromLookup) ?? null)
-      : (items.data?.items.map(fromBillingItem) ?? null)
+    ? cached
+      ? cachedResults
+      : has.catalogue
+        ? (search.data?.items.map(fromLookup) ?? null)
+        : (items.data?.items.map(fromBillingItem) ?? null)
     : null;
-  const searching = q ? (has.catalogue ? search.isFetching : items.isFetching) : false;
+  const searching = q && !cached ? (has.catalogue ? search.isFetching : items.isFetching) : false;
   const favIds = React.useMemo(() => new Set(props.favourites.map((f) => f.itemId)), [props.favourites]);
 
-  const chips = [
-    { value: HOME, label: t("pos.products.home") },
-    ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-  ];
+  const usedCats = React.useMemo(() => new Set(cached ? catalog.index!.list.map((l) => l.item.categoryId).filter(Boolean) : []), [cached, catalog.index]);
+  const chips = cached
+    ? [
+        { value: HOME, label: t("pos.products.home") },
+        { value: ALL, label: t("pos.products.all") },
+        ...[...catalog.categories]
+          .filter((c) => usedCats.has(c.id))
+          .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
+          .map((c) => ({ value: c.id, label: c.name })),
+      ]
+    : [
+        { value: HOME, label: t("pos.products.home") },
+        ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+      ];
+  const browse = React.useMemo(
+    () => (cached && category !== HOME ? searchCatalog(catalog.index!, "", { categoryId: category === ALL ? null : category, limit: 240 }).map(fromPosItem) : null),
+    [cached, category, catalog.index],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
@@ -113,7 +136,13 @@ export function ProductPanel(props: ProductPanelProps) {
         </Button>
       </div>
 
-      {has.catalogue && !q && chips.length > 1 && (
+      {cached && (
+        <p className="-mt-1 flex items-center gap-1.5 text-xs text-muted-foreground" data-catalog-status="">
+          {catalog.syncing ? <Loader2Icon className="size-3 animate-spin" /> : null}
+          {catalog.stale ? t("pos.products.cacheStale", { count: catalog.count }) : t("pos.products.cacheCount", { count: catalog.count })}
+        </p>
+      )}
+      {(has.catalogue || cached) && !q && chips.length > 1 && (
         <ChipGroup aria-label={t("pos.products.categories")} value={category} onChange={setCategory} options={chips} />
       )}
 
@@ -126,6 +155,14 @@ export function ProductPanel(props: ProductPanelProps) {
             onAdd={props.onAdd}
             onToggleFavourite={props.onToggleFavourite}
             empty={<EmptyState compact icon={PackageSearchIcon} title={t("pos.products.noMatch", { q })} description={t("pos.products.noMatchHint")} />}
+          />
+        ) : browse ? (
+          <ResultGrid
+            items={browse}
+            favIds={favIds}
+            onAdd={props.onAdd}
+            onToggleFavourite={props.onToggleFavourite}
+            empty={<EmptyState compact icon={PackageSearchIcon} title={t("pos.products.categoryEmpty")} />}
           />
         ) : category !== HOME ? (
           <CategoryGrid categoryId={category} onPick={props.onPickProduct} />
@@ -214,7 +251,10 @@ function ResultGrid({
               >
                 <span className="line-clamp-2 text-sm leading-snug font-medium">{p.name}</span>
                 <span className="flex items-end justify-between gap-2">
-                  <span className="text-base font-semibold tabular-nums">{moneyShort(p.price)}</span>
+                  <span className="text-base font-semibold tabular-nums">
+                    {moneyShort(p.price)}
+                    {p.soldBy === "weight" && <span className="text-xs font-normal text-muted-foreground">/{p.unit}</span>}
+                  </span>
                   {p.sku && <span className="truncate font-mono text-[0.6875rem] text-muted-foreground">{p.sku}</span>}
                 </span>
               </button>

@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/i18n/client";
+import { terminalEn, terminalTa } from "./messages-terminal";
 
 /**
  * pos.* strings. English is complete; Tamil (proper script, no Hindi terms) has every key too. Placeholders use
@@ -826,4 +827,4 @@ const ta: Messages = {
   "pos.returns.printSlip": "சீட்டு அச்சிடு",
 };
 
-export const posMessages = { en, ta } as const;
+export const posMessages = { en: { ...en, ...terminalEn }, ta: { ...ta, ...terminalTa } } as const;

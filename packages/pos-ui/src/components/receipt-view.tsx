@@ -42,12 +42,16 @@ export interface CompletedSale {
 /** After a sale: big change due, print (thermal PDF, else the in-page 80 mm receipt), WhatsApp, next sale. */
 export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSale: () => void }) {
   const { t, locale } = useI18n();
-  const { has, tenant } = usePos();
+  const { has, tenant, terminal } = usePos();
   const inv = sale.invoice;
   const [printing, setPrinting] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [phone, setPhone] = React.useState(mobileDigits(sale.phone) ?? "");
-  const [autoPrint, setAutoPrint] = useLocalState<boolean>(storageKey("autoprint", tenant), false);
+  // A paired terminal starts from its own setting (Settings → POS terminals); the switch below still overrides it here.
+  const [autoPrint, setAutoPrint] = useLocalState<boolean>(
+    terminal ? storageKey("autoprint", tenant, terminal.device.terminal.id) : storageKey("autoprint", tenant),
+    terminal?.device.terminal.settings.autoPrint ?? false,
+  );
   const newSaleRef = React.useRef<HTMLButtonElement>(null);
   const printed = React.useRef(false);
 

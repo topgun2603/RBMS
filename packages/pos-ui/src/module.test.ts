@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildNavModel, featureChecker, normalizeBase, permissionAllows, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { buildNavModel, featureChecker, normalizeBase, permissionAllows, visibleFor, type FeatureState, type MountedModule } from "@srirealtime/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "./lib/access";
 import { posMessages } from "./lib/messages";
 import { SHORTCUTS } from "./lib/shortcuts";
@@ -18,6 +18,31 @@ const state = (key: string, enabled: boolean): FeatureState => ({
   reason: enabled ? null : "plan",
   available: enabled,
   shopEnabled: null,
+});
+
+describe("terminal mode and Settings → POS terminals", () => {
+  it("terminal mode is a public route (a paired device has no staff sign-in)", () => {
+    const m = posModule();
+    expect(m.publicRoutes?.map((r) => r.path)).toEqual(["terminal"]);
+    // It gates itself from GET /pos/device; no feature on the route (visitors would just see not found).
+    expect(m.publicRoutes?.[0]?.feature).toBeUndefined();
+  });
+
+  it("the terminals settings page needs pos.terminals and pos.devices", () => {
+    const m: MountedModule = { ...posModule(), basePath: normalizeBase("/pos") };
+    const page = m.settings?.find((p) => p.path === "pos-terminals");
+    expect(page).toMatchObject({ feature: POS_FEATURES.terminals, permission: POS_PERMISSIONS.devices, label: "pos.nav.terminals" });
+    const ctx = (on: boolean, perms: string[] | null, fullAccess = false) => {
+      const { check } = featureChecker({ appId: "BL", planId: "starter", enabled: on ? ["pos.terminals"] : [], features: [state("pos.terminals", on)] });
+      return { roles: ["staff"], access: { fullAccess, permissions: perms }, checkFeature: check };
+    };
+    expect(visibleFor(ctx(true, ["pos.devices"]))(page!, m)).toBe(true);
+    expect(visibleFor(ctx(true, ["invoices.create"]))(page!, m)).toBe(false);
+    expect(visibleFor(ctx(true, [], true))(page!, m)).toBe(true);
+    expect(visibleFor(ctx(false, ["pos.devices"]))(page!, m)).toBe(false);
+    expect(POS_PERMISSIONS.weigh).toBe("pos.weigh");
+    expect(POS_FEATURES.weighing).toBe("pos.weighing");
+  });
 });
 
 describe("posModule", () => {
@@ -93,6 +118,12 @@ describe("messages", () => {
       ...["short", "overNonCash", "upiUnconfirmed", "creditNeedsCustomer", "creditUnavailable", "nothingToPay"].map((p) => `pos.pay.problem.${p}`),
       ...["cash", "upi", "card", "bank", "cheque", "other", "credit"].map((m) => `pos.day.method.${m}`),
       ...SHORTCUTS.map((s) => s.description),
+      ...["idle", "expired", "locked"].map((n) => `pos.lock.notice.${n}`),
+      ...["format", "invalid", "tooMany", "network", "wrongShop", "featureOff", "other"].map((e) => `pos.pair.error.${e}`),
+      ...["open", "used", "cancelled"].map((s) => `pos.weigh.status.${s}`),
+      ...["notFound", "used", "expired", "cancelled", "network", "other"].map((e) => `pos.ticket.error.${e}`),
+      ...["weak", "taken"].map((e) => `pos.pin.error.${e}`),
+      ...["format", "weak", "mismatch"].map((e) => `pos.pin.problem.${e}`),
     ];
     expect(used.size).toBeGreaterThan(200);
     expect([...used, ...built].filter((k) => !(k in en))).toEqual([]);

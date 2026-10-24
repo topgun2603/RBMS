@@ -52,7 +52,12 @@ import { migrateLocalDay, useRegisterName, useTillActions, useTillSession } from
 import { fitPayments, paymentsFor } from "../lib/tender";
 import { customerPhone, NO_CUSTOMER, type BillingItem, type Paged, type PosCustomer, type VariantLookup } from "../lib/types";
 import { useCounterKeys, useFinePointer, useMediaQuery } from "../lib/use-keys";
+import { needsWeight, resolveScan, type ScanHit, type ServerHit } from "../lib/scan";
+import { getTicketByCode, markTicketUsed } from "../lib/terminal-api";
+import type { WeighTicket } from "../lib/terminal-types";
+import { addTicket, isTicketCode, markTicketsUsed, removeLineOrTicket, ticketIdsOf } from "../lib/weigh-ticket";
 import { CameraScanDialog } from "./camera-scan";
+import { CatalogProvider, useCatalog } from "./catalog-provider";
 import { CartPanel } from "./cart-panel";
 import { CustomerBar } from "./customer-bar";
 import { DayDialog } from "./day-dialog";
@@ -66,6 +71,7 @@ import { ReceiptView, type CompletedSale } from "./receipt-view";
 import { ReturnsDialog } from "./returns-dialog";
 import { TopBar } from "./top-bar";
 import { VariantPicker } from "./variant-picker";
+import { WeightDialog } from "./weight-dialog";
 import { QuickAddDialog, type QuickAddTarget } from "./quick-add-dialog";
 import { QUICK_ADD_PERMISSION, shouldOfferQuickAdd } from "../lib/quick-add";
 
@@ -86,7 +92,7 @@ type DialogKind = "pay" | "hold" | "holds" | "returns" | "day" | "help" | "camer
  * A scanned / typed code: an item barcode or SKU first; when none matches (404), the counter resolvers (weighing-scale
  * labels with the weight, serial numbers / IMEIs with the unit). Null = nothing matched.
  */
-async function lookupOrResolve(code: string): Promise<{ variant: VariantLookup; qty?: number; serial?: string } | null> {
+async function lookupOrResolve(code: string): Promise<{ variant?: VariantLookup; qty?: number; serial?: string; weighTicket?: WeighTicket } | null> {
   try {
     return { variant: await lookupCode(code) };
   } catch (err) {
@@ -103,13 +109,35 @@ async function lookupOrResolve(code: string): Promise<{ variant: VariantLookup; 
 export function PosScreen() {
   return (
     <PosProvider>
-      <Counter />
+      <WithCatalog />
     </PosProvider>
   );
 }
 
+/** The full POS catalogue cache: on a paired terminal, and for staff when pos.terminals is on (falls back when absent). */
+function WithCatalog() {
+  const env = usePos();
+  return (
+    <CatalogProvider enabled={!!env.terminal || env.has.terminals} tenant={env.tenant}>
+      <Counter />
+    </CatalogProvider>
+  );
+}
+
+/** The server side of a scan: lookup → resolvers (catalogue on), or a billing item by exact code (catalogue off). */
+async function serverHit(code: string, catalogue: boolean): Promise<ServerHit | null> {
+  if (!catalogue) {
+    const r = await posApi.get<Paged<BillingItem>>("/invoices/items", { q: code, limit: 2 });
+    return r.items.length === 1 ? { product: fromBillingItem(r.items[0]!) } : null;
+  }
+  const hit = await lookupOrResolve(code);
+  if (!hit) return null;
+  return { product: hit.variant ? fromLookup(hit.variant) : undefined, qty: hit.qty, serial: hit.serial, weighTicket: hit.weighTicket };
+}
+
 function Counter() {
   const env = usePos();
+  const catalog = useCatalog();
   const { t } = useI18n();
   const qc = useQueryClient();
   const appNavigate = useAppNavigate();
@@ -132,11 +160,13 @@ function Counter() {
   const [sale, setSale] = React.useState<CompletedSale | null>(null);
   const [sheet, setSheet] = React.useState(false);
   const [lastAdded, setLastAdded] = React.useState<{ name: string; n: number } | null>(null);
+  /** A by-weight item waiting for its weight. */
+  const [weighProduct, setWeighProduct] = React.useState<CartProduct | null>(null);
   const [quickAddTarget, setQuickAddTarget] = React.useState<QuickAddTarget | null>(null);
   const [lastGst, setLastGst] = useLocalState<number | null>(storageKey("quick-add-gst", env.tenant), null);
   const hasCatalogueManage = usePermission(QUICK_ADD_PERMISSION);
-  // Only staff who may create products can save a new item; open items follow price edits.
-  const canCreateItem = env.has.catalogue && hasCatalogueManage;
+  // Only staff who may create products (and not a paired terminal session) can save a new item; open items follow price edits.
+  const canCreateItem = env.has.catalogue && hasCatalogueManage && !env.terminal;
   const canOpenItem = env.can.price;
   const categoriesQuery = useCategories(env.has.catalogue && canCreateItem);
   const searchRef = React.useRef<HTMLInputElement>(null);
@@ -160,7 +190,9 @@ function Counter() {
 
   // The till session of this register (server-side; the last one seen is cached for offline display).
   const branchReady = !env.has.branches || !!env.branch;
-  const [register, setRegister] = useRegisterName(env.tenant);
+  const [storedRegister, setRegister] = useRegisterName(env.tenant);
+  // A paired terminal's till register is the terminal's name.
+  const register = env.terminal?.device.terminal.name ?? storedRegister;
   const tillQuery = useTillSession(env.tenant, register, env.branch?.id ?? null, branchReady && !env.sellerLoading);
   const till = tillQuery.data ?? null;
   const tillActions = useTillActions(register, env.branch?.id ?? null);
@@ -216,25 +248,71 @@ function Counter() {
     [t, reduced, shake, shakeScope, env.online.online, env.has.catalogue, canCreateItem, canOpenItem],
   );
 
+  /** A weigh ticket's lines go in as fixed lines (once per ticket). */
+  const addTicketLines = React.useCallback(
+    (ticket: WeighTicket) => {
+      let result: ReturnType<typeof addTicket> | null = null;
+      setCart((c) => {
+        result = addTicket(c.lines, ticket);
+        return result.ok ? { ...c, lines: result.lines, points: 0 } : c;
+      });
+      const r = result as ReturnType<typeof addTicket> | null;
+      if (!r) return;
+      if (!r.ok) {
+        beep(false);
+        if (r.reason === "duplicate") toast.info(t("pos.ticket.duplicate", { code: ticket.code }));
+        else if (r.reason === "expired") toast.error(t("pos.ticket.error.expired", { code: ticket.code }));
+        else toast.error(t(ticket.status === "cancelled" ? "pos.ticket.error.cancelled" : "pos.ticket.error.used", { code: ticket.code }));
+        return;
+      }
+      const last = r.keys.at(-1)!;
+      setSelected(last);
+      setFlash({ key: last, n: Date.now() });
+      setLastAdded({ name: ticket.code, n: Date.now() });
+      beep(true);
+      toast.success(t("pos.ticket.added", { code: ticket.code, count: ticket.lines.length }));
+    },
+    [setCart, t],
+  );
+
+  /** Acts on a scan result; false = nothing matched. */
+  const applyHit = React.useCallback(
+    (hit: ScanHit): boolean => {
+      switch (hit.kind) {
+        case "ticket":
+          addTicketLines(hit.ticket);
+          return true;
+        case "ticketError":
+          beep(false);
+          toast.error(t(`pos.ticket.error.${hit.error}`, { code: hit.code }));
+          return true;
+        case "item":
+          if (needsWeight(hit)) setWeighProduct(hit.product);
+          else add(hit.product, hit.qty ?? 1, hit.serial);
+          return true;
+        case "miss":
+          return false;
+      }
+    },
+    [add, addTicketLines, t],
+  );
+
+  const scanDeps = React.useMemo(
+    () => ({ cache: catalog.index, tickets: env.has.weighing, getTicket: getTicketByCode, server: (c: string) => serverHit(c, env.has.catalogue) }),
+    [catalog.index, env.has.weighing, env.has.catalogue],
+  );
+
   const scan = React.useCallback(
     async (code: string) => {
       try {
-        if (env.has.catalogue) {
-          const hit = await lookupOrResolve(code);
-          reportNetwork(true);
-          if (hit) add(fromLookup(hit.variant), hit.qty ?? 1, hit.serial);
-          else miss(code);
-        } else {
-          const r = await posApi.get<Paged<BillingItem>>("/invoices/items", { q: code, limit: 2 });
-          reportNetwork(true);
-          if (r.items.length === 1) add(fromBillingItem(r.items[0]!));
-          else miss(code);
-        }
+        const hit = await resolveScan(code, scanDeps);
+        if (hit.kind !== "item" || hit.source === "server") reportNetwork(true);
+        if (!applyHit(hit)) miss(code);
       } catch (err) {
         miss(code, err);
       }
     },
-    [env.has.catalogue, add, miss],
+    [scanDeps, applyHit, miss],
   );
 
   const onScan = React.useCallback(
@@ -247,11 +325,9 @@ function Counter() {
 
   const onSubmitSearch = async (q: string, first: CartProduct | null) => {
     if (!q) return;
-    if (env.has.catalogue && looksLikeCode(q)) {
+    if ((env.has.catalogue || catalog.index) && (looksLikeCode(q) || isTicketCode(q))) {
       try {
-        const hit = await lookupOrResolve(q);
-        if (hit) {
-          add(fromLookup(hit.variant), hit.qty ?? 1, hit.serial);
+        if (applyHit(await resolveScan(q, scanDeps))) {
           setQuery("");
           return;
         }
@@ -260,10 +336,16 @@ function Counter() {
       }
     }
     if (first) {
-      add(first);
+      addOrWeigh(first);
       setQuery("");
     } else miss(q);
   };
+
+  /** Grid taps: by-weight items ask for the weight first. */
+  function addOrWeigh(p: CartProduct) {
+    if (p.soldBy === "weight") setWeighProduct(p);
+    else add(p);
+  }
 
   // ---------------------------------------------------------------- holds
 
@@ -318,6 +400,13 @@ function Counter() {
         toast.error(t("pos.offline.billFailed"));
       } else toast.error(describeError(err, t));
       return false;
+    }
+
+    // Weigh tickets on the bill are used now (stable idempotency key per bill + ticket); the bill stands either way.
+    const ticketIds = ticketIdsOf(lines);
+    if (ticketIds.length) {
+      const used = await markTicketsUsed(inv.id, ticketIds, markTicketUsed);
+      if (used.failed.length) toast.warning(t("pos.ticket.useFailed", { count: used.failed.length }));
     }
 
     const planned = fitPayments(paymentsFor(r.settlement, r.tenders, r.refs), inv.balance);
@@ -390,7 +479,7 @@ function Counter() {
         if (target) updateLines((l) => stepQty(l, target, action === "qtyUp" ? 1 : -1));
         break;
       case "remove":
-        if (target) updateLines((l) => removeLine(l, target));
+        if (target) updateLines((l) => removeLineOrTicket(l, target));
         break;
       case "help":
         setDialog("help");
@@ -398,7 +487,7 @@ function Counter() {
     }
   };
 
-  const overlayOpen = dialog !== null || editKey !== null || pickProduct !== null || sale !== null || quickAddTarget !== null;
+  const overlayOpen = dialog !== null || editKey !== null || pickProduct !== null || sale !== null || weighProduct !== null || quickAddTarget !== null;
   useCounterKeys({ enabled: !overlayOpen, onScan, onShortcut });
 
   // Desktop: keep the search box ready for typing / scanning.
@@ -438,7 +527,9 @@ function Counter() {
   }, [env.sellerLoading, branchReady, tillQuery.isSuccess, env.online.online]);
 
   const exit = () => {
-    appNavigate("/");
+    // On a paired terminal "Exit" locks it for the next cashier.
+    if (env.terminal) env.terminal.lock("locked");
+    else appNavigate("/");
   };
 
   const editing = editKey ? (lines.find((l) => l.key === editKey) ?? null) : null;
@@ -455,8 +546,11 @@ function Counter() {
       stock={stock.data}
       onSelect={setSelected}
       onStep={(key, d) => updateLines((l) => stepQty(l, key, d))}
-      onEdit={setEditKey}
-      onRemove={(key) => updateLines((l) => removeLine(l, key))}
+      onEdit={(key) => {
+        if (lines.find((l) => l.key === key)?.ticket) toast.info(t("pos.ticket.fixed"));
+        else setEditKey(key);
+      }}
+      onRemove={(key) => updateLines((l) => removeLineOrTicket(l, key))}
       onHold={() => setDialog("hold")}
       onPay={openPay}
       payBlocked={payBlocked}
@@ -491,7 +585,7 @@ function Counter() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-destructive text-white"
+            className="overflow-hidden bg-destructive text-white dark:bg-destructive/60"
             role="alert"
           >
             <p className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium">
@@ -535,7 +629,7 @@ function Counter() {
               onQuery={setQuery}
               onSubmit={(q, first) => void onSubmitSearch(q, first)}
               onAdd={(p) => {
-                add(p);
+                addOrWeigh(p);
                 setQuery("");
                 focusSearch();
               }}
@@ -618,6 +712,14 @@ function Counter() {
         }}
       />
       <VariantPicker productId={pickProduct} onClose={() => setPickProduct(null)} onPick={add} />
+      <WeightDialog
+        product={weighProduct}
+        onClose={() => setWeighProduct(null)}
+        onAdd={(p, qty) => {
+          add(p, qty);
+          setWeighProduct(null);
+        }}
+      />
       <QuickAddDialog
         target={quickAddTarget}
         canCreate={canCreateItem}
@@ -664,7 +766,7 @@ function Counter() {
         session={dayOpen ? till : null}
         loading={tillQuery.isPending}
         register={register}
-        onRegister={setRegister}
+        onRegister={env.terminal ? () => undefined : setRegister}
         canTill={env.can.till}
       />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />

@@ -24,7 +24,7 @@ import {
 } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
 import { lineAmount } from "@srirealtime/gst";
-import { clampDiscount, percentDiscount, type CartLine } from "../lib/cart";
+import { cartLineGstRate, clampDiscount, percentDiscount, type CartLine } from "../lib/cart";
 import { money, paiseToInput, parseQty, rupeesToPaise } from "../lib/format";
 import { usePos } from "./pos-context";
 
@@ -81,7 +81,7 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
             <DialogTitle className="line-clamp-2 leading-snug">{line.name}</DialogTitle>
             <DialogDescription>
               {t("pos.edit.listPrice", { price: money(line.listPrice), unit: line.unit })}
-              {line.taxInclusive ? ` · ${t("pos.edit.inclGst", { rate: line.gstRate })}` : ` · ${t("pos.edit.plusGst", { rate: line.gstRate })}`}
+              {line.taxInclusive ? ` · ${t("pos.edit.inclGst", { rate: cartLineGstRate(line) })}` : ` · ${t("pos.edit.plusGst", { rate: cartLineGstRate(line) })}`}
             </DialogDescription>
           </DialogHeader>
           <FieldRow cols={2}>

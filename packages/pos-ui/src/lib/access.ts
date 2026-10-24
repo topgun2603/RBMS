@@ -13,6 +13,10 @@ export const POS_FEATURES = {
   inventory: "inventory",
   loyalty: "loyalty",
   branches: "multi-branch",
+  /** Paired terminals + PIN unlock (docs/pos-terminals.md). */
+  terminals: "pos.terminals",
+  /** Weighing station + weigh tickets (depends on scales). */
+  weighing: "pos.weighing",
 } as const;
 
 /** Permission keys (packages/invoices; owners and admins hold all). */
@@ -29,4 +33,8 @@ export const POS_PERMISSIONS = {
   creditNote: "invoices.credit-note",
   /** Open / close the till, cash in / out. */
   till: "pos.till",
+  /** Manage terminals, pairing codes and staff PINs. */
+  devices: "pos.devices",
+  /** Use a weighing station. */
+  weigh: "pos.weigh",
 } as const;

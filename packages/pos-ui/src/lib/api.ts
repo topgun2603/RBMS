@@ -1,7 +1,8 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, ApiError, apiUrl, currentTenantSlug, getToken, type ApiOptions, type QueryParams } from "@srirealtime/web";
+import { api, ApiError, apiUrl, authHeaders, type ApiOptions, type QueryParams } from "@srirealtime/web";
+import type { WeighTicket } from "./terminal-types";
 import type {
   BillingItem,
   CatalogCategory,
@@ -135,7 +136,10 @@ export const lookupCode = (code: string) => posApi.get<VariantLookup>("/catalog/
 
 /** A scanned code no item barcode matched: a weighing-scale label (item + weight) or a serial / IMEI (item + unit). */
 export interface ResolvedCode {
-  variant: VariantLookup;
+  /** Absent when the code is a weigh ticket (`weighTicket`). */
+  variant?: VariantLookup;
+  /** A weigh-ticket code (docs/pos-terminals.md): the ticket, to add as fixed lines. */
+  weighTicket?: WeighTicket;
   /** Weight / quantity from a scale label. */
   qty?: number;
   /** The unit's serial number or IMEI. */
@@ -226,11 +230,8 @@ export const thermalPath = (id: string) => `/documents/invoice-thermal/${id}.pdf
 
 /** Fetches a PDF with the session's token, shop and branch headers. */
 export async function fetchPdf(path: string, query: QueryParams = {}): Promise<Blob> {
-  const headers = new Headers({ accept: "application/pdf" });
-  const token = getToken();
-  if (token) headers.set("authorization", `Bearer ${token}`);
-  const slug = currentTenantSlug();
-  if (slug) headers.set("x-tenant", slug);
+  // Bearer (the PIN session on a terminal), shop and device token, like every api() call.
+  const headers = authHeaders({ accept: "application/pdf" });
   if (branchCode) headers.set("x-branch", branchCode);
   let res: Response;
   try {

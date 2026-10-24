@@ -1,4 +1,15 @@
-import { computeInvoice, exclusiveOf, isGstRate, lineAmount, type GstRate, type InvoiceTotals, type LineInput } from "@srirealtime/gst";
+import {
+  computeInvoice,
+  effectiveGstRate,
+  exclusiveOf,
+  gstRateForInclusive,
+  isGstRate,
+  lineAmount,
+  type GstRate,
+  type GstRateRule,
+  type InvoiceTotals,
+  type LineInput,
+} from "@srirealtime/gst";
 
 /**
  * Cart math for the counter. Prices are what the shop sells at: GST-inclusive for tax-inclusive (MRP) products,
@@ -21,8 +32,13 @@ export interface CartProduct {
   /** Paise per unit as sold (incl. GST when `taxInclusive`). */
   price: number;
   taxInclusive: boolean;
+  /** The rate at `price`; a price-band product's line is re-banded on its value after the discount (`cartLineGstRate`). */
   gstRate: number;
+  /** Price-band GST (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above). */
+  gstRule?: GstRateRule | null;
   image?: string | null;
+  /** From the POS catalogue: by-weight items ask for the weight when tapped. */
+  soldBy?: "unit" | "weight";
 }
 
 export interface CartLine extends CartProduct {
@@ -35,6 +51,8 @@ export interface CartLine extends CartProduct {
   listPrice: number;
   /** Serial numbers / IMEIs scanned onto this line (one per unit); printed on the bill and marked sold. */
   serials?: string[];
+  /** A weigh-ticket line (fixed qty and price; removed with its whole ticket). */
+  ticket?: { id: string; code: string };
 }
 
 export interface TaxOptions {
@@ -58,7 +76,7 @@ export const clampDiscount = (discount: number, gross: number) => Math.min(Math.
  * returns the new lines and the key of the line that changed (for the scan flash).
  */
 export function addProduct(lines: readonly CartLine[], p: CartProduct, qty = 1, serial?: string | null): { lines: CartLine[]; key: string } {
-  const same = lines.find((l) => l.itemId === p.itemId && l.price === p.price && l.discount === 0);
+  const same = lines.find((l) => !l.ticket && l.itemId === p.itemId && l.price === p.price && l.discount === 0);
   if (serial) {
     // A unit with a serial / IMEI: one unit per scan; the same unit scanned twice is not added again.
     const holder = lines.find((l) => l.serials?.includes(serial));
@@ -88,7 +106,7 @@ const roundQty = (q: number) => Math.round(q * 1000) / 1000;
 export function setQty(lines: readonly CartLine[], key: string, qty: number): CartLine[] {
   const q = roundQty(qty);
   if (!(q > 0)) return [...lines];
-  return lines.map((l) => (l.key === key ? { ...l, qty: q, discount: clampDiscount(l.discount, lineAmount(q, l.price)), serials: fitSerials(l.serials, q) } : l));
+  return lines.map((l) => (l.key === key && !l.ticket ? { ...l, qty: q, discount: clampDiscount(l.discount, lineAmount(q, l.price)), serials: fitSerials(l.serials, q) } : l));
 }
 
 /** +1 / −1. Never goes to zero (removing is its own action). */
@@ -102,11 +120,11 @@ export function stepQty(lines: readonly CartLine[], key: string, delta: 1 | -1):
 
 export function setPrice(lines: readonly CartLine[], key: string, price: number): CartLine[] {
   const p = Math.max(Math.round(price), 0);
-  return lines.map((l) => (l.key === key ? { ...l, price: p, discount: clampDiscount(l.discount, lineAmount(l.qty, p)) } : l));
+  return lines.map((l) => (l.key === key && !l.ticket ? { ...l, price: p, discount: clampDiscount(l.discount, lineAmount(l.qty, p)) } : l));
 }
 
 export function setDiscount(lines: readonly CartLine[], key: string, discount: number): CartLine[] {
-  return lines.map((l) => (l.key === key ? { ...l, discount: clampDiscount(discount, lineGross(l)) } : l));
+  return lines.map((l) => (l.key === key && !l.ticket ? { ...l, discount: clampDiscount(discount, lineGross(l)) } : l));
 }
 
 /** Discount from a percentage of the line gross (rounded to the paisa). */
@@ -120,8 +138,20 @@ export const removeLine = (lines: readonly CartLine[], key: string) => lines.fil
  * rate = the exclusive rate, the discount converted to the exclusive basis, and `inclusiveTotal` = what is charged
  * (gross − discount), so GST is taken out of the charged amount and ₹999 stays ₹999.00.
  */
+/**
+ * The rate a cart line is billed at: its `gstRate`, or for a price-band product (apparel / footwear) the band of the
+ * piece's value after the line discount — the charged amount for tax-inclusive prices, the exclusive amount otherwise.
+ * The server re-bands the same way (the line carries `gstRule`).
+ */
+export function cartLineGstRate(l: Pick<CartLine, "qty" | "price" | "discount" | "taxInclusive" | "gstRate" | "gstRule">): GstRate {
+  if (!l.gstRule) return gstOf(l.gstRate);
+  const gross = lineGross(l);
+  const charged = gross - clampDiscount(l.discount, gross);
+  return gstOf(l.taxInclusive ? gstRateForInclusive(l.gstRule, charged, l.qty).rate : effectiveGstRate(l.gstRule, charged, l.qty));
+}
+
 export function toLineInput(l: CartLine): LineInput {
-  const gstRate = gstOf(l.gstRate);
+  const gstRate = cartLineGstRate(l);
   const rate = exclusiveOf(l.price, gstRate, l.taxInclusive);
   const amount = lineAmount(l.qty, rate);
   const gross = lineGross(l);
@@ -129,6 +159,7 @@ export function toLineInput(l: CartLine): LineInput {
   const input: LineInput = { description: l.name, qty: l.qty, rate, gstRate };
   // Open items (billed once, not in the catalogue) have no item id.
   if (!l.itemId.startsWith("open:")) input.itemId = l.itemId;
+  if (l.gstRule) input.gstRule = l.gstRule;
   if (l.taxInclusive && gstRate) {
     const discount = Math.min(exclusiveOf(d, gstRate, true), amount);
     if (discount > 0) input.discount = discount;

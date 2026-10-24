@@ -1,3 +1,4 @@
+import type { GstRateRule } from "@srirealtime/gst";
 /** API shapes the counter uses (subsets of the server types; see packages/invoices, catalogue, loyalty, branches). */
 
 export interface Paged<T> {
@@ -104,6 +105,8 @@ export interface VariantLookup {
   price: number;
   taxInclusive: boolean;
   gstRate: number;
+  /** Price-band GST (apparel / footwear); `gstRate` is the band at `price`. */
+  gstRule?: GstRateRule | null;
   image: string | null;
   mrp: number | null;
   optionValues: Record<string, string>;
@@ -147,6 +150,8 @@ export interface Product {
   name: string;
   hsn: string | null;
   gstRate: number;
+  /** Price-band GST (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above). */
+  gstRule?: GstRateRule | null;
   unit: string;
   taxInclusive: boolean;
   status: string;
@@ -163,6 +168,7 @@ export interface BillingItem {
   unit: string;
   rate: number;
   gstRate: number;
+  gstRule?: GstRateRule | null;
 }
 
 export interface LoyaltyQuote {

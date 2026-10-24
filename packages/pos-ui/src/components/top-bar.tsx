@@ -5,7 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClockIcon,
   CircleHelpIcon,
+  KeyRoundIcon,
+  LockIcon,
   LogOutIcon,
+  MonitorSmartphoneIcon,
+  UsersRoundIcon,
   MapPinIcon,
   MoreVerticalIcon,
   PauseIcon,
@@ -31,9 +35,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@srirealtime/ui";
-import { LocaleSwitcher, ThemeToggle, useI18n } from "@srirealtime/web";
+import { LocaleSwitcher, ThemeToggle, useI18n, useModuleNavigate } from "@srirealtime/web";
 import { timeShort, todayIST } from "../lib/format";
 import type { DayRecord } from "../lib/storage";
+import { MyPinDialog } from "./my-pin-dialog";
 import { usePos } from "./pos-context";
 
 export interface TopBarProps {
@@ -50,8 +55,12 @@ export interface TopBarProps {
 /** Compact counter bar: shop · branch, cashier, online, day status, holds/returns/day/help, exit. */
 export function TopBar(p: TopBarProps) {
   const { t } = useI18n();
-  const { shopName, branch, branches, setBranch, cashier, online } = usePos();
+  const { shopName, branch, branches, setBranch, cashier, online, terminal, has } = usePos();
   const qc = useQueryClient();
+  const navigate = useModuleNavigate();
+  const [myPin, setMyPin] = React.useState(false);
+  const lockLabel = terminal ? t("pos.terminal.lock") : t("pos.top.exit");
+  const ExitIcon = terminal ? LockIcon : LogOutIcon;
   const today = todayIST();
   const day = p.day && p.day.date === today ? p.day : null;
   const dayState = !day ? "none" : day.closedAt ? "closed" : "open";
@@ -60,6 +69,11 @@ export function TopBar(p: TopBarProps) {
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-card px-2 sm:px-3">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span className="truncate text-sm font-semibold sm:text-base">{shopName}</span>
+        {terminal && (
+          <Badge variant="outline" className="gap-1" data-terminal-name="">
+            <MonitorSmartphoneIcon /> {terminal.device.terminal.name}
+          </Badge>
+        )}
         {branches.length > 1 && branch ? (
           <Select
             value={branch.code}
@@ -91,7 +105,7 @@ export function TopBar(p: TopBarProps) {
         <span
           className={cn(
             "inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
-            online.online ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+            online.online ? "bg-success/15 text-success-ink" : "bg-destructive/15 text-destructive",
           )}
           role="status"
           aria-live="polite"
@@ -153,20 +167,35 @@ export function TopBar(p: TopBarProps) {
               <CircleHelpIcon /> {t("pos.top.help")}
               <DropdownMenuShortcut>?</DropdownMenuShortcut>
             </DropdownMenuItem>
+            {terminal ? (
+              <DropdownMenuItem onSelect={() => terminal.lock("locked")}>
+                <UsersRoundIcon /> {t("pos.terminal.switch")}
+              </DropdownMenuItem>
+            ) : has.terminals ? (
+              <>
+                <DropdownMenuItem onSelect={() => setMyPin(true)}>
+                  <KeyRoundIcon /> {t("pos.pin.myTitle")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("terminal")}>
+                  <MonitorSmartphoneIcon /> {t("pos.terminal.useDevice")}
+                </DropdownMenuItem>
+              </>
+            ) : null}
             <DropdownMenuSeparator />
             <div className="flex items-center justify-between gap-2 px-2 py-1">
               <LocaleSwitcher />
               <ThemeToggle />
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={p.onExit} variant="destructive">
-              <LogOutIcon /> {t("pos.top.exit")}
+            <DropdownMenuItem onSelect={p.onExit} variant={terminal ? "default" : "destructive"}>
+              <ExitIcon /> {lockLabel}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <Button type="button" variant="outline" size="sm" className="hidden sm:inline-flex" onClick={p.onExit}>
-          <LogOutIcon /> {t("pos.top.exit")}
+          <ExitIcon /> {lockLabel}
         </Button>
+        {!terminal && has.terminals && <MyPinDialog open={myPin} onClose={() => setMyPin(false)} />}
       </div>
     </header>
   );

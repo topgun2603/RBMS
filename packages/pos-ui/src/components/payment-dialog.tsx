@@ -373,7 +373,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "su
       <AnimatedNumber
         value={value}
         format={money}
-        className={cn("text-lg font-semibold", tone === "success" && "text-success", tone === "warning" && "text-warning-ink", tone === "destructive" && "text-destructive")}
+        className={cn("text-lg font-semibold", tone === "success" && "text-success-ink", tone === "warning" && "text-warning-ink", tone === "destructive" && "text-destructive")}
       />
     </div>
   );
@@ -464,7 +464,7 @@ function PointsPanel({
           <FieldError>{text && !valid ? t("pos.loyalty.invalid") : null}</FieldError>
         </Field>
       )}
-      {applied > 0 && <p className="text-sm font-medium text-success">{t("pos.loyalty.applied", { count: applied, amount: money(applied * quote.pointValuePaise) })}</p>}
+      {applied > 0 && <p className="text-sm font-medium text-success-ink">{t("pos.loyalty.applied", { count: applied, amount: money(applied * quote.pointValuePaise) })}</p>}
     </div>
   );
 }

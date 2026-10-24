@@ -1,3 +1,4 @@
+import { gstRateAtPrice } from "@srirealtime/gst";
 import type { CartProduct } from "./cart";
 import type { BillingItem, CatalogVariant, Product, VariantLookup } from "./types";
 
@@ -16,6 +17,7 @@ export function fromLookup(v: VariantLookup): CartProduct {
     price: v.price,
     taxInclusive: v.taxInclusive,
     gstRate: v.gstRate,
+    ...(v.gstRule ? { gstRule: v.gstRule } : {}),
     image: v.image,
   };
 }
@@ -31,14 +33,15 @@ export function fromVariant(p: Product, v: CatalogVariant): CartProduct {
     unit: p.unit || "pcs",
     price: v.price,
     taxInclusive: p.taxInclusive,
-    gstRate: p.gstRate,
+    gstRate: p.gstRule ? gstRateAtPrice(p.gstRule, v.price, p.taxInclusive) : p.gstRate,
+    ...(p.gstRule ? { gstRule: p.gstRule } : {}),
     image: p.images[0]?.url ?? null,
   };
 }
 
 /** Billing items (catalogue off) have GST-exclusive rates. */
 export function fromBillingItem(i: BillingItem): CartProduct {
-  return { itemId: i.id, name: i.name, hsn: i.hsn, unit: i.unit || "pcs", price: i.rate, taxInclusive: false, gstRate: i.gstRate };
+  return { itemId: i.id, name: i.name, hsn: i.hsn, unit: i.unit || "pcs", price: i.rate, taxInclusive: false, gstRate: i.gstRate, ...(i.gstRule ? { gstRule: i.gstRule } : {}) };
 }
 
 /** Variants a product can be sold as (all of them; the default one first for simple products). */

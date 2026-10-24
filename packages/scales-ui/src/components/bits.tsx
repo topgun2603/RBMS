@@ -26,7 +26,7 @@ export function BarcodeDigits({ parts, labels }: { parts: { prefix: string; plu:
     <span className="inline-flex flex-wrap items-start gap-1">
       {cell(parts.prefix, labels.prefix, "bg-muted")}
       {cell(parts.plu, labels.plu, "bg-primary/10 text-primary")}
-      {cell(parts.value, labels.value, "bg-success/10 text-success")}
+      {cell(parts.value, labels.value, "bg-success/10 text-success-ink")}
       {cell(parts.check, labels.check, "bg-muted")}
     </span>
   );

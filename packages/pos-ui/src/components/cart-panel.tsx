@@ -149,6 +149,11 @@ function LineRow({
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm leading-snug font-medium">{line.name}</p>
           {line.serials?.length ? <p className="truncate font-mono text-[11px] text-muted-foreground">{t("pos.cart.serials", { list: line.serials.join(", ") })}</p> : null}
+          {line.ticket ? (
+            <Badge variant="muted" className="mt-0.5 font-mono" data-ticket={line.ticket.code}>
+              {t("pos.cart.ticket", { code: line.ticket.code })}
+            </Badge>
+          ) : null}
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
             <span>
               {money(line.price)} / {line.unit}
@@ -168,23 +173,24 @@ function LineRow({
       </div>
       <div className="relative mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center rounded-lg border bg-background" onClick={(e) => e.stopPropagation()}>
-          <Button type="button" variant="ghost" size="icon" aria-label={t("pos.cart.less", { name: line.name })} onClick={() => onStep(-1)} disabled={line.qty <= 1}>
+          <Button type="button" variant="ghost" size="icon" aria-label={t("pos.cart.less", { name: line.name })} onClick={() => onStep(-1)} disabled={line.qty <= 1 || !!line.ticket}>
             <MinusIcon />
           </Button>
           <button
             type="button"
             onClick={onEdit}
+            disabled={!!line.ticket}
             className="min-w-12 px-1 text-center text-base font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             aria-label={t("pos.cart.qtyOf", { name: line.name, qty: formatQty(line.qty) })}
           >
             <RollingNumber value={formatQty(line.qty)} />
           </button>
-          <Button type="button" variant="ghost" size="icon" aria-label={t("pos.cart.more", { name: line.name })} onClick={() => onStep(1)}>
+          <Button type="button" variant="ghost" size="icon" aria-label={t("pos.cart.more", { name: line.name })} onClick={() => onStep(1)} disabled={!!line.ticket}>
             <PlusIcon />
           </Button>
         </div>
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <Button type="button" variant="ghost" size="icon" aria-label={t("pos.cart.edit", { name: line.name })} onClick={onEdit}>
+          <Button type="button" variant="ghost" size="icon" aria-label={t("pos.cart.edit", { name: line.name })} onClick={onEdit} disabled={!!line.ticket}>
             <PencilIcon />
           </Button>
           <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label={t("pos.cart.remove", { name: line.name })} onClick={onRemove}>
@@ -226,7 +232,7 @@ function Totals({
         <span>{money(gross)}</span>
       </div>
       {totals.savings > 0 && (
-        <div className={cn(row, "text-success")}>
+        <div className={cn(row, "text-success-ink")}>
           <span>{t("pos.totals.discount")}</span>
           <span>−{money(totals.savings)}</span>
         </div>
@@ -287,7 +293,7 @@ function Totals({
         </div>
       )}
       {pointsDiscount > 0 && (
-        <div className={cn(row, "text-success")}>
+        <div className={cn(row, "text-success-ink")}>
           <span>{t("pos.totals.points")}</span>
           <span>−{money(totals.total - payable)}</span>
         </div>
