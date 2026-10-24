@@ -3,8 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiDownload, type QueryParams } from "@srirealtime/web";
 import type {
+  ExportJob,
   Exporter,
   ImportJob,
+  ImportOptions,
+  ImportSource,
   Importer,
   InviteInput,
   Mapping,
@@ -33,6 +36,8 @@ export const wk = {
   /** Import history table (useServerTable appends the request params); commits invalidate it. */
   jobs: ["import", "jobs"] as const,
   job: (id: string) => ["import", "job", id] as const,
+  sources: ["import", "sources"] as const,
+  exportAll: ["export", "all"] as const,
   onboarding: ["onboarding"] as const,
   messages: ["messages", "settings"] as const,
   sentMessages: ["messages", "log"] as const,
@@ -151,21 +156,26 @@ export function useImportJob(jobId: string | null, initial?: ImportJob) {
   });
 }
 
+/** Software people switch from (Vyapar, Tally, Busy, Marg, Excel) with what to export from each. */
+export function useImportSources() {
+  return useQuery({ queryKey: wk.sources, queryFn: () => api.get<{ items: ImportSource[] }>("/import/sources").then((r) => r.items), staleTime: 30 * 60_000 });
+}
+
 export function usePreviewImport() {
   return useMutation({
-    mutationFn: ({ key, file }: { key: string; file: File }) => {
+    mutationFn: ({ key, file, source }: { key: string; file: File; source?: string }) => {
       const form = new FormData();
       form.append("file", file, file.name);
-      return api.post<PreviewResult>(`/import/${key}/preview`, form);
+      return api.post<PreviewResult>(`/import/${key}/preview${source && source !== "auto" ? `?source=${encodeURIComponent(source)}` : ""}`, form);
     },
   });
 }
 
-export function useCommitImport() {
+/** Undo a finished import batch. */
+export function useRollbackImport() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ jobId, mapping }: { jobId: string; mapping?: Mapping }) =>
-      api.post<ImportJob>(`/import/${jobId}/commit`, { mapping, skipInvalid: true }),
+    mutationFn: (jobId: string) => api.post<ImportJob>(`/import/${jobId}/rollback`, {}),
     onSuccess: (job) => {
       qc.setQueryData(wk.job(job.jobId), job);
       void qc.invalidateQueries({ queryKey: wk.jobs });
@@ -173,7 +183,44 @@ export function useCommitImport() {
   });
 }
 
-export const downloadTemplate = (key: string) => apiDownload(`/import/${key}/template.xlsx`, {}, `${key.replace(/\./g, "-")}-template.xlsx`);
+export function useCommitImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jobId, mapping, options }: { jobId: string; mapping?: Mapping; options?: ImportOptions }) =>
+      api.post<ImportJob>(`/import/${jobId}/commit`, { mapping, skipInvalid: true, ...(options ? { options } : {}) }),
+    onSuccess: (job) => {
+      qc.setQueryData(wk.job(job.jobId), job);
+      void qc.invalidateQueries({ queryKey: wk.jobs });
+    },
+  });
+}
+
+export const downloadTemplate = (key: string, source?: string) =>
+  apiDownload(`/import/${key}/template.xlsx`, source && source !== "auto" ? { source } : {}, `${key.replace(/\./g, "-")}-template.xlsx`);
+/** Server-built error report of a job (row, problem and the original cells). */
+export const downloadImportErrors = (jobId: string, name: string) => apiDownload(`/import/${jobId}/errors.csv`, {}, name);
+
+/** Past "export all my data" jobs of the shop (owner only). Polls while one is running. */
+export function useExportAll(enabled = true) {
+  return useQuery({
+    queryKey: wk.exportAll,
+    queryFn: () => api.get<{ items: ExportJob[] }>("/export/all").then((r) => r.items),
+    enabled,
+    refetchInterval: (q) => (q.state.data?.some((j) => j.status === "queued" || j.status === "running") ? 2000 : false),
+  });
+}
+
+export function useStartExportAll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<ExportJob>("/export/all", {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: wk.exportAll }),
+  });
+}
+
+export const downloadExportAll = (id: string, name: string) => apiDownload(`/export/all/${id}/file`, {}, name || "data.zip");
+export const downloadTallyVouchers = (q: { kind: "sale" | "purchase"; from: string; to: string; format: "xml" | "xlsx" }) =>
+  apiDownload(`/export/tally/vouchers.${q.format}`, { kind: q.kind, from: q.from, to: q.to }, `tally-${q.kind}-vouchers.${q.format}`);
 export const downloadExport = (key: string, format: "csv" | "xlsx") => apiDownload(`/export/${key}.${format}`, {}, `${key.replace(/\./g, "-")}.${format}`);
 
 // ---------------------------------------------------------------- onboarding

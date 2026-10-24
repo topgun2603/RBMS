@@ -145,6 +145,13 @@ export const invoices = pgTable(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
     issuedAt: timestamp("issued_at", { withTimezone: true }),
+    /**
+     * A historical bill brought over from another product (Vyapar, Tally ...). It never changed stock here, is never
+     * messaged, e-invoiced or put in GSTR-1, and keeps its original number outside the shop's series (fy/seq null).
+     */
+    imported: boolean("imported").notNull().default(false),
+    /** The import batch (import_jobs.id) that created it; undo deletes by this. */
+    importBatchId: uuid("import_batch_id"),
     ...timestamps(),
   },
   (t) => [

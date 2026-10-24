@@ -1,4 +1,5 @@
 import { AppError } from "@srirealtime/core";
+import type { Db } from "@srirealtime/db";
 import type { createCatalogue, Product } from "@srirealtime/catalogue";
 import type {
   BrandingPort,
@@ -27,12 +28,14 @@ import {
   type PartyImportRow,
   type ProductExportRow,
   type ProductImportRow,
+  type SupplierImportRow,
   type StockExportRow,
   type StockImportRow,
 } from "@srirealtime/importexport";
 import type { createInventory, StockLocation } from "@srirealtime/inventory";
 import type { createInvoices, Customer } from "@srirealtime/invoices";
 import type { createOrders } from "@srirealtime/orders";
+import { registerSwitching } from "./kit-switch";
 
 /**
  * Ports of the documents and import/export modules, implemented over the catalogue, invoices, inventory and orders
@@ -207,6 +210,8 @@ export interface ImportExportPortDeps {
   catalogue: Catalogue;
   invoices: Invoices;
   inventory: Inventory;
+  /** Needed for the switching importers (historical bills, undo); see kit-switch.ts. */
+  db?: Db;
 }
 
 /** Registers the four importers and exporters (packages/importexport/src/specs.ts) with ports over the services. */
@@ -215,6 +220,8 @@ export function registerImportExport(registry: ImportExportRegistry, d: ImportEx
   registry.registerImporter(customersImporter({ upsert: (tenantId, rows) => importCustomers(d, tenantId, rows) }));
   registry.registerImporter(suppliersImporter({ upsert: (tenantId, rows) => importSuppliers(d, tenantId, rows) }));
   registry.registerImporter(stockImporter({ upsert: (tenantId, rows, opts) => importStock(d, tenantId, rows, opts.userId) }));
+
+  if (d.db) registerSwitching(registry, { db: d.db, catalogue: d.catalogue, invoices: d.invoices, inventory: d.inventory });
 
   registry.registerExporter(productsExporter({ rows: (tenantId) => exportProducts(d, tenantId) }));
   registry.registerExporter(customersExporter({ rows: (tenantId) => exportCustomers(d, tenantId) }));
@@ -231,7 +238,7 @@ const VARIANT_OPTION = "Variant";
  * matched by name (case-insensitive) and created when missing. Opening stock sets the stock at the default location.
  */
 async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: CommitRow<ProductImportRow>[], userId: string | null): Promise<CommitResult> {
-  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [] };
+  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [], records: [] };
   const categories = new Map((await d.catalogue.listCategories(tenantId)).items.map((c) => [nameKey(c.name), c.id]));
   const categoryId = async (name: string | undefined) => {
     if (!name) return undefined;
@@ -250,7 +257,8 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
 
-  const stockFor: { row: number; variantId: string; qty: number; cost?: number }[] = [];
+  const stockFor: { row: number; variantId: string; qty: number; cost?: number; note?: string }[] = [];
+  const stockNote = (r: ProductImportRow) => `Opening stock (import)${r.batchNo ? `, batch ${r.batchNo}` : ""}${r.expiry ? `, expiry ${r.expiry}` : ""}`;
   for (const group of groups.values()) {
     const first = group[0]!.data;
     try {
@@ -279,9 +287,10 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
           ...(simple ? { ...variantInput(first), optionValues: undefined } : { variants: group.map((r) => variantInput(r.data)) }),
         });
         result.created += group.length;
+        result.records.push({ entity: "product", key: `product:${nameKey(first.name)}`, id: product.id, action: "created", meta: { variantIds: product.variants.map((x) => x.id) } });
         group.forEach((r, i) => {
           const v = simple ? product.variants[0] : product.variants.find((x) => x.title === (r.data.variant ?? "")) ?? product.variants[i];
-          if (v && r.data.openingStock !== undefined) stockFor.push({ row: r.row, variantId: v.id, qty: r.data.openingStock, cost: r.data.cost });
+          if (v && r.data.openingStock !== undefined) stockFor.push({ row: r.row, variantId: v.id, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data) });
         });
         continue;
       }
@@ -297,7 +306,7 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
           const v = match ? await d.catalogue.updateVariant(tenantId, match.id, input) : await d.catalogue.addVariant(tenantId, existing.id, input);
           if (match) result.updated++;
           else result.created++;
-          if (r.data.openingStock !== undefined) stockFor.push({ row: r.row, variantId: v.id, qty: r.data.openingStock, cost: r.data.cost });
+          if (r.data.openingStock !== undefined) stockFor.push({ row: r.row, variantId: v.id, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data) });
         } catch (e) {
           result.errors.push({ row: r.row, message: message(e) });
         }
@@ -309,7 +318,7 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
 
   for (const s of stockFor) {
     try {
-      await d.inventory.adjust(tenantId, s.variantId, { mode: "set", qty: s.qty, unitCost: s.cost ?? null, note: "Opening stock (import)" }, userId);
+      await d.inventory.adjust(tenantId, s.variantId, { mode: "set", qty: s.qty, unitCost: s.cost ?? null, note: s.note ?? "Opening stock (import)" }, userId);
     } catch (e) {
       result.errors.push({ row: s.row, message: `Product saved, but opening stock failed: ${message(e)}` });
     }
@@ -325,7 +334,7 @@ async function findProductByName(catalogue: Catalogue, tenantId: string, name: s
 
 /** Customers are matched by phone (last 10 digits), else by name; matches are updated, others created. */
 async function importCustomers(d: ImportExportPortDeps, tenantId: string, rows: CommitRow<CustomerImportRow>[]): Promise<CommitResult> {
-  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [] };
+  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [], records: [] };
   const existing = await all(pages<Customer>((limit, offset) => d.invoices.listCustomers(tenantId, { limit, offset })));
   const byPhone = new Map(existing.filter((c) => phoneKey(c.phone)).map((c) => [phoneKey(c.phone)!, c.id]));
   const byName = new Map(existing.map((c) => [nameKey(c.name), c.id]));
@@ -352,6 +361,7 @@ async function importCustomers(d: ImportExportPortDeps, tenantId: string, rows: 
         if (phoneKey(c.phone)) byPhone.set(phoneKey(c.phone)!, c.id);
         byName.set(nameKey(c.name), c.id);
         result.created++;
+        result.records.push({ entity: "party", key: `customer:${nameKey(c.name)}`, id: c.id, action: "created", meta: { kind: "customer" } });
       }
     } catch (e) {
       result.errors.push({ row, message: message(e) });
@@ -361,8 +371,8 @@ async function importCustomers(d: ImportExportPortDeps, tenantId: string, rows: 
 }
 
 /** Suppliers: same matching as customers (phone, else name). */
-async function importSuppliers(d: ImportExportPortDeps, tenantId: string, rows: CommitRow<PartyImportRow>[]): Promise<CommitResult> {
-  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [] };
+async function importSuppliers(d: ImportExportPortDeps, tenantId: string, rows: CommitRow<SupplierImportRow>[]): Promise<CommitResult> {
+  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [], records: [] };
   const existing = await all(pages((limit, offset) => d.inventory.listSuppliers(tenantId, { limit, offset })));
   const byPhone = new Map(existing.filter((s) => phoneKey(s.phone)).map((s) => [phoneKey(s.phone)!, s.id]));
   const byName = new Map(existing.map((s) => [nameKey(s.name), s.id]));
@@ -374,6 +384,7 @@ async function importSuppliers(d: ImportExportPortDeps, tenantId: string, rows: 
       gstin: data.gstin ?? null,
       address: data.address ?? null,
       stateCode: data.stateCode ?? null,
+      ...(data.openingBalance !== undefined ? { openingBalance: data.openingBalance, openingDate: data.openingDate ?? null } : {}),
     };
     try {
       const id = (phoneKey(data.phone) && byPhone.get(phoneKey(data.phone)!)) || byName.get(nameKey(data.name));
@@ -385,6 +396,7 @@ async function importSuppliers(d: ImportExportPortDeps, tenantId: string, rows: 
         if (phoneKey(s.phone)) byPhone.set(phoneKey(s.phone)!, s.id);
         byName.set(nameKey(s.name), s.id);
         result.created++;
+        result.records.push({ entity: "party", key: `supplier:${nameKey(s.name)}`, id: s.id, action: "created", meta: { kind: "supplier" } });
       }
     } catch (e) {
       result.errors.push({ row, message: message(e) });
@@ -395,7 +407,7 @@ async function importSuppliers(d: ImportExportPortDeps, tenantId: string, rows: 
 
 /** Stock counts: item by SKU or barcode (catalogue lookup), location by code or name (empty = default). */
 async function importStock(d: ImportExportPortDeps, tenantId: string, rows: CommitRow<StockImportRow>[], userId: string | null): Promise<CommitResult> {
-  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [] };
+  const result: Required<CommitResult> = { created: 0, updated: 0, errors: [], records: [] };
   const locations = (await d.inventory.listLocations(tenantId, { includeInactive: false })).items;
   const location = (ref: string | undefined): StockLocation | undefined => {
     if (!ref) return locations.find((l) => l.isDefault);

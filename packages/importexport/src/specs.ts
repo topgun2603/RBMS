@@ -40,6 +40,9 @@ export interface ProductImportRow {
   openingStock?: number;
   status?: "active" | "draft" | "archived";
   tags?: string[];
+  /** Batch / expiry from the old software (kept in the opening-stock note; batch tracking is a medicines feature). */
+  batchNo?: string;
+  expiry?: string;
 }
 
 const HSN = /^\d{4}(\d{2}){0,2}$/;
@@ -62,6 +65,8 @@ export const productColumns: ImportColumn[] = [
   col.decimal("opening_stock", "Opening stock", { decimals: 3, example: "10", aliases: ["stock", "qty", "quantity", "opening qty"] }),
   col.oneOf("status", "Status", ["active", "draft", "archived"] as const, { default: "active" }),
   col.list("tags", "Tags", { example: "cotton, summer" }),
+  col.text("batch_no", "Batch no", { max: 60, help: "Optional; kept in the stock note", aliases: ["batch", "batch number"] }),
+  col.date("expiry", "Expiry", { help: "Optional; kept in the stock note", aliases: ["expiry date", "exp date", "exp"] }),
 ];
 
 export const validateProductRow: RowValidator<Record<string, unknown>> = (r) => {
@@ -93,6 +98,8 @@ export function toProductRow(d: Record<string, unknown>): ProductImportRow {
     openingStock: d.opening_stock as number | undefined,
     status: d.status as ProductImportRow["status"],
     tags: d.tags as string[] | undefined,
+    batchNo: d.batch_no as string | undefined,
+    expiry: d.expiry as string | undefined,
   };
 }
 
@@ -146,6 +153,13 @@ export interface PartyImportRow {
   stateCode?: string;
 }
 
+export interface SupplierImportRow extends PartyImportRow {
+  /** Paise; + = the shop owes the supplier, − = advance paid. */
+  openingBalance?: number;
+  /** YYYY-MM-DD the balance is as of. */
+  openingDate?: string;
+}
+
 export interface CustomerImportRow extends PartyImportRow {
   /** Paise; + = the customer owes the shop, − = advance. */
   openingBalance?: number;
@@ -186,7 +200,16 @@ export const customerColumns: ImportColumn[] = [
   col.money("credit_limit", "Credit limit", { example: "10,000.00", aliases: ["limit"] }),
 ];
 
-export const supplierColumns: ImportColumn[] = partyColumns();
+export const supplierColumns: ImportColumn[] = [
+  ...partyColumns(),
+  col.money("opening_balance", "Opening balance", {
+    allowNegative: true,
+    example: "4,200.00",
+    help: "Rupees you owe the supplier today; negative for an advance you paid",
+    aliases: ["balance", "outstanding", "payable", "due", "opening due"],
+  }),
+  col.date("opening_date", "Balance as of", { example: "2026-03-31", aliases: ["opening date", "as of date"] }),
+];
 
 const toParty = (d: Record<string, unknown>): PartyImportRow => ({
   name: d.name as string,
@@ -203,7 +226,11 @@ export const toCustomerRow = (d: Record<string, unknown>): CustomerImportRow => 
   creditLimit: d.credit_limit as number | undefined,
 });
 
-export const toSupplierRow = toParty;
+export const toSupplierRow = (d: Record<string, unknown>): SupplierImportRow => ({
+  ...toParty(d),
+  openingBalance: d.opening_balance as number | undefined,
+  openingDate: d.opening_date as string | undefined,
+});
 
 export interface PartyExportRow {
   name: string;
@@ -327,7 +354,7 @@ export const customersImporter = (port: ImportPort<CustomerImportRow>, opts: { f
     port,
   );
 
-export const suppliersImporter = (port: ImportPort<PartyImportRow>, opts: { feature?: string; permission?: string } = {}) =>
+export const suppliersImporter = (port: ImportPort<SupplierImportRow>, opts: { feature?: string; permission?: string } = {}) =>
   importer(
     { key: "inventory.suppliers", label: "Suppliers", feature: opts.feature ?? "inventory.purchases", permission: opts.permission, columns: supplierColumns, validate: validateParty },
     toSupplierRow,

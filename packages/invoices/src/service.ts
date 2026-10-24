@@ -275,6 +275,8 @@ export interface InvoiceSummary {
   credited: number;
   balance: number;
   isOverdue: boolean;
+  /** A historical bill imported from another product (no stock change, never messaged or e-invoiced). */
+  imported?: boolean;
 }
 
 export interface InvoicePayment {
@@ -1801,7 +1803,7 @@ export class InvoicesService {
   // ================================================================ invoices: reads
 
   private toSummary(
-    r: Pick<InvoiceRow, "id" | "number" | "status" | "date" | "dueDate" | "total" | "paid"> & { branchId?: string | null; credited?: number | null },
+    r: Pick<InvoiceRow, "id" | "number" | "status" | "date" | "dueDate" | "total" | "paid"> & { branchId?: string | null; credited?: number | null; imported?: boolean | null },
     customerName: string,
     today: string,
   ): InvoiceSummary {
@@ -1818,6 +1820,7 @@ export class InvoicesService {
       credited: r.credited ?? 0,
       balance: balanceOf(r),
       isOverdue: isOverdue(r, today),
+      ...(r.imported ? { imported: true } : {}),
     };
   }
 
@@ -1943,6 +1946,7 @@ export class InvoicesService {
               total: invoices.total,
               paid: invoices.paid,
               credited: invoices.credited,
+              imported: invoices.imported,
               customerName: sql<string>`${invoices.customer}->>'name'`,
             })
             .from(invoices)
@@ -2462,6 +2466,9 @@ export class InvoicesService {
     const row = await this.db.transaction(async (tx) => {
       const before = await this.row(tx, tenantId, id, true);
       previousStatus = before.status;
+      if (before.imported) {
+        throw new AppError(409, "invoice_imported", "This bill was imported from your old software and can't be cancelled here; roll back the import instead");
+      }
       if (before.credited > 0) {
         throw new AppError(
           409,
@@ -2768,6 +2775,7 @@ export class InvoicesService {
       .where(
         and(
           inArray(invoices.status, [...OPEN_STATUSES]),
+          eq(invoices.imported, false), // historical bills are never chased by message
           isNotNull(invoices.dueDate),
           gte(invoices.dueDate, addDaysISO(today, -365)),
           lte(invoices.dueDate, today),
@@ -3085,7 +3093,8 @@ export class InvoicesService {
         lines: invoices.lines,
       })
       .from(invoices)
-      .where(this.billedIn(tenantId, from, to, branchId));
+      // Imported history was already filed from the old software: keep it out of the GST return summary.
+      .where(and(this.billedIn(tenantId, from, to, branchId), eq(invoices.imported, false)));
     const notes = await this.creditNotesIn(tenantId, from, to, branchId);
     // The original bill's total decides B2CL vs B2CS for notes to unregistered buyers.
     const originals = new Map(

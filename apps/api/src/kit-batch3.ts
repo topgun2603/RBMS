@@ -421,7 +421,8 @@ export function createBatch3(d: Batch3Deps) {
     invoices: {
       getInvoice: async (tenantId, invoiceId) => {
         const inv = await d.invoices.get(tenantId, invoiceId).catch(nullOn404);
-        if (inv) return toEInvoiceSource(inv);
+        // Bills imported from another product are history: never e-invoiced here.
+        if (inv) return inv.imported ? null : toEInvoiceSource(inv);
         // A credit note id: e-invoiced as document type CRN referencing its bill.
         const cn = await d.invoices.creditNotes.get(tenantId, invoiceId).catch(nullOn404);
         if (!cn) return null;
@@ -433,7 +434,7 @@ export function createBatch3(d: Batch3Deps) {
         for (let offset = 0; ; offset += 200) {
           const page = await d.invoices.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
           for (const s of page.items) {
-            if (s.status === "draft" || !s.number) continue;
+            if (s.status === "draft" || !s.number || s.imported) continue; // imported = already filed in the old software
             const inv = await d.invoices.get(tenantId, s.id).catch(nullOn404);
             if (inv) out.push(toEInvoiceSource(inv));
           }

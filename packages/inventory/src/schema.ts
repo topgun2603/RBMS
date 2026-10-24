@@ -230,6 +230,9 @@ export const purchases = pgTable(
     notes: text("notes"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     createdBy: uuid("created_by"),
+    /** A historical bill brought over from another product: no stock change, original number kept (see invoices.imported). */
+    imported: boolean("imported").notNull().default(false),
+    importBatchId: uuid("import_batch_id"),
     ...timestamps(),
   },
   (t) => [index("purchases_tenant_date_idx").on(t.tenantId, t.date), index("purchases_tenant_supplier_idx").on(t.tenantId, t.supplierId)],

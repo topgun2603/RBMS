@@ -110,6 +110,8 @@ export interface Importer {
   key: string;
   label: string;
   feature: string | null;
+  /** Re-importing the same file skips what was imported before. */
+  idempotent?: boolean;
   columns: ImporterColumn[];
 }
 
@@ -146,9 +148,48 @@ export interface PreviewResult {
   missing: string[];
   rows: PreviewRow[];
   totals: { rows: number; valid: number; invalid: number };
+  /** Source software used for the header aliases. */
+  source?: SourceId;
+  /** Source guessed from the headers when it differs from the chosen one. */
+  detectedSource?: SourceId | null;
+  /** Rows left out before mapping (receipts, journals, returns, report totals). */
+  ignoredRows?: number;
+  /** Valid rows imported before; they are skipped on commit. */
+  alreadyImported?: number;
 }
 
-export type ImportJobStatus = "preview" | "queued" | "running" | "done" | "failed";
+export type SourceId = "generic" | "vyapar" | "tally" | "busy" | "marg";
+
+export interface ImportSource {
+  id: SourceId;
+  label: string;
+  labelTa: string;
+  /** "documented" = layout confirmed; "assumed" = tolerant matching on commonly seen column names. */
+  verified: "documented" | "assumed";
+  formats: string[];
+  /** importer key -> what to export from that software. */
+  exports: Record<string, string>;
+  notes: string;
+}
+
+export interface ImportOptions {
+  /** Keep the unpaid part of imported bills outstanding (default: it is already in the party balance). */
+  carryDues?: boolean;
+}
+
+export interface ExportJob {
+  id: string;
+  status: "queued" | "running" | "done" | "failed" | "expired";
+  fileName: string | null;
+  fileSize: number | null;
+  counts: Record<string, number>;
+  error: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+export type ImportJobStatus = "preview" | "queued" | "running" | "done" | "failed" | "rolled_back";
 
 export interface ImportJob {
   jobId: string;
@@ -164,6 +205,12 @@ export interface ImportJob {
   failed: number;
   skipped: number;
   errors: { row: number; message: string }[];
+  source?: string | null;
+  options?: ImportOptions;
+  ignoredRows?: number;
+  /** Set after an undo: how many records were removed and which had to stay. */
+  rollback?: { reverted: number; kept: { entity: string; key: string; reason: string }[] } | null;
+  rolledBackAt?: string | null;
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;

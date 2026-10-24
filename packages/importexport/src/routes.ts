@@ -2,6 +2,7 @@ import { badRequest, permissionDenied, permissionsAllow, requireRole, requireTen
 import type { FastifyContextConfig, FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { MultipartError, fileFromMultipart } from "./multipart";
+import type { FullExportService } from "./fullexport";
 import type { ImportExportService, UploadedFile } from "./service";
 import type { ImportJobListQuery } from "./store";
 
@@ -16,13 +17,22 @@ export const UPLOAD_CONTENT_TYPES = [
   "application/vnd.ms-excel", // what Windows browsers send for .csv
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/octet-stream",
+  "application/xml", // Tally XML exports
+  "text/xml",
   "multipart/form-data",
 ];
 
 const commitBody = z.object({
   mapping: z.record(z.string().max(60), z.union([z.string().max(200), z.number().int().min(0), z.null()])).optional(),
   skipInvalid: z.boolean().default(true),
+  options: z.object({ carryDues: z.boolean().optional() }).optional(),
 });
+const sourceQuery = z.object({ source: z.string().max(20).optional() });
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+const tallyQuery = z
+  .object({ kind: z.enum(["sale", "purchase"]).default("sale"), from: dateStr, to: dateStr })
+  .refine((q) => q.to >= q.from, { message: "To date is before From date", path: ["to"] });
+const idParam = z.object({ id: z.string().uuid() });
 const jobParam = z.object({ jobId: z.string().uuid() });
 
 const cfg = (feature: string | string[], permission?: string) => ({
@@ -85,6 +95,11 @@ export function importRoutes(service: ImportExportService) {
       return { items: service.registry.listImporters() };
     });
 
+    app.get("/sources", cfg(IMPORTEXPORT_FEATURE), async (req) => {
+      staff(req.ctx);
+      return { items: service.sources() };
+    });
+
     app.get("/jobs", cfg(IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION), async (req) => {
       const { tenant } = staff(req.ctx);
       return service.list(tenant.id, (req.query ?? {}) as ImportJobListQuery);
@@ -96,12 +111,13 @@ export function importRoutes(service: ImportExportService) {
 
       app.post(`/${imp.key}/preview`, { ...conf, bodyLimit }, async (req) => {
         const { tenant, user } = staff(req.ctx, def.permission);
-        return service.preview(tenant.id, user.id, imp.key, uploadedFile(req));
+        const { source } = sourceQuery.parse(req.query ?? {});
+        return service.preview(tenant.id, user.id, imp.key, uploadedFile(req), { source });
       });
 
       app.get(`/${imp.key}/template.xlsx`, conf, async (req, reply) => {
         staff(req.ctx);
-        const buf = await service.templateXlsx(imp.key);
+        const buf = await service.templateXlsx(imp.key, sourceQuery.parse(req.query ?? {}).source);
         return reply
           .header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
           .header("content-disposition", `attachment; filename="${imp.key.replace(/\./g, "-")}-template.xlsx"`)
@@ -124,6 +140,26 @@ export function importRoutes(service: ImportExportService) {
       return service.commit(tenant.id, jobId, body);
     });
 
+    // Undo a finished import batch (removes what it created; see ImportExportService.rollback).
+    app.post("/:jobId/rollback", cfg(IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION), async (req) => {
+      const { tenant, user } = staff(req.ctx);
+      requireRole(req.ctx, "owner", "admin");
+      const { jobId } = jobParam.parse(req.params);
+      return service.rollback(tenant.id, jobId, user.id);
+    });
+
+    // Row-level error report as CSV.
+    app.get("/:jobId/errors.csv", cfg(IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION), async (req, reply) => {
+      const { tenant } = staff(req.ctx);
+      const { jobId } = jobParam.parse(req.params);
+      const out = await service.errorsCsv(tenant.id, jobId);
+      return reply
+        .header("content-type", "text/csv; charset=utf-8")
+        .header("content-disposition", `attachment; filename="${out.filename}"`)
+        .header("cache-control", "private, no-store")
+        .send(out.csv);
+    });
+
     app.get("/:jobId", cfg(IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION), async (req) => {
       const { tenant } = staff(req.ctx);
       const { jobId } = jobParam.parse(req.params);
@@ -133,8 +169,67 @@ export function importRoutes(service: ImportExportService) {
 }
 
 /** `/v1/export`: per exporter `GET /:key.csv` and `GET /:key.xlsx` (query passed to the exporter); `GET /exporters`. */
-export function exportRoutes(service: ImportExportService) {
+export function exportRoutes(service: ImportExportService, full?: FullExportService) {
   return async (app: FastifyInstance) => {
+    if (full) {
+      const ownerOnly = (ctx: RequestContext) => {
+        const tenant = requireTenant(ctx);
+        const user = requireRole(ctx, "owner");
+        return { tenant, user };
+      };
+      const meta = (req: FastifyRequest) => ({ ip: req.ctx.ip ?? null, userAgent: req.ctx.userAgent ?? null });
+      // "Export all my data": owner only, background job, signed download link, audited.
+      app.post("/all", cfg(IMPORTEXPORT_FEATURE), async (req) => {
+        const { tenant, user } = ownerOnly(req.ctx);
+        return full.start(tenant.id, user.id, meta(req));
+      });
+      app.get("/all", cfg(IMPORTEXPORT_FEATURE), async (req) => {
+        const { tenant } = ownerOnly(req.ctx);
+        return full.list(tenant.id);
+      });
+      app.get("/all/:id", cfg(IMPORTEXPORT_FEATURE), async (req) => {
+        const { tenant } = ownerOnly(req.ctx);
+        return full.get(tenant.id, idParam.parse(req.params).id);
+      });
+      app.get("/all/:id/download", cfg(IMPORTEXPORT_FEATURE), async (req, reply) => {
+        const { tenant, user } = ownerOnly(req.ctx);
+        reply.header("cache-control", "private, no-store");
+        return full.download(tenant.id, idParam.parse(req.params).id, user.id, meta(req));
+      });
+      app.get("/all/:id/file", cfg(IMPORTEXPORT_FEATURE), async (req, reply) => {
+        const { tenant, user } = ownerOnly(req.ctx);
+        const out = await full.file(tenant.id, idParam.parse(req.params).id, user.id, meta(req));
+        return reply
+          .header("content-type", "application/zip")
+          .header("content-disposition", `attachment; filename="${out.fileName.replace(/[^\w.-]+/g, "_")}"`)
+          .header("cache-control", "private, no-store")
+          .send(out.data);
+      });
+      // Sales/purchase vouchers for Tally (import via Gateway of Tally > Import Data > Vouchers).
+      app.get("/tally/vouchers.xml", cfg(IMPORTEXPORT_FEATURE), async (req, reply) => {
+        const { tenant } = ownerOnly(req.ctx);
+        const q = tallyQuery.parse(req.query ?? {});
+        const out = await full.tallyXml(tenant.id, q);
+        return reply
+          .header("content-type", "application/xml; charset=utf-8")
+          .header("content-disposition", `attachment; filename="${out.filename}"`)
+          .header("x-voucher-count", String(out.count))
+          .header("cache-control", "private, no-store")
+          .send(out.xml);
+      });
+      app.get("/tally/vouchers.xlsx", cfg(IMPORTEXPORT_FEATURE), async (req, reply) => {
+        const { tenant } = ownerOnly(req.ctx);
+        const q = tallyQuery.parse(req.query ?? {});
+        const out = await full.tallyXlsx(tenant.id, q);
+        return reply
+          .header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+          .header("content-disposition", `attachment; filename="${out.filename}"`)
+          .header("x-voucher-count", String(out.count))
+          .header("cache-control", "private, no-store")
+          .send(out.data);
+      });
+    }
+
     app.get("/exporters", cfg(IMPORTEXPORT_FEATURE), async (req) => {
       staff(req.ctx);
       return { items: service.registry.listExporters() };

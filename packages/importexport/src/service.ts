@@ -1,11 +1,14 @@
 import { Readable } from "node:stream";
 import { AppError, badRequest, conflict, featureDisabled, notFound, type FeatureGatePort, type ListPage } from "@srirealtime/core";
 import { rupees, type ExportColumn } from "./columns";
+import { tallyXmlTable } from "./tally";
+import { VENDORS, detectVendor, findHeaderRow, isFooterRow, vendorById, withVendor, type VendorId } from "./vendors";
+import { XmlError, looksLikeXml } from "./xml";
 import { CsvError, csvLine, parseCsv } from "./csv";
 import { autoMap, missingRequired, parseRows, resolveMapping, type DetectedColumn, type Mapping, type ParsedRow } from "./engine";
-import type { ImportExportRegistry, ImporterDef } from "./registry";
-import type { ImportJobStatus, ImportJobSummary } from "./schema";
-import { IMPORT_JOB_SORT, importJobListQuerySchema, type ImportJob, type ImportJobListQuery, type ImportJobStore } from "./store";
+import type { ImportExportRegistry, ImportOptions, ImporterDef } from "./registry";
+import type { ImportJobError, ImportJobStatus, ImportJobSummary } from "./schema";
+import { IMPORT_JOB_SORT, MemoryImportRecordStore, importJobListQuerySchema, type ImportJob, type ImportJobListQuery, type ImportJobStore, type ImportRecordStore } from "./store";
 import { XlsxError, readXlsx, writeXlsx, xlsxStream, type XlsxValue } from "./xlsx";
 
 export const COMMIT_JOB = "importexport.commit";
@@ -52,6 +55,14 @@ export interface PreviewResult {
   missing: string[];
   rows: { row: number; data: Record<string, unknown>; errors: string[]; raw: string[] }[];
   totals: { rows: number; valid: number; invalid: number };
+  /** Source software used for the aliases (chosen or detected). */
+  source: VendorId;
+  /** Source guessed from the headers, when it differs from the one asked for. */
+  detectedSource: VendorId | null;
+  /** Rows dropped before mapping (receipts, journals, report totals). */
+  ignoredRows: number;
+  /** Valid rows whose records were imported before (skipped on commit). */
+  alreadyImported: number;
 }
 
 export interface JobStatus {
@@ -67,7 +78,12 @@ export interface JobStatus {
   updated: number;
   failed: number;
   skipped: number;
-  errors: { row: number; message: string }[];
+  errors: ImportJobError[];
+  source: string | null;
+  options: Record<string, unknown>;
+  ignoredRows: number;
+  rollback: ImportJob["rollback"];
+  rolledBackAt: Date | null;
   createdAt: Date;
   startedAt: Date | null;
   finishedAt: Date | null;
@@ -117,7 +133,7 @@ export class ImportExportService {
 
   constructor(
     readonly registry: ImportExportRegistry,
-    private readonly deps: { store: ImportJobStore; queue?: QueuePort; features?: FeatureGatePort; log?: LoggerPort; limits?: Partial<ImportExportLimits> },
+    private readonly deps: { store: ImportJobStore; records?: ImportRecordStore; queue?: QueuePort; features?: FeatureGatePort; log?: LoggerPort; limits?: Partial<ImportExportLimits> },
   ) {
     this.limits = { ...DEFAULT_LIMITS, ...deps.limits };
     deps.queue?.define<{ tenantId: string; jobId: string }>(COMMIT_JOB, (d) => this.run(d.tenantId, d.jobId), { attempts: 1 });
@@ -139,62 +155,137 @@ export class ImportExportService {
     if (!(await this.deps.features.isEnabled(tenantId, feature))) throw featureDisabled(feature, "dependency");
   }
 
-  /** Reads an uploaded CSV/XLSX into a header row + data rows, enforcing the size and row limits. */
-  async readTable(file: UploadedFile): Promise<{ headers: string[]; data: string[][]; type: "csv" | "xlsx" }> {
+  private get records(): ImportRecordStore {
+    return (this.deps.records ??= new MemoryImportRecordStore());
+  }
+
+  /**
+   * Reads an uploaded CSV/XLSX (or Tally XML for importers that have an XML form) into a header row + data rows,
+   * enforcing the size and row limits. With `imp`, title rows above the header are skipped, report footers dropped
+   * and the importer's `prepare` hook applied.
+   */
+  async readTable(
+    file: UploadedFile,
+    imp?: ImporterDef<Record<string, unknown>>,
+    vendor?: VendorId,
+  ): Promise<{ headers: string[]; data: string[][]; type: "csv" | "xlsx" | "xml"; ignored: number }> {
     if (!file.data.length) throw badRequest("The file is empty");
     if (file.data.length > this.limits.maxBytes) {
       throw new AppError(413, "file_too_large", `The file is larger than ${Math.round(this.limits.maxBytes / 1024 / 1024)} MB`);
     }
-    const type = detectFileType(file);
+    const maxRows = imp?.maxRows ?? this.limits.maxRows;
+    const isZip = file.data.length >= 4 && file.data[0] === 0x50 && file.data[1] === 0x4b;
+    let type: "csv" | "xlsx" | "xml";
     let table: string[][];
-    try {
-      table = type === "xlsx" ? await readXlsx(file.data, { maxRows: this.limits.maxRows + 1 }) : parseCsv(decodeText(file.data), { maxRows: this.limits.maxRows + 1 });
-    } catch (err) {
-      if (err instanceof CsvError || err instanceof XlsxError) {
-        if (/Too many rows/.test(err.message)) throw new AppError(413, "too_many_rows", `The file has more than ${this.limits.maxRows} rows; split it into smaller files`);
-        throw badRequest(err.message);
+    if (!isZip && looksLikeXml(file.data)) {
+      type = "xml";
+      let t;
+      try {
+        t = imp ? tallyXmlTable(file.data, imp.key) : null;
+      } catch (err) {
+        if (err instanceof XmlError) throw badRequest(`Could not read the XML file: ${err.message}`);
+        throw err;
       }
-      throw err;
+      if (!t) throw badRequest("XML files can be imported for Tally exports (ledgers, stock items, sales and purchase vouchers) only");
+      if (!t.data.length) throw badRequest("No matching records found in the XML file. Check that you exported the right masters or vouchers from Tally");
+      if (t.data.length > maxRows) throw new AppError(413, "too_many_rows", `The file has more than ${maxRows} rows; split it into smaller files`);
+      table = [t.headers, ...t.data];
+    } else {
+      type = detectFileType(file);
+      try {
+        table = type === "xlsx" ? await readXlsx(file.data, { maxRows: maxRows + 60 }) : parseCsv(decodeText(file.data), { maxRows: maxRows + 60 });
+      } catch (err) {
+        if (err instanceof CsvError || err instanceof XlsxError) {
+          if (/Too many rows/.test(err.message)) throw new AppError(413, "too_many_rows", `The file has more than ${maxRows} rows; split it into smaller files`);
+          throw badRequest(err.message);
+        }
+        throw err;
+      }
     }
-    const [headerRow, ...rest] = table;
+    const headerAt = imp && type !== "xml" ? findHeaderRow(table, withVendor(imp.columns, vendor)) : 0;
+    const headerRow = table[headerAt];
     if (!headerRow?.some((h) => h.trim())) throw badRequest("The file has no header row");
-    const headers = headerRow.map((h) => h.trim());
-    const data = rest.map((r) => r.map((c) => c ?? "")).filter((r) => r.some((c) => c.trim() !== ""));
-    if (!data.length) throw badRequest("The file has a header row but no data rows");
-    return { headers, data, type };
+    let headers = headerRow.map((h) => h.trim());
+    let data = table
+      .slice(headerAt + 1)
+      .map((r) => r.map((c) => c ?? ""))
+      .filter((r) => r.some((c) => c.trim() !== "") && !(imp?.idempotent && isFooterRow(r)));
+    let ignored = 0;
+    if (imp?.prepare) {
+      const p = imp.prepare(headers, data);
+      headers = p.headers;
+      data = p.data;
+      ignored = p.ignored ?? 0;
+    }
+    if (data.length > maxRows) throw new AppError(413, "too_many_rows", `The file has more than ${maxRows} rows; split it into smaller files`);
+    if (!data.length) throw badRequest(ignored ? "The file has no sales/purchase rows (receipts, journals and returns are skipped)" : "The file has a header row but no data rows");
+    return { headers, data, type, ignored };
   }
 
   private parseAll(imp: ImporterDef<Record<string, unknown>>, data: string[][], mapping: Mapping): ParsedRow[] {
-    return parseRows(data, imp.columns, mapping, imp.validate);
+    const parsed = parseRows(data, imp.columns, mapping, imp.validate);
+    imp.validateSet?.(parsed);
+    return parsed;
   }
 
-  async preview(tenantId: string, userId: string | null, key: string, file: UploadedFile): Promise<PreviewResult> {
+  /** Valid rows whose external keys were imported before (row number -> batch). */
+  private async alreadyImported(tenantId: string, imp: ImporterDef<Record<string, unknown>>, rows: ParsedRow[]): Promise<Map<number, string>> {
+    const out = new Map<number, string>();
+    if (!imp.idempotent) return out;
+    const keysOf = new Map<number, string[]>();
+    const all = new Set<string>();
+    for (const r of rows) {
+      if (r.errors.length) continue;
+      const ks = imp.idempotent.keys(r.data);
+      keysOf.set(r.row, ks);
+      ks.forEach((k) => all.add(k));
+    }
+    const existing = await this.records.existing(tenantId, imp.idempotent.entity, [...all]);
+    for (const [row, ks] of keysOf) {
+      // A row is "already imported" when all its keys are (a "both" party needs both records).
+      if (ks.length && ks.every((k) => existing.has(k))) out.set(row, existing.get(ks[0]!)!);
+    }
+    return out;
+  }
+
+  async preview(tenantId: string, userId: string | null, key: string, file: UploadedFile, opts: { source?: string } = {}): Promise<PreviewResult> {
     const imp = this.importer(key);
-    const { headers, data, type } = await this.readTable(file);
-    const { mapping, detected } = autoMap(headers, imp.columns);
+    const asked = opts.source && opts.source !== "auto" ? vendorById(opts.source)?.id : undefined;
+    if (opts.source && opts.source !== "auto" && !asked) throw badRequest(`Unknown source "${opts.source}"`, { allowed: VENDORS.map((v) => v.id) });
+    const { headers, data, type, ignored } = await this.readTable(file, imp, asked);
+    const detected = detectVendor(headers);
+    const source: VendorId = asked ?? detected ?? (type === "xml" ? "tally" : "generic");
+    const { mapping, detected: cols } = autoMap(headers, withVendor(imp.columns, source));
     const parsed = this.parseAll(imp, data, mapping);
+    const already = await this.alreadyImported(tenantId, imp, parsed);
     const invalid = parsed.filter((r) => r.errors.length).length;
     const summary = { ...emptySummary(), rows: parsed.length, valid: parsed.length - invalid, invalid };
     const job = await this.deps.store.create({
       tenantId,
       key,
       fileName: file.fileName?.slice(0, 200) ?? null,
-      fileType: type,
+      fileType: type === "xml" ? "csv" : type,
       fileSize: file.data.length,
       mapping,
       rows: { headers, data },
       summary,
       createdBy: userId,
+      source,
+      ignoredRows: ignored,
     });
     return {
       jobId: job.id,
       key,
       fileName: job.fileName,
-      columns: detected,
+      columns: cols,
       mapping,
       missing: missingRequired(imp.columns, mapping).map((c) => c.label),
       rows: parsed.slice(0, this.limits.previewRows),
       totals: { rows: summary.rows, valid: summary.valid, invalid },
+      source,
+      detectedSource: detected && detected !== source ? detected : null,
+      ignoredRows: ignored,
+      alreadyImported: already.size,
     };
   }
 
@@ -202,7 +293,7 @@ export class ImportExportService {
   async commit(
     tenantId: string,
     jobId: string,
-    opts: { mapping?: Record<string, string | number | null>; skipInvalid?: boolean } = {},
+    opts: { mapping?: Record<string, string | number | null>; skipInvalid?: boolean; options?: ImportOptions } = {},
   ): Promise<JobStatus> {
     const job = await this.deps.store.get(tenantId, jobId);
     if (!job) throw notFound("Import job");
@@ -227,7 +318,7 @@ export class ImportExportService {
     }
     if (invalidRows.length === parsed.length) throw badRequest("No valid rows to import");
     const summary = { ...emptySummary(), rows: parsed.length, valid: parsed.length - invalidRows.length, invalid: invalidRows.length };
-    const ok = await this.deps.store.update(tenantId, jobId, { status: "queued", mapping, skipInvalid, summary }, ["preview"]);
+    const ok = await this.deps.store.update(tenantId, jobId, { status: "queued", mapping, skipInvalid, summary, options: { ...(opts.options ?? {}) } }, ["preview"]);
     if (!ok) throw conflict("This import was already started");
     if (this.deps.queue) await this.deps.queue.enqueue(COMMIT_JOB, { tenantId, jobId }, { jobId: `import-${jobId}` });
     else await this.run(tenantId, jobId);
@@ -241,30 +332,69 @@ export class ImportExportService {
     const job = await this.deps.store.get(tenantId, jobId);
     if (!job?.rows) return;
     const summary: ImportJobSummary = { ...job.summary, processed: 0, created: 0, updated: 0, failed: 0, skipped: 0 };
-    const errors: { row: number; message: string }[] = [];
+    const errors: ImportJobError[] = [];
+    const rawOf = new Map<number, string[]>();
+    job.rows.data.forEach((cells, i) => rawOf.set(2 + i, cells));
     const addError = (row: number, message: string) => {
-      if (errors.length < this.limits.maxErrors) errors.push({ row, message });
+      if (errors.length < this.limits.maxErrors) errors.push({ row, message, ...(rawOf.has(row) ? { raw: rawOf.get(row) } : {}) });
     };
     try {
       const imp = this.importer(job.key);
       const parsed = this.parseAll(imp, job.rows.data, job.mapping);
-      const valid = parsed.filter((r) => !r.errors.length);
+      let valid = parsed.filter((r) => !r.errors.length);
       for (const r of parsed) {
         if (r.errors.length) {
           summary.skipped++;
           addError(r.row, r.errors.join("; "));
         }
       }
+      // Idempotency: records imported before are skipped, not written again.
+      const already = await this.alreadyImported(tenantId, imp, valid);
+      if (already.size) {
+        valid = valid.filter((r) => {
+          if (!already.has(r.row)) return true;
+          summary.skipped++;
+          addError(r.row, "Already imported earlier; skipped");
+          return false;
+        });
+      }
+      // Rows of one group (the lines of a bill) stay in one batch.
+      const groups: (typeof valid)[] = [];
+      if (imp.groupKey) {
+        const byKey = new Map<string, typeof valid>();
+        for (const r of valid) {
+          const k = imp.groupKey(r.data);
+          const g = byKey.get(k);
+          if (g) g.push(r);
+          else {
+            const ng = [r];
+            byKey.set(k, ng);
+            groups.push(ng);
+          }
+        }
+      } else for (const r of valid) groups.push([r]);
       const size = Math.max(1, imp.batchSize ?? 200);
-      for (let i = 0; i < valid.length; i += size) {
-        const batch = valid.slice(i, i + size).map((r) => ({ row: r.row, data: r.data }));
+      const batches: (typeof valid)[] = [];
+      let cur: typeof valid = [];
+      for (const g of groups) {
+        if (cur.length && cur.length + g.length > size) {
+          batches.push(cur);
+          cur = [];
+        }
+        cur.push(...g);
+      }
+      if (cur.length) batches.push(cur);
+      const options = (job.options ?? {}) as ImportOptions;
+      for (const rows of batches) {
+        const batch = rows.map((r) => ({ row: r.row, data: r.data }));
         try {
-          const res = await imp.commit(tenantId, batch, { jobId, userId: job.createdBy });
+          const res = await imp.commit(tenantId, batch, { jobId, userId: job.createdBy, options });
           summary.created += res.created;
           summary.updated += res.updated;
           const failedRows = res.errors ?? [];
           summary.failed += failedRows.length;
           for (const e of failedRows) addError(e.row, e.message);
+          if (res.records?.length) await this.records.add(tenantId, jobId, res.records);
         } catch (err) {
           summary.failed += batch.length;
           const message = err instanceof AppError ? err.message : "Could not save these rows";
@@ -281,6 +411,51 @@ export class ImportExportService {
       addError(0, err instanceof AppError ? err.message : "The import failed unexpectedly");
       await this.deps.store.update(tenantId, jobId, { status: "failed", summary, errors, rows: null, finishedAt: new Date() });
     }
+  }
+
+  /**
+   * Undoes an import batch: removes what it created (bills, new parties, new products) through the registry's
+   * rollback port; records that cannot be removed safely (e.g. a customer with newer bills) stay and are reported.
+   * Re-importing the same file works afterwards.
+   */
+  async rollback(tenantId: string, jobId: string, userId: string | null): Promise<JobStatus> {
+    const job = await this.deps.store.get(tenantId, jobId);
+    if (!job) throw notFound("Import job");
+    if (job.status === "rolled_back") throw conflict("This import was already rolled back");
+    if (job.status !== "done") throw conflict("Only a finished import can be rolled back");
+    const port = this.registry.rollbackPort;
+    if (!port) throw badRequest("Rollback is not available");
+    const imp = this.importer(job.key);
+    await this.assertFeature(tenantId, imp.feature);
+    // Claim the job first so two clicks cannot undo twice.
+    const claimed = await this.deps.store.update(tenantId, jobId, { status: "rolled_back", rolledBackAt: new Date(), rolledBackBy: userId }, ["done"]);
+    if (!claimed) throw conflict("This import was already rolled back");
+    try {
+      const records = await this.records.forBatch(tenantId, jobId);
+      const result = await port.rollback(tenantId, records, { userId });
+      await this.records.removeBatch(tenantId, jobId);
+      await this.deps.store.update(tenantId, jobId, { rollback: result });
+    } catch (err) {
+      await this.deps.store.update(tenantId, jobId, { status: "done", rolledBackAt: null, rolledBackBy: null });
+      throw err;
+    }
+    return this.status(tenantId, jobId);
+  }
+
+  /** Row-level error report of a job as CSV (row, problem, then the original cells). */
+  async errorsCsv(tenantId: string, jobId: string): Promise<{ csv: string; filename: string }> {
+    const job = await this.deps.store.get(tenantId, jobId);
+    if (!job) throw notFound("Import job");
+    const width = job.errors.reduce((m, e) => Math.max(m, e.raw?.length ?? 0), 0);
+    const lines = [csvLine(["Row", "Problem", ...Array.from({ length: width }, (_, i) => `Column ${i + 1}`)])];
+    for (const e of job.errors) lines.push(csvLine([e.row, e.message, ...(e.raw ?? [])]));
+    const base = (job.fileName ?? job.key).replace(/\.[^.]+$/, "").replace(/[^\w.-]+/g, "_");
+    return { csv: "\ufeff" + lines.join(""), filename: `${base}-errors.csv` };
+  }
+
+  /** The supported source software with what to export from each. */
+  sources() {
+    return VENDORS.map((v) => ({ id: v.id, label: v.label, labelTa: v.labelTa, verified: v.verified, formats: v.formats, exports: v.exports, notes: v.notes }));
   }
 
   async status(tenantId: string, jobId: string): Promise<JobStatus> {
@@ -301,8 +476,9 @@ export class ImportExportService {
   }
 
   /** Template workbook: headers, one example row, and a Help sheet. */
-  async templateXlsx(key: string): Promise<Buffer> {
+  async templateXlsx(key: string, source?: string): Promise<Buffer> {
     const imp = this.importer(key);
+    const vendor = source ? vendorById(source) : undefined;
     return writeXlsx({
       sheetName: imp.label.slice(0, 31) || "Data",
       columns: imp.columns.map((c) => ({ header: c.label, numFmt: "@" })),
@@ -311,6 +487,12 @@ export class ImportExportService {
         ["Column", "Required", "What to enter", "Example"],
         ...imp.columns.map((c) => [c.label, c.required ? "Yes" : "No", c.help ?? "", c.example ?? ""]),
         [],
+        ...(vendor && vendor.id !== "generic"
+          ? [
+              ["From " + vendor.label, "", vendor.exports[key] ?? "Export the matching report to Excel and upload it, or paste its columns under these headers.", ""],
+              ["", "", vendor.notes, ""],
+            ]
+          : []),
         ["Notes", "", `Keep the header row. Up to ${this.limits.maxRows.toLocaleString("en-IN")} rows per file. Amounts are in rupees (1,234.50).`, ""],
       ],
     });
@@ -372,6 +554,11 @@ function toStatus(job: ImportJob): JobStatus {
     failed: s.failed,
     skipped: s.skipped,
     errors: job.errors ?? [],
+    source: job.source ?? null,
+    options: job.options ?? {},
+    ignoredRows: job.ignoredRows ?? 0,
+    rollback: job.rollback ?? null,
+    rolledBackAt: job.rolledBackAt ?? null,
     createdAt: job.createdAt,
     startedAt: job.startedAt,
     finishedAt: job.finishedAt,

@@ -1,5 +1,5 @@
 import type { ExportColumn, ImportColumn } from "./columns";
-import type { RowValidator } from "./engine";
+import type { ParsedRow, RowValidator } from "./engine";
 
 export interface CommitRow<T> {
   /** File row number (for error messages). */
@@ -10,6 +10,30 @@ export interface CommitRow<T> {
 export interface CommitOptions {
   jobId: string;
   userId: string | null;
+  /** Options chosen in the wizard (e.g. `carryDues`). */
+  options: ImportOptions;
+}
+
+/** Wizard choices stored with the job. */
+export interface ImportOptions {
+  /**
+   * Historical bills: false (default) = the unpaid part of an imported bill is treated as already inside the party's
+   * opening balance and is NOT carried again; true = the unpaid part stays outstanding on the bill.
+   */
+  carryDues?: boolean;
+}
+
+/** A record an import created or linked, kept so the batch can be rolled back and re-imports skipped. */
+export interface ImportRecordRef {
+  /** "customer", "supplier", "product", "sale", "purchase". */
+  entity: string;
+  /** Stable external key (idempotency). */
+  key: string;
+  /** Our id of the record. */
+  id: string;
+  /** "created" can be rolled back; "linked" (matched an existing record) is left alone. */
+  action: "created" | "linked";
+  meta?: Record<string, unknown>;
 }
 
 export interface CommitResult {
@@ -17,6 +41,8 @@ export interface CommitResult {
   updated: number;
   /** Rows the port rejected, with reasons. */
   errors?: { row: number; message: string }[];
+  /** Records created/linked (for rollback and idempotency). */
+  records?: ImportRecordRef[];
 }
 
 export interface ImporterDef<T = Record<string, unknown>> {
@@ -34,6 +60,19 @@ export interface ImporterDef<T = Record<string, unknown>> {
   commit(tenantId: string, rows: CommitRow<T>[], opts: CommitOptions): Promise<CommitResult>;
   /** Rows per commit call (default 200). */
   batchSize?: number;
+  /** Largest file (data rows) for this importer; default is the service limit. */
+  maxRows?: number;
+  /**
+   * Opt in to idempotent re-imports: each row maps to stable external key(s); rows whose key was already imported
+   * (and not rolled back) are skipped instead of written again.
+   */
+  idempotent?: { entity: string; keys(data: Record<string, unknown>): string[] };
+  /** Rows sharing this key are never split across commit batches (lines of one bill). */
+  groupKey?: (data: Record<string, unknown>) => string;
+  /** Adjusts the raw table before mapping (e.g. drops receipt/journal rows from a day book). */
+  prepare?(headers: string[], data: string[][]): { headers: string[]; data: string[][]; ignored?: number };
+  /** Cross-row checks after every row parsed; push messages onto `row.errors`. */
+  validateSet?(rows: ParsedRow[]): void;
 }
 
 export interface ExporterDef<R = Record<string, unknown>> {
@@ -50,7 +89,20 @@ export interface ExporterDef<R = Record<string, unknown>> {
 
 const KEY = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 
+/** Undo of an import batch, implemented by the API kit over the services. */
+export interface RollbackPort {
+  rollback(tenantId: string, records: (ImportRecordRef & { batchId: string })[], opts: { userId: string | null }): Promise<RollbackResult>;
+}
+
+export interface RollbackResult {
+  reverted: number;
+  /** Records left in place, with the reason (e.g. a customer who already has newer bills). */
+  kept: { entity: string; key: string; reason: string }[];
+}
+
 export class ImportExportRegistry {
+  rollbackPort: RollbackPort | null = null;
+
   private readonly importers = new Map<string, ImporterDef<any>>();
   private readonly exporters = new Map<string, ExporterDef<any>>();
 
@@ -85,6 +137,7 @@ export class ImportExportRegistry {
       key: d.key,
       label: d.label,
       feature: d.feature ?? null,
+      idempotent: !!d.idempotent,
       columns: d.columns.map((c) => ({ key: c.key, label: c.label, required: !!c.required, example: c.example ?? null, help: c.help ?? null })),
     }));
   }

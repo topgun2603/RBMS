@@ -47,6 +47,7 @@ import type { Env } from "./env";
 import { phoneAuthConfig, testOtpConfig } from "./test-otp";
 import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
+import { exportFiles, fullExportPort } from "./kit-switch";
 import {
   catalogueAvailability,
   catalogueServicesPort,
@@ -738,8 +739,19 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     log,
   });
   // ---- CSV/XLSX import and export. Importers/exporters must be registered before the routes are mounted.
-  const importExport = createImportExport({ db, queue: jobs.service, features: features.gate, log });
-  registerImportExport(importExport.registry, { catalogue: catalogue.service, invoices: invoices.service, inventory: inventory.service });
+  const importExport = createImportExport({
+    db,
+    queue: jobs.service,
+    features: features.gate,
+    log,
+    // "Export all my data" + Tally export (owner only), zips kept in the uploads storage.
+    fullExport: {
+      port: fullExportPort({ db, catalogue: catalogue.service, invoices: invoices.service, inventory: inventory.service }),
+      files: exportFiles(storageFor(env)),
+      audit: audit.service,
+    },
+  });
+  registerImportExport(importExport.registry, { catalogue: catalogue.service, invoices: invoices.service, inventory: inventory.service, db });
 
   // ================================================================ online store (docs/commerce-batch2.md)
   const isEnabled = (tenantId: string, key: string) => features.service.isEnabled(tenantId, key);

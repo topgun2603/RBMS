@@ -17,11 +17,11 @@ import { api, QueryError, useI18n, useServerTable, type ListResponse, type Serve
 import { CountTile, useRelativeTime } from "../bits";
 import { useImporters, useImportJob, wk } from "../../lib/queries";
 import type { ImportJob } from "../../lib/types";
-import { ErrorRowsButton, JobStatusPill } from "./job-status";
+import { ErrorRowsButton, JobStatusPill, RollbackButton, RollbackResult } from "./job-status";
 import { importerLabel } from "./wizard";
 
 /** Statuses the history shows; "preview" (uploaded, never started) stays out unless the API is asked for it. */
-const STATUSES = ["queued", "running", "done", "failed"] as const;
+const STATUSES = ["queued", "running", "done", "failed", "rolled_back"] as const;
 
 /** Import history (server-paged table: sort, status / type / date filters, file-name search); a row opens the job. */
 export function ImportHistory() {
@@ -177,6 +177,8 @@ function JobSheet({ jobId, title, onClose }: { jobId: string | null; title: (j: 
           ) : (
             <>
               <JobStatusPill job={job} />
+              <RollbackResult job={job} />
+              <RollbackButton job={job} className="h-11" />
               <div className="grid grid-cols-2 gap-2">
                 <CountTile label={t("workspace.import.result.created")} value={job.created} tone="text-success-ink" />
                 <CountTile label={t("workspace.import.result.updated")} value={job.updated} tone="text-info-ink" />

@@ -10,7 +10,9 @@ import {
   FileUpIcon,
   Loader2Icon,
   PackageIcon,
+  ReceiptIcon,
   RotateCcwIcon,
+  ShoppingCartIcon,
   TruckIcon,
   UploadCloudIcon,
   UsersIcon,
@@ -43,9 +45,9 @@ import {
 } from "@srirealtime/ui";
 import { describeError, QueryError, useFeatures, useI18n, type Translator } from "@srirealtime/web";
 import { CountTile, Dropzone } from "../bits";
-import { downloadTemplate, useCommitImport, useImporters, useImportJob, usePreviewImport } from "../../lib/queries";
-import type { ImportJob, Importer, Mapping, PreviewResult } from "../../lib/types";
-import { ErrorRowsButton } from "./job-status";
+import { downloadTemplate, useCommitImport, useImporters, useImportJob, useImportSources, usePreviewImport } from "../../lib/queries";
+import type { ImportJob, ImportSource, Importer, Mapping, PreviewResult } from "../../lib/types";
+import { ErrorRowsButton, RollbackButton, RollbackResult } from "./job-status";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const NONE = "__none";
@@ -54,7 +56,17 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "invoices.customers": UsersIcon,
   "inventory.suppliers": TruckIcon,
   "inventory.stock": BoxesIcon,
+  "migrate.parties": UsersIcon,
+  "history.sales": ReceiptIcon,
+  "history.purchases": ShoppingCartIcon,
 };
+
+/** Importers for switching from other software come first, in the order a shop should do them. */
+const ORDER = ["catalog.products", "migrate.parties", "history.sales", "history.purchases"];
+const rank = (key: string) => (ORDER.includes(key) ? ORDER.indexOf(key) : ORDER.length);
+const isHistory = (key: string) => key.startsWith("history.");
+/** Importers that read Tally XML. */
+const XML_KEYS = new Set(["catalog.products", "migrate.parties", "history.sales", "history.purchases", "invoices.customers", "inventory.suppliers"]);
 
 export const importerLabel = (t: Translator, i: Pick<Importer, "key" | "label">) =>
   t.has(`workspace.import.kinds.${i.key}`) ? t(`workspace.import.kinds.${i.key}`) : i.label;
@@ -67,8 +79,11 @@ export function ImportWizard() {
   const reduced = useReducedMotionSafe();
   const importers = useImporters();
   const features = useFeatures();
+  const sources = useImportSources();
+  const [source, setSource] = React.useState<string>("auto");
   const [step, setStep] = React.useState<Step>({ kind: "choose" });
-  const list = (importers.data ?? []).filter((i) => !i.feature || features.isEnabled(i.feature));
+  const list = (importers.data ?? []).filter((i) => !i.feature || features.isEnabled(i.feature)).sort((a, b) => rank(a.key) - rank(b.key));
+  const sourceInfo = sources.data?.find((x) => x.id === source);
 
   const body = (() => {
     if (step.kind === "choose") {
@@ -83,7 +98,9 @@ export function ImportWizard() {
         );
       if (!list.length) return <EmptyState icon={FileUpIcon} title={t("workspace.import.noImporters")} />;
       return (
-        <Stagger className="grid gap-3 sm:grid-cols-2" stagger={0.05}>
+        <div className="grid gap-4">
+          <SourcePicker sources={sources.data ?? []} value={source} onChange={setSource} />
+          <Stagger className="grid gap-3 sm:grid-cols-2" stagger={0.05}>
           {list.map((imp) => {
             const Icon = ICONS[imp.key] ?? FileSpreadsheetIcon;
             const required = imp.columns.filter((c) => c.required);
@@ -107,11 +124,20 @@ export function ImportWizard() {
               </StaggerItem>
             );
           })}
-        </Stagger>
+          </Stagger>
+        </div>
       );
     }
     if (step.kind === "upload")
-      return <UploadStep importer={step.importer} onBack={() => setStep({ kind: "choose" })} onPreview={(preview) => setStep({ kind: "preview", importer: step.importer, preview })} />;
+      return (
+        <UploadStep
+          importer={step.importer}
+          source={source}
+          sourceInfo={sourceInfo}
+          onBack={() => setStep({ kind: "choose" })}
+          onPreview={(preview) => setStep({ kind: "preview", importer: step.importer, preview })}
+        />
+      );
     if (step.kind === "preview")
       return (
         <PreviewStep
@@ -121,7 +147,7 @@ export function ImportWizard() {
           onStarted={(job) => setStep({ kind: "job", importer: step.importer, preview: step.preview, job })}
         />
       );
-    return <JobStep importer={step.importer} preview={step.preview} initial={step.job} onAgain={() => setStep({ kind: "choose" })} />;
+    return <JobStep importer={step.importer} initial={step.job} onAgain={() => setStep({ kind: "choose" })} />;
   })();
 
   return (
@@ -136,6 +162,41 @@ export function ImportWizard() {
         {body}
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+/** "Where are you switching from?": picks the header aliases and shows how sure we are about each layout. */
+function SourcePicker({ sources, value, onChange }: { sources: ImportSource[]; value: string; onChange: (id: string) => void }) {
+  const { t, locale } = useI18n();
+  const items: { id: string; label: string; labelTa: string }[] = [{ id: "auto", label: t("workspace.import.source.auto"), labelTa: t("workspace.import.source.auto") }, ...sources];
+  const current = sources.find((x) => x.id === value);
+  return (
+    <Card className="px-card">
+      <p className="text-sm font-semibold">{t("workspace.import.source.title")}</p>
+      <p className="text-meta text-muted-foreground">{t("workspace.import.source.hint")}</p>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("workspace.import.source.title")}>
+        {items.map((x) => (
+          <button
+            key={x.id}
+            type="button"
+            role="radio"
+            aria-checked={value === x.id}
+            onClick={() => onChange(x.id)}
+            className={cn(
+              "h-10 rounded-full border px-4 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+              value === x.id ? "border-primary bg-primary/10 font-medium text-primary" : "bg-card hover:bg-muted/60",
+            )}
+          >
+            {locale.startsWith("ta") ? x.labelTa : x.label}
+          </button>
+        ))}
+      </div>
+      {current && current.id !== "generic" && (
+        <p className="text-xs text-muted-foreground">
+          {current.verified === "assumed" ? t("workspace.import.source.assumed") : t("workspace.import.source.documented")} {current.notes}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -155,13 +216,26 @@ function StepHeader({ importer, onBack, title }: { importer: Importer; onBack?: 
   );
 }
 
-function UploadStep({ importer, onBack, onPreview }: { importer: Importer; onBack: () => void; onPreview: (p: PreviewResult) => void }) {
+function UploadStep({
+  importer,
+  source,
+  sourceInfo,
+  onBack,
+  onPreview,
+}: {
+  importer: Importer;
+  source: string;
+  sourceInfo?: ImportSource;
+  onBack: () => void;
+  onPreview: (p: PreviewResult) => void;
+}) {
   const { t } = useI18n();
   const preview = usePreviewImport();
   const [downloading, setDownloading] = React.useState(false);
 
   const onFile = (file: File) => {
-    if (!/\.(csv|xlsx)$/i.test(file.name)) {
+    const xml = XML_KEYS.has(importer.key);
+    if (!(xml ? /\.(csv|xlsx|xml)$/i : /\.(csv|xlsx)$/i).test(file.name)) {
       toast.error(t("workspace.import.wrongType"));
       return;
     }
@@ -169,13 +243,13 @@ function UploadStep({ importer, onBack, onPreview }: { importer: Importer; onBac
       toast.error(t("workspace.import.tooBig"));
       return;
     }
-    preview.mutate({ key: importer.key, file }, { onSuccess: onPreview, onError: (err) => toast.error(describeError(err, t)) });
+    preview.mutate({ key: importer.key, file, source }, { onSuccess: onPreview, onError: (err) => toast.error(describeError(err, t)) });
   };
 
   const template = async () => {
     setDownloading(true);
     try {
-      await downloadTemplate(importer.key);
+      await downloadTemplate(importer.key, source);
     } catch (err) {
       toast.error(describeError(err, t));
     } finally {
@@ -186,9 +260,16 @@ function UploadStep({ importer, onBack, onPreview }: { importer: Importer; onBac
   return (
     <div>
       <StepHeader importer={importer} onBack={onBack} title={t("workspace.import.steps.upload")} />
+      {sourceInfo?.exports[importer.key] && (
+        <Alert className="mb-3">
+          <FileSpreadsheetIcon />
+          <AlertTitle>{t("workspace.import.source.exportFrom", { name: sourceInfo.label })}</AlertTitle>
+          <AlertDescription>{sourceInfo.exports[importer.key]}</AlertDescription>
+        </Alert>
+      )}
       <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Dropzone
-          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept={`.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet${XML_KEYS.has(importer.key) ? ",.xml,application/xml,text/xml" : ""}`}
           onFile={onFile}
           disabled={preview.isPending}
           icon={preview.isPending ? Loader2Icon : UploadCloudIcon}
@@ -234,6 +315,7 @@ function PreviewStep({
   const commit = useCommitImport();
   const [mapping, setMapping] = React.useState<Mapping>(preview.mapping);
   const [onlyErrors, setOnlyErrors] = React.useState(false);
+  const [carryDues, setCarryDues] = React.useState(false);
   const changed = JSON.stringify(mapping) !== JSON.stringify(preview.mapping);
   const missing = importer.columns.filter((c) => c.required && (mapping[c.key] ?? null) === null);
   const headers = preview.columns.map((c) => c.header);
@@ -253,7 +335,7 @@ function PreviewStep({
 
   const start = () =>
     commit.mutate(
-      { jobId: preview.jobId, mapping: changed ? mapping : undefined },
+      { jobId: preview.jobId, mapping: changed ? mapping : undefined, options: isHistory(importer.key) ? { carryDues } : undefined },
       { onSuccess: onStarted, onError: (err) => toast.error(describeError(err, t)) },
     );
 
@@ -265,6 +347,38 @@ function PreviewStep({
         <CountTile label={t("workspace.import.totals.valid")} value={preview.totals.valid} tone="text-success-ink" icon={CheckCircle2Icon} />
         <CountTile label={t("workspace.import.totals.invalid")} value={preview.totals.invalid} tone={preview.totals.invalid ? "text-danger-ink" : "text-muted-foreground"} icon={XCircleIcon} />
       </div>
+
+      {preview.detectedSource && (
+        <Alert>
+          <FileSpreadsheetIcon />
+          <AlertDescription>{t("workspace.import.detected", { name: t(`workspace.import.source.${preview.detectedSource}`) })}</AlertDescription>
+        </Alert>
+      )}
+      {(preview.ignoredRows ?? 0) > 0 && (
+        <Alert>
+          <AlertTriangleIcon />
+          <AlertDescription>{t("workspace.import.ignoredRows", { count: preview.ignoredRows ?? 0 })}</AlertDescription>
+        </Alert>
+      )}
+      {(preview.alreadyImported ?? 0) > 0 && (
+        <Alert>
+          <CheckCircle2Icon />
+          <AlertDescription>{t("workspace.import.alreadyImported", { count: preview.alreadyImported ?? 0 })}</AlertDescription>
+        </Alert>
+      )}
+      {isHistory(importer.key) && (
+        <Card className="px-card">
+          <p className="text-sm font-semibold">{t("workspace.import.history.title")}</p>
+          <p className="text-meta text-muted-foreground">{t("workspace.import.history.body")}</p>
+          <Label className="flex items-start gap-2 text-sm font-normal">
+            <Switch checked={carryDues} onCheckedChange={setCarryDues} />
+            <span>
+              {t("workspace.import.history.carry")}
+              <span className="block text-xs text-muted-foreground">{carryDues ? t("workspace.import.history.carryOn") : t("workspace.import.history.carryOff")}</span>
+            </span>
+          </Label>
+        </Card>
+      )}
 
       {missing.length > 0 && (
         <Alert variant="destructive">
@@ -391,18 +505,16 @@ function PreviewStep({
   );
 }
 
-function JobStep({ importer, preview, initial, onAgain }: { importer: Importer; preview: PreviewResult; initial: ImportJob; onAgain: () => void }) {
+function JobStep({ importer, initial, onAgain }: { importer: Importer; initial: ImportJob; onAgain: () => void }) {
   const { t } = useI18n();
   const q = useImportJob(initial.jobId, initial);
   const job = q.data ?? initial;
   const running = job.status === "queued" || job.status === "running";
   const pct = job.valid > 0 ? Math.min(100, Math.round((job.processed / job.valid) * 100)) : running ? 0 : 100;
-  const raw = React.useMemo(() => new Map(preview.rows.map((r) => [r.row, r.raw])), [preview.rows]);
-  const headers = preview.columns.map((c) => c.header);
 
   return (
     <div className="grid gap-4">
-      <StepHeader importer={importer} title={preview.fileName ?? ""} />
+      <StepHeader importer={importer} title={job.fileName ?? ""} />
       <Card className="px-card">
         {running ? (
           <div className="grid gap-3" role="status" aria-live="polite">
@@ -435,6 +547,7 @@ function JobStep({ importer, preview, initial, onAgain }: { importer: Importer; 
           <CountTile label={t("workspace.import.result.skipped")} value={job.skipped || job.invalid} tone="text-muted-foreground" />
           <CountTile label={t("workspace.import.result.failed")} value={job.failed} tone={job.failed ? "text-danger-ink" : "text-muted-foreground"} />
         </div>
+        {!running && <RollbackResult job={job} />}
         {!running && job.errors.length > 0 && (
           <div className="grid gap-2">
             <p className="text-sm font-medium">{t("workspace.import.errorsTitle")}</p>
@@ -450,7 +563,8 @@ function JobStep({ importer, preview, initial, onAgain }: { importer: Importer; 
         )}
         {!running && (
           <div className="flex flex-wrap gap-2">
-            <ErrorRowsButton job={job} raw={raw} headers={headers} className="h-11" />
+            <ErrorRowsButton job={job} className="h-11" />
+            <RollbackButton job={job} className="h-11" />
             <Button className="h-11" onClick={onAgain}>
               <FileUpIcon /> {t("workspace.import.another")}
             </Button>

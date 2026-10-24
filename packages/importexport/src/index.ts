@@ -2,9 +2,18 @@ import { defineModule, type FeatureDef, type FeatureGatePort, type SrModule } fr
 import type { Db } from "@srirealtime/db";
 import { ImportExportRegistry } from "./registry";
 import { IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION, exportRoutes, importRoutes } from "./routes";
-import { importJobs } from "./schema";
+import { exportJobs, importJobs, importRecords } from "./schema";
 import { ImportExportService, type ImportExportLimits, type LoggerPort, type QueuePort } from "./service";
-import { DrizzleImportJobStore, type ImportJobStore } from "./store";
+import { FullExportService, type AuditPortLike, type FilePort, type FullExportLimits, type FullExportPort } from "./fullexport";
+import {
+  DrizzleExportJobStore,
+  DrizzleImportJobStore,
+  DrizzleImportRecordStore,
+  MemoryExportJobStore,
+  type ExportJobStore,
+  type ImportJobStore,
+  type ImportRecordStore,
+} from "./store";
 
 export interface ImportExportDeps {
   /** Required unless `store` is given. */
@@ -16,6 +25,9 @@ export interface ImportExportDeps {
   features?: FeatureGatePort;
   limits?: Partial<ImportExportLimits>;
   log?: LoggerPort;
+  records?: ImportRecordStore;
+  /** "Export all my data" + Tally export; omit to leave those routes out. */
+  fullExport?: { port: FullExportPort; files: FilePort; store?: ExportJobStore; audit?: AuditPortLike; limits?: Partial<FullExportLimits> };
 }
 
 export const IMPORTEXPORT_FEATURES: FeatureDef[] = [
@@ -46,18 +58,31 @@ export function createImportExport(deps: ImportExportDeps) {
   const store = deps.store ?? (deps.db ? new DrizzleImportJobStore(deps.db) : null);
   if (!store) throw new Error("createImportExport needs db or store");
   const registry = new ImportExportRegistry();
-  const service = new ImportExportService(registry, { store, queue: deps.queue, features: deps.features, log: deps.log, limits: deps.limits });
+  const records = deps.records ?? (deps.db ? new DrizzleImportRecordStore(deps.db) : undefined);
+  const service = new ImportExportService(registry, { store, records, queue: deps.queue, features: deps.features, log: deps.log, limits: deps.limits });
+  const fe = deps.fullExport;
+  const fullExport = fe
+    ? new FullExportService({
+        store: fe.store ?? (deps.db ? new DrizzleExportJobStore(deps.db) : new MemoryExportJobStore()),
+        port: fe.port,
+        files: fe.files,
+        queue: deps.queue,
+        audit: fe.audit,
+        log: deps.log,
+        limits: fe.limits,
+      })
+    : undefined;
   // Built as a variable so the `permissions` field (added to SrModule by core's staff work) type-checks either way.
   const importDef = {
     id: "import",
-    tables: { importJobs },
+    tables: { importJobs, importRecords, exportJobs },
     routes: importRoutes(service),
     features: IMPORTEXPORT_FEATURES,
     permissions: IMPORTEXPORT_PERMISSIONS,
   };
   const importModule: SrModule = defineModule(importDef);
-  const exportModule: SrModule = defineModule({ id: "export", routes: exportRoutes(service) });
-  return { service, registry, importModule, exportModule, modules: [importModule, exportModule] };
+  const exportModule: SrModule = defineModule({ id: "export", routes: exportRoutes(service, fullExport) });
+  return { service, fullExport, registry, importModule, exportModule, modules: [importModule, exportModule] };
 }
 
 export * from "./schema";
@@ -66,6 +91,12 @@ export * from "./csv";
 export * from "./engine";
 export * from "./registry";
 export * from "./specs";
+export * from "./history";
+export * from "./vendors";
+export * from "./tally";
+export * from "./fullexport";
+export { makeZip, crc32, type ZipEntry } from "./zip";
+export { parseXml, findAll, XmlError, type XmlNode } from "./xml";
 export { readXlsx, writeXlsx, xlsxStream, cellText, XlsxError, type SheetColumn, type WorkbookInput, type XlsxValue } from "./xlsx";
 export { fileFromMultipart, parseMultipart, boundaryOf, MultipartError, type MultipartFile } from "./multipart";
 export {
@@ -83,6 +114,10 @@ export {
 } from "./service";
 export {
   DrizzleImportJobStore,
+  DrizzleImportRecordStore,
+  DrizzleExportJobStore,
+  MemoryExportJobStore,
+  MemoryImportRecordStore,
   IMPORT_JOB_SORT,
   importJobConditions,
   importJobListQuerySchema,
@@ -91,5 +126,7 @@ export {
   type ImportJobListPage,
   type ImportJobListQuery,
   type ImportJobStore,
+  type ImportRecordStore,
+  type ExportJobStore,
 } from "./store";
 export { importRoutes, exportRoutes, IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION, UPLOAD_CONTENT_TYPES } from "./routes";

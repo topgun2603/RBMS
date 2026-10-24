@@ -117,7 +117,7 @@ describe("import flow", () => {
     const commit = await app.inject({ method: "POST", url: `/v1/import/${p.jobId}/commit`, payload: { skipInvalid: true } });
     expect(commit.statusCode).toBe(200);
     expect(commit.json()).toMatchObject({ status: "done", total: 3, processed: 2, created: 2, skipped: 1, failed: 0 });
-    expect(commit.json().errors).toEqual([{ row: 4, message: expect.stringContaining("Price") }]);
+    expect(commit.json().errors).toEqual([expect.objectContaining({ row: 4, message: expect.stringContaining("Price") })]);
     expect(saved).toHaveLength(1);
     expect(saved[0]!.tenantId).toBe(TENANT);
     expect(saved[0]!.rows[1]).toMatchObject({ name: "Cotton Dhoti", sku: "CD-1", price: 45050, gst: 5, taxInclusive: false, unit: "pcs" });

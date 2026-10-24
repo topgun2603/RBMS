@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptionalSession } from "@srirealtime/web";
+import { effectiveRoles, useOptionalSession } from "@srirealtime/web";
 import { permissionsAllow } from "./permissions";
 
 export const PERMISSIONS = {
@@ -32,4 +32,10 @@ export function useHasPermission(key: string, opts: { explicit?: boolean } = {})
 /** The signed-in user's id (null outside the signed-in area). */
 export function useMyUserId(): string | null {
   return useOptionalSession()?.me.user.id ?? null;
+}
+
+/** The signed-in user owns this shop (or is a platform super-admin). Full-data export is owner-only. */
+export function useIsOwner(): boolean {
+  const session = useOptionalSession();
+  return !!session && effectiveRoles(session.me).includes("owner");
 }

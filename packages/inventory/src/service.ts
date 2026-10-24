@@ -2395,6 +2395,7 @@ export class InventoryService {
     const row = await this.db.transaction(async (tx) => {
       const p = await this.purchaseRow(tx, tenantId, id, true);
       if (p.status === "cancelled") return p;
+      if (p.imported) throw conflict("This bill was imported from your old software and can't be cancelled here; roll back the import instead");
       const [dn] = await tx
         .select({ id: debitNotes.id })
         .from(debitNotes)
