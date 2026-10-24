@@ -23,6 +23,8 @@ const optionalString = () => z.preprocess(blank, z.string().trim().min(1).option
 export const aiEnvShape = {
   /** Anthropic API key. Unset = the mock provider (development); in production AI calls answer 503 `ai_unavailable`. */
   ANTHROPIC_API_KEY: optionalString(),
+  /** Anthropic workspace id, sent as the `anthropic-workspace-id` header. Needed only when the key is not scoped to a workspace. */
+  ANTHROPIC_WORKSPACE_ID: optionalString(),
   /** Platform kill switch. Default: on in development and test, off in production until set to true. */
   AI_ENABLED: z.preprocess(blank, flag),
   /** `auto` (default): Claude when a key is set, else the mock outside production. `mock` forces the mock. */
@@ -38,6 +40,7 @@ export const aiEnvShape = {
 export interface AiEnvInput {
   NODE_ENV?: string;
   ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_WORKSPACE_ID?: string;
   AI_ENABLED?: boolean;
   AI_PROVIDER?: "auto" | "mock";
   AI_MODEL_LIGHT?: string;
@@ -66,7 +69,7 @@ export function resolveAiConfig(env: AiEnvInput, opts: { client?: ClaudeClientLi
   };
   let provider: AiProvider | null = null;
   const forceMock = env.AI_PROVIDER === "mock";
-  if (env.ANTHROPIC_API_KEY && !forceMock) provider = new ClaudeProvider({ apiKey: env.ANTHROPIC_API_KEY, client: opts.client });
+  if (env.ANTHROPIC_API_KEY && !forceMock) provider = new ClaudeProvider({ apiKey: env.ANTHROPIC_API_KEY, workspaceId: env.ANTHROPIC_WORKSPACE_ID, client: opts.client });
   else if (forceMock || !production) provider = opts.mock ?? new MockProvider();
   return {
     enabled: env.AI_ENABLED ?? !production,

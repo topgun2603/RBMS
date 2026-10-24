@@ -31,6 +31,8 @@ const supportsFallback = (model: string) => model.startsWith("claude-opus-5");
 
 export interface ClaudeProviderOptions {
   apiKey?: string;
+  /** Anthropic workspace id (`anthropic-workspace-id` header), for keys that are not scoped to a workspace. */
+  workspaceId?: string;
   /** Test double or a pre-built client. Default: `new Anthropic({ apiKey })`. */
   client?: ClaudeClientLike;
   /** Request the server-side refusal fallback on Opus 5.x models. Default true. */
@@ -70,7 +72,12 @@ export class ClaudeProvider implements AiProvider {
 
   constructor(opts: ClaudeProviderOptions = {}) {
     this.client =
-      opts.client ?? (new Anthropic({ apiKey: opts.apiKey, timeout: opts.timeoutMs ?? 90_000, maxRetries: opts.maxRetries ?? 2 }) as unknown as ClaudeClientLike);
+      opts.client ?? (new Anthropic({
+        apiKey: opts.apiKey,
+        timeout: opts.timeoutMs ?? 90_000,
+        maxRetries: opts.maxRetries ?? 2,
+        ...(opts.workspaceId ? { defaultHeaders: { "anthropic-workspace-id": opts.workspaceId } } : {}),
+      }) as unknown as ClaudeClientLike);
     this.fallback = opts.refusalFallback ?? true;
   }
 

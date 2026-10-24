@@ -9,7 +9,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "eval": "tsx --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run.ts"
+    "eval": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
