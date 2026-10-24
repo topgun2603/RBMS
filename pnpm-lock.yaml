@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  next@15.5.27:
+    hash: fc7j7larnydzjrgnsolqmdasea
+    path: patches/next@15.5.27.patch
+
 importers:
 
   .:
@@ -46,7 +51,7 @@ importers:
         version: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -153,6 +158,9 @@ importers:
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@srirealtime/idempotency':
+        specifier: workspace:*
+        version: link:../../packages/idempotency
       '@srirealtime/importexport':
         specifier: workspace:*
         version: link:../../packages/importexport
@@ -204,6 +212,9 @@ importers:
       '@srirealtime/plans':
         specifier: workspace:*
         version: link:../../packages/plans
+      '@srirealtime/pos':
+        specifier: workspace:*
+        version: link:../../packages/pos
       '@srirealtime/reports':
         specifier: workspace:*
         version: link:../../packages/reports
@@ -303,7 +314,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -373,7 +384,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -443,7 +454,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -489,7 +500,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -568,7 +579,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -647,7 +658,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -693,7 +704,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -745,7 +756,7 @@ importers:
         version: 0.525.0(react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1199,6 +1210,9 @@ importers:
       zod:
         specifier: ^3.25.0
         version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.24.0
+        version: 3.25.2(zod@3.25.76)
     devDependencies:
       fastify:
         specifier: ^5.3.0
@@ -1385,6 +1399,22 @@ importers:
       zod:
         specifier: ^3.25.0
         version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/idempotency:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
     devDependencies:
       fastify:
         specifier: ^5.3.0
@@ -1997,6 +2027,25 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
+  packages/pos:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
   packages/pos-ui:
     dependencies:
       '@hookform/resolvers':
@@ -2404,7 +2453,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: ^19.1.0
         version: 19.3.0
@@ -2587,7 +2636,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       next:
         specifier: ^15.5.0
-        version: 15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: ^19.1.0
         version: 19.3.0
@@ -6960,6 +7009,11 @@ packages:
     resolution: {integrity: sha512-9qv4rlDiopXg4E69k+vMHjNN63YFMe9sZMrdlvKnCjlCRWeCBswPPMPUfx+ipsAWq1LXHe70RcbaHdJJpS6hyQ==}
     engines: {node: '>= 10'}
 
+  zod-to-json-schema@3.25.2:
+    resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
+    peerDependencies:
+      zod: ^3.25.28 || ^4
+
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
@@ -10310,7 +10364,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
-  next@15.5.27(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  next@15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       '@next/env': 15.5.27
       '@swc/helpers': 0.5.15
@@ -11433,5 +11487,9 @@ snapshots:
       archiver-utils: 3.0.4
       compress-commons: 4.1.2
       readable-stream: 3.6.2
+
+  zod-to-json-schema@3.25.2(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod@3.25.76: {}

@@ -126,6 +126,8 @@ const en: Messages = {
 
   "admin.tenant.none": "No workspace",
   "admin.tenant.workspaces": "Workspaces",
+  "admin.tenant.search": "Search workspaces…",
+  "admin.tenant.noMatch": "No workspace matches",
   "admin.tenant.create": "Create workspace",
 
   "admin.user.menu": "Account menu",
@@ -897,6 +899,8 @@ const ta: Messages = {
 
   "admin.tenant.none": "பணியிடம் இல்லை",
   "admin.tenant.workspaces": "பணியிடங்கள்",
+  "admin.tenant.search": "பணியிடங்களைத் தேடு…",
+  "admin.tenant.noMatch": "பொருந்தும் பணியிடம் இல்லை",
   "admin.tenant.create": "பணியிடத்தை உருவாக்கு",
 
   "admin.user.menu": "கணக்கு பட்டியல்",

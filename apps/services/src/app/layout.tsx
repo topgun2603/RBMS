@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { BRANDING_BOOT_SCRIPT } from "@srirealtime/web/branding-boot";
 import { AppRoot } from "./app-root";
 
 /* UI face + Tamil fallback. They feed --font-sans/--font-heading through these variables (see @srirealtime/ui styles);
@@ -28,6 +29,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${jakarta.variable} ${notoTamil.variable}`}>
+      <head>
+        {/* The shop's last-seen colours before first paint (no default-indigo flash while branding loads). */}
+        <script dangerouslySetInnerHTML={{ __html: BRANDING_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-dvh">
         <AppRoot />
         {children}

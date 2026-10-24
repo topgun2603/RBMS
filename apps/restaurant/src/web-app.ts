@@ -12,7 +12,7 @@ import { workspaceModule } from "@srirealtime/workspace-ui";
 /**
  * The restaurant app (app profile "RS"): tables, running orders, KOTs and the kitchen display at "/dine", online orders,
  * the menu (catalogue), the counter, billing at "/billing" and the workspace settings. The shop comes from the subdomain
- * (annapoorna.localhost:3007); table QR codes open the shop's online store (NEXT_PUBLIC_STORE_URL, `{slug}`).
+ * (arusuvai.localhost:3007); table QR codes open the shop's online store (NEXT_PUBLIC_STORE_URL, `{slug}`).
  */
 export const webApp = createWebApp({
   appId: "RS",

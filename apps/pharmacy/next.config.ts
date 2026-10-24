@@ -17,7 +17,7 @@ export default function config(phase: string): NextConfig {
     // Workspace packages ship TypeScript source; Next compiles them.
     transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/pharmacy-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/tenancy", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/commerce-ui", "@srirealtime/branding", "@srirealtime/verticals"],
     poweredByHeader: false,
-    // Each shop opens the app on its own subdomain (medplus.localhost:3006) in dev.
+    // Each shop opens the app on its own subdomain (thunai.localhost:3006) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],
   };
 }

@@ -26,9 +26,9 @@ apps/
                   "/billing", workspace-ui
   store/          Customer storefront (:3003, SSR): each shop on its subdomain (anbu.localhost:3003) or custom domain;
                   theme from storefront-ui. Browser test: test/e2e.cjs
-  pharmacy/       Pharmacy app (:3006, app profile "PH"): medicine billing, counter, workspace (medplus.localhost:3006)
+  pharmacy/       Pharmacy app (:3006, app profile "PH"): medicine billing, counter, workspace (thunai.localhost:3006)
   restaurant/     Restaurant app (:3007, app profile "RS"): orders, menu, counter, billing at "/billing"
-                  (annapoorna.localhost:3007)
+                  (arusuvai.localhost:3007)
   services/       Services app (:3008, app profile "SV"): appointments, job cards, memberships for salons, gyms,
                   repair shops, tailors and opticals (glow.localhost:3008)
 packages/
@@ -83,8 +83,8 @@ cp .env.example apps/api/.env
 pnpm db:generate && pnpm db:migrate
 pnpm dev                           # API :4000, admin :3000, billing :3001, shop :3002, store :3003,
                                    # pharmacy :3006, restaurant :3007
-pnpm seed                          # demo shops: raja, kumar (billing), anbu (store), medplus (pharmacy),
-                                   # annapoorna (restaurant)
+pnpm seed                          # demo shops: raja, kumar (billing), anbu (store), thunai (pharmacy, a demo store: `pnpm seed:stores thunai`),
+                                   # arusuvai (restaurant)
 ```
 
 Without provider keys, SMS/email/WhatsApp/push messages are printed to the API console, so OTP sign-in

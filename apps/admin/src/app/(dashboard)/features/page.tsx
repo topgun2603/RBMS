@@ -216,7 +216,7 @@ function Status({ feature: f, all }: { feature: FeatureState; all: FeatureState[
   const { t } = useI18n();
   if (f.enabled) {
     return f.shopToggle ? (
-      <span className="text-xs font-medium text-success">{t("admin.featuresUi.on")}</span>
+      <span className="text-xs font-medium text-success-ink">{t("admin.featuresUi.on")}</span>
     ) : (
       <Badge variant="success" className="gap-1">
         <CheckIcon /> {t("admin.featuresUi.alwaysOn")}

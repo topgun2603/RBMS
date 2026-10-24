@@ -25,5 +25,10 @@
     "turbo": "^2.5.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "next@15.5.27": "patches/next@15.5.27.patch"
+    }
   }
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { adminBrandingCss } from "@srirealtime/web";
 import { api } from "./api";
 import type { Branding } from "./types";
 
@@ -50,7 +51,8 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <BrandingContext.Provider value={value}>
-      {data?.css ? <style id="sr-branding" dangerouslySetInnerHTML={{ __html: data.css }} /> : null}
+      {/* Light/dark aware: see adminBrandingCss (the primary stays readable in dark mode). */}
+      {data?.css ? <style id="sr-branding" dangerouslySetInnerHTML={{ __html: adminBrandingCss(data.css) }} /> : null}
       {children}
     </BrandingContext.Provider>
   );

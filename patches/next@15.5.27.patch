@@ -1,0 +1,280 @@
+diff --git a/dist/compiled/react-dom/cjs/react-dom-client.development.js b/dist/compiled/react-dom/cjs/react-dom-client.development.js
+index 4376913076151ad78dcc4059ad4152fad25478da..2a2dfb56854758f41a426f45706f1d37d0421217 100644
+--- a/dist/compiled/react-dom/cjs/react-dom-client.development.js
++++ b/dist/compiled/react-dom/cjs/react-dom-client.development.js
+@@ -4133,7 +4133,7 @@
+       return workInProgress;
+     }
+     function resetWorkInProgress(workInProgress, renderLanes) {
+-      workInProgress.flags &= 65011714;
++      workInProgress.flags &= 66060290;
+       var current = workInProgress.alternate;
+       null === current
+         ? ((workInProgress.childLanes = 0),
+@@ -15776,6 +15776,14 @@
+           break;
+         case 5:
+           resetHooksOnUnwind(unitOfWork);
++          var fiber$hydrationReplay = unitOfWork;
++          fiber$hydrationReplay === hydrationParentFiber &&
++            (isHydrating
++              ? (popToNextHostParent(fiber$hydrationReplay),
++                5 === fiber$hydrationReplay.tag &&
++                  null != fiber$hydrationReplay.stateNode &&
++                  (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++              : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+         default:
+           unwindInterruptedWork(current, unitOfWork),
+             (unitOfWork = workInProgress =
+diff --git a/dist/compiled/react-dom/cjs/react-dom-client.production.js b/dist/compiled/react-dom/cjs/react-dom-client.production.js
+index 755076a5cf15273f024c18fdc6a8805f1e36860b..b9045df0dcb88f87e2e0ad6a571cd2a382972002 100644
+--- a/dist/compiled/react-dom/cjs/react-dom-client.production.js
++++ b/dist/compiled/react-dom/cjs/react-dom-client.production.js
+@@ -2491,7 +2491,7 @@ function createWorkInProgress(current, pendingProps) {
+   return workInProgress;
+ }
+ function resetWorkInProgress(workInProgress, renderLanes) {
+-  workInProgress.flags &= 65011714;
++  workInProgress.flags &= 66060290;
+   var current = workInProgress.alternate;
+   null === current
+     ? ((workInProgress.childLanes = 0),
+@@ -11210,6 +11210,14 @@ function replaySuspendedUnitOfWork(unitOfWork) {
+       break;
+     case 5:
+       resetHooksOnUnwind(next);
++      var fiber$hydrationReplay = next;
++      fiber$hydrationReplay === hydrationParentFiber &&
++        (isHydrating
++          ? (popToNextHostParent(fiber$hydrationReplay),
++            5 === fiber$hydrationReplay.tag &&
++              null != fiber$hydrationReplay.stateNode &&
++              (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++          : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+     default:
+       unwindInterruptedWork(current, next),
+         (next = workInProgress =
+diff --git a/dist/compiled/react-dom/cjs/react-dom-profiling.development.js b/dist/compiled/react-dom/cjs/react-dom-profiling.development.js
+index 43d0363849598f796873fffaf33117d54b76de19..8a12496a0dd1ff2853d4c16aa3dcfc8d99a4ccc1 100644
+--- a/dist/compiled/react-dom/cjs/react-dom-profiling.development.js
++++ b/dist/compiled/react-dom/cjs/react-dom-profiling.development.js
+@@ -4141,7 +4141,7 @@
+       return workInProgress;
+     }
+     function resetWorkInProgress(workInProgress, renderLanes) {
+-      workInProgress.flags &= 65011714;
++      workInProgress.flags &= 66060290;
+       var current = workInProgress.alternate;
+       null === current
+         ? ((workInProgress.childLanes = 0),
+@@ -15784,6 +15784,14 @@
+           break;
+         case 5:
+           resetHooksOnUnwind(unitOfWork);
++          var fiber$hydrationReplay = unitOfWork;
++          fiber$hydrationReplay === hydrationParentFiber &&
++            (isHydrating
++              ? (popToNextHostParent(fiber$hydrationReplay),
++                5 === fiber$hydrationReplay.tag &&
++                  null != fiber$hydrationReplay.stateNode &&
++                  (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++              : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+         default:
+           unwindInterruptedWork(current, unitOfWork),
+             (unitOfWork = workInProgress =
+diff --git a/dist/compiled/react-dom/cjs/react-dom-profiling.profiling.js b/dist/compiled/react-dom/cjs/react-dom-profiling.profiling.js
+index 85185b07d38d122ada8ed308523b181da102ccad..5372f172c3d333b5b0716689f664320d73adb429 100644
+--- a/dist/compiled/react-dom/cjs/react-dom-profiling.profiling.js
++++ b/dist/compiled/react-dom/cjs/react-dom-profiling.profiling.js
+@@ -2580,7 +2580,7 @@ function createWorkInProgress(current, pendingProps) {
+   return workInProgress;
+ }
+ function resetWorkInProgress(workInProgress, renderLanes) {
+-  workInProgress.flags &= 65011714;
++  workInProgress.flags &= 66060290;
+   var current = workInProgress.alternate;
+   null === current
+     ? ((workInProgress.childLanes = 0),
+@@ -11814,6 +11814,14 @@ function replaySuspendedUnitOfWork(unitOfWork) {
+       break;
+     case 5:
+       resetHooksOnUnwind(next);
++      var fiber$hydrationReplay = next;
++      fiber$hydrationReplay === hydrationParentFiber &&
++        (isHydrating
++          ? (popToNextHostParent(fiber$hydrationReplay),
++            5 === fiber$hydrationReplay.tag &&
++              null != fiber$hydrationReplay.stateNode &&
++              (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++          : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+     default:
+       unwindInterruptedWork(current, next),
+         (next = workInProgress =
+diff --git a/dist/compiled/react-dom-experimental/cjs/react-dom-client.development.js b/dist/compiled/react-dom-experimental/cjs/react-dom-client.development.js
+index 00530847f2c96e18ef96e2b172ab1f0c5955e029..9d3057f3aa60e54416b1b9877ecde1fd046d74c4 100644
+--- a/dist/compiled/react-dom-experimental/cjs/react-dom-client.development.js
++++ b/dist/compiled/react-dom-experimental/cjs/react-dom-client.development.js
+@@ -4959,7 +4959,7 @@
+       return workInProgress;
+     }
+     function resetWorkInProgress(workInProgress, renderLanes) {
+-      workInProgress.flags &= 65011714;
++      workInProgress.flags &= 66060290;
+       var current = workInProgress.alternate;
+       null === current
+         ? ((workInProgress.childLanes = 0),
+@@ -19477,6 +19477,14 @@
+           break;
+         case 5:
+           resetHooksOnUnwind(unitOfWork);
++          var fiber$hydrationReplay = unitOfWork;
++          fiber$hydrationReplay === hydrationParentFiber &&
++            (isHydrating
++              ? (popToNextHostParent(fiber$hydrationReplay),
++                5 === fiber$hydrationReplay.tag &&
++                  null != fiber$hydrationReplay.stateNode &&
++                  (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++              : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+         default:
+           unwindInterruptedWork(current, unitOfWork),
+             (unitOfWork = workInProgress =
+diff --git a/dist/compiled/react-dom-experimental/cjs/react-dom-client.production.js b/dist/compiled/react-dom-experimental/cjs/react-dom-client.production.js
+index 1f7a79567a3e6ff140709894f70c266498e5110d..4966f011c70b7781777df970ed38e6e575cfecd9 100644
+--- a/dist/compiled/react-dom-experimental/cjs/react-dom-client.production.js
++++ b/dist/compiled/react-dom-experimental/cjs/react-dom-client.production.js
+@@ -2579,7 +2579,7 @@ function createWorkInProgress(current, pendingProps) {
+   return workInProgress;
+ }
+ function resetWorkInProgress(workInProgress, renderLanes) {
+-  workInProgress.flags &= 65011714;
++  workInProgress.flags &= 66060290;
+   var current = workInProgress.alternate;
+   null === current
+     ? ((workInProgress.childLanes = 0),
+@@ -13180,6 +13180,14 @@ function replaySuspendedUnitOfWork(unitOfWork) {
+       break;
+     case 5:
+       resetHooksOnUnwind(next);
++      var fiber$hydrationReplay = next;
++      fiber$hydrationReplay === hydrationParentFiber &&
++        (isHydrating
++          ? (popToNextHostParent(fiber$hydrationReplay),
++            5 === fiber$hydrationReplay.tag &&
++              null != fiber$hydrationReplay.stateNode &&
++              (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++          : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+     default:
+       unwindInterruptedWork(current, next),
+         (next = workInProgress =
+diff --git a/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.development.js b/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.development.js
+index ba87af29890227eeff25a3eb7ce8b3d604822227..0d93dfdf00a588d8970a38109c26cdb853da060d 100644
+--- a/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.development.js
++++ b/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.development.js
+@@ -4967,7 +4967,7 @@
+       return workInProgress;
+     }
+     function resetWorkInProgress(workInProgress, renderLanes) {
+-      workInProgress.flags &= 65011714;
++      workInProgress.flags &= 66060290;
+       var current = workInProgress.alternate;
+       null === current
+         ? ((workInProgress.childLanes = 0),
+@@ -19485,6 +19485,14 @@
+           break;
+         case 5:
+           resetHooksOnUnwind(unitOfWork);
++          var fiber$hydrationReplay = unitOfWork;
++          fiber$hydrationReplay === hydrationParentFiber &&
++            (isHydrating
++              ? (popToNextHostParent(fiber$hydrationReplay),
++                5 === fiber$hydrationReplay.tag &&
++                  null != fiber$hydrationReplay.stateNode &&
++                  (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++              : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+         default:
+           unwindInterruptedWork(current, unitOfWork),
+             (unitOfWork = workInProgress =
+diff --git a/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.profiling.js b/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.profiling.js
+index 8c82c27064dcd3538105e677d375b8f43ff70bc7..96a1987b2b2eeb9aba9177a6f448aee51369e15d 100644
+--- a/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.profiling.js
++++ b/dist/compiled/react-dom-experimental/cjs/react-dom-profiling.profiling.js
+@@ -2843,7 +2843,7 @@ function createWorkInProgress(current, pendingProps) {
+   return workInProgress;
+ }
+ function resetWorkInProgress(workInProgress, renderLanes) {
+-  workInProgress.flags &= 65011714;
++  workInProgress.flags &= 66060290;
+   var current = workInProgress.alternate;
+   null === current
+     ? ((workInProgress.childLanes = 0),
+@@ -14705,6 +14705,14 @@ function replaySuspendedUnitOfWork(unitOfWork) {
+       break;
+     case 5:
+       resetHooksOnUnwind(next);
++      var fiber$hydrationReplay = next;
++      fiber$hydrationReplay === hydrationParentFiber &&
++        (isHydrating
++          ? (popToNextHostParent(fiber$hydrationReplay),
++            5 === fiber$hydrationReplay.tag &&
++              null != fiber$hydrationReplay.stateNode &&
++              (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++          : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+     default:
+       unwindInterruptedWork(current, next),
+         (next = workInProgress =
+diff --git a/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.development.js b/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.development.js
+index 38e4149c03dd00476195c7f9d886953551907ba3..36bb113b43cb0caa54854e12716d326bd1baee78 100644
+--- a/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.development.js
++++ b/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.development.js
+@@ -5000,7 +5000,7 @@
+       return workInProgress;
+     }
+     function resetWorkInProgress(workInProgress, renderLanes) {
+-      workInProgress.flags &= 65011714;
++      workInProgress.flags &= 66060290;
+       var current = workInProgress.alternate;
+       null === current
+         ? ((workInProgress.childLanes = 0),
+@@ -19700,6 +19700,14 @@
+           break;
+         case 5:
+           resetHooksOnUnwind(unitOfWork);
++          var fiber$hydrationReplay = unitOfWork;
++          fiber$hydrationReplay === hydrationParentFiber &&
++            (isHydrating
++              ? (popToNextHostParent(fiber$hydrationReplay),
++                5 === fiber$hydrationReplay.tag &&
++                  null != fiber$hydrationReplay.stateNode &&
++                  (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++              : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+         default:
+           unwindInterruptedWork(current, unitOfWork),
+             (unitOfWork = workInProgress =
+diff --git a/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.production.js b/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.production.js
+index 424eff78c13ddf87dca5ca385afdd6575519cd65..5c6d0cae587c431ba3142d385a1ece7b5b1730bf 100644
+--- a/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.production.js
++++ b/dist/compiled/react-dom-experimental/cjs/react-dom-unstable_testing.production.js
+@@ -2665,7 +2665,7 @@ function createWorkInProgress(current, pendingProps) {
+   return workInProgress;
+ }
+ function resetWorkInProgress(workInProgress, renderLanes) {
+-  workInProgress.flags &= 65011714;
++  workInProgress.flags &= 66060290;
+   var current = workInProgress.alternate;
+   null === current
+     ? ((workInProgress.childLanes = 0),
+@@ -13452,6 +13452,14 @@ function replaySuspendedUnitOfWork(unitOfWork) {
+       break;
+     case 5:
+       resetHooksOnUnwind(next);
++      var fiber$hydrationReplay = next;
++      fiber$hydrationReplay === hydrationParentFiber &&
++        (isHydrating
++          ? (popToNextHostParent(fiber$hydrationReplay),
++            5 === fiber$hydrationReplay.tag &&
++              null != fiber$hydrationReplay.stateNode &&
++              (nextHydratableInstance = fiber$hydrationReplay.stateNode))
++          : (popToNextHostParent(fiber$hydrationReplay), (isHydrating = !0)));
+     default:
+       unwindInterruptedWork(current, next),
+         (next = workInProgress =
