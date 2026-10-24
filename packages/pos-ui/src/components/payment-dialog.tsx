@@ -172,7 +172,7 @@ export function PaymentDialog(props: PaymentDialogProps) {
         onKeyDown={onKeyDown}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="border-b px-5 py-4 text-left">
+        <DialogHeader className="border-b px-5 py-4 text-left sm:px-5 sm:pr-12">
           <DialogTitle className="flex items-baseline justify-between gap-4 pr-8">
             <span>{t("pos.pay.title")}</span>
             <AnimatedNumber value={payable} format={money} className="text-3xl font-bold tracking-tight tabular-nums" />

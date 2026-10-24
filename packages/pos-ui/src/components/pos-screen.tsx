@@ -657,7 +657,7 @@ function Counter() {
       )}
 
       <div className="relative flex min-h-0 flex-1">
-        <main className="min-h-0 flex-1 p-3">
+        <main className="min-h-0 min-w-0 flex-1 p-3">
           <div ref={shakeScope} className="relative h-full">
             <AnimatePresence>
               {scanMiss > 0 && (

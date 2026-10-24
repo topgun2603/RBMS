@@ -182,4 +182,9 @@ describe("receiptFromInvoice", () => {
   it("Tamil locale gives Tamil payment labels", () => {
     expect(receiptFromInvoice(inv, { shopName: "S", locale: "ta" }).payments[0]!.label).toBe("ரொக்கம்");
   });
+  it("a provisional slip is titled Provisional receipt (English and Tamil), a normal bill keeps the default title", () => {
+    expect(receiptFromInvoice(inv, { shopName: "S", provisional: true }).title).toBe("PROVISIONAL RECEIPT");
+    expect(receiptFromInvoice(inv, { shopName: "S", provisional: true, locale: "ta" }).title).toBe("தற்காலிக ரசீது");
+    expect(receiptFromInvoice(inv, { shopName: "S" }).title).toBeUndefined();
+  });
 });

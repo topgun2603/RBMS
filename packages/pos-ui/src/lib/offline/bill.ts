@@ -105,6 +105,9 @@ export function buildSale(a: BuildSaleArgs): SaleInput & { receipt: Omit<Invoice
 export const OFFLINE_ID_PREFIX = "offline:";
 export const isOfflineInvoice = (inv: Pick<Invoice, "id">) => inv.id.startsWith(OFFLINE_ID_PREFIX);
 
+/** A slip that is not yet an invoice: on this device only, under a provisional `OFF-…` number (a reserved number is final). */
+export const isProvisionalSlip = (inv: Pick<Invoice, "id" | "number">) => isOfflineInvoice(inv) && (inv.number ?? "").startsWith("OFF-");
+
 /**
  * The bill as an `Invoice` for the receipt screen and the printers (a `receiptData` source for the printing code): its
  * number is the slip number (a reserved invoice number, or the provisional "OFF-…" one) and its id starts with

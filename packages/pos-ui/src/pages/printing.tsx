@@ -28,8 +28,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { clearDeviceKeys, detectSupport, openDrawerDirect, pairPrinter, printTestPage, resolveConfig, type DirectResult, type PrinterConfig, type TransportKind, type TransportSupport } from "@srirealtime/receipt-print";
-import { describeError, Page, PageHeading, SettingsNav, useI18n } from "@srirealtime/web";
-import { usePos } from "../components/pos-context";
+import { describeError, Page, PageHeading, SettingsNav, useI18n, useTenantSlug } from "@srirealtime/web";
 import { failureKey, saveShopPrinting, usePrinterConfig } from "../lib/printing";
 import { configFromForm, DEVICE_KEYS, formFromConfig, LAYOUT_KEYS, pickKeys, validateForm, withPaperWidth, type PrintForm } from "../lib/printing-form";
 
@@ -42,7 +41,8 @@ const TYPES: TransportKind[] = ["none", "usb", "serial", "bluetooth", "bridge"];
  */
 export default function PrintingPage() {
   const { t, locale } = useI18n();
-  const { tenant } = usePos();
+  // Settings pages render outside the counter (no PosProvider): the shop comes from the host.
+  const tenant = useTenantSlug() ?? null;
   const printer = usePrinterConfig(tenant);
   const [form, setForm] = React.useState<PrintForm | null>(null);
   const [support, setSupport] = React.useState<TransportSupport | null>(null);

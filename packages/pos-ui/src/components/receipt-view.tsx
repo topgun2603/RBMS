@@ -29,6 +29,7 @@ import { reportNetwork } from "../lib/online";
 import { failureKey, fetchShopPrinting, kickDrawer, saleReceipt } from "../lib/printing";
 import { printPdfBlob, printReceiptInPage } from "../lib/print";
 import { storageKey, useLocalState } from "../lib/storage";
+import { isOfflineInvoice, isProvisionalSlip } from "../lib/offline/bill";
 import type { Invoice } from "../lib/types";
 import { usePos } from "./pos-context";
 
@@ -46,6 +47,8 @@ export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSal
   const { t, locale } = useI18n();
   const { has, tenant, terminal, shopName, seller, branch, cashier } = usePos();
   const inv = sale.invoice;
+  // A slip that exists only on this device: nothing on the server to fetch (PDF) or to send (WhatsApp).
+  const onDevice = isOfflineInvoice(inv);
   const shopBrand = useOptionalShop();
   const [printing, setPrinting] = React.useState(false);
   const [sending, setSending] = React.useState(false);
@@ -80,6 +83,7 @@ export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSal
         // fall through to the browser print
       }
       try {
+        if (onDevice) throw new Error("offline slip");
         const blob = await fetchPdf(thermalPath(inv.id), { locale: locale === "ta" ? "ta" : undefined });
         await printPdfBlob(blob);
       } catch (err) {
@@ -131,6 +135,7 @@ export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSal
   }, [onNewSale, print]);
 
   const send = async () => {
+    if (onDevice) return;
     const d = mobileDigits(phone);
     if (!d) {
       toast.error(t("pos.receipt.phoneInvalid"));
@@ -196,7 +201,7 @@ export function ReceiptView({ sale, onNewSale }: { sale: CompletedSale; onNewSal
           </Button>
         </div>
 
-        {has.whatsapp && (
+        {has.whatsapp && !onDevice && (
           <form
             className="grid gap-2 text-left"
             onSubmit={(e) => {
@@ -257,7 +262,7 @@ export function PrintReceipt({ invoice, change }: { invoice: Invoice; change: nu
           {seller.address && <div>{seller.address}</div>}
           {seller.gstin && <div>GSTIN {seller.gstin}</div>}
           {seller.phone && <div>{seller.phone}</div>}
-          <div style={{ marginTop: 4, fontWeight: 700 }}>{t("pos.print.taxInvoice")}</div>
+          <div style={{ marginTop: 4, fontWeight: 700 }}>{t(isProvisionalSlip(invoice) ? "pos.print.provisional" : "pos.print.taxInvoice")}</div>
         </div>
         <hr />
         {r(invoice.number, `${invoice.date} ${timeShort(Date.now())}`)}

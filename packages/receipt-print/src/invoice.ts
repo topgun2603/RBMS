@@ -35,6 +35,8 @@ export interface InvoiceReceiptContext {
   /** Builds the UPI link for the balance (apps/gst `upiLink`); omitted = no payment QR. */
   upiLink?: ((o: { vpa: string; name: string; amountPaise: number; note: string }) => string) | null;
   barcode?: boolean;
+  /** Offline slip under a provisional number: titled "Provisional receipt" instead of "Tax invoice". */
+  provisional?: boolean;
 }
 
 /** Same grouping as the PDF thermal template: cash / UPI / card / other. */
@@ -48,6 +50,7 @@ export function receiptFromInvoice(inv: InvoiceLike, c: InvoiceReceiptContext): 
   return {
     locale: c.locale,
     shop: { name, branch: c.branchName ?? null, address: address || null, gstin: c.seller?.gstin ?? null, phone: c.seller?.phone ?? null },
+    ...(c.provisional ? { title: L.provisional } : {}),
     number,
     date: [inv.date, c.time].filter(Boolean).join(" "),
     customer: inv.customer?.name ?? null,

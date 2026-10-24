@@ -55,7 +55,7 @@ export function PendingBillsDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 p-0 sm:max-w-3xl" closeLabel={t("pos.common.close")}>
-        <DialogHeader className="border-b px-5 py-4 text-left">
+        <DialogHeader className="border-b px-5 py-4 text-left sm:px-5 sm:pr-12">
           <DialogTitle>{t("pos.off.title")}</DialogTitle>
           <DialogDescription>
             {t("pos.off.summary", { pending: counts.pending, failed: counts.failed, flagged: counts.flagged })}

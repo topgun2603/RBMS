@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cartTotals, productToLine, type CartProduct } from "../cart";
 import { NO_CUSTOMER } from "../types";
-import { buildSale, isOfflineInvoice, offlineBlocker, offlineInvoice } from "./bill";
+import { buildSale, isOfflineInvoice, isProvisionalSlip, slipInvoice, offlineBlocker, offlineInvoice } from "./bill";
 import { allocate, needsBlock, provisionalNumber, remainingFor, staleBlocks } from "./numbering";
 import { OfflineQueue, countBills } from "./queue";
 import { EMPTY_NUMBERING, MemoryOfflineStore } from "./store";
@@ -210,6 +210,18 @@ describe("the offline queue", () => {
     expect(inv).toMatchObject({ number: bill.number, total: 21_000, status: "paid", paid: 21_000, balance: 0 });
     expect(inv.total).toBe(cartTotals([productToLine(product(), 2)], { sellerState: "33", placeOfSupply: "33" }).total);
     expect(inv.lines[0]).toMatchObject({ description: "Tea", qty: 2, gstRate: 5 });
+  });
+
+  it("only an OFF- slip on the device is provisional; a reserved number or a synced bill is a normal invoice", async () => {
+    const { queue } = setup();
+    const bill = await queue.enqueueSale(sale());
+    const inv = offlineInvoice(bill)!;
+    expect(isProvisionalSlip({ ...inv, number: "OFF-C3D4-0001" })).toBe(true);
+    expect(isProvisionalSlip({ ...inv, number: "INV/0001" })).toBe(false);
+    const synced = slipInvoice({ ...bill, result: { invoiceId: "inv-1", number: "INV/0042" } } as never)!;
+    expect(isOfflineInvoice(synced)).toBe(false);
+    expect(isProvisionalSlip(synced)).toBe(false);
+    expect(synced.number).toBe("INV/0042");
   });
 });
 

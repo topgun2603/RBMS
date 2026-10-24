@@ -2,6 +2,8 @@ export type ReceiptLocale = "en" | "ta";
 
 export interface ReceiptLabels {
   taxInvoice: string;
+  /** Title of a slip printed offline under a provisional (OFF-) number. */
+  provisional: string;
   customer: string;
   taxable: string;
   roundOff: string;
@@ -24,6 +26,7 @@ export interface ReceiptLabels {
 export const RECEIPT_LABELS: Record<ReceiptLocale, ReceiptLabels> = {
   en: {
     taxInvoice: "TAX INVOICE",
+    provisional: "PROVISIONAL RECEIPT",
     customer: "Customer",
     taxable: "Taxable value",
     roundOff: "Round off",
@@ -43,6 +46,7 @@ export const RECEIPT_LABELS: Record<ReceiptLocale, ReceiptLabels> = {
   },
   ta: {
     taxInvoice: "வரி விலைப்பட்டியல்",
+    provisional: "தற்காலிக ரசீது",
     customer: "வாடிக்கையாளர்",
     taxable: "வரிக்குரிய மதிப்பு",
     roundOff: "முழுமையாக்கல்",

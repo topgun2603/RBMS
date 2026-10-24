@@ -19,6 +19,7 @@ import {
 } from "@srirealtime/receipt-print";
 import { api } from "@srirealtime/web";
 import { upiLink } from "@srirealtime/gst";
+import { isProvisionalSlip } from "./offline/bill";
 import type { Invoice, SellerProfile } from "./types";
 
 /** `GET /settings/printing` values: the shop's layout defaults for direct receipt printing. */
@@ -108,6 +109,7 @@ export function saleReceipt(
     cashier: o.cashier,
     change: o.change,
     time: o.time,
+    provisional: isProvisionalSlip(inv),
     upiLink: (x) => upiLink({ vpa: x.vpa, name: x.name, amountPaise: x.amountPaise, note: x.note }),
   });
 }

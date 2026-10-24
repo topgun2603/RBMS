@@ -261,6 +261,7 @@ const en: Messages = {
 
   // printed receipt
   "pos.print.taxInvoice": "TAX INVOICE",
+  "pos.print.provisional": "PROVISIONAL RECEIPT",
   "pos.print.to": "Customer",
   "pos.print.taxable": "Taxable value",
   "pos.print.points": "Points ({count})",
@@ -672,6 +673,7 @@ const ta: Messages = {
 
   // printed receipt
   "pos.print.taxInvoice": "வரி விலைப்பட்டியல்",
+  "pos.print.provisional": "தற்காலிக ரசீது",
   "pos.print.to": "வாடிக்கையாளர்",
   "pos.print.taxable": "வரிக்குரிய மதிப்பு",
   "pos.print.points": "புள்ளிகள் ({count})",
