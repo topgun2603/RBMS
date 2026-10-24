@@ -24,8 +24,11 @@ const q = (over: Partial<{ status: (typeof QUOTATION_STATUSES)[number]; latest: 
 
 describe("quotation settings", () => {
   it("defaults to QT, 15 days and no terms", () => {
-    expect(normalizeQuotationSettings(undefined)).toEqual({ prefix: "QT", validityDays: 15, terms: null });
-    expect(normalizeQuotationSettings({ prefix: " est ", validityDays: "30", terms: "  Pay in 7 days " })).toEqual({ prefix: "EST", validityDays: 30, terms: "Pay in 7 days" });
+    expect(normalizeQuotationSettings(undefined)).toEqual({ prefix: "QT", validityDays: 15, terms: null, advancePercent: null });
+    expect(normalizeQuotationSettings({ prefix: " est ", validityDays: "30", terms: "  Pay in 7 days " })).toEqual({ prefix: "EST", validityDays: 30, terms: "Pay in 7 days", advancePercent: null });
+    expect(normalizeQuotationSettings({ advancePercent: 40 }).advancePercent).toBe(40);
+    expect(normalizeQuotationSettings({ advancePercent: "25" }).advancePercent).toBe(25);
+    for (const bad of [0, 101, 12.5, "x", null]) expect(normalizeQuotationSettings({ advancePercent: bad }).advancePercent).toBeNull();
   });
   it("ignores unusable values", () => {
     expect(normalizeQuotationSettings({ prefix: "", validityDays: 0 })).toMatchObject({ prefix: "QT", validityDays: 15 });

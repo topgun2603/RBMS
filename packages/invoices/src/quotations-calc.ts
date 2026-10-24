@@ -13,17 +13,21 @@ export interface QuotationSettings {
   validityDays: number;
   /** Default terms and conditions printed on a quotation; editable per quotation. */
   terms: string | null;
+  /** Advance % new quotations start with (1-100), editable per quotation; null = no advance. */
+  advancePercent: number | null;
 }
 
-/** Fills a possibly partial settings object: capital-letter prefix, validity 1-365 days. */
+/** Fills a possibly partial settings object: capital-letter prefix, validity 1-365 days, advance 1-100 % or none. */
 export function normalizeQuotationSettings(raw: Partial<Record<keyof QuotationSettings, unknown>> | null | undefined): QuotationSettings {
   const days = Number(raw?.validityDays);
+  const advance = raw?.advancePercent == null || raw.advancePercent === "" ? NaN : Number(raw.advancePercent);
   const terms = typeof raw?.terms === "string" ? raw.terms.trim() : "";
   const prefix = sanitizePrefix(typeof raw?.prefix === "string" && raw.prefix.trim() ? raw.prefix : DEFAULT_QUOTATION_PREFIX);
   return {
     prefix: prefix || DEFAULT_QUOTATION_PREFIX,
     validityDays: Number.isInteger(days) && days >= 1 && days <= MAX_VALIDITY_DAYS ? days : DEFAULT_VALIDITY_DAYS,
     terms: terms || null,
+    advancePercent: Number.isInteger(advance) && advance >= 1 && advance <= 100 ? advance : null,
   };
 }
 

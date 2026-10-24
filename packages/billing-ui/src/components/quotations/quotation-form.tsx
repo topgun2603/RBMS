@@ -69,7 +69,12 @@ export function QuotationForm({
   const [posTouched, setPosTouched] = React.useState(!!quotation);
   const [lines, setLines] = React.useState<LineDraft[]>(() => (quotation?.lines.length ? linesFromInvoice(quotation) : [blankLine()]));
   const [delivery, setDelivery] = React.useState(() => quotation?.deliveryText ?? "");
-  const [advance, setAdvance] = React.useState<string>(() => (quotation?.advancePercent ? String(quotation.advancePercent) : ""));
+  const [advance, setAdvanceRaw] = React.useState<string>(() => (quotation?.advancePercent ? String(quotation.advancePercent) : ""));
+  const [advanceTouched, setAdvanceTouched] = React.useState(!!quotation);
+  const setAdvance = (v: string) => {
+    setAdvanceTouched(true);
+    setAdvanceRaw(v);
+  };
   const [notes, setNotes] = React.useState(() => quotation?.notes ?? "");
   const [showNotes, setShowNotes] = React.useState(() => !!quotation?.notes);
   const [terms, setTerms] = React.useState(() => quotation?.terms ?? "");
@@ -90,6 +95,10 @@ export function QuotationForm({
   React.useEffect(() => {
     if (!termsTouched && defaults.data) setTerms(defaults.data.terms ?? "");
   }, [defaults.data, termsTouched]);
+  // A new quotation starts with the shop's default advance % (Settings > Quotations) until the user picks one.
+  React.useEffect(() => {
+    if (!advanceTouched && defaults.data) setAdvanceRaw(defaults.data.advancePercent ? String(defaults.data.advancePercent) : "");
+  }, [defaults.data, advanceTouched]);
 
   const sellerState = seller.data?.stateCode || "";
   React.useEffect(() => {

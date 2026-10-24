@@ -92,6 +92,8 @@ export interface QuotationSettings {
   prefix: string;
   validityDays: number;
   terms: string | null;
+  /** Advance % new quotations start with; null = none. */
+  advancePercent: number | null;
 }
 
 export interface QuotationSummaryReport {

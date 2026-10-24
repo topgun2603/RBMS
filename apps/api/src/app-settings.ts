@@ -89,10 +89,13 @@ export function defineAppSettings(settings: SettingsService) {
       validityDays: z.number().int().min(1).max(365),
       /** Default terms and conditions printed on quotations; editable on each one. */
       terms: z.string().max(2000),
+      /** Advance % new quotations start with (1-100); null = no advance. Editable on each quotation. */
+      advancePercent: z.number().int().min(1).max(100).nullable(),
     }),
     {
       prefix: "QT",
       validityDays: 15,
+      advancePercent: null,
       terms: "Prices are valid until the date shown. Delivery within the time agreed after the advance is received. Goods once supplied will not be taken back.",
     },
   );

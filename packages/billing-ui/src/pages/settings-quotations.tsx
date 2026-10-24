@@ -39,18 +39,21 @@ function SettingsForm({ initial, canEdit }: { initial: QuotationSettings; canEdi
   const [prefix, setPrefix] = React.useState(initial.prefix);
   const [days, setDays] = React.useState(String(initial.validityDays));
   const [terms, setTerms] = React.useState(initial.terms ?? "");
+  const [advance, setAdvance] = React.useState(initial.advancePercent ? String(initial.advancePercent) : "");
   const [touched, setTouched] = React.useState(false);
 
   const prefixOk = /^[A-Z0-9-]{1,6}$/.test(prefix);
   const daysNum = Number(days);
   const daysOk = Number.isInteger(daysNum) && daysNum >= 1 && daysNum <= 365;
+  const advanceNum = Number(advance);
+  const advanceOk = !advance || (Number.isInteger(advanceNum) && advanceNum >= 1 && advanceNum <= 100);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (!prefixOk || !daysOk) return;
+    if (!prefixOk || !daysOk || !advanceOk) return;
     try {
-      await save.mutateAsync({ prefix, validityDays: daysNum, terms: terms.trim() || null });
+      await save.mutateAsync({ prefix, validityDays: daysNum, terms: terms.trim() || null, advancePercent: advance ? advanceNum : null });
       toast.success(t("billing.q.settings.saved"));
     } catch (err) {
       toast.error(describeError(err, t));
@@ -75,6 +78,12 @@ function SettingsForm({ initial, canEdit }: { initial: QuotationSettings; canEdi
             <Input id="qs-days" inputMode="numeric" value={days} disabled={!canEdit} aria-invalid={touched && !daysOk} className="tabular-nums" onChange={(e) => setDays(e.target.value.replace(/\D/g, "").slice(0, 3))} />
             <FieldHint>{t("billing.q.settings.validityHint")}</FieldHint>
             {touched && !daysOk && <p className="text-meta text-destructive">{t("billing.q.settings.validityInvalid")}</p>}
+          </Field>
+          <Field id="qs-advance">
+            <FieldLabel>{t("billing.q.settings.advance")}</FieldLabel>
+            <Input id="qs-advance" inputMode="numeric" value={advance} placeholder={t("billing.q.settings.advanceNone")} disabled={!canEdit} aria-invalid={touched && !advanceOk} className="tabular-nums" onChange={(e) => setAdvance(e.target.value.replace(/D/g, "").slice(0, 3))} />
+            <FieldHint>{t("billing.q.settings.advanceHint")}</FieldHint>
+            {touched && !advanceOk && <p className="text-meta text-destructive">{t("billing.q.settings.advanceInvalid")}</p>}
           </Field>
         </CardContent>
       </Card>
