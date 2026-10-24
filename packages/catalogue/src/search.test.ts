@@ -10,6 +10,7 @@ import {
   groupFacetRows,
   mergeSameNameFacets,
   nameTierSql,
+  translatedTextMatchSql,
   normalizeText,
   parseQuery,
   parseSearchQuery,
@@ -283,5 +284,14 @@ describe("sortByRating", () => {
     ];
     expect(sortByRating(ids, ratings)).toEqual(["c", "b", "d", "a", "e"]);
     expect(sortByRating(ids, [])).toEqual(ids);
+  });
+});
+
+describe("translatedTextMatchSql (Tamil queries match approved Tamil names)", () => {
+  it("is only added for non-English queries", () => {
+    expect(translatedTextMatchSql(parseQuery("silk saree"))).toBeNull();
+    expect(translatedTextMatchSql(parseQuery(""))).toBeNull();
+    expect(translatedTextMatchSql(parseQuery("பட்டுப் புடவை"))).not.toBeNull();
+    expect(searchMatchSql(parseQuery("பட்டு"))).not.toBeNull();
   });
 });

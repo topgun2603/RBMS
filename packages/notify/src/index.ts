@@ -74,6 +74,7 @@ export { Msg91Driver } from "./drivers/msg91";
 export { ResendDriver } from "./drivers/resend";
 export { WhatsAppDriver } from "./drivers/whatsapp";
 export { CUSTOMER_TEMPLATES, CUSTOMER_TEMPLATE_KEYS } from "./customer-templates";
+export { AI_TEMPLATE_KEYS } from "./ai-templates";
 export {
   CustomerMessages,
   CUSTOMER_EVENTS,

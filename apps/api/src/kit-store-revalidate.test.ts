@@ -11,6 +11,11 @@ describe("storeResourcesFor", () => {
     expect(storeResourcesFor("PUT", "/v1/branding/")).toEqual(["branding", "config"]);
     expect(storeResourcesFor("POST", "/v1/branding/preview")).toEqual([]);
     expect(storeResourcesFor("PATCH", "/v1/catalog/products/:id")).toEqual(["catalog", "offers", "seo", "bookings"]);
+    // Tamil product text (AI translations): approve, reject, hand edit and re-draft all refresh the product pages.
+    for (const [m, url] of [["POST", "/v1/ai/assist/translations/:id/approve"], ["POST", "/v1/ai/assist/translations/:id/reject"], ["PUT", "/v1/ai/assist/translations/product/:productId"], ["POST", "/v1/ai/assist/translations/batches/:batchId/approve"], ["POST", "/v1/ai/assist/translate"]] as const)
+      expect(storeResourcesFor(m, url)).toEqual(["catalog", "offers", "seo", "bookings"]);
+    expect(storeResourcesFor("GET", "/v1/ai/assist/translations")).toEqual([]);
+    expect(storeResourcesFor("POST", "/v1/ai/assist/translate/estimate")).toEqual([]);
     expect(storeResourcesFor("POST", "/v1/catalog/collections")).toEqual(["catalog", "offers", "seo", "bookings"]);
     // The booking page (/book) refreshes when services or staff change; slots are always live.
     expect(storeResourcesFor("PATCH", "/v1/bookings/services/:id")).toEqual(["bookings", "catalog"]);

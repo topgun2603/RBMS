@@ -2,6 +2,7 @@ import type { Messages } from "@srirealtime/web";
 import { mediaEn, mediaTa } from "./media-messages";
 import { moreEn, moreTa } from "./messages-more";
 import { reviewsEn, reviewsTa } from "./messages-reviews";
+import { reviewsAiEn, reviewsAiTa } from "./messages-reviews-ai";
 import { layoutsEn, layoutsTa } from "./messages-layouts";
 import { trustEn, trustTa } from "./messages-trust";
 
@@ -10,6 +11,7 @@ const en: Messages = {
   ...moreEn,
   ...mediaEn,
   ...reviewsEn,
+  ...reviewsAiEn,
   ...layoutsEn,
   ...trustEn,
   // nav
@@ -1046,6 +1048,7 @@ const ta: Messages = {
   ...moreTa,
   ...mediaTa,
   ...reviewsTa,
+  ...reviewsAiTa,
   ...layoutsTa,
   ...trustTa,
   // nav

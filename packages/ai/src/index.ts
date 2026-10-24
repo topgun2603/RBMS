@@ -11,6 +11,8 @@ export * from "./masking";
 export * from "./schema";
 export * from "./config";
 export * from "./assist";
+export * from "./insights";
+export * from "./ask";
 export * from "./vision/shared";
 export * from "./vision/bill";
 export * from "./vision/receipt";

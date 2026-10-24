@@ -11,7 +11,9 @@
     "test": "vitest run --passWithNoTests",
     "eval": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run.ts",
     "eval:phase1": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/phase1.ts",
-    "eval:vision": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run-vision.ts"
+    "eval:phase2b": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/phase2b.ts",
+    "eval:vision": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run-vision.ts",
+    "eval:ask": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/ask.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

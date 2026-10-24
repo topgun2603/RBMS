@@ -208,6 +208,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { id: "kpi-quotations", zone: "kpi", priority: 52, feature: F.quotations, component: widget("QuotationsKpiWidget", () => import("./widgets/quotations")) },
     { id: "kpi-payables", zone: "kpi", priority: 55, feature: F.purchases, component: widget("PayablesKpiWidget", () => import("./widgets/payables")) },
     { id: "kpi-expiry", zone: "kpi", priority: 58, feature: F.inventory, component: widget("ExpiryKpiWidget", () => import("./widgets/expiry")) },
+    { id: "ai-summary", zone: "attention", priority: 5, feature: "ai", component: widget("AiSummaryWidget", () => import("./widgets/ai-summary")) },
     { id: "attention", zone: "attention", priority: 10, feature: F.invoices, component: widget("BillingAttentionWidget", widgets) },
     { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, component: widget("SalesTrendWidget", widgets) },
     { id: "recent-bills", zone: "main", priority: 30, feature: F.invoices, component: widget("RecentBillsWidget", widgets) },

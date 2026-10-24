@@ -218,12 +218,12 @@ export class TranslationService {
   }
 
   /** Approved Tamil text for products (what a storefront or the product editor may show). */
-  async approvedFor(tenantId: string, productIds: string[], locale = "ta"): Promise<Record<string, { name: string; description: string | null }>> {
+  async approvedFor(tenantId: string, productIds: string[], locale = "ta"): Promise<Record<string, { name: string; description: string | null; sourceName: string }>> {
     if (productIds.length === 0) return {};
     const rows = await this.deps.db
       .select()
       .from(aiProductTranslations)
       .where(and(eq(aiProductTranslations.tenantId, tenantId), eq(aiProductTranslations.locale, locale), eq(aiProductTranslations.status, "approved"), inArray(aiProductTranslations.productId, productIds)));
-    return Object.fromEntries(rows.map((r) => [r.productId, { name: r.name ?? "", description: r.description }]));
+    return Object.fromEntries(rows.map((r) => [r.productId, { name: r.name ?? "", description: r.description, sourceName: r.sourceName }]));
   }
 }

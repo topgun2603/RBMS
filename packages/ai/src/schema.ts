@@ -1,5 +1,6 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
-import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import type { SummaryFacts } from "./insights/summary";
 import type { AiFeedback, AiRunStatus, AiTier, ProviderKind } from "./types";
 
 /**
@@ -86,3 +87,49 @@ export const aiProductTranslations = pgTable(
   ],
 );
 export type AiProductTranslationRow = typeof aiProductTranslations.$inferSelect;
+
+// ------------------------------------------------------------------ Phase 2 part B: daily summary
+
+export const SUMMARY_STATUSES = ["running", "ready", "failed"] as const;
+export type SummaryStatus = (typeof SUMMARY_STATUSES)[number];
+
+/** What happened to a summary after it was written (kept for the owner's "Sent to" line). Phones are masked. */
+export interface SummaryDelivery {
+  inApp: boolean;
+  whatsapp: { to: string; status: string }[];
+  email: { to: string; status: string }[];
+  /** Why a channel was not used ("whatsapp_not_configured", "no_phone"...). */
+  skipped: string[];
+}
+
+/**
+ * One row per shop and IST day: the daily summary shown on the dashboard card and sent to WhatsApp / email. The unique key
+ * (tenant, date) is what makes the scheduled job idempotent: whoever inserts the row first runs the day.
+ */
+export const aiDailySummaries = pgTable(
+  "ai_daily_summaries",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    /** The IST business date summarised. */
+    date: date("date", { mode: "string" }).notNull(),
+    status: text("status").$type<SummaryStatus>().notNull().default("running"),
+    attempts: integer("attempts").notNull().default(1),
+    /** "schedule" (the job) or "manual" (Send now). */
+    trigger: text("trigger").notNull().default("schedule"),
+    language: text("language").notNull().default("en"),
+    /** "ai" or "template". */
+    source: text("source"),
+    fallbackReason: text("fallback_reason"),
+    facts: jsonb("facts").$type<SummaryFacts>(),
+    narrative: text("narrative"),
+    actions: jsonb("actions").$type<string[]>(),
+    runId: uuid("run_id"),
+    credits: integer("credits").notNull().default(0),
+    delivery: jsonb("delivery").$type<SummaryDelivery>(),
+    error: text("error"),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("ai_daily_summaries_tenant_date_uq").on(t.tenantId, t.date), index("ai_daily_summaries_tenant_idx").on(t.tenantId, t.createdAt)],
+);
+export type AiDailySummaryRow = typeof aiDailySummaries.$inferSelect;

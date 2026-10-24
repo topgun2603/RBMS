@@ -43,6 +43,7 @@ import { getTenantStrategy } from "../lib/tenant";
 import { BUILT_IN_SETTINGS } from "./builtins";
 import { buildNavModel, joinPath } from "./model";
 import { AiHelpButton } from "../components/ai-assist/help-panel";
+import { AskShopButton } from "../components/ai-assist/ask-shop-panel";
 import { useSettingsHref, useWebApp } from "./navigation";
 import { useSession, useVisible, useVisibleSettings } from "./session";
 import type { IconType, MountedModule, QuickAction } from "./types";
@@ -137,6 +138,7 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
             </Button>
           )}
           <BranchSwitcher />
+          <AskShopButton />
           <AiHelpButton resolveScreen={resolveScreen} />
           <LocaleSwitcher />
           <ThemeToggle />

@@ -190,7 +190,7 @@ export interface TrackingView {
   paymentMethod: string;
   placedAt: Date;
   timeline: { type: string; status: string | null; message: string | null; at: Date }[];
-  lines: { name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
+  lines: { productId: string; name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
   totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number; loyalty?: { points: number; discount: number } };
   fulfillment: { carrier: string | null; trackingNumber: string | null; trackingUrl: string | null };
   shipTo: { city: string; pincode: string } | null;
@@ -1033,7 +1033,7 @@ export class StorefrontService {
       paymentMethod: o.paymentMethod,
       placedAt: o.placedAt,
       timeline,
-      lines: o.lines.map((l) => ({ name: l.name, image: l.image, qty: l.qty, unit: l.unit, price: l.price, total: l.total })),
+      lines: o.lines.map((l) => ({ productId: l.productId, name: l.name, image: l.image, qty: l.qty, unit: l.unit, price: l.price, total: l.total })),
       totals: {
         subtotal: o.totals.subtotal,
         discount: o.totals.discount,

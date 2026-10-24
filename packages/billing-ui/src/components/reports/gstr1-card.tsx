@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { apiDownload, describeError, useFeature, useI18n } from "@srirealtime/web";
-import { AlertTriangleIcon, ChevronDownIcon, FileJson2Icon, Loader2Icon } from "lucide-react";
+import { api, apiDownload, describeError, FiguresTables, useAiAssistAllowed, useFeature, useI18n, type AskTable } from "@srirealtime/web";
+import { AlertTriangleIcon, ChevronDownIcon, FileJson2Icon, Loader2Icon, SparklesIcon } from "lucide-react";
 import {
   AnimatePresence,
   Button,
@@ -44,14 +44,37 @@ function saveJson(json: unknown, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+interface GstExplainResponse {
+  monthLabel: string;
+  note: { summary: string; what_changed: string[]; unusual: string[]; fix_before_filing: string[] } | null;
+  fallback: boolean;
+  blocks: AskTable[];
+  credits: number;
+}
+
 function Gstr1CardInner() {
-  const { t, formatDate } = useI18n();
+  const { t, formatDate, locale } = useI18n();
+  const canExplain = useAiAssistAllowed(PERMISSION);
+  const [explaining, setExplaining] = React.useState(false);
+  const [explained, setExplained] = React.useState<GstExplainResponse | null>(null);
   const periods = React.useMemo(() => gstr1Periods(new Date(), 18), []);
   const [period, setPeriod] = React.useState(() => defaultGstr1Period(new Date()));
   const [busy, setBusy] = React.useState(false);
   const [showWarnings, setShowWarnings] = React.useState(false);
   const summary = useGstr1Summary(period);
   const label = (p: { year: number; month: number }) => formatDate(new Date(Date.UTC(p.year, p.month - 1, 15)), { month: "long", year: "numeric" });
+
+  const explain = async () => {
+    setExplaining(true);
+    try {
+      setExplained(await api.post<GstExplainResponse>("/ai/ask/gst", { period, language: locale === "ta" ? "ta" : "en" }));
+    } catch (err) {
+      setExplained(null);
+      toast.error(describeError(err, t));
+    } finally {
+      setExplaining(false);
+    }
+  };
 
   const download = async () => {
     setBusy(true);
@@ -105,6 +128,12 @@ function Gstr1CardInner() {
             {busy ? <Loader2Icon className="animate-spin" /> : <FileJson2Icon />}
             {t("billing.gstr1.download")}
           </Button>
+          {canExplain && (
+            <Button variant="outline" onClick={() => void explain()} disabled={explaining} title={t("billing.gstr1.explain.hint")}>
+              {explaining ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
+              {explaining ? t("billing.gstr1.explain.busy") : t("billing.gstr1.explain.button")}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -153,6 +182,40 @@ function Gstr1CardInner() {
           </div>
         ) : null}
       </div>
+      {explained && (
+        <div className="grid gap-3 rounded-xl bg-primary/5 p-3 text-sm ring-1 ring-primary/20 ring-inset" aria-live="polite" lang={locale === "ta" ? "ta" : "en"}>
+          <h3 className="font-heading text-sm font-semibold">{t("billing.gstr1.explain.title", { month: explained.monthLabel })}</h3>
+          {explained.fallback || !explained.note ? (
+            <p className="text-xs text-warning-ink">{t("billing.gstr1.explain.fallback")}</p>
+          ) : (
+            <>
+              <p>{explained.note.summary}</p>
+              {(
+                [
+                  ["billing.gstr1.explain.changed", explained.note.what_changed],
+                  ["billing.gstr1.explain.unusual", explained.note.unusual],
+                  ["billing.gstr1.explain.fix", explained.note.fix_before_filing],
+                ] as const
+              )
+                .filter(([, items]) => items.length > 0)
+                .map(([key, items]) => (
+                  <div key={key} className="grid gap-1">
+                    <p className="text-xs font-semibold">{t(key)}</p>
+                    <ul className="grid list-disc gap-1 pl-5">
+                      {items.map((x, k) => (
+                        <li key={k}>{x}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+            </>
+          )}
+          <FiguresTables blocks={explained.blocks} ta={locale === "ta"} />
+          <p className="text-meta text-muted-foreground">
+            {t("billing.gstr1.explain.disclaimer")} {t("billing.gstr1.explain.credits", { count: explained.credits })}
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

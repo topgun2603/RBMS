@@ -25,6 +25,7 @@ const app = await buildServer({
   preHandlers: kit.preHandlers,
   onResponse: kit.onResponse,
   onSend: kit.onSend,
+  preSerialization: kit.preSerialization,
   modules: kit.modules,
   routeRules: kit.routeRules,
   routeCollector: kit.routeCollector,

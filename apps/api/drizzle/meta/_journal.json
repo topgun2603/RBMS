@@ -267,6 +267,13 @@
       "when": 1792859350304,
       "tag": "0037_ai_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792865786025,
+      "tag": "0038_ai_insights",
+      "breakpoints": true
     }
   ]
 }

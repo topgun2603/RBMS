@@ -66,6 +66,8 @@ export interface AiSettingsValues {
   storePrompts: boolean;
   /** Suggest HSN and GST when the item name box loses focus (about 1 credit each). */
   autoHsn?: boolean;
+  /** Daily summary block (see queries-ai-daily.ts). */
+  dailySummary?: import("./queries-ai-daily").DailySummarySettings;
 }
 
 export interface AiPing {

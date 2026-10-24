@@ -45,6 +45,7 @@ import {
   useReducedMotionSafe,
 } from "@srirealtime/ui";
 import { describeError, Page, PageHeading, QueryError, useDebounced, useI18n, useModuleNavigate } from "@srirealtime/web";
+import { AiCampaignWriter } from "../components/ai-campaign-writer";
 import { Section, TagEditor } from "../components/bits";
 import { useSlotName } from "../components/template-dialog";
 import { TemplatePreviewCard } from "../components/template-preview";
@@ -229,6 +230,16 @@ export default function CampaignNewPage() {
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               className="grid gap-4"
             >
+              {step === "name" && (
+                <AiCampaignWriter
+                  onApply={(a) => {
+                    setName(a.name);
+                    setSources([{ kind: "phones", text: a.phonesText }]);
+                    setWhen("later");
+                    setAt(isoToIstLocal(new Date(a.sendAtIso)));
+                  }}
+                />
+              )}
               {step === "name" && (
                 <Section icon={MegaphoneIcon} title={t("inbox.campaign.step.name")} description={t("inbox.campaign.nameHint")}>
                   <Field invalid={!!tried.name && !!errors.name}>

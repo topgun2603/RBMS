@@ -18,6 +18,8 @@ import { createGstFiling } from "@srirealtime/gstfiling";
 import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
 import { createAiKit } from "./kit-ai";
 import { createAiAssistKit } from "./kit-ai-assist";
+import { createAiAsk } from "./kit-ai-ask";
+import { createAiInsightsKit } from "./kit-ai-insights";
 import { createAiVision } from "./kit-ai-vision";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
@@ -94,6 +96,7 @@ import { DEVELOPER_JOBS } from "@srirealtime/developer";
 import { orders as ordersTable } from "@srirealtime/orders";
 import type { CreditNote, Invoice } from "@srirealtime/invoices";
 import { and, eq } from "@srirealtime/db";
+import { createStoreLocalizer } from "./kit-store-localize";
 import { createStoreRevalidator, storeRevalidateConfig } from "./kit-store-revalidate";
 import { createPosWiring } from "./kit-pos";
 import { posInvoicesPort } from "./kit-pos-offline";
@@ -1356,6 +1359,48 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   });
   // Phase 1 AI text helpers (docs/ai.md): HSN, descriptions + bulk Tamil translation job, import mapping, help assistant.
   const aiAssist = createAiAssistKit({ db, ai: ai.service, catalogue: catalogue.service, jobs: jobs.service, storeSettings, log });
+  // Phase 2 "Ask your shop" + GST explanation (docs/ai.md): read-only tools over the existing report services, see kit-ai-ask.ts.
+  const aiAsk = createAiAsk({
+    db,
+    ai: ai.service,
+    invoices: invoices.service,
+    inventory: inventory.service,
+    expenses: expenses.service,
+    medicines: medicines.service,
+    branches: () => b3?.branches.service ?? null,
+    einvoice: () => b3?.einvoice.service ?? null,
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    now: clock,
+  });
+  // Phase 2 part B (docs/ai.md): daily summary job + delivery, festival-aware reorder, campaign writer, review replies and themes.
+  const aiInsights = createAiInsightsKit({
+    db,
+    ai: ai.service,
+    catalogue: catalogue.service,
+    expiry: {
+      expiring: async (tenantId) => {
+        const e = await inventory.service.batches.expirySummary(tenantId);
+        const batches = e.expiring.batches + (e.medicines?.expiring.batches ?? 0);
+        return { batches, qty: e.expiring.qty + (e.medicines?.expiring.qty ?? 0), value: e.expiring.value + (e.medicines?.expiring.value ?? 0), days: e.alertDays };
+      },
+    },
+    aiSettings: settings.service.handle("ai"),
+    notify: notify.service,
+    owner: async (tenantId) => {
+      const m = (await tenancy.service.listMembers(tenantId)).find((x) => x.status === "active" && x.roles.includes("owner"));
+      const u = m ? await auth.service.getUser(m.userId) : null;
+      return m && u ? { userId: m.userId, phone: u.phone ?? null, email: u.email ?? null } : null;
+    },
+    shopName: async (tenantId) => (await shopName(tenantId)) ?? "",
+    shopTrade: async (tenantId) => ((await storeSettings.get({ tenantId })) as { businessType?: string }).businessType?.trim() || null,
+    channels: { whatsapp: !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID), email: !!env.RESEND_API_KEY },
+    log,
+    now: clock,
+  });
+  defineJob(aiInsights.job, async () => {
+    const done = await aiInsights.daily.tick();
+    if (done.length) log.info({ shops: done.length, results: done.map((d) => d.outcome) }, "ai: daily summaries");
+  });
 
   defineJob(MARKETPLACE_SETTLE_JOB, async () => {
     log.info(await batch3.marketplace.service.settleDue(), "marketplace: delivered sales settled");
@@ -1566,6 +1611,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     ai.module,
     ai.adminModule,
     aiAssist.module,
+    aiAsk.module,
+    aiInsights.module,
     aiVision,
     medicines.module,
     dining.module,
@@ -1705,6 +1752,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     ],
     /** Keeps the answer to an `Idempotency-Key` write so a retry from a phone doesn't bill twice. */
     onSend: [idempotency.onSend],
+    /** Approved Tamil product text on the shopper-facing answers when the shopper browses in Tamil (kit-store-localize). */
+    preSerialization: [createStoreLocalizer({ lookup: (tenantId, ids, locale) => aiAssist.translations.approvedFor(tenantId, ids, locale), log }).preSerialization],
     async start() {
       for (const m of modules) await m.start?.();
       // Once per boot, in every process (idempotent; guarded against in-flight reservations).
@@ -1724,6 +1773,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await jobs.service.schedule("payments.retry", "*/15 * * * *");
       await jobs.service.schedule("audit.purge", "15 4 * * *");
       await jobs.service.schedule("ai.purge-debug", "25 4 * * *");
+      await jobs.service.schedule(aiInsights.job, "*/15 * * * *");
       await jobs.service.schedule("store.carts.purge", "45 3 * * *");
       await jobs.service.schedule(DELIVERY_TRACK_JOB, "0 */2 * * *");
       await jobs.service.schedule(ANALYTICS_JOBS.rollup, "5 * * * *");

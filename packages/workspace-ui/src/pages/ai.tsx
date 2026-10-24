@@ -5,6 +5,7 @@ import { CheckCircle2Icon, CircleAlertIcon, CircleSlashIcon, FlaskConicalIcon, G
 import { Alert, AlertDescription, Button, Label, Meter, Skeleton, StatusPill, Switch, toast, type StatusTone } from "@srirealtime/ui";
 import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useAppNavigate, useI18n, useMe, useSettingsHref } from "@srirealtime/web";
 import { SectionCard } from "../components/plan/section-card";
+import { DailySummaryCard } from "../components/ai-daily-summary";
 import { useAiRuns, useAiSettings, useAiStatus, usePingAi, useSaveAiSettings, type AiFeatureRow, type AiRunRow, type AiSettingsValues, type AiStatus } from "../lib/queries-ai";
 
 /**
@@ -62,6 +63,7 @@ function AiBody({ status, values, canEdit }: { status: AiStatus; values: AiSetti
       <PlatformNotice status={status} />
       <SwitchCard status={status} values={values} canEdit={canEdit} busy={save.isPending} onPatch={patch} />
       <HelpersCard status={status} values={values} canEdit={canEdit} busy={save.isPending} onPatch={patch} />
+      <DailySummaryCard values={values} canEdit={canEdit} busy={save.isPending} onPatch={patch} />
       <UsageCard status={status} />
       <PrivacyCard values={values} canEdit={canEdit} busy={save.isPending} onPatch={patch} />
       <RunsCard />

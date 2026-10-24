@@ -88,6 +88,12 @@ export const enAiAssist: Messages = {
   "web.aiAssist.help.examples": "Try: \"How do I make a bill?\" or \"பில் எப்படி போடுவது?\"",
   "web.aiAssist.help.clear": "New question",
   "web.aiAssist.help.credits": "Each question uses about 1 to 2 AI credits.",
+  "web.aiAssist.tamil.title": "Tamil text for the online store",
+  "web.aiAssist.tamil.hintLive": "Shoppers browsing in Tamil see this name and description. English stays as it is.",
+  "web.aiAssist.tamil.hintNone": "No Tamil text is live yet. Save one here, or use Translate to Tamil in the product list. Until then Tamil shoppers see the English text.",
+  "web.aiAssist.tamil.description": "Tamil description",
+  "web.aiAssist.tamil.save": "Save Tamil text",
+  "web.aiAssist.tamil.saved": "Tamil text saved. The store shows it shortly.",
 };
 
 export const taAiAssist: Messages = {
@@ -177,4 +183,10 @@ export const taAiAssist: Messages = {
   "web.aiAssist.help.examples": "முயலுங்கள்: \"பில் எப்படி போடுவது?\" அல்லது \"How do I make a bill?\"",
   "web.aiAssist.help.clear": "புதிய கேள்வி",
   "web.aiAssist.help.credits": "ஒரு கேள்விக்கு சுமார் 1 முதல் 2 AI கிரெடிட் ஆகும்.",
+  "web.aiAssist.tamil.title": "ஆன்லைன் கடைக்கான தமிழ் உரை",
+  "web.aiAssist.tamil.hintLive": "தமிழில் பார்க்கும் வாடிக்கையாளர்கள் இந்தப் பெயரையும் விளக்கத்தையும் காண்பார்கள். ஆங்கிலம் அப்படியே இருக்கும்.",
+  "web.aiAssist.tamil.hintNone": "தமிழ் உரை இன்னும் இல்லை. இங்கே சேமிக்கலாம், அல்லது பொருள் பட்டியலில் \"தமிழில் மொழிபெயர்\" பயன்படுத்தலாம். அதுவரை தமிழ் வாடிக்கையாளர்களுக்கு ஆங்கில உரை தெரியும்.",
+  "web.aiAssist.tamil.description": "தமிழ் விளக்கம்",
+  "web.aiAssist.tamil.save": "தமிழ் உரையைச் சேமி",
+  "web.aiAssist.tamil.saved": "தமிழ் உரை சேமிக்கப்பட்டது. கடையில் சிறிது நேரத்தில் தெரியும்.",
 };

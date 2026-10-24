@@ -1,3 +1,4 @@
+import { aiTemplates } from "./ai-templates";
 import { customerTemplates } from "./customer-templates";
 import type { ProviderRef } from "./schema";
 import type { Channel } from "./types";
@@ -423,6 +424,7 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...batch3Templates(),
   ...batch5Templates(),
   ...customerTemplates(),
+  ...aiTemplates(),
 ];
 
 /**

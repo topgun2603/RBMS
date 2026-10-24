@@ -113,7 +113,23 @@ export function searchMatchSql(q: ParsedQuery): SQL | null {
   );
   const parts: SQL[] = [sql`(${allWords})`, sql`${q.text} <% ${st}`];
   if (q.tsquery) parts.push(sql`${catalogProducts.searchVector} @@ to_tsquery('simple', ${q.tsquery})`);
+  const translated = translatedTextMatchSql(q);
+  if (translated) parts.push(translated);
   return sql`(${sql.join(parts, sql` or `)})`;
+}
+
+/**
+ * Non-English queries also match the shop's approved translations of a product (`ai_product_translations`, e.g. Tamil
+ * names): every word is a substring of the translated name / description. Null for an English-only query, which keeps
+ * the common search path free of the extra lookup.
+ */
+export function translatedTextMatchSql(q: ParsedQuery): SQL | null {
+  if (!q.text || !/[\u0080-\uffff]/.test(q.text)) return null;
+  const words = sql.join(
+    q.words.map((w) => sql`lower(coalesce(tr.name, '') || ' ' || coalesce(tr.description, '')) like ${`%${likeEscape(w)}%`}`),
+    sql` and `,
+  );
+  return sql`exists (select 1 from ai_product_translations tr where tr.product_id = ${catalogProducts.id} and tr.status = 'approved' and ${words})`;
 }
 
 /**

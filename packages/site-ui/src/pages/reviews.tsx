@@ -60,6 +60,7 @@ import {
   type ServerFilterDefs,
 } from "@srirealtime/web";
 import { Thumb } from "../components/bits";
+import { DraftReplyControls, ReviewThemesButton } from "../components/review-ai";
 import { AddReviewSheet } from "../components/review-add";
 import { ImportReviewsSheet } from "../components/review-import";
 import { ReviewsIllustration } from "../components/illustrations";
@@ -346,6 +347,7 @@ function ReviewsList() {
                 </Button>
               </>
             )}
+            {canManage && <ReviewThemesButton />}
             <ModerationSettings />
           </>
         }
@@ -556,6 +558,7 @@ function ReviewDetail({
       )}
       {replying && (
         <div className="grid gap-2">
+          <DraftReplyControls reviewId={r.id} onDraft={setReply} />
           <Textarea autoFocus rows={3} maxLength={2000} value={reply} placeholder={t("site.reviews.replyPlaceholder")} aria-label={t("site.reviews.reply")} onChange={(e) => setReply(e.target.value)} />
           <p className="text-meta text-muted-foreground">{t("site.reviews.replyHint")}</p>
           <div className="flex flex-wrap gap-2">

@@ -7,7 +7,7 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { APPAREL_FOOTWEAR_GST_RULE, deadBandOf, exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
 import { BadgePercentIcon, EyeIcon, FileTextIcon, ImagesIcon, PencilIcon, PlusIcon, SearchIcon, TagsIcon, Trash2Icon } from "lucide-react";
 import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
-import { DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, useHsnSuggest, useI18n } from "@srirealtime/web";
+import { DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, ProductTamilText, useHsnSuggest, useI18n } from "@srirealtime/web";
 import { CategorySelect } from "../category-select";
 import { GstRateSelect, MoneyInput, Optional, Section } from "../bits";
 import { ImageManager } from "../image-manager";
@@ -140,6 +140,7 @@ export function BasicsSection({ productId }: { productId?: string }) {
           )}
         />
       </div>
+      <ProductTamilText productId={productId} />
     </Section>
   );
 }

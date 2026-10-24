@@ -1,5 +1,6 @@
 import type { FeatureDef, PermissionDef } from "@srirealtime/core";
 import { z } from "zod";
+import { DAILY_SUMMARY_SCHEMA } from "./insights/daily-settings";
 import type { AiTier } from "./types";
 
 /** The module feature (plan / app profile gate, owner can hide it in Settings > Features). The shop's own opt-in is settings `ai.enabled`. */
@@ -62,12 +63,21 @@ export const AI_FEATURE_REGISTRY: readonly AiFeatureInfo[] = [
   },
   {
     key: "ask-shop",
-    status: "soon",
+    status: "live",
     tier: "standard",
     label: "Ask your shop",
     labelTa: "உங்கள் கடையிடம் கேளுங்கள்",
-    description: "Ask questions in Tamil or English: today's sales, who owes you money, what to reorder.",
-    descriptionTa: "தமிழிலோ ஆங்கிலத்திலோ கேளுங்கள்: இன்றைய விற்பனை, யார் பணம் தர வேண்டும், எதை மீண்டும் வாங்க வேண்டும்.",
+    description: "Ask about your sales, dues, stock, expenses and GST in Tamil or English and get an answer from your own numbers (about 15 to 40 credits a question). Needs permission to view reports. Every number is checked against your reports.",
+    descriptionTa: "உங்கள் விற்பனை, நிலுவை, இருப்பு, செலவு, GST பற்றி தமிழிலோ ஆங்கிலத்திலோ கேளுங்கள்; உங்கள் சொந்த கணக்கிலிருந்து பதில் கிடைக்கும் (ஒரு கேள்விக்கு சுமார் 15 முதல் 40 கிரெடிட்). அறிக்கைகளைப் பார்க்கும் அனுமதி தேவை. ஒவ்வொரு எண்ணும் உங்கள் அறிக்கைகளுடன் சரிபார்க்கப்படும்.",
+  },
+  {
+    key: "gst-explain",
+    status: "live",
+    tier: "light",
+    label: "Explain this month's GST",
+    labelTa: "இந்த மாத GST விளக்கம்",
+    description: "On Reports > GST, writes a short note on what changed since last month, anything unusual and what to check in your bills before filing (about 2 credits). Figures only: it never tells you to file or says the return is correct.",
+    descriptionTa: "அறிக்கைகள் > GST-இல், கடந்த மாதத்திலிருந்து என்ன மாறியது, வழக்கத்துக்கு மாறானது என்ன, தாக்கல் செய்யும் முன் பில்களில் எதைப் பார்க்க வேண்டும் என்று சிறு குறிப்பு எழுதும் (சுமார் 2 கிரெடிட்). புள்ளிவிவரங்கள் மட்டும்: தாக்கல் செய்யச் சொல்லாது, ரிட்டர்ன் சரி என்றும் சொல்லாது.",
   },
   {
     key: "hsn-suggest",
@@ -124,6 +134,42 @@ export const AI_FEATURE_REGISTRY: readonly AiFeatureInfo[] = [
     descriptionTa: "ரசீதின் புகைப்படத்தைப் படித்து, நீங்கள் சரிபார்க்க செலவை (விற்பனையாளர், தேதி, தொகை, வகை) நிரப்பும் (ஒரு ஸ்கேனுக்கு சுமார் 15 கிரெடிட்).",
   },
   {
+    key: "daily-summary",
+    status: "live",
+    tier: "light",
+    label: "Daily summary",
+    labelTa: "தினசரி சுருக்கம்",
+    description: "Every evening, a short note on today's sales, low stock, dues and what to do tomorrow, on WhatsApp and your dashboard. All numbers are worked out by the software; the AI only writes the words (about 1 credit a day).",
+    descriptionTa: "தினமும் மாலை இன்றைய விற்பனை, குறைந்த கையிருப்பு, நிலுவை, நாளை செய்ய வேண்டியவை பற்றிய சிறு குறிப்பு WhatsApp-இலும் டாஷ்போர்டிலும். எல்லா எண்களும் மென்பொருளே கணக்கிடும்; AI வார்த்தைகளை மட்டும் எழுதும் (ஒரு நாளுக்கு சுமார் 1 கிரெடிட்).",
+  },
+  {
+    key: "reorder",
+    status: "live",
+    tier: "light",
+    label: "Reorder suggestions",
+    labelTa: "மீண்டும் வாங்கும் பரிந்துரை",
+    description: "Suggests what to buy and how much, from your sales, stock and last year's festival rush (Pongal, Deepavali...). Quantities are calculated by the software; the AI writes a one-line reason per group (about 2 credits). You create the purchase order yourself.",
+    descriptionTa: "உங்கள் விற்பனை, கையிருப்பு, கடந்த ஆண்டு பண்டிகை விற்பனை (பொங்கல், தீபாவளி...) அடிப்படையில் எதை எவ்வளவு வாங்குவது என்று பரிந்துரைக்கும். அளவுகளை மென்பொருள் கணக்கிடும்; AI ஒவ்வொரு குழுவுக்கும் ஒரு வரி காரணம் எழுதும் (சுமார் 2 கிரெடிட்). கொள்முதல் ஆர்டரை நீங்களே உருவாக்குவீர்கள்.",
+  },
+  {
+    key: "campaign-writer",
+    status: "live",
+    tier: "standard",
+    label: "WhatsApp campaign writer",
+    labelTa: "WhatsApp பிரச்சார எழுத்தாளர்",
+    description: "Drafts your campaign message in English and Tamil from your goal, suggests which customers to send it to (from purchase history, leaving out opt-outs) and a good time. It never adds offers you did not write. You review and send (about 10 credits).",
+    descriptionTa: "உங்கள் நோக்கத்திலிருந்து ஆங்கிலத்திலும் தமிழிலும் பிரச்சார செய்தியை எழுதி, வாங்கிய வரலாற்றிலிருந்து (விலகியவர்களை நீக்கி) யாருக்கு அனுப்பலாம், எப்போது அனுப்பலாம் என்று பரிந்துரைக்கும். நீங்கள் எழுதாத சலுகைகளை சேர்க்காது. நீங்கள் பார்த்து அனுப்புவீர்கள் (சுமார் 10 கிரெடிட்).",
+  },
+  {
+    key: "review-reply",
+    status: "live",
+    tier: "light",
+    label: "Review replies and themes",
+    labelTa: "விமர்சன பதில்கள் மற்றும் தலைப்புகள்",
+    description: "Drafts a polite reply to a customer review in its own language (no promises unless you write them) and sums up what customers praise and complain about (about 1 to 2 credits). You edit and post.",
+    descriptionTa: "வாடிக்கையாளர் விமர்சனத்துக்கு அதே மொழியில் பணிவான பதிலை எழுதும் (நீங்கள் எழுதாமல் வாக்குறுதி எதுவும் இருக்காது); வாடிக்கையாளர்கள் எதைப் பாராட்டுகிறார்கள், எதைக் குறை சொல்கிறார்கள் என்று சுருக்கும் (சுமார் 1-2 கிரெடிட்). நீங்கள் திருத்தி பதிவிடுவீர்கள்.",
+  },
+  {
     key: "studio",
     status: "soon",
     tier: "vision",
@@ -149,6 +195,8 @@ export const AI_SETTINGS_SCHEMA = z.object({
   storePrompts: z.boolean(),
   /** Suggest HSN and GST when the owner leaves the item name box (each suggestion uses about 1 credit). Off by default. */
   autoHsn: z.boolean().optional(),
+  /** Daily summary: switch, time (IST), language and extra phones (see insights/daily-settings.ts). */
+  dailySummary: DAILY_SUMMARY_SCHEMA.optional(),
 });
 export type AiSettings = z.infer<typeof AI_SETTINGS_SCHEMA>;
 export const AI_SETTINGS_DEFAULTS: AiSettings = { enabled: false, features: {}, maskGstin: false, storePrompts: false };

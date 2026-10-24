@@ -89,6 +89,7 @@ import {
   relevanceOrderSql,
   rollupCategoryCounts,
   searchMatchSql,
+  translatedTextMatchSql,
   sortByRating,
   sortOrderSql,
   variantExistsSql,
@@ -2293,7 +2294,7 @@ export class CatalogueService {
   async suggest(
     tenantId: string,
     rawQuery: string | null | undefined,
-  ): Promise<{ products: { name: string; slug: string; image: string | null; priceMin: number }[]; categories: { name: string; slug: string }[] }> {
+  ): Promise<{ products: { id: string; name: string; slug: string; image: string | null; priceMin: number }[]; categories: { name: string; slug: string }[] }> {
     const q = parseQuery(rawQuery);
     if (!q.text) return { products: [], categories: [] };
     const prefix = `${q.text.replace(/[\\%_]/g, "\\$&")}%`;
@@ -2312,6 +2313,7 @@ export class CatalogueService {
               sql`${catalogProducts.searchText} like ${prefix}`,
               sql`${catalogProducts.searchText} like ${`% ${prefix}`}`,
               sql`${q.text} <% ${catalogProducts.searchText}`,
+              translatedTextMatchSql(q) ?? undefined,
             ),
           ),
         )
@@ -2333,6 +2335,7 @@ export class CatalogueService {
     const variants = await this.variantsOf(tenantId, products.map((p) => p.id));
     return {
       products: products.map((p) => ({
+        id: p.id,
         name: p.name,
         slug: p.slug,
         image: p.images?.[0]?.url ?? null,

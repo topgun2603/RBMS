@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/web";
+import { aiEn, aiTa } from "./messages-ai";
 
 /**
  * inbox.* strings. Keep the en and ta key sets identical (module.test.ts checks it). Never put literal braces in a
@@ -1136,4 +1137,4 @@ const ta: Messages = {
   "inbox.widget.attnOverdue": "பதில் கெடு தாண்டிய கோரிக்கைகள்",
 };
 
-export const inboxMessages = { en, ta } as const;
+export const inboxMessages = { en: { ...en, ...aiEn }, ta: { ...ta, ...aiTa } } as const;

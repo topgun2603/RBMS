@@ -18,7 +18,7 @@ interface HelpResponse {
 }
 
 /** Minimal, safe rendering of the model's answer: paragraphs and numbered/bulleted lines, **bold**. No HTML is ever injected. */
-function Answer({ text }: { text: string }) {
+export function Answer({ text }: { text: string }) {
   const blocks = text.split(/\n{2,}/);
   const inline = (s: string) =>
     s.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <React.Fragment key={i}>{part}</React.Fragment>));

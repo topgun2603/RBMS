@@ -38,6 +38,8 @@ const RULES: Rule[] = [
   // Products, variants, categories, collections, media: listings, product pages, bundles (names / prices), sitemap,
   // and the booking page (service names and prices come from the catalogue).
   [/^\/v1\/catalog(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
+  // Approving, rejecting, editing or re-drafting a Tamil product translation changes the Tamil product text the store shows.
+  [/^\/v1\/ai\/assist\/translat(e$|ions(\/|$))/, ["catalog", "offers", "seo", "bookings"]],
   [/^\/v1\/importexport(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
   [/^\/v1\/inventory\/public(\/|$)/, []],
   [/^\/v1\/inventory(\/|$)/, ["catalog"]],

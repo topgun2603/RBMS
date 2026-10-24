@@ -8,6 +8,7 @@ import Fastify, {
   type FastifyInstance,
   type onResponseAsyncHookHandler,
   type onSendAsyncHookHandler,
+  type preSerializationAsyncHookHandler,
   type preHandlerAsyncHookHandler,
 } from "fastify";
 import { ZodError } from "zod";
@@ -26,6 +27,8 @@ export interface ServerOptions {
   onResponse?: onResponseAsyncHookHandler[];
   /** Global onSend hooks, e.g. keeping the answer to an `Idempotency-Key` request. */
   onSend?: onSendAsyncHookHandler[];
+  /** Global preSerialization hooks, e.g. laying the shop's Tamil product text over shopper-facing answers. They must never throw. */
+  preSerialization?: preSerializationAsyncHookHandler[];
   modules: SrModule[];
   /** Annotates module routes while they are registered (e.g. host-side `config.permission`), then checks every rule matched. */
   routeRules?: { register(app: FastifyInstance): void; assertAllMatched(): void };
@@ -143,6 +146,7 @@ export async function buildServer(opts: ServerOptions) {
     for (const handler of opts.preHandlers ?? []) api.addHook("preHandler", handler);
     for (const handler of opts.onResponse ?? []) api.addHook("onResponse", handler);
     for (const handler of opts.onSend ?? []) api.addHook("onSend", handler);
+    for (const handler of opts.preSerialization ?? []) api.addHook("preSerialization", handler);
 
     opts.routeRules?.register(api);
     opts.routeCollector?.register(api);

@@ -14,6 +14,7 @@ import {
   Settings2Icon,
   SlidersHorizontalIcon,
   TruckIcon,
+  SparklesIcon,
   XCircleIcon,
 } from "lucide-react";
 import {
@@ -28,6 +29,8 @@ import {
   EmptyState,
   type DataTableColumn,
 } from "@srirealtime/ui";
+import { ReorderSheet } from "../components/ai/reorder-sheet";
+import { useHasPermission } from "../lib/access";
 import { StatTile } from "../components/charts/stat-tile";
 import { BoxIllustration } from "../components/illustrations";
 import { MovementsSheet } from "../components/inventory/movements-sheet";
@@ -206,8 +209,17 @@ function Stock({ categories, locations }: { categories: Option[]; locations: Opt
   const filtered = st.table.activeFilterCount > 0;
 
   const purchases = useFeature("inventory.purchases");
+  const hasPurchasePerm = useHasPermission("inventory.purchases");
+  const hasAiPerm = useHasPermission("ai.use");
+  const canReorder = hasPurchasePerm && hasAiPerm && purchases;
+  const [reorderOpen, setReorderOpen] = React.useState(false);
   const actions = (
     <>
+      {canReorder && (
+        <Button type="button" variant="outline" size="lg" onClick={() => setReorderOpen(true)}>
+          <SparklesIcon /> {t("billing.aiins.reorder.button")}
+        </Button>
+      )}
       <Button asChild variant="outline" size="lg">
         <ModuleLink to="items">
           <PackageIcon /> {t("billing.nav.items")}
@@ -267,6 +279,7 @@ function Stock({ categories, locations }: { categories: Option[]; locations: Opt
   return (
     <Page>
       <PageHeading icon={BoxesIcon} title={t("billing.stock.title")} description={t("billing.stock.subtitle")} actions={actions} />
+      {canReorder && reorderOpen && <ReorderSheet open={reorderOpen} onOpenChange={setReorderOpen} />}
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((tile, i) => (
