@@ -65,6 +65,8 @@ export async function proxyHandler(req: Request): Promise<Response> {
   const fwd = req.headers.get("x-forwarded-for");
   if (fwd) headers.set("x-forwarded-for", fwd);
   if (!headers.has("x-forwarded-host")) headers.set("x-forwarded-host", host);
+  // Everything arriving through the shop domain is a shopper: the shop's customer sign-in options apply (never passed from the browser).
+  headers.set("x-auth-audience", "customer");
 
   const method = req.method.toUpperCase();
   const body = method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();

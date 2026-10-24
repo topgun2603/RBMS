@@ -20,7 +20,7 @@ export function createAuth(deps: AuthDeps) {
 }
 
 export { AuthService, createGoogleVerifier, HANDOFF_TTL_SECONDS, parseClient, POS_SESSION_CLIENT, toAuthUser } from "./service";
-export type { AuthClientConfig, AuthConfig, AuthDeps, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
+export type { AuthClientConfig, AuthConfig, AuthDeps, SignInPolicy, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
 export { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 export {
   cachedKeySource,
@@ -51,3 +51,16 @@ export * from "./schema";
 export { USER_ROLE_FILTERS, USER_SORT, USER_STATUSES, userListConditions, userListQuerySchema, type UserListParams, type UserListQuery } from "./list";
 export { matchStoreOrigin, matchStoreReturn, normalizeOrigin, storeOriginsFor } from "./store-origin";
 export type { StoreOriginsPort, StoreSignInShop } from "./store-origin";
+export {
+  AUDIENCE_HEADER,
+  AUDIENCES,
+  audienceFromHeader,
+  audienceOptionsSchema,
+  DEFAULT_SIGN_IN_OPTIONS,
+  effectiveAudience,
+  platformMethods,
+  readAudienceOptions,
+  SIGN_IN_METHODS,
+  signInOptionsPatchSchema,
+} from "./sign-in-options";
+export type { Audience, AudienceOptions, PlatformMethods, SignInMethod, SignInOptions, SignInOptionsPatch } from "./sign-in-options";

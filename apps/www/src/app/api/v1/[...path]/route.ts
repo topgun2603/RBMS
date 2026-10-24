@@ -6,7 +6,7 @@ import { API_ORIGIN } from "@/lib/site";
  */
 export const dynamic = "force-dynamic";
 
-const PASS_REQUEST = ["accept", "accept-language", "authorization", "content-type", "user-agent", "referer"];
+const PASS_REQUEST = ["accept", "accept-language", "authorization", "content-type", "user-agent", "referer", "x-tenant", "x-auth-audience"];
 const PASS_RESPONSE = ["content-type", "cache-control", "retry-after"];
 const ALLOWED = /^\/v1\/(plans|auth\/(otp\/(request|verify)|firebase|config|me|logout|handoff|store\/(context|handoff))|tenancy\/(slug-available|mine)|signup)(\/|$)/;
 

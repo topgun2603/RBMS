@@ -24,7 +24,29 @@ import { createFirebaseVerifier, FirebaseTokenError, type FirebasePhoneClaims, t
 import { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, normalizePhone, otpHash, otpRetryAfter, type Target } from "./helpers";
 import type { GoogleClaims, GoogleTokenVerifier, LoggerPort, MembershipLookup, OtpSender, PermissionResolverPort } from "./ports";
-import { authHandoffs, authIdentities, authOtps, authSessions, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
+import {
+  DEFAULT_SIGN_IN_OPTIONS,
+  effectiveAudience,
+  methodForChannel,
+  methodForFirebaseProvider,
+  platformMethods,
+  readAudienceOptions,
+  signInOptionsPatchSchema,
+  SIGN_IN_METHODS,
+  type Audience,
+  type AudienceOptions,
+  type PlatformMethods,
+  type SignInMethod,
+  type SignInOptions,
+  type SignInOptionsPatch,
+} from "./sign-in-options";
+import { authHandoffs, authIdentities, authOtps, authSessions, authTenantSettings, users, type OtpChannel, type SessionRow, type UserRow, type UserStatus } from "./schema";
+
+/** The shop and audience whose sign-in options apply to a request (from the shop header and the audience header). */
+export interface SignInPolicy {
+  tenantId: string;
+  audience: Audience;
+}
 
 /** Lifetime of a cross-origin sign-in handoff code. */
 export const HANDOFF_TTL_SECONDS = 60;
@@ -81,6 +103,8 @@ export interface AuthClientConfig {
   phone: { method: "firebase" | "otp"; firebaseProjectId: string | null; smsOtp: boolean };
   /** Google sign-in is configured. */
   google: boolean;
+  /** Email + password sign-in is available (it is a Firebase provider, so this is true when Firebase is set up). */
+  password: boolean;
   /** Development/test only: the test-identity patterns that always use the OTP flow (absent when test OTPs are off). */
   testTargets?: string[];
 }
@@ -109,6 +133,8 @@ export interface AuthDeps {
   handoffTargets?: { appUrl(userId: string, tenantId: string): Promise<string | null> };
   /** A shop's storefront origins, for `POST /store/handoff` (shopper sign-in through the landing site). */
   storeOrigins?: StoreOriginsPort;
+  /** A shop's id and name by slug (any active shop), for `GET /config?shop=`. Defaults to `storeOrigins.shop`. */
+  shopBySlug?: (slug: string) => Promise<{ id: string; slug: string; name: string } | null>;
   /** Records sign-ins, handoffs and super-admin user changes (the host audit hook can't: no user yet, or no shop). */
   audit?: AuditPort;
 }
@@ -253,6 +279,7 @@ export class AuthService {
     return {
       phone: { method: firebase ? "firebase" : "otp", firebaseProjectId: this.cfg.firebaseProjectId, smsOtp: !this.cfg.smsOtpDisabled },
       google: this.cfg.googleClientIds.length > 0,
+      password: firebase,
       ...(this.testOtp ? { testTargets: [...this.testOtp.targets] } : {}),
     };
   }
@@ -273,11 +300,15 @@ export class AuthService {
     locale: string;
     ip?: string | null;
     tenantId?: string | null;
+    /** Which sign-in options of the shop apply (routes pass it from the audience header). */
+    audience?: Audience;
   }): Promise<{ target: string; channel: OtpChannel; expiresInSeconds: number; resendInSeconds: number }> {
     const target = this.parseTarget(input.target);
     const channel: OtpChannel = input.channel ?? (target.kind === "phone" ? "sms" : "email");
     if (target.kind === "phone" && channel === "email") throw badRequest("Use sms or whatsapp for a phone number");
     if (target.kind === "email" && channel !== "email") throw badRequest("Use email for an email address");
+
+    if (!this.isTestTarget(target.value)) await this.assertMethodAllowed(input.tenantId, input.audience, methodForChannel(channel));
 
     if (this.isTestTarget(target.value)) {
       // Test identity (dev only): nothing is sent or stored and no limits apply; verify accepts the fixed code.
@@ -357,9 +388,13 @@ export class AuthService {
     userAgent?: string | null;
     client?: string | null;
     name?: string | null;
+    /** The shop and audience whose sign-in options apply (routes pass them when the request has a shop). */
+    policy?: SignInPolicy | null;
   }): Promise<SignInResult> {
     const target = this.parseTarget(input.target);
-    await this.checkOtpCode(target, input.code);
+    const channel = await this.checkOtpCode(target, input.code);
+    // A code requested without a shop can't be redeemed for a shop that turned that channel off.
+    if (channel) await this.assertMethodAllowed(input.policy?.tenantId, input.policy?.audience, methodForChannel(channel));
     return this.signInTarget(target.value, input);
   }
 
@@ -392,11 +427,12 @@ export class AuthService {
    * Checks a code for a normalised target: test identities accept the fixed test code; otherwise the newest live
    * code is checked, counting attempts, and consumed atomically on success. Throws on any failure.
    */
-  private async checkOtpCode(target: Target, rawCode: string): Promise<void> {
+  /** Checks and consumes a code. Returns the channel it was sent on (null for a dev test identity). */
+  private async checkOtpCode(target: Target, rawCode: string): Promise<OtpChannel | null> {
     if (this.isTestTarget(target.value)) {
       const code = String(rawCode ?? "").replace(/\s/g, "");
       if (!safeEqual(code, this.testOtp!.code)) throw badRequest("Incorrect code");
-      return;
+      return null;
     }
     const now = new Date();
     const [otp] = await this.db
@@ -435,6 +471,7 @@ export class AuthService {
       .where(and(eq(authOtps.id, otp.id), isNull(authOtps.consumedAt)))
       .returning({ id: authOtps.id });
     if (consumed.length === 0) throw badRequest("The code has already been used");
+    return otp.channel;
 
   }
 
@@ -457,7 +494,8 @@ export class AuthService {
 
   // ---------------------------------------------------------------- Google
 
-  async signInWithGoogle(input: { idToken: string; ip?: string | null; userAgent?: string | null; client?: string | null }): Promise<SignInResult> {
+  async signInWithGoogle(input: { idToken: string; ip?: string | null; userAgent?: string | null; client?: string | null; policy?: SignInPolicy | null }): Promise<SignInResult> {
+    await this.assertMethodAllowed(input.policy?.tenantId, input.policy?.audience, "google");
     if (this.cfg.googleClientIds.length === 0) throw badRequest("Google sign-in is not configured");
     let claims: GoogleClaims;
     try {
@@ -521,7 +559,14 @@ export class AuthService {
    * 400 with a `firebase_*` code when the token is rejected (503 `firebase_keys_unavailable` when Google's keys can't
    * be fetched).
    */
-  async signInWithFirebase(input: { idToken: string; name?: string | null; ip?: string | null; userAgent?: string | null; client?: string | null }): Promise<SignInResult> {
+  async signInWithFirebase(input: {
+    idToken: string;
+    name?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+    client?: string | null;
+    policy?: SignInPolicy | null;
+  }): Promise<SignInResult> {
     if (!this.verifyFirebase) throw new AppError(503, "not_configured", "Firebase phone sign-in is not configured");
     let claims: FirebasePhoneClaims;
     try {
@@ -534,6 +579,15 @@ export class AuthService {
       this.deps.log?.warn({ err }, "auth: Firebase token check failed");
       throw new AppError(400, "firebase_token_invalid", "This phone sign-in could not be checked. Please try again.");
     }
+    // The shop's choice applies to what the token proves (phone SMS, Google, email + password), checked server-side.
+    await this.assertMethodAllowed(input.policy?.tenantId, input.policy?.audience, methodForFirebaseProvider(claims.provider));
+    if (claims.provider === "password") {
+      // Email + password (Firebase hashes, throttles and sends the reset mail). The verifier already insists on a
+      // verified email; the user is found or created by that email, like Google.
+      const email = claims.email ? normalizeEmail(claims.email) : null;
+      if (!email) throw new AppError(400, "firebase_no_email", "This sign-in has no verified email address.");
+      return this.signInTarget(email, { ...input, name: input.name ?? claims.name ?? null });
+    }
     if (claims.provider === "google.com") {
       // Same rules as POST /auth/google: only a verified email, matched to (or creating) the user with that email.
       const email = claims.email ? normalizeEmail(claims.email) : null;
@@ -543,6 +597,85 @@ export class AuthService {
     const normalized = normalizePhone(claims.phone);
     if (!normalized) throw new AppError(400, "firebase_no_phone", "This phone number can't be used to sign in.");
     return this.signInTarget(normalized, input);
+  }
+
+  // ---------------------------------------------------------------- Sign-in options per shop
+
+  /** What this platform can offer right now. */
+  platformMethods(): PlatformMethods {
+    return platformMethods({ firebase: !!this.verifyFirebase, googleClientIds: this.cfg.googleClientIds.length, smsOtpDisabled: this.cfg.smsOtpDisabled });
+  }
+
+  /** The shop's saved choice (defaults when it never saved one). */
+  async getSignInOptions(tenantId: string): Promise<SignInOptions> {
+    const [row] = await this.db.select().from(authTenantSettings).where(eq(authTenantSettings.tenantId, tenantId)).limit(1);
+    return {
+      staff: readAudienceOptions(row?.staff, DEFAULT_SIGN_IN_OPTIONS.staff),
+      customer: readAudienceOptions(row?.customer, DEFAULT_SIGN_IN_OPTIONS.customer),
+    };
+  }
+
+  /**
+   * The methods people really get: the shop's choice intersected with the platform, preferred first. Without a shop
+   * (the platform's own login, the landing site's shop-less sign-in) nothing is restricted: every platform method.
+   */
+  async effectiveSignIn(tenantId: string | null | undefined, audience: Audience): Promise<AudienceOptions> {
+    const platform = this.platformMethods();
+    if (!tenantId) {
+      const all = SIGN_IN_METHODS.filter((m) => platform[m]);
+      return effectiveAudience({ methods: all, default: DEFAULT_SIGN_IN_OPTIONS[audience].default }, platform);
+    }
+    return effectiveAudience((await this.getSignInOptions(tenantId))[audience], platform);
+  }
+
+  /** `GET /settings`: the saved options, the defaults and what the platform offers. */
+  async signInSettings(tenantId: string) {
+    return { options: await this.getSignInOptions(tenantId), defaults: DEFAULT_SIGN_IN_OPTIONS, platform: this.platformMethods() };
+  }
+
+  /**
+   * `PUT /settings`: saves one or both audiences. Each needs at least one method (and at least one the platform really
+   * offers, so a shop can't switch itself to a method nobody can use). Returns before/after for the audit entry.
+   */
+  async updateSignInOptions(tenantId: string, patch: SignInOptionsPatch, userId: string | null) {
+    const parsed = signInOptionsPatchSchema.parse(patch);
+    const platform = this.platformMethods();
+    for (const audience of ["staff", "customer"] as const) {
+      const next = parsed[audience];
+      if (next && !next.methods.some((m) => platform[m])) {
+        throw new AppError(400, "no_method_enabled", "Keep at least one sign-in method on that works on this platform.", { audience });
+      }
+    }
+    const before = await this.getSignInOptions(tenantId);
+    const after: SignInOptions = { staff: parsed.staff ?? before.staff, customer: parsed.customer ?? before.customer };
+    const row = { staff: after.staff as unknown as Record<string, unknown>, customer: after.customer as unknown as Record<string, unknown>, updatedBy: userId };
+    await this.db
+      .insert(authTenantSettings)
+      .values({ tenantId, ...row })
+      .onConflictDoUpdate({ target: authTenantSettings.tenantId, set: { ...row, updatedAt: new Date() } });
+    return { before, after, options: after, defaults: DEFAULT_SIGN_IN_OPTIONS, platform };
+  }
+
+  /** The shop behind `slug` (for `GET /config?shop=`); 404 when unknown. */
+  async shopForConfig(slug: string): Promise<{ id: string; slug: string; name: string }> {
+    const clean = (slug ?? "").trim().toLowerCase();
+    const storeShop = this.deps.storeOrigins;
+    const lookup = this.deps.shopBySlug ?? (storeShop ? (s: string) => storeShop.shop(s) : null);
+    const shop = lookup && clean ? await lookup(clean) : null;
+    if (!shop) throw notFound("Shop");
+    return { id: shop.id, slug: shop.slug, name: shop.name };
+  }
+
+  /**
+   * Refuses a sign-in method the shop turned off for this audience: 403 `method_disabled`. No shop (the platform's own
+   * login, the landing site's shop-less sign-in) means no restriction.
+   */
+  async assertMethodAllowed(tenantId: string | null | undefined, audience: Audience | undefined, method: SignInMethod): Promise<void> {
+    if (!tenantId) return;
+    const eff = await this.effectiveSignIn(tenantId, audience ?? "staff");
+    if (!eff.methods.includes(method)) {
+      throw new AppError(403, "method_disabled", "This way of signing in is turned off for this shop. Please use another option.", { method, audience: audience ?? "staff" });
+    }
   }
 
   // ---------------------------------------------------------------- Cross-origin handoff

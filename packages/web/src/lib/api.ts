@@ -146,6 +146,8 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   if (deviceToken) headers.set(DEVICE_TOKEN_HEADER, deviceToken);
   const slug = tenant === undefined ? currentTenantSlug() : tenant;
   if (slug) headers.set("x-tenant", slug);
+  // Sign-in calls from the business apps are the shop's STAFF: its staff sign-in options apply (the API enforces them).
+  if (path.startsWith("/auth/")) headers.set("x-auth-audience", "staff");
   // The current branch (multi-branch shops) goes with every signed-in call for this shop.
   const branch = !anonymous && slug ? getStoredBranch(slug) : null;
   if (branch && !headers.has(BRANCH_HEADER)) headers.set(BRANCH_HEADER, branch);

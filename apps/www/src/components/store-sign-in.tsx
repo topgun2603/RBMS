@@ -2,19 +2,12 @@
 
 import * as React from "react";
 import { Loader2Icon, ShieldAlertIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
 import { Card } from "@srirealtime/ui/components/card";
 import { Skeleton } from "@srirealtime/ui/components/skeleton";
-import {
-  firebasePhoneMessage,
-  firebaseWebConfig,
-  isFirebaseError,
-  loadAuthConfig,
-  signInWithGoogle,
-} from "@srirealtime/web/firebase-phone";
-import { api, errorMessage, normalizeTarget } from "@/lib/api";
+import { firebasePhoneMessage, firebaseWebConfig, isFirebaseError, loadAuthConfig, signInWithGoogle } from "@srirealtime/web/firebase-phone";
+import { api, errorMessage, normalizeTarget, setSignInContext } from "@/lib/api";
 import { useSite } from "./site-context";
-import { OtpSignIn } from "./otp-sign-in";
+import { SignInMethods } from "./method-sign-in";
 
 interface Trip {
   shop: string;
@@ -23,6 +16,8 @@ interface Trip {
   returnUrl: string | null;
   /** A number the shop already collected (E.164): prefilled. */
   phone: string;
+  /** The method the shopper picked in the storefront (opens it here). */
+  method: "google" | "password" | null;
 }
 
 /** `?shop=&origin=&mode=&return=`; the API decides whether the origin really is the shop's. */
@@ -31,17 +26,8 @@ function tripFromUrl(): Trip | null {
   const shop = (q.get("shop") ?? "").trim().toLowerCase();
   const origin = (q.get("origin") ?? "").trim();
   if (!shop || !origin) return null;
-  return { shop, origin, mode: q.get("mode") === "redirect" ? "redirect" : "popup", returnUrl: q.get("return"), phone: normalizeTarget(q.get("phone") ?? "")?.replace(/^\+91/, "") ?? "" };
+  return { shop, origin, mode: q.get("mode") === "redirect" ? "redirect" : "popup", returnUrl: q.get("return"), phone: normalizeTarget(q.get("phone") ?? "")?.replace(/^\+91/, "") ?? "", method: q.get("method") === "password" ? "password" : q.get("method") === "google" ? "google" : null };
 }
-
-const GoogleG = () => (
-  <svg viewBox="0 0 48 48" className="size-5" aria-hidden="true">
-    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z" />
-    <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" />
-    <path fill="#FBBC05" d="M10.5 28.6a14.5 14.5 0 0 1 0-9.2l-7.9-6.2a24 24 0 0 0 0 21.6l7.9-6.2z" />
-    <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z" />
-  </svg>
-);
 
 /**
  * Shopper sign-in for a storefront, on the landing site (an authorized Firebase domain). Google or phone (Firebase), then
@@ -62,6 +48,8 @@ export function StoreSignIn() {
     const tr = tripFromUrl();
     setTrip(tr);
     if (!tr) return setPhase("invalid");
+    // The shop's CUSTOMER sign-in options apply to every call made here (the API enforces them).
+    setSignInContext({ shop: tr.shop, audience: "customer" });
     let alive = true;
     (async () => {
       try {
@@ -155,20 +143,15 @@ export function StoreSignIn() {
               {error}
             </p>
           )}
-          {google && (
-            <>
-              <Button type="button" variant="outline" size="lg" className="w-full rounded-full" disabled={busy} onClick={() => void withGoogle()} data-testid="store-google">
-                {busy ? <Loader2Icon className="animate-spin" /> : <GoogleG />}
-                {busy ? t("ssi.googleBusy") : t("ssi.google")}
-              </Button>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="h-px flex-1 bg-border" />
-                {t("ssi.or")}
-                <span className="h-px flex-1 bg-border" />
-              </div>
-            </>
-          )}
-          <OtpSignIn initialTarget={trip?.phone.startsWith("+") ? "" : (trip?.phone ?? "")} onSignedIn={() => void finish()} />
+          <SignInMethods
+            initialTarget={trip?.phone.startsWith("+") ? "" : (trip?.phone ?? "")}
+            onSignedIn={() => void finish()}
+            onGoogle={() => void withGoogle()}
+            googleBusy={busy}
+            googleAvailable={google}
+            initialView={trip?.method === "password" ? "password" : trip?.phone ? "code" : undefined}
+            testId="store-methods"
+          />
         </div>
       )}
     </Card>

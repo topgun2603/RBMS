@@ -85,7 +85,7 @@ describe("Firebase ID token verifier", () => {
 
   it("accepts only phone sign-ins with a phone number", async () => {
     const v = verifier();
-    expect(await codeOf(v(await token({ claims: { firebase: { sign_in_provider: "password" } } })))).toBe("firebase_not_phone");
+    expect(await codeOf(v(await token({ claims: { firebase: { sign_in_provider: "facebook.com" } } })))).toBe("firebase_not_phone");
     expect(await codeOf(v(await token({ drop: ["firebase"] })))).toBe("firebase_not_phone");
     expect(await codeOf(v(await token({ drop: ["phone_number"] })))).toBe("firebase_no_phone");
     expect(await codeOf(v(await token({ claims: { phone_number: "9876543210" } })))).toBe("firebase_no_phone");
@@ -120,6 +120,18 @@ describe("Firebase ID token verifier", () => {
     expect(await codeOf(v(await google({}, ["phone_number", "email"])))).toBe("firebase_no_email");
     expect(await codeOf(v(await google({}, ["phone_number", "email_verified"])))).toBe("firebase_no_email");
     expect(await codeOf(v(await google({ firebase: { sign_in_provider: "facebook.com" } })))).toBe("firebase_not_phone");
+  });
+
+  it("accepts email + password only with a verified email", async () => {
+    const v = verifier();
+    const pw = (claims: Record<string, unknown> = {}, drop: string[] = ["phone_number"]) =>
+      token({ drop, claims: { sub: "pw-uid-1", email: "Owner@Example.com", email_verified: true, firebase: { sign_in_provider: "password", identities: { email: ["owner@example.com"] } }, ...claims } });
+    await expect(v(await pw())).resolves.toEqual({ uid: "pw-uid-1", provider: "password", phone: "", email: "owner@example.com", authTime: nowSec - 30 });
+    expect(await codeOf(v(await pw({ email_verified: false })))).toBe("firebase_email_unverified");
+    expect(await codeOf(v(await pw({ email_verified: "true" })))).toBe("firebase_email_unverified");
+    expect(await codeOf(v(await pw({}, ["phone_number", "email_verified"])))).toBe("firebase_email_unverified");
+    expect(await codeOf(v(await pw({}, ["phone_number", "email"])))).toBe("firebase_no_email");
+    expect(await codeOf(v(await pw({ email: "no-at-sign" })))).toBe("firebase_no_email");
   });
 
   it("rejects a bad signature and an unknown key id", async () => {

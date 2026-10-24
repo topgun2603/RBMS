@@ -26,11 +26,26 @@ export function firebaseWebConfig(): FirebaseWebConfig | null {
   return c.apiKey && c.authDomain && c.projectId && c.appId ? c : null;
 }
 
+/** A sign-in method a shop can switch on (packages/auth/src/sign-in-options.ts). */
+export type SignInMethod = "sms" | "whatsapp" | "email_code" | "google" | "password";
+export type SignInAudience = "staff" | "customer";
+
 /** `GET /v1/auth/config`, the parts the sign-in screens use. */
 export interface AuthClientConfig {
   phone: { method: "firebase" | "otp"; firebaseProjectId: string | null; smsOtp?: boolean };
   google?: boolean;
+  /** Email + password is available (Firebase is set up). */
+  password?: boolean;
   testTargets?: string[];
+  /** With `?audience=` and a shop: the methods this shop offers, preferred first. Absent on older APIs: show everything. */
+  signIn?: { audience: SignInAudience; shop: { slug: string; name: string } | null; methods: SignInMethod[]; default: SignInMethod };
+}
+
+/** Is this method offered? Without `signIn` (older API, config failed) the old behaviour: phone and email codes only. */
+export function methodOn(config: AuthClientConfig | null | undefined, method: SignInMethod): boolean {
+  const list = config?.signIn?.methods;
+  if (list) return list.includes(method);
+  return method === "sms" || method === "whatsapp" || method === "email_code";
 }
 
 /** Same rule as the API's test identities: exact values or `*` patterns; a bare "*" never matches. */
@@ -113,6 +128,18 @@ export function phoneSignInRedirectUrl(wwwUrl: string, phone: string, returnUrl:
 }
 
 /**
+ * The landing site's /login for Google or email + password when this host is not a Firebase authorized domain: it signs in
+ * there and hands the session back to `returnUrl` (a /login URL of this app). `shop` lets the API apply that shop's staff options.
+ */
+export function methodSignInRedirectUrl(wwwUrl: string, method: "google" | "password", returnUrl: string, shop?: string | null): string {
+  const u = new URL("/login", wwwUrl);
+  u.searchParams.set("method", method);
+  u.searchParams.set("return", returnUrl);
+  if (shop) u.searchParams.set("shop", shop);
+  return u.toString();
+}
+
+/**
  * Validates a `?return=` URL before a handoff code is sent there (a code signs the user in, so an open redirect would
  * hand over the account). Allowed: an origin matching one of `origins` ("https://admin.srikit.in",
  * "http://*.localhost:3001" — `*` = one subdomain label), no credentials, and a path ending in "/login". Returns the
@@ -158,6 +185,12 @@ export type FirebasePhoneErrorKind =
   | "popup_blocked"
   | "account_exists"
   | "not_enabled"
+  | "bad_credentials"
+  | "email_not_verified"
+  | "email_in_use"
+  | "weak_password"
+  | "invalid_email"
+  | "method_disabled"
   | "unknown";
 
 /** Maps a Firebase Auth error (its `code`) to a kind the UI can explain. */
@@ -198,6 +231,25 @@ export function firebasePhoneErrorKind(err: unknown): FirebasePhoneErrorKind {
       return "account_exists";
     case "firebase_no_email":
       return "account_exists";
+    // Email + password. Wrong password, unknown email and a disabled account all read the same (no account enumeration).
+    case "auth/invalid-credential":
+    case "auth/invalid-login-credentials":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+    case "auth/user-disabled":
+      return "bad_credentials";
+    case "auth/email-not-verified":
+    case "firebase_email_unverified":
+      return "email_not_verified";
+    case "auth/email-already-in-use":
+      return "email_in_use";
+    case "auth/weak-password":
+      return "weak_password";
+    case "auth/invalid-email":
+    case "auth/missing-email":
+      return "invalid_email";
+    case "method_disabled":
+      return "method_disabled";
     case "auth/operation-not-allowed":
     case "auth/admin-restricted-operation":
     case "auth/invalid-api-key":
@@ -218,7 +270,7 @@ export function firebasePhoneErrorKind(err: unknown): FirebasePhoneErrorKind {
 /** True for Firebase Auth errors (`auth/…`) and our API's Firebase token rejections (`firebase_…`). */
 export const isFirebaseError = (err: unknown) => {
   const code = !!err && typeof err === "object" && "code" in err ? String((err as { code: unknown }).code) : "";
-  return code.startsWith("auth/") || code.startsWith("firebase_");
+  return code.startsWith("auth/") || code.startsWith("firebase_") || code === "method_disabled";
 };
 
 const MESSAGES: Record<"en" | "ta", Record<FirebasePhoneErrorKind, string>> = {
@@ -235,6 +287,12 @@ const MESSAGES: Record<"en" | "ta", Record<FirebasePhoneErrorKind, string>> = {
     popup_blocked: "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
     account_exists: "We couldn't use this Google account. Make sure its email is verified, or use your mobile number.",
     not_enabled: "Phone sign-in isn't available right now. Please use email.",
+    bad_credentials: "The email or password is not right. Check them and try again, or reset your password.",
+    email_not_verified: "Please verify your email first. We sent you a link: open it, then sign in again.",
+    email_in_use: "If this email already has an account, sign in or reset your password instead.",
+    weak_password: "Choose a password with at least 8 characters.",
+    invalid_email: "Enter a valid email address.",
+    method_disabled: "This way of signing in is turned off for this shop. Please use another option.",
     unknown: "Something went wrong. Please try again.",
   },
   ta: {
@@ -250,6 +308,12 @@ const MESSAGES: Record<"en" | "ta", Record<FirebasePhoneErrorKind, string>> = {
     popup_blocked: "உங்கள் உலாவி உள்நுழைவு சாளரத்தைத் தடுத்தது. இந்தத் தளத்திற்கு பாப்-அப்களை அனுமதித்து மீண்டும் முயலவும்.",
     account_exists: "இந்த Google கணக்கைப் பயன்படுத்த முடியவில்லை. அதன் மின்னஞ்சல் சரிபார்க்கப்பட்டதா என்று பாருங்கள் அல்லது மொபைல் எண்ணைப் பயன்படுத்துங்கள்.",
     not_enabled: "தொலைபேசி உள்நுழைவு இப்போது கிடைக்கவில்லை. மின்னஞ்சலைப் பயன்படுத்தவும்.",
+    bad_credentials: "மின்னஞ்சல் அல்லது கடவுச்சொல் சரியில்லை. சரிபார்த்து மீண்டும் முயலவும் அல்லது கடவுச்சொல்லை மீட்டமைக்கவும்.",
+    email_not_verified: "முதலில் உங்கள் மின்னஞ்சலைச் சரிபார்க்கவும். நாங்கள் ஒரு இணைப்பு அனுப்பியுள்ளோம்: அதைத் திறந்து, மீண்டும் உள்நுழையவும்.",
+    email_in_use: "இந்த மின்னஞ்சலுக்கு ஏற்கனவே கணக்கு இருந்தால், உள்நுழையவும் அல்லது கடவுச்சொல்லை மீட்டமைக்கவும்.",
+    weak_password: "குறைந்தது 8 எழுத்துகள் கொண்ட கடவுச்சொல்லைத் தேர்ந்தெடுக்கவும்.",
+    invalid_email: "சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.",
+    method_disabled: "இந்த வழியில் உள்நுழைவது இந்தக் கடைக்கு நிறுத்தப்பட்டுள்ளது. வேறு வழியைப் பயன்படுத்தவும்.",
     unknown: "ஏதோ தவறு நடந்தது. மீண்டும் முயலவும்.",
   },
 };
@@ -353,6 +417,81 @@ export async function signInWithGoogle(opts: { locale?: string } = {}): Promise<
     return await cred.user.getIdToken();
   } finally {
     await mod.signOut(auth).catch(() => undefined);
+  }
+}
+
+// ------------------------------------------------------------------ email + password
+
+/** Our minimum (Firebase's own is 6). */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/** Null when the password is acceptable, else the error kind to show. */
+export function passwordProblem(password: string): "weak_password" | null {
+  return password.length >= MIN_PASSWORD_LENGTH ? null : "weak_password";
+}
+
+const emailError = (code: string) => Object.assign(new Error(code), { code });
+
+/**
+ * Creates an email + password account and sends Firebase's verification email. The person cannot sign in to our API
+ * until the email is verified (the API refuses unverified tokens). Firebase is signed out again right away.
+ */
+export async function signUpWithPassword(email: string, password: string, opts: { locale?: string } = {}): Promise<void> {
+  if (passwordProblem(password)) throw emailError("auth/weak-password");
+  const { mod, auth } = await loadSdk();
+  auth.languageCode = opts.locale?.toLowerCase().startsWith("ta") ? "ta" : "en";
+  const cred = await mod.createUserWithEmailAndPassword(auth, email, password);
+  try {
+    await mod.sendEmailVerification(cred.user);
+  } finally {
+    await mod.signOut(auth).catch(() => undefined);
+  }
+}
+
+/** Sends the verification email again (the person signs in with the password first, then it is sent). */
+export async function resendVerification(email: string, password: string, opts: { locale?: string } = {}): Promise<void> {
+  const { mod, auth } = await loadSdk();
+  auth.languageCode = opts.locale?.toLowerCase().startsWith("ta") ? "ta" : "en";
+  const cred = await mod.signInWithEmailAndPassword(auth, email, password);
+  try {
+    if (!cred.user.emailVerified) await mod.sendEmailVerification(cred.user);
+  } finally {
+    await mod.signOut(auth).catch(() => undefined);
+  }
+}
+
+/**
+ * Signs in with email + password and resolves with the Firebase ID token for `POST /v1/auth/firebase`. An email that is
+ * not verified yet gets the verification email again and throws `auth/email-not-verified` (no token is ever returned).
+ */
+export async function signInWithPassword(email: string, password: string, opts: { locale?: string } = {}): Promise<string> {
+  const { mod, auth } = await loadSdk();
+  auth.languageCode = opts.locale?.toLowerCase().startsWith("ta") ? "ta" : "en";
+  const cred = await mod.signInWithEmailAndPassword(auth, email, password);
+  try {
+    if (!cred.user.emailVerified) {
+      await mod.sendEmailVerification(cred.user).catch(() => undefined);
+      throw emailError("auth/email-not-verified");
+    }
+    return await cred.user.getIdToken();
+  } finally {
+    await mod.signOut(auth).catch(() => undefined);
+  }
+}
+
+/**
+ * Sends Firebase's password-reset email. Always resolves for an unknown address too, so the screen cannot be used to
+ * find out who has an account.
+ */
+export async function sendPasswordReset(email: string, opts: { locale?: string } = {}): Promise<void> {
+  const { mod, auth } = await loadSdk();
+  auth.languageCode = opts.locale?.toLowerCase().startsWith("ta") ? "ta" : "en";
+  try {
+    await mod.sendPasswordResetEmail(auth, email);
+  } catch (err) {
+    const kind = firebasePhoneErrorKind(err);
+    if (kind === "bad_credentials" || kind === "unknown") return; // user-not-found and friends look like success
+    throw err;
   }
 }
 

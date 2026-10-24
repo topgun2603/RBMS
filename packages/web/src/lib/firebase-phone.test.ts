@@ -6,6 +6,8 @@ import {
   firebaseWebConfig,
   isFirebaseAuthHost,
   matchesTestTarget,
+  methodOn,
+  methodSignInRedirectUrl,
   phoneSignInRedirectUrl,
   safeReturnUrl,
 } from "./firebase-phone";
@@ -87,10 +89,43 @@ describe("Firebase errors", () => {
     expect(firebasePhoneErrorKind({ code: "firebase_token_expired" })).toBe("code_expired");
     expect(firebasePhoneErrorKind({ code: "firebase_wrong_project" })).toBe("unknown");
   });
+  it("maps email + password errors; wrong email and wrong password read the same", () => {
+    for (const code of ["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found", "auth/invalid-login-credentials"]) {
+      expect(firebasePhoneErrorKind({ code })).toBe("bad_credentials");
+    }
+    expect(firebasePhoneMessage({ code: "auth/wrong-password" }, "en")).toBe(firebasePhoneMessage({ code: "auth/user-not-found" }, "en"));
+    expect(firebasePhoneErrorKind({ code: "auth/email-not-verified" })).toBe("email_not_verified");
+    expect(firebasePhoneErrorKind({ code: "firebase_email_unverified" })).toBe("email_not_verified");
+    expect(firebasePhoneErrorKind({ code: "auth/email-already-in-use" })).toBe("email_in_use");
+    expect(firebasePhoneErrorKind({ code: "auth/weak-password" })).toBe("weak_password");
+    expect(firebasePhoneErrorKind({ code: "method_disabled" })).toBe("method_disabled");
+    expect(firebasePhoneMessage({ code: "auth/email-not-verified" }, "ta")).toMatch(/மின்னஞ்சலை/);
+    // sign-up must not confirm that an address already has an account
+    expect(firebasePhoneMessage({ code: "auth/email-already-in-use" }, "en")).toMatch(/^If this email/);
+  });
   it("speaks English and Tamil", () => {
     expect(firebasePhoneMessage({ code: "auth/invalid-verification-code" }, "en")).toMatch(/didn't work/);
     expect(firebasePhoneMessage({ code: "auth/invalid-verification-code" }, "ta")).toMatch(/குறியீடு/);
     expect(firebasePhoneMessage({ code: "auth/quota-exceeded" }, undefined)).toMatch(/can't send/);
+  });
+});
+
+describe("shop sign-in methods", () => {
+  it("methodOn follows the shop's list, or the old behaviour when the API sent none", () => {
+    const phoneCfg = { method: "otp" as const, firebaseProjectId: null };
+    const cfg = { phone: phoneCfg, signIn: { audience: "staff" as const, shop: null, methods: ["password" as const, "sms" as const], default: "password" as const } };
+    expect(methodOn(cfg, "password")).toBe(true);
+    expect(methodOn(cfg, "email_code")).toBe(false);
+    expect(methodOn(null, "email_code")).toBe(true);
+    expect(methodOn(null, "password")).toBe(false);
+    expect(methodOn({ phone: phoneCfg }, "google")).toBe(false);
+  });
+  it("builds the landing-site URL for Google / password on hosts Firebase does not authorize", () => {
+    const u = new URL(methodSignInRedirectUrl("http://localhost:3005", "password", "http://anbu.localhost:3001/login", "anbu"));
+    expect(u.pathname).toBe("/login");
+    expect(u.searchParams.get("method")).toBe("password");
+    expect(u.searchParams.get("return")).toBe("http://anbu.localhost:3001/login");
+    expect(u.searchParams.get("shop")).toBe("anbu");
   });
 });
 

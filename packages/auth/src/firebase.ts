@@ -13,11 +13,11 @@ export const FIREBASE_KEYS_URL = "https://www.googleapis.com/robot/v1/metadata/x
 export interface FirebasePhoneClaims {
   /** Firebase user id (`sub`). */
   uid: string;
-  /** How the user signed in: the SMS check, or Google. */
-  provider: "phone" | "google.com";
+  /** How the user signed in: the SMS check, Google, or email + password. */
+  provider: "phone" | "google.com" | "password";
   /** Verified phone number, E.164 as Firebase sends it. Set for `provider: "phone"`, otherwise "". */
   phone: string;
-  /** Google only: the verified email (lower-cased) and profile. */
+  /** Google and password only: the verified email (lower-cased) and profile. */
   email?: string;
   name?: string;
   picture?: string;
@@ -44,6 +44,7 @@ export type FirebaseTokenErrorCode =
   | "firebase_not_phone"
   | "firebase_no_phone"
   | "firebase_no_email"
+  | "firebase_email_unverified"
   | "firebase_bad_signature"
   | "firebase_unknown_key"
   | "firebase_keys_unavailable";
@@ -64,9 +65,10 @@ const MESSAGES: Record<FirebaseTokenErrorCode, string> = {
   firebase_token_expired: "This phone sign-in has expired. Please verify your number again.",
   firebase_token_stale: "This phone sign-in is too old. Please verify your number again.",
   firebase_wrong_project: "This phone sign-in was made for a different app.",
-  firebase_not_phone: "Only phone number or Google sign-in is accepted here.",
+  firebase_not_phone: "Only phone number, Google or email and password sign-in is accepted here.",
   firebase_no_phone: "This sign-in has no verified phone number.",
   firebase_no_email: "Your Google account email is not verified.",
+  firebase_email_unverified: "Please verify your email address first. Open the link we emailed you, then sign in again.",
   firebase_bad_signature: "This phone sign-in could not be verified.",
   firebase_unknown_key: "This phone sign-in could not be verified.",
   firebase_keys_unavailable: "Phone sign-in is temporarily unavailable. Please try again shortly.",
@@ -154,7 +156,7 @@ export interface FirebaseVerifierOptions {
 /**
  * Checks: RS256 with a known `kid`; signature; `aud` = project id; `iss` = https://securetoken.google.com/<projectId>;
  * `exp` / `iat` within the clock skew; `auth_time` not in the future (and recent); `sub` non-empty;
- * `firebase.sign_in_provider` = "phone" (with `phone_number`) or "google.com" (with a verified `email`).
+ * `firebase.sign_in_provider` = "phone" (with `phone_number`) or "google.com" or "password" (each with a verified `email`).
  */
 export function createFirebaseVerifier(opts: FirebaseVerifierOptions): FirebaseTokenVerifier {
   const projectId = opts.projectId.trim();
@@ -216,6 +218,20 @@ export function createFirebaseVerifier(opts: FirebaseVerifierOptions): FirebaseT
         ...(typeof p.name === "string" && p.name.trim() ? { name: p.name.trim() } : {}),
         ...(typeof p.picture === "string" && p.picture ? { picture: p.picture } : {}),
         ...(googleSub ? { googleSub } : {}),
+        authTime,
+      };
+    }
+    if (provider === "password") {
+      // Email + password: only a verified email counts (the client sends Firebase's verification email at sign-up).
+      const p = payload as { email?: unknown; email_verified?: unknown; name?: unknown };
+      if (typeof p.email !== "string" || !p.email.includes("@")) throw fail("firebase_no_email");
+      if (p.email_verified !== true) throw fail("firebase_email_unverified");
+      return {
+        uid: payload.sub,
+        provider: "password",
+        phone: "",
+        email: p.email.trim().toLowerCase(),
+        ...(typeof p.name === "string" && p.name.trim() ? { name: p.name.trim() } : {}),
         authTime,
       };
     }

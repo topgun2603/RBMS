@@ -27,11 +27,19 @@ export function OtpSignIn({
   onSignedIn,
   askName = false,
   initialTarget = "",
+  phoneChannel = "sms",
+  allowPhone = true,
+  allowEmail = true,
 }: {
   onSignedIn: (r: SignInResult) => void;
   askName?: boolean;
   /** Prefills the number (the round trip from a shop app's login). */
   initialTarget?: string;
+  /** How phone codes are sent: SMS (Firebase when configured) or WhatsApp (when the shop turned SMS off). */
+  phoneChannel?: "sms" | "whatsapp";
+  /** The shop's sign-in options: refuse (and say so) a phone number or an email when that way is switched off. */
+  allowPhone?: boolean;
+  allowEmail?: boolean;
 }) {
   const { t, locale } = useSite();
   const [stage, setStage] = React.useState<"target" | "code">("target");
@@ -56,19 +64,21 @@ export function OtpSignIn({
     e?.preventDefault();
     const norm = normalizeTarget(raw);
     if (!norm) return setError(t("otp.targetInvalid"));
+    const kind = norm.includes("@") ? "email" : "phone";
+    if (kind === "phone" && !allowPhone) return setError(t("otp.phoneOff"));
+    if (kind === "email" && !allowEmail) return setError(t("otp.emailOff"));
     setBusy(true);
     setError(null);
     try {
       firebaseCode.current = null;
-      const kind = norm.includes("@") ? "email" : "phone";
-      const method = await resolvePhoneMethod({ kind, target: norm }, api.authConfig);
+      const method = await resolvePhoneMethod({ kind, target: norm, channel: kind === "phone" ? phoneChannel : "email" }, api.authConfig);
       let shown = norm;
       let resend = 30;
       if (method === "firebase") {
         firebaseCode.current = await sendFirebasePhoneCode(norm, { locale });
         shown = maskPhone(norm);
       } else {
-        const r = await api.requestOtp(norm);
+        const r = await api.requestOtp(norm, kind === "phone" && phoneChannel === "whatsapp" ? "whatsapp" : undefined);
         shown = r.target || norm;
         resend = r.resendInSeconds || 0;
       }
@@ -118,7 +128,7 @@ export function OtpSignIn({
             </Field>
           )}
           <Field invalid={!!error}>
-            <FieldLabel>{t("otp.target")}</FieldLabel>
+            <FieldLabel>{t(allowPhone && allowEmail ? "otp.target" : allowPhone ? "otp.targetPhone" : "otp.targetEmail")}</FieldLabel>
             <FieldControl>
               <Input
                 size="lg"

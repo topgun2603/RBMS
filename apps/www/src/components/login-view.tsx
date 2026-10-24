@@ -8,11 +8,12 @@ import { Button } from "@srirealtime/ui/components/button";
 import { Card } from "@srirealtime/ui/components/card";
 import { Skeleton } from "@srirealtime/ui/components/skeleton";
 import { AnimatePresence, motion, Stagger, StaggerItem } from "@srirealtime/ui/motion";
-import { safeReturnUrl } from "@srirealtime/web/firebase-phone";
-import { api, errorMessage, getToken, handoffUrl, normalizeTarget, type Shop, type User } from "@/lib/api";
+import { firebasePhoneMessage, isFirebaseError, safeReturnUrl, signInWithGoogle } from "@srirealtime/web/firebase-phone";
+import { api, errorMessage, getToken, handoffUrl, normalizeTarget, setSignInContext, type Shop, type User } from "@/lib/api";
 import { appUrlFor, PHONE_RETURN_ORIGINS } from "@/lib/site";
 import { useSite } from "./site-context";
-import { OtpSignIn } from "./otp-sign-in";
+import { SignInMethods } from "./method-sign-in";
+import { useGoogleAvailable } from "./google-button";
 
 type ShopRow = { tenant: Shop; roles: string[] };
 
@@ -20,17 +21,23 @@ type ShopRow = { tenant: Shop; roles: string[] };
  * `?return=<app login URL>&phone=<number>`: a shop app whose host Firebase doesn't authorize (per-shop subdomains)
  * sends phone sign-in here. After signing in, a single-use handoff code goes back to that (validated) URL.
  */
-function returnTripFromUrl(): { returnUrl: string; phone: string } | null {
+function returnTripFromUrl(): { returnUrl: string; phone: string; method: "google" | "password" | null } | null {
   if (typeof window === "undefined") return null;
   const q = new URLSearchParams(window.location.search);
   const returnUrl = safeReturnUrl(q.get("return"), PHONE_RETURN_ORIGINS);
+  // The shop whose STAFF are signing in: the API applies that shop's sign-in options to the calls made here.
+  const shop = (q.get("shop") ?? "").trim().toLowerCase();
+  setSignInContext({ audience: "staff", ...(returnUrl && /^[a-z0-9-]{1,63}$/.test(shop) ? { shop } : {}) });
   if (!returnUrl) return null;
-  return { returnUrl, phone: normalizeTarget(q.get("phone") ?? "") ?? "" };
+  const method = q.get("method");
+  return { returnUrl, phone: normalizeTarget(q.get("phone") ?? "") ?? "", method: method === "google" || method === "password" ? method : null };
 }
 
 /** OTP sign-in, then the user's shops with "Open" (single-use handoff code → the shop app's /login). */
 export function LoginView() {
-  const { t } = useSite();
+  const { t, locale } = useSite();
+  const google = useGoogleAvailable();
+  const [googleBusy, setGoogleBusy] = React.useState(false);
   const [trip] = React.useState(returnTripFromUrl);
   const [phase, setPhase] = React.useState<"loading" | "signin" | "shops" | "returning">("loading");
   const [user, setUser] = React.useState<User | null>(null);
@@ -97,6 +104,21 @@ export function LoginView() {
     }
   };
 
+  /** Google (through Firebase); not on a return trip, which verifies one particular phone number. */
+  const withGoogle = async () => {
+    setGoogleBusy(true);
+    setError(null);
+    try {
+      await api.firebaseSignIn(await signInWithGoogle({ locale }));
+      if (trip) await goBack(trip.returnUrl);
+      else await load();
+    } catch (err) {
+      setError(isFirebaseError(err) ? firebasePhoneMessage(err, locale) : errorMessage(err, t));
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
   const signOut = async () => {
     await api.logout();
     setUser(null);
@@ -123,17 +145,24 @@ export function LoginView() {
         {phase === "signin" && (
           <motion.div key="signin" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-6 p-6 sm:p-8">
             <div className="space-y-1.5">
-              <h1 className="font-display text-2xl font-bold sm:text-3xl">{trip ? t("login.verifyTitle") : t("login.title")}</h1>
+              <h1 className="font-display text-2xl font-bold sm:text-3xl">{trip?.phone ? t("login.verifyTitle") : t("login.title")}</h1>
               <p className="text-muted-foreground">{trip ? t("login.verifySub", { host: new URL(trip.returnUrl).host }) : t("login.sub")}</p>
             </div>
-            {error && trip && (
+            {error && (
               <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {error}
               </p>
             )}
-            <OtpSignIn
+            <SignInMethods
               initialTarget={trip?.phone.replace(/^\+91/, "") ?? ""}
               onSignedIn={() => (trip ? void goBack(trip.returnUrl) : void load())}
+              onGoogle={() => void withGoogle()}
+              googleBusy={googleBusy}
+              googleAvailable={google}
+              // Google on a return trip for one particular phone number would be the wrong person's proof.
+              showGoogle={!trip?.phone}
+              initialView={trip?.method === "password" ? "password" : undefined}
+              testId="login-methods"
             />
           </motion.div>
         )}

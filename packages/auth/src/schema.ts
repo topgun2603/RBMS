@@ -1,6 +1,6 @@
 import { pk, timestamps } from "@srirealtime/db";
 import { sql } from "drizzle-orm";
-import { index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export type UserStatus = "active" | "disabled" | "deleted";
 export type OtpChannel = "sms" | "whatsapp" | "email";
@@ -101,6 +101,18 @@ export const authHandoffs = pgTable(
   },
   (t) => [index("auth_handoffs_user_idx").on(t.userId)],
 );
+
+/**
+ * A shop's sign-in options, one row per shop (no row = the defaults in sign-in-options.ts). `staff` and `customer`
+ * each hold `{ methods, default }` (see `audienceOptionsSchema`); stored loosely and re-validated on read.
+ */
+export const authTenantSettings = pgTable("auth_tenant_settings", {
+  tenantId: uuid("tenant_id").primaryKey(),
+  staff: jsonb("staff").$type<Record<string, unknown>>().notNull().default({}),
+  customer: jsonb("customer").$type<Record<string, unknown>>().notNull().default({}),
+  updatedBy: uuid("updated_by"),
+  ...timestamps(),
+});
 
 export type UserRow = typeof users.$inferSelect;
 export type SessionRow = typeof authSessions.$inferSelect;

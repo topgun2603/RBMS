@@ -1,4 +1,5 @@
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
+import { enSignIn, taSignIn } from "./messages-signin";
 
 /**
  * Marketing-site strings, English + Tamil. The audience is Tamil Nadu shop owners: plain words, Tamil that reads
@@ -435,6 +436,7 @@ export const en: Messages = {
   "mock.credit.c1": "Selvi",
   "mock.credit.c2": "Murugan",
   "mock.credit.c3": "Lakshmi",
+  ...enSignIn,
 };
 
 export const ta: Messages = {
@@ -868,6 +870,7 @@ export const ta: Messages = {
   "mock.credit.c1": "செல்வி",
   "mock.credit.c2": "முருகன்",
   "mock.credit.c3": "லட்சுமி",
+  ...taSignIn,
 };
 
 export const LOCALE_COOKIE = "sr_locale";

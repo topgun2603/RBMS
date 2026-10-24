@@ -1,4 +1,7 @@
-# Firebase sign-in (phone, and Google for shoppers)
+# Firebase sign-in (phone, Google and email + password)
+
+Each shop chooses its own sign-in options, separately for its staff and for its customers: see section 8. Sections 1-7
+describe the Firebase pieces those options build on.
 
 Phone numbers are verified with **Firebase Phone Authentication**. Google sends the SMS from its own registered
 sender, so we don't need India's DLT registration (sender id and template approval) for sign-in codes.
@@ -54,6 +57,27 @@ The project in use is `srikit-cdea0`.
    (`localhost:3005`, with the shops on `*.localhost:3003`).
 3. Make sure the web app config (section 1) is in the landing site's environment (`NEXT_PUBLIC_FIREBASE_*`). The API needs
    only `FIREBASE_PROJECT_ID`.
+
+## 2c. Enable Email/Password sign-in
+
+Used by the shops that switch on "Email and password" (section 8). Firebase stores and hashes the passwords, throttles
+guessing, and sends the verification and password-reset emails. We never see or store a password.
+
+1. **Build → Authentication → Sign-in method → Add new provider → Email/Password → Enable** (leave "Email link
+   (passwordless sign-in)" off) **→ Save.**
+2. **Authentication → Templates.** Edit **Email address verification** and **Password reset**: set the sender name, the
+   reply-to address, the subject and the message (the language drop-down has Tamil; our screens set the email language
+   to the shopper's). The default action link opens Firebase's own page on `<project>.firebaseapp.com`; no extra domain
+   is needed. If you want the mails from your own domain, set a custom sender domain there (it needs DNS records).
+3. **Authentication → Settings → User actions:** keep **Email enumeration protection** on (default for new projects), so
+   Firebase's own answers don't reveal which emails have accounts. Leave "Prevent account creation/deletion by users"
+   off (people create their own accounts).
+4. **Authentication → Settings → Password policy (optional):** Firebase's minimum is 6 characters. Our forms require 8 and
+   check it before calling Firebase; you can set the same minimum here (and require a number or symbol if you like).
+5. **Authentication → Settings → Authorized domains:** same list as section 2b (the landing site). Email and password
+   sign-in runs in place on authorized hosts (`localhost` in development) and on the landing site's `/login` everywhere
+   else, exactly like Google. Verification and reset links open Firebase's hosted page, so no shop domain is added.
+6. Check the **Usage and billing** page: email sends are free; SMS is what costs money (section 5).
 
 ## 3. Authorized domains, and per-shop subdomains
 
@@ -219,8 +243,8 @@ landing site returns to that URL with `?handoff=<code>`, which `StoreProvider` r
 **Google.** `POST /v1/auth/firebase` also accepts a Firebase ID token with `firebase.sign_in_provider = "google.com"`. It needs
 an `email` with `email_verified: true` (else 400 `firebase_no_email`). The user is found or created **by that email**, with
 the same rules as `POST /v1/auth/google`: the Google account id (`firebase.identities["google.com"]`) is linked as an `auth_identities`
-row, and name and avatar are filled in when empty. Audit: `auth.login` "Signed in with firebase". Phone sign-ins and every
-other provider (password, Facebook, …) behave as before (`firebase_not_phone`).
+row, and name and avatar are filled in when empty. Audit: `auth.login` "Signed in with firebase". Phone sign-ins behave as before; email + password is
+section 8; any other provider (Facebook, …) is still refused (`firebase_not_phone`).
 
 **Config.** Storefront apps read `NEXT_PUBLIC_WWW_URL` (default `http://localhost:3005`). The buttons appear only when
 `GET /v1/auth/config` says `phone.method: "firebase"` (`FIREBASE_PROJECT_ID` set on the API) and the landing site has its
@@ -232,19 +256,135 @@ Still open:
   production without MSG91 it is refused (`sms_via_firebase`); guests can use WhatsApp or email.
 - **Mobile apps** would use the native Firebase SDKs and post the same ID token to `POST /v1/auth/firebase`.
 
+## 8. Sign-in options per shop
+
+Every shop (tenant) chooses how its **staff** and its **customers** may sign in. The two lists are independent.
+
+| Method | Key | What it is |
+| --- | --- | --- |
+| Mobile number + SMS code | `sms` | Firebase phone verification when `FIREBASE_PROJECT_ID` is set (costs per SMS, section 5), else our own OTP |
+| Mobile number + WhatsApp code | `whatsapp` | our OTP over WhatsApp |
+| Email + code | `email_code` | our email OTP |
+| Google | `google` | Firebase Google provider (or the Google ID token flow when `GOOGLE_CLIENT_ID` is set) |
+| Email + password | `password` | Firebase Email/Password provider; the email must be verified |
+
+Each audience stores `{ methods: [...], default }`: the enabled methods in display order, and the one shown first (always
+one of them; **at least one must stay on**).
+
+**Defaults = how sign-in worked before.** A shop with no saved options gets, for staff `sms, whatsapp, email_code`
+(preferred `sms`), and for customers `google, sms, whatsapp, email_code` (preferred `google`). Nothing changes until the
+owner edits. Password is off by default.
+
+**Platform availability still applies.** What people see (and what the API accepts) is the shop's list intersected with
+what the platform has: `sms` needs Firebase or a working SMS provider, `google` needs Firebase or `GOOGLE_CLIENT_ID`,
+`password` needs Firebase (`FIREBASE_PROJECT_ID`). If a shop's list is left with nothing the platform offers, every
+platform method is offered instead of locking everyone out; the API also refuses to *save* an audience whose methods
+are all unavailable (400 `no_method_enabled`).
+
+**The platform's own login keeps every method.** Requests without a shop (the admin app, the landing site's own
+`/login` and sign-up, no `x-tenant`) are never restricted. A platform admin signing in to a *shop's* app is
+subject to that shop's staff options like any member; the admin app is the way in that always has everything.
+
+### Where it is stored
+
+Table `auth_tenant_settings` (migration `0028_sign_in_options`): `tenant_id` primary key, `staff` and `customer` jsonb,
+`updated_by`, timestamps; owned by the auth package like `tenant_branding` is by branding. No row = defaults. The JSON is
+re-validated on every read (unknown methods are dropped, a bad row falls back to the defaults).
+
+### Staff or customer?
+
+The API cannot tell from the shop alone (the same shop has a business app and a storefront), so the client says so with
+the `x-auth-audience: staff | customer` header:
+
+- the **storefront proxy** (`packages/storefront-ui/src/server/proxy.ts`) always sets `customer` and drops anything the
+  browser sent, so everything arriving through a shop's storefront is a shopper;
+- the **business apps** (`packages/web` `api()`) send `staff` on every `/auth/*` call;
+- the **landing site** sends `customer` from the storefront popup (`/auth/store?shop=`) and `staff` for a shop app's
+  round trip (`/login?shop=&return=`), with the shop in `x-tenant`;
+- no header (the mobile apps, scripts) counts as `staff`.
+
+**Limit, stated plainly.** The accounts themselves are global (one user can be staff of one shop and a customer of
+another), so this is a *policy on how a shop lets people in*, not a wall between accounts. Someone calling the API
+directly can claim either audience, so a determined customer can use the staff list's methods for the same shop.
+Staff-only access is protected by roles (the app checks the member's role after sign-in), not by this setting.
+
+### What is enforced where
+
+Server-side, in `AuthService.assertMethodAllowed` (403 `method_disabled`, `details: { method, audience }`):
+
+| Route | Method checked |
+| --- | --- |
+| `POST /otp/request` | the channel: `sms`, `whatsapp` or `email_code` (dev test identities are exempt) |
+| `POST /otp/verify` | the channel the code was sent on (a code requested without a shop can't be used for a shop that turned it off) |
+| `POST /firebase` | the token's provider: `phone` = `sms`, `google.com` = `google`, `password` = `password` |
+| `POST /google` | `google` |
+
+Handoff redemption (`/handoff/redeem`) is not a method: the person already signed in somewhere that was checked.
+Support tickets for guests (`POST /guest/verify`) share `/otp/request`, so a shop that turned SMS and WhatsApp off
+for customers also stops phone-verified guest tickets (email codes still work).
+
+### Email + password
+
+```
+web client                         Firebase                         our API
+  │ createUserWithEmailAndPassword ▶│  account (unverified)
+  │ sendEmailVerification ─────────▶│  email with a link
+  │ (signed out; the person opens the link)
+  │ signInWithEmailAndPassword ────▶│  → ID token (email_verified: true)
+  │ POST /v1/auth/firebase {idToken} ─────────────────────────────▶ │  provider "password" → user by email
+  │ ◀───────────────────────────────────────── { token, user, isNewUser } + sr_session cookie
+  │ signOut() from Firebase
+```
+
+- `POST /v1/auth/firebase` accepts `sign_in_provider: "password"` **only with `email_verified: true`**; else 400
+  `firebase_email_unverified` (no email at all: `firebase_no_email`). The user is found or created by that email, like
+  Google, so someone who already signed in by email code has the same account.
+- The client never asks the API for a session before the email is verified: a sign-in with an unverified email re-sends
+  the verification link and shows "Verify your email" (the helper throws `auth/email-not-verified`, no token is
+  returned).
+- **Forgot password:** `sendPasswordResetEmail` from the sign-in screen. The screen says "if there is an account for
+  <email>, we've sent a link", whether or not there is one.
+- **No account enumeration:** wrong password, unknown email and disabled account give the same message; creating an
+  account with an address that exists says "if this email already has an account, sign in or reset your password".
+- **Password policy:** Firebase's (minimum 6); our forms require 8 and check it before calling Firebase.
+- Rate limits: Firebase throttles password attempts itself (`auth/too-many-requests`); the API's `/firebase` limiter
+  (20 per IP per 10 minutes) is unchanged.
+- Where it runs: in place on hosts in `NEXT_PUBLIC_FIREBASE_AUTH_HOSTS`; on any other host (a shop subdomain) the staff
+  login sends the browser to `NEXT_PUBLIC_WWW_URL/login?method=password&shop=<slug>&return=<login URL>`, the landing
+  site shows the password screens, then hands back with the usual handoff code (section 3, same `return` checks). For
+  customers the storefront opens the popup `/auth/store?...&method=password` (section 7). Google works the same way
+  (`method=google`).
+
+### Who can change it
+
+Settings → **Sign-in options** (every app, owners and admins only; others don't see the page). It explains each method in
+plain words (SMS costs money per message; password needs a verified email), marks methods the platform doesn't have
+as "not set up", and keeps the last method switched on. Changes apply at once. API: `GET /v1/auth/settings` and
+`PUT /v1/auth/settings` (owner/admin of the shop), audited as `auth.settings.update` with the options before and after.
+
+**Before turning a method off**, make sure the owner can still sign in with another one: e.g. password-only means the
+owner must have created and verified a password account first.
+
 ## API reference
 
-- `GET /v1/auth/config` (public) returns:
+- `GET /v1/auth/config?shop=<slug>&audience=staff|customer` (public) returns:
 
   ```
   {
     phone: { method: "firebase" | "otp", firebaseProjectId, smsOtp },
     google,
-    testTargets?
+    password,            // Firebase is set up
+    testTargets?,
+    signIn?: { audience, shop: { slug, name } | null, methods: [...], default }
   }
   ```
 
-  `testTargets` appears only when test OTPs are on (never in production).
+  `signIn` is present when `audience` is given or the request has a shop (`x-tenant`): the shop's methods for that
+  audience intersected with the platform, preferred first (404 for an unknown `shop`). With no shop it lists every
+  platform method. Old clients ignore it. `testTargets` appears only when test OTPs are on (never in production).
+- `GET /v1/auth/settings` (owner/admin) returns `{ options: { staff, customer }, defaults, platform }`.
+  `PUT /v1/auth/settings` takes `{ staff?, customer? }` (each `{ methods, default }`; 400 on no methods, a repeated
+  method, a preferred method that is off, or `no_method_enabled`).
 - `POST /v1/auth/firebase {idToken, name?}` responds the same way as `/otp/verify`: `{token, expiresAt, user,
   isNewUser}` plus the `sr_session` cookie, audited as `auth.login` "Signed in with firebase". Limited to 20 per IP per
   10 minutes; Firebase limits the SMS itself.
@@ -257,7 +397,7 @@ Still open:
   - `exp` / `iat` with 60 s skew;
   - `auth_time` not in the future and at most 10 minutes old;
   - `sub` present;
-  - `firebase.sign_in_provider` = `phone` with `phone_number` present, or `google.com` with `email` and `email_verified: true`.
+  - `firebase.sign_in_provider` = `phone` with `phone_number` present, or `google.com` / `password` with `email` and `email_verified: true`.
 
   Rejections are 400s, each with its own code:
 
@@ -267,9 +407,12 @@ Still open:
   | `firebase_token_expired` | past `exp` |
   | `firebase_token_stale` | `auth_time` more than 10 minutes ago |
   | `firebase_wrong_project` | `aud` or `iss` is for another project |
-  | `firebase_not_phone` | not a phone or Google sign-in |
+  | `firebase_not_phone` | not a phone, Google or email + password sign-in |
   | `firebase_no_phone` | no usable `phone_number` |
-  | `firebase_no_email` | Google sign-in without a verified email |
+  | `firebase_no_email` | Google or password sign-in without an email (Google: not verified) |
+  | `firebase_email_unverified` | password sign-in whose email is not verified yet |
+  | `method_disabled` (403) | the shop turned this way of signing in off for this audience |
+  | `no_method_enabled` (400, `PUT /settings`) | none of the chosen methods exists on this platform |
   | `firebase_bad_signature` | signature doesn't verify |
   | `firebase_unknown_key` | `kid` not among Google's keys |
 

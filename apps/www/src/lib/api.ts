@@ -38,8 +38,22 @@ export function setToken(token: string | null) {
   }
 }
 
+/**
+ * Which shop and audience the sign-in calls of this page are for (docs/firebase-auth.md, "Sign-in options per shop"): a shop
+ * app's login round trip (`?shop=`, staff) or a storefront popup (customers). Sent as `x-tenant` / `x-auth-audience` on /auth
+ * calls so the API applies that shop's options. Not set = the landing site's own sign-in, where nothing is restricted.
+ */
+let signInContext: { shop?: string; audience?: "staff" | "customer" } = {};
+export function setSignInContext(c: { shop?: string; audience?: "staff" | "customer" }) {
+  signInContext = c;
+}
+
 async function call<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { accept: "application/json" };
+  if (path.startsWith("/auth/")) {
+    if (signInContext.shop) headers["x-tenant"] = signInContext.shop;
+    if (signInContext.audience) headers["x-auth-audience"] = signInContext.audience;
+  }
   if (body !== undefined) headers["content-type"] = "application/json";
   const token = getToken();
   if (token) headers.authorization = `Bearer ${token}`;
@@ -125,7 +139,7 @@ export interface HandoffResult {
 export const api = {
   plans: () => call<{ items: Plan[] }>("GET", "/plans"),
 
-  requestOtp: (target: string) => call<OtpRequestResult>("POST", "/auth/otp/request", { target }),
+  requestOtp: (target: string, channel?: "sms" | "whatsapp") => call<OtpRequestResult>("POST", "/auth/otp/request", { target, ...(channel ? { channel } : {}) }),
   verifyOtp: async (target: string, code: string, name?: string) => {
     const r = await call<SignInResult>("POST", "/auth/otp/verify", { target, code, ...(name ? { name } : {}) });
     setToken(r.token);
@@ -138,7 +152,7 @@ export const api = {
     return r;
   },
   /** Which phone method the API uses (firebase | otp). */
-  authConfig: () => call<AuthClientConfig>("GET", "/auth/config"),
+  authConfig: () => call<AuthClientConfig>("GET", `/auth/config?audience=${signInContext.audience ?? "staff"}`),
   me: () => call<{ user: User; tenantRoles: string[]; permissions: string[] }>("GET", "/auth/me"),
   logout: async () => {
     await call("POST", "/auth/logout").catch(() => undefined);

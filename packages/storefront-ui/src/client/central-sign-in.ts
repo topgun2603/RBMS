@@ -27,14 +27,20 @@ const WWW_ORIGIN = (() => {
 
 export const HANDOFF_MESSAGE = "sr-handoff";
 
+export type ShopperMethod = "sms" | "whatsapp" | "email_code" | "google" | "password";
 interface AuthConfig {
   phone?: { method?: string };
   testTargets?: string[];
+  /** The methods this shop offers its customers, preferred first (absent on an older API: the old behaviour). */
+  signIn?: { methods: ShopperMethod[]; default: ShopperMethod };
 }
+
+/** What shoppers could do before shops chose their own options (an older API, or the config call failed). */
+export const LEGACY_SHOPPER_METHODS: ShopperMethod[] = ["google", "sms", "email_code"];
 let configPromise: Promise<AuthConfig | null> | null = null;
 /** `GET /auth/config` once per page; null when it fails (the plain OTP flow then stays). */
 export function loadAuthConfig(): Promise<AuthConfig | null> {
-  configPromise ??= call<AuthConfig>("/auth/config", { auth: false }).catch(() => {
+  configPromise ??= call<AuthConfig>("/auth/config", { auth: false, query: { audience: "customer" } }).catch(() => {
     configPromise = null;
     return null;
   });
@@ -53,13 +59,14 @@ export function isTestTarget(target: string, patterns: readonly string[] = []): 
 }
 
 /** The landing site's page for this shop; `origin` is only a claim, the API checks it against the shop's own addresses. */
-export function centralSignInUrl(o: { shop: string; mode: "popup" | "redirect"; locale: string; phone?: string; returnUrl?: string }): string {
+export function centralSignInUrl(o: { shop: string; mode: "popup" | "redirect"; locale: string; phone?: string; returnUrl?: string; method?: "google" | "password" }): string {
   const u = new URL("/auth/store", WWW_URL);
   u.searchParams.set("shop", o.shop);
   u.searchParams.set("origin", window.location.origin);
   u.searchParams.set("mode", o.mode);
   if (o.locale) u.searchParams.set("lang", o.locale);
   if (o.phone) u.searchParams.set("phone", o.phone);
+  if (o.method) u.searchParams.set("method", o.method);
   if (o.returnUrl) u.searchParams.set("return", o.returnUrl);
   return u.toString();
 }
@@ -85,6 +92,8 @@ export function useCentralSignIn(onSignedIn?: (user: AuthUser) => void) {
   const { auth, shell, locale, t } = useStore();
   const [available, setAvailable] = React.useState(false);
   const [testTargets, setTestTargets] = React.useState<string[]>([]);
+  /** The shop's customer sign-in methods, preferred first; null until the config is in (or when it failed). */
+  const [methods, setMethods] = React.useState<ShopperMethod[] | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const cleanup = React.useRef<(() => void) | null>(null);
@@ -95,6 +104,7 @@ export function useCentralSignIn(onSignedIn?: (user: AuthUser) => void) {
       if (!alive || !c) return;
       setAvailable(c.phone?.method === "firebase" && !!shell.slug);
       setTestTargets(c.testTargets ?? []);
+      setMethods(c.signIn?.methods ?? LEGACY_SHOPPER_METHODS);
     });
     return () => {
       alive = false;
@@ -103,10 +113,10 @@ export function useCentralSignIn(onSignedIn?: (user: AuthUser) => void) {
   }, [shell.slug]);
 
   const start = React.useCallback(
-    (opts: { phone?: string } = {}) => {
+    (opts: { phone?: string; method?: "google" | "password" } = {}) => {
       if (busy) return;
       setError(null);
-      const common = { shop: shell.slug, locale, phone: opts.phone };
+      const common = { shop: shell.slug, locale, phone: opts.phone, method: opts.method };
       const popup = window.open(centralSignInUrl({ ...common, mode: "popup" }), "sr-sign-in", "popup=yes,width=480,height=760");
       if (!popup) {
         // Popup blocked: go there in this tab and come back with ?handoff=.
@@ -151,5 +161,5 @@ export function useCentralSignIn(onSignedIn?: (user: AuthUser) => void) {
     [auth, busy, locale, onSignedIn, shell.slug, t],
   );
 
-  return { available, testTargets, busy, error, start };
+  return { available, testTargets, methods, busy, error, start };
 }

@@ -1,9 +1,10 @@
-import { AppError, badRequest, documented, notFound, requireSuperAdmin, requireUser, tooMany, type AuditEvent, type AuditPort } from "@srirealtime/core";
+import { AppError, badRequest, documented, notFound, requireRole, requireSuperAdmin, requireTenant, requireUser, tooMany, type AuditEvent, type AuditPort } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
 import type { UserListQuery } from "./list";
-import { parseClient, type AuthService, type SignInResult } from "./service";
+import { parseClient, type AuthService, type SignInPolicy, type SignInResult } from "./service";
+import { audienceFromHeader, AUDIENCE_HEADER, audienceSchema, signInMethodSchema, signInOptionsPatchSchema } from "./sign-in-options";
 
 const otpRequestBody = z.object({
   target: z.string().min(3).max(254),
@@ -67,7 +68,28 @@ export const signInResponse = z.object({ token: z.string(), expiresAt: z.string(
 export const authConfigResponse = z.object({
   phone: z.object({ method: z.enum(["firebase", "otp"]), firebaseProjectId: z.string().nullable(), smsOtp: z.boolean() }),
   google: z.boolean(),
+  /** Email + password is available (a Firebase provider). */
+  password: z.boolean(),
   testTargets: z.array(z.string()).optional(),
+  /** With `?audience=` / `?shop=` or a shop header: the methods this shop offers this audience, preferred first. */
+  signIn: z
+    .object({
+      audience: audienceSchema,
+      shop: z.object({ slug: z.string(), name: z.string() }).nullable(),
+      methods: z.array(signInMethodSchema),
+      default: signInMethodSchema,
+    })
+    .optional(),
+});
+const audienceOptionsResponse = z.object({ methods: z.array(signInMethodSchema), default: signInMethodSchema });
+export const signInSettingsResponse = z.object({
+  options: z.object({ staff: audienceOptionsResponse, customer: audienceOptionsResponse }),
+  defaults: z.object({ staff: audienceOptionsResponse, customer: audienceOptionsResponse }),
+  platform: z.record(signInMethodSchema, z.boolean()),
+});
+const configQuery = z.object({
+  shop: z.string().trim().min(1).max(63).optional(),
+  audience: audienceSchema.optional(),
 });
 export const otpRequestResponse = z.object({
   target: z.string(),
@@ -104,6 +126,11 @@ const statusBody = z.object({ status: z.enum(["active", "disabled", "deleted"]) 
 const rolesBody = z.object({ roles: z.array(z.string().trim().min(1).max(50)).max(20) });
 
 const isHttps = (req: FastifyRequest) => req.protocol === "https";
+
+/** Which audience is signing in: the `${AUDIENCE_HEADER}` header (the storefront proxy always sets "customer"; business apps and mobile are "staff"). */
+const audienceOf = (req: FastifyRequest) => audienceFromHeader(req.headers[AUDIENCE_HEADER]);
+/** The shop's sign-in options that apply to this request; null without a shop (platform login, landing site). */
+const policyOf = (req: FastifyRequest): SignInPolicy | null => (req.ctx.tenant ? { tenantId: req.ctx.tenant.id, audience: audienceOf(req) } : null);
 
 /** These routes record their own audit entries (sign-ins have no user yet; super-admin changes have no shop). */
 const SELF_AUDITED = { config: { audit: false as const } };
@@ -144,7 +171,40 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
 
   return (app: FastifyInstance) => {
     // Public: which phone method to use (firebase | otp), so clients only load the Firebase SDK when it will work.
-    app.get("/config", documented({ response: authConfigResponse }), async () => service.clientConfig());
+    // With `?shop=<slug>&audience=staff|customer` (or a shop header) it also lists the methods that shop offers.
+    app.get("/config", documented({ response: authConfigResponse }), async (req) => {
+      const q = configQuery.parse(req.query ?? {});
+      const base = service.clientConfig();
+      const wantsShop = !!q.shop || !!req.ctx.tenant;
+      if (!q.audience && !wantsShop) return base;
+      const audience = q.audience ?? audienceOf(req);
+      const shop = q.shop ? await service.shopForConfig(q.shop) : req.ctx.tenant ? { id: req.ctx.tenant.id, slug: req.ctx.tenant.slug, name: req.ctx.tenant.slug } : null;
+      const eff = await service.effectiveSignIn(shop?.id ?? null, audience);
+      return { ...base, signIn: { audience, shop: shop ? { slug: shop.slug, name: shop.name } : null, methods: eff.methods, default: eff.default } };
+    });
+
+    // A shop's own sign-in options (owner / admin): which methods staff and shoppers may use, and which comes first.
+    app.get("/settings", documented({ response: signInSettingsResponse }), async (req) => {
+      requireRole(req.ctx, "owner", "admin");
+      return service.signInSettings(requireTenant(req.ctx).id);
+    });
+    app.put("/settings", documented({ body: signInOptionsPatchSchema, response: signInSettingsResponse }, SELF_AUDITED.config), async (req) => {
+      const me = requireRole(req.ctx, "owner", "admin");
+      const tenant = requireTenant(req.ctx);
+      const patch = signInOptionsPatchSchema.parse(req.body ?? {});
+      const r = await service.updateSignInOptions(tenant.id, patch, me.id);
+      await record(req, {
+        tenantId: tenant.id,
+        actorUserId: me.id,
+        action: "auth.settings.update",
+        entityType: "auth_settings",
+        entityId: tenant.id,
+        summary: `Sign-in options changed (${Object.keys(patch).join(", ")})`,
+        before: r.before,
+        after: r.after,
+      });
+      return { options: r.options, defaults: r.defaults, platform: r.platform };
+    });
 
     app.post("/otp/request", documented({ body: otpRequestBody, response: otpRequestResponse }), async (req) => {
       const body = otpRequestBody.parse(req.body);
@@ -154,12 +214,13 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
         locale: req.ctx.locale,
         ip: req.ctx.ip,
         tenantId: req.ctx.tenant?.id ?? null,
+        audience: audienceOf(req),
       });
     });
 
     app.post("/otp/verify", documented({ body: otpVerifyBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
       const body = otpVerifyBody.parse(req.body);
-      const r = await service.verifyOtp({ ...body, ...sessionMeta(req) });
+      const r = await service.verifyOtp({ ...body, ...sessionMeta(req), policy: policyOf(req) });
       await login(req, r, "otp");
       return signedIn(req, reply, r);
     });
@@ -175,7 +236,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
 
     app.post("/google", SELF_AUDITED, async (req, reply) => {
       const body = googleBody.parse(req.body);
-      const r = await service.signInWithGoogle({ idToken: body.idToken, ...sessionMeta(req) });
+      const r = await service.signInWithGoogle({ idToken: body.idToken, ...sessionMeta(req), policy: policyOf(req) });
       await login(req, r, "google");
       return signedIn(req, reply, r);
     });
@@ -184,7 +245,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
     app.post("/firebase", documented({ body: firebaseBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
       const body = firebaseBody.parse(req.body);
       if (!firebaseLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many sign-in attempts. Please wait a few minutes and try again");
-      const r = await service.signInWithFirebase({ ...body, ...sessionMeta(req) });
+      const r = await service.signInWithFirebase({ ...body, ...sessionMeta(req), policy: policyOf(req) });
       await login(req, r, "firebase");
       return signedIn(req, reply, r);
     });

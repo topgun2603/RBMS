@@ -1,4 +1,5 @@
 import type { Messages } from "@srirealtime/i18n/client";
+import { enSignIn, taSignIn } from "./messages-signin";
 
 /** web.* strings for the shared kit (shell, login, shop resolution, feature gate, Settings → Features). Keep en and ta key sets identical. */
 const en: Messages = {
@@ -246,6 +247,7 @@ const en: Messages = {
   "web.table.range.thisMonth": "This month",
   "web.table.range.lastMonth": "Last month",
   "web.table.range.thisFY": "This financial year",
+  ...enSignIn,
 };
 
 const ta: Messages = {
@@ -491,6 +493,7 @@ const ta: Messages = {
   "web.table.range.thisMonth": "இந்த மாதம்",
   "web.table.range.lastMonth": "கடந்த மாதம்",
   "web.table.range.thisFY": "இந்த நிதியாண்டு",
+  ...taSignIn,
 };
 
 export const webMessages = { en, ta } as const;

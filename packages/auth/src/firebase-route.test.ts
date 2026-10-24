@@ -81,7 +81,7 @@ describe("POST /v1/auth/firebase (no database)", () => {
     expect(res.statusCode).toBe(503);
     expect(res.json().error.code).toBe("not_configured");
     const cfg = await app.inject({ url: "/v1/auth/config" });
-    expect(cfg.json()).toEqual({ phone: { method: "otp", firebaseProjectId: null, smsOtp: true }, google: false });
+    expect(cfg.json()).toEqual({ phone: { method: "otp", firebaseProjectId: null, smsOtp: true }, google: false, password: false });
   });
 
   it("rejects bad tokens with a firebase_* code and no session", async () => {
@@ -93,7 +93,7 @@ describe("POST /v1/auth/firebase (no database)", () => {
     const notPhone = await app.inject({
       method: "POST",
       url: "/v1/auth/firebase",
-      payload: { idToken: await firebaseToken("+919876500001", { firebase: { sign_in_provider: "password" } }) },
+      payload: { idToken: await firebaseToken("+919876500001", { firebase: { sign_in_provider: "facebook.com" } }) },
     });
     expect(notPhone.json().error.code).toBe("firebase_not_phone");
     const junk = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: "x.y.z-but-long-enough" } });
@@ -113,6 +113,7 @@ describe("POST /v1/auth/firebase (no database)", () => {
     expect((await app.inject({ url: "/v1/auth/config" })).json()).toEqual({
       phone: { method: "firebase", firebaseProjectId: PROJECT, smsOtp: false },
       google: false,
+      password: true,
       testTargets: ["+9199990*"],
     });
   });
@@ -221,6 +222,21 @@ describe.skipIf(!URL_)("POST /v1/auth/firebase against Postgres", () => {
     const unverified = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await google({ email_verified: false }) } });
     expect(unverified.statusCode).toBe(400);
     expect(unverified.json().error.code).toBe("firebase_no_email");
+  });
+
+  it("signs in with email + password through Firebase, only for a verified email", async () => {
+    const { app, audit } = await appFor(db, { firebaseProjectId: PROJECT });
+    const pw = (claims: Record<string, unknown> = {}) =>
+      firebaseToken("+0", { phone_number: undefined, sub: "pw-uid-9", email: "Owner@Example.com", email_verified: true, firebase: { sign_in_provider: "password" }, ...claims });
+    const first = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await pw(), name: "Owner" } });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ isNewUser: true, user: { email: "owner@example.com", phone: null } });
+    expect(audit.record).toHaveBeenLastCalledWith(expect.objectContaining({ action: "auth.login", summary: "Signed in with firebase (new account)" }));
+    const again = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await pw() } });
+    expect(again.json()).toMatchObject({ isNewUser: false, user: { id: first.json().user.id } });
+    const unverified = await app.inject({ method: "POST", url: "/v1/auth/firebase", payload: { idToken: await pw({ email_verified: false }) } });
+    expect(unverified.statusCode).toBe(400);
+    expect(unverified.json().error.code).toBe("firebase_email_unverified");
   });
 
   it("refuses a disabled account", async () => {

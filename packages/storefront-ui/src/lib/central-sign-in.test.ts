@@ -20,3 +20,23 @@ describe("central sign-in plumbing", () => {
     expect(isTestTarget("+919876543210")).toBe(false);
   });
 });
+
+describe("shopper sign-in blocks follow the shop's choice", async () => {
+  const { signInBlocks } = await import("../client/sign-in");
+
+  it("orders Google, password and the code form by the shop's preference", () => {
+    expect(signInBlocks(["google", "sms", "email_code"], true)).toEqual(["google", "code"]);
+    expect(signInBlocks(["password", "google", "sms"], true)).toEqual(["password", "google", "code"]);
+    expect(signInBlocks(["email_code", "google"], true)).toEqual(["code", "google"]);
+  });
+
+  it("hides Google and password where the landing-site sign-in isn't available, and shows nothing for no methods", () => {
+    expect(signInBlocks(["google", "password", "sms"], false)).toEqual(["code"]);
+    expect(signInBlocks(["google", "password"], false)).toEqual([]);
+    expect(signInBlocks([], true)).toEqual([]);
+  });
+
+  it("an email-only shop shows just the code form", () => {
+    expect(signInBlocks(["email_code"], true)).toEqual(["code"]);
+  });
+});
