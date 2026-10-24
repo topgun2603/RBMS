@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AppWindowIcon,
+  SparklesIcon,
   BlocksIcon,
   BadgeCheckIcon,
   BellIcon,
@@ -41,6 +42,7 @@ import { UserMenu } from "@/components/user-menu";
 import { isSuperAdmin, useMe } from "@/lib/auth";
 import { useFeatures } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
+import { aiNavLabel } from "@/lib/ai-messages";
 import { kycNavLabel } from "@/lib/kyc-messages";
 import { subsNavLabel } from "@/lib/subscriptions-messages";
 import { readStored, SIDEBAR_KEY, useHydrated, useTenantSlug, useToken, writeStored } from "@/lib/session";
@@ -55,6 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useI18n();
   const { locale } = useI18n();
   const kycNav = kycNavLabel(locale);
+  const aiNav = aiNavLabel(locale);
   const subsNav = subsNavLabel(locale);
   const pathname = usePathname() ?? "/";
   const router = useRouter();
@@ -118,11 +121,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/solutions", label: t("admin.nav.solutions"), icon: BlocksIcon },
           { href: "/platform/privacy-requests", label: t("admin.nav.privacyRequests"), icon: FileLockIcon },
           { href: "/platform/kyc", label: kycNav, icon: BadgeCheckIcon },
+          { href: "/platform/ai", label: aiNav, icon: SparklesIcon },
         ],
       });
     }
     return s;
-  }, [t, kycNav, subsNav, tenant, superadmin, isModuleOff]);
+  }, [t, kycNav, aiNav, subsNav, tenant, superadmin, isModuleOff]);
 
   if (hydrated && token && me.isError) {
     return (

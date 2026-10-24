@@ -46,6 +46,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "expenses",
       // The shop's books (the owner switches them on).
       "accounting",
+      // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
+      "ai",
       // Batch 3: counter help desk, loyalty points, WhatsApp inbox + campaigns, GST e-invoice / e-way bill, branches,
       // API keys + webhooks and the report builder.
       ...BATCH3_BL,
@@ -88,6 +90,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "expenses",
       // The shop's books (the owner switches them on).
       "accounting",
+      // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
+      "ai",
       "custom-domain",
       // Batch 3: sellers (marketplace + KYC), chat, help desk + FAQ, loyalty, WhatsApp, e-invoice, API keys, reports.
       ...BATCH3_EC,
@@ -119,6 +123,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "expenses",
       // The shop's books (the owner switches them on).
       "accounting",
+      // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
+      "ai",
       ...BATCH3_BL,
       // Medicine details, batches + expiry (FEFO), prescriptions and the Schedule H1 register.
       "medicines.*",
@@ -164,6 +170,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "expenses",
       // The shop's books (the owner switches them on).
       "accounting",
+      // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
+      "ai",
       "custom-domain",
       "chat",
       "support.*",
@@ -209,6 +217,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "expenses",
       // The shop's books (the owner switches them on).
       "accounting",
+      // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
+      "ai",
       "custom-domain",
       "chat",
       "support.*",
@@ -232,7 +242,7 @@ const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo",
 const VERTICALS_FREE = ["medicines", "dining", "jobcards", "bookings", "memberships", "scales", "serials", "jewellery"];
 const VERTICALS_PAID = ["medicines.*", "dining.*", "jobcards.*", "bookings.*", "memberships.*", "scales.*", "serials.*", "jewellery.*"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
-  free: ["invoices.quotations", "catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions"],
+  free: ["invoices.quotations", "catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions", "ai"],
   starter: [
     "invoices.quotations",
     "catalogue.*",
@@ -250,16 +260,21 @@ const PLAN_ADDITIONS: Record<string, string[]> = {
     // POS terminals and the weighing station from starter up (docs/pos-terminals.md).
     "pos.*",
     "subscriptions",
+    "ai",
   ],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting"],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting"],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting", "ai"],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting", "ai"],
 };
 /** Limits added to the plans package's defaults: paired POS terminals (-1 = unlimited). */
+/**
+ * Also the AI credits a month (`ai_credits_per_month`, docs/ai.md): 1 credit = $0.001 of model cost, so Free 50 is about
+ * Rs 4 of model cost, Starter 2,000 about Rs 170 and Pro 10,000 about Rs 850. Placeholders until pricing is decided.
+ */
 export const PLAN_LIMIT_ADDITIONS: Record<string, Record<string, number>> = {
-  free: { pos_terminals: 1 },
-  starter: { pos_terminals: 2 },
-  pro: { pos_terminals: 5 },
-  enterprise: { pos_terminals: -1 },
+  free: { pos_terminals: 1, ai_credits_per_month: 50 },
+  starter: { pos_terminals: 2, ai_credits_per_month: 2_000 },
+  pro: { pos_terminals: 5, ai_credits_per_month: 10_000 },
+  enterprise: { pos_terminals: -1, ai_credits_per_month: -1 },
 };
 const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   ...plan,
@@ -395,6 +410,16 @@ const ADDON_TEMPLATES: (Omit<AddonInput, "id" | "appId"> & { apps?: AppId[] })[]
     tiers: ["starter"],
     apps: ["EC", "RS", "SV"],
     sort: 50,
+  },
+  {
+    code: "ai-credits-5000",
+    kind: "credits",
+    name: "AI credits pack (5,000)",
+    description: "5,000 AI credits, used after your monthly AI credits; they never expire.",
+    limits: { ai_credits_per_month: 5_000 },
+    priceOncePaise: 59_900,
+    maxQuantity: 10,
+    sort: 65,
   },
   {
     code: "sms-5000",

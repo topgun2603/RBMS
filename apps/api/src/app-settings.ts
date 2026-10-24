@@ -1,3 +1,4 @@
+import { AI_SETTINGS_DEFAULTS, AI_SETTINGS_SCHEMA } from "@srirealtime/ai";
 import { LOYALTY_SETTINGS_DEFAULTS, LOYALTY_SETTINGS_SCHEMA } from "@srirealtime/loyalty";
 import { JEWELLERY_SETTINGS_DEFAULTS, JEWELLERY_SETTINGS_SCHEMA } from "@srirealtime/jewellery";
 import { MEMBERSHIPS_SETTINGS_DEFAULTS, MEMBERSHIPS_SETTINGS_SCHEMA } from "@srirealtime/memberships";
@@ -193,6 +194,8 @@ export function defineAppSettings(settings: SettingsService) {
   // Platform only: each solution's feature preset (kit-verticals.ts createSolutionPresets).
   settings.define("solutions", SOLUTIONS_SETTINGS_SCHEMA, SOLUTIONS_SETTINGS_DEFAULTS);
   settings.define("whatsapp", WHATSAPP_SETTINGS_SCHEMA, WHATSAPP_SETTINGS_DEFAULTS);
+  // AI helpers (docs/ai.md): the owner's opt-in, per-helper switches, masking and debug storage. Off by default.
+  settings.define("ai", AI_SETTINGS_SCHEMA, AI_SETTINGS_DEFAULTS);
 
   // Shop defaults for direct thermal receipt printing (docs/printing.md). The printer itself (transport, pairing, bridge
   // token) is per device and stays in the browser; these are the layout choices every counter starts from.

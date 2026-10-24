@@ -1,6 +1,7 @@
 import type { Messages } from "@srirealtime/web";
 import { discountsEn, discountsTa } from "./messages-discounts";
 import { pinsEn, pinsTa } from "./messages-pins";
+import { aiEn, aiTa } from "./messages-ai";
 
 /** workspace.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
@@ -1546,4 +1547,4 @@ const ta: Messages = {
   "workspace.messages.channelName.push": "செயலி",
 };
 
-export const workspaceMessages = { en: { ...en, ...pinsEn, ...discountsEn }, ta: { ...ta, ...pinsTa, ...discountsTa } } as const;
+export const workspaceMessages = { en: { ...en, ...pinsEn, ...discountsEn, ...aiEn }, ta: { ...ta, ...pinsTa, ...discountsTa, ...aiTa } } as const;

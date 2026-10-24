@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
+import { FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, SparklesIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
 import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { workspaceMessages } from "./lib/messages";
 
@@ -11,6 +11,8 @@ export const WORKSPACE_FEATURES = {
   audit: "audit",
   importexport: "importexport",
   onboarding: "onboarding",
+  /** AI assistance (@srirealtime/ai). */
+  ai: "ai",
 } as const;
 
 const F = WORKSPACE_FEATURES;
@@ -21,10 +23,11 @@ export const WORKSPACE_PERMISSIONS = {
   audit: "audit.view",
   importexport: "importexport.run",
   subscriptions: SUBSCRIPTIONS_PERMISSION,
+  ai: "ai.manage",
 } as const;
 
 /** Settings paths the module claims under the app's /settings. */
-export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", plan: PLAN_SETTINGS_PATH } as const;
+export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", plan: PLAN_SETTINGS_PATH } as const;
 
 export interface WorkspaceModuleOptions {
   /** Where module-relative links resolve. Everything lives under /settings, so the default "/" is right for any app. */
@@ -53,6 +56,8 @@ export function workspaceModule(opts: WorkspaceModuleOptions = {}): WebModule {
     { path: P.import, label: "workspace.nav.import", icon: FileUpIcon, feature: F.importexport, permission: WORKSPACE_PERMISSIONS.importexport, component: page(() => import("./pages/import")) },
     // Customer messages (WhatsApp / SMS to the shop's customers): owners/admins; the page lists only the events of features that are on.
     { path: P.messages, label: "workspace.nav.messages", icon: MessageSquareTextIcon, roles: ["owner", "admin"], component: page(() => import("./pages/messages")) },
+    // AI assistance: the owner's opt-in, helpers, credits and recent uses (docs/ai.md); needs the `ai` feature and `ai.manage`.
+    { path: P.ai, label: "workspace.nav.ai", icon: SparklesIcon, feature: F.ai, permission: WORKSPACE_PERMISSIONS.ai, component: page(() => import("./pages/ai")) },
   ];
   // Plan & billing (the platform's subscription, not a shop feature): owners/admins via subscriptions.manage.
   if (opts.planBilling !== false) {

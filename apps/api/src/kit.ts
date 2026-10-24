@@ -16,6 +16,7 @@ import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "
 import { accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
 import { createGstFiling } from "@srirealtime/gstfiling";
 import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
+import { createAiKit } from "./kit-ai";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
@@ -1317,6 +1318,24 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     log.info(await batch3.marketplace.service.settleDue(), "marketplace: delivered sales settled");
   });
   defineJob(MARKETPLACE_PAYOUT_REFRESH_JOB, async () => {
+  // ---- AI foundation (docs/ai.md): provider (Claude, or the mock without a key), credits on the plans module, run log.
+  const ai = createAiKit({
+    db,
+    env,
+    plans: plans.service,
+    tenantRef: async (tenantId) => {
+      const t = await tenancy.service.getById(tenantId);
+      return t ? { id: t.id, slug: t.slug, planId: t.planId, appId: t.appId } : null;
+    },
+    settings: settings.service.handle("ai"),
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    log,
+  });
+  defineJob("ai.purge-debug", async () => {
+    const n = await ai.service.purgeDebug();
+    if (n) log.info({ cleared: n }, "ai: stored debug prompts older than 7 days cleared");
+  });
+
     const n = await batch3.marketplace.service.refreshAllPayouts();
     if (n) log.info({ refreshed: n }, "marketplace: processing payouts refreshed");
   });
@@ -1523,6 +1542,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     aggregators.module,
     ownerCanSwitch(jobcards.module),
     ownerCanSwitch(bookings.module),
+    ai.module,
+    ai.adminModule,
     counter.module,
     offByDefault(serials.module),
     offByDefault(scales.module),
@@ -1575,6 +1596,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     aggregators,
     serials,
     scales,
+    ai,
     jewellery,
     jobcards,
     bookings,
@@ -1677,6 +1699,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       for (const m of [...modules].reverse()) await m.stop?.();
       await batch3.stop();
       await kitOps.stop();
+      await jobs.service.schedule("ai.purge-debug", "25 4 * * *");
       await closeDb();
     },
   };

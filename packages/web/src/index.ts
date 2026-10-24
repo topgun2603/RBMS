@@ -156,6 +156,7 @@ export { BrandMark } from "./components/brand-mark";
 export { Splash } from "./components/splash";
 export { SettingsNav } from "./components/settings-nav";
 export { PlanBanner } from "./components/plan-banner";
+export { AiDraftBanner, sendAiFeedback, type AiDraftBannerProps, type AiOutcome } from "./components/ai-draft";
 export { UpgradeDialog, UpgradeDialogHost, limitName } from "./components/upgrade-dialog";
 export {
   BranchSwitcher,

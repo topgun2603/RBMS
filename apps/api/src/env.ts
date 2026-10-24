@@ -1,3 +1,4 @@
+import { aiEnvShape } from "@srirealtime/ai";
 import { loadEnv, optionalString } from "@srirealtime/core";
 import { z } from "zod";
 
@@ -131,6 +132,8 @@ export const envSchema = z.object({
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).optional(),
   /** Largest JSON request body in bytes (routes with their own bodyLimit, e.g. imports and webhooks, keep theirs). */
   BODY_LIMIT_BYTES: z.coerce.number().int().min(1024).default(1_048_576),
+  // ---- AI foundation (docs/ai.md): ANTHROPIC_API_KEY, AI_ENABLED, AI_PROVIDER, AI_MODEL_LIGHT / _STANDARD / _VISION, AI_USD_INR
+  ...aiEnvShape,
 })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production" && (e.APP_SECRET.length < 32 || e.APP_SECRET.startsWith("dev-only"))) {
