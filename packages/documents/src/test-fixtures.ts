@@ -1,5 +1,5 @@
 import { amountInWordsINR, computeInvoice } from "@srirealtime/gst";
-import type { InvoiceDocData, OrderDocData, PurchaseDocData, StatementDocData } from "./types";
+import type { InvoiceDocData, OrderDocData, PurchaseDocData, PurchaseOrderDocData, StatementDocData } from "./types";
 
 const seller = {
   legalName: "Raja Textiles <Pvt>",
@@ -81,6 +81,28 @@ export const sampleOrder = (over: Partial<OrderDocData> = {}): OrderDocData => (
   seller,
   ...over,
 });
+
+export const samplePurchaseOrder = (over: Partial<PurchaseOrderDocData> = {}): PurchaseOrderDocData => {
+  const { lines, ...totals } = computeInvoice([{ description: "Silk yarn", hsn: "5004", qty: 10, unit: "kg", rate: 120000, gstRate: 5 }], {
+    sellerState: "29",
+    placeOfSupply: "33",
+  });
+  return {
+    number: "PO/26-27/0007",
+    status: "sent",
+    date: "2026-10-01",
+    expectedDate: "2026-10-08",
+    supplier: { name: "Mysore Silks", gstin: "29AAACR5055K1ZF", stateCode: "29", phone: "+919876500001" },
+    placeOfSupply: "33",
+    interState: true,
+    lines,
+    totals,
+    total: totals.total,
+    notes: "Deliver before Diwali",
+    shop: seller,
+    ...over,
+  };
+};
 
 export const samplePurchase = (): PurchaseDocData => {
   const { lines, ...totals } = computeInvoice([{ description: "Silk yarn", hsn: "5004", qty: 10, unit: "kg", rate: 120000, gstRate: 5 }], {

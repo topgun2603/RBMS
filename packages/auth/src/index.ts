@@ -21,6 +21,10 @@ export function createAuth(deps: AuthDeps) {
 
 export { AuthService, createGoogleVerifier, HANDOFF_TTL_SECONDS, parseClient, POS_SESSION_CLIENT, toAuthUser } from "./service";
 export type { AuthClientConfig, AuthConfig, AuthDeps, SignInPolicy, AuthUser, DirectoryUser, GuestVerifyResult, SessionInfo, SessionMeta, SignInResult } from "./service";
+export { isMfaPending } from "./service";
+export type { MfaPending } from "./service";
+export { MfaService, MFA_POLICY_ROLES } from "./mfa";
+export { generateRecoveryCodes, generateTotpSecret, totpCode, verifyTotp } from "./totp";
 export { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 export {
   cachedKeySource,

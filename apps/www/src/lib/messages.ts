@@ -1,5 +1,6 @@
 import { enMore, taMore } from "./messages-more";
 import { enSignIn, taSignIn } from "./messages-signin";
+import { enMfa, taMfa } from "./messages-mfa";
 
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
 /**
@@ -476,6 +477,7 @@ export const en: Messages = {
   "mock.credit.c2": "Murugan",
   "mock.credit.c3": "Lakshmi",
   ...enSignIn,
+  ...enMfa,
   ...enMore,
 };
 export const ta: Messages = {
@@ -947,9 +949,10 @@ export const ta: Messages = {
   "mock.credit.c1": "செல்வி",
   "mock.credit.c2": "முருகன்",
   "mock.credit.c3": "லட்சுமி",
-  ...taSignIn,
-};
   ...taMore,
+  ...taSignIn,
+  ...taMfa,
+};
 
 export const LOCALE_COOKIE = "sr_locale";
 

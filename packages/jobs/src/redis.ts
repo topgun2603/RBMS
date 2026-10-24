@@ -237,3 +237,51 @@ export function createRedisProbe(url: string): RedisProbe {
     },
   };
 }
+
+export interface RedisWindowCounter {
+  /** Counts one hit in the fixed window of `key`; resolves to the count so far and the ms left in the window. */
+  hit(key: string, windowMs: number): Promise<{ count: number; resetMs: number }>;
+  close(): Promise<void>;
+}
+
+/**
+ * A fixed-window counter on Redis (INCR + PEXPIRE) for the API's HTTP rate limiter. Fail-fast connection (no offline
+ * queue, short timeouts): when Redis is down `hit` rejects at once and the caller falls back to its in-memory counter.
+ */
+export function createRedisWindowCounter(url: string, prefix = "rl:"): RedisWindowCounter {
+  let client: Redis | null = null;
+  const get = () => {
+    if (!client) {
+      client = new Redis(url, {
+        lazyConnect: true,
+        enableOfflineQueue: false,
+        maxRetriesPerRequest: 1,
+        connectTimeout: 1500,
+        connectionName: "srikit:ratelimit",
+        retryStrategy: (times: number) => Math.min(times * 200, 2000),
+      });
+      client.on("error", () => {});
+    }
+    return client;
+  };
+  return {
+    async hit(key, windowMs) {
+      const c = get();
+      if (c.status === "wait") await c.connect();
+      const k = `${prefix}${key}`;
+      const res = await c.multi().incr(k).pttl(k).exec();
+      const count = Number(res?.[0]?.[1] ?? 1);
+      let ttl = Number(res?.[1]?.[1] ?? -1);
+      if (ttl < 0) {
+        await c.pexpire(k, windowMs);
+        ttl = windowMs;
+      }
+      return { count, resetMs: ttl };
+    },
+    async close() {
+      if (!client) return;
+      await client.quit().catch(() => client?.disconnect());
+      client = null;
+    },
+  };
+}

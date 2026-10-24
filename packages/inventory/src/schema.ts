@@ -345,6 +345,10 @@ export const goodsReceipts = pgTable(
     note: text("note"),
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Set when the receipt was cancelled: its stock came back out and the order's received quantities went down. */
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelledBy: uuid("cancelled_by"),
+    cancelReason: text("cancel_reason"),
   },
   (t) => [
     unique("goods_receipts_tenant_number_uq").on(t.tenantId, t.number),

@@ -10,6 +10,7 @@ export const PDF_PATHS = {
   invoiceThermal: (id: string) => `/documents/invoice-thermal/${id}.pdf`,
   statement: (customerId: string) => `/documents/statement/${customerId}.pdf`,
   purchase: (id: string) => `/documents/purchase/${id}.pdf`,
+  purchaseOrder: (id: string) => `/documents/purchase-order/${id}.pdf`,
   creditNote: (id: string) => `/documents/credit-note/${id}.pdf`,
   creditNoteThermal: (id: string) => `/documents/credit-note-thermal/${id}.pdf`,
 } as const;

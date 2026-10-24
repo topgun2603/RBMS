@@ -1,8 +1,10 @@
+import { createRedisWindowCounter } from "@srirealtime/jobs";
 import { LOG_REDACT_PATHS } from "@srirealtime/monitoring";
 import { pino } from "pino";
 import { env } from "./env";
 import { createKit } from "./kit";
 import { buildServer } from "./server";
+import { DEFAULT_RATE_LIMIT } from "./http-guard";
 
 const log = pino({
   level: env.LOG_LEVEL ?? (env.NODE_ENV === "development" ? "debug" : "info"),
@@ -13,6 +15,9 @@ const log = pino({
 });
 
 const kit = createKit(env, log);
+// Rate-limit counters are shared through Redis (all API instances); in-memory when REDIS_URL=memory.
+const scale = env.NODE_ENV === "production" ? 1 : 10;
+const rateCounter = env.REDIS_URL === "memory" ? null : createRedisWindowCounter(env.REDIS_URL);
 const app = await buildServer({
   loggerInstance: log,
   corsOrigins: env.CORS_ORIGINS.split(",").map((s) => corsOrigin(s.trim())),
@@ -25,6 +30,19 @@ const app = await buildServer({
   routeCollector: kit.routeCollector,
   errorReporter: kit.monitoring.reporter,
   ops: kit.ops,
+  rateLimit: {
+    ...DEFAULT_RATE_LIMIT,
+    enabled: env.RATE_LIMIT_ENABLED,
+    windowMs: env.RATE_LIMIT_WINDOW_SECONDS * 1000,
+    // Production defaults from DEFAULT_RATE_LIMIT; 10x looser in development (one machine, every app, e2e).
+    ipMax: env.RATE_LIMIT_IP_MAX ?? DEFAULT_RATE_LIMIT.ipMax * scale,
+    userMax: env.RATE_LIMIT_USER_MAX ?? DEFAULT_RATE_LIMIT.userMax * scale,
+    tenantMax: env.RATE_LIMIT_TENANT_MAX ?? DEFAULT_RATE_LIMIT.tenantMax * scale,
+    authMax: env.RATE_LIMIT_AUTH_MAX ?? DEFAULT_RATE_LIMIT.authMax * scale,
+    counter: rateCounter ?? undefined,
+  },
+  security: { hsts: env.NODE_ENV === "production" },
+  bodyLimit: env.BODY_LIMIT_BYTES,
 });
 
 // Crashes are reported before the process exits; behaviour is otherwise unchanged (exit 1).
@@ -48,6 +66,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, async () => {
     log.info({ signal }, "shutting down");
     await app.close();
+    await rateCounter?.close().catch(() => undefined);
     await kit.stop();
     process.exit(0);
   });

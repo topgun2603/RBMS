@@ -8,6 +8,7 @@ import { type AgeingSupplier, type StatementRow } from "./payables";
 import {
   ageingQuerySchema,
   billGrnInputSchema,
+  cancelGrnInputSchema,
   convertInputSchema,
   debitNoteInputSchema,
   paymentInputSchema,
@@ -18,6 +19,7 @@ import {
   statementQuerySchema,
   supplierPaymentInputSchema,
   type BillGrnInput,
+  type CancelGrnInput,
   type ConvertInput,
   type DebitNoteInput,
   type DebitNoteListQuery,
@@ -409,6 +411,11 @@ export function inventoryRoutes(service: InventoryService) {
       app.post("/goods-receipts/:id/bill", purchasesAudited("inventory.grn.bill", "goods_receipt", { body: billGrnInputSchema }), async (req) => {
         const { id } = idParam.parse(req.params);
         return service.purchasing.billGoodsReceipt(tid(req), id, body(req) as BillGrnInput, uid(req));
+      });
+
+      app.post("/goods-receipts/:id/cancel", purchasesAudited("inventory.grn.cancel", "goods_receipt", { body: cancelGrnInputSchema }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.purchasing.cancelGoodsReceipt(tid(req), id, body(req) as CancelGrnInput, uid(req));
       });
 
       // ---- debit notes (purchase returns)

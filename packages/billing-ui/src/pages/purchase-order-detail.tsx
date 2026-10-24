@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
-import { BanIcon, ClipboardListIcon, Loader2Icon, PackageCheckIcon, ReceiptTextIcon, SendIcon, TruckIcon } from "lucide-react";
+import { BanIcon, ClipboardListIcon, DownloadIcon, Loader2Icon, PackageCheckIcon, PrinterIcon, ReceiptTextIcon, SendIcon, TruckIcon } from "lucide-react";
 import {
   Button,
   Card,
@@ -29,7 +29,8 @@ import {
 import { ReceiveDialog } from "../components/inventory/payables-dialogs";
 import { PoStatusPill } from "../components/inventory/po-status";
 import { formatQty, money } from "../lib/format";
-import { useBillReceipt, usePurchaseOrder, usePurchaseOrderAction } from "../lib/queries-payables";
+import { PDF_PATHS, usePdf } from "../lib/pdf";
+import { useBillReceipt, useCancelReceipt, usePurchaseOrder, usePurchaseOrderAction } from "../lib/queries-payables";
 import type { GoodsReceipt } from "../lib/types-payables";
 
 export default function PurchaseOrderDetailPage() {
@@ -37,6 +38,9 @@ export default function PurchaseOrderDetailPage() {
   const { t, formatDate } = useI18n();
   const q = usePurchaseOrder(id);
   const action = usePurchaseOrderAction();
+  const cancelReceipt = useCancelReceipt();
+  const pdf = usePdf();
+  const [cancelling, setCancelling] = React.useState<GoodsReceipt | null>(null);
   const [receiving, setReceiving] = React.useState<"receive" | "convert" | null>(null);
   const [confirm, setConfirm] = React.useState<"cancel" | "close" | null>(null);
   const [billing, setBilling] = React.useState<GoodsReceipt | null>(null);
@@ -87,6 +91,24 @@ export default function PurchaseOrderDetailPage() {
         description={`${po.supplier.name} · ${formatDate(po.date)}`}
         actions={
           <>
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={!!pdf.busy}
+              aria-busy={pdf.busy === "po-print"}
+              onClick={() => void pdf.run("po-print", PDF_PATHS.purchaseOrder(po.id), { mode: "open", fallbackName: `${po.number}.pdf` })}
+            >
+              {pdf.busy === "po-print" ? <Loader2Icon className="animate-spin" /> : <PrinterIcon />} {t("billing.po.print")}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={!!pdf.busy}
+              aria-busy={pdf.busy === "po-pdf"}
+              onClick={() => void pdf.run("po-pdf", PDF_PATHS.purchaseOrder(po.id), { mode: "download", fallbackName: `${po.number}.pdf` })}
+            >
+              {pdf.busy === "po-pdf" ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />} {t("billing.po.pdf")}
+            </Button>
             {po.status === "draft" && (
               <Button variant="outline" size="lg" disabled={action.isPending} onClick={() => void run("send").catch(() => undefined)}>
                 {action.isPending ? <Loader2Icon className="animate-spin" /> : <SendIcon />} {t("billing.po.markSent")}
@@ -169,7 +191,10 @@ export default function PurchaseOrderDetailPage() {
                   {po.receipts.map((g) => (
                     <li key={g.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                       <div className="min-w-0">
-                        <p className="font-mono font-medium">{g.number}</p>
+                        <p className={`font-mono font-medium ${g.cancelledAt ? "text-muted-foreground line-through" : ""}`}>
+                          {g.number}
+                          {g.cancelledAt && <span className="ml-2 font-sans text-xs no-underline">{t("billing.po.receiptCancelledTag")}</span>}
+                        </p>
                         <p className="text-meta text-muted-foreground">
                           {formatDate(g.date)} · {g.lines.map((l) => `${l.description} × ${formatQty(l.qty)}`).join(", ")}
                         </p>
@@ -177,14 +202,19 @@ export default function PurchaseOrderDetailPage() {
                           <p className="text-meta text-muted-foreground">{t("billing.po.charges", { amount: money(g.freight + g.otherCharges) })}</p>
                         )}
                       </div>
-                      {g.purchaseId ? (
+                      {g.cancelledAt ? null : g.purchaseId ? (
                         <Button asChild size="sm" variant="outline">
                           <ModuleLink to={`purchases/${g.purchaseId}`}>{t("billing.po.viewBill")}</ModuleLink>
                         </Button>
                       ) : (
-                        <Button size="sm" onClick={() => setBilling(g)}>
-                          {t("billing.po.makeBill")}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="text-danger-ink" onClick={() => setCancelling(g)}>
+                            {t("billing.po.cancelReceipt")}
+                          </Button>
+                          <Button size="sm" onClick={() => setBilling(g)}>
+                            {t("billing.po.makeBill")}
+                          </Button>
+                        </div>
                       )}
                     </li>
                   ))}
@@ -220,6 +250,22 @@ export default function PurchaseOrderDetailPage() {
 
       <ReceiveDialog open={receiving !== null} onOpenChange={(o) => !o && setReceiving(null)} order={po} convert={receiving === "convert"} />
       <BillReceiptDialog receipt={billing} onClose={() => setBilling(null)} />
+      <ConfirmDialog
+        open={cancelling !== null}
+        onOpenChange={(o) => !o && setCancelling(null)}
+        title={t("billing.po.confirm.cancelReceiptTitle", { number: cancelling?.number ?? "" })}
+        description={t("billing.po.confirm.cancelReceiptBody")}
+        confirmLabel={t("billing.po.cancelReceipt")}
+        onConfirm={async () => {
+          try {
+            await cancelReceipt.mutateAsync({ id: cancelling!.id });
+            toast.success(t("billing.po.receiptCancelled"));
+          } catch (err) {
+            toast.error(describeError(err, t));
+            throw err;
+          }
+        }}
+      />
       <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(o) => !o && setConfirm(null)}

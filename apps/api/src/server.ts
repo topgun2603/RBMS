@@ -11,6 +11,7 @@ import Fastify, {
   type preHandlerAsyncHookHandler,
 } from "fastify";
 import { ZodError } from "zod";
+import { createRateLimiter, securityHeaders, type RateLimitConfig } from "./http-guard";
 import { httpMetrics, OPS_PATHS, registerOpsRoutes, type OpsOptions } from "./ops";
 
 export interface ServerOptions {
@@ -37,6 +38,12 @@ export interface ServerOptions {
   errorReporter?: ErrorReporter;
   /** `/ready`, `/version`, `/metrics` and the request metrics (docs/ops.md). Without it only `/health` is served. */
   ops?: OpsOptions;
+  /** Global HTTP rate limit (http-guard.ts). Omit for none (tests). Health/ops routes and webhooks are always exempt. */
+  rateLimit?: RateLimitConfig;
+  /** Security response headers on every answer; `hsts` only in production. Default on, without HSTS. */
+  security?: { hsts: boolean } | false;
+  /** Largest request body in bytes (Fastify's default is 1 MiB); routes with their own `bodyLimit` keep theirs. */
+  bodyLimit?: number;
 }
 
 /** A caller-supplied request id is kept when it looks like one (load balancer, other service); otherwise a UUID. */
@@ -52,6 +59,7 @@ export async function buildServer(opts: ServerOptions) {
     genReqId: (req: { headers: Record<string, string | string[] | undefined> }) => requestIdFor(req.headers["x-request-id"]),
     // One structured line per request is logged in onResponse below (with tenant, user and route).
     logController: new LogController({ disableRequestLogging: true }),
+    ...(opts.bodyLimit ? { bodyLimit: opts.bodyLimit } : {}),
   };
   const app = opts.loggerInstance ? Fastify({ ...base, loggerInstance: opts.loggerInstance }) : Fastify({ ...base, logger: false });
 
@@ -72,6 +80,9 @@ export async function buildServer(opts: ServerOptions) {
     const lang = req.headers["accept-language"]?.split(",")[0]?.slice(0, 2);
     if (lang) req.ctx.locale = lang;
   });
+  if (opts.security !== false) app.addHook("onSend", securityHeaders({ hsts: opts.security?.hsts ?? false }));
+  const limiter = opts.rateLimit?.enabled ? createRateLimiter(opts.rateLimit) : null;
+  if (limiter) app.addHook("onRequest", limiter.ipHook);
 
   if (opts.ops) app.addHook("onResponse", httpMetrics(opts.ops.metrics));
   app.addHook("onResponse", async (req, reply) => {
@@ -128,6 +139,7 @@ export async function buildServer(opts: ServerOptions) {
   // ops routes above never wait on (or fail because of) the database.
   await app.register(async (api) => {
     for (const hook of opts.contextHooks) hook(api);
+    if (limiter) api.addHook("onRequest", limiter.actorHook);
     for (const handler of opts.preHandlers ?? []) api.addHook("preHandler", handler);
     for (const handler of opts.onResponse ?? []) api.addHook("onResponse", handler);
     for (const handler of opts.onSend ?? []) api.addHook("onSend", handler);

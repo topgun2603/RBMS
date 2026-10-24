@@ -7,6 +7,7 @@ import { organizationJsonLd } from "@/lib/seo";
 import { SiteProvider } from "@/components/site-context";
 import { SiteHeader, THEME_SCRIPT } from "@/components/header";
 import { SiteFooter } from "@/components/footer";
+import { MfaDialog } from "@/components/mfa-dialog";
 import { JsonLd } from "@/components/json-ld";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             {children}
           </main>
           <SiteFooter t={t} />
+          <MfaDialog />
           <Toaster />
         </SiteProvider>
       </body>

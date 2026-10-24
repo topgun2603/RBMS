@@ -21,6 +21,12 @@ export const INVOICE_PERMISSIONS: PermissionDef[] = [
   { key: "pos.till", module: "invoices", label: "Open and close the till", description: "Open and close the POS cash drawer, record cash in / out and print the Z report." },
   { key: "invoices.discount", module: "invoices", label: "Give discounts", description: "Add discounts to bill lines." },
   {
+    key: "invoices.discount-approve",
+    module: "invoices",
+    label: "Approve discounts",
+    description: "Approve a discount above a cashier's limit by entering their own PIN at the counter.",
+  },
+  {
     key: "invoices.credit-book",
     module: "invoices",
     label: "Credit book",
@@ -160,6 +166,13 @@ export const ROUTE_GUARDS: Record<string, (req: FastifyRequest) => Promise<void>
   [`POST ${BILL}/issue`]: loyaltyGuard,
   "POST /v1/orders/": loyaltyGuard,
 };
+
+/** The routes that set bill lines, where discount limits apply (discount-guard.ts). */
+export const DISCOUNT_LIMIT_ROUTES = ["POST /v1/invoices/", `PATCH ${BILL}`] as const;
+/** The existing guards of those routes followed by the discount-limit guard (permission first, then the limit). */
+export function withDiscountLimits(base: Record<string, (req: FastifyRequest) => Promise<void>>, limit: (req: FastifyRequest) => Promise<void>) {
+  return Object.fromEntries(DISCOUNT_LIMIT_ROUTES.map((k) => [k, both(...(base[k] ? [base[k]!] : []), limit)])) as Record<string, (req: FastifyRequest) => Promise<void>>;
+}
 
 /**
  * Fixed-window counter per key (in-memory, per API instance — enough to stop a script hammering one form; put a shared

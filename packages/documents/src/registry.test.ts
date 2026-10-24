@@ -70,6 +70,7 @@ describe("DocumentRegistry", () => {
       statements: { statement: async () => null },
       orders: { order: async () => null },
       purchases: { purchase: async () => null },
+      purchaseOrders: { purchaseOrder: async () => null },
     });
     expect(all.registry.list().map((t) => [t.key, t.paper, t.feature])).toEqual([
       ["invoice", "A4", "invoices"],
@@ -78,6 +79,7 @@ describe("DocumentRegistry", () => {
       ["packing-slip", "A4", "orders"],
       ["shipping-label", "A6", "orders"],
       ["purchase", "A4", "inventory.purchases"],
+      ["purchase-order", "A4", "inventory.purchases"],
     ]);
   });
 });

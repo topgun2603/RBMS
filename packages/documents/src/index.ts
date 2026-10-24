@@ -12,6 +12,7 @@ import {
   type LoggerPort,
   type OrderDocPort,
   type PurchaseDocPort,
+  type PurchaseOrderDocPort,
   type StatementDocPort,
   type TillDocPort,
 } from "./types";
@@ -26,6 +27,7 @@ export interface DocumentsDeps {
   statements?: StatementDocPort;
   orders?: OrderDocPort;
   purchases?: PurchaseDocPort;
+  purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
   till?: TillDocPort;
   branding?: BrandingPort;
@@ -74,6 +76,7 @@ export { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 export { renderStatement } from "./renderers/statement";
 export { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 export { renderPurchase } from "./renderers/purchase";
+export { renderPurchaseOrder } from "./renderers/purchase-order";
 export { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
 export { renderTillReport } from "./renderers/till";
 export { platformInvoiceDoc, renderPlatformInvoice, type PlatformInvoiceDocData, type PlatformInvoiceParty } from "./renderers/platform-invoice";

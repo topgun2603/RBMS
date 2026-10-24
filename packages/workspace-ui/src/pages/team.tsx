@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { KeyRoundIcon, UsersRoundIcon } from "lucide-react";
+import { KeyRoundIcon, PercentIcon, UsersRoundIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
 import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
 import { NoPermission } from "../components/bits";
+import { DiscountLimitsTab } from "../components/team/discount-limits-tab";
 import { MembersTab } from "../components/team/members-tab";
 import { RolesTab } from "../components/team/roles-tab";
 import { PERMISSIONS, useHasPermission } from "../lib/access";
@@ -22,8 +23,9 @@ function Team() {
   const allowed = useHasPermission(PERMISSIONS.staff);
   const params = useQueryParams();
   const navigate = useModuleNavigate();
-  const tab = params.get("tab") === "roles" ? "roles" : "members";
-  const setTab = (v: string) => navigate(v === "roles" ? "?tab=roles" : "?", { replace: true, scroll: false });
+  const tabParam = params.get("tab");
+  const tab = tabParam === "roles" ? "roles" : tabParam === "discounts" ? "discounts" : "members";
+  const setTab = (v: string) => navigate(v === "members" ? "?" : `?tab=${v}`, { replace: true, scroll: false });
 
   return (
     <Page>
@@ -40,9 +42,13 @@ function Team() {
             <TabsTrigger value="roles" className="h-full rounded-lg px-4">
               <KeyRoundIcon /> {t("workspace.team.rolesTab")}
             </TabsTrigger>
+            <TabsTrigger value="discounts" className="h-full rounded-lg px-4">
+              <PercentIcon /> {t("workspace.discounts.tab")}
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="members">{tab === "members" && <MembersTab />}</TabsContent>
           <TabsContent value="roles">{tab === "roles" && <RolesTab />}</TabsContent>
+          <TabsContent value="discounts">{tab === "discounts" && <DiscountLimitsTab />}</TabsContent>
         </Tabs>
       )}
     </Page>

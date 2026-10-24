@@ -17,7 +17,7 @@ import {
   SheetTitle,
   toast,
 } from "@srirealtime/ui";
-import { ApiError, ConfirmDialog, describeError, useAppNavigate, useDebounced, useI18n, usePermission, useSettingsHref } from "@srirealtime/web";
+import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, usePermission, useSettingsHref } from "@srirealtime/web";
 import {
   addPayment,
   createBill,
@@ -382,6 +382,8 @@ function Counter() {
     setDialog("pay");
   };
 
+  const approval = useDiscountApproval();
+
   const complete = async (r: PaymentResult): Promise<boolean> => {
     const date = todayIST();
     const tillSessionId = dayOpen ? till!.id : undefined;
@@ -392,9 +394,11 @@ function Counter() {
 
     let inv;
     try {
-      inv = await createBill(input);
+      // A discount above the cashier's limit asks for a manager's PIN (server-enforced) and repeats the bill with it.
+      inv = await approval.run((pin) => createBill(input, pin));
       reportNetwork(true);
     } catch (err) {
+      if (err instanceof ApprovalCancelled) return false;
       if (isNetworkError(err)) {
         reportNetwork(false);
         toast.error(t("pos.offline.billFailed"));
@@ -770,6 +774,7 @@ function Counter() {
         canTill={env.can.till}
       />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
+      {approval.dialog}
       <ConfirmDialog
         open={dialog === "clear"}
         onOpenChange={(o) => !o && setDialog(null)}

@@ -1,5 +1,5 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
-import { boolean, index, pgTable, text, unique } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 
 /**
  * Custom roles of a tenant. Members reference them as `role:<key>` in `tenant_memberships.roles`.
@@ -29,3 +29,24 @@ export const tenantRoles = pgTable(
 );
 
 export type TenantRole = typeof tenantRoles.$inferSelect;
+
+/**
+ * Discount limits (`discount.ts`): per role (`subject` = role key) or per member (`subject` = user id), a max discount
+ * percent (basis points) and/or a max discount per bill (paise). No row = no limit.
+ */
+export const discountLimits = pgTable(
+  "staff_discount_limits",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    scope: text("scope").notNull(),
+    subject: text("subject").notNull(),
+    maxPercentBp: integer("max_percent_bp"),
+    maxAmount: integer("max_amount"),
+    updatedBy: uuid("updated_by"),
+    ...timestamps(),
+  },
+  (t) => [unique("staff_discount_limits_uq").on(t.tenantId, t.scope, t.subject), index("staff_discount_limits_tenant_idx").on(t.tenantId)],
+);
+
+export type DiscountLimitRow = typeof discountLimits.$inferSelect;

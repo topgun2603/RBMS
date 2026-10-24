@@ -39,6 +39,12 @@ import {
 } from "@srirealtime/web/firebase-phone";
 
 const OTP_LENGTH = 6;
+/** Step 1 passed but the account has two-factor on: no session yet, `POST /auth/mfa/verify` finishes the sign-in. */
+interface MfaRequired {
+  mfa_required: true;
+  challengeToken: string;
+}
+const needsMfa = (r: SignInResponse | MfaRequired): r is MfaRequired => "mfa_required" in r;
 type Channel = "sms" | "whatsapp" | "email";
 
 const fetchAuthConfig = () => api.get<AuthClientConfig>("/auth/config", undefined, { tenant: null });
@@ -69,6 +75,10 @@ export default function LoginPage() {
   const token = useToken();
 
   const [step, setStep] = React.useState<"identify" | "verify">("identify");
+  const [mfa, setMfa] = React.useState<MfaRequired | null>(null);
+  const [mfaCode, setMfaCode] = React.useState("");
+  const [mfaRecovery, setMfaRecovery] = React.useState(false);
+  const [mfaError, setMfaError] = React.useState<string | null>(null);
   const [raw, setRaw] = React.useState("");
   const [phoneChannel, setPhoneChannel] = React.useState<"sms" | "whatsapp">("sms");
   const [touched, setTouched] = React.useState(false);
@@ -95,7 +105,8 @@ export default function LoginPage() {
   }, [step]);
   const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
-  const finish = async (res: SignInResponse) => {
+  const finish = async (res: SignInResponse | MfaRequired) => {
+    if (needsMfa(res)) return void setMfa(res);
     setToken(res.token);
     qc.clear();
     toast.success(res.isNewUser ? t("admin.login.welcomeNew") : t("admin.login.welcomeBack"));
@@ -133,8 +144,8 @@ export default function LoginPage() {
   const verify = useMutation({
     mutationFn: async (otp: string) => {
       const fb = firebaseCode.current;
-      if (fb) return api.post<SignInResponse>("/auth/firebase", { idToken: await fb.confirm(otp) }, { tenant: null });
-      return api.post<SignInResponse>("/auth/otp/verify", { target: sentTo ?? parsed.target, code: otp }, { tenant: null });
+      if (fb) return api.post<SignInResponse | MfaRequired>("/auth/firebase", { idToken: await fb.confirm(otp) }, { tenant: null });
+      return api.post<SignInResponse | MfaRequired>("/auth/otp/verify", { target: sentTo ?? parsed.target, code: otp }, { tenant: null });
     },
     onSuccess: finish,
     onError: (err) => {
@@ -145,9 +156,18 @@ export default function LoginPage() {
   });
 
   const google = useMutation({
-    mutationFn: (idToken: string) => api.post<SignInResponse>("/auth/google", { idToken }, { tenant: null }),
+    mutationFn: (idToken: string) => api.post<SignInResponse | MfaRequired>("/auth/google", { idToken }, { tenant: null }),
     onSuccess: finish,
     onError: (err) => toast.error(describeError(err, t)),
+  });
+
+  const verifyMfa = useMutation({
+    mutationFn: (c: string) => api.post<SignInResponse>("/auth/mfa/verify", { challengeToken: mfa!.challengeToken, code: c }, { tenant: null }),
+    onSuccess: finish,
+    onError: (err) => {
+      setMfaCode("");
+      setMfaError(err instanceof ApiError && err.status < 500 ? t("admin.login.mfaWrong") : describeError(err, t));
+    },
   });
 
   const onIdentify = (e: React.FormEvent) => {
@@ -169,7 +189,90 @@ export default function LoginPage() {
       footer={t("admin.login.footer")}
     >
       <AnimatePresence mode="wait" initial={false}>
-        {step === "identify" ? (
+        {mfa ? (
+          <SlideIn key="mfa" direction="left" distance={16}>
+            <div className="mb-6 space-y-1.5 text-center">
+              <h1 className="font-heading text-xl font-semibold tracking-tight">{t("admin.login.mfaTitle")}</h1>
+              <p className="text-sm text-muted-foreground">{t("admin.login.mfaHint")}</p>
+            </div>
+            <form
+              className="grid gap-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (mfaCode.trim()) verifyMfa.mutate(mfaCode.trim());
+              }}
+            >
+              <div className="grid justify-items-center gap-2">
+                {mfaRecovery ? (
+                  <Input
+                    autoFocus
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    placeholder="XXXX-XXXX"
+                    value={mfaCode}
+                    onChange={(e) => {
+                      setMfaCode(e.target.value);
+                      setMfaError(null);
+                    }}
+                    className="font-mono tracking-wider"
+                    aria-label={t("admin.login.mfaRecovery")}
+                  />
+                ) : (
+                  <OtpInput
+                    length={OTP_LENGTH}
+                    value={mfaCode}
+                    onChange={(v) => {
+                      setMfaCode(v);
+                      setMfaError(null);
+                    }}
+                    onComplete={(v) => verifyMfa.mutate(v)}
+                    disabled={verifyMfa.isPending}
+                    invalid={!!mfaError}
+                    autoFocus
+                    aria-label={t("admin.login.digit")}
+                  />
+                )}
+                <p className="min-h-4 text-xs text-destructive" aria-live="polite">
+                  {mfaError}
+                </p>
+              </div>
+              <Button type="submit" size="lg" disabled={verifyMfa.isPending || !mfaCode.trim()}>
+                {verifyMfa.isPending && <Loader2Icon className="animate-spin" />}
+                {t("admin.login.verify")}
+              </Button>
+              <div className="flex items-center justify-between text-sm">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2 text-muted-foreground"
+                  onClick={() => {
+                    setMfa(null);
+                    setMfaCode("");
+                    setMfaError(null);
+                    setStep("identify");
+                    setSent(null);
+                    firebaseCode.current = null;
+                  }}
+                >
+                  <ArrowLeftIcon /> {t("admin.login.change")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => {
+                    setMfaRecovery((v) => !v);
+                    setMfaCode("");
+                    setMfaError(null);
+                  }}
+                >
+                  {mfaRecovery ? t("admin.login.mfaUseApp") : t("admin.login.mfaUseRecovery")}
+                </Button>
+              </div>
+            </form>
+          </SlideIn>
+        ) : step === "identify" ? (
           <SlideIn key="identify" direction="right" distance={16}>
             <div className="mb-6 space-y-1.5 text-center">
               <h1 className="font-heading text-xl font-semibold tracking-tight">{t("admin.login.title")}</h1>

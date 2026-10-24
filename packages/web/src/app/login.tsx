@@ -30,7 +30,9 @@ import { normalizeTarget } from "../lib/format";
 import { describeError, useI18n } from "../lib/i18n";
 import { setToken, useHydrated, useToken } from "../lib/session";
 import { useTenantSlug } from "../lib/tenant";
+import { MfaChallenge } from "./mfa-challenge";
 import { PasswordSignIn } from "./password-sign-in";
+import { isMfaRequired, type MfaRequiredResponse } from "../lib/mfa";
 import type { OtpRequestResponse, SignInResponse } from "../lib/types";
 import {
   firebasePhoneMessage,
@@ -125,6 +127,8 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
   const token = useToken();
 
   const [step, setStep] = React.useState<"identify" | "verify">("identify");
+  /** Step 1 passed but the account needs two-factor (or the shop requires setting it up): the second step shows. */
+  const [mfa, setMfa] = React.useState<MfaRequiredResponse | null>(null);
   const [raw, setRaw] = React.useState("");
   const [phoneChannel, setPhoneChannel] = React.useState<"sms" | "whatsapp">("sms");
   const [touched, setTouched] = React.useState(false);
@@ -247,9 +251,12 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
     router.replace(home);
   };
 
+  /** Step 1 result: a session, or the two-factor challenge (no session yet). */
+  const onStepOne = (res: SignInResponse | MfaRequiredResponse) => (isMfaRequired(res) ? setMfa(res) : completeSignIn(res));
+
   /** Firebase proved the email (password) or the Google account: trade its ID token for our session. */
   const exchangeFirebase = async (idToken: string) => {
-    completeSignIn(await api.post<SignInResponse>("/auth/firebase", { idToken }, { anonymous: true }));
+    onStepOne(await api.post<SignInResponse | MfaRequiredResponse>("/auth/firebase", { idToken }, { anonymous: true }));
   };
 
   /** Google and email + password run in place on hosts Firebase authorizes; elsewhere on the landing site, which hands back here. */
@@ -273,10 +280,10 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
     mutationFn: async (otp: string) => {
       if (!sentTo) throw new Error(t("web.login.restart"));
       const fb = firebaseCode.current;
-      if (fb) return api.post<SignInResponse>("/auth/firebase", { idToken: await fb.confirm(otp) }, { anonymous: true });
-      return api.post<SignInResponse>("/auth/otp/verify", { target: sentTo, code: otp });
+      if (fb) return api.post<SignInResponse | MfaRequiredResponse>("/auth/firebase", { idToken: await fb.confirm(otp) }, { anonymous: true });
+      return api.post<SignInResponse | MfaRequiredResponse>("/auth/otp/verify", { target: sentTo, code: otp });
     },
-    onSuccess: completeSignIn,
+    onSuccess: onStepOne,
     onError: (err) => {
       setCode("");
       if (isFirebaseError(err)) return setCodeError(firebasePhoneMessage(err, locale));
@@ -312,6 +319,22 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
               <h1 className="font-heading text-xl font-semibold tracking-tight">{t("web.login.handoff")}</h1>
               <p className="text-sm text-muted-foreground">{t("web.login.handoffHint")}</p>
             </div>
+          </SlideIn>
+        ) : mfa ? (
+          <SlideIn key="mfa" direction="left" distance={16}>
+            <MfaChallenge
+              challenge={mfa}
+              onSession={completeSignIn}
+              onBack={() => {
+                setMfa(null);
+                setCode("");
+                setCodeError(null);
+                setStep("identify");
+                setSent(null);
+                setSentTo(null);
+                firebaseCode.current = null;
+              }}
+            />
           </SlideIn>
         ) : cfg.isPending ? (
           <SlideIn key="config" direction="up" distance={12}>

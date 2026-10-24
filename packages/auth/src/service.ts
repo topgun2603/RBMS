@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   addDays,
   addMinutes,
@@ -20,6 +21,8 @@ import type { Db } from "@srirealtime/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { matchStoreOrigin, matchStoreReturn, type StoreOriginsPort } from "./store-origin";
+import { MfaService, MFA_CHALLENGE_TTL_MS, MFA_POLICY_ROLES, type MfaStatus } from "./mfa";
+import { createSecretBox, signMfaChallenge, verifyMfaChallenge, type MfaChallenge } from "./totp";
 import { createFirebaseVerifier, FirebaseTokenError, type FirebasePhoneClaims, type FirebaseTokenVerifier } from "./firebase";
 import { signGuestToken, verifyGuestTokenWith } from "./guest-token";
 import { detectTarget, maskTarget, matchesTestTarget, normalizeEmail, normalizePhone, otpHash, otpRetryAfter, type Target } from "./helpers";
@@ -95,6 +98,14 @@ export interface AuthConfig {
    * minutes) moves the expiry this many days ahead, so a phone in daily use stays signed in. Default 90.
    */
   mobileSessionTtlDays?: number;
+  /**
+   * Secret that protects two-factor sign-in: TOTP secrets are encrypted with it (AES-256-GCM), recovery codes are
+   * keyed with it and sign-in challenge tokens are signed with it. Without it two-factor is off (enrolment answers
+   * 503 not_configured). Use a long random value; changing it invalidates every enrolment.
+   */
+  mfaSecret?: string;
+  /** Name shown in the authenticator app. Default "RBMS". */
+  mfaIssuer?: string;
 }
 
 /** What clients need to pick a sign-in method (`GET /config`). */
@@ -196,6 +207,22 @@ export interface SignInResult {
   isNewUser: boolean;
 }
 
+/**
+ * Step 1 of sign-in passed but the account needs two-factor before a session exists. No session is created: the client
+ * sends `challengeToken` and a code to `POST /mfa/verify` (or, when `enrolRequired`, sets 2FA up first).
+ */
+export interface MfaPending {
+  mfaRequired: true;
+  /** The shop requires two-factor and this user has not set it up yet. */
+  enrolRequired: boolean;
+  challengeToken: string;
+  expiresAt: Date;
+}
+export const isMfaPending = (r: SignInResult | MfaPending): r is MfaPending => "mfaRequired" in r;
+
+/** Extra inputs of the sign-in steps: the shop policy, and `skipMfa` for test identities. */
+type SignInInput = SessionMeta & { policy?: SignInPolicy | null; skipMfa?: boolean };
+
 export const toAuthUser = (u: UserRow): AuthUser => ({
   id: u.id,
   phone: u.phone,
@@ -238,7 +265,7 @@ export function createGoogleVerifier(): GoogleTokenVerifier {
 
 export class AuthService {
   private readonly db: Db;
-  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp" | "guestTokenSecret" | "firebaseProjectId">> & {
+  private readonly cfg: Required<Omit<AuthConfig, "googleClientIds" | "testOtp" | "guestTokenSecret" | "firebaseProjectId" | "mfaSecret" | "mfaIssuer">> & {
     googleClientIds: string[];
     guestTokenSecret: string | null;
     firebaseProjectId: string | null;
@@ -246,6 +273,9 @@ export class AuthService {
   private readonly testOtp: { code: string; targets: string[] } | null;
   private readonly verifyGoogle: GoogleTokenVerifier;
   private readonly verifyFirebase: FirebaseTokenVerifier | null;
+  /** Two-factor (TOTP); null without `config.mfaSecret`. */
+  readonly mfa: MfaService | null;
+  private readonly mfaSecret: string | null;
 
   constructor(private readonly deps: AuthDeps) {
     this.db = deps.db;
@@ -270,6 +300,8 @@ export class AuthService {
     this.testOtp = t && /^\d{4,10}$/.test(t.code) && targets.length ? { code: t.code, targets } : null;
     this.verifyGoogle = deps.verifyGoogleToken ?? createGoogleVerifier();
     const projectId = this.cfg.firebaseProjectId;
+    this.mfaSecret = c.mfaSecret ? createHash("sha256").update(`mfa-challenge:${c.mfaSecret}`).digest("hex") : null;
+    this.mfa = c.mfaSecret ? new MfaService(deps.db, createSecretBox(c.mfaSecret), createHash("sha256").update(`mfa-recovery:${c.mfaSecret}`).digest("hex"), c.mfaIssuer ?? "RBMS") : null;
     this.verifyFirebase = projectId ? (deps.verifyFirebaseToken ?? createFirebaseVerifier({ projectId })) : null;
   }
 
@@ -390,7 +422,7 @@ export class AuthService {
     name?: string | null;
     /** The shop and audience whose sign-in options apply (routes pass them when the request has a shop). */
     policy?: SignInPolicy | null;
-  }): Promise<SignInResult> {
+  }): Promise<SignInResult | MfaPending> {
     const target = this.parseTarget(input.target);
     const channel = await this.checkOtpCode(target, input.code);
     // A code requested without a shop can't be redeemed for a shop that turned that channel off.
@@ -482,19 +514,20 @@ export class AuthService {
 
   private async signInTarget(
     target: string,
-    input: { name?: string | null; ip?: string | null; userAgent?: string | null; client?: string | null },
-  ): Promise<SignInResult> {
+    input: SignInInput & { name?: string | null },
+  ): Promise<SignInResult | MfaPending> {
     const { user, isNewUser } = await this.findOrCreateByTarget(target, { name: input.name ?? null });
     this.assertCanSignIn(user);
     if (!isNewUser && !user.name && input.name?.trim()) {
       await this.db.update(users).set({ name: input.name.trim() }).where(eq(users.id, user.id));
     }
-    return this.completeSignIn(user.id, isNewUser, input);
+    // Test identities (TEST_OTP) never meet the second step, so e2e and demo flows keep working.
+    return this.completeSignIn(user.id, isNewUser, { ...input, skipMfa: input.skipMfa || this.isTestTarget(target) });
   }
 
   // ---------------------------------------------------------------- Google
 
-  async signInWithGoogle(input: { idToken: string; ip?: string | null; userAgent?: string | null; client?: string | null; policy?: SignInPolicy | null }): Promise<SignInResult> {
+  async signInWithGoogle(input: { idToken: string; ip?: string | null; userAgent?: string | null; client?: string | null; policy?: SignInPolicy | null }): Promise<SignInResult | MfaPending> {
     await this.assertMethodAllowed(input.policy?.tenantId, input.policy?.audience, "google");
     if (this.cfg.googleClientIds.length === 0) throw badRequest("Google sign-in is not configured");
     let claims: GoogleClaims;
@@ -513,8 +546,8 @@ export class AuthService {
   /** A verified Google account (from a Google ID token or a Firebase "google.com" sign-in): find or create the user by email. */
   private async signInGoogleIdentity(
     g: { sub: string | null; email: string; name: string | null; picture: string | null },
-    input: { ip?: string | null; userAgent?: string | null; client?: string | null },
-  ): Promise<SignInResult> {
+    input: SignInInput,
+  ): Promise<SignInResult | MfaPending> {
     const { sub, email } = g;
     const [linked] = sub
       ? await this.db
@@ -566,7 +599,7 @@ export class AuthService {
     userAgent?: string | null;
     client?: string | null;
     policy?: SignInPolicy | null;
-  }): Promise<SignInResult> {
+  }): Promise<SignInResult | MfaPending> {
     if (!this.verifyFirebase) throw new AppError(503, "not_configured", "Firebase phone sign-in is not configured");
     let claims: FirebasePhoneClaims;
     try {
@@ -647,7 +680,12 @@ export class AuthService {
       }
     }
     const before = await this.getSignInOptions(tenantId);
-    const after: SignInOptions = { staff: parsed.staff ?? before.staff, customer: parsed.customer ?? before.customer };
+    if (parsed.staff?.requireMfa && !this.mfa) throw new AppError(400, "mfa_not_available", "Two-factor sign-in is not available on this platform.");
+    // `requireMfa` belongs to staff only, and an update that does not mention it keeps the shop's current choice.
+    const staff: AudienceOptions = parsed.staff ? { ...parsed.staff, requireMfa: parsed.staff.requireMfa ?? before.staff.requireMfa } : { ...before.staff };
+    if (staff.requireMfa !== true) delete staff.requireMfa;
+    const customer: AudienceOptions = parsed.customer ? { methods: parsed.customer.methods, default: parsed.customer.default } : before.customer;
+    const after: SignInOptions = { staff, customer };
     const row = { staff: after.staff as unknown as Record<string, unknown>, customer: after.customer as unknown as Record<string, unknown>, updatedBy: userId };
     await this.db
       .insert(authTenantSettings)
@@ -755,7 +793,7 @@ export class AuthService {
     const user = await this.getUser(row.userId);
     if (!user) throw invalid();
     this.assertCanSignIn(user);
-    return this.completeSignIn(user.id, false, meta);
+    return this.finishSignIn(user.id, false, meta);
   }
 
   // ---------------------------------------------------------------- Sessions
@@ -1085,7 +1123,104 @@ export class AuthService {
     if (user.status === "deleted") throw forbidden("This account has been deleted");
   }
 
-  private async completeSignIn(userId: string, isNewUser: boolean, meta: SessionMeta): Promise<SignInResult> {
+  /** Step 1 is done. Without two-factor (or for a test identity) this finishes the sign-in; otherwise it returns a challenge. */
+  private async completeSignIn(userId: string, isNewUser: boolean, meta: SignInInput): Promise<SignInResult | MfaPending> {
+    const gate = await this.mfaGate(userId, isNewUser, meta);
+    if (gate) return gate;
+    return this.finishSignIn(userId, isNewUser, meta);
+  }
+
+  /**
+   * Does this sign-in need a second step? Yes when the user turned two-factor on (staff and business apps; shoppers on
+   * a storefront are never asked), or when the shop requires it for owners/admins/managers and the user has not set it up.
+   */
+  private async mfaGate(userId: string, isNewUser: boolean, meta: SignInInput): Promise<MfaPending | null> {
+    if (!this.mfa || !this.mfaSecret || meta.skipMfa) return null;
+    if (meta.policy?.audience === "customer") return null;
+    let purpose: MfaChallenge["purpose"] | null = null;
+    if (await this.mfa.isEnabled(userId)) purpose = "verify";
+    else if (meta.policy) {
+      const required = (await this.getSignInOptions(meta.policy.tenantId)).staff.requireMfa === true;
+      if (required) {
+        const roles = await this.deps.memberships.rolesFor(meta.policy.tenantId, userId);
+        if (roles.some((r) => (MFA_POLICY_ROLES as readonly string[]).includes(r))) purpose = "enrol";
+      }
+    }
+    if (!purpose) return null;
+    const expiresAt = new Date(Date.now() + MFA_CHALLENGE_TTL_MS);
+    const challengeToken = signMfaChallenge(this.mfaSecret, { userId, tenantId: meta.policy?.tenantId ?? null, purpose, isNewUser, expiresAt });
+    return { mfaRequired: true, enrolRequired: purpose === "enrol", challengeToken, expiresAt };
+  }
+
+  /** Reads a challenge token from step 1 (400 `mfa_challenge_invalid` when expired or forged). */
+  readMfaChallenge(token: string, purpose?: MfaChallenge["purpose"]): MfaChallenge {
+    const c = this.mfaSecret ? verifyMfaChallenge(this.mfaSecret, token) : null;
+    if (!c || (purpose && c.purpose !== purpose)) throw new AppError(400, "mfa_challenge_invalid", "This sign-in has expired. Please sign in again.");
+    return c;
+  }
+
+  private requireMfa(): MfaService {
+    if (!this.mfa) throw new AppError(503, "not_configured", "Two-factor sign-in is not configured");
+    return this.mfa;
+  }
+
+  private mfaGone() {
+    return new AppError(400, "mfa_challenge_invalid", "This sign-in has expired. Please sign in again.");
+  }
+
+  /** Step 2: checks the authenticator / recovery code against the challenge and opens the session. */
+  async verifyMfaSignIn(input: { challengeToken: string; code: string } & SessionMeta): Promise<SignInResult & { method: "totp" | "recovery"; recoveryCodesLeft: number }> {
+    const mfa = this.requireMfa();
+    const c = this.readMfaChallenge(input.challengeToken, "verify");
+    const r = await mfa.verifyCode(c.userId, input.code);
+    const user = await this.getUser(c.userId);
+    if (!user) throw this.mfaGone();
+    this.assertCanSignIn(user);
+    return { ...(await this.finishSignIn(c.userId, c.isNewUser, input)), ...r };
+  }
+
+  /** Enrolment during sign-in (the shop requires 2FA): starts with the challenge instead of a session. */
+  async beginMfaEnrolFromChallenge(challengeToken: string) {
+    const c = this.readMfaChallenge(challengeToken, "enrol");
+    return { ...(await this.beginMfaEnrol(c.userId)), userId: c.userId, tenantId: c.tenantId };
+  }
+  async confirmMfaEnrolFromChallenge(input: { challengeToken: string; code: string } & SessionMeta) {
+    const c = this.readMfaChallenge(input.challengeToken, "enrol");
+    const { recoveryCodes } = await this.requireMfa().confirmEnrol(c.userId, input.code);
+    const user = await this.getUser(c.userId);
+    if (!user) throw this.mfaGone();
+    this.assertCanSignIn(user);
+    return { recoveryCodes, signIn: await this.finishSignIn(c.userId, c.isNewUser, input), userId: c.userId, tenantId: c.tenantId };
+  }
+
+  // ---- two-factor management for a signed-in user
+
+  async mfaStatus(userId: string): Promise<MfaStatus & { available: boolean }> {
+    if (!this.mfa) return { available: false, enabled: false, enabledAt: null, recoveryCodesLeft: 0 };
+    return { available: true, ...(await this.mfa.status(userId)) };
+  }
+  async beginMfaEnrol(userId: string) {
+    const mfa = this.requireMfa();
+    const user = await this.getUser(userId);
+    if (!user) throw notFound("User");
+    return mfa.beginEnrol(userId, user.email ?? user.phone ?? user.name ?? "account");
+  }
+  confirmMfaEnrol(userId: string, code: string) {
+    return this.requireMfa().confirmEnrol(userId, code);
+  }
+  /** Turning 2FA off needs a current code (authenticator or recovery): the re-authentication. */
+  async disableMfa(userId: string, code: string) {
+    const mfa = this.requireMfa();
+    await mfa.verifyCode(userId, code);
+    await mfa.disable(userId);
+  }
+  async regenerateMfaRecoveryCodes(userId: string, code: string) {
+    const mfa = this.requireMfa();
+    await mfa.verifyCode(userId, code);
+    return mfa.regenerateRecoveryCodes(userId);
+  }
+
+  private async finishSignIn(userId: string, isNewUser: boolean, meta: SessionMeta): Promise<SignInResult> {
     const [row] = await this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId)).returning();
     if (!row) throw notFound("User");
     const { token, session } = await this.createSession(userId, meta);

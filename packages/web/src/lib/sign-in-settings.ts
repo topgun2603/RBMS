@@ -13,6 +13,8 @@ export interface AudienceOptions {
   methods: SignInMethod[];
   /** Shown first; always one of `methods`. */
   default: SignInMethod;
+  /** Staff only: owners, admins and managers must sign in with two-factor. Absent = off. */
+  requireMfa?: boolean;
 }
 export interface SignInSettings {
   options: Record<SignInAudience, AudienceOptions>;

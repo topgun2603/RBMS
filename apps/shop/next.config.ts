@@ -19,6 +19,19 @@ export default function config(phase: string): NextConfig {
       // Only its browser-safe `@srirealtime/tenancy/slug` (shop address rules) is imported by the web kit.
       "@srirealtime/tenancy", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/serials-ui", "@srirealtime/scales-ui", "@srirealtime/jewellery-ui"],
     poweredByHeader: false,
+    // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
+    async headers() {
+      return [
+        {
+          source: "/:path*",
+          headers: [
+            { key: "X-Content-Type-Options", value: "nosniff" },
+            { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+            { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          ],
+        },
+      ];
+    },
     // Each shop opens the store admin on its own subdomain (anbu.localhost:3002) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],
   };

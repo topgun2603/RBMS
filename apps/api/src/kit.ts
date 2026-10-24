@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createAnalytics, ANALYTICS_JOBS } from "@srirealtime/analytics";
 import { authSessions, createAuth, SlidingWindow, storeOriginsFor } from "@srirealtime/auth";
+import { discountLimitGuard } from "./discount-guard";
 import { DEMO_DEFAULT_LIMITS, demoAuthModule, demoGuard, parseDemoShops } from "./demo-auth";
 import { createBranding } from "@srirealtime/branding";
 import { createAudit } from "@srirealtime/audit";
@@ -68,6 +69,7 @@ import {
   ROUTE_GUARDS,
   ROUTE_PERMISSIONS,
   routePermissions,
+  withDiscountLimits,
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
@@ -247,6 +249,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       // Guests verify a phone by OTP (no account) for support tickets: a short-lived signed token.
       guestTokenSecret: createHash("sha256").update(`guest-token:${env.APP_SECRET}`).digest("hex"),
       guestTokenTtlMinutes: 60,
+      // Two-factor (TOTP) sign-in: TOTP secrets are AES-GCM encrypted and challenge tokens signed with a key derived from APP_SECRET.
+      mfaSecret: createHash("sha256").update(`mfa:${env.APP_SECRET}`).digest("hex"),
+      mfaIssuer: "RBMS",
     },
     otp: notify.service,
     memberships: tenancy.service,
@@ -719,6 +724,17 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   const documents = createDocuments({
     config: { env: process.env },
     ...docPorts,
+    // Purchase order PDF (print / send to the supplier).
+    purchaseOrders: {
+      purchaseOrder: async (tenantId, id) => {
+        const po = await inventory.service.purchasing.getPurchaseOrder(tenantId, id).catch((err: { status?: number }) => {
+          if (err?.status === 404) return null;
+          throw err;
+        });
+        if (!po) return null;
+        return { ...po, interState: (po.supplier.stateCode ?? po.placeOfSupply) !== po.placeOfSupply, shop: await sellerDoc(tenantId) };
+      },
+    },
     log,
   });
   // ---- CSV/XLSX import and export. Importers/exporters must be registered before the routes are mounted.
@@ -1453,6 +1469,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     /** Host-side `config.permission` for the billing, inventory, catalogue, orders and coupons routes. */
     routeRules: routePermissions(ROUTE_PERMISSIONS, {
       ...ROUTE_GUARDS,
+      // Per-role / per-member discount limits with manager-PIN approval (discount-guard.ts), after the permission guards.
+      ...withDiscountLimits(ROUTE_GUARDS, discountLimitGuard({ limits: staff.discounts, memberForPin: (tenantId, pin) => pos.service.memberForPin(tenantId, pin), audit: audit.service })),
       "POST /v1/support/public/tickets": guestTicketGuard((tenantId, token) => auth.service.verifyGuestToken(tenantId, token)),
     }),
     /** Collects every route for the developer module's `GET /v1/developer/openapi.json` (registered after routeRules). */

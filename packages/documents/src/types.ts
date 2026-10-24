@@ -155,6 +155,25 @@ export interface PurchaseDocData {
   updatedAt?: Date | string | null;
 }
 
+/** A purchase order sent to a supplier (inventory's `PurchaseOrderRow` plus the shop's details). */
+export interface PurchaseOrderDocData {
+  id?: string;
+  number: string;
+  status: "draft" | "sent" | "partially_received" | "received" | "cancelled" | (string & {});
+  date: string;
+  expectedDate: string | null;
+  supplier: { name: string; gstin?: string | null; stateCode?: string | null; phone?: string | null; address?: string | null };
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  total: number;
+  notes: string | null;
+  /** The buying shop. */
+  shop: DocSeller;
+  updatedAt?: Date | string | null;
+}
+
 /** A GST credit note against an invoice (invoices' `CreditNote` is assignable to it). */
 export interface CreditNoteDocData {
   id?: string;
@@ -263,6 +282,10 @@ export interface TillDocPort {
 
 export interface PurchaseDocPort {
   purchase(tenantId: string, id: string): Promise<PurchaseDocData | null>;
+}
+
+export interface PurchaseOrderDocPort {
+  purchaseOrder(tenantId: string, id: string): Promise<PurchaseOrderDocData | null>;
 }
 
 export interface BrandingPort {

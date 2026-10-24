@@ -458,6 +458,23 @@ export class PosService {
     return { ok: true };
   }
 
+  /**
+   * Who owns this staff PIN in this shop (a manager approving a discount at someone else's counter). Null for an
+   * unknown PIN or a member who is no longer active. The caller rate-limits wrong guesses and checks the permission.
+   */
+  async memberForPin(tenantId: string, pin: unknown): Promise<{ userId: string; name: string | null; roles: string[]; permissions: string[] } | null> {
+    const p = typeof pin === "string" ? pin.trim() : "";
+    if (!PIN_RE.test(p)) return null;
+    const lookup = this.lookupOf(tenantId, p);
+    const [row] = await this.db.select().from(posStaffPins).where(and(eq(posStaffPins.tenantId, tenantId), eq(posStaffPins.pinLookup, lookup))).limit(1);
+    if (!row || !safeEqual(row.pinLookup, lookup)) return null;
+    const roles = await this.deps.members.rolesFor(tenantId, row.userId);
+    if (!isStaff(roles)) return null;
+    const [user] = await this.deps.members.users([row.userId]);
+    if (!user) return null;
+    return { userId: row.userId, name: user.name, roles, permissions: await this.deps.members.permissionsFor(tenantId, roles) };
+  }
+
   // ================================================================ PIN sessions
 
   private async lockState(terminalId: string): Promise<{ failures: number; lockedUntil: Date | null }> {

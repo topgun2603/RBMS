@@ -1,0 +1,48 @@
+import type { Messages } from "@srirealtime/i18n/client";
+
+/** Two-factor second step of sign-in on the landing site. Merged into `en` / `ta` in messages.ts. Keep the key sets identical. */
+export const enMfa: Messages = {
+  "mfa.title": "Enter your 6-digit code",
+  "mfa.hint": "Open your authenticator app and enter the code.",
+  "mfa.verify": "Verify",
+  "mfa.useRecovery": "Use a recovery code instead",
+  "mfa.useApp": "Use the authenticator app instead",
+  "mfa.recoveryLabel": "Recovery code",
+  "mfa.cancel": "Cancel",
+  "mfa.wrong": "That code is not right. Try again.",
+  "mfa.locked": "Too many wrong codes. Please wait a few minutes and try again.",
+  "mfa.expired": "This sign-in expired. Please start again.",
+  "mfa.cancelled": "Sign-in cancelled.",
+  "mfa.enrol.title": "Two-factor is required",
+  "mfa.enrol.hint": "This shop asks owners, admins and managers to use a second step. Scan the code with an authenticator app, then enter the 6-digit code.",
+  "mfa.enrol.qrAlt": "QR code for your authenticator app",
+  "mfa.enrol.keyLabel": "Or enter this key by hand",
+  "mfa.enrol.confirm": "Turn on two-factor",
+  "mfa.codes.title": "Save your recovery codes",
+  "mfa.codes.hint": "Each works once if you lose your authenticator app. They will not be shown again.",
+  "mfa.codes.saved": "I have saved these codes",
+  "mfa.codes.done": "Continue",
+};
+
+export const taMfa: Messages = {
+  "mfa.title": "உங்கள் 6 இலக்கக் குறியீட்டை உள்ளிடவும்",
+  "mfa.hint": "authenticator செயலியைத் திறந்து குறியீட்டை உள்ளிடவும்.",
+  "mfa.verify": "சரிபார்",
+  "mfa.useRecovery": "மீட்புக் குறியீட்டைப் பயன்படுத்து",
+  "mfa.useApp": "authenticator செயலியைப் பயன்படுத்து",
+  "mfa.recoveryLabel": "மீட்புக் குறியீடு",
+  "mfa.cancel": "ரத்து",
+  "mfa.wrong": "குறியீடு தவறு. மீண்டும் முயற்சிக்கவும்.",
+  "mfa.locked": "பல தவறான குறியீடுகள். சில நிமிடங்கள் கழித்து முயற்சிக்கவும்.",
+  "mfa.expired": "இந்த உள்நுழைவு காலாவதியானது. மீண்டும் தொடங்கவும்.",
+  "mfa.cancelled": "உள்நுழைவு ரத்து செய்யப்பட்டது.",
+  "mfa.enrol.title": "இரு-படி கட்டாயம்",
+  "mfa.enrol.hint": "இந்தக் கடை உரிமையாளர்கள், நிர்வாகிகள், மேலாளர்கள் இரண்டாவது படியைப் பயன்படுத்த வேண்டும் என்று கேட்கிறது. authenticator செயலியில் குறியீட்டை ஸ்கேன் செய்து, 6 இலக்கக் குறியீட்டை உள்ளிடவும்.",
+  "mfa.enrol.qrAlt": "authenticator செயலிக்கான QR குறியீடு",
+  "mfa.enrol.keyLabel": "அல்லது இந்த விசையை கைமுறையாக உள்ளிடவும்",
+  "mfa.enrol.confirm": "இரு-படியை இயக்கு",
+  "mfa.codes.title": "மீட்புக் குறியீடுகளைச் சேமிக்கவும்",
+  "mfa.codes.hint": "authenticator செயலியை இழந்தால் ஒவ்வொன்றும் ஒரு முறை வேலை செய்யும். இவை மீண்டும் காட்டப்படாது.",
+  "mfa.codes.saved": "இந்தக் குறியீடுகளைச் சேமித்துவிட்டேன்",
+  "mfa.codes.done": "தொடர்",
+};

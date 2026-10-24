@@ -17,6 +17,19 @@ export default function config(phase: string): NextConfig {
     // Workspace packages ship TypeScript source; Next compiles them.
     transpilePackages: ["@srirealtime/storefront-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/cms", "@srirealtime/gst", "@srirealtime/branding", "@srirealtime/verticals"],
     poweredByHeader: false,
+    // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
+    async headers() {
+      return [
+        {
+          source: "/:path*",
+          headers: [
+            { key: "X-Content-Type-Options", value: "nosniff" },
+            { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+            { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          ],
+        },
+      ];
+    },
     // Each shop's store opens on its own subdomain (anbu.localhost:3003) in dev; custom domains in production.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],
     // Product images are plain <img> (shop uploads + any https host); next/image isn't used.

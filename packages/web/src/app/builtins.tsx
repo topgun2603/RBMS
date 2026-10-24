@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { KeyRoundIcon, ToggleRightIcon } from "lucide-react";
+import { KeyRoundIcon, ShieldCheckIcon, ToggleRightIcon } from "lucide-react";
 import type { SettingsPage } from "./types";
 
 /** Settings pages every app gets from the kit. */
@@ -19,5 +19,12 @@ export const BUILT_IN_SETTINGS: SettingsPage[] = [
     icon: KeyRoundIcon,
     roles: ["owner", "admin"],
     component: React.lazy(() => import("./sign-in-settings-page")),
+  },
+  // Everyone: their own two-factor sign-in (owners / admins also set the shop-wide requirement there).
+  {
+    path: "security",
+    label: "web.security.nav",
+    icon: ShieldCheckIcon,
+    component: React.lazy(() => import("./security-page")),
   },
 ];

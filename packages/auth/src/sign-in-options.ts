@@ -25,6 +25,11 @@ export interface AudienceOptions {
   methods: SignInMethod[];
   /** The method shown first; always one of `methods`. */
   default: SignInMethod;
+  /**
+   * Staff only: owners, admins and managers of this shop must sign in with two-factor (TOTP) too; those without it
+   * are taken through the setup at their next sign-in. Absent = off.
+   */
+  requireMfa?: boolean;
 }
 export interface SignInOptions {
   staff: AudienceOptions;
@@ -41,6 +46,7 @@ export const audienceOptionsSchema = z
   .object({
     methods: z.array(signInMethodSchema).min(1, "Keep at least one sign-in method on").max(SIGN_IN_METHODS.length),
     default: signInMethodSchema,
+    requireMfa: z.boolean().optional(),
   })
   .superRefine((v, ctx) => {
     if (new Set(v.methods).size !== v.methods.length) ctx.addIssue({ code: "custom", path: ["methods"], message: "Each method can be listed once" });
@@ -71,12 +77,12 @@ export function platformMethods(c: { firebase: boolean; googleClientIds: number;
 
 /** Stored JSON -> options, tolerating junk (unknown methods dropped); anything unusable falls back to `fallback`. */
 export function readAudienceOptions(raw: unknown, fallback: AudienceOptions): AudienceOptions {
-  const r = raw && typeof raw === "object" ? (raw as { methods?: unknown; default?: unknown }) : null;
+  const r = raw && typeof raw === "object" ? (raw as { methods?: unknown; default?: unknown; requireMfa?: unknown }) : null;
   if (!r || !Array.isArray(r.methods)) return fallback;
   const methods = [...new Set(r.methods.filter((m): m is SignInMethod => SIGN_IN_METHODS.includes(m as SignInMethod)))];
   if (methods.length === 0) return fallback;
   const preferred = SIGN_IN_METHODS.includes(r.default as SignInMethod) && methods.includes(r.default as SignInMethod) ? (r.default as SignInMethod) : methods[0]!;
-  return { methods, default: preferred };
+  return r.requireMfa === true ? { methods, default: preferred, requireMfa: true } : { methods, default: preferred };
 }
 
 /**

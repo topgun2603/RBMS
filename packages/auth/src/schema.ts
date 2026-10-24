@@ -114,7 +114,25 @@ export const authTenantSettings = pgTable("auth_tenant_settings", {
   ...timestamps(),
 });
 
+/**
+ * A user's two-factor sign-in (TOTP, RFC 6238). One row per user; `confirmed_at` null = enrolment started but not
+ * confirmed yet (no effect on sign-in). The secret is AES-256-GCM encrypted; recovery codes are keyed hashes, a used
+ * code is removed from the list.
+ */
+export const authMfa = pgTable("auth_mfa", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  secretEnc: text("secret_enc").notNull(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  /** The last accepted 30-second step: a code can't be used twice. */
+  lastStep: integer("last_step"),
+  recoveryHashes: jsonb("recovery_hashes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  ...timestamps(),
+});
+
 export type UserRow = typeof users.$inferSelect;
 export type SessionRow = typeof authSessions.$inferSelect;
 export type IdentityRow = typeof authIdentities.$inferSelect;
+export type MfaRow = typeof authMfa.$inferSelect;
 export type OtpRow = typeof authOtps.$inferSelect;

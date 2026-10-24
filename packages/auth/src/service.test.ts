@@ -2,6 +2,7 @@ import { AppError } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
 import { describe, expect, it, vi } from "vitest";
 import { createAuth } from "./index";
+import type { SignInResult } from "./service";
 
 // These tests only exercise paths that fail before touching the database.
 const db = {} as Db;
@@ -101,7 +102,7 @@ describe("AuthService test OTP (dev only)", () => {
     const { service } = createAuth({ ...base, db, config });
     const user = { id: "u1", phone: "+919999000101", email: null, name: null, avatarUrl: null, locale: "en", platformRoles: [], status: "active" as const, createdAt: new Date() };
     const find = vi.spyOn(service, "findOrCreateByTarget").mockResolvedValue({ user, isNewUser: true });
-    const r = await service.verifyOtp({ target: "9999000101", code: "123 456" });
+    const r = (await service.verifyOtp({ target: "9999000101", code: "123 456" })) as SignInResult;
     expect(r.token).toMatch(/.{20,}/);
     expect(r.isNewUser).toBe(true);
     expect(find).toHaveBeenCalledWith("+919999000101", { name: null });

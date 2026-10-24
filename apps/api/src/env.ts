@@ -117,6 +117,20 @@ export const envSchema = z.object({
   JOBS_WORKERS: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   /** Log level (pino). Default debug in development, info otherwise. */
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
+  // ---- HTTP hardening (apps/api/src/http-guard.ts)
+  /** Global HTTP rate limit (fixed windows; Redis-shared when REDIS_URL is set). Default on. */
+  RATE_LIMIT_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
+  RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
+  /** Per client IP, all routes. Default 600 (10x in development, where one machine runs every app and e2e). */
+  RATE_LIMIT_IP_MAX: z.coerce.number().int().min(1).optional(),
+  /** Per signed-in user. */
+  RATE_LIMIT_USER_MAX: z.coerce.number().int().min(1).optional(),
+  /** Per shop (all its users together). */
+  RATE_LIMIT_TENANT_MAX: z.coerce.number().int().min(1).optional(),
+  /** Per client IP on the sign-in routes (OTP, Google, Firebase, 2FA). */
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).optional(),
+  /** Largest JSON request body in bytes (routes with their own bodyLimit, e.g. imports and webhooks, keep theirs). */
+  BODY_LIMIT_BYTES: z.coerce.number().int().min(1024).default(1_048_576),
 })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production" && (e.APP_SECRET.length < 32 || e.APP_SECRET.startsWith("dev-only"))) {

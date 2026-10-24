@@ -159,6 +159,15 @@ export function useBillReceipt() {
   });
 }
 
+/** Cancels a goods receipt that was not billed: its stock goes back out and the order's received quantities drop. */
+export function useCancelReceipt() {
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => api.post<GoodsReceipt>(`${STOCK}/goods-receipts/${id}/cancel`, reason ? { reason } : {}),
+    onSuccess: refresh,
+  });
+}
+
 export type { GoodsReceipt };
 
 // ---------------------------------------------------------------- debit notes

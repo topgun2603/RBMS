@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";
 import type { UserListQuery } from "./list";
-import { parseClient, type AuthService, type SignInPolicy, type SignInResult } from "./service";
+import { isMfaPending, parseClient, type AuthService, type MfaPending, type SignInPolicy, type SignInResult } from "./service";
 import { audienceFromHeader, AUDIENCE_HEADER, audienceSchema, signInMethodSchema, signInOptionsPatchSchema } from "./sign-in-options";
 
 const otpRequestBody = z.object({
@@ -19,11 +19,22 @@ const guestVerifyBody = z.object({
   target: z.string().min(3).max(254),
   code: z.string().min(4).max(10),
 });
+const mfaCode = z.string().trim().min(6).max(20);
+const challengeBody = z.object({ challengeToken: z.string().min(20).max(1024) });
+const mfaVerifyBody = challengeBody.extend({ code: mfaCode });
+/** Enrolment runs signed in (session) or, when the shop requires 2FA, during sign-in (challenge token instead). */
+const mfaEnrolStartBody = z.object({ challengeToken: z.string().min(20).max(1024).optional() });
+const mfaEnrolConfirmBody = z.object({ code: mfaCode, challengeToken: z.string().min(20).max(1024).optional() });
+const mfaCodeBody = z.object({ code: mfaCode });
 const googleBody = z.object({ idToken: z.string().min(10).max(8192) });
 const firebaseBody = z.object({
   idToken: z.string().min(10).max(8192),
   name: z.string().trim().min(1).max(120).optional(),
 });
+
+/** Wrong-code guesses at the second step per client IP per window (on top of the per-user lock in the service). */
+export const MFA_ATTEMPTS_PER_WINDOW = 20;
+export const MFA_WINDOW_MS = 10 * 60_000;
 
 /** Firebase sign-ins per client IP per window (Firebase limits the SMS itself; this caps token exchanges). */
 export const FIREBASE_SIGNINS_PER_WINDOW = 20;
@@ -65,6 +76,10 @@ export const authUserSchema = z.object({
   createdAt: z.string().datetime(),
 });
 export const signInResponse = z.object({ token: z.string(), expiresAt: z.string().datetime(), user: authUserSchema, isNewUser: z.boolean() });
+/** Instead of a session when the account needs two-factor: finish with `POST /mfa/verify` (or the enrolment routes). */
+export const mfaRequiredResponse = z.object({ mfa_required: z.literal(true), enrolRequired: z.boolean(), challengeToken: z.string(), expiresAt: z.string().datetime() });
+export const signInOrMfaResponse = z.union([signInResponse, mfaRequiredResponse]);
+export const mfaStatusResponse = z.object({ available: z.boolean(), enabled: z.boolean(), enabledAt: z.string().datetime().nullable(), recoveryCodesLeft: z.number().int() });
 export const authConfigResponse = z.object({
   phone: z.object({ method: z.enum(["firebase", "otp"]), firebaseProjectId: z.string().nullable(), smsOtp: z.boolean() }),
   google: z.boolean(),
@@ -140,8 +155,9 @@ const SELF_AUDITED = { config: { audit: false as const } };
  * `auth.user.status` and `auth.user.platform_roles` (tenant null unless the request has a shop). Never codes, tokens or
  * phone numbers / emails.
  */
-export function authRoutes(service: AuthService, audit?: AuditPort, opts: { firebaseLimiter?: SlidingWindow } = {}) {
+export function authRoutes(service: AuthService, audit?: AuditPort, opts: { firebaseLimiter?: SlidingWindow; mfaLimiter?: SlidingWindow } = {}) {
   const firebaseLimiter = opts.firebaseLimiter ?? new SlidingWindow(FIREBASE_SIGNINS_PER_WINDOW, FIREBASE_WINDOW_MS);
+  const mfaLimiter = opts.mfaLimiter ?? new SlidingWindow(MFA_ATTEMPTS_PER_WINDOW, MFA_WINDOW_MS);
   const record = async (req: FastifyRequest, e: Omit<AuditEvent, "ip" | "userAgent">) => {
     if (!audit) return;
     await audit.record({ ...e, ip: req.ctx.ip, userAgent: req.ctx.userAgent }).catch(() => undefined);
@@ -167,6 +183,21 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
   const signedIn = (req: FastifyRequest, reply: FastifyReply, r: SignInResult) => {
     setSessionCookie(req, reply, r.token, r.expiresAt);
     return { token: r.token, expiresAt: r.expiresAt, user: r.user, isNewUser: r.isNewUser };
+  };
+  const mfaChallenge = (r: MfaPending) => ({ mfa_required: true as const, enrolRequired: r.enrolRequired, challengeToken: r.challengeToken, expiresAt: r.expiresAt });
+  /** Step 1 done: a session, or (two-factor on) the challenge for step 2. Only a finished sign-in is recorded as `auth.login`. */
+  const signedInOrChallenge = async (req: FastifyRequest, reply: FastifyReply, r: SignInResult | MfaPending, method: string) => {
+    if (isMfaPending(r)) return mfaChallenge(r);
+    await login(req, r, method);
+    return signedIn(req, reply, r);
+  };
+  const mfaEvent = (req: FastifyRequest, userId: string, tenantId: string | null, action: string, summary: string) =>
+    record(req, { tenantId: tenantId ?? req.ctx.tenant?.id ?? null, actorUserId: userId, action, entityType: "user", entityId: userId, summary });
+  /** A wrong second-step code is a security event worth keeping; the service has already rejected it. */
+  const mfaFailed = async (req: FastifyRequest, userId: string, tenantId: string | null, err: unknown) => {
+    if (err instanceof AppError && (err.status === 400 || err.status === 429) && err.code !== "mfa_challenge_invalid") {
+      await mfaEvent(req, userId, tenantId, "auth.mfa.failed", err.status === 429 ? "Two-factor locked after wrong codes" : "Wrong two-factor code");
+    }
   };
 
   return (app: FastifyInstance) => {
@@ -218,11 +249,10 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       });
     });
 
-    app.post("/otp/verify", documented({ body: otpVerifyBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
+    app.post("/otp/verify", documented({ body: otpVerifyBody, response: signInOrMfaResponse }, SELF_AUDITED.config), async (req, reply) => {
       const body = otpVerifyBody.parse(req.body);
       const r = await service.verifyOtp({ ...body, ...sessionMeta(req), policy: policyOf(req) });
-      await login(req, r, "otp");
-      return signedIn(req, reply, r);
+      return signedInOrChallenge(req, reply, r, "otp");
     });
 
     // Guest phone verification (no account, no session): request the code with /otp/request first.
@@ -237,17 +267,15 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
     app.post("/google", SELF_AUDITED, async (req, reply) => {
       const body = googleBody.parse(req.body);
       const r = await service.signInWithGoogle({ idToken: body.idToken, ...sessionMeta(req), policy: policyOf(req) });
-      await login(req, r, "google");
-      return signedIn(req, reply, r);
+      return signedInOrChallenge(req, reply, r, "google");
     });
 
     // Firebase Phone Authentication: the client verifies the number with Firebase and sends the ID token here.
-    app.post("/firebase", documented({ body: firebaseBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
+    app.post("/firebase", documented({ body: firebaseBody, response: signInOrMfaResponse }, SELF_AUDITED.config), async (req, reply) => {
       const body = firebaseBody.parse(req.body);
       if (!firebaseLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many sign-in attempts. Please wait a few minutes and try again");
       const r = await service.signInWithFirebase({ ...body, ...sessionMeta(req), policy: policyOf(req) });
-      await login(req, r, "firebase");
-      return signedIn(req, reply, r);
+      return signedInOrChallenge(req, reply, r, "firebase");
     });
 
     // Cross-origin sign-in (landing site → a shop's app): a single-use 60 s code for the signed-in user ...
@@ -302,6 +330,102 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
         summary: "Signed in with a handoff code",
       });
       return signedIn(req, reply, r);
+    });
+
+
+    // ---- two-factor sign-in (TOTP, RFC 6238). Step 2 of sign-in, after the OTP / Firebase / Google step.
+
+    app.get("/mfa", documented({ response: mfaStatusResponse }), async (req) => {
+      const me = requireUser(req.ctx);
+      return service.mfaStatus(me.id);
+    });
+
+    // Start setup: a fresh secret + the otpauth:// link for the QR code. Signed in, or with the challenge of a sign-in
+    // that must first set 2FA up (the shop requires it).
+    app.post("/mfa/enrol/start", SELF_AUDITED, async (req) => {
+      const body = mfaEnrolStartBody.parse(req.body ?? {});
+      if (body.challengeToken) {
+        if (!mfaLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many attempts. Please wait a few minutes and try again");
+        const r = await service.beginMfaEnrolFromChallenge(body.challengeToken);
+        return { secret: r.secret, otpauthUri: r.otpauthUri };
+      }
+      const me = requireUser(req.ctx);
+      const r = await service.beginMfaEnrol(me.id);
+      return { secret: r.secret, otpauthUri: r.otpauthUri };
+    });
+
+    // Confirm with the first code from the app: turns 2FA on and returns the 10 recovery codes (shown once). With a
+    // challenge token this also finishes the sign-in (the response then carries the session).
+    app.post("/mfa/enrol/confirm", SELF_AUDITED, async (req, reply) => {
+      const body = mfaEnrolConfirmBody.parse(req.body ?? {});
+      if (!mfaLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many attempts. Please wait a few minutes and try again");
+      if (body.challengeToken) {
+        const c = service.readMfaChallenge(body.challengeToken, "enrol");
+        try {
+          const r = await service.confirmMfaEnrolFromChallenge({ challengeToken: body.challengeToken, code: body.code, ...sessionMeta(req) });
+          await mfaEvent(req, r.userId, r.tenantId, "auth.mfa.enabled", "Two-factor sign-in turned on (required by the shop)");
+          await login(req, r.signIn, "otp+2fa");
+          return { recoveryCodes: r.recoveryCodes, ...signedIn(req, reply, r.signIn) };
+        } catch (err) {
+          await mfaFailed(req, c.userId, c.tenantId, err);
+          throw err;
+        }
+      }
+      const me = requireUser(req.ctx);
+      try {
+        const r = await service.confirmMfaEnrol(me.id, body.code);
+        await mfaEvent(req, me.id, null, "auth.mfa.enabled", "Two-factor sign-in turned on");
+        return r;
+      } catch (err) {
+        await mfaFailed(req, me.id, null, err);
+        throw err;
+      }
+    });
+
+    // Step 2 of sign-in: the challenge token from step 1 plus an authenticator code (or a recovery code).
+    app.post("/mfa/verify", documented({ body: mfaVerifyBody, response: signInResponse }, SELF_AUDITED.config), async (req, reply) => {
+      const body = mfaVerifyBody.parse(req.body ?? {});
+      if (!mfaLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many attempts. Please wait a few minutes and try again");
+      const c = service.readMfaChallenge(body.challengeToken, "verify");
+      try {
+        const r = await service.verifyMfaSignIn({ ...body, ...sessionMeta(req) });
+        if (r.method === "recovery") await mfaEvent(req, r.user.id, c.tenantId, "auth.mfa.recovery_used", `Signed in with a recovery code (${r.recoveryCodesLeft} left)`);
+        await login(req, r, r.method === "recovery" ? "2fa recovery code" : "2fa");
+        return signedIn(req, reply, r);
+      } catch (err) {
+        await mfaFailed(req, c.userId, c.tenantId, err);
+        throw err;
+      }
+    });
+
+    // Turn 2FA off: needs a current code (the re-authentication).
+    app.post("/mfa/disable", SELF_AUDITED, async (req) => {
+      const me = requireUser(req.ctx);
+      const { code } = mfaCodeBody.parse(req.body ?? {});
+      if (!mfaLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many attempts. Please wait a few minutes and try again");
+      try {
+        await service.disableMfa(me.id, code);
+      } catch (err) {
+        await mfaFailed(req, me.id, null, err);
+        throw err;
+      }
+      await mfaEvent(req, me.id, null, "auth.mfa.disabled", "Two-factor sign-in turned off");
+      return { ok: true };
+    });
+
+    // New recovery codes (the old ones stop working); needs a current code.
+    app.post("/mfa/recovery-codes", SELF_AUDITED, async (req) => {
+      const me = requireUser(req.ctx);
+      const { code } = mfaCodeBody.parse(req.body ?? {});
+      if (!mfaLimiter.hit(req.ctx.ip ?? "unknown")) throw tooMany("Too many attempts. Please wait a few minutes and try again");
+      try {
+        const r = await service.regenerateMfaRecoveryCodes(me.id, code);
+        await mfaEvent(req, me.id, null, "auth.mfa.recovery_regenerated", "Two-factor recovery codes replaced");
+        return r;
+      } catch (err) {
+        await mfaFailed(req, me.id, null, err);
+        throw err;
+      }
     });
 
     app.get("/me", documented({ response: meResponse }), async (req) => {

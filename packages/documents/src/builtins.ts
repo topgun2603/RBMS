@@ -2,6 +2,7 @@ import { safeFilename, type DocumentRegistry } from "./registry";
 import { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 import { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 import { renderPurchase } from "./renderers/purchase";
+import { renderPurchaseOrder } from "./renderers/purchase-order";
 import { renderStatement } from "./renderers/statement";
 import { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
 import { renderTillReport } from "./renderers/till";
@@ -14,6 +15,8 @@ import type {
   OrderDocPort,
   PurchaseDocData,
   PurchaseDocPort,
+  PurchaseOrderDocData,
+  PurchaseOrderDocPort,
   StatementDocData,
   StatementDocPort,
   TillDocData,
@@ -28,6 +31,7 @@ export const DOCUMENT_TYPE_FEATURES = {
   "packing-slip": "orders",
   "shipping-label": "orders",
   purchase: "inventory.purchases",
+  "purchase-order": "inventory.purchases",
   "credit-note": "invoices",
   "credit-note-thermal": "invoices",
   "till-z": "invoices",
@@ -44,6 +48,7 @@ export interface BuiltinPorts {
   statements?: StatementDocPort;
   orders?: OrderDocPort;
   purchases?: PurchaseDocPort;
+  purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
   till?: TillDocPort;
 }
@@ -153,6 +158,18 @@ export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): vo
       load: (tenantId, id) => pur.purchase(tenantId, id),
       render: renderPurchase,
       filename: (d) => safeFilename(`Purchase-${d.billNumber}`),
+      version,
+    });
+  }
+  const po = ports.purchaseOrders;
+  if (po) {
+    reg.register<PurchaseOrderDocData>({
+      key: "purchase-order",
+      paper: "A4",
+      feature: DOCUMENT_TYPE_FEATURES["purchase-order"],
+      load: (tenantId, id) => po.purchaseOrder(tenantId, id),
+      render: renderPurchaseOrder,
+      filename: (d) => safeFilename(`Purchase-order-${d.number}`),
       version,
     });
   }

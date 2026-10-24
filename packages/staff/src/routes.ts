@@ -1,6 +1,7 @@
 import { isSuperAdmin, requirePermission, requireTenant, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { DISCOUNT_SCOPES, type DiscountLimitService } from "./discount";
 import { ASSIGNABLE_LEVELS, type Actor, type StaffService } from "./service";
 import { levelOf, ROLE_KEY_RE } from "./templates";
 
@@ -48,7 +49,7 @@ function actorOf(ctx: RequestContext): Actor {
 }
 
 /** Routes under /v1/staff. */
-export function staffRoutes(service: StaffService) {
+export function staffRoutes(service: StaffService, discounts?: DiscountLimitService) {
   // With an AuditPort the service records these changes itself (with before/after); otherwise the host hook does.
   const mut = (action: string, entity: string, idParam?: string) => ({
     config: { ...cfg.config, audit: service.recordsAudit ? (false as const) : { action, entity, idParam } },
@@ -113,6 +114,24 @@ export function staffRoutes(service: StaffService) {
       await service.deleteRole(tenant.id, key, actor);
       return { ok: true };
     });
+
+    // ---- discount limits (per role or member; above the limit a manager approves with their PIN)
+    if (discounts) {
+      app.get("/discount-limits", cfg, async (req) => {
+        actorOf(req.ctx);
+        return discounts.list(requireTenant(req.ctx).id);
+      });
+      app.put("/discount-limits", mut("staff.discount_limit.set", "discount_limit"), async (req) => {
+        const actor = actorOf(req.ctx);
+        return discounts.set(requireTenant(req.ctx).id, req.body, actor);
+      });
+      app.delete("/discount-limits/:scope/:subject", mut("staff.discount_limit.remove", "discount_limit"), async (req) => {
+        const actor = actorOf(req.ctx);
+        const { scope, subject } = z.object({ scope: z.enum(DISCOUNT_SCOPES), subject: z.string().min(1).max(64) }).parse(req.params);
+        await discounts.remove(requireTenant(req.ctx).id, scope, subject, actor);
+        return { ok: true };
+      });
+    }
 
     // ---- registry
     app.get("/permissions", cfg, async (req) => {

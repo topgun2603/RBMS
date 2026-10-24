@@ -3,9 +3,10 @@ import { esc, qrSvg, safeColor, safeCss, safeImageUrl } from "./html";
 import { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 import { renderPackingSlip, renderShippingLabel } from "./renderers/order";
 import { renderPurchase } from "./renderers/purchase";
+import { renderPurchaseOrder } from "./renderers/purchase-order";
 import { renderStatement } from "./renderers/statement";
 import { DEFAULT_BRANDING } from "./service";
-import { sampleInvoice, sampleOrder, samplePurchase, sampleStatement } from "./test-fixtures";
+import { sampleInvoice, sampleOrder, samplePurchase, samplePurchaseOrder, sampleStatement } from "./test-fixtures";
 
 const en = { locale: "en" as const, branding: DEFAULT_BRANDING };
 const ta = { locale: "ta" as const, branding: DEFAULT_BRANDING };
@@ -148,6 +149,28 @@ describe("other renderers", () => {
     expect(b).toContain(">IGST<");
     expect(b).toContain("Input tax credit");
     expect(b).toContain("₹600.00");
+  });
+});
+
+describe("purchase order", () => {
+  it("prints the PO number, expected date, rates and GST split", () => {
+    const b = bodyOf(renderPurchaseOrder(samplePurchaseOrder(), en));
+    expect(b).toContain("Purchase order");
+    expect(b).toContain("PO/26-27/0007");
+    expect(b).toContain("Expected by");
+    expect(b).toContain(">IGST<");
+    expect(b).toContain("Mysore Silks");
+    expect(b).toContain("Deliver before Diwali");
+    expect(b).not.toContain("Input tax credit");
+  });
+  it("stamps drafts and cancelled orders, and speaks Tamil", () => {
+    expect(bodyOf(renderPurchaseOrder(samplePurchaseOrder({ status: "draft" }), en))).toContain("Draft");
+    expect(bodyOf(renderPurchaseOrder(samplePurchaseOrder({ status: "cancelled" }), en))).toContain("Cancelled");
+    expect(bodyOf(renderPurchaseOrder(samplePurchaseOrder(), ta))).toContain("கொள்முதல் ஆர்டர்");
+  });
+  it("escapes supplier names", () => {
+    const b = bodyOf(renderPurchaseOrder(samplePurchaseOrder({ supplier: { name: "<script>x</script>" } }), en));
+    expect(b).not.toContain("<script>x");
   });
 });
 

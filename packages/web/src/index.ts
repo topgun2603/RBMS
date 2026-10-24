@@ -149,6 +149,7 @@ export { WebProviders } from "./components/providers";
 export { Page, PageHeading, DetailRow, SearchField, type PageWidth } from "./components/page";
 export { QueryError } from "./components/query-state";
 export { ConfirmDialog, type ConfirmDialogProps } from "./components/confirm-dialog";
+export { APPROVAL_PIN_HEADER, ApprovalCancelled, needsDiscountApproval, useDiscountApproval, type DiscountApprovalDetails } from "./components/discount-approval";
 export { ThemeToggle } from "./components/theme-toggle";
 export { LocaleSwitcher } from "./components/locale-switcher";
 export { BrandMark } from "./components/brand-mark";

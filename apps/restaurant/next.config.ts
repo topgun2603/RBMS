@@ -17,6 +17,19 @@ export default function config(phase: string): NextConfig {
     // Workspace packages ship TypeScript source; Next compiles them.
     transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/restaurant-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/tenancy", "@srirealtime/site-ui", "@srirealtime/branding", "@srirealtime/verticals"],
     poweredByHeader: false,
+    // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
+    async headers() {
+      return [
+        {
+          source: "/:path*",
+          headers: [
+            { key: "X-Content-Type-Options", value: "nosniff" },
+            { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+            { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          ],
+        },
+      ];
+    },
     // Each shop opens the app on its own subdomain (arusuvai.localhost:3007) in dev.
     allowedDevOrigins: ["*.localhost", "localhost", "127.0.0.1"],
   };

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, isPlanLimit, ModuleLink, useDebounced, useI18n, useModuleNavigate, useSettingsHref } from "@srirealtime/web";
+import { ApprovalCancelled, describeError, isPlanLimit, ModuleLink, useDebounced, useDiscountApproval, useI18n, useModuleNavigate, useSettingsHref } from "@srirealtime/web";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -161,6 +161,8 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const settingsHref = useSettingsHref();
   const seller = useSellerProfile();
   const save = useSaveInvoice();
+  // A discount above your limit asks a manager for their POS PIN (the API enforces it) and repeats the save with it.
+  const approval = useDiscountApproval();
   const preset = useCustomer(invoice ? "" : (initialCustomerId ?? ""));
 
   const [party, setParty] = React.useState<Party>(() => (invoice ? partyFromInvoice(invoice) : { kind: "none" }));
@@ -261,7 +263,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
       if (!notes.trim()) body.notes = null;
     }
     try {
-      const saved = await save.mutateAsync({ id: invoice?.id, body });
+      const saved = await approval.run((approvalPin) => save.mutateAsync({ id: invoice?.id, body, approvalPin }));
       const creditWarning = (saved.warnings ?? []).includes("credit_limit_exceeded");
       if (!issue) toast.success(invoice ? t("billing.form.draftUpdated") : t("billing.form.draftSaved"));
       if (creditWarning) {
@@ -276,6 +278,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
       const qs = params.toString();
       navigate(`invoices/${saved.id}${qs ? `?${qs}` : ""}`, { replace: true });
     } catch (err) {
+      if (err instanceof ApprovalCancelled) return;
       const msg = describeError(err, t);
       if (isPlanLimit(err)) setPlanError(msg);
       const lf = redeemFailure(err, body.loyaltyPoints !== undefined);
@@ -519,6 +522,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
           </Button>
         </div>
       </div>
+      {approval.dialog}
     </div>
   );
 }

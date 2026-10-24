@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api, APPROVAL_PIN_HEADER } from "@srirealtime/web";
 import type {
   Customer,
   CustomerInput,
@@ -108,8 +108,11 @@ export function useSaveInvoice() {
   const updated = useInvoiceUpdated();
   return useMutation({
     // PATCH accepts `issue: true` too (saves, then issues).
-    mutationFn: ({ id, body }: { id?: string; body: InvoiceInput }) =>
-      id ? api.patch<Invoice>(`${INV}/${id}`, body) : api.post<Invoice>(INV, body),
+    // `approvalPin`: a manager's POS PIN approving a discount above the user's limit (see useDiscountApproval).
+    mutationFn: ({ id, body, approvalPin }: { id?: string; body: InvoiceInput; approvalPin?: string }) => {
+      const opts = approvalPin ? { headers: { [APPROVAL_PIN_HEADER]: approvalPin } } : undefined;
+      return id ? api.patch<Invoice>(`${INV}/${id}`, body, opts) : api.post<Invoice>(INV, body, opts);
+    },
     onSuccess: (inv) => updated(inv),
     onError: () => updated(),
   });

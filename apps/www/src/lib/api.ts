@@ -93,6 +93,34 @@ export interface SignInResult {
   user: User;
   isNewUser: boolean;
 }
+/** Step 1 passed but the account needs two-factor: no session yet. `mfaPrompt` (components/mfa-dialog.tsx) finishes it. */
+export interface MfaRequired {
+  mfa_required: true;
+  enrolRequired: boolean;
+  challengeToken: string;
+  expiresAt: string;
+}
+export interface MfaEnrolStart {
+  secret: string;
+  otpauthUri: string;
+}
+type MfaPromptFn = (c: MfaRequired) => Promise<SignInResult>;
+let mfaPrompt: MfaPromptFn | null = null;
+/** The dialog that asks for the second step registers itself here (once, from the root layout). */
+export function setMfaPrompt(fn: MfaPromptFn | null) {
+  mfaPrompt = fn;
+}
+/** A sign-in result, or the second step first: keeps the token once there is a session. */
+async function withSecondStep(r: SignInResult | MfaRequired): Promise<SignInResult> {
+  let result: SignInResult;
+  if ("mfa_required" in r) {
+    if (!mfaPrompt) throw new ApiError(401, "mfa_required", "Two-factor sign-in is needed. Please use the shop app to sign in.");
+    result = await mfaPrompt(r);
+  } else result = r;
+  setToken(result.token);
+  return result;
+}
+
 export interface Shop {
   id: string;
   slug: string;
@@ -141,16 +169,18 @@ export const api = {
 
   requestOtp: (target: string, channel?: "sms" | "whatsapp") => call<OtpRequestResult>("POST", "/auth/otp/request", { target, ...(channel ? { channel } : {}) }),
   verifyOtp: async (target: string, code: string, name?: string) => {
-    const r = await call<SignInResult>("POST", "/auth/otp/verify", { target, code, ...(name ? { name } : {}) });
-    setToken(r.token);
-    return r;
+    return withSecondStep(await call<SignInResult | MfaRequired>("POST", "/auth/otp/verify", { target, code, ...(name ? { name } : {}) }));
   },
   /** Sign in with a Firebase phone ID token (the number was verified by Firebase). */
   firebaseSignIn: async (idToken: string, name?: string) => {
-    const r = await call<SignInResult>("POST", "/auth/firebase", { idToken, ...(name ? { name } : {}) });
-    setToken(r.token);
-    return r;
+    return withSecondStep(await call<SignInResult | MfaRequired>("POST", "/auth/firebase", { idToken, ...(name ? { name } : {}) }));
   },
+  /** Second step of sign-in: an authenticator code or a recovery code. */
+  mfaVerify: (challengeToken: string, code: string) => call<SignInResult>("POST", "/auth/mfa/verify", { challengeToken, code }),
+  /** The shop requires two-factor and this person has none: start the setup with the sign-in challenge. */
+  mfaEnrolStart: (challengeToken: string) => call<MfaEnrolStart>("POST", "/auth/mfa/enrol/start", { challengeToken }),
+  mfaEnrolConfirm: (challengeToken: string, code: string) =>
+    call<{ recoveryCodes: string[] } & SignInResult>("POST", "/auth/mfa/enrol/confirm", { challengeToken, code }),
   /** Which phone method the API uses (firebase | otp). */
   authConfig: () => call<AuthClientConfig>("GET", `/auth/config?audience=${signInContext.audience ?? "staff"}`),
   me: () => call<{ user: User; tenantRoles: string[]; permissions: string[] }>("GET", "/auth/me"),

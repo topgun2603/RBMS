@@ -141,6 +141,9 @@ export interface GoodsReceipt {
   otherCharges: number;
   purchaseId: string | null;
   note: string | null;
+  /** Set when the receipt was cancelled (its stock went back out). */
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
 }
 
 export interface PurchaseOrderDetail extends PurchaseOrder {

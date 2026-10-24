@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, ApiError, apiUrl, authHeaders, type ApiOptions, type QueryParams } from "@srirealtime/web";
+import { api, APPROVAL_PIN_HEADER, ApiError, apiUrl, authHeaders, type ApiOptions, type QueryParams } from "@srirealtime/web";
 import type { WeighTicket } from "./terminal-types";
 import type {
   BillingItem,
@@ -43,7 +43,7 @@ function withBranch(opts: ApiOptions = {}): ApiOptions {
 
 export const posApi = {
   get: <T>(path: string, query?: QueryParams) => api<T>(path, withBranch({ query })),
-  post: <T>(path: string, body?: unknown) => api<T>(path, withBranch({ method: "POST", body })),
+  post: <T>(path: string, body?: unknown, extra?: Pick<ApiOptions, "headers">) => api<T>(path, withBranch({ method: "POST", body, ...extra })),
 };
 
 /** True for "the network is down / API restarting", as opposed to a real refusal. */
@@ -201,7 +201,9 @@ export interface CreateBillInput {
   tillSessionId?: string;
 }
 
-export const createBill = (input: CreateBillInput) => posApi.post<Invoice>("/invoices", input);
+/** `approvalPin`: a manager's POS PIN approving a discount above the cashier's limit (the API asks for it with 403 `discount_approval_required`). */
+export const createBill = (input: CreateBillInput, approvalPin?: string) =>
+  posApi.post<Invoice>("/invoices", input, approvalPin ? { headers: { [APPROVAL_PIN_HEADER]: approvalPin } } : undefined);
 
 export const addPayment = (id: string, p: { amount: number; method: PaymentMethod; date: string; reference?: string; tillSessionId?: string }) =>
   posApi.post<Invoice>(`/invoices/${id}/payments`, p);

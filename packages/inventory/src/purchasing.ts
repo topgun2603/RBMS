@@ -52,6 +52,7 @@ import {
   purchaseOrders,
   purchasePayments,
   purchases,
+  stockItems,
   stockMovements,
   suppliers,
   type DebitNoteLine,
@@ -183,6 +184,8 @@ export const convertInputSchema = z.object({
 export type ConvertInput = z.input<typeof convertInputSchema>;
 
 export const billGrnInputSchema = billSchema;
+export const cancelGrnInputSchema = z.object({ reason: z.string().trim().max(300).nullish() });
+export type CancelGrnInput = z.input<typeof cancelGrnInputSchema>;
 export type BillGrnInput = z.input<typeof billGrnInputSchema>;
 
 export const debitNoteInputSchema = z.object({
@@ -1015,12 +1018,86 @@ export class PurchasingService {
   }
 
   /**
+   * Cancels a goods receipt that was not billed (or whose bill was cancelled): the stock it added goes back out, the
+   * order's received quantities drop and its status follows (back to sent when nothing is left received). Refuses when
+   * part of that stock was already sold or moved (stock would go negative): return those goods with a debit note
+   * instead. The moving-average cost is not rewound. Idempotent.
+   */
+  async cancelGoodsReceipt(tenantId: string, id: string, input: CancelGrnInput = {}, userId: string | null = null): Promise<GoodsReceiptRow> {
+    const b = cancelGrnInputSchema.parse(input ?? {});
+    const row = await this.db.transaction(async (tx) => {
+      const [grn] = await tx
+        .select()
+        .from(goodsReceipts)
+        .where(and(eq(goodsReceipts.tenantId, tenantId), eq(goodsReceipts.id, id)))
+        .limit(1)
+        .for("update");
+      if (!grn) throw notFound("Goods receipt");
+      if (grn.cancelledAt) return grn;
+      if (grn.purchaseId) throw conflict("This receipt has a purchase bill. Cancel the bill first");
+      const po = await this.poRow(tx, tenantId, grn.purchaseOrderId, true);
+      const moves = await tx
+        .select({ locationId: stockMovements.locationId, itemId: stockMovements.itemId, delta: stockMovements.delta, reason: stockMovements.reason })
+        .from(stockMovements)
+        .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.refType, "grn"), eq(stockMovements.refId, id)));
+      const net = netByLocationItem(moves, grn.locationId).filter((n) => n.milli > 0);
+      // Stock out in item order; refuse before changing anything if some of it is already gone.
+      net.sort((a, c) => (a.itemId < c.itemId ? -1 : a.itemId > c.itemId ? 1 : 0));
+      for (const n of net) {
+        const [have] = await tx
+          .select({ qty: stockItems.qty })
+          .from(stockItems)
+          .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.itemId, n.itemId), eq(stockItems.locationId, n.locationId)))
+          .limit(1)
+          .for("update");
+        if (toMilli(have?.qty ?? 0) < n.milli) {
+          throw conflict("Some of this stock was already sold or moved, so the receipt can't be cancelled. Return the goods with a debit note instead");
+        }
+      }
+      for (const n of net) {
+        await this.inv.change(tx, {
+          tenantId,
+          locationId: n.locationId,
+          itemId: n.itemId,
+          deltaMilli: -n.milli,
+          reason: "purchase_cancel",
+          refType: "grn",
+          refId: id,
+          refNumber: grn.number,
+          note: b.reason ?? undefined,
+          createdBy: userId,
+        });
+      }
+      const lines = po.lines.map((l) => ({ ...l }));
+      for (const g of grn.lines) {
+        const line = lines[g.lineIndex];
+        if (line) line.received = Math.max(0, Math.round((line.received - g.qty) * 1000) / 1000);
+      }
+      const progress = poProgress(lines);
+      const status = po.status === "cancelled" ? po.status : progress === "sent_or_draft" ? "sent" : progress;
+      await tx
+        .update(purchaseOrders)
+        .set({ lines, status })
+        .where(and(eq(purchaseOrders.tenantId, tenantId), eq(purchaseOrders.id, po.id)));
+      const [done] = await tx
+        .update(goodsReceipts)
+        .set({ cancelledAt: this.now(), cancelledBy: userId, cancelReason: b.reason ?? null })
+        .where(and(eq(goodsReceipts.tenantId, tenantId), eq(goodsReceipts.id, id)))
+        .returning();
+      return done!;
+    });
+    this.log.info({ tenantId, grnId: id }, "inventory: goods receipt cancelled");
+    return row;
+  }
+
+  /**
    * Makes the purchase bill for a goods receipt (rates from the order, freight and charges from the receipt). The stock
    * already came in with the receipt, so the bill adds none. A receipt is billed once; cancelling the bill frees it.
    */
   async billGoodsReceipt(tenantId: string, grnId: string, input: BillGrnInput, userId: string | null = null): Promise<Purchase> {
     const b = billGrnInputSchema.parse(input);
     const grn = await this.grnRow(this.db, tenantId, grnId);
+    if (grn.cancelledAt) throw conflict("This receipt was cancelled");
     if (grn.purchaseId) throw conflict("This receipt already has a bill");
     const po = await this.poRow(this.db, tenantId, grn.purchaseOrderId);
     const lines = grn.lines.map((g) => {
