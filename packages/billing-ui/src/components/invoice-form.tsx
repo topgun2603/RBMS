@@ -38,6 +38,7 @@ import {
 import { CustomerPicker, type Party } from "./customer-picker";
 import { GstRateSelect } from "./gst-rate-select";
 import { LoyaltyRedeemCard, LoyaltySummaryRows, useLoyaltyRedeem } from "./loyalty-redeem";
+import { LineBatchSelect } from "./inventory/line-batch-select";
 import { UnitList } from "./item-dialog";
 import { MoneyInput } from "./money-input";
 import { StateSelect } from "./state-select";
@@ -59,6 +60,10 @@ export interface LineDraft {
   gstRate: string;
   /** Price-band GST from the saved item (apparel / footwear); cleared when the rate is picked by hand. */
   gstRule?: GstRateRule | null;
+  /** Stock batch of the line (items with batches): chosen here, printed on the bill. */
+  batchId?: string;
+  batchNo?: string;
+  batchExpiry?: string;
 }
 
 let keySeq = 0;
@@ -103,6 +108,11 @@ export function parseLine(l: LineDraft): { input: LineInput | null; errors: Line
   if (l.hsn.trim()) input.hsn = l.hsn.trim();
   if (l.unit.trim()) input.unit = l.unit.trim();
   if (discount) input.discount = discount;
+  if (l.batchId && l.batchNo) {
+    input.batchId = l.batchId;
+    input.batchNo = l.batchNo;
+    if (l.batchExpiry) input.expiry = l.batchExpiry;
+  }
   if (l.gstRule) {
     // The band of this line's value after its discount (the API re-bands the same way).
     input.gstRule = l.gstRule;
@@ -123,6 +133,7 @@ export function linesFromInvoice(inv: Pick<Invoice, "lines">): LineDraft[] {
     discount: l.discount ? paiseToInput(l.discount) : "",
     gstRate: String(l.gstRate),
     ...(l.gstRule ? { gstRule: l.gstRule } : {}),
+    ...(l.batchId && l.batchNo ? { batchId: l.batchId, batchNo: l.batchNo, ...(l.expiry ? { batchExpiry: l.expiry } : {}) } : {}),
   }));
 }
 
@@ -583,6 +594,9 @@ export function LineRow({
       rate: paiseToInput(item.rate),
       gstRate: String(item.gstRate),
       gstRule: item.gstRule ?? null,
+      batchId: undefined,
+      batchNo: undefined,
+      batchExpiry: undefined,
     });
     window.setTimeout(() => {
       qtyRef.current?.focus();
@@ -609,7 +623,7 @@ export function LineRow({
             value={line.description}
             invalid={!!errors.description}
             autoFocus={autoFocus}
-            onChange={(description) => onChange({ description, itemId: undefined })}
+            onChange={(description) => onChange({ description, itemId: undefined, batchId: undefined, batchNo: undefined, batchExpiry: undefined })}
             onPick={pickItem}
           />
           <FieldError id={`${id}-desc-err`} msg={errors.description} />
@@ -715,6 +729,15 @@ export function LineRow({
           <FieldError id={`${id}-hsn-err`} msg={errors.hsn} />
         </div>
       </div>
+      {line.itemId && (
+        <LineBatchSelect
+          className="sm:pl-8"
+          itemId={line.itemId}
+          qty={parseQty(line.qty) ?? 1}
+          value={line.batchId}
+          onChange={(b) => onChange(b ? { batchId: b.batchId, batchNo: b.batchNo, batchExpiry: b.expiry ?? undefined } : { batchId: undefined, batchNo: undefined, batchExpiry: undefined })}
+        />
+      )}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground sm:pl-8">
         {line.itemId && (
           <span className="mr-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[0.6875rem] font-medium text-primary">

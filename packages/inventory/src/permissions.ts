@@ -9,6 +9,10 @@ export const INVENTORY_PERMISSION_KEYS = {
   purchases: "inventory.purchases",
   /** Pay suppliers, record part-payments and reverse them. */
   purchasesPay: "inventory.purchases.pay",
+  /** Create stock counts, count, review and export them. */
+  audit: "inventory.audit",
+  /** Approve a stock count (posts the stock adjustments) or cancel it. */
+  auditApprove: "inventory.audit.approve",
 } as const;
 
 export type InventoryPermission = (typeof INVENTORY_PERMISSION_KEYS)[keyof typeof INVENTORY_PERMISSION_KEYS];
@@ -37,6 +41,18 @@ export const INVENTORY_PERMISSIONS = [
     module: "inventory",
     label: "Pay suppliers",
     description: "Record payments to suppliers (part or full), reverse them, and mark purchase bills paid.",
+  },
+  {
+    key: INVENTORY_PERMISSION_KEYS.audit,
+    module: "inventory",
+    label: "Stock audits",
+    description: "Start a physical stock count, count items, review the differences and export them.",
+  },
+  {
+    key: INVENTORY_PERMISSION_KEYS.auditApprove,
+    module: "inventory",
+    label: "Approve stock audits",
+    description: "Approve a stock count (the differences are posted as stock adjustments) or cancel it.",
   },
 ] as const satisfies readonly { key: string; module: string; label: string; description: string }[];
 
@@ -72,4 +88,32 @@ export const INVENTORY_ROUTE_PERMISSIONS: Record<string, InventoryPermission> = 
   "POST /goods-receipts/:id/bill": "inventory.purchases",
   "POST /debit-notes": "inventory.purchases",
   "POST /debit-notes/:id/cancel": "inventory.purchases",
+  // ---- batches and expiry
+  "PUT /batches/settings": "inventory.adjust",
+  "PUT /stock/:itemId/batches/tracking": "inventory.adjust",
+  "POST /batches": "inventory.adjust",
+  "PATCH /batches/:id": "inventory.adjust",
+  "POST /batches/:id/adjust": "inventory.adjust",
+  // ---- transfer notes (send, receive)
+  "POST /transfer-notes": "inventory.transfer",
+  "PATCH /transfer-notes/:id": "inventory.transfer",
+  "DELETE /transfer-notes/:id": "inventory.transfer",
+  "POST /transfer-notes/:id/send": "inventory.transfer",
+  "POST /transfer-notes/:id/receive": "inventory.transfer",
+  "POST /transfer-notes/:id/cancel": "inventory.transfer",
+  // ---- stock audits
+  "GET /audits": "inventory.audit",
+  "POST /audits": "inventory.audit",
+  "GET /audits/:id": "inventory.audit",
+  "GET /audits/:id/lines": "inventory.audit",
+  "GET /audits/:id/variance": "inventory.audit",
+  "GET /audits/:id/export": "inventory.audit",
+  "POST /audits/:id/start": "inventory.audit",
+  "POST /audits/:id/count": "inventory.audit",
+  "POST /audits/:id/submit": "inventory.audit",
+  "POST /audits/:id/reopen": "inventory.audit",
+  "POST /audits/:id/reasons": "inventory.audit",
+  "PATCH /audits/:id/lines/:lineId": "inventory.audit",
+  "POST /audits/:id/approve": "inventory.audit.approve",
+  "POST /audits/:id/cancel": "inventory.audit.approve",
 };

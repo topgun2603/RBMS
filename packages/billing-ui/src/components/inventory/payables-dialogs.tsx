@@ -19,6 +19,7 @@ import {
 } from "@srirealtime/ui";
 import { describeError, useI18n } from "@srirealtime/web";
 import { MoneyInput } from "../money-input";
+import { GrnBatchFields, type GrnBatchInput } from "./grn-batch-fields";
 import { cleanQty, round3 } from "./stock-meta";
 import { formatQty, money, paiseToInput, parseQty, rupeesToPaise, todayIST } from "../../lib/format";
 import {
@@ -502,6 +503,7 @@ export function ReceiveDialog({
   const receive = useReceiveGoods();
   const convertOrder = useConvertOrder();
   const [qtys, setQtys] = React.useState<Record<number, string>>({});
+  const [batches, setBatches] = React.useState<Record<number, GrnBatchInput>>({});
   const [freight, setFreight] = React.useState("");
   const [other, setOther] = React.useState("");
   const [withBill, setWithBill] = React.useState(false);
@@ -516,6 +518,7 @@ export function ReceiveDialog({
   React.useEffect(() => {
     if (!open || !order) return;
     setQtys(Object.fromEntries(order.lines.map((l, i) => [i, formatPlain(round3(l.qty - l.received))])));
+    setBatches({});
     setFreight("");
     setOther("");
     setWithBill(false);
@@ -557,7 +560,7 @@ export function ReceiveDialog({
     try {
       const res = convert
         ? await convertOrder.mutateAsync({ id: order.id, body: { ...common, ...bill! } })
-        : await receive.mutateAsync({ id: order.id, body: { ...common, lines: picked.filter((x) => (x.qty ?? 0) > 0).map((x) => ({ lineIndex: x.i, qty: x.qty! })), ...(bill ? { bill } : {}) } });
+        : await receive.mutateAsync({ id: order.id, body: { ...common, lines: picked.filter((x) => (x.qty ?? 0) > 0).map((x) => ({ lineIndex: x.i, qty: x.qty!, ...(batches[x.i]?.no.trim() ? { batches: [{ batchNo: batches[x.i]!.no.trim(), qty: x.qty!, ...(batches[x.i]!.expiry.trim() ? { expiry: batches[x.i]!.expiry.trim() } : {}) }] } : {}) })), ...(bill ? { bill } : {}) } });
       if (res.billError) toast.warning(t("billing.payables.receivedNoBill", { number: res.grn.number, error: res.billError }));
       else toast.success(res.purchase ? t("billing.payables.receivedBilled", { number: res.grn.number, bill: res.purchase.billNumber }) : t("billing.payables.received", { number: res.grn.number }));
       onOpenChange(false);
@@ -594,6 +597,7 @@ export function ReceiveDialog({
                   value={qtys[i] ?? ""}
                   onChange={(e) => setQtys((q) => ({ ...q, [i]: cleanQty(e.target.value) }))}
                 />
+                {!convert && <GrnBatchFields itemId={l.itemId} disabled={left <= 0} value={batches[i] ?? { no: "", expiry: "" }} onChange={(v) => setBatches((b) => ({ ...b, [i]: v }))} />}
               </li>
             ))}
           </ul>

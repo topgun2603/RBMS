@@ -177,6 +177,12 @@ export function InvoiceDocument({
                 <td className="px-2 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
                 <td className="px-2 py-2">
                   <div className="font-medium">{l.description}</div>
+                  {!!l.batchNo && (
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {t("billing.batches.pick.label")}: {l.batchNo}
+                      {l.expiry ? ` · ${t("billing.batches.pick.exp")}: ${formatDate(l.expiry)}` : ""}
+                    </div>
+                  )}
                   {!!l.discount && (
                     <div className="text-xs text-muted-foreground">
                       {t("billing.doc.discount")}: −{money(l.discount)}

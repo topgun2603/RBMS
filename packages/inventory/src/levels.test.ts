@@ -364,7 +364,7 @@ describe("features and permissions", () => {
     });
   });
   it("exports permissions with labels", () => {
-    expect(INVENTORY_PERMISSIONS.map((p) => p.key)).toEqual(["inventory.adjust", "inventory.transfer", "inventory.purchases", "inventory.purchases.pay"]);
+    expect(INVENTORY_PERMISSIONS.map((p) => p.key)).toEqual(["inventory.adjust", "inventory.transfer", "inventory.purchases", "inventory.purchases.pay", "inventory.audit", "inventory.audit.approve"]);
     for (const p of INVENTORY_PERMISSIONS) expect(p.label.length).toBeGreaterThan(0);
     expect(new Set(Object.values(INVENTORY_ROUTE_PERMISSIONS))).toEqual(new Set(INVENTORY_PERMISSIONS.map((p) => p.key)));
   });

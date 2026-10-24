@@ -92,7 +92,7 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Cash put in / taken out of the drawer by hand | `till_cash` | Cash / Till cash in-out (to review) | the other side |
 | Composition tax paid by challan (GST filing > Composition) | `gst_payment` (and `gst_payment_cancel` when cancelled) | Composition tax (expense, account 5930) | Money account (by method) |
 | Opening stock (`opening` movement) | `stock_adjustment` | Stock in hand | Opening balance equity |
-| Stock added/removed by hand (`adjustment`) | `stock_adjustment` | Stock in hand / Stock gains and write-offs | the other side |
+| Stock added/removed by hand (`adjustment`) and the differences of an approved stock audit (`audit`) | `stock_adjustment` | Stock in hand / Stock gains and write-offs | the other side |
 | Customer and supplier opening balances | `opening_parties` | Debtors (customers who owed), Creditors (suppliers we had paid in advance) | Creditors, Debtors for the opposite, and Opening balance equity for the difference |
 | Opening balance typed on accounts | `account_opening` | accounts with a debit balance | accounts with a credit balance, Opening balance equity for the difference |
 | Imported historical bills and their payments, credit notes, supplier payments | same as above, **only when** Settings > "Bills imported from another software" is "Post like other bills"; default is left out (they were in the old books) | | |

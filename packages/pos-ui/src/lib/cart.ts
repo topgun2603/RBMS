@@ -51,6 +51,8 @@ export interface CartLine extends CartProduct {
   listPrice: number;
   /** Serial numbers / IMEIs scanned onto this line (one per unit); printed on the bill and marked sold. */
   serials?: string[];
+  /** The stock batch the line is sold from (items with batches): printed on the bill, stock is taken from it first. */
+  batch?: { id: string; no: string; expiry: string | null };
   /** A weigh-ticket line (fixed qty and price; removed with its whole ticket). */
   ticket?: { id: string; code: string };
 }
@@ -172,6 +174,11 @@ export function toLineInput(l: CartLine): LineInput {
   if (l.hsn) input.hsn = l.hsn;
   if (l.unit) input.unit = l.unit;
   if (l.serials?.length) input.serials = [...l.serials];
+  if (l.batch) {
+    input.batchId = l.batch.id;
+    input.batchNo = l.batch.no;
+    if (l.batch.expiry) input.expiry = l.batch.expiry;
+  }
   return input;
 }
 

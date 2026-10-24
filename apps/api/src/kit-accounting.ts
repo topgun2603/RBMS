@@ -330,7 +330,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           stockItems,
           and(eq(stockItems.tenantId, stockMovements.tenantId), eq(stockItems.itemId, stockMovements.itemId), sql`${stockItems.locationId} is not distinct from ${stockMovements.locationId}`),
         )
-        .where(and(eq(stockMovements.tenantId, tenantId), sql`${stockMovements.reason} in ('opening', 'adjustment')`));
+        .where(and(eq(stockMovements.tenantId, tenantId), sql`${stockMovements.reason} in ('opening', 'adjustment', 'audit')`));
       return rows.flatMap((r): StockAdjustmentSrc[] => {
         const delta = Number(r.delta);
         const unit = delta > 0 ? (r.unitCost ?? r.avgCost ?? 0) : (r.avgCost ?? r.unitCost ?? 0);

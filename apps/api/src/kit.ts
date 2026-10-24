@@ -53,6 +53,7 @@ import type { Env } from "./env";
 import { phoneAuthConfig, testOtpConfig } from "./test-otp";
 import { defineAppSettings } from "./app-settings";
 import { documentPorts, registerImportExport } from "./kit-io";
+import { chainGuards, expiredSaleGuard, expiryAlertJob, legacyBatchPort, registerTransferNoteDocument } from "./kit-stock-depth";
 import { exportFiles, fullExportPort } from "./kit-switch";
 import {
   catalogueAvailability,
@@ -481,6 +482,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
         return typeof code === "string" && code ? code : null;
       },
     },
+    // Batches and expiry: pharmacy (medicines) batches stay in Pharmacy; the generic batches read them (docs/stock-depth.md).
+    legacyBatches: legacyBatchPort({ db, medicines: () => medicinesRef, isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key) }),
     log,
   });
   inventoryRef = inventory;
@@ -785,6 +788,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     log,
   });
+  registerTransferNoteDocument({ inventory: inventory.service, seller: sellerDoc, registry: documents.registry });
   // ---- CSV/XLSX import and export. Importers/exporters must be registered before the routes are mounted.
   const importExport = createImportExport({
     db,
@@ -798,7 +802,14 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       audit: audit.service,
     },
   });
-  registerImportExport(importExport.registry, { catalogue: catalogue.service, invoices: invoices.service, inventory: inventory.service, db });
+  registerImportExport(importExport.registry, {
+    catalogue: catalogue.service,
+    invoices: invoices.service,
+    inventory: inventory.service,
+    db,
+    medicines: () => medicinesRef,
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+  });
 
   // ================================================================ online store (docs/commerce-batch2.md)
   const isEnabled = (tenantId: string, key: string) => features.service.isEnabled(tenantId, key);
@@ -1462,6 +1473,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     await audit.service.purge();
   });
 
+  defineJob("inventory.expiry-alerts", expiryAlertJob({ db, inventory: () => inventory.service, emit, today: () => inventory.service.today() }));
   defineJob("invoices.reminders", async () => {
     const result = await invoices.service.runReminders(new Date());
     log.info(result, "invoice reminders run");
@@ -1616,7 +1628,14 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     routeRules: routePermissions(ROUTE_PERMISSIONS, {
       ...ROUTE_GUARDS,
       // Per-role / per-member discount limits with manager-PIN approval (discount-guard.ts), after the permission guards.
-      ...withDiscountLimits(ROUTE_GUARDS, discountLimitGuard({ limits: staff.discounts, memberForPin: (tenantId, pin) => pos.service.memberForPin(tenantId, pin), audit: audit.service })),
+      ...withDiscountLimits(
+        ROUTE_GUARDS,
+        chainGuards(
+          discountLimitGuard({ limits: staff.discounts, memberForPin: (tenantId, pin) => pos.service.memberForPin(tenantId, pin), audit: audit.service }),
+          // Expired batches can't be sold when the shop's batch rule says so (docs/stock-depth.md).
+          expiredSaleGuard(() => inventory.service, (tenantId, key) => features.service.isEnabled(tenantId, key)),
+        ),
+      ),
       "POST /v1/support/public/tickets": guestTicketGuard((tenantId, token) => auth.service.verifyGuestToken(tenantId, token)),
     }),
     /** Collects every route for the developer module's `GET /v1/developer/openapi.json` (registered after routeRules). */
@@ -1684,6 +1703,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await jobs.service.schedule("consent.sweep", "0 * * * *");
       await jobs.service.schedule("uploads.cleanup", "30 3 * * *");
       await jobs.service.schedule("invoices.reminders", "0 10 * * *");
+      await jobs.service.schedule("inventory.expiry-alerts", "30 7 * * *");
       await jobs.service.schedule("payments.retry", "*/15 * * * *");
       await jobs.service.schedule("audit.purge", "15 4 * * *");
       await jobs.service.schedule("store.carts.purge", "45 3 * * *");

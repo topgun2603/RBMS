@@ -68,9 +68,12 @@ import {
   type StockDrop,
   type StockLevelInput,
 } from "./levels";
+import { AuditService } from "./audit";
+import { BatchService, batchFieldsSchema, batchReasonFor, type TakeResult } from "./batches";
 import { PurchasingService } from "./purchasing";
+import { TransferService } from "./transfers";
 import { apportion, purchaseBalance } from "./payables";
-import { noopLogger, type CatalogItem, type EventsPort, type ItemCatalogPort, type LoggerPort, type SellerStatePort } from "./ports";
+import { noopLogger, type CatalogItem, type EventsPort, type ItemCatalogPort, type LegacyBatchPort, type LoggerPort, type SellerStatePort, type TransferNoticePort } from "./ports";
 import {
   LOCATION_TYPES,
   debitNotes,
@@ -92,6 +95,7 @@ import {
   type StockReservationRow,
   type StockTransferRow,
   type TransferLine,
+  type TransferStatus,
   type PurchaseLine,
   type PurchaseRow,
   type PurchaseStatus,
@@ -127,6 +131,10 @@ export interface InventoryDeps {
   log?: LoggerPort;
   /** Clock override for tests. */
   now?: () => Date;
+  /** The pharmacy module's batches (batches there stay managed there). */
+  legacyBatches?: LegacyBatchPort;
+  /** Tells the receiving branch that a transfer is on its way. */
+  transferNotice?: TransferNoticePort;
 }
 
 // ------------------------------------------------------------------ DTOs
@@ -177,12 +185,22 @@ export interface StockLocation {
 
 export interface StockTransfer {
   id: string;
+  /** "TR/26-27/0001"; null on instant transfers made before the send / receive flow. */
+  number: string | null;
+  status: TransferStatus;
   fromLocationId: string;
   toLocationId: string;
   lines: TransferLine[];
   note: string | null;
+  transport: string | null;
+  receiveNote: string | null;
   createdBy: string | null;
   createdAt: Date;
+  sentAt: Date | null;
+  receivedAt: Date | null;
+  closedAt: Date | null;
+  cancelledAt: Date | null;
+  cancelReason: string | null;
 }
 
 export interface ItemAvailability {
@@ -344,7 +362,8 @@ export interface SaleInput {
   refNumber?: string | null;
   /** Default location when omitted. */
   locationId?: string | null;
-  lines: { itemId: string; qty: number }[];
+  /** `batchId`: the batch the cashier chose for the line (stock comes from it first). */
+  lines: { itemId: string; qty: number; batchId?: string | null }[];
 }
 
 // ------------------------------------------------------------------ validation
@@ -450,6 +469,10 @@ export const adjustInputSchema = z
     note: opt(z.string().trim().max(500)),
     unitCost: opt(money),
     locationId: locationIdParam,
+    /** Adjust one batch of a batch-tracked item (remove / set take from it, add puts into it). */
+    batchId: opt(uuid),
+    /** Stock added into a (new or known) batch: batch number, expiry... */
+    batch: batchFieldsSchema.optional(),
   })
   .superRefine((b, ctx) => {
     if (b.mode !== "set" && b.qty <= 0)
@@ -473,7 +496,8 @@ export const saleInputSchema = z.object({
   refId: z.string().trim().min(1).max(100),
   refNumber: opt(z.string().trim().max(50)),
   locationId: locationIdParam,
-  lines: z.array(z.object({ itemId: uuid, qty: positiveQty })).max(500),
+  /** `batchId`: the batch the cashier chose for the line (the rest, if it runs short, comes first-expiry-first-out). */
+  lines: z.array(z.object({ itemId: uuid, qty: positiveQty, batchId: opt(uuid) })).max(500),
 });
 
 /** Goods of a credit note coming back (`saleRefId` = the invoice whose sale took them). */
@@ -515,6 +539,10 @@ export const purchaseLineSchema = z
     rate: money,
     discount: money.optional(),
     gstRate,
+    /** Batch received on this line (batch-tracked items): number, dates and MRP. */
+    batchNo: opt(z.string().trim().max(60)),
+    mfgDate: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+    expiry: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   })
   .superRefine((l, ctx) => {
     if ((l.discount ?? 0) > lineAmount(l.qty, l.rate)) {
@@ -527,6 +555,9 @@ export const purchaseLineSchema = z
     if (l.hsn) out.hsn = l.hsn;
     if (l.unit) out.unit = l.unit;
     if (l.discount) out.discount = l.discount;
+    if (l.batchNo) out.batchNo = l.batchNo;
+    if (l.mfgDate) out.mfgDate = l.mfgDate;
+    if (l.expiry) out.expiry = l.expiry;
     return out;
   });
 
@@ -838,14 +869,23 @@ const toLocation = (r: StockLocationRow): StockLocation => ({
   updatedAt: r.updatedAt,
 });
 
-const toTransfer = (r: StockTransferRow): StockTransfer => ({
+export const toTransfer = (r: StockTransferRow): StockTransfer => ({
   id: r.id,
+  number: r.number,
+  status: r.status,
   fromLocationId: r.fromLocationId,
   toLocationId: r.toLocationId,
   lines: r.lines,
   note: r.note,
+  transport: r.transport,
+  receiveNote: r.receiveNote,
   createdBy: r.createdBy,
   createdAt: r.createdAt,
+  sentAt: r.sentAt,
+  receivedAt: r.receivedAt,
+  closedAt: r.closedAt,
+  cancelledAt: r.cancelledAt,
+  cancelReason: r.cancelReason,
 });
 
 const toReservationLine = (r: Pick<StockReservationRow, "itemId" | "locationId" | "qty" | "status">): ReservationLine => ({
@@ -946,6 +986,12 @@ interface StockChange {
   unitCost?: number | null;
   note?: string | null;
   createdBy?: string | null;
+  /** The batch ledger is handled by the caller (reversals, transfers, explicit batch adjustments). */
+  skipBatch?: boolean;
+  /** Batches to take from first when stock goes out (the cashier's choice). */
+  batchPreferred?: readonly { batchId: string; milli: number }[];
+  /** Returned goods: the sale they came from (stored on the batch ledger). */
+  batchSourceRefId?: string | null;
 }
 
 /** Transaction-scoped advisory lock so two applySale/reverseSale (or reserve/release/commit) calls for one ref can't interleave. */
@@ -965,9 +1011,18 @@ export class InventoryService {
   private readonly healed = new Set<string>();
   /** Supplier payments, purchase orders / goods receipts and debit notes. */
   readonly purchasing: PurchasingService;
+  /** Batches and expiry (batch levels under the stock totals). */
+  readonly batches: BatchService;
+  /** Physical stock audits (stock counts). */
+  readonly audits: AuditService;
+  /** Transfers with the in-transit step. */
+  readonly transfers: TransferService;
 
   constructor(deps: InventoryDeps) {
     this.purchasing = new PurchasingService(this, deps);
+    this.batches = new BatchService(this, deps);
+    this.audits = new AuditService(this, deps);
+    this.transfers = new TransferService(this, deps);
     this.db = deps.db;
     this.catalog = deps.catalog;
     this.sellerState = deps.sellerState;
@@ -1091,6 +1146,11 @@ export class InventoryService {
       out.skipped += r.skipped;
     }
     return out;
+  }
+
+  /** @internal */
+  locationRowPublic(db: DbOrTx, tenantId: string, id: string): Promise<StockLocationRow | null> {
+    return this.locationRow(db, tenantId, id);
   }
 
   private async locationRow(db: DbOrTx, tenantId: string, id: string): Promise<StockLocationRow | null> {
@@ -1261,7 +1321,7 @@ export class InventoryService {
 
   /** Applies one stock change inside `tx`: upsert qty (and reserved), update average cost, append a movement. */
   /** @internal used by PurchasingService */
-  async change(tx: DbOrTx, c: StockChange, drops?: StockDrop[]): Promise<{ qtyMilli: number; avgCost: number | null }> {
+  async change(tx: DbOrTx, c: StockChange, drops?: StockDrop[]): Promise<{ qtyMilli: number; avgCost: number | null; batches: TakeResult }> {
     const [row] = await upsertStockStatement(tx, {
       tenantId: c.tenantId,
       locationId: c.locationId,
@@ -1306,7 +1366,49 @@ export class InventoryService {
       createdBy: c.createdBy ?? null,
       createdAt: this.now(),
     });
-    return { qtyMilli, avgCost };
+    // Stock going out of an item that has batches comes out of them (chosen batch, then first-expiry-first-out).
+    const batches: TakeResult =
+      c.deltaMilli < 0 && !c.skipBatch
+        ? await this.batches.takeOut(tx, {
+            tenantId: c.tenantId,
+            itemId: c.itemId,
+            locationId: c.locationId,
+            milli: -c.deltaMilli,
+            reason: batchReasonFor(c.reason),
+            preferred: c.batchPreferred,
+            refType: c.refType ?? null,
+            refId: c.refId ?? null,
+            refNumber: c.refNumber ?? null,
+            note: c.note ?? null,
+            userId: c.createdBy ?? null,
+          })
+        : { allocations: [], shortMilli: Math.max(0, -c.deltaMilli) };
+    return { qtyMilli, avgCost, batches };
+  }
+
+  /** @internal item details for the batch, audit and transfer services. */
+  async catalogItems(tenantId: string, ids: string[]): Promise<CatalogItem[]> {
+    return this.catalog.getItems(tenantId, ids);
+  }
+
+  /** @internal items whose name or HSN matches `q`. */
+  async catalogSearch(tenantId: string, q: string): Promise<CatalogItem[]> {
+    return this.catalog.listItems(tenantId, q || undefined);
+  }
+
+  /** @internal */
+  dropSinkPublic(): StockDrop[] | undefined {
+    return this.dropSink();
+  }
+
+  /** @internal */
+  async emitLowStockPublic(tenantId: string, drops: StockDrop[] | undefined): Promise<void> {
+    return this.emitLowStock(tenantId, drops);
+  }
+
+  /** @internal */
+  eventsPort(): EventsPort | null {
+    return this.events;
   }
 
   /** A collector for `change()` when events are wired (else undefined: no extra work). */
@@ -1370,6 +1472,11 @@ export class InventoryService {
   }
 
   /** Creates missing rows (qty 0) for these items at these locations, then locks them in item, location order. */
+  /** @internal */
+  lockRowsPublic(tx: DbOrTx, tenantId: string, locationIds: string[], itemIds: string[]) {
+    return this.lockRows(tx, tenantId, locationIds, itemIds);
+  }
+
   private async lockRows(tx: DbOrTx, tenantId: string, locationIds: string[], itemIds: string[]) {
     if (itemIds.length === 0) return [];
     await tx
@@ -1389,7 +1496,8 @@ export class InventoryService {
     return buildStockLevelRow(item, rows, { locationId, track: isItemTracked(all) });
   }
 
-  private async catalogItem(tenantId: string, itemId: string): Promise<CatalogItem> {
+  /** @internal */
+  async catalogItem(tenantId: string, itemId: string): Promise<CatalogItem> {
     const [item] = await this.catalog.getItems(tenantId, [itemId]);
     if (!item || item.id !== itemId) throw notFound("Item");
     return item;
@@ -1600,16 +1708,37 @@ export class InventoryService {
         .from(stockMovements)
         .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.itemId, itemId), eq(stockMovements.locationId, loc.id)))
         .limit(1);
+      const reason = prior ? "adjustment" : "opening";
+      // A named batch: removing takes from it (it must have that much), adding puts into it.
+      const batchId = b.batchId ?? null;
+      if (batchId && delta < 0) {
+        await this.batches.takeFrom(tx, tenantId, batchId, loc.id, -delta, "adjustment", { note: b.note ?? null, userId });
+      }
       await this.change(tx, {
         tenantId,
         locationId: loc.id,
         itemId,
         deltaMilli: delta,
-        reason: prior ? "adjustment" : "opening",
+        reason,
         unitCost: delta > 0 ? unitCost : null,
         note: b.note ?? null,
         createdBy: userId,
+        skipBatch: batchId !== null,
       }, drops);
+      if (delta > 0 && (b.batch || batchId)) {
+        const known = batchId ? await this.batches.batchRow(tx, tenantId, batchId) : null;
+        await this.batches.receiveInto(tx, {
+          tenantId,
+          itemId,
+          locationId: loc.id,
+          milli: delta,
+          batch: b.batch ?? { batchNo: known!.batchNo },
+          reason: reason === "opening" ? "opening" : "adjustment",
+          unitCost,
+          note: b.note ?? null,
+          userId,
+        });
+      }
     });
     await this.emitLowStock(tenantId, drops);
     return this.levelRow(item, await this.itemRows(this.db, tenantId, itemId), loc.id);
@@ -1646,6 +1775,14 @@ export class InventoryService {
         tenantId,
         lines.map((l) => l.itemId),
       );
+      // The batch the cashier chose for a line (summed per item and batch).
+      const chosen = new Map<string, Map<string, number>>();
+      for (const l of b.lines) {
+        if (!l.batchId) continue;
+        const m = chosen.get(l.itemId) ?? new Map<string, number>();
+        m.set(l.batchId, (m.get(l.batchId) ?? 0) + toMilli(l.qty));
+        chosen.set(l.itemId, m);
+      }
       let items = 0;
       for (const l of lines) {
         if (untracked.has(l.itemId)) continue;
@@ -1658,6 +1795,7 @@ export class InventoryService {
           refType: "invoice",
           refId: b.refId,
           refNumber: b.refNumber ?? null,
+          batchPreferred: [...(chosen.get(l.itemId) ?? new Map<string, number>()).entries()].map(([batchId, milli]) => ({ batchId, milli })),
         }, drops);
         items++;
       }
@@ -1706,6 +1844,7 @@ export class InventoryService {
           refNumber: sales[0]?.refNumber ?? null,
         });
       }
+      await this.batches.reverseRef(tx, tenantId, "invoice", ref, "sale_cancel", { refNumber: sales[0]?.refNumber ?? null });
       this.log.info({ tenantId, refId: ref, items: net.length }, "inventory: sale reversed");
       return { reversed: true, items: net.length };
     });
@@ -1760,6 +1899,15 @@ export class InventoryService {
           refId: b.refId,
           refNumber: b.refNumber ?? null,
         });
+        await this.batches.returnToSource(tx, {
+          tenantId,
+          itemId: l.itemId,
+          saleRefId: b.saleRefId,
+          creditNoteId: b.refId,
+          refNumber: b.refNumber ?? null,
+          milli: l.milli,
+          defaultLocationId: def.id,
+        });
         items++;
       }
       this.log.info({ tenantId, refId: b.refId, items }, "inventory: sales return restocked");
@@ -1799,10 +1947,12 @@ export class InventoryService {
             refType: "credit_note",
             refId: ref,
             refNumber: returns[0]?.refNumber ?? null,
+            skipBatch: true,
           },
           drops,
         );
       }
+      await this.batches.reverseRef(tx, tenantId, "credit_note", ref, "sale_return_cancel", { refNumber: returns[0]?.refNumber ?? null });
       return { reversed: true, items: net.length };
     });
     await this.emitLowStock(tenantId, drops);
@@ -1811,72 +1961,12 @@ export class InventoryService {
 
   // ================================================================ transfers
 
-  /** Moves stock between two locations at once (both movements in one transaction). 409 when the source is short. */
+  /**
+   * Moves stock between two locations at once (the old API): a transfer note that is sent and received in one step, with
+   * the same movements as before. 409 when the source is short. For the in-transit flow see `transfers`.
+   */
   async createTransfer(tenantId: string, input: TransferInput, userId: string | null = null): Promise<StockTransfer> {
-    const b = transferInputSchema.parse(input);
-    const lines = mergeQtyLines(b.lines);
-    if (lines.length === 0) throw badRequest("Add at least one line");
-    await this.defaultLocationRow(tenantId);
-    const [from, to] = await Promise.all([
-      this.locationRow(this.db, tenantId, b.fromLocationId),
-      this.locationRow(this.db, tenantId, b.toLocationId),
-    ]);
-    const problem = transferProblem(b.fromLocationId, b.toLocationId, from, to);
-    if (problem) throw problem.status === 404 ? new AppError(404, "not_found", problem.message) : badRequest(problem.message);
-    const ids = lines.map((l) => l.itemId);
-    const found = new Set((await this.catalog.getItems(tenantId, ids)).map((i) => i.id));
-    const missing = ids.filter((id) => !found.has(id));
-    if (missing.length > 0) throw badRequest("Some lines refer to items that no longer exist", { itemIds: missing });
-
-    const drops = this.dropSink();
-    const row = await this.db.transaction(async (tx) => {
-      const untracked = await this.untrackedOf(tx, tenantId, ids);
-      const locked = await this.lockRows(tx, tenantId, [b.fromLocationId, b.toLocationId], ids);
-      const source = new Map(
-        locked
-          .filter((r) => r.locationId === b.fromLocationId)
-          .map((r) => [r.itemId, { qtyMilli: toMilli(r.qty), reservedMilli: toMilli(r.reserved), avgCost: r.avgCost }]),
-      );
-      const check = checkAvailability(lines, source, untracked);
-      if (!check.ok) throw insufficientStock(check.items);
-      const [created] = await tx
-        .insert(stockTransfers)
-        .values({
-          tenantId,
-          fromLocationId: b.fromLocationId,
-          toLocationId: b.toLocationId,
-          lines: lines.map((l) => ({ itemId: l.itemId, qty: fromMilli(l.milli) })),
-          note: b.note ?? null,
-          createdBy: userId,
-          createdAt: this.now(),
-        })
-        .returning();
-      const refNumber = `${from!.code} → ${to!.code}`;
-      for (const l of lines) {
-        const common = {
-          tenantId,
-          itemId: l.itemId,
-          refType: "transfer",
-          refId: created!.id,
-          refNumber,
-          note: b.note ?? null,
-          createdBy: userId,
-        };
-        await this.change(tx, { ...common, locationId: b.fromLocationId, deltaMilli: -l.milli, reason: "transfer_out" }, drops);
-        // Incoming stock carries the source's average cost into the destination's moving average.
-        await this.change(tx, {
-          ...common,
-          locationId: b.toLocationId,
-          deltaMilli: l.milli,
-          reason: "transfer_in",
-          unitCost: source.get(l.itemId)?.avgCost ?? null,
-        });
-      }
-      return created!;
-    });
-    this.log.info({ tenantId, transferId: row.id, lines: lines.length }, "inventory: transfer recorded");
-    await this.emitLowStock(tenantId, drops);
-    return toTransfer(row);
+    return this.transfers.instant(tenantId, input, userId);
   }
 
   async listTransfers(tenantId: string, query: TransferListQuery = {}): Promise<ListResult<StockTransfer>> {
@@ -2363,6 +2453,8 @@ export class InventoryService {
     landed = 0,
   ) {
     if (lines.length === 0) return;
+    // Lines that name a batch put their quantity into it (the totals below already include it).
+    const batched = (p.lines as (PurchaseLine & { batchNo?: string; mfgDate?: string; expiry?: string })[]).filter((l) => l.itemId && l.batchNo);
     const shares = apportion(
       landed,
       lines.map((l) => l.taxable),
@@ -2385,6 +2477,21 @@ export class InventoryService {
         refNumber: p.billNumber,
         unitCost: unitCostOf(l.taxable + (shares[i] ?? 0), l.milli),
         createdBy: userId,
+      });
+    }
+    for (const l of batched) {
+      if (untracked.has(l.itemId!) || (await this.batches.pharmacyManaged(tenantId, l.itemId!))) continue;
+      await this.batches.receiveInto(tx, {
+        tenantId,
+        itemId: l.itemId!,
+        locationId,
+        milli: toMilli(l.qty),
+        batch: { batchNo: l.batchNo!, mfgDate: l.mfgDate, expiry: l.expiry, cost: l.qty > 0 ? Math.round(l.taxable / l.qty) : undefined, supplierName: p.supplier?.name },
+        reason: "receive",
+        refType: "purchase",
+        refId: p.id,
+        refNumber: p.billNumber,
+        userId,
       });
     }
   }
@@ -2447,8 +2554,10 @@ export class InventoryService {
           refId: id,
           refNumber: p.billNumber,
           createdBy: userId,
+          skipBatch: true,
         });
       }
+      await this.batches.reverseRef(tx, tenantId, "purchase", id, "purchase_cancel", { refNumber: p.billNumber, userId });
       return updated;
     });
     return toPurchase(row);

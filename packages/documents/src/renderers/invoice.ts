@@ -179,7 +179,7 @@ export function renderInvoice(inv: InvoiceDocData, ctx: RenderContext, variant: 
     .map(
       (l, i) => `<tr>
 <td class="muted num">${i + 1}</td>
-<td><div class="b">${esc(l.description)}</div>${l.serials?.length ? `<div class="xs mono">${L("serials")}: ${esc(l.serials.join(", "))}</div>` : ""}${l.discount ? `<div class="xs muted">${L("discount")}: −${esc(money(l.discount))}</div>` : ""}</td>
+<td><div class="b">${esc(l.description)}</div>${l.serials?.length ? `<div class="xs mono">${L("serials")}: ${esc(l.serials.join(", "))}</div>` : ""}${l.batchNo ? `<div class="xs mono">${L("batch")}: ${esc(l.batchNo)}${l.expiry ? ` · ${L("expiryDate")}: ${esc(d(l.expiry))}` : ""}</div>` : ""}${l.discount ? `<div class="xs muted">${L("discount")}: −${esc(money(l.discount))}</div>` : ""}</td>
 <td class="mono small">${esc(l.hsn || "—")}</td>
 <td class="r num">${esc(qty(l.qty))} ${esc(l.unit ?? "")}</td>
 <td class="r num">${esc(money(l.rate))}</td>
@@ -363,7 +363,7 @@ ${stampKey ? `<div class="stamp c">${L(stampKey)}</div>` : ""}
 <table>
 ${inv.lines
   .map(
-    (l) => `<tr class="it"><td colspan="2" class="b">${esc(l.description)}</td></tr>${l.serials?.length ? `<tr><td colspan="2" class="small mono">${L("serials")}: ${esc(l.serials.join(", "))}</td></tr>` : ""}
+    (l) => `<tr class="it"><td colspan="2" class="b">${esc(l.description)}</td></tr>${l.serials?.length ? `<tr><td colspan="2" class="small mono">${L("serials")}: ${esc(l.serials.join(", "))}</td></tr>` : ""}${l.batchNo ? `<tr><td colspan="2" class="small mono">${L("batch")}: ${esc(l.batchNo)}${l.expiry ? ` · ${L("expiryDate")}: ${esc(fmtDate(l.expiry, ctx.locale))}` : ""}</td></tr>` : ""}
 <tr><td class="small">${esc(qty(l.qty))} ${esc(l.unit ?? "")} × ${esc(money(l.rate))}${l.discount ? ` − ${esc(money(l.discount))}` : ""} · ${esc(pct(l.gstRate))}</td><td class="r num">${esc(money(l.total))}</td></tr>`,
   )
   .join("\n")}

@@ -20,11 +20,13 @@ export const MOVEMENT_REASONS = [
   "purchase_return_cancel",
   "transfer_out",
   "transfer_in",
+  /** A physical stock audit (stock count) was approved: the variance counted against the system quantity. */
+  "audit",
 ] as const;
 export type MovementReason = (typeof MOVEMENT_REASONS)[number];
 
 /** Known movement ref types; reservations may commit with their own ref type (e.g. "order"). */
-export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note", "grn", "debit_note"] as const;
+export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note", "grn", "debit_note", "audit"] as const;
 export type RefType = (typeof REF_TYPES)[number] | (string & {});
 
 export const LOCATION_TYPES = ["store", "warehouse"] as const;
@@ -33,10 +35,70 @@ export type LocationType = (typeof LOCATION_TYPES)[number];
 export const RESERVATION_STATUSES = ["active", "released", "committed"] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
-/** A line of a stock transfer, as stored. */
+/** The part of a transfer line that came from one batch (batch-tracked items). */
+export interface TransferBatchPart {
+  batchId: string;
+  batchNo: string;
+  expiry: string | null;
+  /** Sent from this batch. */
+  qty: number;
+  received?: number;
+  damaged?: number;
+  short?: number;
+}
+
+/**
+ * A line of a stock transfer, as stored. Old (instant) transfers only have `itemId` and `qty`; the rest is filled by
+ * the send / receive flow. `qty` is what was sent; `received + damaged + short` is what has been settled so far.
+ */
 export interface TransferLine {
   itemId: string;
   qty: number;
+  itemName?: string;
+  unit?: string;
+  /** Moving-average cost at the source when it was sent (paise per unit): the value of the goods on the road. */
+  unitCost?: number | null;
+  received?: number;
+  damaged?: number;
+  short?: number;
+  reason?: string | null;
+  batches?: TransferBatchPart[];
+}
+
+export const TRANSFER_STATUSES = ["draft", "in_transit", "partially_received", "closed", "cancelled"] as const;
+export type TransferStatus = (typeof TRANSFER_STATUSES)[number];
+
+export const AUDIT_STATUSES = ["draft", "counting", "review", "approved", "cancelled"] as const;
+export type AuditStatus = (typeof AUDIT_STATUSES)[number];
+
+export const BATCH_MOVEMENT_REASONS = [
+  "receive",
+  "opening",
+  "sale",
+  "sale_cancel",
+  "sale_return",
+  "sale_return_cancel",
+  "adjustment",
+  "audit",
+  "expired",
+  "damaged",
+  "transfer_out",
+  "transfer_in",
+  "purchase_return",
+  "purchase_return_cancel",
+  "purchase_cancel",
+  "assign",
+] as const;
+export type BatchMovementReason = (typeof BATCH_MOVEMENT_REASONS)[number];
+
+export const EXPIRED_POLICIES = ["block", "warn", "allow"] as const;
+export type ExpiredPolicy = (typeof EXPIRED_POLICIES)[number];
+export const PICK_RULES = ["fefo", "manual"] as const;
+export type PickRule = (typeof PICK_RULES)[number];
+/** Near-expiry discount ladder: batches with `days` or fewer days left get `pct` off (the most severe row that matches). */
+export interface DiscountStep {
+  days: number;
+  pct: number;
 }
 
 export const PURCHASE_STATUSES = ["recorded", "cancelled"] as const;
@@ -151,8 +213,25 @@ export const stockTransfers = pgTable(
     note: text("note"),
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** "TR/26-27/0001". Null on the old instant transfers made before the send / receive flow. */
+    number: text("number"),
+    /** Old rows are `closed`. */
+    status: text("status").$type<TransferStatus>().notNull().default("closed"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    sentBy: uuid("sent_by"),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    receivedBy: uuid("received_by"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    /** Vehicle / courier / driver for the transfer note. */
+    transport: text("transport"),
+    receiveNote: text("receive_note"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
   },
-  (t) => [index("stock_transfers_tenant_created_idx").on(t.tenantId, t.createdAt)],
+  (t) => [
+    index("stock_transfers_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("stock_transfers_tenant_status_idx").on(t.tenantId, t.status),
+  ],
 );
 
 /** Stock held for a reference (e.g. an order) until it is committed (sold) or released. */
@@ -327,6 +406,8 @@ export interface GrnLine {
   taxable: number;
   /** Landed charges apportioned to this line (paise). */
   landed: number;
+  /** Batches this line was received into (the rest of `qty` is unbatched). */
+  batches?: { batchNo: string; mfgDate: string | null; expiry: string | null; mrp: number | null; qty: number }[];
 }
 
 /** A goods receipt (GRN): what arrived against a purchase order, when and where. Receiving adds stock. */
@@ -395,7 +476,8 @@ export const debitNotes = pgTable(
   ],
 );
 
-export const PURCHASE_DOC_KINDS = ["po", "grn", "dn"] as const;
+/** po / grn / dn = purchasing documents; tr = stock transfer note; sa = stock audit. */
+export const PURCHASE_DOC_KINDS = ["po", "grn", "dn", "tr", "sa"] as const;
 export type PurchaseDocKind = (typeof PURCHASE_DOC_KINDS)[number];
 
 /** Per-tenant, per-FY counters for PO / GRN / debit note numbers (like `credit_note_series`). */
@@ -424,3 +506,211 @@ export type StockItemRow = typeof stockItems.$inferSelect;
 export type StockMovementRow = typeof stockMovements.$inferSelect;
 export type SupplierRow = typeof suppliers.$inferSelect;
 export type PurchaseRow = typeof purchases.$inferSelect;
+
+// ------------------------------------------------------------------ batches and expiry
+
+/**
+ * A batch (lot) of a saved item: batch number, optional manufacturing and expiry dates, MRP and cost per unit.
+ * Stock per location lives in `stock_batch_levels`. The item's total in `stock_items` always includes its batches;
+ * whatever is not in a batch is the item's "unbatched" stock.
+ */
+export const stockBatches = pgTable(
+  "stock_batches",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    itemId: uuid("item_id").notNull(),
+    batchNo: text("batch_no").notNull(),
+    mfgDate: date("mfg_date", { mode: "string" }),
+    /** Last day the batch may be sold. Null = does not expire. */
+    expiry: date("expiry", { mode: "string" }),
+    /** Paise per unit. */
+    mrp: integer("mrp"),
+    /** Paise per unit, before GST. */
+    cost: integer("cost"),
+    supplierName: text("supplier_name"),
+    note: text("note"),
+    ...timestamps(),
+  },
+  (t) => [
+    unique("stock_batches_tenant_item_batch_uq").on(t.tenantId, t.itemId, t.batchNo),
+    index("stock_batches_tenant_expiry_idx").on(t.tenantId, t.expiry),
+    index("stock_batches_tenant_item_idx").on(t.tenantId, t.itemId),
+  ],
+);
+
+/** Quantity of a batch at a location. */
+export const stockBatchLevels = pgTable(
+  "stock_batch_levels",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    batchId: uuid("batch_id").notNull(),
+    itemId: uuid("item_id").notNull(),
+    locationId: uuid("location_id").notNull(),
+    qty: qty("qty").notNull().default("0"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("stock_batch_levels_tenant_batch_loc_uq").on(t.tenantId, t.batchId, t.locationId),
+    index("stock_batch_levels_tenant_item_loc_idx").on(t.tenantId, t.itemId, t.locationId),
+  ],
+);
+
+/** Append-only ledger of batch quantity changes (sales carry the bill so returns can go back to the same batch). */
+export const stockBatchMovements = pgTable(
+  "stock_batch_movements",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    batchId: uuid("batch_id").notNull(),
+    itemId: uuid("item_id").notNull(),
+    locationId: uuid("location_id").notNull(),
+    delta: qty("delta").notNull(),
+    qtyAfter: qty("qty_after").notNull(),
+    reason: text("reason").$type<BatchMovementReason>().notNull(),
+    refType: text("ref_type"),
+    refId: text("ref_id"),
+    refNumber: text("ref_number"),
+    /** For returns: the id of the sale (bill) the goods came from. */
+    sourceRefId: text("source_ref_id"),
+    unitCost: integer("unit_cost"),
+    note: text("note"),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("stock_batch_movements_tenant_batch_idx").on(t.tenantId, t.batchId, t.createdAt),
+    index("stock_batch_movements_tenant_ref_idx").on(t.tenantId, t.refType, t.refId),
+    index("stock_batch_movements_tenant_source_idx").on(t.tenantId, t.sourceRefId),
+  ],
+);
+
+/** Items with batch tracking switched on (or explicitly off, when the shop tracks all). */
+export const stockBatchItems = pgTable(
+  "stock_batch_items",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    itemId: uuid("item_id").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    ...timestamps(),
+  },
+  (t) => [unique("stock_batch_items_tenant_item_uq").on(t.tenantId, t.itemId)],
+);
+
+/** One row per shop: how batches behave. */
+export const stockBatchSettings = pgTable("stock_batch_settings", {
+  tenantId: tenantId().primaryKey(),
+  /** Track batches for every item (items can still opt out). */
+  trackAll: boolean("track_all").notNull().default(false),
+  expiredPolicy: text("expired_policy").$type<ExpiredPolicy>().notNull().default("warn"),
+  pickRule: text("pick_rule").$type<PickRule>().notNull().default("fefo"),
+  /** Days before expiry that count as "expiring soon" on the dashboard and alerts. */
+  alertDays: integer("alert_days").notNull().default(30),
+  discountLadder: jsonb("discount_ladder")
+    .$type<DiscountStep[]>()
+    .notNull()
+    .default(sql`'[{"days":30,"pct":20},{"days":60,"pct":10},{"days":90,"pct":5}]'::jsonb`),
+  ...timestamps(),
+});
+
+// ------------------------------------------------------------------ physical stock audit
+
+export interface AuditTotals {
+  lines: number;
+  counted: number;
+  /** Lines whose count differs from the system quantity. */
+  varianceLines: number;
+  /** Paise at cost: value of surplus, shortage and the net. */
+  surplusValue: number;
+  shortageValue: number;
+  netValue: number;
+}
+
+/** A stock count session. System quantities are frozen into `stock_audit_lines` when the session is created. */
+export const stockAudits = pgTable(
+  "stock_audits",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    number: text("number").notNull(),
+    status: text("status").$type<AuditStatus>().notNull().default("draft"),
+    locationId: uuid("location_id").notNull(),
+    /** Catalogue categories counted; empty = everything. */
+    categoryIds: jsonb("category_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    title: text("title"),
+    note: text("note"),
+    snapshotAt: timestamp("snapshot_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid("created_by"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedBy: uuid("approved_by"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    /** Variance totals at approval (so an approved audit never changes). */
+    totals: jsonb("totals").$type<AuditTotals | null>(),
+    ...timestamps(),
+  },
+  (t) => [unique("stock_audits_tenant_number_uq").on(t.tenantId, t.number), index("stock_audits_tenant_status_idx").on(t.tenantId, t.status, t.createdAt)],
+);
+
+export const stockAuditLines = pgTable(
+  "stock_audit_lines",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    auditId: uuid("audit_id").notNull(),
+    itemId: uuid("item_id").notNull(),
+    /** Null = the item as a whole (or its unbatched stock). */
+    batchId: uuid("batch_id"),
+    itemName: text("item_name").notNull(),
+    unit: text("unit"),
+    barcode: text("barcode"),
+    sku: text("sku"),
+    batchNo: text("batch_no"),
+    expiry: date("expiry", { mode: "string" }),
+    /** Frozen when the session was created. */
+    systemQty: qty("system_qty").notNull(),
+    /** Merged from all counters; null = not counted yet. */
+    countedQty: qty("counted_qty"),
+    /** Paise per unit at the freeze. */
+    unitCost: integer("unit_cost"),
+    /** Why it differs (reviewer): damage, theft, entry error, expired, found... */
+    reason: text("reason"),
+    note: text("note"),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("stock_audit_lines_audit_item_batch_uq").on(t.auditId, t.itemId, t.batchId).nullsNotDistinct(),
+    index("stock_audit_lines_tenant_audit_idx").on(t.tenantId, t.auditId),
+    index("stock_audit_lines_tenant_barcode_idx").on(t.tenantId, t.auditId, t.barcode),
+  ],
+);
+
+/** One counting action (a scan or a typed number) by one counter; a line's count merges every counter's entries. */
+export const stockAuditEntries = pgTable(
+  "stock_audit_entries",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    auditId: uuid("audit_id").notNull(),
+    lineId: uuid("line_id").notNull(),
+    /** "add" adds qty to the counter's running count of the line; "set" replaces it. */
+    mode: text("mode").$type<"add" | "set">().notNull().default("add"),
+    qty: qty("qty").notNull(),
+    counter: text("counter").notNull(),
+    userId: uuid("user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("stock_audit_entries_tenant_line_idx").on(t.tenantId, t.lineId, t.createdAt)],
+);
+
+export type StockBatchRow = typeof stockBatches.$inferSelect;
+export type StockBatchLevelRow = typeof stockBatchLevels.$inferSelect;
+export type StockBatchMovementRow = typeof stockBatchMovements.$inferSelect;
+export type StockBatchSettingsRow = typeof stockBatchSettings.$inferSelect;
+export type StockAuditRow = typeof stockAudits.$inferSelect;
+export type StockAuditLineRow = typeof stockAuditLines.$inferSelect;
+export type StockAuditEntryRow = typeof stockAuditEntries.$inferSelect;

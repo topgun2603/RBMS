@@ -10,6 +10,9 @@ export interface CatalogItem {
   /** Optional: the item's category (stock lists filter by it). */
   categoryId?: string | null;
   categoryName?: string | null;
+  /** Optional: scan codes (stock audits match a scanned code against these). */
+  sku?: string | null;
+  barcode?: string | null;
 }
 
 export interface ItemCatalogPort {
@@ -41,3 +44,25 @@ export interface LoggerPort {
 }
 
 export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
+
+/**
+ * The pharmacy module's batches (packages/medicines) stay where they are. Generic batches never take over an item
+ * that already has medicine batches, and the expiry dashboard adds the medicine totals. apps/api wires the adapter.
+ */
+export interface LegacyBatchPort {
+  /** True when Pharmacy manages the item: it has medicine details or medicine batches. */
+  hasBatches(tenantId: string, itemId: string): Promise<boolean>;
+  /** Expired and soon-expiring medicine stock; null when the shop does not use medicines. */
+  expirySummary(
+    tenantId: string,
+    withinDays: number,
+  ): Promise<{ expired: { batches: number; qty: number; value: number }; expiring: { batches: number; qty: number; value: number } } | null>;
+}
+
+/** Tells the receiving side of a transfer that goods are on the way (wired to notify / a push in apps/api). Best effort. */
+export interface TransferNoticePort {
+  sent(
+    tenantId: string,
+    e: { transferId: string; number: string; fromLocationId: string; toLocationId: string; fromName: string; toName: string; items: number },
+  ): Promise<void>;
+}

@@ -88,7 +88,7 @@ export interface StockPort {
     tenantId: string,
     sale: {
       refId: string;
-      lines: { itemId: string; qty: number }[];
+      lines: { itemId: string; qty: number; /** Batch chosen for the line (batch-tracked items). */ batchId?: string }[];
       refNumber?: string | null;
       /** Stock location to take the stock from (the bill's branch location). Absent/null = the default location. */
       locationId?: string | null;

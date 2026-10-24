@@ -580,6 +580,11 @@ export const lineInputSchema = z
       .max(200)
       .optional()
       .transform((v) => (v?.length ? [...new Set(v)] : undefined)),
+    /** The stock batch the goods come from (batch-tracked items); stock is taken from it first. */
+    batchId: opt(z.string().uuid()),
+    batchNo: opt(z.string().trim().max(60)),
+    mfgDate: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+    expiry: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   })
   .superRefine((l, ctx) => {
     if ((l.discount ?? 0) > lineAmount(l.qty, l.rate)) {
@@ -605,6 +610,10 @@ export const lineInputSchema = z
     if (l.inclusiveTotal !== undefined) out.inclusiveTotal = l.inclusiveTotal;
     if (l.serials?.length) out.serials = l.serials;
     if (l.gstRule) out.gstRule = l.gstRule;
+    if (l.batchId) out.batchId = l.batchId;
+    if (l.batchNo) out.batchNo = l.batchNo;
+    if (l.mfgDate) out.mfgDate = l.mfgDate;
+    if (l.expiry) out.expiry = l.expiry;
     return out;
   });
 
@@ -865,6 +874,10 @@ export const toLineInput = (l: LineTotals): LineInput => {
   if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
   if (l.serials?.length) out.serials = [...l.serials];
   if (l.gstRule) out.gstRule = l.gstRule;
+  if (l.batchId) out.batchId = l.batchId;
+  if (l.batchNo) out.batchNo = l.batchNo;
+  if (l.mfgDate) out.mfgDate = l.mfgDate;
+  if (l.expiry) out.expiry = l.expiry;
   return out;
 };
 
@@ -2331,7 +2344,7 @@ export class InvoicesService {
   }
 
   private saleLines(row: Pick<InvoiceRow, "lines">) {
-    return row.lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId!, qty: l.qty }));
+    return row.lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId!, qty: l.qty, ...(l.batchId ? { batchId: l.batchId } : {}) }));
   }
 
   private async stockSale(row: InvoiceRow, branch?: IssueBranch): Promise<void> {

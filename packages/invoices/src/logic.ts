@@ -150,6 +150,10 @@ const lineInputOf = (l: LineTotals): LineInput => {
   if (l.inclusiveTotal !== undefined && l.inclusiveTotal !== null) out.inclusiveTotal = l.inclusiveTotal;
   if (l.serials?.length) out.serials = [...l.serials];
   if (l.gstRule) out.gstRule = l.gstRule;
+  if (l.batchId) out.batchId = l.batchId;
+  if (l.batchNo) out.batchNo = l.batchNo;
+  if (l.mfgDate) out.mfgDate = l.mfgDate;
+  if (l.expiry) out.expiry = l.expiry;
   return out;
 };
 

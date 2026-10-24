@@ -14,7 +14,7 @@ choice only changes which column names we recognise; you can always change any c
 
 | Step | You upload | We create | Safe to repeat? |
 |---|---|---|---|
-| Items | item list with stock | products, units, HSN, GST %, MRP/price/cost, barcode, category, opening stock (batch and expiry are kept in the stock note) | yes: items are matched by name/SKU and updated, opening stock is "set", not added |
+| Items | item list with stock | products, units, HSN, GST %, MRP/price/cost, barcode, category, opening stock; **batch no, expiry and mfg date become real batches** (rows of one item with different batch numbers are its batches, not variants; expiry may be `03/2027`, `Mar-27` or a full date) | yes: items are matched by name/SKU and updated, opening stock and each batch's quantity are "set", not added |
 | Customers and suppliers | party list with balances | customers and suppliers with GSTIN, state, address, credit limit and **opening balance** (receivable for customers, payable for suppliers) | yes: the same file is skipped; a party that already exists is linked, only its blank fields are filled and its balance is set only when it has none |
 | Past sales / purchase bills | sale or purchase report | bills as history with their **original numbers**, dates, parties, lines, tax, totals and payments | yes: a bill (financial year + number) imported before is skipped |
 
@@ -110,7 +110,7 @@ Off ledgers and the stock items first; the file only refers to them by name (led
 
 * Returns, credit/debit notes, receipt and payment vouchers, cheques, bank entries, expenses and bill-wise Tally
   allocations are not imported. Item prices from Tally masters fall back to the cost when no selling price is present.
-* Batches and expiry are kept as text in the opening-stock note; general items have no batch tracking yet (gap-analysis #4).
+* Batch rows from Vyapar / Marg / Busy / Excel become batches (Stock > Batches & expiry) and switch the item to batch tracking; shops with the pharmacy feature get medicine batches in Pharmacy instead (needs an expiry). Undo removes batches that nothing was sold from. See `docs/stock-depth.md`.
 * Imported bills cannot be edited or cancelled; undo the batch instead. A credit note against an imported sale is allowed.
 * GST rates outside 0/0.25/3/5/12/18/28 are kept as written on imported bills.
 * The all-data zip is built in memory: very large shops (millions of rows) should export per dataset.

@@ -444,6 +444,8 @@ export function registerSwitching(registry: ImportExportRegistry, d: SwitchDeps)
               continue;
             }
             for (const v of variantIds) await d.inventory.adjust(tenantId, v, { mode: "set", qty: 0, note: "Import rolled back" }, opts.userId).catch(() => undefined);
+            // Batches the import created are emptied by the line above; their records go too.
+            await d.inventory.batches.discardEmpty(tenantId, variantIds).catch(() => undefined);
           }
           await d.catalogue.deleteProduct(tenantId, r.id);
           reverted++;

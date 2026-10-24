@@ -237,6 +237,29 @@ export function parseDate(value: string): string {
   return iso;
 }
 
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/**
+ * Batch dates as printed on packs and in pharmacy / FMCG software: "03/2027", "03-27", "Mar-2027", "MAR 27", "2027-03"
+ * (a month: the expiry is the last day of it, a manufacturing date the first), or any full date ("15/03/2027").
+ */
+export function parseBatchDate(value: string, which: "expiry" | "mfg" = "expiry"): string {
+  const s = value.trim();
+  let y: number | null = null;
+  let m: number | null = null;
+  let match: RegExpExecArray | null;
+  if ((match = /^(\d{1,2})\s*[/.-]\s*(\d{2}|\d{4})$/.exec(s))) [m, y] = [Number(match[1]), Number(match[2])];
+  else if ((match = /^(\d{4})\s*[/.-]\s*(\d{1,2})$/.exec(s))) [y, m] = [Number(match[1]), Number(match[2])];
+  else if ((match = /^([A-Za-z]{3})[a-z]*[\s/.-]*(\d{2}|\d{4})$/.exec(s))) [m, y] = [MONTHS.indexOf(match[1]!.toLowerCase()) + 1, Number(match[2])];
+  if (y !== null && m !== null) {
+    if (y < 100) y += 2000;
+    if (m < 1 || m > 12 || y < 2000 || y > 2100) return fail(`"${value}" is not a month and year (e.g. 03/2027)`);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return `${y}-${String(m).padStart(2, "0")}-${which === "expiry" ? String(last).padStart(2, "0") : "01"}`;
+  }
+  return parseDate(s);
+}
+
 // ------------------------------------------------------------------ column helpers
 
 type Opts<V> = Partial<Omit<ImportColumn<V>, "key" | "label" | "parse">>;
@@ -279,6 +302,8 @@ export const col = {
   state: (key: string, label: string, opts: Opts<string> = {}) => def(key, label, parseState, { help: "State name or GST code, e.g. Tamil Nadu or 33", ...opts }),
   gstin: (key: string, label: string, opts: Opts<string> = {}) => def(key, label, parseGstin, { help: "15-character GSTIN", ...opts }),
   date: (key: string, label: string, opts: Opts<string> = {}) => def(key, label, parseDate, { help: "YYYY-MM-DD or DD/MM/YYYY", ...opts }),
+  /** Expiry or manufacturing date of a batch: also month and year only ("03/2027", "Mar-27"). */
+  batchDate: (key: string, label: string, which: "expiry" | "mfg", opts: Opts<string> = {}) => def(key, label, (v) => parseBatchDate(v, which), { help: "MM/YYYY or DD/MM/YYYY", ...opts }),
   oneOf: <T extends string>(key: string, label: string, values: readonly T[], opts: Opts<T> = {}) =>
     def(
       key,

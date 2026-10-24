@@ -1,7 +1,10 @@
 import { documented, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
+import { type AuditApproveInput, type AuditCountInput, type AuditCreateInput, type AuditLinePatch, type AuditLinesQuery, type AuditListQuery } from "./audit";
+import { BATCH_CSV_COLUMNS, type BatchAdjustInput, type BatchListQuery, type BatchPatch, type BatchSettingsInput, type PickQuery, type ReceiveBatchInput } from "./batches";
 import { csvDisposition, toCsv, type CsvColumn } from "./csv";
+import type { InTransitRow, TransferDraftPatch, TransferListQ, TransferNoteInput, TransferReceiveInput } from "./transfers";
 import { INVENTORY_FEATURE_KEYS } from "./features";
 import { paiseToRupees } from "./logic";
 import { type AgeingSupplier, type StatementRow } from "./payables";
@@ -89,6 +92,18 @@ export const PURCHASE_CSV_COLUMNS: CsvColumn<PurchaseSummary>[] = [
   { header: "IGST (Rs)", value: (r) => paiseToRupees(r.igst) },
   { header: "Total (Rs)", value: (r) => paiseToRupees(r.total) },
   { header: "Paid", value: (r) => (r.paid ? "yes" : "no") },
+];
+
+export const IN_TRANSIT_CSV_COLUMNS: CsvColumn<InTransitRow>[] = [
+  { header: "Transfer", value: (r) => r.number },
+  { header: "Status", value: (r) => r.status },
+  { header: "Sent on", value: (r) => (r.sentAt ? r.sentAt.toISOString().slice(0, 10) : "") },
+  { header: "Days on the road", value: (r) => r.days },
+  { header: "Item", value: (r) => r.itemName },
+  { header: "Batches", value: (r) => r.batches.map((b) => `${b.batchNo} x${b.qty}`).join("; ") },
+  { header: "Unit", value: (r) => r.unit },
+  { header: "Qty in transit", value: (r) => r.qty },
+  { header: "Value at cost (Rs)", value: (r) => paiseToRupees(r.value) },
 ];
 
 export const AGEING_CSV_COLUMNS: CsvColumn<AgeingSupplier>[] = [
@@ -292,8 +307,106 @@ export function inventoryRoutes(service: InventoryService) {
         await service.deleteLocation(tid(req), id);
         return { ok: true };
       });
-      app.get("/transfers", LOCATIONS, async (req) => service.listTransfers(tid(req), req.query as TransferListQuery));
+      app.get("/transfers", LOCATIONS, async (req) => service.transfers.list(tid(req), (req.query ?? {}) as TransferListQ));
       app.post("/transfers", LOCATIONS, async (req) => service.createTransfer(tid(req), body(req) as TransferInput, uid(req)));
+      app.get("/transfers/:id", LOCATIONS, async (req) => service.transfers.get(tid(req), idParam.parse(req.params).id));
+
+      // ---- transfer notes: draft -> send -> in transit -> receive -> closed
+      const transferAudited = (action: string) => documented({}, { ...LOCATIONS.config, audit: { action, entity: "stock_transfer", idParam: "id" } });
+      app.get("/transfer-notes", LOCATIONS, async (req) => service.transfers.list(tid(req), (req.query ?? {}) as TransferListQ));
+      app.get("/transfer-notes/in-transit", LOCATIONS, async (req, reply) => {
+        const q = z.object({ toLocationId: z.string().uuid().optional(), fromLocationId: z.string().uuid().optional(), format: z.enum(["json", "csv"]).optional() }).parse(req.query ?? {});
+        const report = await service.transfers.inTransit(tid(req), q);
+        if (q.format !== "csv") return report;
+        const today = service.today();
+        return sendCsv(reply, "stock-in-transit", today, today, toCsv(report.items, IN_TRANSIT_CSV_COLUMNS));
+      });
+      app.post("/transfer-notes", documented({}, { ...LOCATIONS.config, audit: { action: "inventory.transfer.create", entity: "stock_transfer" } }), async (req) =>
+        service.transfers.create(tid(req), body(req) as TransferNoteInput, uid(req)),
+      );
+      app.get("/transfer-notes/:id", LOCATIONS, async (req) => service.transfers.get(tid(req), idParam.parse(req.params).id));
+      app.patch("/transfer-notes/:id", transferAudited("inventory.transfer.update"), async (req) =>
+        service.transfers.updateDraft(tid(req), idParam.parse(req.params).id, body(req) as TransferDraftPatch),
+      );
+      app.delete("/transfer-notes/:id", transferAudited("inventory.transfer.delete"), async (req) => {
+        await service.transfers.deleteDraft(tid(req), idParam.parse(req.params).id);
+        return { ok: true };
+      });
+      app.post("/transfer-notes/:id/send", transferAudited("inventory.transfer.send"), async (req) => service.transfers.send(tid(req), idParam.parse(req.params).id, uid(req)));
+      app.post("/transfer-notes/:id/receive", transferAudited("inventory.transfer.receive"), async (req) =>
+        service.transfers.receive(tid(req), idParam.parse(req.params).id, body(req) as TransferReceiveInput, uid(req)),
+      );
+      app.post("/transfer-notes/:id/cancel", transferAudited("inventory.transfer.cancel"), async (req) =>
+        service.transfers.cancel(tid(req), idParam.parse(req.params).id, (body(req).reason as string | undefined) ?? null, uid(req)),
+      );
+
+      // ---- batches and expiry
+      const batchAudited = (action: string) => documented({}, { ...STOCK.config, audit: { action, entity: "stock_batch", idParam: "id" } });
+      app.get("/batches/settings", STOCK, async (req) => service.batches.getSettings(tid(req)));
+      app.put("/batches/settings", documented({}, { ...STOCK.config, audit: { action: "inventory.batch.settings", entity: "stock_batch_settings" } }), async (req) =>
+        service.batches.saveSettings(tid(req), body(req) as BatchSettingsInput),
+      );
+      app.get("/batches/tracking", STOCK, async (req) => {
+        const { ids } = z.object({ ids: z.string().optional() }).parse(req.query ?? {});
+        const list = (ids ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 200);
+        return { items: await service.batches.trackingFor(tid(req), z.array(z.string().uuid()).parse(list)) };
+      });
+      app.put("/stock/:itemId/batches/tracking", documented({}, { ...STOCK.config, audit: { action: "inventory.batch.tracking", entity: "item", idParam: "itemId" } }), async (req) => {
+        const { itemId } = itemParam.parse(req.params);
+        return service.batches.setItemTracking(tid(req), itemId, z.object({ enabled: z.boolean() }).parse(body(req)).enabled);
+      });
+      app.get("/batches/pick", STOCK, async (req) => service.batches.pick(tid(req), atBranch(req, (req.query ?? {}) as PickQuery)));
+      app.get("/batches/expiry-summary", STOCK, async (req) => service.batches.expirySummary(tid(req), atBranch(req, (req.query ?? {}) as { locationId?: string }).locationId));
+      app.get("/batches/alerts", STOCK, async (req) => {
+        const { days } = z.object({ days: z.coerce.number().int().min(1).max(730).optional() }).parse(req.query ?? {});
+        return { items: await service.batches.alerts(tid(req), days) };
+      });
+      app.get("/batches/sales/:id", STOCK, async (req) => ({ items: await service.batches.allocations(tid(req), "invoice", idParam.parse(req.params).id) }));
+      app.get("/batches", STOCK, async (req) => service.batches.listBatches(tid(req), atBranch(req, (req.query ?? {}) as BatchListQuery)));
+      app.post("/batches", documented({}, { ...STOCK.config, audit: { action: "inventory.batch.receive", entity: "stock_batch" } }), async (req) =>
+        service.batches.receive(tid(req), atBranch(req, body(req) as ReceiveBatchInput), uid(req)),
+      );
+      app.get("/batches/:id", STOCK, async (req) => service.batches.getBatch(tid(req), idParam.parse(req.params).id));
+      app.patch("/batches/:id", batchAudited("inventory.batch.update"), async (req) => service.batches.update(tid(req), idParam.parse(req.params).id, body(req) as BatchPatch));
+      app.post("/batches/:id/adjust", batchAudited("inventory.batch.adjust"), async (req) =>
+        service.batches.adjust(tid(req), idParam.parse(req.params).id, atBranch(req, body(req) as BatchAdjustInput), uid(req)),
+      );
+      app.get("/batches/:id/movements", STOCK, async (req) => ({ items: await service.batches.movements(tid(req), idParam.parse(req.params).id) }));
+      app.get("/reports/batches", STOCK, async (req, reply) => {
+        const q = atBranch(req, (req.query ?? {}) as Record<string, string>);
+        const report = await service.batches.report(tid(req), { locationId: q.locationId, q: q.q, status: q.status, itemId: q.itemId });
+        if (q.format !== "csv") return report;
+        const today = service.today();
+        return sendCsv(reply, "batch-stock", today, today, toCsv(report.items, BATCH_CSV_COLUMNS));
+      });
+
+      // ---- stock audits (stock counts); permission inventory.audit (approve and cancel: inventory.audit.approve)
+      const auditAudited = (action: string) => documented({}, { ...STOCK.config, audit: { action, entity: "stock_audit", idParam: "id" } });
+      app.get("/audits", STOCK, async (req) => service.audits.list(tid(req), atBranch(req, (req.query ?? {}) as AuditListQuery)));
+      app.post("/audits", documented({}, { ...STOCK.config, audit: { action: "inventory.audit.create", entity: "stock_audit" } }), async (req) =>
+        service.audits.create(tid(req), atBranch(req, body(req) as AuditCreateInput), uid(req)),
+      );
+      app.get("/audits/:id", STOCK, async (req) => service.audits.get(tid(req), idParam.parse(req.params).id));
+      app.get("/audits/:id/lines", STOCK, async (req) => service.audits.lines(tid(req), idParam.parse(req.params).id, (req.query ?? {}) as AuditLinesQuery));
+      app.get("/audits/:id/variance", STOCK, async (req) => service.audits.variance(tid(req), idParam.parse(req.params).id));
+      app.get("/audits/:id/export", STOCK, async (req, reply) => {
+        const q = z.object({ which: z.enum(["all", "variance"]).optional() }).parse(req.query ?? {});
+        const out = await service.audits.csv(tid(req), idParam.parse(req.params).id, q.which);
+        return sendCsv(reply, out.name, out.date, out.date, out.body);
+      });
+      app.post("/audits/:id/start", auditAudited("inventory.audit.start"), async (req) => service.audits.start(tid(req), idParam.parse(req.params).id));
+      app.post("/audits/:id/count", STOCK, async (req) => service.audits.count(tid(req), idParam.parse(req.params).id, body(req) as AuditCountInput, uid(req)));
+      app.post("/audits/:id/submit", auditAudited("inventory.audit.submit"), async (req) => service.audits.submit(tid(req), idParam.parse(req.params).id));
+      app.post("/audits/:id/reopen", auditAudited("inventory.audit.reopen"), async (req) => service.audits.reopen(tid(req), idParam.parse(req.params).id));
+      app.post("/audits/:id/reasons", auditAudited("inventory.audit.reason"), async (req) => service.audits.bulkReason(tid(req), idParam.parse(req.params).id, body(req) as { reason: string }));
+      app.patch("/audits/:id/lines/:lineId", STOCK, async (req) => {
+        const p = z.object({ id: z.string().uuid(), lineId: z.string().uuid() }).parse(req.params);
+        return service.audits.patchLine(tid(req), p.id, p.lineId, body(req) as AuditLinePatch);
+      });
+      app.post("/audits/:id/approve", auditAudited("inventory.audit.approve"), async (req) => service.audits.approve(tid(req), idParam.parse(req.params).id, body(req) as AuditApproveInput, uid(req)));
+      app.post("/audits/:id/cancel", auditAudited("inventory.audit.cancel"), async (req) =>
+        service.audits.cancel(tid(req), idParam.parse(req.params).id, (body(req).reason as string | undefined) ?? null),
+      );
 
       // ---- suppliers
       app.get("/suppliers", PURCHASES, async (req) => service.listSuppliers(tid(req), req.query as SupplierListQuery));

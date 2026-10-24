@@ -18,7 +18,7 @@ import { InventoryService } from "./service";
 
 const URL_ = process.env.INVENTORY_TEST_DATABASE_URL;
 const SCHEMA = `inventory_it_${Math.random().toString(36).slice(2, 10)}`;
-const TABLES = ["stock_locations", "stock_items", "stock_movements", "stock_transfers", "stock_reservations", "suppliers", "purchases"];
+const TABLES = ["stock_locations", "stock_items", "stock_movements", "stock_transfers", "stock_reservations", "suppliers", "purchases", "stock_batch_levels", "stock_batches", "stock_batch_movements"];
 const tenant = { id: "11111111-1111-4111-8111-111111111111", slug: "sri", planId: "pro", appId: "BL" };
 const user = { id: "22222222-2222-4222-8222-222222222222", sessionId: "s1", platformRoles: [], tenantRoles: ["staff"] };
 const CAT = "44444444-4444-4444-8444-444444444444";

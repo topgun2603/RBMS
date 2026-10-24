@@ -16,6 +16,9 @@ export interface CartPanelProps {
   selectedKey: string | null;
   flash: { key: string; n: number } | null;
   stock?: Map<string, { available: number; tracked: boolean }>;
+  /** Items that use batches, and the handler that opens the batch picker for a line. */
+  batchTracked?: ReadonlySet<string>;
+  onBatch?: (key: string) => void;
   onSelect: (key: string) => void;
   onStep: (key: string, delta: 1 | -1) => void;
   onEdit: (key: string) => void;
@@ -60,6 +63,7 @@ export function CartPanel(p: CartPanelProps) {
                   selected={p.selectedKey === l.key}
                   flashN={p.flash?.key === l.key ? p.flash.n : 0}
                   stock={p.stock?.get(l.itemId)}
+                  onBatch={p.batchTracked?.has(l.itemId) && p.onBatch ? () => p.onBatch!(l.key) : undefined}
                   onSelect={() => p.onSelect(l.key)}
                   onStep={(d) => p.onStep(l.key, d)}
                   onEdit={() => p.onEdit(l.key)}
@@ -101,6 +105,7 @@ function LineRow({
   selected,
   flashN,
   stock,
+  onBatch,
   onSelect,
   onStep,
   onEdit,
@@ -111,6 +116,7 @@ function LineRow({
   selected: boolean;
   flashN: number;
   stock?: { available: number; tracked: boolean };
+  onBatch?: () => void;
   onSelect: () => void;
   onStep: (d: 1 | -1) => void;
   onEdit: () => void;
@@ -149,6 +155,19 @@ function LineRow({
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm leading-snug font-medium">{line.name}</p>
           {line.serials?.length ? <p className="truncate font-mono text-[11px] text-muted-foreground">{t("pos.cart.serials", { list: line.serials.join(", ") })}</p> : null}
+          {onBatch ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBatch();
+              }}
+              className="max-w-full truncate rounded font-mono text-[11px] text-primary underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={t("pos.batch.change")}
+            >
+              {line.batch ? (line.batch.expiry ? t("pos.batch.line", { no: line.batch.no, exp: line.batch.expiry }) : t("pos.batch.lineNoExp", { no: line.batch.no })) : t("pos.batch.choose")}
+            </button>
+          ) : null}
           {line.ticket ? (
             <Badge variant="muted" className="mt-0.5 font-mono" data-ticket={line.ticket.code}>
               {t("pos.cart.ticket", { code: line.ticket.code })}

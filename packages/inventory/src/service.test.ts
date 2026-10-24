@@ -198,6 +198,14 @@ describe("createInventory", () => {
       "goodsReceipts",
       "debitNotes",
       "purchaseDocSeries",
+      "stockBatches",
+      "stockBatchLevels",
+      "stockBatchMovements",
+      "stockBatchItems",
+      "stockBatchSettings",
+      "stockAudits",
+      "stockAuditLines",
+      "stockAuditEntries",
     ]);
     expect(service).toBeInstanceOf(InventoryService);
   });

@@ -24,6 +24,7 @@ import {
 } from "@srirealtime/gst";
 import { and, asc, count, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
+import { batchFieldsSchema } from "./batches";
 import { toMilli, unitCostOf } from "./logic";
 import { netByLocationItem } from "./levels";
 import {
@@ -159,11 +160,21 @@ const billSchema = z.object(billFields);
 
 const chargeFields = { freight: money.optional(), otherCharges: money.optional() };
 
+/** A batch received on a goods-receipt line (the batch numbers printed on the supplier's challan). */
+const receiveBatchPartSchema = batchFieldsSchema.extend({ qty: z.coerce.number().positive().max(1_000_000) });
+
 export const receiveInputSchema = z.object({
   date: dateStr.optional(),
   locationId,
   lines: z
-    .array(z.object({ lineIndex: z.number().int().min(0), qty: z.coerce.number().positive().max(1_000_000) }))
+    .array(
+      z.object({
+        lineIndex: z.number().int().min(0),
+        qty: z.coerce.number().positive().max(1_000_000),
+        /** Split of this line's quantity into batches (the rest stays unbatched). */
+        batches: z.array(receiveBatchPartSchema).max(20).optional(),
+      }),
+    )
     .min(1, "Enter the quantities received")
     .max(200),
   ...chargeFields,
@@ -259,7 +270,7 @@ export interface PurchaseOrderDetail extends PurchaseOrderRow {
   receipts: GoodsReceiptRow[];
 }
 
-export const DOC_PREFIX: Record<PurchaseDocKind, string> = { po: "PO", grn: "GRN", dn: "DN" };
+export const DOC_PREFIX: Record<PurchaseDocKind, string> = { po: "PO", grn: "GRN", dn: "DN", tr: "TR", sa: "SA" };
 
 const partLine = (l: PoLine | PurchaseLine, qty: number): LineInput & { itemId?: string } => {
   const out: LineInput & { itemId?: string } = { description: l.description, qty, rate: l.rate, gstRate: l.gstRate };
@@ -902,7 +913,14 @@ export class PurchasingService {
   private async receiveLines(
     tenantId: string,
     poId: string,
-    b: { date?: string; locationId?: string; lines: { lineIndex: number; qty: number }[]; freight?: number; otherCharges?: number; note?: string | null },
+    b: {
+      date?: string;
+      locationId?: string;
+      lines: { lineIndex: number; qty: number; batches?: z.output<typeof receiveBatchPartSchema>[] }[];
+      freight?: number;
+      otherCharges?: number;
+      note?: string | null;
+    },
     userId: string | null,
   ): Promise<GoodsReceiptRow> {
     const loc = await this.inv.resolveLocation(tenantId, b.locationId, { active: true });
@@ -918,12 +936,16 @@ export class PurchasingService {
       const po = await this.poRow(tx, tenantId, poId, true);
       if (po.status === "cancelled" || po.status === "received") throw conflict(`A ${po.status} order can't receive goods`);
       const lines = po.lines.map((l) => ({ ...l }));
-      const parts: { line: PoLine; lineIndex: number; qty: number }[] = [];
+      const parts: { line: PoLine; lineIndex: number; qty: number; batches?: z.output<typeof receiveBatchPartSchema>[] }[] = [];
       for (const r of b.lines) {
         const line = lines[r.lineIndex];
         if (!line) throw badRequest(`There is no line ${r.lineIndex + 1} on this order`);
         if (r.qty > poRemaining(line) + 1e-9) throw badRequest(`More than the pending quantity of "${line.description}"`, { lineIndex: r.lineIndex, pending: poRemaining(line) });
-        parts.push({ line, lineIndex: r.lineIndex, qty: r.qty });
+        if (r.batches?.length) {
+          const split = r.batches.reduce((a, bp) => a + toMilli(bp.qty), 0);
+          if (split > toMilli(r.qty)) throw badRequest(`The batches add up to more than the quantity received for "${line.description}"`, { lineIndex: r.lineIndex });
+        }
+        parts.push({ line, lineIndex: r.lineIndex, qty: r.qty, batches: r.batches });
       }
       const priced = computeInvoice(
         parts.map((x) => partLine(x.line, x.qty)),
@@ -940,6 +962,7 @@ export class PurchasingService {
         qty: x.qty,
         taxable: priced.lines[i]!.taxable,
         landed: shares[i] ?? 0,
+        ...(x.batches?.length ? { batches: x.batches.map((bp) => ({ batchNo: bp.batchNo, mfgDate: bp.mfgDate ?? null, expiry: bp.expiry ?? null, mrp: bp.mrp ?? null, qty: bp.qty })) } : {}),
       }));
       const number = await this.nextNumber(tx, tenantId, "grn", date);
       const [created] = await tx
@@ -964,6 +987,22 @@ export class PurchasingService {
           unitCost: unitCostOf(l.taxable + l.landed, milli),
           createdBy: userId,
         });
+        // The batches named on the challan: the quantity is already in the totals above.
+        const unitCost = unitCostOf(l.taxable + l.landed, milli);
+        for (const bp of (await this.inv.batches.pharmacyManaged(tenantId, l.itemId!)) ? [] : (l.batches ?? [])) {
+          await this.inv.batches.receiveInto(tx, {
+            tenantId,
+            itemId: l.itemId!,
+            locationId: loc.id,
+            milli: toMilli(bp.qty),
+            batch: { batchNo: bp.batchNo, mfgDate: bp.mfgDate ?? undefined, expiry: bp.expiry ?? undefined, mrp: bp.mrp ?? undefined, cost: unitCost, supplierName: po.supplier.name },
+            reason: "receive",
+            refType: "grn",
+            refId: created!.id,
+            refNumber: number,
+            userId,
+          });
+        }
       }
       for (const x of parts) x.line.received = Math.round((x.line.received + x.qty) * 1000) / 1000;
       const progress = poProgress(lines);
@@ -1066,8 +1105,10 @@ export class PurchasingService {
           refNumber: grn.number,
           note: b.reason ?? undefined,
           createdBy: userId,
+          skipBatch: true,
         });
       }
+      await this.inv.batches.reverseRef(tx, tenantId, "grn", id, "purchase_cancel", { refNumber: grn.number, userId });
       const lines = po.lines.map((l) => ({ ...l }));
       for (const g of grn.lines) {
         const line = lines[g.lineIndex];
@@ -1226,6 +1267,7 @@ export class PurchasingService {
           refId: created!.id,
           refNumber: number,
           createdBy: userId,
+          batchPreferred: await this.inv.batches.receivedBy(tx, tenantId, [p.id, ...(p.goodsReceiptId ? [p.goodsReceiptId] : [])], itemId),
         });
       }
       if (refund > 0) {
@@ -1280,6 +1322,7 @@ export class PurchasingService {
           createdBy: userId,
         });
       }
+      await this.inv.batches.reverseRef(tx, tenantId, "debit_note", id, "purchase_return_cancel", { refNumber: dn.number, userId });
       await tx
         .update(purchasePayments)
         .set({ reversedAt: this.now(), reversedBy: userId, reverseNote: `Debit note ${dn.number} cancelled` })

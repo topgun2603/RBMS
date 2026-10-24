@@ -1,12 +1,37 @@
 import { defineModule } from "@srirealtime/core";
 import { INVENTORY_FEATURES } from "./features";
 import { inventoryRoutes } from "./routes";
-import { debitNotes, goodsReceipts, purchaseDocSeries, purchaseOrders, purchasePayments, purchases, stockItems, stockLocations, stockMovements, stockReservations, stockTransfers, suppliers } from "./schema";
+import {
+  debitNotes,
+  goodsReceipts,
+  purchaseDocSeries,
+  purchaseOrders,
+  purchasePayments,
+  purchases,
+  stockAuditEntries,
+  stockAuditLines,
+  stockAudits,
+  stockBatchItems,
+  stockBatchLevels,
+  stockBatchMovements,
+  stockBatchSettings,
+  stockBatches,
+  stockItems,
+  stockLocations,
+  stockMovements,
+  stockReservations,
+  stockTransfers,
+  suppliers,
+} from "./schema";
 import { InventoryService, type InventoryDeps } from "./service";
 
 export * from "./schema";
 export * from "./ports";
 export * from "./logic";
+export * from "./batch-logic";
+export * from "./batches";
+export * from "./audit";
+export * from "./transfers";
 export * from "./levels";
 export * from "./payables";
 export * from "./purchasing";
@@ -45,6 +70,14 @@ export function createInventory(deps: InventoryDeps) {
       goodsReceipts,
       debitNotes,
       purchaseDocSeries,
+      stockBatches,
+      stockBatchLevels,
+      stockBatchMovements,
+      stockBatchItems,
+      stockBatchSettings,
+      stockAudits,
+      stockAuditLines,
+      stockAuditEntries,
     },
     routes: inventoryRoutes(service),
     features: INVENTORY_FEATURES,

@@ -33,6 +33,7 @@ import {
   type StockImportRow,
 } from "@srirealtime/importexport";
 import type { createInventory, StockLocation } from "@srirealtime/inventory";
+import type { MedicinesService } from "@srirealtime/medicines";
 import type { createInvoices, Customer } from "@srirealtime/invoices";
 import type { createOrders } from "@srirealtime/orders";
 import { registerSwitching } from "./kit-switch";
@@ -210,6 +211,9 @@ export interface ImportExportPortDeps {
   catalogue: Catalogue;
   invoices: Invoices;
   inventory: Inventory;
+  /** Pharmacies keep batches in the medicines module: batch rows of an import go there when the shop uses it. */
+  medicines?: () => { service: MedicinesService } | undefined;
+  isEnabled?: (tenantId: string, key: string) => Promise<boolean>;
   /** Needed for the switching importers (historical bills, undo); see kit-switch.ts. */
   db?: Db;
 }
@@ -257,8 +261,28 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
 
-  const stockFor: { row: number; variantId: string; qty: number; cost?: number; note?: string }[] = [];
+  const stockFor: { row: number; variantId: string; name: string; qty?: number; cost?: number; note?: string; batches: ImportBatch[] }[] = [];
   const stockNote = (r: ProductImportRow) => `Opening stock (import)${r.batchNo ? `, batch ${r.batchNo}` : ""}${r.expiry ? `, expiry ${r.expiry}` : ""}`;
+  // Rows of one item (same name and variant) that differ by batch number are the batches of that item, not variants.
+  const batchesOf = new Map<CommitRow<ProductImportRow>, ImportBatch[]>();
+  const batchEntry = (r: CommitRow<ProductImportRow>): ImportBatch[] =>
+    r.data.batchNo ? [{ row: r.row, batchNo: r.data.batchNo, expiry: r.data.expiry, mfgDate: r.data.mfgDate, qty: r.data.openingStock, cost: r.data.cost, mrp: r.data.mrp }] : [];
+  for (const [key, group] of groups) {
+    const primary = new Map<string, CommitRow<ProductImportRow>>();
+    const kept: CommitRow<ProductImportRow>[] = [];
+    for (const r of group) {
+      const vk = nameKey(r.data.variant ?? "");
+      const first = primary.get(vk);
+      if (first && (r.data.batchNo || first.data.batchNo)) {
+        batchesOf.set(first, [...(batchesOf.get(first) ?? []), ...batchEntry(r)]);
+        continue;
+      }
+      primary.set(vk, r);
+      kept.push(r);
+      batchesOf.set(r, batchEntry(r));
+    }
+    groups.set(key, kept);
+  }
   for (const group of groups.values()) {
     const first = group[0]!.data;
     try {
@@ -290,7 +314,7 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
         result.records.push({ entity: "product", key: `product:${nameKey(first.name)}`, id: product.id, action: "created", meta: { variantIds: product.variants.map((x) => x.id) } });
         group.forEach((r, i) => {
           const v = simple ? product.variants[0] : product.variants.find((x) => x.title === (r.data.variant ?? "")) ?? product.variants[i];
-          if (v && r.data.openingStock !== undefined) stockFor.push({ row: r.row, variantId: v.id, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data) });
+          if (v && (r.data.openingStock !== undefined || (batchesOf.get(r)?.length ?? 0) > 0)) stockFor.push({ row: r.row, variantId: v.id, name: first.name, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data), batches: batchesOf.get(r) ?? [] });
         });
         continue;
       }
@@ -306,7 +330,7 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
           const v = match ? await d.catalogue.updateVariant(tenantId, match.id, input) : await d.catalogue.addVariant(tenantId, existing.id, input);
           if (match) result.updated++;
           else result.created++;
-          if (r.data.openingStock !== undefined) stockFor.push({ row: r.row, variantId: v.id, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data) });
+          if (r.data.openingStock !== undefined || (batchesOf.get(r)?.length ?? 0) > 0) stockFor.push({ row: r.row, variantId: v.id, name: first.name, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data), batches: batchesOf.get(r) ?? [] });
         } catch (e) {
           result.errors.push({ row: r.row, message: message(e) });
         }
@@ -318,12 +342,58 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
 
   for (const s of stockFor) {
     try {
+      if (s.batches.length > 0) {
+        await importBatches(d, tenantId, s.variantId, s.name, s.batches, userId);
+        continue;
+      }
+      if (s.qty === undefined) continue;
       await d.inventory.adjust(tenantId, s.variantId, { mode: "set", qty: s.qty, unitCost: s.cost ?? null, note: s.note ?? "Opening stock (import)" }, userId);
     } catch (e) {
       result.errors.push({ row: s.row, message: `Product saved, but opening stock failed: ${message(e)}` });
     }
   }
   return result;
+}
+
+interface ImportBatch {
+  row: number;
+  batchNo: string;
+  expiry?: string;
+  mfgDate?: string;
+  qty?: number;
+  cost?: number;
+  mrp?: number;
+}
+
+/**
+ * Batch rows from the old software become real batches with their opening stock. Pharmacies (the medicines module is on
+ * and the batch has an expiry) get medicine batches, as in Pharmacy; everything else gets the generic batches of
+ * Stock > Batches and the item is switched to batch tracking. Re-importing sets the batch quantity instead of adding.
+ */
+async function importBatches(d: ImportExportPortDeps, tenantId: string, itemId: string, name: string, batches: ImportBatch[], userId: string | null) {
+  const meds = d.medicines?.();
+  const pharmacy = Boolean(meds && d.isEnabled && (await d.isEnabled(tenantId, "medicines")));
+  let tracked = false;
+  for (const b of batches) {
+    if (b.qty === undefined) continue;
+    if (pharmacy && meds && b.expiry) {
+      const existing = (await meds.service.listBatches(tenantId, { itemId: [itemId], limit: 500, within: 730 } as never)).items.find((x) => x.batchNo === b.batchNo);
+      if (existing) await meds.service.adjust(tenantId, existing.id, { mode: "set", qty: b.qty, reason: "adjust", note: "Import" }, userId);
+      else await meds.service.receive(tenantId, { itemId, itemName: name, batchNo: b.batchNo, expiry: b.expiry, mrp: b.mrp ?? null, purchaseRate: b.cost ?? null, qty: b.qty, note: "Opening stock (import)" }, userId);
+      continue;
+    }
+    const known = (await d.inventory.batches.listBatches(tenantId, { itemId, all: "true", limit: 200 } as never)).items.find((x) => x.batchNo === b.batchNo);
+    if (known) {
+      await d.inventory.batches.update(tenantId, known.id, { expiry: b.expiry, mfgDate: b.mfgDate, mrp: b.mrp, cost: b.cost });
+      await d.inventory.batches.adjust(tenantId, known.id, { mode: "set", qty: b.qty, reason: "adjustment", note: "Opening stock (import)" }, userId);
+    } else {
+      await d.inventory.batches.receive(tenantId, { itemId, batchNo: b.batchNo, expiry: b.expiry, mfgDate: b.mfgDate, mrp: b.mrp, cost: b.cost, qty: b.qty, opening: true }, userId);
+    }
+    if (!tracked) {
+      await d.inventory.batches.setItemTracking(tenantId, itemId, true).catch(() => undefined);
+      tracked = true;
+    }
+  }
 }
 
 async function findProductByName(catalogue: Catalogue, tenantId: string, name: string): Promise<Product | null> {

@@ -168,7 +168,7 @@ export const VENDORS: VendorProfile[] = [
     verified: "assumed",
     formats: ["xlsx", "csv"],
     exports: {
-      "catalog.products": "Master > Product/Item list > Export to Excel (Product name, Company, Pack, MRP, Rate, HSN, GST %, opening qty). Batch and expiry columns are read and kept in the stock note",
+      "catalog.products": "Master > Product/Item list > Export to Excel (Product name, Company, Pack, MRP, Rate, HSN, GST %, opening qty). Batch, Mfg and Exp columns become real batches with their stock (several rows of one product with different batch numbers are its batches)",
       "migrate.parties": "Master > Account/Party list > Export (Party name, Address, City, Mobile, GSTIN, Balance)",
       "history.sales": "Reports > Sales register / Sale bill details > Export to Excel",
       "history.purchases": "Reports > Purchase register / Purchase bill details > Export to Excel",
@@ -187,6 +187,7 @@ export const VENDORS: VendorProfile[] = [
       opening_stock: ["stock", "closing stock", "qty", "opening qty", "balance qty"],
       batch_no: ["batch", "batch no", "batch no."],
       expiry: ["exp", "expiry", "exp date", "expiry date", "exp."],
+      mfg_date: ["mfg", "mfg date", "mfg.", "mfd", "manufacturing date"],
       phone: ["mobile", "mobile no", "phone", "tel"],
       address: ["address", "address 1", "city"],
       gstin: ["gstin", "gst no", "gst no."],

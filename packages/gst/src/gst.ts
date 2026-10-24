@@ -29,6 +29,12 @@ export interface LineInput {
   inclusiveTotal?: number;
   /** Serial numbers / IMEIs of the units sold on this line (electronics); printed on the bill, at most one per unit. */
   serials?: string[];
+  /** The stock batch the goods come from (items with batch tracking); batch number and expiry are printed on the bill. */
+  batchId?: string;
+  batchNo?: string;
+  /** YYYY-MM-DD. */
+  mfgDate?: string;
+  expiry?: string;
   /**
    * A price-dependent rate (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above; see rate-rule.ts). When
    * set, `computeLine` taxes the line at the band of its unit taxable value after the line discount (from

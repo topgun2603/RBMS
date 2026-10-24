@@ -40,9 +40,10 @@ export interface ProductImportRow {
   openingStock?: number;
   status?: "active" | "draft" | "archived";
   tags?: string[];
-  /** Batch / expiry from the old software (kept in the opening-stock note; batch tracking is a medicines feature). */
+  /** Batch / expiry from the old software: becomes a real batch with its opening stock (pharmacies: a medicine batch). */
   batchNo?: string;
   expiry?: string;
+  mfgDate?: string;
 }
 
 const HSN = /^\d{4}(\d{2}){0,2}$/;
@@ -65,8 +66,9 @@ export const productColumns: ImportColumn[] = [
   col.decimal("opening_stock", "Opening stock", { decimals: 3, example: "10", aliases: ["stock", "qty", "quantity", "opening qty"] }),
   col.oneOf("status", "Status", ["active", "draft", "archived"] as const, { default: "active" }),
   col.list("tags", "Tags", { example: "cotton, summer" }),
-  col.text("batch_no", "Batch no", { max: 60, help: "Optional; kept in the stock note", aliases: ["batch", "batch number"] }),
-  col.date("expiry", "Expiry", { help: "Optional; kept in the stock note", aliases: ["expiry date", "exp date", "exp"] }),
+  col.text("batch_no", "Batch no", { max: 60, help: "Optional; the opening stock goes into this batch. Several rows of one item with different batch numbers become its batches", aliases: ["batch", "batch number", "batch no."] }),
+  col.batchDate("expiry", "Expiry", "expiry", { help: "Optional; the batch's last day to sell, e.g. 03/2027", aliases: ["expiry date", "exp date", "exp"] }),
+  col.batchDate("mfg_date", "Mfg date", "mfg", { help: "Optional; manufacturing date of the batch, e.g. 09/2026", aliases: ["mfg", "mfg date", "manufacturing date", "mfd"] }),
 ];
 
 export const validateProductRow: RowValidator<Record<string, unknown>> = (r) => {
@@ -100,6 +102,7 @@ export function toProductRow(d: Record<string, unknown>): ProductImportRow {
     tags: d.tags as string[] | undefined,
     batchNo: d.batch_no as string | undefined,
     expiry: d.expiry as string | undefined,
+    mfgDate: d.mfg_date as string | undefined,
   };
 }
 

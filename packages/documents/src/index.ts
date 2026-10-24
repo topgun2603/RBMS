@@ -78,6 +78,7 @@ export { PuppeteerPdfDriver, chromeCandidates, findChromeExecutable, type Detect
 export { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 export { renderStatement } from "./renderers/statement";
 export { renderPackingSlip, renderShippingLabel } from "./renderers/order";
+export { renderTransferNote, type TransferNoteDocData } from "./renderers/transfer-note";
 export { renderPurchase } from "./renderers/purchase";
 export { renderPurchaseOrder } from "./renderers/purchase-order";
 export { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";

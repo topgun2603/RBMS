@@ -65,6 +65,8 @@ import { CustomerBar } from "./customer-bar";
 import { DayDialog } from "./day-dialog";
 import { HelpDialog } from "./help-dialog";
 import { HoldDialog, HoldsDialog } from "./holds-dialog";
+import { BatchPickDialog } from "./batch-pick-dialog";
+import { useAutoBatches } from "../lib/batches";
 import { LineEditDialog } from "./line-edit-dialog";
 import { PaymentDialog, type PaymentResult } from "./payment-dialog";
 import { PosProvider, usePos } from "./pos-context";
@@ -195,6 +197,10 @@ function Counter() {
     lines.map((l) => l.itemId).filter((id) => !id.startsWith("open:")),
     env.has.inventory,
   );
+
+  // Items with batches: the oldest-expiry batch is put on the line; tap it to choose another.
+  const [batchKey, setBatchKey] = React.useState<string | null>(null);
+  const batchTracked = useAutoBatches(lines, (fn) => setCart((c) => ({ ...c, lines: fn(c.lines) })), env.has.inventory && env.online.online);
 
   // The till session of this register (server-side; the last one seen is cached for offline display).
   const branchReady = !env.has.branches || !!env.branch;
@@ -607,6 +613,8 @@ function Counter() {
       selectedKey={target}
       flash={flash}
       stock={stock.data}
+      batchTracked={batchTracked}
+      onBatch={setBatchKey}
       onSelect={setSelected}
       onStep={(key, d) => updateLines((l) => stepQty(l, key, d))}
       onEdit={(key) => {
@@ -758,6 +766,11 @@ function Counter() {
           updateLines((l) => setDiscount(setPrice(setQty(l, key, e.qty), key, e.price), key, e.discount));
           setEditKey(null);
         }}
+      />
+      <BatchPickDialog
+        line={lines.find((l) => l.key === batchKey) ?? null}
+        onClose={() => setBatchKey(null)}
+        onPick={(key, batch) => updateLines((ls) => ls.map((l) => (l.key === key ? { ...l, batch: batch ?? undefined } : l)))}
       />
       <VariantPicker productId={pickProduct} onClose={() => setPickProduct(null)} onPick={add} />
       <WeightDialog

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  ArrowLeftRightIcon,
   BarChart3Icon,
   BellRingIcon,
   BookMarkedIcon,
@@ -9,7 +10,9 @@ import {
   BookTextIcon,
   BoxesIcon,
   BuildingIcon,
+  CalendarClockIcon,
   CalendarDaysIcon,
+  ClipboardCheckIcon,
   ClipboardListIcon,
   CreditCardIcon,
   FileCheck2Icon,
@@ -48,6 +51,8 @@ export const BILLING_FEATURES = {
   quotations: "invoices.quotations",
   inventory: "inventory",
   purchases: "inventory.purchases",
+  /** Several stock locations (branches, warehouses) and transfers between them. */
+  locations: "inventory.locations",
   payments: "payments",
   /** Expenses and the profit report (@srirealtime/expenses). */
   expenses: "expenses",
@@ -102,6 +107,9 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
   const stock = [
     { href: "items", label: "billing.nav.items", icon: PackageIcon, feature: F.invoices },
     { href: "stock", label: "billing.nav.stock", icon: WarehouseIcon, feature: F.inventory },
+    { href: "batches", label: "billing.nav.batches", icon: CalendarClockIcon, feature: F.inventory },
+    { href: "stock-audit", label: "billing.nav.stockAudit", icon: ClipboardCheckIcon, feature: F.inventory, permission: "inventory.audit" },
+    { href: "transfers", label: "billing.nav.transfers", icon: ArrowLeftRightIcon, feature: F.locations },
     { href: "purchases", label: "billing.nav.purchases", icon: BoxesIcon, feature: F.purchases },
     { href: "purchase-orders", label: "billing.nav.purchaseOrders", icon: ClipboardListIcon, feature: F.purchases },
     { href: "suppliers", label: "billing.nav.suppliers", icon: TruckIcon, feature: F.purchases },
@@ -154,6 +162,12 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "credit-book", component: page(() => import("./pages/credit-book")), feature: F.creditBook },
     { path: "items", component: page(() => import("./pages/items")), feature: F.invoices },
     { path: "stock", component: page(() => import("./pages/stock")), feature: F.inventory },
+    { path: "batches", component: page(() => import("./pages/batches")), feature: F.inventory },
+    { path: "stock-audit", component: page(() => import("./pages/stock-audits")), feature: F.inventory, permission: "inventory.audit" },
+    { path: "stock-audit/:id", component: page(() => import("./pages/stock-audit-detail")), feature: F.inventory, permission: "inventory.audit" },
+    { path: "transfers", component: page(() => import("./pages/transfers")), feature: F.locations },
+    { path: "transfers/new", component: page(() => import("./pages/transfer-new")), feature: F.locations, permission: "inventory.transfer", immersive: true },
+    { path: "transfers/:id", component: page(() => import("./pages/transfer-detail")), feature: F.locations },
     { path: "purchases", component: page(() => import("./pages/purchases")), feature: F.purchases },
     { path: "purchases/new", component: page(() => import("./pages/purchase-new")), feature: F.purchases, immersive: true },
     { path: "purchases/:id", component: page(() => import("./pages/purchase-detail")), feature: F.purchases },
@@ -193,6 +207,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     // Needs attention: overdue bills, low / out-of-stock items.
     { id: "kpi-quotations", zone: "kpi", priority: 52, feature: F.quotations, component: widget("QuotationsKpiWidget", () => import("./widgets/quotations")) },
     { id: "kpi-payables", zone: "kpi", priority: 55, feature: F.purchases, component: widget("PayablesKpiWidget", () => import("./widgets/payables")) },
+    { id: "kpi-expiry", zone: "kpi", priority: 58, feature: F.inventory, component: widget("ExpiryKpiWidget", () => import("./widgets/expiry")) },
     { id: "attention", zone: "attention", priority: 10, feature: F.invoices, component: widget("BillingAttentionWidget", widgets) },
     { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, component: widget("SalesTrendWidget", widgets) },
     { id: "recent-bills", zone: "main", priority: 30, feature: F.invoices, component: widget("RecentBillsWidget", widgets) },
