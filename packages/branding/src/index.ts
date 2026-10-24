@@ -10,7 +10,7 @@ export * from "./tokens";
 export * from "./theme";
 export { BrandingService, brandingPatchSchema } from "./service";
 export type { Branding, BrandingDeps, BrandingPatch } from "./service";
-export { brandingRoutes } from "./routes";
+export { brandingRoutes, brandingSchema } from "./routes";
 export { stockArtRoutes } from "./stock-routes";
 export {
   STOCK_SIZES,

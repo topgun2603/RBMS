@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STORE_PRESETS } from "./theme-presets-stores";
 import { TRADE_PRESETS } from "./theme-presets-trades";
 
 /**
@@ -39,8 +40,11 @@ export const THEME_OPTIONS = {
   density: ["comfortable", "compact"],
   /** plain: on the page · tinted: alternate sections on a brand tint · boxed: sections in cards */
   sections: ["plain", "tinted", "boxed"],
-  /** Decorative pattern on brand blocks (hero without a picture, newsletter). */
-  motif: ["none", "kolam", "dots", "waves", "grid"],
+  /**
+   * Decorative pattern on brand blocks (hero without a picture, newsletter). stripes: diagonal hazard stripes ·
+   * scallop: sweet-box lace (scalloped edge and dotted rows in the accent colour).
+   */
+  motif: ["none", "kolam", "dots", "waves", "grid", "stripes", "scallop"],
   /** Section headings: display (heading font, large) · uppercase (small caps, tracked) · underline (accent bar) */
   headings: ["display", "uppercase", "underline"],
   /**
@@ -76,7 +80,27 @@ export const THEME_OPTIONS = {
 } as const;
 
 export type ThemeOptionKey = keyof typeof THEME_OPTIONS;
-export type StoreTheme = { [K in ThemeOptionKey]: (typeof THEME_OPTIONS)[K][number] };
+
+/**
+ * Page-level layout modes (Settings → Appearance → Page layout): how the whole store is laid out, beyond the header,
+ * cards and listing options above. Kept apart from THEME_OPTIONS so presets don't have to set them: a theme without
+ * them is the standard layout (DEFAULT_LAYOUT_THEME).
+ */
+export const LAYOUT_OPTIONS = {
+  /**
+   * standard: header on top, pages full width · rail: a sticky category rail beside home, category and product pages
+   * (marketplace style; a category strip on phones) · sidebar: the header becomes a vertical menu on the left on
+   * desktop · magazine: editorial pages: feature tiles in product grids, numbered section headings, wide type.
+   */
+  pageLayout: ["standard", "rail", "sidebar", "magazine"],
+  /** Phones: off (the header's menu) · tabs (an app-like bottom tab bar: Home, Categories, Search, Cart, Account). */
+  mobileNav: ["off", "tabs"],
+} as const;
+export type LayoutOptionKey = keyof typeof LAYOUT_OPTIONS;
+export type LayoutTheme = { [K in LayoutOptionKey]: (typeof LAYOUT_OPTIONS)[K][number] };
+export const DEFAULT_LAYOUT_THEME: LayoutTheme = { pageLayout: "standard", mobileNav: "off" };
+
+export type StoreTheme = { [K in ThemeOptionKey]: (typeof THEME_OPTIONS)[K][number] } & Partial<LayoutTheme>;
 
 const option = <K extends ThemeOptionKey>(k: K) => z.enum(THEME_OPTIONS[k] as unknown as [StoreTheme[K], ...StoreTheme[K][]]);
 
@@ -112,6 +136,9 @@ export const storeThemeSchema = z.object({
   categoryHeader: later("categoryHeader", "simple"),
   subcategories: later("subcategories", "off"),
   compare: later("compare", "off"),
+  // Page layout: optional (no default, so older themes and presets stay exactly as they were).
+  pageLayout: z.enum(LAYOUT_OPTIONS.pageLayout).optional(),
+  mobileNav: z.enum(LAYOUT_OPTIONS.mobileNav).optional(),
 });
 
 export const storeThemePatchSchema = storeThemeSchema.partial();
@@ -165,6 +192,12 @@ export function themeCssVariables(theme: StoreTheme): Record<string, string> {
 /** `data-sf-*` attributes for the store root, e.g. `{ "data-sf-header": "centered" }`. */
 export function themeDataAttributes(theme: StoreTheme): Record<string, string> {
   return Object.fromEntries((Object.keys(THEME_OPTIONS) as ThemeOptionKey[]).map((k) => [`data-sf-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, theme[k]]));
+}
+
+/** `data-sf-page-layout` / `data-sf-mobile-nav` for the store root (defaults filled in). */
+export function layoutDataAttributes(theme: Partial<LayoutTheme> | null | undefined): Record<string, string> {
+  const t = { ...DEFAULT_LAYOUT_THEME, ...(theme ?? {}) };
+  return { "data-sf-page-layout": t.pageLayout, "data-sf-mobile-nav": t.mobileNav };
 }
 
 export interface ThemePreset {
@@ -556,6 +589,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
   },
   ...TRADE_PRESETS,
+  ...STORE_PRESETS,
 ];
 
 export const themePreset = (id: string | null | undefined) => THEME_PRESETS.find((p) => p.id === id) ?? null;
@@ -573,14 +607,31 @@ export const STORE_FONTS = [
   "Montserrat",
   "Poppins",
   "Space Grotesk",
+  "Archivo",
   "Oswald",
+  "Barlow",
+  "Barlow Condensed",
+  "Eczar",
   "Fraunces",
   "Playfair Display",
   "Cormorant Garamond",
   "Libre Baskerville",
+  "Bodoni Moda",
+  "Zilla Slab",
+  "Syne",
+  "Fredoka",
   "Noto Sans Tamil",
   "Hind Madurai",
   "Mukta Malar",
   "Catamaran",
   "Baloo Thambi 2",
+  "Unbounded",
+  "Arima",
+  "JetBrains Mono",
+  "Cinzel",
+  "Alegreya",
+  "Quicksand",
+  "Big Shoulders Display",
+  "Rubik",
+  "Bricolage Grotesque",
 ] as const;
