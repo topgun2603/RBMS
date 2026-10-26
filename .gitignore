@@ -24,3 +24,9 @@ apps/api/openapi*.json
 
 # Print bridge config holds the access token
 tools/print-bridge/config.json
+
+# AI model weights (downloaded by `pnpm --filter @srirealtime/ai models:download`; never committed)
+.models/
+
+# "Try it on" browser assets (copied / downloaded by apps/store/scripts/tryon-assets.mjs)
+apps/store/public/tryon/

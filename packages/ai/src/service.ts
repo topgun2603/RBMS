@@ -14,6 +14,7 @@ import type {
   AiRunRequest,
   AiRunResult,
   AiRunStatus,
+  RunProvider,
   AiTier,
   AiUsage,
   ProviderRequest,
@@ -330,7 +331,7 @@ export class AiService {
     feature: string;
     tier: AiTier;
     model: string;
-    provider: "claude" | "mock";
+    provider: RunProvider;
     status: AiRunStatus;
     errorCode: string | null;
     usage: AiUsage;
@@ -365,6 +366,53 @@ export class AiService {
     } catch (e) {
       this.deps.log?.error({ err: e instanceof Error ? e.message : String(e), runId: r.id }, "ai: recording the run failed");
     }
+  }
+
+  // ------------------------------------------------------------------ local (no model call)
+
+  /**
+   * Gate, run and meter a helper that works on our own servers and calls no model (image cleanup). The same switches as `run`
+   * apply (module feature, the shop's opt-in, the helper's own switch) but not the platform kill switch or a model provider.
+   * Credits are the shop setting `localCredits[feature]` per call (default 0 = free); the run is recorded with provider "local".
+   */
+  async runLocal<T>(req: { tenantId: string; userId?: string | null; feature: string; model: string }, work: () => Promise<T>): Promise<{ output: T; runId: string; credits: number }> {
+    const started = Date.now();
+    const id = randomUUID();
+    const base = { tenantId: req.tenantId, userId: req.userId ?? null, feature: req.feature, tier: "light" as AiTier, model: req.model, provider: "local" as const, usage: ZERO_USAGE, costMicroUsd: 0, steps: 0 };
+    const blocked = async (e: AppError): Promise<never> => {
+      await this.record({ ...base, id, status: "blocked", errorCode: e.code, credits: 0, latencyMs: Date.now() - started });
+      throw e;
+    };
+    if (!(await this.deps.featureOn(req.tenantId))) return blocked(err.notInPlan());
+    const settings = await this.settingsOf(req.tenantId);
+    if (!settings.enabled) return blocked(err.off());
+    if (!featureAllowed(settings.features, req.feature)) return blocked(err.featureOff(req.feature));
+    const price = settings.localCredits?.[req.feature] ?? 0;
+    if (price > 0) {
+      const balance = await this.deps.credits.balance(req.tenantId);
+      if (balance.remaining !== null && balance.remaining < price) return blocked(err.exhausted(balance));
+    }
+    try {
+      const output = await work();
+      const charged = await this.charge(req.tenantId, price);
+      await this.record({ ...base, id, status: "ok", errorCode: null, credits: charged, latencyMs: Date.now() - started });
+      return { output, runId: id, credits: charged };
+    } catch (e) {
+      await this.record({ ...base, id, status: "error", errorCode: e instanceof AppError ? e.code : "local_failed", credits: 0, latencyMs: Date.now() - started });
+      throw e;
+    }
+  }
+
+  /** Is this helper switched on for the shop right now (module feature, the shop's opt-in, the helper's own switch)? For shopper-facing local helpers. */
+  async helperOn(tenantId: string, feature: string): Promise<boolean> {
+    if (!(await this.deps.featureOn(tenantId))) return false;
+    const settings = await this.settingsOf(tenantId);
+    return settings.enabled && featureAllowed(settings.features, feature);
+  }
+
+  /** The credits one local run of this helper costs the shop (0 = free). */
+  async localPrice(tenantId: string, feature: string): Promise<number> {
+    return (await this.settingsOf(tenantId)).localCredits?.[feature] ?? 0;
   }
 
   // ------------------------------------------------------------------ feedback

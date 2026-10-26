@@ -3,6 +3,8 @@ import type { Messages } from "@srirealtime/web";
 /** workspace.ai.* strings: Settings > AI (switch, helpers, usage, recent runs). Keep the en and ta key sets identical. */
 export const aiEn: Messages = {
   "workspace.nav.ai": "AI assistance",
+  "workspace.nav.studio": "Studio assistant",
+  "workspace.studio.subtitle": "Ask in Tamil, Tanglish or English for a change to how your shop looks or works. You see a plan and a preview first.",
 
   "workspace.ai.title": "AI assistance",
   "workspace.ai.subtitle": "AI helpers that write drafts and answers for you to check. Off until you switch it on.",
@@ -73,6 +75,8 @@ export const aiEn: Messages = {
 
 export const aiTa: Messages = {
   "workspace.nav.ai": "AI உதவி",
+  "workspace.nav.studio": "ஸ்டுடியோ உதவியாளர்",
+  "workspace.studio.subtitle": "உங்கள் கடை எப்படித் தெரிய வேண்டும், எப்படி வேலை செய்ய வேண்டும் என்பதை தமிழ், தங்கிலிஷ் அல்லது ஆங்கிலத்தில் கேளுங்கள். முதலில் திட்டத்தையும் முன்னோட்டத்தையும் காணலாம்.",
 
   "workspace.ai.title": "AI உதவி",
   "workspace.ai.subtitle": "நீங்கள் சரிபார்க்க வரைவுகளையும் பதில்களையும் எழுதும் AI உதவியாளர்கள். நீங்கள் இயக்கும் வரை நிறுத்தப்பட்டிருக்கும்.",

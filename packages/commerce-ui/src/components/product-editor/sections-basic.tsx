@@ -7,7 +7,7 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { APPAREL_FOOTWEAR_GST_RULE, deadBandOf, exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
 import { BadgePercentIcon, EyeIcon, FileTextIcon, ImagesIcon, PencilIcon, PlusIcon, SearchIcon, TagsIcon, Trash2Icon } from "lucide-react";
 import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
-import { DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, ProductTamilText, useHsnSuggest, useI18n } from "@srirealtime/web";
+import { CleanPhotosButton, DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, ProductSearchWords, ProductTamilText, SocialPostButton, TryonSetup, useHsnSuggest, useI18n } from "@srirealtime/web";
 import { CategorySelect } from "../category-select";
 import { GstRateSelect, MoneyInput, Optional, Section } from "../bits";
 import { ImageManager } from "../image-manager";
@@ -60,8 +60,8 @@ export function BasicsSection({ productId }: { productId?: string }) {
         render={({ field }) => (
           <FormItem>
             <Tabs value={tab} onValueChange={setTab} className="gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <FormLabel>
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
+                <FormLabel className="mr-auto">
                   {t("commerce.editor.description")}
                   <Optional />
                 </FormLabel>
@@ -141,15 +141,18 @@ export function BasicsSection({ productId }: { productId?: string }) {
         />
       </div>
       <ProductTamilText productId={productId} />
+      <ProductSearchWords productId={productId} />
+      <SocialPostButton productId={productId} className="justify-self-start" />
     </Section>
   );
 }
 
 // ---------------------------------------------------------------- media
 
-export function MediaSection() {
+export function MediaSection({ productId, name }: { productId?: string; name?: string } = {}) {
   const { t } = useI18n();
   const form = useFormContext<ProductFormValues>();
+  const images = useWatch({ control: form.control, name: "images" });
   return (
     <Section id="media" icon={ImagesIcon} title={t("commerce.editor.media")} description={t("commerce.editor.mediaHint")}>
       <FormField
@@ -157,6 +160,16 @@ export function MediaSection() {
         name="images"
         render={({ field }) => <ImageManager value={field.value.map((i) => ({ url: i.url, alt: i.alt ?? "" }))} onChange={field.onChange} />}
       />
+      {productId && images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <CleanPhotosButton
+            size="default"
+            items={images.map((i) => ({ productId, imageUrl: i.url }))}
+            onImages={(_pid, next) => form.setValue("images", next.map((i) => ({ url: i.url, alt: i.alt ?? "" })), { shouldDirty: false })}
+          />
+        </div>
+      )}
+      {productId && <TryonSetup productId={productId} productName={name ?? ""} images={images.map((i) => ({ url: i.url, alt: i.alt ?? "" }))} />}
     </Section>
   );
 }

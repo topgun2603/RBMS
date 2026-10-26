@@ -1,6 +1,7 @@
 import type { FeatureDef, PermissionDef } from "@srirealtime/core";
 import { z } from "zod";
 import { DAILY_SUMMARY_SCHEMA } from "./insights/daily-settings";
+import { STORE_REGISTRY } from "./store/registry";
 import type { AiTier } from "./types";
 
 /** The module feature (plan / app profile gate, owner can hide it in Settings > Features). The shop's own opt-in is settings `ai.enabled`. */
@@ -352,6 +353,43 @@ export const AI_FEATURE_REGISTRY: readonly AiFeatureInfo[] = [
     description: "Describes and tidies up product photos for your store.",
     descriptionTa: "உங்கள் கடைக்கான பொருள் புகைப்படங்களை விவரித்து, சீராக்க உதவும்.",
   },
+  // ---- Phase 4 part C: product photo cleanup (on our own server, no model call) and live try-on (on the shopper's phone)
+  {
+    key: "image-cleanup",
+    status: "live",
+    tier: "light",
+    label: "Clean up product photos",
+    labelTa: "பொருள் புகைப்படங்களைச் சுத்தம் செய்",
+    description:
+      "Removes the background from a product photo and puts the product on pure white, a soft shadow or a festive colour, centred and squared for your store. Runs on our own server (no AI model is called); your original is always kept and you choose which to use. Free by default.",
+    descriptionTa:
+      "பொருள் புகைப்படத்தின் பின்னணியை நீக்கி, பொருளை வெண்மை, மென்மையான நிழல் அல்லது பண்டிகை நிறத்தில் நடுவில் சதுரமாக அமைக்கும். எங்கள் சர்வரிலேயே நடக்கும் (AI மாடல் அழைக்கப்படாது); உங்கள் அசல் படம் எப்போதும் சேமிக்கப்படும். இயல்பாக இலவசம்.",
+  },
+  {
+    key: "ar-tryon",
+    status: "live",
+    tier: "light",
+    label: "Try it on (glasses and jewellery)",
+    labelTa: "அணிந்து பார் (கண்ணாடி மற்றும் நகை)",
+    description:
+      "Lets shoppers try glasses, earrings, nose pins and necklaces on with their phone camera on your store's product page. It all happens on the shopper's phone: no camera picture or selfie is ever uploaded. Needs a try-on image on the product. No credits.",
+    descriptionTa:
+      "உங்கள் கடையின் பொருள் பக்கத்தில் வாடிக்கையாளர்கள் தங்கள் போன் கேமராவில் கண்ணாடி, காதணி, மூக்குத்தி, கழுத்தணியை அணிந்து பார்க்கலாம். எல்லாம் வாடிக்கையாளரின் போனிலேயே நடக்கும்: கேமரா படமோ செல்ஃபியோ பதிவேற்றப்படாது. பொருளில் try-on படம் தேவை. கிரெடிட் இல்லை.",
+  },
+  // ---- Phase 4 part A: the Studio assistant (changes how the shop looks and works, only through existing settings)
+  {
+    key: "studio-assistant",
+    status: "live",
+    tier: "standard",
+    label: "Studio assistant",
+    labelTa: "ஸ்டுடியோ உதவியாளர்",
+    description:
+      "Tell it in Tamil, Tanglish or English how you want your shop to look or work (theme, home page sections, menus, store settings, bills, roles, discount limits, sign-in). It shows a plan and a preview, changes nothing until you confirm, and can undo. It only uses settings the app already has, never code (about 15 to 40 credits a request; applying and undoing are free).",
+    descriptionTa:
+      "உங்கள் கடை எப்படித் தெரிய வேண்டும், எப்படி வேலை செய்ய வேண்டும் என்பதை தமிழ், தங்கிலிஷ் அல்லது ஆங்கிலத்தில் சொல்லுங்கள் (தீம், முகப்புப் பக்கப் பகுதிகள், மெனுக்கள், கடை அமைப்புகள், பில்கள், பணிகள், தள்ளுபடி வரம்பு, உள்நுழைவு). திட்டத்தையும் முன்னோட்டத்தையும் காட்டும்; நீங்கள் உறுதி செய்யும் வரை எதையும் மாற்றாது; Undo செய்யலாம். செயலியில் ஏற்கனவே உள்ள அமைப்புகளை மட்டுமே பயன்படுத்தும், குறியீட்டை ஒருபோதும் எழுதாது (ஒரு கோரிக்கைக்கு சுமார் 15 முதல் 40 கிரெடிட்; பயன்படுத்துதல், Undo இலவசம்).",
+  },
+  // ---- Phase 4 part B: store features (docs/ai.md "Phase 4 part B")
+  ...STORE_REGISTRY,
 ];
 
 export const featureInfo = (key: string) => AI_FEATURE_REGISTRY.find((f) => f.key === key);
@@ -369,8 +407,12 @@ export const AI_SETTINGS_SCHEMA = z.object({
   storePrompts: z.boolean(),
   /** Suggest HSN and GST when the owner leaves the item name box (each suggestion uses about 1 credit). Off by default. */
   autoHsn: z.boolean().optional(),
+  /** Credits one run of an on-server helper costs (no model call), by registry key. Missing = free. Today: `image-cleanup`. */
+  localCredits: z.record(z.string().regex(/^[a-z][a-z0-9-]{0,39}$/), z.number().int().min(0).max(20)).optional(),
   /** Daily summary: switch, time (IST), language and extra phones (see insights/daily-settings.ts). */
   dailySummary: DAILY_SUMMARY_SCHEMA.optional(),
+  /** Shopper chat on the store: the most credits it may use a day (IST). Missing = 300. At the cap the chat goes back to the shop's people. */
+  shopperChat: z.object({ dailyCredits: z.number().int().min(0).max(100_000) }).optional(),
 });
 export type AiSettings = z.infer<typeof AI_SETTINGS_SCHEMA>;
 export const AI_SETTINGS_DEFAULTS: AiSettings = { enabled: false, features: {}, maskGstin: false, storePrompts: false };

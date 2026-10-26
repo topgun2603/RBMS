@@ -90,6 +90,8 @@ export interface AiRunResult<T = unknown> {
 // ------------------------------------------------------------------ provider port
 
 export type ProviderKind = "claude" | "mock";
+/** What an `ai_runs` row records: a model provider, or "local" for on-server work that calls no model (image cleanup). */
+export type RunProvider = ProviderKind | "local";
 
 export interface ProviderRequest {
   model: string;

@@ -247,7 +247,7 @@ export function ContentEditor({ kind, item }: { kind: Kind; item?: CmsPage | Cms
       />
       {!canEdit && <ReadOnlyNote>{t("site.common.readOnlyCms")}</ReadOnlyNote>}
 
-      <form onSubmit={onSubmit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <form onSubmit={onSubmit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
           <Section id="ce-details" icon={Icon} title={t("site.editor.details")}>
             <TextField id="ce-title" label={t("site.editor.title")} value={d.title} maxLength={CMS_LIMITS.title} disabled={!canEdit} error={errs ? titleError : null} inputClassName="text-base" onChange={(v) => set("title", v)} />

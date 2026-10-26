@@ -402,7 +402,8 @@ export function LoginScreen({ home = "/" }: { home?: string }) {
                     <Input
                       autoFocus
                       autoComplete="username"
-                      inputMode={raw.includes("@") ? "email" : /^[\d\s+]*$/.test(raw) ? "tel" : "text"}
+                      // One box takes a phone number or an email, so never lock it to the number pad (no letters for an email).
+                      inputMode={raw.includes("@") || /[a-z]/i.test(raw) ? "email" : "text"}
                       placeholder={t("web.login.targetPlaceholder")}
                       value={raw}
                       onChange={(e) => setRaw(e.target.value)}

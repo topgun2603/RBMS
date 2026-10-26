@@ -22,8 +22,24 @@ const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-
 const ALLOWED =
   /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest|config|handoff\/redeem)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|serials\/public|features(?=$))(\/|$|\?)/;
 
+/**
+ * "Try it on" (docs/ai.md "Phase 4 part C"), read-only: the product's try-on setup, and the shop's own public image files so the
+ * browser can draw them on a canvas without a cross-origin taint (works on custom domains with no CORS entries).
+ */
+const TRYON_READS = [/^\/v1\/ai\/imaging\/public\/tryon\/[0-9a-f-]{36}$/, /^\/v1\/uploads\/files\/t\/[0-9a-f-]{36}\/(?!.*\.\.)[\w./%+-]+$/];
+
 /** Pure: may the browser reach this API path (`/v1/...`, without the query) through the store proxy? */
+/** Shopper chat (docs/ai.md "Phase 4 part B"): whether the AI mode is offered (GET) and one question (POST); nothing else under /v1/ai. */
+const AI_CHAT = [
+  { re: /^\/v1\/ai\/store\/public\/chat\/status$/, methods: ["GET"] },
+  { re: /^\/v1\/ai\/store\/public\/chat$/, methods: ["POST"] },
+  { re: /^\/v1\/ai\/store\/public\/together$/, methods: ["GET"] },
+];
+
 export function isProxyAllowed(path: string, method = "GET"): boolean {
+  const aiChat = AI_CHAT.find((r) => r.re.test(path));
+  if (aiChat) return aiChat.methods.includes(method.toUpperCase());
+  if (TRYON_READS.some((r) => r.test(path))) return ["GET", "HEAD"].includes(method.toUpperCase());
   if (!ALLOWED.test(path)) return false;
   // The feature list and the seller pages/cards are read-only.
   if ((path === "/v1/features" || path.startsWith("/v1/marketplace/")) && method.toUpperCase() !== "GET") return false;

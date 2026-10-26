@@ -87,6 +87,7 @@ import {
   parseSearchQuery,
   priceFacet,
   relevanceOrderSql,
+  aliasMatchSql,
   rollupCategoryCounts,
   searchMatchSql,
   translatedTextMatchSql,
@@ -2314,6 +2315,7 @@ export class CatalogueService {
               sql`${catalogProducts.searchText} like ${`% ${prefix}`}`,
               sql`${q.text} <% ${catalogProducts.searchText}`,
               translatedTextMatchSql(q) ?? undefined,
+              aliasMatchSql(q) ?? undefined,
             ),
           ),
         )

@@ -28,6 +28,8 @@ export interface CartPanelProps {
   onPay: () => void;
   payBlocked: string | null;
   customerBar: React.ReactNode;
+  /** Suggestions under the lines ("customers also buy" chips). */
+  suggestions?: React.ReactNode;
 }
 
 export function CartPanel(p: CartPanelProps) {
@@ -75,6 +77,7 @@ export function CartPanel(p: CartPanelProps) {
           </ul>
         )}
       </div>
+      {p.suggestions}
       <Totals lines={p.lines} totals={p.totals} payable={p.payable} pointsDiscount={p.pointsDiscount} />
       <div className="grid grid-cols-[auto_1fr] gap-2 border-t bg-card p-3">
         <Button type="button" variant="outline" size="lg" className="h-14 px-4" onClick={p.onHold} disabled={p.lines.length === 0}>

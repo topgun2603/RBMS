@@ -27,6 +27,7 @@ import { TrustBadges } from "../components/trust";
 import { Carousel } from "../client/carousel";
 import { ProductGallery } from "../client/product-gallery";
 import { PurchasePanel, type AvailabilityMap } from "../client/purchase-panel";
+import { TryOnButton } from "../client/try-on";
 import { RecentlyViewedStrip, RecordRecentlyViewed } from "../client/recently-viewed";
 import { ReviewsSection } from "../client/reviews";
 import { CompareToggle } from "../client/compare";
@@ -123,6 +124,7 @@ export async function ProductPage({ slug }: { slug: string }) {
     <>
       <OfferBadgeList offers={promos.offers} t={t} locale={info.locale} />
       <PurchasePanel product={product} availability={availability} sizeGuide={sizeGuide} stickyBar={theme.stickyBuy === "on"} />
+      <TryOnButton productId={product.id} productName={product.name} className="justify-self-start" />
       {theme.compare === "on" && <CompareToggle product={{ id: product.id, slug: product.slug, name: product.name, image: product.images[0]?.url ?? null }} variant="page" className="justify-self-start" />}
       {theme.productTrust === "on" && <TrustBadges t={t} config={config} locale={info.locale} compact />}
     </>

@@ -38,9 +38,12 @@ import {
   ConfirmDialog,
   describeError,
   AddFromPhotosButton,
+  api,
+  CleanPhotosButton,
   ModuleLink,
   TagPhotosButton,
   TagReviewButton,
+  NewArrivalPostsButton,
   TamilReviewButton,
   TranslateToTamilButton,
   Page,
@@ -294,6 +297,16 @@ function ProductsList() {
   const pill: StatusPill = status.value.length === 0 ? "all" : status.value.length === 1 ? (status.value[0] as ProductStatus) : "";
   const filtered = st.table.activeFilterCount > 0;
 
+  /** Every product that has a photo (the whole catalogue, not just this page), for "Clean all photos". */
+  const loadAllPhotos = React.useCallback(async () => {
+    const out: { productId: string }[] = [];
+    for (let offset = 0; offset < 5000; offset += 200) {
+      const r = await api.get<{ items: { id: string; image: string | null }[]; total: number }>("/catalog/products", { limit: 200, offset });
+      for (const p of r.items) if (p.image) out.push({ productId: p.id });
+      if (offset + 200 >= r.total) break;
+    }
+    return out.slice(0, 500);
+  }, []);
   const [exporting, setExporting] = React.useState(false);
   const doExport = async () => {
     setExporting(true);
@@ -335,7 +348,9 @@ function ProductsList() {
               {exporting ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />} {t("commerce.products.export")}
             </Button>
             <AddFromPhotosButton className="hidden sm:inline-flex" />
+            <CleanPhotosButton className="hidden 2xl:inline-flex" label={t("web.aiImg.all")} testId="clean-all-photos" loadItems={loadAllPhotos} />
             <TagReviewButton className="hidden sm:inline-flex" />
+            <NewArrivalPostsButton className="hidden 2xl:inline-flex" />
             <TamilReviewButton className="hidden sm:inline-flex" />
             {addButton}
             <DropdownMenu>
@@ -417,6 +432,7 @@ function ProductsList() {
               <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => run("draft")}>
                 <PencilLineIcon /> <span className="hidden sm:inline">{t("commerce.products.makeDraft")}</span>
               </Button>
+              <CleanPhotosButton size="sm" label={t("web.aiImg.selected")} items={ids.map((id) => ({ productId: id }))} testId="clean-selected-photos" />
               <TagPhotosButton ids={ids} onStarted={clear} />
               <TranslateToTamilButton ids={ids} onStarted={clear} />
               <Button size="sm" variant="destructive" disabled={bulk.isPending} onClick={() => setArchiveIds(ids)}>

@@ -125,7 +125,36 @@ export function searchMatchSql(q: ParsedQuery): SQL | null {
   if (q.tsquery) parts.push(sql`${catalogProducts.searchVector} @@ to_tsquery('simple', ${q.tsquery})`);
   const translated = translatedTextMatchSql(q);
   if (translated) parts.push(translated);
+  const alias = aliasMatchSql(q);
+  if (alias) parts.push(alias);
   return sql`(${sql.join(parts, sql` or `)})`;
+}
+
+/**
+ * The shop's AI-made search words for a product (`ai_product_aliases`: Tamil-script names, Tanglish spellings, synonyms,
+ * common misspellings; docs/ai.md "Phase 4 part B"). Every word of the query is inside the alias text, or the whole query is
+ * trigram-similar to it (typos). Matching here only widens what is found; ranking keeps real-name matches first
+ * (`aliasOnlySql`). Null for an empty query.
+ */
+export function aliasMatchSql(q: ParsedQuery): SQL | null {
+  if (!q.text) return null;
+  const words = sql.join(
+    q.words.map((w) => sql`al.alias_text like ${`%${likeEscape(w)}%`}`),
+    sql` and `,
+  );
+  return sql`exists (select 1 from ai_product_aliases al where al.product_id = ${catalogProducts.id} and al.alias_text <> '' and ((${words}) or ${q.text} <% al.alias_text))`;
+}
+
+/** 1 when the product matched only through its search words (not its name, tags, brand...), 0 otherwise: sorts alias-only hits after real matches. */
+export function aliasOnlySql(q: ParsedQuery): SQL {
+  const st = catalogProducts.searchText;
+  const direct = sql.join(
+    q.words.map((w) => sql`${st} like ${`%${likeEscape(w)}%`}`),
+    sql` and `,
+  );
+  const alias = aliasMatchSql(q);
+  if (!alias) return sql`0`;
+  return sql`(case when (${direct}) or ${q.text} <% ${st} then 0 when ${alias} then 1 else 0 end)`;
 }
 
 /**
@@ -152,9 +181,9 @@ export function nameTierSql(q: ParsedQuery): SQL {
   return sql`(case when ${name} = ${q.text} then 3 when ${name} like ${prefix} then 2 when ${name} like ${`% ${prefix}`} then 1 else 0 end)`;
 }
 
-/** Relevance order: exact name > name prefix > trigram word similarity > tsvector rank, then newest. */
+/** Relevance order: exact name > name prefix > real matches before search-word-only matches > trigram word similarity > tsvector rank, then newest. */
 export function relevanceOrderSql(q: ParsedQuery): SQL[] {
-  const order: SQL[] = [sql`${nameTierSql(q)} desc`, sql`word_similarity(${q.text}, ${catalogProducts.searchText}) desc`];
+  const order: SQL[] = [sql`${nameTierSql(q)} desc`, sql`${aliasOnlySql(q)} asc`, sql`word_similarity(${q.text}, ${catalogProducts.searchText}) desc`];
   if (q.tsquery) order.push(sql`ts_rank(${catalogProducts.searchVector}, to_tsquery('simple', ${q.tsquery})) desc`);
   order.push(sql`${catalogProducts.createdAt} desc`, sql`${catalogProducts.id} asc`);
   return order;

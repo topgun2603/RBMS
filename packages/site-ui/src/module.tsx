@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BadgeCheckIcon, BarChart3Icon, FileTextIcon, GlobeIcon, HomeIcon, MenuIcon, NewspaperIcon, PaletteIcon, StarIcon, StoreIcon } from "lucide-react";
-import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import { registerStudioPreview, type NavSection, type RouteDef, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { PERMS } from "./lib/access";
 import { siteMessages } from "./lib/messages";
 
@@ -17,6 +17,9 @@ export const SITE_FEATURES = {
 } as const;
 
 const F = SITE_FEATURES;
+
+// The Studio assistant (Settings > Studio) shows the real store with a plan applied through this live preview.
+registerStudioPreview(React.lazy(() => import("./components/studio-preview")));
 
 export interface SiteModuleOptions {
   /** Where the host mounts the module. Default "/" (apps/shop). */

@@ -1,5 +1,6 @@
 import { packFor } from "@srirealtime/verticals";
 import { b4En, b4Ta } from "./messages-b4";
+import { aiChatEn, aiChatTa } from "./messages-aichat";
 import { signInEn, signInTa } from "./messages-signin";
 import { diningEn, diningTa } from "./messages-dining";
 import { servicesEn, servicesTa } from "./messages-services";
@@ -16,6 +17,7 @@ import { createTranslator, normalizeLocale, type Locale, type Messages, type Tra
 /** Storefront UI strings. Shop content (product names, CMS text) stays as the shop entered it. */
 export const en: Messages = {
   ...b4En,
+  ...aiChatEn,
   ...signInEn,
   ...diningEn,
   ...servicesEn,
@@ -475,6 +477,7 @@ export const en: Messages = {
 
 export const ta: Messages = {
   ...b4Ta,
+  ...aiChatTa,
   ...signInTa,
   ...diningTa,
   ...servicesTa,

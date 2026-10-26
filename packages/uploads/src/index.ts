@@ -50,3 +50,4 @@ export {
 } from "./keys";
 export { STAFF_ROLES, byteRange, listQuery, uploadsRoutes } from "./routes";
 export { rasterizeSvg, shrinkForVision } from "./images";
+export { composeSocialImage, wrapLines, hexOr, inkOn, luminance, type SocialImageInput } from "./social-image";

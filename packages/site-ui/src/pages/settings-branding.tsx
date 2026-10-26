@@ -66,7 +66,7 @@ function Editor({ initial, saved, canEdit }: { initial: BrandDraft; saved: Saved
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-section">
+    <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)] gap-section">
       <div className="grid items-start gap-section xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
         <div className="grid min-w-0 gap-section">
           <Section icon={BadgeCheckIcon} title={t("site.brand.identityTitle")} description={t("site.brand.identityBody")}>

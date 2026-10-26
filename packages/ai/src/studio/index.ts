@@ -1,0 +1,13 @@
+export * from "./types";
+export * from "./areas";
+export { ALL_OPS, OP_KINDS, opOf, STUDIO_ADDABLE_SECTIONS, NEVER_GRANT, MAX_GRANTS, grantProblem, findSection, effectiveTokens, presetTokens } from "./ops";
+export { checkPlan, hashOf, stable, permissionProblem, type CheckDeps, type CheckResult, type FeatureStatus } from "./check";
+export { buildPreview } from "./diff";
+export { STUDIO_SYSTEM, STUDIO_FEATURE, STUDIO_JSON_SCHEMA, STUDIO_MAX_REQUEST, studioOutputZ, buildStudioTools, proposePlan, type ModelPlan, type PlanRunner } from "./plan";
+export { StudioService, type ChangeView, type StudioDeps } from "./engine";
+export { studioModule, studioAdminModule, studioActor, STUDIO_PERMISSION, type StudioRouteDeps } from "./routes";
+export { studioSuggestions } from "./suggestions";
+export { studioChanges, studioFeatureRequests, STUDIO_STATUSES, type StudioChangeRow, type StudioStatus, type StudioFeatureRequestRow } from "./schema";
+export type { CatalogueGlance, FeatureRow, StudioPorts, WriteContext } from "./ports";
+export { sectionFields } from "./describe";
+export { DbStudioStore, MemoryStudioStore, type StudioStore } from "./store";

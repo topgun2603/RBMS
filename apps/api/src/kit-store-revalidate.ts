@@ -38,6 +38,8 @@ const RULES: Rule[] = [
   // Products, variants, categories, collections, media: listings, product pages, bundles (names / prices), sitemap,
   // and the booking page (service names and prices come from the catalogue).
   [/^\/v1\/catalog(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
+  // Studio assistant: applying or undoing a change can restyle the store, its home, menus, pages, settings and features.
+  [/^\/v1\/ai\/studio\/changes\/:id\/(apply|undo)$/, ["home", "menus", "pages", "seo", "branding", "config", "features"]],
   // Approving, rejecting, editing or re-drafting a Tamil product translation changes the Tamil product text the store shows.
   [/^\/v1\/ai\/assist\/translat(e$|ions(\/|$))/, ["catalog", "offers", "seo", "bookings"]],
   // Approving AI photo tags writes tags and attributes to a product, which the store searches and filters on.

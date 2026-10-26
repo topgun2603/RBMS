@@ -17,7 +17,7 @@ import { CatalogueService } from "./service";
 
 const URL_ = process.env.CATALOGUE_TEST_DATABASE_URL;
 const SCHEMA = `catalogue_it_${Math.random().toString(36).slice(2, 10)}`;
-const TABLES = ["catalog_categories", "catalog_products", "catalog_variants", "catalog_collections"];
+const TABLES = ["catalog_categories", "catalog_products", "catalog_variants", "catalog_collections", "ai_product_aliases"];
 const tenant = { id: "11111111-1111-4111-8111-111111111111", slug: "sri", planId: "pro", appId: "BL" };
 const user = { id: "22222222-2222-4222-8222-222222222222", sessionId: "s1", platformRoles: [], tenantRoles: ["staff"] };
 

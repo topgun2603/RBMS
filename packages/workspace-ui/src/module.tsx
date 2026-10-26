@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, SparklesIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
+import { FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, SparklesIcon, UsersRoundIcon, WalletIcon, WandSparklesIcon } from "lucide-react";
 import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { workspaceMessages } from "./lib/messages";
 
@@ -27,7 +27,7 @@ export const WORKSPACE_PERMISSIONS = {
 } as const;
 
 /** Settings paths the module claims under the app's /settings. */
-export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", plan: PLAN_SETTINGS_PATH } as const;
+export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", studio: "studio", plan: PLAN_SETTINGS_PATH } as const;
 
 export interface WorkspaceModuleOptions {
   /** Where module-relative links resolve. Everything lives under /settings, so the default "/" is right for any app. */
@@ -58,6 +58,8 @@ export function workspaceModule(opts: WorkspaceModuleOptions = {}): WebModule {
     { path: P.messages, label: "workspace.nav.messages", icon: MessageSquareTextIcon, roles: ["owner", "admin"], component: page(() => import("./pages/messages")) },
     // AI assistance: the owner's opt-in, helpers, credits and recent uses (docs/ai.md); needs the `ai` feature and `ai.manage`.
     { path: P.ai, label: "workspace.nav.ai", icon: SparklesIcon, feature: F.ai, permission: WORKSPACE_PERMISSIONS.ai, component: page(() => import("./pages/ai")) },
+    // Studio assistant: ask for a change to how the shop looks or works (docs/ai.md, Phase 4 part A); needs `ai` and `ai.manage`.
+    { path: P.studio, label: "workspace.nav.studio", icon: WandSparklesIcon, feature: F.ai, permission: WORKSPACE_PERMISSIONS.ai, component: page(() => import("./pages/studio")) },
   ];
   // Plan & billing (the platform's subscription, not a shop feature): owners/admins via subscriptions.manage.
   if (opts.planBilling !== false) {

@@ -3,6 +3,8 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import {
+  aliasMatchSql,
+  aliasOnlySql,
   attributeSql,
   buildSearchText,
   categoryPath,
@@ -101,9 +103,9 @@ describe("matching and ranking SQL", () => {
   it("matches every word as a substring, or trigram word similarity, or the simple tsvector", () => {
     const { sql: text, params } = render(searchMatchSql(q)!);
     expect(text).toBe(
-      '(("catalog_products"."search_text" like $1 and "catalog_products"."search_text" like $2) or $3 <% "catalog_products"."search_text" or "catalog_products"."search_vector" @@ to_tsquery(\'simple\', $4))',
+      `(("catalog_products"."search_text" like $1 and "catalog_products"."search_text" like $2) or $3 <% "catalog_products"."search_text" or "catalog_products"."search_vector" @@ to_tsquery('simple', $4) or exists (select 1 from ai_product_aliases al where al.product_id = "catalog_products"."id" and al.alias_text <> '' and ((al.alias_text like $5 and al.alias_text like $6) or $7 <% al.alias_text)))`,
     );
-    expect(params).toEqual(["%silk%", "%saree%", "silk saree", "'silk':* & 'saree':*"]);
+    expect(params).toEqual(["%silk%", "%saree%", "silk saree", "'silk':* & 'saree':*", "%silk%", "%saree%", "silk saree"]);
     expect(searchMatchSql(parseQuery(""))).toBeNull();
   });
 
@@ -121,7 +123,8 @@ describe("matching and ranking SQL", () => {
     const order = render(relevanceOrderSql(q)).sql;
     const at = (s: string) => order.indexOf(s);
     expect(at("case when")).toBe(1);
-    expect(order).toMatch(/end\) desc, word_similarity\(\$\d+, "catalog_products"\."search_text"\) desc, ts_rank\(/);
+    // real matches come before products found only through their AI search words
+    expect(order).toMatch(/end\) desc, \(case when .*ai_product_aliases al.* end\) asc, word_similarity\(\$\d+, "catalog_products"\."search_text"\) desc, ts_rank\(/);
     expect(at("case when")).toBeLessThan(at("word_similarity"));
     expect(at("word_similarity")).toBeLessThan(at("ts_rank"));
     expect(at("ts_rank")).toBeLessThan(at('"catalog_products"."created_at" desc'));
@@ -302,5 +305,31 @@ describe("parseQuery: sentence-style queries", () => {
     expect(parseQuery("tea with milk and sugar").words).toEqual(["tea", "milk", "sugar"]);
     expect(parseQuery("for").words).toEqual(["for"]);
     expect(parseQuery("for the").words).toEqual(["for", "the"]);
+  });
+});
+
+describe("AI search words (ai_product_aliases)", () => {
+  it("matches every word of the query in the alias text, or the whole query by trigram similarity (typos)", () => {
+    const r = render(aliasMatchSql(parseQuery("thakkali sauce"))!);
+    expect(r.sql).toContain("from ai_product_aliases al where al.product_id =");
+    expect(r.sql).toContain("(al.alias_text like $1 and al.alias_text like $2) or $3 <% al.alias_text");
+    expect(r.params).toEqual(["%thakkali%", "%sauce%", "thakkali sauce"]);
+    expect(aliasMatchSql(parseQuery(""))).toBeNull();
+    expect(render(aliasMatchSql(parseQuery("100%_off"))!).params[0]).toBe(String.raw`%100\%\_off%`);
+  });
+
+  it("is one more way to match, so a Tanglish or Tamil query can find a product whose name is English", () => {
+    for (const text of ["thakkali", "தக்காளி", "takkali"]) expect(render(searchMatchSql(parseQuery(text))!).sql).toContain("ai_product_aliases");
+  });
+
+  it("ranks products found only through search words AFTER products matching their real name or tags (lower weight)", () => {
+    const q = parseQuery("tomato");
+    const only = render(aliasOnlySql(q));
+    expect(only.sql).toContain("then 0 when exists (select 1 from ai_product_aliases al");
+    expect(only.sql.endsWith("then 1 else 0 end)")).toBe(true);
+    const order = render(relevanceOrderSql(q)).sql;
+    expect(order.indexOf("ai_product_aliases")).toBeGreaterThan(order.indexOf("then 3"));
+    expect(order.indexOf("end) asc")).toBeLessThan(order.indexOf("word_similarity"));
+    expect(render(aliasOnlySql(parseQuery(""))).sql).toBe("0");
   });
 });

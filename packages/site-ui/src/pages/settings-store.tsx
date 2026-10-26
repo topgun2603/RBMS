@@ -5,7 +5,7 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BadgeCheckIcon, BanknoteIcon, ExternalLinkIcon, PlusIcon, ScrollTextIcon, Share2Icon, StoreIcon, PhoneIcon, Trash2Icon, TruckIcon } from "lucide-react";
 import { Button, ChipGroup, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch, Textarea, toast } from "@srirealtime/ui";
-import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Page, PageHeading, QueryError, SettingsNav, useI18n } from "@srirealtime/web";
+import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Page, PageHeading, QueryError, SettingsNav, StudioLink, useI18n } from "@srirealtime/web";
 import { MoneyInput, ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { MarkdownField } from "../components/markdown-field";
 import { useUnsavedGuard } from "../components/unsaved-guard";
@@ -23,7 +23,7 @@ export default function StoreSettingsPage() {
   return (
     <Page width="narrow" className="pb-0">
       <SettingsNav />
-      <PageHeading icon={StoreIcon} title={t("site.store.title")} description={t("site.store.subtitle")} />
+      <PageHeading icon={StoreIcon} title={t("site.store.title")} description={t("site.store.subtitle")} actions={<StudioLink />} />
       {!canEdit && <ReadOnlyNote>{t("site.common.readOnlySettings")}</ReadOnlyNote>}
       {q.isError ? (
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
@@ -95,7 +95,7 @@ function StoreForm({ values, canEdit }: { values: Partial<StoreSettings>; canEdi
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} noValidate className="grid gap-section">
+      <form onSubmit={onSubmit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-section">
         <Section icon={StoreIcon} title={t("site.store.openTitle")} description={t("site.store.openHint")}>
           <FormField
             control={form.control}

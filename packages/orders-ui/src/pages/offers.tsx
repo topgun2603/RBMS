@@ -95,7 +95,7 @@ export default function OffersPage() {
           action={actions || undefined}
         />
       ) : (
-        <ul className="grid gap-3" data-testid="offer-list">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3" data-testid="offer-list">
           {items.map((o) => {
             const Icon = KIND_ICON[o.kind];
             return (

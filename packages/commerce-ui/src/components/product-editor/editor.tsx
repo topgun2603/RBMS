@@ -378,7 +378,7 @@ export function ProductEditor({ product }: { product?: Product }) {
           <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
               <BasicsSection productId={product?.id} />
-              <MediaSection />
+              <MediaSection productId={product?.id} name={product?.name} />
               <PricingSection {...ctx} />
               <VariantsSection
                 canManage={canManage}
@@ -500,7 +500,7 @@ export function ProductEditor({ product }: { product?: Product }) {
                     className={cn("flex items-center gap-2 truncate text-sm", errorCount > 0 ? "text-danger-ink" : dirty ? "font-medium" : "text-muted-foreground")}
                   >
                     <span className={cn("size-2 shrink-0 rounded-full", errorCount > 0 ? "bg-destructive" : dirty ? "bg-warning" : "bg-success")} aria-hidden />
-                    {errorCount > 0 ? t("commerce.editor.fixErrors", { count: errorCount }) : dirty ? t("commerce.editor.unsaved") : isNew ? t("commerce.editor.startTyping") : t("commerce.editor.allSaved")}
+                    <span className="min-w-0 truncate">{errorCount > 0 ? t("commerce.editor.fixErrors", { count: errorCount }) : dirty ? t("commerce.editor.unsaved") : isNew ? t("commerce.editor.startTyping") : t("commerce.editor.allSaved")}</span>
                   </motion.p>
                 </AnimatePresence>
               </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircleIcon, ArrowLeftIcon, CheckCheckIcon, CheckIcon, ClockIcon, Loader2Icon, PackageIcon, RefreshCwIcon, SendHorizontalIcon, WifiOffIcon, XIcon } from "lucide-react";
+import { AlertCircleIcon, ArrowLeftIcon, CheckCheckIcon, CheckIcon, ClockIcon, Loader2Icon, PackageIcon, RefreshCwIcon, SendHorizontalIcon, SparklesIcon, WifiOffIcon, XIcon } from "lucide-react";
 import { Button } from "@srirealtime/ui/components/button";
 import { Textarea } from "@srirealtime/ui/components/textarea";
 import { cn } from "@srirealtime/ui/lib/utils";
@@ -11,6 +11,7 @@ import { formatDate, imageUrl, money } from "../lib/format";
 import type { ChatConversation, ChatMessage, ChatOrderContext } from "../types";
 import { StatusChip, StoreImage } from "../components/bits";
 import type { ChatSession } from "./chat-session";
+import { AiChatPane, useAiChatAvailable } from "./chat-ai";
 import { OtpSignIn } from "./sign-in";
 import { useStore } from "./store-context";
 
@@ -25,6 +26,12 @@ export function ChatPanel({ open, onClose, session, order, onClearOrder }: { ope
   const { t, shell, auth } = useStore();
   const reduced = useReducedMotionSafe();
   const [showList, setShowList] = React.useState(false);
+  // AI mode (AI Phase 4 part B): offered when the shop switched it on and is under its daily cap; otherwise this is the plain human chat.
+  const aiAvail = useAiChatAvailable(open, true);
+  const [mode, setMode] = React.useState<"ai" | "human">("ai");
+  const [aiDown, setAiDown] = React.useState(false);
+  const aiOn = aiAvail === true && !aiDown;
+  const showAi = aiOn && mode === "ai";
 
   React.useEffect(() => {
     if (!open) return;
@@ -69,15 +76,35 @@ export function ChatPanel({ open, onClose, session, order, onClearOrder }: { ope
               <p id="chat-title" className="truncate font-display text-base font-semibold">
                 {t("chat.title", { shop: shell.name })}
               </p>
-              <p className="truncate text-xs text-primary-foreground/80">{session.active?.type === "order" && session.active.title ? t("chat.aboutOrder", { number: orderNumberOf(session.active.title) }) : t("chat.subtitle")}</p>
+              <p className="truncate text-xs text-primary-foreground/80">{showAi ? t("aichat.subtitle") : session.active?.type === "order" && session.active.title ? t("chat.aboutOrder", { number: orderNumberOf(session.active.title) }) : t("chat.subtitle")}</p>
             </div>
             <Button variant="ghost" size="icon-sm" className="rounded-full text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={onClose} aria-label={t("chat.close")} data-testid="chat-close">
               <XIcon />
             </Button>
           </div>
-          <ConnectionBanner status={signedIn ? session.status : "idle"} />
+          <ConnectionBanner status={signedIn && !showAi ? session.status : "idle"} />
+          {aiOn && (
+            <div role="tablist" aria-label={t("aichat.tabs")} className="flex gap-1 border-b bg-muted/30 p-1.5" data-testid="chat-modes">
+              {(["ai", "human"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  onClick={() => setMode(m)}
+                  className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-ring", mode === m ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:bg-accent")}
+                  data-testid={`chat-mode-${m}`}
+                >
+                  {m === "ai" && <SparklesIcon className="size-3.5" aria-hidden />}
+                  {t(m === "ai" ? "aichat.tab.ai" : "aichat.tab.shop")}
+                </button>
+              ))}
+            </div>
+          )}
 
-          {!auth.ready ? (
+          {showAi ? (
+            <AiChatPane onHandoff={() => setMode("human")} onUnavailable={() => setAiDown(true)} />
+          ) : !auth.ready ? (
             <div className="flex flex-1 items-center justify-center">
               <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
             </div>

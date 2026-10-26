@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Customer-facing online store (D2C): each shop on its own subdomain or custom domain, server-rendered for SEO. Theme: @srirealtime/storefront-ui.",
   "scripts": {
+    "tryon:assets": "node scripts/tryon-assets.mjs",
+    "predev": "node scripts/tryon-assets.mjs",
+    "prebuild": "node scripts/tryon-assets.mjs",
     "dev": "next dev --turbopack -p 3003",
     "build": "next build",
     "start": "next start -p 3003",

@@ -246,7 +246,7 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
           </div>
         </div>
         {!parent && (n.children.length > 0 || canEdit) && (
-          <ol className="mt-2 grid gap-2">
+          <ol className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-2">
             {n.children.map((c, j) => row(c, j, n.children.length, n))}
             {canEdit && (
               <li className="ml-6 sm:ml-10">
@@ -269,7 +269,7 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
   };
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4">
+    <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <MenuStrip nodes={nodes} footer={menu.key === "footer"} />
       {nodes.length === 0 ? (
         <Card className="items-center gap-2 p-8 text-center">
@@ -277,7 +277,7 @@ function MenuEditor({ menu, onDirty, canEdit }: { menu: StaffMenu; onDirty: (k: 
           <p className="text-sm text-muted-foreground">{t(menu.key === "header" ? "site.menus.emptyHeader" : "site.menus.emptyFooter")}</p>
         </Card>
       ) : (
-        <ol className="grid gap-2">
+        <ol className="grid grid-cols-[minmax(0,1fr)] gap-2">
           <AnimatePresence initial={false}>{nodes.map((n, i) => row(n, i, nodes.length, null))}</AnimatePresence>
         </ol>
       )}

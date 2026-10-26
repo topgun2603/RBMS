@@ -19,10 +19,13 @@ import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
 import { createAiKit } from "./kit-ai";
 import { createAiAssistKit } from "./kit-ai-assist";
 import { createAiAsk } from "./kit-ai-ask";
+import { createAiStudio } from "./kit-ai-studio";
 import { createAiInsightsKit } from "./kit-ai-insights";
 import { createAiVision } from "./kit-ai-vision";
 import { createAiTradesA } from "./kit-ai-trades-a";
 import { createAiTradesBKit } from "./kit-ai-trades-b";
+import { createAiStoreKit } from "./kit-ai-store";
+import { createAiImagingKit } from "./kit-ai-imaging";
 import { createAiTradesC } from "./kit-ai-trades-c";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
@@ -155,7 +158,10 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   let accountingRef: ReturnType<typeof createAccounting> | undefined;
   // GST filing (created after batch 3): the composition scheme of the shop reaches the invoice engine through the seller profile.
   let gstFilingRef: ReturnType<typeof createGstFiling> | undefined;
+  // AI Phase 4 part B (kit-ai-store.ts): a product saved as active may get its search words; created further down.
+  let aiStoreRef: ReturnType<typeof createAiStoreKit> | undefined;
   const emit = (tenantId: string, type: string, data: unknown) => {
+    if (aiStoreRef && /^product\.(created|updated)$/.test(type)) void aiStoreRef.onDomainEvent(tenantId, type, data);
     if (accountingRef && /^(invoice|payment|credit_note)\./.test(type)) accountingRef.service.kick(tenantId);
     return b3 ? b3.events.emit(tenantId, type, data) : Promise.resolve();
   };
@@ -351,7 +357,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     events,
     // Recommendations: paid-order counts and products bought together.
-    purchases: orderPurchaseStats(db),
+    // "Often bought together" uses the daily bought-together table when the shop has one (kit-ai-store.ts), else paid-order counts.
+    purchases: ((base) => ({ ...base, boughtWith: (t: string, p: string[], since: Date, limit: number) => (aiStoreRef ? aiStoreRef.purchaseSignals(base) : base).boughtWith(t, p, since, limit) }))(orderPurchaseStats(db)),
     // Bookable services (bookings, created further down): the store shows "Book now" for them instead of the cart.
     services: catalogueServicesPort(() => (tenantId) => bookingsRef!.service.services(tenantId), (tenantId, key) => features.service.isEnabled(tenantId, key)),
     log,
@@ -1394,6 +1401,23 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
     now: clock,
   });
+  // Phase 4 part A (docs/ai.md): the Studio assistant, which changes the shop only through existing services, see kit-ai-studio.ts.
+  const aiStudio = createAiStudio({
+    db,
+    ai: ai.service,
+    branding: branding.service,
+    cms: cms.service,
+    settings: settings.service,
+    staff: staff.service,
+    discounts: staff.discounts,
+    auth: auth.service,
+    features: features.service,
+    tenancy: tenancy.service,
+    catalogue: catalogue.service as never,
+    audit: audit.service,
+    storeSettings,
+    now: clock,
+  });
   // Phase 2 part B (docs/ai.md): daily summary job + delivery, festival-aware reorder, campaign writer, review replies and themes.
   const aiInsights = createAiInsightsKit({
     db,
@@ -1511,6 +1535,52 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     jobs: jobs.service,
     storeSettings,
     shopName,
+    uploadHosts: [env.PUBLIC_UPLOAD_BASE_URL, env.API_PUBLIC_URL].flatMap((u) => {
+      try {
+        return u ? [new URL(u).hostname] : [];
+      } catch {
+        return [];
+      }
+    }),
+    production: env.NODE_ENV === "production",
+    log,
+  });
+
+  // Phase 4 part B (docs/ai.md): shopper chat on the store, search words, bought together, pricing hints, social posts, see kit-ai-store.ts.
+  const aiStore = createAiStoreKit({
+    db,
+    ai: ai.service,
+    catalogue: catalogue.service as never,
+    storefront: storefront.service as never,
+    delivery: delivery.service as never,
+    translations: aiAssist.translations,
+    branding: branding.service as never,
+    tenantRef: (tenantId) => tenancy.service.getRef(tenantId),
+    aiSettings: settings.service.handle("ai") as never,
+    storeSettings,
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    inStockVariants: (tenantId, ids) => catalogueAvailability(() => inventory.service, (t, k) => features.service.isEnabled(t, k)).inStock(tenantId, ids),
+    jobs: jobs.service,
+    uploadHosts: [env.PUBLIC_UPLOAD_BASE_URL, env.API_PUBLIC_URL].flatMap((u) => {
+      try {
+        return u ? [new URL(u).hostname] : [];
+      } catch {
+        return [];
+      }
+    }),
+    production: env.NODE_ENV === "production",
+    now: clock,
+    log,
+  });
+  aiStoreRef = aiStore;
+
+  // Phase 4 part C (docs/ai.md): product photo cleanup (onnxruntime on this server) and the try-on setup, see kit-ai-imaging.ts.
+  const aiImaging = createAiImagingKit({
+    db,
+    ai: ai.service,
+    catalogue: catalogue.service as never,
+    uploads: uploads.service,
+    jobs: jobs.service,
     uploadHosts: [env.PUBLIC_UPLOAD_BASE_URL, env.API_PUBLIC_URL].flatMap((u) => {
       try {
         return u ? [new URL(u).hostname] : [];
@@ -1653,11 +1723,15 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     ai.adminModule,
     aiAssist.module,
     aiAsk.module,
+    aiStudio.module,
+    aiStudio.adminModule,
     aiInsights.module,
     aiVision,
     ...aiTradesA.modules,
     aiTradesC,
     aiTradesB.module,
+    aiStore.module,
+    aiImaging.module,
     medicines.module,
     dining.module,
     aggregators.module,
@@ -1818,6 +1892,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await jobs.service.schedule("audit.purge", "15 4 * * *");
       await jobs.service.schedule("ai.purge-debug", "25 4 * * *");
       await jobs.service.schedule(aiInsights.job, "*/15 * * * *");
+      await jobs.service.schedule(aiStore.jobs.together, "50 3 * * *");
       await jobs.service.schedule("store.carts.purge", "45 3 * * *");
       await jobs.service.schedule(DELIVERY_TRACK_JOB, "0 */2 * * *");
       await jobs.service.schedule(ANALYTICS_JOBS.rollup, "5 * * * *");

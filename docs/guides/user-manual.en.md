@@ -231,6 +231,13 @@ The page shows a price breakdown (what the customer pays, the taxable value, GST
 **Status matters.** *Draft* hides the product everywhere. *Archived* hides it from the store and the counter but keeps it on old bills and orders. You can make an archived product active again.
 :::
 
+### Clean up photos and "Try it on"
+
+Open a saved product and look under **Photos**.
+
+- **Clean up photos** removes the background of the product photo and puts the product, centred on a square, on pure white, a soft shadow or a festive colour. You see **Original** and **Cleaned** side by side. Tap **Use cleaned** to use it, or **Keep original**. Your original is always kept: **Use original again** puts it back. A photo marked **Needs a manual check** may be cut badly, so look at it before using it. In the Products list, tick several products and tap **Clean photos** to do many at once; progress is shown. It runs on our own server and is free unless your plan sets a charge.
+- **Try it on (live camera)** lets shoppers try glasses, earrings, nose pins and necklaces on with their phone camera on your store. Choose what the item is, tap **Cut out the product**, drag the dots to the eye positions (glasses) or the hanging point (earrings), and **Save try-on**. The helper must be on in **Settings > AI**. Shoppers see a **Try it on** button on the product page. Their camera picture never leaves their phone, and the result is only a preview.
+
 ## Sizes and colours (variants)
 
 If a product comes in sizes or colours, add options and RBMS makes one variant for every combination.
@@ -1393,3 +1400,15 @@ These helpers need AI switched on in Settings > AI (each one has its own switch)
 - **Tag photos** (clothing and textile shops, Products): select products with photos and tap Tag photos. Later open Review photo tags, tick what is right, edit the words if needed and approve. Tags help shoppers find "red silk saree for wedding". What you typed yourself (for example Fabric) is never changed unless you tick Replace.
 - **Read HUID from photo** (Jewellery, edit a piece): take a sharp close-up of the hallmark. The 6-character HUID is filled in for you to check. It does not verify the hallmark: check it on the BIS CARE app.
 - **Price breakup** (Jewellery, open a piece): shows how the price is made up (metal at today's rate, wastage, making, stones, GST) and a short English or Tamil explanation. Print it, copy it or share it on WhatsApp. The figures are worked out by the software; the AI only writes the words.
+
+## Studio assistant: change how your shop looks or works by asking (optional)
+
+Open Settings > Studio assistant (or press "Ask Studio" on Appearance or Store settings). Type or speak a request in Tamil, Tanglish or English, for example "Cashiers must not give more than 5% discount" or "Show the offers section above the categories". Studio shows a plan with each step, how risky it is and what cannot be done, then a before and after list and, for the store, a preview of your real store. Nothing changes until you press Apply; changes to money, permissions or sign-in ask you to confirm twice. Every request is kept in History with Undo, which restores the old settings as long as nobody changed the same settings again. Studio only uses settings the app already has. If it cannot do something, it offers the closest option and tells the product team. It needs the AI switch on and the "Manage AI" permission; a request uses about 10 to 80 AI credits, applying and undoing are free. Do not type bank or card numbers.
+
+## Online store helpers: shopper chat, search words, often bought together, pricing hints, social posts
+
+- **Shopper chat (off until you switch it on).** In Settings > AI, switch on "Let shoppers ask the AI assistant" and set a daily limit (default 300 credits a day, about 3 to 5 credits a question). Shoppers then see an "Ask AI" tab in your store's chat. It answers in Tamil, Tanglish or English only from your store: products, prices, stock, your delivery, pickup, payment and returns text, and the shopper's own orders. If you have not written a policy it says it does not have that information and offers "Talk to the shop". It never gives discounts or promises. When the daily limit is reached the chat quietly goes back to your people.
+- **Search words.** When you save a product, its Tamil name, Tanglish spellings (thakkali, takkali), English names and common misspellings are written once, so shoppers find it however they type. See and edit them under the product's "Search words"; what you save is never overwritten. For products you already have, use Settings > AI > "Search words for products you already have" (it shows the credits first).
+- **Often bought together.** Worked out every night from your bills and store orders (last 180 days), with no AI and no credits. Shown on the store's product page with a combo add-to-cart, and as "Customers also buy" chips in the POS cart, for items in stock only. Switch it off in Settings > AI.
+- **Pricing hints** (Items > Pricing hints). Shows items whose price changed, how fast they sold before and after, and the margin, and strong sellers that may have room for a small increase. "Explain in words" writes one sentence per item. Prices are never changed for you.
+- **Social posts.** On a product, "Social post" writes Instagram and WhatsApp Status captions in English and Tamil with hashtags and makes a square picture in your shop colours. Download or share it; nothing is posted for you.

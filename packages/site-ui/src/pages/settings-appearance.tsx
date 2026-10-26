@@ -7,7 +7,7 @@ import { Button, ChipGroup, cn, Label, Select, SelectContent, SelectItem, Select
 import { LAYOUT_OPTIONS, THEME_OPTIONS, THEME_PRESETS, themePreset, type LayoutOptionKey, type LayoutTheme, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
 import { MobileNavSketch, PageLayoutPicker } from "../components/page-layout-thumbs";
 import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@srirealtime/verticals";
-import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
+import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, StudioLink, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice } from "../components/brand-fields";
 import type { PreviewView } from "../components/theme-preview";
@@ -52,7 +52,7 @@ export default function AppearancePage() {
   return (
     <Page width="full" className="pb-0">
       <SettingsNav />
-      <PageHeading icon={PaletteIcon} title={t("site.appearance.title")} description={t("site.appearance.subtitle")} />
+      <PageHeading icon={PaletteIcon} title={t("site.appearance.title")} description={t("site.appearance.subtitle")} actions={<StudioLink />} />
       {!canEdit && <ReadOnlyNote>{t("site.common.readOnlySettings")}</ReadOnlyNote>}
       {branding.isError ? (
         <QueryError error={branding.error} onRetry={() => void branding.refetch()} />
@@ -142,7 +142,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
   const currentPreset = draft.preset ? themePreset(draft.preset) : undefined;
   const canReset = !!currentPreset && canEdit && differsFromPreset(draft, currentPreset);
   return (
-    <form onSubmit={submit} className="grid gap-section">
+    <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)] gap-section">
       <div className="grid items-start gap-section xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         <div className="grid min-w-0 gap-section">
           <Section icon={BriefcaseIcon} title={t("site.appearance.businessTitle")} description={t("site.appearance.businessBody")}>

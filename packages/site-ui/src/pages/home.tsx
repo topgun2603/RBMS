@@ -331,7 +331,7 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
         <p className="mb-4 rounded-xl bg-info/10 p-3 text-sm text-info-ink ring-1 ring-info/25 ring-inset">{t("site.home.defaultNote")}</p>
       )}
 
-      <form onSubmit={onSubmit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
+      <form onSubmit={onSubmit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
           {items.length === 0 ? (
             <EmptyState

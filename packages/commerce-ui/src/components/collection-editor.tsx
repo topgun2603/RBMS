@@ -176,7 +176,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
         }
       />
 
-      <form onSubmit={submit} noValidate className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
           <Section id="details" icon={FileTextIcon} title={t("commerce.collections.details")}>
             <Field id="col-name" invalid={!!errors.name}>
@@ -303,7 +303,7 @@ export function CollectionEditor({ collection }: { collection?: Collection }) {
             <div className="mx-auto flex max-w-5xl items-center gap-2">
               <p className={cn("flex min-w-0 flex-1 items-center gap-2 truncate text-sm", dirty ? "font-medium" : "text-muted-foreground")} aria-live="polite">
                 <span className={cn("size-2 shrink-0 rounded-full", dirty ? "bg-warning" : "bg-success")} aria-hidden />
-                {dirty ? t("commerce.editor.unsaved") : isNew ? t("commerce.editor.startTyping") : t("commerce.editor.allSaved")}
+                <span className="min-w-0 truncate">{dirty ? t("commerce.editor.unsaved") : isNew ? t("commerce.editor.startTyping") : t("commerce.editor.allSaved")}</span>
               </p>
               {dirty && !isNew && (
                 <Button type="button" variant="ghost" size="lg" onClick={() => setD(toDraft(server))}>

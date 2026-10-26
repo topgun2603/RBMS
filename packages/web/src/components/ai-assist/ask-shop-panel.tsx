@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDownIcon, Loader2Icon, MicIcon, MicOffIcon, SendIcon, SparklesIcon, ShieldCheckIcon, TriangleAlertIcon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, SendIcon, SparklesIcon, ShieldCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { Alert, AlertDescription, Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Textarea } from "@srirealtime/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { Answer } from "./help-panel";
 import { useAiAssistAllowed } from "./use-assist";
+import { VoiceInput } from "./voice";
 
 export interface AskTable {
   id: string;
@@ -77,22 +78,6 @@ export function FiguresTables({ blocks, ta }: { blocks: AskTable[]; ta: boolean 
   );
 }
 
-type SpeechCtor = new () => {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-  start(): void;
-  stop(): void;
-};
-const speechCtor = (): SpeechCtor | null => {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-};
-
 /**
  * "Ask" in the top bar: a chat about the shop's own numbers (sales, dues, stock, expenses, GST) in Tamil, Tanglish or
  * English, answered from the shop's reports by `POST /v1/ai/ask`. The browser keeps the last turns and sends them with each
@@ -105,16 +90,9 @@ export function AskShopButton() {
   const [q, setQ] = React.useState("");
   const [turns, setTurns] = React.useState<Turn[]>([]);
   const [busy, setBusy] = React.useState(false);
-  const [listening, setListening] = React.useState(false);
-  const [micError, setMicError] = React.useState(false);
-  const [micOk, setMicOk] = React.useState(false);
   const [figures, setFigures] = React.useState<Record<number, boolean>>({});
-  const recRef = React.useRef<InstanceType<SpeechCtor> | null>(null);
   const endRef = React.useRef<HTMLDivElement | null>(null);
   const seq = React.useRef(0);
-  React.useEffect(() => {
-    setMicOk(!!speechCtor());
-  }, []);
   React.useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [turns, busy]);
@@ -141,37 +119,6 @@ export function AskShopButton() {
       setTurns((p) => p.map((x) => (x.id === id ? { ...x, error: describeError(err, t) } : x)));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const toggleMic = () => {
-    if (listening) {
-      recRef.current?.stop();
-      return;
-    }
-    const Ctor = speechCtor();
-    if (!Ctor) return;
-    setMicError(false);
-    const rec = new Ctor();
-    rec.lang = locale === "ta" ? "ta-IN" : "en-IN";
-    rec.interimResults = false;
-    rec.continuous = false;
-    rec.onresult = (e) => {
-      const text = Array.from(e.results as ArrayLike<ArrayLike<{ transcript: string }>>)
-        .map((r) => r[0]?.transcript ?? "")
-        .join(" ")
-        .trim();
-      if (text) setQ(text);
-    };
-    rec.onerror = () => setMicError(true);
-    rec.onend = () => setListening(false);
-    recRef.current = rec;
-    setListening(true);
-    try {
-      rec.start();
-    } catch {
-      setListening(false);
-      setMicError(true);
     }
   };
 
@@ -273,7 +220,6 @@ export function AskShopButton() {
                 }
               }}
             />
-            {micError && <p className="text-xs text-destructive">{t("web.aiAsk.micFailed")}</p>}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-meta text-muted-foreground">{t("web.aiAsk.credits")}</p>
               <div className="flex items-center gap-2">
@@ -282,11 +228,7 @@ export function AskShopButton() {
                     {t("web.aiAsk.new")}
                   </Button>
                 )}
-                {micOk && (
-                  <Button type="button" size="sm" variant={listening ? "default" : "outline"} aria-label={listening ? t("web.aiAsk.micStop") : t("web.aiAsk.mic")} onClick={toggleMic}>
-                    {listening ? <MicOffIcon /> : <MicIcon />}
-                  </Button>
-                )}
+                <VoiceInput value={q} onChange={setQ} />
                 <Button type="submit" size="sm" disabled={busy || q.trim().length < 2}>
                   {busy ? <Loader2Icon className="animate-spin" /> : <SendIcon />} {t("web.aiAsk.send")}
                 </Button>

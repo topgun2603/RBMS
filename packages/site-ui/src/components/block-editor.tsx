@@ -163,7 +163,7 @@ export function BlockEditor({
             {BLOCK_TYPES.map((type) => {
               const Icon = BLOCK_ICONS[type];
               return (
-                <Button key={type} type="button" variant="outline" size="lg" className="justify-start" disabled={full} onClick={() => add(type)}>
+                <Button key={type} type="button" variant="outline" size="lg" className="h-auto min-h-11 min-w-0 justify-start py-2 text-start whitespace-normal" disabled={full} onClick={() => add(type)}>
                   <Icon /> {t(`site.blocks.type.${type}`)}
                 </Button>
               );

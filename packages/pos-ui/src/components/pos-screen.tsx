@@ -60,6 +60,7 @@ import type { WeighTicket } from "../lib/terminal-types";
 import { addTicket, isTicketCode, markTicketsUsed, removeLineOrTicket, ticketIdsOf } from "../lib/weigh-ticket";
 import { CameraScanDialog } from "./camera-scan";
 import { CatalogProvider, useCatalog } from "./catalog-provider";
+import { AlsoBuyChips } from "./also-buy-chips";
 import { CartPanel } from "./cart-panel";
 import { CustomerBar } from "./customer-bar";
 import { DayDialog } from "./day-dialog";
@@ -626,6 +627,7 @@ function Counter() {
       onHold={() => setDialog("hold")}
       onPay={openPay}
       payBlocked={payBlocked}
+      suggestions={<AlsoBuyChips lines={lines} onAdd={(p) => add(p)} />}
       customerBar={
         <CustomerBar
           value={customer}

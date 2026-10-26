@@ -14,6 +14,7 @@ import * as quotationsV2 from "./messages/quotations";
 import * as gstV2 from "./messages/gst";
 import * as stockDepthV2 from "./messages/stock-depth";
 import * as aiScanV2 from "./messages/ai-scan";
+import * as aiPricingV2 from "./messages/ai-pricing";
 import * as aiAskV2 from "./messages/ai-ask";
 import * as aiInsightsV2 from "./messages/ai-insights";
 

@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { CameraIcon, Loader2Icon, MicIcon, MicOffIcon } from "lucide-react";
+import { CameraIcon, Loader2Icon } from "lucide-react";
+import { VoiceAppendButton } from "../ai-assist/voice";
 import { Button } from "@srirealtime/ui";
 import { ApiError, api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
@@ -133,59 +134,9 @@ export function PhotoButton({
 
 // ------------------------------------------------------------------ speech
 
-type SpeechCtor = new () => {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-  start(): void;
-  stop(): void;
-};
-const speechCtor = (): SpeechCtor | null => {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-};
-
-/** A small mic button (Web Speech API, ta-IN / en-IN) that appends what was said. Hidden where the browser has no speech recognition. */
+/** A mic that appends what was said (shared voice input: language chip, live text, silence stop). */
 export function MicButton({ onText }: { onText: (text: string) => void }) {
-  const { t, locale } = useI18n();
-  const [ok, setOk] = React.useState(false);
-  const [on, setOn] = React.useState(false);
-  const rec = React.useRef<InstanceType<SpeechCtor> | null>(null);
-  React.useEffect(() => setOk(!!speechCtor()), []);
-  if (!ok) return null;
-  const toggle = () => {
-    if (on) {
-      rec.current?.stop();
-      return;
-    }
-    const Ctor = speechCtor();
-    if (!Ctor) return;
-    const r = new Ctor();
-    r.lang = locale === "ta" ? "ta-IN" : "en-IN";
-    r.interimResults = false;
-    r.continuous = false;
-    r.onresult = (e) => {
-      const text = Array.from(e.results as ArrayLike<ArrayLike<{ transcript: string }>>)
-        .map((x) => x[0]?.transcript ?? "")
-        .join(" ")
-        .trim();
-      if (text) onText(text);
-    };
-    r.onerror = () => setOn(false);
-    r.onend = () => setOn(false);
-    rec.current = r;
-    setOn(true);
-    r.start();
-  };
-  return (
-    <Button type="button" size="sm" variant="outline" aria-pressed={on} aria-label={on ? t("web.aiTrades.micStop") : t("web.aiTrades.mic")} onClick={toggle}>
-      {on ? <MicOffIcon /> : <MicIcon />} {on ? t("web.aiTrades.micStop") : t("web.aiTrades.mic")}
-    </Button>
-  );
+  return <VoiceAppendButton onText={onText} />;
 }
 
 export const rupeesText = (paise: number) => `₹${(Math.round(paise) / 100).toLocaleString("en-IN", { minimumFractionDigits: paise % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;

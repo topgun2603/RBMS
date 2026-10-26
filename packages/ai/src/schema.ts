@@ -1,7 +1,8 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
-import { date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { date, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { SummaryFacts } from "./insights/summary";
-import type { AiFeedback, AiRunStatus, AiTier, ProviderKind } from "./types";
+import type { AiFeedback, AiRunStatus, AiTier, RunProvider } from "./types";
 
 /**
  * One row per AI call. Metadata only: who, which helper, which model, tokens, cost, credits, outcome. The text of the
@@ -17,7 +18,7 @@ export const aiRuns = pgTable(
     feature: text("feature").notNull(),
     tier: text("tier").$type<AiTier>().notNull(),
     model: text("model").notNull(),
-    provider: text("provider").$type<ProviderKind>().notNull(),
+    provider: text("provider").$type<RunProvider>().notNull(),
     status: text("status").$type<AiRunStatus>().notNull(),
     /** Machine code of the failure or block (`ai_credits_exhausted`, `ai_refused`...). */
     errorCode: text("error_code"),
@@ -201,3 +202,126 @@ export const aiProductTags = pgTable(
   (t) => [uniqueIndex("ai_product_tags_uq").on(t.tenantId, t.productId), index("ai_product_tags_batch_idx").on(t.tenantId, t.batchId)],
 );
 export type AiProductTagRow = typeof aiProductTags.$inferSelect;
+
+// ------------------------------------------------------------------ Phase 4 part B: store features (docs/ai.md "Phase 4 part B")
+
+/** Where a product's search words came from: written by the AI, or edited/typed by the owner (never overwritten by a re-run). */
+export const ALIAS_SOURCES = ["ai", "owner"] as const;
+export type AliasSource = (typeof ALIAS_SOURCES)[number];
+
+/**
+ * Search words for a product: Tamil-script names, Tanglish spellings, synonyms and common misspellings. Made once by the light
+ * tier when a product is saved (or by the bulk backfill), so a shopper's search costs nothing. `alias_text` is the normalised
+ * joined text the catalogue search matches (lower weight than the real name). One row per (shop, product).
+ */
+export const aiProductAliases = pgTable(
+  "ai_product_aliases",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    productId: uuid("product_id").notNull(),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    /** Lowercased, space-joined `aliases` (what the search reads). */
+    aliasText: text("alias_text").notNull().default(""),
+    source: text("source").$type<AliasSource>().notNull().default("ai"),
+    /** The product name the aliases were made from (a rename shows they may be stale). */
+    sourceName: text("source_name").notNull().default(""),
+    runId: uuid("run_id"),
+    credits: integer("credits").notNull().default(0),
+    error: text("error"),
+    ...timestamps(),
+  },
+  (t) => [
+    uniqueIndex("ai_product_aliases_uq").on(t.tenantId, t.productId),
+    index("ai_product_aliases_text_trgm_idx").using("gin", sql`${t.aliasText} gin_trgm_ops`),
+  ],
+);
+export type AiProductAliasRow = typeof aiProductAliases.$inferSelect;
+
+/**
+ * "Often bought together": for each product A, the products B that appear in the same basket (a bill or a store order) more than
+ * chance would explain. Directed rows (A -> B) with the counts and the three standard measures, recomputed daily per shop from
+ * the last 180 days (no AI). Only the strongest partners per product are kept.
+ */
+export const aiItemPairs = pgTable(
+  "ai_item_pairs",
+  {
+    tenantId: tenantId(),
+    productId: uuid("product_id").notNull(),
+    withProductId: uuid("with_product_id").notNull(),
+    /** Baskets holding both. */
+    together: integer("together").notNull(),
+    /** Baskets holding A. */
+    countA: integer("count_a").notNull(),
+    countB: integer("count_b").notNull(),
+    baskets: integer("baskets").notNull(),
+    support: real("support").notNull(),
+    confidence: real("confidence").notNull(),
+    lift: real("lift").notNull(),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.productId, t.withProductId] }), index("ai_item_pairs_tenant_a_idx").on(t.tenantId, t.productId, t.lift)],
+);
+export type AiItemPairRow = typeof aiItemPairs.$inferSelect;
+
+// ---------------------------------------------------------------- Phase 4 part C: photo cleanup and try-on (docs/ai.md)
+
+export const CLEANUP_STATUSES = ["queued", "running", "ready", "check", "failed", "applied", "discarded"] as const;
+export type CleanupStatus = (typeof CLEANUP_STATUSES)[number];
+
+/**
+ * One cleaned-up product photo. The ORIGINAL url is never changed or deleted: `ready` / `check` rows hold the cleaned copy as
+ * a proposal, "apply" swaps it into the product's image list and `applied` keeps the original url so "use the original again"
+ * puts it back. `check` = the mask looked doubtful ("needs a manual check"); the owner still decides. One row per run, grouped by `batchId`.
+ */
+export const aiImageCleanups = pgTable(
+  "ai_image_cleanups",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    batchId: uuid("batch_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    originalUrl: text("original_url").notNull(),
+    cleanedUrl: text("cleaned_url"),
+    /** Transparent cut-out (PNG), kept when asked for (try-on image). */
+    cutoutUrl: text("cutout_url"),
+    style: text("style").notNull().default("white"),
+    color: text("color"),
+    status: text("status").$type<CleanupStatus>().notNull().default("queued"),
+    /** Why a result needs a check: `MaskReason[]`. */
+    reasons: jsonb("reasons").$type<string[]>().notNull().default([]),
+    /** `{ fgRatio, confidence, edgeTouch }` of the mask. */
+    stats: jsonb("stats").$type<Record<string, number>>(),
+    model: text("model"),
+    credits: integer("credits").notNull().default(0),
+    ms: integer("ms"),
+    error: text("error"),
+    createdBy: text("created_by"),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [index("ai_image_cleanups_batch_idx").on(t.tenantId, t.batchId), index("ai_image_cleanups_product_idx").on(t.tenantId, t.productId, t.createdAt)],
+);
+export type AiImageCleanupRow = typeof aiImageCleanups.$inferSelect;
+
+/** Try-on setup of a product: the transparent front-view image and the alignment anchors (validated in imaging/tryon.ts). One per product. */
+export const aiTryons = pgTable(
+  "ai_tryons",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    productId: uuid("product_id").notNull(),
+    /** glasses | earrings | nosepin | necklace */
+    kind: text("kind").notNull(),
+    imageUrl: text("image_url").notNull(),
+    /** `TryonAnchors`: points in 0..1 of the image (eye line, hook point, ...) and the real-world width in mm. */
+    anchors: jsonb("anchors").$type<Record<string, unknown>>().notNull(),
+    updatedBy: text("updated_by"),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("ai_tryons_product_uq").on(t.tenantId, t.productId)],
+);
+export type AiTryonRow = typeof aiTryons.$inferSelect;
+
+// Studio assistant tables (Phase 4 part A): change sets and feature requests.
+export * from "./studio/schema";
