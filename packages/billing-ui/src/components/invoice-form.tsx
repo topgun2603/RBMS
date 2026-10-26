@@ -36,6 +36,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { CustomerPicker, type Party } from "./customer-picker";
+import { RiskHint } from "./money/risk";
 import { GstRateSelect } from "./gst-rate-select";
 import { LoyaltyRedeemCard, LoyaltySummaryRows, useLoyaltyRedeem } from "./loyalty-redeem";
 import { LineBatchSelect } from "./inventory/line-batch-select";
@@ -333,6 +334,11 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
           <CardContent>
             <CustomerPicker value={party} onChange={setParty} invalid={submitted && !!partyError} />
             {submitted && partyError && <p className="mt-1.5 text-meta text-destructive">{partyError}</p>}
+            {party.kind === "saved" && (
+              <div className="mt-3">
+                <RiskHint customerId={party.customer.id} />
+              </div>
+            )}
           </CardContent>
         </Card>
 

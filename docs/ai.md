@@ -714,3 +714,183 @@ The read-only demo role holds none of the permissions, so it never spends.
 **Tests.** `packages/ai/src/store/store.test.ts` (60: tool isolation, answer checks, cap and rate limits, alias cleaning, co-occurrence maths, price-change and before/after maths, word checks, social cleaning, route permissions), `store.db.test.ts` (4, needs `AI_TEST_DATABASE_URL`), `packages/catalogue/src/search.test.ts` (alias SQL and ranking), `packages/uploads/src/social-image.test.ts`, `packages/storefront-ui/src/server/proxy-tryon.test.ts` (proxy allow-list).
 
 **Limits.** The chat's rate limits are in memory (reset on restart, per API process). Roughly half of the chat questions go to the standard tier. Delivery quotes are indicative (1 kg, the order value asked); order status only through a signed-in account or the order link code. Search words were measured on a handful of products: read the Tamil and Tanglish in the report before a bulk run on a real shop. The POS chips were checked through the API and in unit tests, not in the browser.
+
+## Phase 5 part A: the counter (Tamil voice billing, unusual-activity alerts, staff coaching, shift planning)
+
+Four helpers for the counter, all in the registry as `live` with their own switches (Settings > AI). Numbers are always counted in
+code; drafts are confirmed by a person; text from people or from speech is data, never an instruction.
+
+| Helper (registry key) | Tier | Credits | Who | Where |
+|---|---|---|---|---|
+| Voice billing (`voice-billing`) | none for most lines, light for words the code cannot match | usually 0, about 1 when the light tier helps | `invoices.create` + `ai.use` | mic in the POS search bar |
+| Unusual-activity alerts (`activity-alerts`) | none | 0 | owner, admin, or a holder of `reports.manage` / `staff.manage` | Settings > Counter insights > Alerts |
+| Staff coaching notes (`staff-coaching`) | light | about 1 a person | the same, plus `ai.use` to write | Settings > Counter insights > Team notes |
+| Shift planning (`shift-planning`) | none | 0 | owner / manager | Settings > Counter insights > Shifts |
+
+Code: `packages/ai/src/counter/` (pure logic, tested with the mock provider), routes at `/v1/ai/counter/*`, API wiring
+`apps/api/src/kit-ai-counter.ts` (all SQL is read-only except the three tables below), POS UI `packages/pos-ui/src/components/voice-bill.tsx`,
+the owner page `packages/workspace-ui/src/pages/counter.tsx`. Migration `0045_ai_counter`: `ai_activity_reviews` (alert marked as
+looked at), `ai_counter_events` (no-sale drawer presses), `ai_staff_coaching` (weekly notes per person and language). Settings
+namespace `ai`: `counter.billsPerStaffHour`, `counter.alertsInSummary`.
+
+**Who is "the cashier".** Bills carry no creator, so a bill, a cancellation, a return or a discount is counted for the person who
+OPENED the till session it was rung on (`till_sessions.opened_by`, else the name typed at opening). Bills rung with no till open are left
+out of every per-person figure. If two people share one till session they are one person to these screens.
+
+### Tamil voice billing
+
+```
+mic / typed text --> POST /v1/ai/counter/voice/parse {transcript}
+   parse.ts   numbers, fractions, units, fillers, connectors -> lines {phrase, qty, unit}        (code)
+   match.ts   phrase -> the shop's items: name, variant, approved Tamil name, AI search words,
+              built-in Tamil/Tanglish grocery glossary, sound-alike matching across scripts      (code)
+   voice.ts   only phrases with no good match -> light tier, with the shop's own item list as the ONLY choices
+   --> lines with item, qty in the item's own unit, price from the catalogue, confidence, up to 4 choices
+```
+
+- **Parser** (`parse.ts`, `lexicon.ts`): Tamil number words and their spoken forms (ஒரு/ஒன்று/ஒண்ணு, ரெண்டு/இரண்டு, மூணு, நாலு, அஞ்சு ... பத்து,
+  பதினஞ்சு, இருபத்தஞ்சு, ஐம்பது, ஐநூறு, இருநூற்று ஐம்பது), Tanglish spellings (rendu, moonu, anju), English words and digits (Tamil digits too),
+  fractions (அரை 0.5, கால் 0.25, முக்கால் 0.75, ஒண்ணரை 1.5, ரெண்டேகால் 2.25, "one and a half", 1/2, ½), units (kg/கிலோ, g/கிராம், litre/லிட்டர், ml,
+  packet/பாக்கெட், dozen/டஜன், bottle, box, metre ...), fused words (அரைக்கிலோ, ரெண்டுகிலோ, 2kg), fillers (சரி, அண்ணா, கொடுங்க, please, ok) and
+  connectors (அப்புறம், மற்றும், and, also) that end an item. Quantity before the item ("ரெண்டு கிலோ அரிசி") or after it ("rice 2 kg") both work: the
+  first word of the speech decides the style. "50 ரூபாய்க்கு அரிசி" is an amount, not a quantity: for loose items the quantity is worked out from the
+  price, and the line is flagged to check.
+- **Matching** (`match.ts`, `phonetic.ts`): Tamil script and Latin spellings are folded to one sound skeleton ("அரிசி", "arisi" and "arissi" meet),
+  word weights come from how rare a word is in the shop's own item list, a leftover name word costs a little ("rice" prefers "Rice" over "Ponni
+  rice 25 kg"), a quantity in kg prefers the loose-by-kg item over the 25 kg bag, and sales volume breaks ties. `high` = clear lead, `medium`, `low` =
+  look-alikes: a low line needs a tap on one of up to four candidates. The glossary (`GLOSSARY` in `lexicon.ts`, about 80 everyday words) is only
+  a backstop: the shop's own Tamil names (Phase 1 translations) and AI search words (Phase 4) are used as well.
+- **Quantity against the item** (`reconcileQty`): grams become kg for loose items; "2 kg" of a "Sugar 1 kg" pack is 2 packs; "half kilo" of a 1 kg pack is
+  1 pack and flagged; a dozen is 12; a unit that does not fit the item is flagged. The strip shows the note.
+- **Light tier** (`voice.ts`): only phrases the code could not match, as `<<<DATA phrases` and `<<<DATA choices` blocks (a small shop sends its whole
+  list, a big one the closest items plus best sellers, at most 80). The strict schema returns `{n, ref, qty, unit, sure}`; a `ref` that was not offered is
+  dropped, nothing but an item reference is read from the reply, a price or a discount in it is ignored, and instruction-looking phrases are never sent. The
+  call is cut off after 5 seconds (the cashier gets the code's own lines; the run still finishes and is metered). AI errors (off, no credits, busy) never block:
+  the lines the code resolved are returned with `meta.ai.error`.
+- **POS** (`voice-bill.tsx`): the mic opens the review strip and listens (shared `useVoice`: தமிழ் default for this helper, remembered separately under
+  `sr_voice_lang_bill`, 1.5 s of silence ends the order); the words fill a box the cashier can also type into (a browser without speech recognition still
+  works that way). Each line shows the item, the unit and price, a Sure / Check / Choose badge, "AI guess" when the light tier chose, an editable quantity, the
+  words that were said and, for unsure lines, the candidates. "Add N lines to cart" puts the ready lines in the cart; lines still needing a tap stay in the strip.
+  Nothing is billed and no bill is created. **Weighed items:** when the shop uses weighing stations (`pos.weighing`), a by-weight item goes through the existing
+  weight prompt with the spoken quantity as the starting value, one item after another, so the weighing flow still decides the weight; with no weighing station
+  the spoken quantity goes straight into the cart line (editable there, as always).
+- **Credits and usage.** Every voice parse is recorded as a `voice-billing` run (provider `local`, 0 credits unless the shop sets `localCredits["voice-billing"]`);
+  when the light tier helps, its own run holds the credits (about 1). Both show in Settings > AI usage by helper. Permissions: `invoices.create` + `ai.use`; the
+  read-only demo role holds neither, so it never spends. The staff "Cashier" template does not include `ai.use`: give cashiers a custom role with it (or
+  the Manager template, which has it) before expecting the mic to show for them.
+
+### Unusual-activity alerts
+
+`alerts.ts` + `stats.ts`, no model. Per person per IST day: bills, cancelled bills (by the day of cancellation), returns (credit notes), discounts as a
+share of sales and discounted bills after 9 pm, lines sold at a price other than the catalogue's (non-tax-inclusive items, 2% tolerance), no-sale drawer
+opens (the POS posts `POST /v1/ai/counter/voice/no-sale` when the drawer opens; before this shipped they were logged on the device only), and closed
+till counts (counted minus expected). Each is compared with that person's OWN last 60 days (robust z-score: median and MAD with a Poisson floor); a
+person with under 14 active days is compared with the shop's pooled days; with under 14 pooled days nothing alerts. Minimum volumes: cancelled bills and
+returns need 3 and a rise of 2, price changes 5, late discounts 3, discount share needs 10 bills and 3 discounted bills, no-sale 4. Till: more than
+1.5x the 95th percentile of that person's usual gap and at least Rs 20 over it, never under Rs 50 (Rs 200 at least until there are 10 closes). Patterns:
+short in 3 of the last 5 closes; "all returns handled by one cashier" (30 days, 6 returns, one person 85%, at least two people billing). Wording is
+"worth a look" in English and Tamil, never an accusation. Severity: info / watch / high. Each alert has a stable key (`voids:<staff>:<date>`) so
+"mark as looked at" (table `ai_activity_reviews`) sticks, and a drill-down (`GET /alerts/drill`) lists the bills or credit notes behind it.
+Computed on demand when the page opens (a month of a 28,000-bill shop takes about a second) and, when the owner switches
+"Add the top alerts to my daily summary" on, for the Phase 2 daily summary (`SummaryFacts.unusual`: watch and high alerts only, up to 3; the same
+recipients as the summary). Not visible to cashiers: the routes need an owner / admin role or `reports.manage` or `staff.manage`; plain staff with `*.view`,
+cashiers and the demo role get 403.
+
+### Staff coaching notes
+
+`coaching.ts`: for the last full Monday-to-Sunday week (or one of the last four): bills, bills a day, average bill, items per bill, cancelled-bill rate, discount
+share, busiest two hours, bills against last week, and the shop's average per person. Under 20 bills in the week: no notes. The light tier writes 2 or 3
+constructive sentences (English or Tamil) from a facts sheet inside a data block; every number must be in the sheet, wording that judges the person (lazy,
+careless, suspicious, theft, warning, bonus, salary, fined...) or promises anything throws the text away for a plain template, and cancelled bills and
+discounts may only be mentioned neutrally. Notes are kept per week, person and language (`ai_staff_coaching`), shown to owners and managers, with a
+"Copy note" button to share it with the person. Writing needs `ai.use` and spends about 1 credit a person; with AI off or no credits the plain wording is
+saved instead (free).
+
+### Shift planning
+
+`shifts.ts`, no model. Bills per hour (IST) per weekday over the last 8 weeks (only days the shop billed on), the festival shopping windows of the next
+week (`insights/calendar.ts`: a lift from the shop's own sales around the same festival last year when it has them, otherwise a plain rule of 1.4x in the
+last two days and 1.2x before; capped 1 to 2.5), divided by how many bills one person handles in an hour: the setting `counter.billsPerStaffHour`, else the
+shop's own median bills per till in the hours it traded, else 8 until there is enough data. Suggested headcount per hour is the rounded-up quotient, at least 1
+in any hour with bills; the grid shows next week (or this week), with copy-as-text and print. "People" are tills open in the hour (bills carry no person).
+
+### Evals
+
+`pnpm --filter @srirealtime/ai eval:counter [-- --live --group=voice|coaching --max-cost=1 --only=ta01,c02]`: 60 spoken orders on a 52-item demo grocery
+(Tamil, Tanglish, English, mixed languages and units, fractions, brand names and AI search words, fillers, look-alikes, words the code does not know, items
+the shop does not have, instructions) and 6 coaching cases in two languages (12 notes). Reports parse accuracy split by who resolved the line and 100% safety. See
+the numbers in the changelog of this phase; reports go to `evals/reports`.
+
+**Tests.** `packages/ai/src/counter/*.test.ts` (176): number words and units, parser cases, sound-alike folding, matching with aliases and Tamil product
+names, quantity against pack sizes, the voice flow on the mock model (no model call for resolvable orders, made-up refs dropped, prices only from the
+catalogue, timeout, AI off / no credits / failure), alert statistics with fixtures (no alert on ordinary days or low volume), coaching facts and wording checks,
+shift maths with a fixed clock, permissions and the registry.
+
+**Limits.** Attribution is by till session. No-sale and price-change signals are new: the first shows up only after the POS release that posts it, the second compares
+with today's catalogue price (a recent repricing shows up as price changes until it has been a few weeks). Voice recognition quality is the browser's (Chrome sends the audio
+to Google; needs internet); the first phone test is still to do. The "often bought together" upsell is not in the coaching notes because suggestions are not tracked per
+cashier. Shift planning counts tills, not people, and the festival lift is a rule until a shop has a year of its own sales. Voice and the AI timeout are per request; the
+rate limit is 60 voice parses a minute per user (in memory).
+
+
+## Phase 5 part B: money (credit risk, cash-flow forecast, loan pack, GSTR-2B explanations)
+
+Four registry entries (`credit-risk`, `cashflow-forecast`, `loan-pack`, `gst-2b-explain`; all light tier, en + ta labels; `credit-risk` needs the `invoices.credit-book` feature and `gst-2b-explain` the `invoices.gst-reports` feature). The rule of the whole phase: **every figure is computed in code from the shop's own records; the model only words it**, its numbers are checked against the facts sheet it was given (`checkNumbers`), and a failed check, an off switch, no credits or no `ai.use` gives a deterministic template in the same language. Names that the model never needs are not in its input (customer names, phone numbers, shop name, staff names). Code: pure logic and prompts in `packages/ai/src/money/` (`risk.ts`, `cashflow.ts`, `loanpack.ts`, `explain2b.ts`, `packs.ts`, `routes.ts`, `registry.ts`, `schema.ts`), the SQL in `apps/api/src/ai-money/` (`risk-data.ts`, `cashflow-data.ts`, `loan-data.ts`, `loan-doc.ts`), wiring in `apps/api/src/kit-ai-money.ts`, screens in `packages/billing-ui` (`components/money/risk.tsx`, `components/money/explain-2b.tsx`, `pages/cash-flow.tsx`, `pages/loan-pack.tsx`, `lib/ai-money.ts`, `lib/messages/ai-money.ts`). Migration `0046_ai_money` (table `ai_money_packs` only).
+
+| Helper | Where | Permissions | Cost |
+|---|---|---|---|
+| Credit risk | badge column in the credit book, a card on the customer page, a hint on the bill form for a D customer | `invoices.credit-book` (owner, admin, a manager with it); the one-line explanation also `ai.use` | score and factors free (no model); the sentence about 1 credit |
+| Cash-flow forecast | Cash flow page (nav next to Reports) | `reports.view`; words also `ai.use`; save balance and level: owner / admin | forecast free; the note about 2 credits |
+| Loan pack | Loan pack page | owner / admin only | pack made in code; the cover note about 2 credits |
+| GSTR-2B explanations | Reports > GST > GSTR-2B, "Explain mismatches" | `reports.view`; AI also `ai.use` | about 2 credits |
+
+Without `ai.use` (the read-only demo role holds neither it nor any write) the explanation routes answer with the template and charge nothing; the loan pack is refused for anyone who is not owner or admin. A helper switched off in Settings > AI (`features[key] === false`) answers `403 ai_feature_off`, and the UI shows nothing.
+
+### Credit risk score (`money/risk.ts`)
+
+Input is only money and dates: bills (date, due date, total, credit notes, payments), the credit limit the owner set, and cheque bounces when known. There is no name, phone, address or place field in `RiskInput`, so nothing personal can influence the score (a test checks the input keys and that renaming everything gives the same result). A bill without a due date is due 15 days after it was made; paid within 3 days of the due date is on time. Money paid with the bill is not credit; credit notes reduce what is owed. Bills from imports are left out (no payment history).
+
+| Part | Points | From |
+|---|---:|---|
+| Punctuality | 50 | share of settled money paid by the due date (36) and how late the late money was, average days (14) |
+| Overdue now | 20 | age of the oldest overdue bill (16 / 11 / 6 / 2 / 0 for up to 7 / 30 / 60 / 90 / more days), halved or cut by a quarter when the overdue amount is above one or two months of buying |
+| Use of the limit | 8 | 8 up to 50%, 6.5 up to 80%, 4 up to 100%, 0 over; no limit set = 5 |
+| Dues over 90 days | 7 | falling 7, steady 5, rising 1.5 (steady with nothing owed 7); "rising" = up by half a month of buying |
+| Instalments | 5 | 5 less the share of settled bills paid in 3 or more instalments |
+| Bills and tenure | 10 | up to 6 for the number of credit bills (10 = full), up to 4 for tenure (a year = full) |
+| Cheque bounces | minus 10 each, at most 20 | recorded bounces |
+
+Band: A from 80, B from 60, C from 40, D below; a bill more than 60 days overdue caps A/B at C, more than 90 days is D. Under 3 credit bills or under 30 days of history: band `new`, no score, the factor "not enough history" (an overdue amount is still mentioned). The top three factors are the biggest concerns first for C and D, the strengths first for A and B (a real concern such as a bounced cheque is always shown). Factor text is built from the numbers, en and ta, with no model. **Suggested limit** = a month of buying (last 90 days) x max(1, average days to pay / 30) x band (A 1.5, B 1.2, C 0.8, D 0.4), rounded to Rs 500; a D is held at what the customer already owes ("hold new credit"); the answer says raise / keep / lower against the current limit. The bill form hint (`RiskHint`) appears for a D customer and never blocks the bill. Optional light-tier sentence (`explainRisk`): the facts sheet has band, score, the factors and the suggested limit and no name or phone; the line is kept only if every number is in the sheet and no word like caste, religion, gender, age, place appears (`PROTECTED_WORDS`; the Tamil words match only as whole words, so "தாமதம்" (delay) is not "மதம்" (religion)).
+
+### Cash-flow forecast (`money/cashflow.ts`)
+
+Day 1 to 30 from tomorrow. Opening balance, in this order: the cash and bank the owner entered on the page plus the money that moved after it was entered (customer payments in, supplier payments and expenses out, by `created_at`); else the latest closed till count of each register this week; else unknown (then the chart is a change from zero and no warning is given). Inflows: counter money taken on the day of the bill, average per weekday over the last 8 weeks (one average for every day under 14 days of history), multiplied by last year's festival lift (that festival's shopping window in the calendar over the 28 days before it, from last year's counter money; needs the baseline and window in the shop's history; 1.15x to 3x; none otherwise); and the open customer bills, each at its due date plus the customer's own average days late (else a default by band), times the share customers of that band usually pay within the horizon (A 95%, B 80%, C 55%, D 25%, new 60%); a bill already past that date trickles in evenly over the 30 days. Outflows: supplier bills on their due date (overdue ones in 7 days), monthly expenses found per category (3 of the last 6 complete months, total within 25% of the median, day of month within 6 days, so a payroll is one line and no employee name is used), and open purchase orders (the share not received) on the expected date plus the shop's usual supplier credit days. The warning is the first day the balance is below the owner's level, with the largest single outflow up to that day as the reason. Suggestions come from code: the top three dues to collect, and "delay purchase order X by 5 days" only when that raises the lowest balance. The sliders (counter sales -50% to +50%, dues collected 0 to 120%) recompute in the browser with the same sum (`projectBalances`): balance = start + sales x (1 + s) + dues x c - supplier - expenses - orders. `writeCashflow` asks the light tier for a note and up to two suggestions from the facts sheet; numbers are checked and a suggestion with no source in the facts is dropped.
+
+### Loan readiness pack (`money/loanpack.ts`, `apps/api/src/ai-money/loan-*.ts`)
+
+Last 12 complete months (fewer if the shop is newer; none = `409 not_enough_history`): sales by month net of credit notes, bills, output GST from the bills and credit notes, purchases before tax, margin (sales less purchases before tax, a rough proxy, not accounts), GSTR-1 months the owner **marked as filed** (GSTR-1 downloads are GET requests and are not recorded, so they cannot be shown), top 5 customers' share (names shown as "Customer 1..5" unless the owner unticks the mask), receivables ageing (the existing report), payables and stock value (the existing services), average daily collections, and an estimated average daily balance only when a balance was entered (walked back from today's balance with each day's net movement). `POST /v1/ai/money/loan-pack {consent: true, showNames}` is refused without the consent flag; the consent screen lists the eight sections from `GET /loan-pack/consent` and what is not included. The pack is stored (`ai_money_packs`: facts, cover note, mask flag) so the PDF and the link show exactly what the owner saw. PDF: document type `loan-pack` registered in the documents registry (A4, en or ta), staff route `/v1/documents/loan-pack/<id>.pdf?locale=` (owner / admin only: its permission key is held by nobody directly). Share link: `POST /loan-pack/:id/share {days 1..30}` gives a random token; `GET /v1/ai/money/public/loan-pack/<token>.pdf` needs no sign-in, serves the PDF with `noindex` and `no-store`, and answers `404 link_expired` when expired or revoked; `DELETE /loan-pack/:id/share` revokes it at once. The cover note (en for the lender, ta for the owner, one call): every number must be in the sheet, `filterClaims` must remove nothing, and words such as guarantee, assured, eligible, strong, excellent, healthy, recommend are refused (`FORBIDDEN_COVER`); the disclaimer ("not audited, not a credit decision") is always on the note; the shop name is not used in the template or sent to the model. Nothing is sent to any lender by the product.
+
+### GSTR-2B explanations (`money/explain2b.ts`)
+
+Reads the GST filing module's existing result (`Gstr2bService.summary` and `list`, read only; nothing in `gstfiling` was changed). Groups: in books not in 2B, in 2B not in books, amount differences, fuzzy matches. The likely cause per row comes from the differences the module recorded (rounding up to Rs 2 a head, date only, number written differently, amount differs, bill dated at month end). One light call words each group from its own facts sheet; a line is kept only if its numbers are in that group's sheet and it holds no verdict (fraud, "your return is wrong", "you must claim"); else the template.
+
+### API (all under `/v1/ai/money`, tenant from the session)
+
+`GET /credit-risk`, `GET /credit-risk/:customerId`, `POST /credit-risk/:customerId/explain`, `GET /cashflow`, `POST /cashflow/explain`, `GET|PUT /cashflow/settings`, `GET /loan-pack/consent`, `POST|GET /loan-pack`, `GET /loan-pack/:id`, `POST|DELETE /loan-pack/:id/share`, `GET /public/loan-pack/:token.pdf`, `POST /gst-2b/:month/explain`. The cash-flow settings live in the `ai` settings namespace (`cashflow: { openingBalance, asOf, asOfAt, minBalance }`).
+
+### Evals
+
+`pnpm --filter @srirealtime/ai eval:money [-- --live --group=risk|cashflow|loan|gst2b --max-cost=0.5]`: 28 cases (risk 5 customers x en/ta, cash flow 4 x en/ta, loan cover 4 including a shop name that tries to inject, 2B 3 x en/ta, one with an injected supplier name). Checks the final text for numbers in the facts, protected-attribute words, advice to refuse service or to borrow, certainty, promises and hype in the cover note, verdicts on the return, Tamil share of the letters, disclaimer present, no customer name leaked. Result of the last live run (Haiku 5.5): 28 of 28 final texts passed (risk 10/10, cash flow 8/8, loan cover 4/4, GSTR-2B 6/6); in the raw model output the checks caught the model's own numbers once (cash flow with no balance entered) and the 2B lines for two groups used the template. The live spend of this phase's evals was about 5 cents in total (all live runs of this phase, including the browser checks). The eval does not pass `ANTHROPIC_WORKSPACE_ID` (see Limits).
+
+### Tests
+
+`packages/ai/src/money/money.test.ts` (risk with on-time, chronic-late, occasional-late, new, bounced-cheque and over-limit fixtures, no protected input, limit rules, explanation checks; forecast maths with a fixed clock: weekday averages, festival lift from last year, recurring-expense detection including a payroll, collection weighting by band, balances, warning and suggestions, template numbers; loan pack facts, masking, cover-note acceptance and rejection; 2B causes, grouping, verdict filter) and `routes.test.ts` (permissions per route, owner-only pack, consent required, share expiry and revoke, template without `ai.use`, AI off and no credits, the demo role never charged).
+
+### Limits
+
+- Cheque bounces are accepted by the score (minus 10 each) but not read yet: the cheque register belongs to the accounting work in progress. Bank statement matching is not used.
+- The opening balance a customer owed before the shop started on the app is not in the score. Bills from imports are not scored.
+- Cash flow: new credit sales made during the next 30 days are not added to collections (counter money only); the balance entered is cash plus bank in one number; till counts are used only as a fallback. Collection rates by band and the 7-day assumption for overdue supplier bills are fixed constants shown on the page.
+- GSTR-1 downloads are not recorded anywhere, so the pack shows "marked filed" only.
+- With `ANTHROPIC_WORKSPACE_ID` set in `.env.local` every live request failed with `ai_failed` in the evals (the value looks wrong for this key); the API used before it restarted with that value. Check it before relying on live AI.
+- No lender decision, rating or recommendation is ever produced; the numbers come from the shop's bills, not audited accounts.

@@ -309,6 +309,20 @@
       "when": 1792880984277,
       "tag": "0043_studio_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793028969676,
+      "tag": "0045_ai_counter",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793029438868,
+      "tag": "0046_ai_money",
+      "breakpoints": true
     }
   ]
 }

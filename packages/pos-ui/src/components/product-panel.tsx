@@ -26,6 +26,7 @@ import type { ProductSummary } from "../lib/types";
 import { usePos } from "./pos-context";
 import { useCatalog } from "./catalog-provider";
 import { fromPosItem, searchCatalog } from "../lib/catalog-sync";
+import { useVoiceBill, VoiceBillButton, VoiceReview, type VoiceAddLine } from "./voice-bill";
 
 const HOME = "__home";
 const ALL = "__all";
@@ -39,6 +40,8 @@ export interface ProductPanelProps {
   onAdd: (p: CartProduct) => void;
   onPickProduct: (productId: string) => void;
   onCamera: () => void;
+  /** Voice billing (Tamil mic): the confirmed lines of a spoken order, to be added to the cart. */
+  onVoiceAdd?: (lines: VoiceAddLine[]) => void;
   favourites: CartProduct[];
   recent: CartProduct[];
   onToggleFavourite: (p: CartProduct) => void;
@@ -51,6 +54,7 @@ export function ProductPanel(props: ProductPanelProps) {
   // The full catalogue on this device (POS terminals): search, categories and scans work from it, also offline.
   const cached = catalog.available && catalog.ready && !!catalog.index;
   const { query, onQuery } = props;
+  const vb = useVoiceBill({ onAdd: (lines) => props.onVoiceAdd?.(lines) });
   const [category, setCategory] = React.useState<string>(HOME);
   const q = useDebounced(query.trim(), cached ? 60 : 150);
   const categories = useCategories(has.catalogue && !cached);
@@ -131,10 +135,21 @@ export function ProductPanel(props: ProductPanelProps) {
             )}
           </InputGroup>
         </Field>
+        {props.onVoiceAdd && <VoiceBillButton vb={vb} />}
         <Button type="button" variant="outline" size="icon-lg" onClick={props.onCamera} aria-label={t("pos.scan.camera")} title={t("pos.scan.camera")}>
           <CameraIcon />
         </Button>
       </div>
+
+      {props.onVoiceAdd && (
+        <VoiceReview
+          vb={vb}
+          onSearch={(text) => {
+            onQuery(text);
+            props.searchRef.current?.focus();
+          }}
+        />
+      )}
 
       {cached && (
         <p className="-mt-1 flex items-center gap-1.5 text-xs text-muted-foreground" data-catalog-status="">

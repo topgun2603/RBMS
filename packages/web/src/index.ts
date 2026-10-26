@@ -182,6 +182,7 @@ export { AtRiskPanel, AtRiskPage, useAtRisk, type AtRiskClient } from "./compone
 export { HardwareQuoteButton } from "./components/ai-trades-c/hardware-quote";
 export { TamilReviewButton, TamilReviewDialog, TranslateToTamilButton } from "./components/ai-assist/translate-bulk";
 export { useAiAssistAllowed, useAiAssistStatus, helperOn, type AiAssistStatus } from "./components/ai-assist/use-assist";
+export { useVoice, VoiceLangChip, type VoiceLang } from "./components/ai-assist/voice";
 export { UpgradeDialog, UpgradeDialogHost, limitName } from "./components/upgrade-dialog";
 export {
   BranchSwitcher,

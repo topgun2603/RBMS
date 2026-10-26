@@ -1,7 +1,9 @@
 import type { FeatureDef, PermissionDef } from "@srirealtime/core";
 import { z } from "zod";
 import { DAILY_SUMMARY_SCHEMA } from "./insights/daily-settings";
+import { MONEY_REGISTRY } from "./money/registry";
 import { STORE_REGISTRY } from "./store/registry";
+import { COUNTER_REGISTRY } from "./counter/registry";
 import type { AiTier } from "./types";
 
 /** The module feature (plan / app profile gate, owner can hide it in Settings > Features). The shop's own opt-in is settings `ai.enabled`. */
@@ -390,6 +392,10 @@ export const AI_FEATURE_REGISTRY: readonly AiFeatureInfo[] = [
   },
   // ---- Phase 4 part B: store features (docs/ai.md "Phase 4 part B")
   ...STORE_REGISTRY,
+  // ---- Phase 5 part B: money (credit risk, cash-flow forecast, loan pack, GSTR-2B explanations)
+  ...MONEY_REGISTRY,
+  // ---- Phase 5 part A: the counter (Tamil voice billing, unusual-activity alerts, staff coaching, shift planning)
+  ...COUNTER_REGISTRY,
 ];
 
 export const featureInfo = (key: string) => AI_FEATURE_REGISTRY.find((f) => f.key === key);
@@ -413,6 +419,10 @@ export const AI_SETTINGS_SCHEMA = z.object({
   dailySummary: DAILY_SUMMARY_SCHEMA.optional(),
   /** Shopper chat on the store: the most credits it may use a day (IST). Missing = 300. At the cap the chat goes back to the shop's people. */
   shopperChat: z.object({ dailyCredits: z.number().int().min(0).max(100_000) }).optional(),
+  /** Counter helpers (Phase 5 part A): bills one person handles in an hour (shift planning; missing = the shop's own median) and whether the daily summary also lists unusual activity. */
+  counter: z.object({ billsPerStaffHour: z.number().min(1).max(200).optional(), alertsInSummary: z.boolean().optional() }).optional(),
+  /** Cash-flow forecast: cash and bank in hand on `asOf` (paise; null = not entered) and the warning level (paise). */
+  cashflow: z.object({ openingBalance: z.number().int().nullable(), asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), asOfAt: z.string().nullable().optional(), minBalance: z.number().int().min(0) }).optional(),
 });
 export type AiSettings = z.infer<typeof AI_SETTINGS_SCHEMA>;
 export const AI_SETTINGS_DEFAULTS: AiSettings = { enabled: false, features: {}, maskGstin: false, storePrompts: false };

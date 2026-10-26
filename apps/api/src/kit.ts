@@ -21,11 +21,13 @@ import { createAiAssistKit } from "./kit-ai-assist";
 import { createAiAsk } from "./kit-ai-ask";
 import { createAiStudio } from "./kit-ai-studio";
 import { createAiInsightsKit } from "./kit-ai-insights";
+import { createAiMoneyKit } from "./kit-ai-money";
 import { createAiVision } from "./kit-ai-vision";
 import { createAiTradesA } from "./kit-ai-trades-a";
 import { createAiTradesBKit } from "./kit-ai-trades-b";
 import { createAiStoreKit } from "./kit-ai-store";
 import { createAiImagingKit } from "./kit-ai-imaging";
+import { createAiCounterKit } from "./kit-ai-counter";
 import { createAiTradesC } from "./kit-ai-trades-c";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
@@ -160,6 +162,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   let gstFilingRef: ReturnType<typeof createGstFiling> | undefined;
   // AI Phase 4 part B (kit-ai-store.ts): a product saved as active may get its search words; created further down.
   let aiStoreRef: ReturnType<typeof createAiStoreKit> | undefined;
+  // AI Phase 5 part A (kit-ai-counter.ts): the daily summary may list unusual counter activity; created further down.
+  let aiCounterRef: ReturnType<typeof createAiCounterKit> | undefined;
   const emit = (tenantId: string, type: string, data: unknown) => {
     if (aiStoreRef && /^product\.(created|updated)$/.test(type)) void aiStoreRef.onDomainEvent(tenantId, type, data);
     if (accountingRef && /^(invoice|payment|credit_note)\./.test(type)) accountingRef.service.kick(tenantId);
@@ -1440,12 +1444,26 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     shopName: async (tenantId) => (await shopName(tenantId)) ?? "",
     shopTrade: async (tenantId) => ((await storeSettings.get({ tenantId })) as { businessType?: string }).businessType?.trim() || null,
     channels: { whatsapp: !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID), email: !!env.RESEND_API_KEY },
+    extraFacts: (tenantId, date) => (aiCounterRef ? aiCounterRef.summaryExtras(tenantId, date) : Promise.resolve([])),
     log,
     now: clock,
   });
   defineJob(aiInsights.job, async () => {
     const done = await aiInsights.daily.tick();
     if (done.length) log.info({ shops: done.length, results: done.map((d) => d.outcome) }, "ai: daily summaries");
+  });
+  // Phase 5 part B (docs/ai.md): credit risk score, cash-flow forecast, loan readiness pack, GSTR-2B explanations, see kit-ai-money.ts.
+  const aiMoney = createAiMoneyKit({
+    db,
+    ai: ai.service,
+    invoices: invoices.service,
+    inventory: inventory.service,
+    reco: () => gstFiling.reco,
+    documents,
+    aiSettings: settings.service.handle("ai") as never,
+    shopName: async (tenantId) => (await shopName(tenantId)) ?? "",
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    now: clock,
   });
 
   defineJob(MARKETPLACE_SETTLE_JOB, async () => {
@@ -1592,6 +1610,10 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     log,
   });
 
+  // Phase 5 part A (docs/ai.md): Tamil voice billing, unusual-activity alerts, staff coaching, shift planning, see kit-ai-counter.ts.
+  const aiCounter = createAiCounterKit({ db, ai: ai.service, aiSettings: settings.service.handle("ai") as never, log, now: clock });
+  aiCounterRef = aiCounter;
+
   // POS terminals: pairing, device tokens, staff PINs, catalogue sync, weigh tickets (kit-pos.ts).
   const pos = createPosWiring({
     db,
@@ -1726,12 +1748,14 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     aiStudio.module,
     aiStudio.adminModule,
     aiInsights.module,
+    aiMoney.module,
     aiVision,
     ...aiTradesA.modules,
     aiTradesC,
     aiTradesB.module,
     aiStore.module,
     aiImaging.module,
+    aiCounter.module,
     medicines.module,
     dining.module,
     aggregators.module,

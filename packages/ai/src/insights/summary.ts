@@ -31,6 +31,8 @@ export interface SummaryFacts {
   expiring: { batches: number; qty: number; value: number; days: number } | null;
   purchases: { count: number; amount: number };
   expenses: { count: number; amount: number };
+  /** Phase 5 part A: top unusual-activity lines (en + ta), only when the owner switched them into the summary. */
+  unusual?: { en: string; ta: string }[];
 }
 
 const WEEKDAYS_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -71,6 +73,7 @@ export function factsSheet(f: SummaryFacts): string {
   if (f.expiring) L.push(`Expiring within ${f.expiring.days} days: ${f.expiring.batches} batches, ${rupees(f.expiring.value)} of stock`);
   L.push(`Purchases today: ${rupees(f.purchases.amount)} (${f.purchases.count} bills)`);
   L.push(`Expenses today: ${rupees(f.expenses.amount)} (${f.expenses.count} entries)`);
+  if (f.unusual?.length) L.push(`Counter activity worth a look (say it gently, never as blame): ${f.unusual.map((u) => n(u.en)).join("; ")}`);
   return L.join("\n");
 }
 
@@ -106,6 +109,7 @@ export function templateSummary(f: SummaryFacts, lang: SummaryLang): SummaryText
   if (f.purchases.amount > 0 || f.expenses.amount > 0) {
     parts.push(ta ? `கொள்முதல் ${rupees(f.purchases.amount)}, செலவு ${rupees(f.expenses.amount)}.` : `Purchases ${rupees(f.purchases.amount)}, expenses ${rupees(f.expenses.amount)}.`);
   }
+  if (f.unusual?.length) parts.push(ta ? `ஒரு முறை பார்க்கலாம்: ${f.unusual.map((u) => u.ta).join(" ")}` : `Worth a look: ${f.unusual.map((u) => u.en).join("; ")}.`);
 
   const actions: string[] = [];
   if (f.dues.overdue.length) {

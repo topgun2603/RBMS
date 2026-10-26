@@ -15,14 +15,15 @@ const QUICK = [0.25, 0.5, 1, 2];
  * Weight for a by-weight item (picked from the grid or its own barcode scanned): kg (or the item's unit), with quick
  * picks. Scale labels already carry the weight and never open this.
  */
-export function WeightDialog({ product, onClose, onAdd }: { product: CartProduct | null; onClose: () => void; onAdd: (p: CartProduct, qty: number) => void }) {
+export function WeightDialog({ product, said, onClose, onAdd }: { product: CartProduct | null; /** Voice billing: the quantity the cashier said, offered as the starting value. */ said?: number | null; onClose: () => void; onAdd: (p: CartProduct, qty: number) => void }) {
   const { t } = useI18n();
   const [text, setText] = React.useState("");
   const [touched, setTouched] = React.useState(false);
   React.useEffect(() => {
-    setText("");
+    setText(said ? String(said) : "");
     setTouched(false);
-  }, [product?.itemId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when another item comes up
+  }, [product?.itemId, said]);
   const grams = product?.unit.trim().toLowerCase().startsWith("g") ?? false;
   const kg = parseManualWeight(text);
   const qty = kg === null ? null : grams ? Math.round(kg * 1000 * 1000) / 1000 : kg;

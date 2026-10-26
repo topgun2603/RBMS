@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests",
     "eval": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run.ts",
     "eval:phase1": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/phase1.ts",
+    "eval:money": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/money.ts",
     "eval:phase2b": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/phase2b.ts",
     "eval:vision": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/run-vision.ts",
     "eval:trades-b": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/trades-b.ts",
@@ -18,6 +19,7 @@
     "eval:trades-a": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/trades-a.ts",
     "eval:store": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/store.ts",
     "eval:ask": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/ask.ts",
+    "eval:counter": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/counter.ts",
     "models:download": "node scripts/download-models.mjs",
     "eval:studio": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/studio.ts"
   },

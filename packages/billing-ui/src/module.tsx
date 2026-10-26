@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ArrowLeftRightIcon,
+  BanknoteIcon,
   BarChart3Icon,
   BellRingIcon,
   BookMarkedIcon,
@@ -120,6 +121,9 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { href: "reports", label: "billing.nav.reports", icon: BarChart3Icon, feature: F.reports },
     { href: "gst", label: "billing.nav.gst", icon: FileCheck2Icon, feature: F.gstReports, permission: "reports.view" },
     { href: "expenses", label: "billing.nav.expenses", icon: ReceiptIndianRupeeIcon, feature: F.expenses, permission: EXPENSES_PERMISSION },
+    // AI Phase 5 part B (docs/ai.md): the forecast needs report access; the loan pack is for owners and admins (ai.manage).
+    { href: "cash-flow", label: "billing.nav.cashflow", icon: TrendingUpIcon, feature: "ai", permission: "reports.view" },
+    { href: "loan-pack", label: "billing.nav.loanPack", icon: BanknoteIcon, feature: "ai", permission: "ai.manage" },
   ];
 
   const accounting = [
@@ -165,6 +169,8 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "stock", component: page(() => import("./pages/stock")), feature: F.inventory },
     { path: "batches", component: page(() => import("./pages/batches")), feature: F.inventory },
     { path: "pricing-hints", component: page(() => import("./pages/pricing-hints")), feature: F.inventory, permission: ["reports.view", "inventory.adjust", "inventory.purchases"] },
+    { path: "cash-flow", component: page(() => import("./pages/cash-flow")), feature: "ai", permission: "reports.view" },
+    { path: "loan-pack", component: page(() => import("./pages/loan-pack")), feature: "ai", permission: "ai.manage" },
     { path: "stock-audit", component: page(() => import("./pages/stock-audits")), feature: F.inventory, permission: "inventory.audit" },
     { path: "stock-audit/:id", component: page(() => import("./pages/stock-audit-detail")), feature: F.inventory, permission: "inventory.audit" },
     { path: "transfers", component: page(() => import("./pages/transfers")), feature: F.locations },

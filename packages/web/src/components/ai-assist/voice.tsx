@@ -40,9 +40,9 @@ const LANG_KEY = "sr_voice_lang";
 const SILENCE_MS = 3000;
 const MAX_MS = 60_000;
 
-function storedLang(fallback: VoiceLang): VoiceLang {
+function storedLang(fallback: VoiceLang, key: string = LANG_KEY): VoiceLang {
   try {
-    const v = window.localStorage.getItem(LANG_KEY);
+    const v = window.localStorage.getItem(key);
     return v === "ta" || v === "en" ? v : fallback;
   } catch {
     return fallback;
@@ -52,12 +52,20 @@ function storedLang(fallback: VoiceLang): VoiceLang {
 export type VoiceError = "denied" | "no-speech" | "network" | "unsupported-lang" | "failed";
 
 /** The recogniser with interim results, silence stop and restart when Android ends a session early. */
-export function useVoice(opts: { onText: (text: string, final: boolean) => void }) {
+export function useVoice(opts: {
+  onText: (text: string, final: boolean) => void;
+  /** The spoken language when the person has not chosen one yet (default: the screen language). Voice billing starts in Tamil. */
+  defaultLang?: VoiceLang;
+  /** Remember the chosen language under this key instead of the shared one (so a helper can have its own default). */
+  storageKey?: string;
+  /** Stop after this many ms of silence (default 3000). */
+  silenceMs?: number;
+}) {
   const { locale } = useI18n();
   const [supported, setSupported] = React.useState(false);
   const [listening, setListening] = React.useState(false);
   const [error, setError] = React.useState<VoiceError | null>(null);
-  const [lang, setLangState] = React.useState<VoiceLang>(locale === "ta" ? "ta" : "en");
+  const [lang, setLangState] = React.useState<VoiceLang>(opts.defaultLang ?? (locale === "ta" ? "ta" : "en"));
   const rec = React.useRef<Recognition | null>(null);
   const want = React.useRef(false);
   const finals = React.useRef("");
@@ -68,7 +76,8 @@ export function useVoice(opts: { onText: (text: string, final: boolean) => void 
 
   React.useEffect(() => {
     setSupported(!!ctor());
-    setLangState(storedLang(locale === "ta" ? "ta" : "en"));
+    setLangState(storedLang(opts.defaultLang ?? (locale === "ta" ? "ta" : "en"), opts.storageKey));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the options are fixed for a mounted helper
   }, [locale]);
 
   const clearSilence = () => {
@@ -99,7 +108,7 @@ export function useVoice(opts: { onText: (text: string, final: boolean) => void 
   const setLang = (l: VoiceLang) => {
     setLangState(l);
     try {
-      window.localStorage.setItem(LANG_KEY, l);
+      window.localStorage.setItem(opts.storageKey ?? LANG_KEY, l);
     } catch {
       /* private mode */
     }
@@ -108,7 +117,7 @@ export function useVoice(opts: { onText: (text: string, final: boolean) => void 
 
   const armSilence = () => {
     clearSilence();
-    silence.current = setTimeout(stop, SILENCE_MS);
+    silence.current = setTimeout(stop, opts.silenceMs ?? SILENCE_MS);
   };
 
   const launch = (Ctor: RecognitionCtor, l: VoiceLang) => {
@@ -240,7 +249,7 @@ export function VoiceAppendButton({ onText, className }: { onText: (text: string
   );
 }
 
-function VoiceLangChip({ lang, onChange }: { lang: VoiceLang; onChange: (l: VoiceLang) => void }) {
+export function VoiceLangChip({ lang, onChange }: { lang: VoiceLang; onChange: (l: VoiceLang) => void }) {
   const { t } = useI18n();
   return (
     <span className="inline-flex rounded-full border p-0.5 text-xs" role="group" aria-label={t("web.voice.lang")}>

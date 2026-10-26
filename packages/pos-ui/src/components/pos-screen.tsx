@@ -78,6 +78,7 @@ import { TopBar } from "./top-bar";
 import { VariantPicker } from "./variant-picker";
 import { WeightDialog } from "./weight-dialog";
 import { QuickAddDialog, type QuickAddTarget } from "./quick-add-dialog";
+import type { VoiceAddLine } from "./voice-bill";
 import { QUICK_ADD_PERMISSION, shouldOfferQuickAdd } from "../lib/quick-add";
 import { OfflineBar } from "./offline/offline-bar";
 import { OfflineProvider, useOffline } from "./offline/offline-provider";
@@ -173,6 +174,9 @@ function Counter() {
   const [lastAdded, setLastAdded] = React.useState<{ name: string; n: number } | null>(null);
   /** A by-weight item waiting for its weight. */
   const [weighProduct, setWeighProduct] = React.useState<CartProduct | null>(null);
+  /** Voice billing: weighed items said aloud wait here for the weighing prompt (the weighing station flow wins), one after another. */
+  const [weighQueue, setWeighQueue] = React.useState<VoiceAddLine[]>([]);
+  const [weighSaid, setWeighSaid] = React.useState<number | null>(null);
   const [quickAddTarget, setQuickAddTarget] = React.useState<QuickAddTarget | null>(null);
   const [lastGst, setLastGst] = useLocalState<number | null>(storageKey("quick-add-gst", env.tenant), null);
   const hasCatalogueManage = usePermission(QUICK_ADD_PERMISSION);
@@ -354,6 +358,27 @@ function Counter() {
       addOrWeigh(first);
       setQuery("");
     } else miss(q);
+  };
+
+  /** The confirmed lines of a spoken order (voice billing). Nothing is billed here; the lines join the cart like any other. */
+  const addVoiceLines = (lines: VoiceAddLine[]) => {
+    const toWeigh: VoiceAddLine[] = [];
+    for (const l of lines) {
+      if (l.product.soldBy === "weight" && env.has.weighing) toWeigh.push(l);
+      else add(l.product, l.qty);
+    }
+    if (toWeigh.length) {
+      setWeighProduct(toWeigh[0]!.product);
+      setWeighSaid(toWeigh[0]!.qty);
+      setWeighQueue(toWeigh.slice(1));
+    }
+    setQuery("");
+  };
+  const nextWeigh = () => {
+    const next = weighQueue[0];
+    setWeighProduct(next?.product ?? null);
+    setWeighSaid(next?.qty ?? null);
+    setWeighQueue((q) => q.slice(1));
   };
 
   /** Grid taps: by-weight items ask for the weight first. */
@@ -694,6 +719,7 @@ function Counter() {
               }}
               onPickProduct={setPickProduct}
               onCamera={() => setDialog("camera")}
+              onVoiceAdd={addVoiceLines}
               favourites={favourites}
               recent={recent}
               onToggleFavourite={(p) => setFavourites((f) => toggleFavourite(f, p))}
@@ -778,10 +804,15 @@ function Counter() {
       <VariantPicker productId={pickProduct} onClose={() => setPickProduct(null)} onPick={add} />
       <WeightDialog
         product={weighProduct}
-        onClose={() => setWeighProduct(null)}
+        said={weighSaid}
+        onClose={() => {
+          setWeighProduct(null);
+          setWeighQueue([]);
+          setWeighSaid(null);
+        }}
         onAdd={(p, qty) => {
           add(p, qty);
-          setWeighProduct(null);
+          nextWeigh();
         }}
       />
       <QuickAddDialog

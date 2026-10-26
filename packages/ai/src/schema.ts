@@ -325,3 +325,9 @@ export type AiTryonRow = typeof aiTryons.$inferSelect;
 
 // Studio assistant tables (Phase 4 part A): change sets and feature requests.
 export * from "./studio/schema";
+
+// Money tables (Phase 5 part B): packs for a lender.
+export * from "./money/schema";
+
+// Counter helpers (Phase 5 part A): activity-alert reviews, no-sale events, weekly coaching notes.
+export * from "./counter/schema";

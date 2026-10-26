@@ -54,6 +54,7 @@ import {
   type Summary2b,
 } from "../../lib/gst";
 import { FileButton, PeriodPicker, Section, ViewOnlyNote, useCanManage, useGstText, usePeriodLabel } from "./shared";
+import { Explain2bCard } from "../money/explain-2b";
 
 const PAGE = 50;
 const TONE: Record<MatchStatus, StatusTone> = { matched: "success", fuzzy: "warning", amount_mismatch: "danger", missing_in_books: "danger", accepted: "info", ignored: "neutral" };
@@ -274,6 +275,7 @@ function Imported({ month, s }: { month: string; s: Summary2b }) {
         />
       </div>
       <p className="text-sm text-muted-foreground">{t("billing.gst.b2.totals", { tax2b: money(s.tax2b ?? 0), taxBooks: money(s.taxBooks ?? 0) })}</p>
+      <Explain2bCard month={month} openCount={review + (c.missing_in_books ?? 0) + (c.missing_in_2b ?? 0)} />
 
       <ChipGroup
         aria-label={t("billing.gst.b2.viewLabel")}

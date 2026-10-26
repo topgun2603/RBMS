@@ -9,6 +9,8 @@ import { CustomerDialog } from "../components/customer-dialog";
 import { CreditBookIllustration } from "../components/illustrations";
 import { BalancePill, balanceInk, OverduePill, useRemind } from "../components/credit-book/credit-book-ui";
 import { ReceiveDialog } from "../components/credit-book/receive-dialog";
+import { RiskBadge } from "../components/money/risk";
+import { useRiskList } from "../lib/ai-money";
 import { money } from "../lib/format";
 import type { Customer, CreditBookResponse, CreditBookRow } from "../lib/types";
 
@@ -31,6 +33,8 @@ function CreditBook() {
   const whatsapp = useFeature("invoices.whatsapp");
   const [receiving, setReceiving] = React.useState<Pick<Customer, "id" | "name" | "outstanding"> | null>(null);
   const [adding, setAdding] = React.useState(false);
+  // AI Phase 5 part B: a quiet A to D badge per customer; nothing is shown when the helper is off or not allowed.
+  const risk = useRiskList(useFeature("ai")).data;
 
   const filters = React.useMemo(
     () =>
@@ -93,6 +97,16 @@ function CreditBook() {
         cell: (r) => <OverduePill overdue={r.overdue} />,
       },
       {
+        id: "risk",
+        header: t("billing.creditBook.col.risk"),
+        card: "meta",
+        hideBelow: "sm",
+        cell: (r) => {
+          const x = risk?.get(r.customer.id);
+          return x ? <RiskBadge band={x.band} score={x.score} /> : <span className="text-muted-foreground">—</span>;
+        },
+      },
+      {
         id: "lastPayment",
         header: t("billing.creditBook.col.lastPayment"),
         sortable: true,
@@ -148,7 +162,7 @@ function CreditBook() {
         ),
       },
     ],
-    [t, formatDate, whatsapp, pendingId],
+    [t, formatDate, whatsapp, pendingId, risk],
   );
 
   const st = useServerTable<CreditBookRow, typeof filters>({

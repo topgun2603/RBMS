@@ -24,6 +24,8 @@ export interface AiInsightsKitDeps {
   channels: { whatsapp: boolean; email: boolean };
   log: { info(o: object, m?: string): void; warn(o: object, m?: string): void };
   now?: () => Date;
+  /** Phase 5 part A: unusual-activity lines to add to a day's summary (empty unless the owner switched that on). */
+  extraFacts?: (tenantId: string, date: string) => Promise<{ en: string; ta: string }[]>;
 }
 
 /** Phase 2 part B wiring (docs/ai.md "Phase 2 part B"): daily summary job + delivery, reorder, campaign writer, review helpers. */
@@ -32,7 +34,11 @@ export function createAiInsightsKit(deps: AiInsightsKitDeps) {
   const settingsOf = async (tenantId: string) => (await deps.aiSettings.get({ tenantId })) as AiSettings;
 
   const daily: DailyPorts = {
-    facts: (tenantId, date) => gatherFacts(deps.db, deps.catalogue, deps.expiry, tenantId, date),
+    facts: async (tenantId, date) => {
+      const f = await gatherFacts(deps.db, deps.catalogue, deps.expiry, tenantId, date);
+      const unusual = deps.extraFacts ? await deps.extraFacts(tenantId, date).catch(() => []) : [];
+      return unusual.length ? { ...f, unusual } : f;
+    },
     shopName: deps.shopName,
     async aiSettings(tenantId) {
       const s = await settingsOf(tenantId);

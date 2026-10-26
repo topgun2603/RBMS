@@ -3,6 +3,7 @@ import { discountsEn, discountsTa } from "./messages-discounts";
 import { pinsEn, pinsTa } from "./messages-pins";
 import { aiEn, aiTa } from "./messages-ai";
 import { dailyEn, dailyTa } from "./messages-ai-daily";
+import { counterEn, counterTa } from "./messages-counter";
 
 /** workspace.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {
@@ -1548,4 +1549,4 @@ const ta: Messages = {
   "workspace.messages.channelName.push": "செயலி",
 };
 
-export const workspaceMessages = { en: { ...en, ...pinsEn, ...discountsEn, ...aiEn, ...dailyEn }, ta: { ...ta, ...pinsTa, ...discountsTa, ...aiTa, ...dailyTa } } as const;
+export const workspaceMessages = { en: { ...en, ...pinsEn, ...discountsEn, ...aiEn, ...dailyEn, ...counterEn }, ta: { ...ta, ...pinsTa, ...discountsTa, ...aiTa, ...dailyTa, ...counterTa } } as const;

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Loader2Icon, BanknoteIcon } from "lucide-react";
 import { Button, DropdownMenuItem, toast } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
+import { posApi } from "../lib/api";
 import { failureKey, kickDrawer, useDeviceConfig } from "../lib/printing";
 import { usePos } from "./pos-context";
 
@@ -22,7 +23,11 @@ export function useNoSale() {
     setBusy(true);
     try {
       const r = await kickDrawer({ tenant, kind: "no_sale", user: cashier, interactive: true });
-      if (r.opened) toast.success(t("pos.drawer.opened"));
+      if (r.opened) {
+        toast.success(t("pos.drawer.opened"));
+        // Unusual-activity alerts count no-sale opens (AI Phase 5 part A); a failure here never matters to the cashier.
+        void posApi.post("/ai/counter/voice/no-sale", {}).catch(() => undefined);
+      }
       else toast.error(t(failureKey(r.reason)));
     } finally {
       setBusy(false);

@@ -48,6 +48,7 @@ import { InvoiceRow, InvoiceRowSkeleton } from "../components/invoice-row";
 import { BalancePill, balanceInk, useRemind } from "../components/credit-book/credit-book-ui";
 import { LedgerSkeleton, LedgerTable, LedgerTimeline, normalizeLedger } from "../components/credit-book/ledger-view";
 import { ReceiveDialog } from "../components/credit-book/receive-dialog";
+import { RiskCard } from "../components/money/risk";
 import { ShareStatementDialog } from "../components/credit-book/share-statement-dialog";
 import { money, stateLabel, whatsappNumber } from "../lib/format";
 import { useCustomer, useDeleteCustomer, useInvoiceList } from "../lib/queries";
@@ -180,6 +181,7 @@ export default function CustomerDetailPage() {
             <BalanceCard customer={c} onReceive={creditBook ? () => setReceiving(true) : undefined} />
           </div>
 
+          {creditBook && <RiskCard customerId={c.id} />}
           {creditBook && <LedgerCard customer={c} />}
 
           <Card className="gap-2">
