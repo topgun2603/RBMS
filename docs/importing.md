@@ -114,3 +114,9 @@ Off ledgers and the stock items first; the file only refers to them by name (led
 * Imported bills cannot be edited or cancelled; undo the batch instead. A credit note against an imported sale is allowed.
 * GST rates outside 0/0.25/3/5/12/18/28 are kept as written on imported bills.
 * The all-data zip is built in memory: very large shops (millions of rows) should export per dataset.
+
+## Row numbers and the errors CSV
+
+Row numbers in the preview, the error list and `errors.csv` are the row numbers of the uploaded file as a spreadsheet shows them:
+a title block above the heading row and blank rows between data rows are counted. The errors CSV keeps the file's own column
+headings (old jobs without them fall back to "Column 1, 2, ...").

@@ -20,10 +20,10 @@ import {
   toast,
   useReducedMotionSafe,
 } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, displayName, QueryError, SearchField, useFeature, useI18n, useSession } from "@srirealtime/web";
+import { ConfirmDialog, describeError, displayName, QueryError, SearchField, useI18n, useSession } from "@srirealtime/web";
 import { LevelPill, useRelativeTime } from "../bits";
 import { useHasPermission, useMyUserId } from "../../lib/access";
-import { POS_DEVICES_PERMISSION, POS_TERMINALS_FEATURE, usePosPins } from "../../lib/pins";
+import { POS_DEVICES_PERMISSION, usePosPins } from "../../lib/pins";
 import { PinDialog, type PinTarget } from "./pin-dialog";
 import { useMembers, useRemoveMember, useRoles, useUpdateMember } from "../../lib/queries";
 import type { StaffMember } from "../../lib/types";
@@ -46,7 +46,8 @@ export function MembersTab() {
   const [dialog, setDialog] = React.useState<{ member: StaffMember | null } | null>(null);
   const [removing, setRemoving] = React.useState<StaffMember | null>(null);
   // POS PINs (paired terminals): who has one; managers with pos.devices set / reset / remove them.
-  const pinsOn = useFeature(POS_TERMINALS_FEATURE);
+  // PINs are always available: a manager PIN approves discounts even in apps without POS terminals.
+  const pinsOn = true;
   const canPins = useHasPermission(POS_DEVICES_PERMISSION);
   const pins = usePosPins(pinsOn && canPins);
   const [pinFor, setPinFor] = React.useState<PinTarget | null>(null);

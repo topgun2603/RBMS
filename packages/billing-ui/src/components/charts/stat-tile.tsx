@@ -27,6 +27,8 @@ export interface StatTileProps {
   className?: string;
   /** Visual variant: card (default) or on the hero band (inherits colour). */
   variant?: "card" | "hero";
+  /** Money shown in full rupees (₹1,500) instead of compact (₹1.5K): for totals people reconcile, like a stock audit. */
+  exactMoney?: boolean;
 }
 
 /** Single-number tile: label, auto-compact value (₹12.9K, ₹4.2L), delta with ▲/▼ + text, optional sparkline. */
@@ -45,10 +47,11 @@ export function StatTile({
   loading,
   className,
   variant = "card",
+  exactMoney,
 }: StatTileProps) {
   const { t, formatNumber } = useI18n();
   const v = value ?? 0;
-  const fmt = (n: number) => (kind === "money" ? compactINR(n) : formatNumber(Math.round(n)));
+  const fmt = (n: number) => (kind === "money" ? (exactMoney ? money(Math.round(n)) : compactINR(n)) : formatNumber(Math.round(n)));
   const exact = kind === "money" ? money(v) : formatNumber(v);
   const pct = previous === undefined ? null : pctChange(v, previous);
   const hero = variant === "hero";

@@ -204,16 +204,17 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { id: "kpi-to-collect", zone: "kpi", priority: 40, feature: F.invoices, component: widget("ToCollectKpiWidget", widgets) },
     { id: "kpi-collected", zone: "kpi", priority: 45, feature: F.invoices, component: widget("CollectedKpiWidget", widgets) },
     { id: "kpi-overdue", zone: "kpi", priority: 50, feature: F.invoices, component: widget("OverdueKpiWidget", widgets) },
+    // Widgets that call report / credit-book endpoints also need the permission those endpoints check (a cashier gets no 403s).
     // Needs attention: overdue bills, low / out-of-stock items.
     { id: "kpi-quotations", zone: "kpi", priority: 52, feature: F.quotations, component: widget("QuotationsKpiWidget", () => import("./widgets/quotations")) },
     { id: "kpi-payables", zone: "kpi", priority: 55, feature: F.purchases, component: widget("PayablesKpiWidget", () => import("./widgets/payables")) },
     { id: "kpi-expiry", zone: "kpi", priority: 58, feature: F.inventory, component: widget("ExpiryKpiWidget", () => import("./widgets/expiry")) },
     { id: "ai-summary", zone: "attention", priority: 5, feature: "ai", component: widget("AiSummaryWidget", () => import("./widgets/ai-summary")) },
     { id: "attention", zone: "attention", priority: 10, feature: F.invoices, component: widget("BillingAttentionWidget", widgets) },
-    { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, component: widget("SalesTrendWidget", widgets) },
+    { id: "sales-trend", zone: "main", priority: 10, feature: F.reports, permission: "reports.view", component: widget("SalesTrendWidget", widgets) },
     { id: "recent-bills", zone: "main", priority: 30, feature: F.invoices, component: widget("RecentBillsWidget", widgets) },
-    { id: "payments-by-method", zone: "side", priority: 10, feature: F.reports, component: widget("PaymentMethodsWidget", widgets) },
-    { id: "top-dues", zone: "side", priority: 20, feature: F.creditBook, component: widget("TopDuesWidget", widgets) },
+    { id: "payments-by-method", zone: "side", priority: 10, feature: F.reports, permission: "reports.view", component: widget("PaymentMethodsWidget", widgets) },
+    { id: "top-dues", zone: "side", priority: 20, feature: F.creditBook, permission: "invoices.credit-book", component: widget("TopDuesWidget", widgets) },
     { id: "low-stock", zone: "side", priority: 30, feature: F.inventory, component: widget("LowStockWidget", widgets) },
   ];
 
@@ -233,7 +234,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     actions: [
       { id: "new-bill", label: "billing.nav.newBill", href: "invoices/new", icon: PlusIcon, feature: F.invoices, primary: true },
       { id: "new-quotation", label: "billing.nav.newQuotation", href: "quotations/new", icon: FileSignatureIcon, feature: F.quotations },
-      { id: "receive-money", label: "billing.dashboard.quickReceive", href: "credit-book?filter=due", icon: HandCoinsIcon, feature: F.creditBook },
+      { id: "receive-money", label: "billing.dashboard.quickReceive", href: "credit-book?filter=due", icon: HandCoinsIcon, feature: F.creditBook, permission: "invoices.credit-book" },
       { id: "add-purchase", label: "billing.dashboard.quickPurchase", href: "purchases/new", icon: BoxesIcon, feature: F.purchases },
     ],
     settings: [

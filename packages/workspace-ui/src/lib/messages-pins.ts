@@ -3,7 +3,7 @@ import type { Messages } from "@srirealtime/web";
 /** workspace.pins.*: POS PINs in Team & roles (docs/pos-terminals.md). Merged into workspaceMessages. */
 export const pinsEn: Messages = {
   "workspace.pins.myTitle": "My POS PIN",
-  "workspace.pins.myBody": "The PIN you unlock paired POS terminals with. Keep it to yourself.",
+  "workspace.pins.myBody": "The PIN you unlock paired POS terminals with, and approve other people's discounts with. Keep it to yourself.",
   "workspace.pins.body": "They unlock paired POS terminals with this PIN instead of a phone code. Tell it to them in person.",
   "workspace.pins.setTitle": "Set a POS PIN for {name}",
   "workspace.pins.resetTitle": "Reset the POS PIN of {name}",
@@ -28,7 +28,7 @@ export const pinsEn: Messages = {
 
 export const pinsTa: Messages = {
   "workspace.pins.myTitle": "என் POS PIN",
-  "workspace.pins.myBody": "இணைக்கப்பட்ட POS முனையங்களைத் திறக்கும் PIN. அதை யாரிடமும் சொல்லாதீர்கள்.",
+  "workspace.pins.myBody": "இணைக்கப்பட்ட POS முனையங்களைத் திறக்கவும், பிறரின் தள்ளுபடிகளை அங்கீகரிக்கவும் பயன்படும் PIN. அதை யாரிடமும் சொல்லாதீர்கள்.",
   "workspace.pins.body": "போன் குறியீட்டுக்குப் பதிலாக இந்த PIN-ஆல் இணைக்கப்பட்ட POS முனையங்களைத் திறப்பார்கள். நேரில் சொல்லுங்கள்.",
   "workspace.pins.setTitle": "{name}-க்கு POS PIN அமைக்கவும்",
   "workspace.pins.resetTitle": "{name}-இன் POS PIN-ஐ மாற்றவும்",

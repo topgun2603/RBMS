@@ -41,9 +41,16 @@ export interface ParseCsvOptions {
  * (callers trim). Throws CsvError for an unterminated quoted field or too many rows.
  */
 export function parseCsv(input: string, opts: ParseCsvOptions = {}): string[][] {
+  return parseCsvLines(input, opts).rows;
+}
+
+/** Like parseCsv, plus `lines`: the 1-based line of the file each row starts on (blank lines are skipped, so they differ from the index). */
+export function parseCsvLines(input: string, opts: ParseCsvOptions = {}): { rows: string[][]; lines: number[] } {
   const text = stripBom(input);
   const d = !opts.delimiter || opts.delimiter === "auto" ? detectDelimiter(text) : opts.delimiter;
   const rows: string[][] = [];
+  const lines: number[] = [];
+  let rowStart = 0;
   let row: string[] = [];
   let field = "";
   let i = 0;
@@ -57,13 +64,16 @@ export function parseCsv(input: string, opts: ParseCsvOptions = {}): string[][] 
     field = "";
     if (!(row.length === 1 && row[0] === "")) {
       rows.push(row);
+      lines.push(rowStart);
       if (opts.maxRows && rows.length > opts.maxRows) throw new CsvError(`Too many rows (limit ${opts.maxRows - 1})`, line);
     }
     row = [];
+    rowStart = 0;
   };
 
   while (i < n) {
     const ch = text[i]!;
+    if (rowStart === 0) rowStart = line;
     if (quoted) {
       if (ch === '"') {
         if (text[i + 1] === '"') {
@@ -106,7 +116,7 @@ export function parseCsv(input: string, opts: ParseCsvOptions = {}): string[][] 
   }
   if (quoted) throw new CsvError(`Unclosed quote starting on line ${fieldStartLine}`, fieldStartLine);
   if (field !== "" || row.length) endRow();
-  return rows;
+  return { rows, lines };
 }
 
 // ------------------------------------------------------------------ writing

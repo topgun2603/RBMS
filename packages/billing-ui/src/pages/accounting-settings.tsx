@@ -3,7 +3,7 @@
 import * as React from "react";
 import { LockIcon, LockOpenIcon, PlayIcon, RefreshCwIcon, SearchCheckIcon, SettingsIcon } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, ChipGroup, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch, toast } from "@srirealtime/ui";
-import { describeError, QueryError, useI18n } from "@srirealtime/web";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
 import { AccountingPage } from "../components/accounting/parts";
 import { ACC_LOCK, ACC_POST, useAccounts, useAccountingSettings, useBackfill, useSetLock, useSyncNow, useUpdateAccountingSettings, type SyncResult } from "../lib/accounting";
 import { useHasPermission } from "../lib/access";
@@ -26,6 +26,7 @@ export default function AccountingSettingsPage() {
   const [lockDate, setLockDate] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [from, setFrom] = React.useState("");
+  const [confirmPost, setConfirmPost] = React.useState(false);
   const [result, setResult] = React.useState<SyncResult | null>(null);
 
   React.useEffect(() => {
@@ -202,7 +203,7 @@ export default function AccountingSettingsPage() {
                     <Button type="button" variant="outline" onClick={() => run(true)} disabled={backfill.isPending}>
                       <SearchCheckIcon /> {t("billing.accounting.setup.previewButton")}
                     </Button>
-                    <Button type="button" onClick={() => run(false)} disabled={backfill.isPending}>
+                    <Button type="button" onClick={() => setConfirmPost(true)} disabled={backfill.isPending}>
                       <PlayIcon /> {t(s.autoPost ? "billing.accounting.settings.postAgain" : "billing.accounting.setup.postButton")}
                     </Button>
                     {s.autoPost && (
@@ -247,6 +248,15 @@ export default function AccountingSettingsPage() {
               )}
             </CardContent>
           </Card>
+          <ConfirmDialog
+            open={confirmPost}
+            onOpenChange={setConfirmPost}
+            destructive={false}
+            title={t("billing.accounting.setup.confirmTitle")}
+            description={t("billing.accounting.setup.confirmBody")}
+            confirmLabel={t(s.autoPost ? "billing.accounting.settings.postAgain" : "billing.accounting.setup.postButton")}
+            onConfirm={() => run(false)}
+          />
         </div>
       )}
     </AccountingPage>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtStamp } from "./components/inventory/batch-bits";
+import { fmtStamp, stepActive } from "./components/inventory/batch-bits";
 
 describe("fmtStamp", () => {
   it("shows India's calendar day, not the UTC one", () => {
@@ -10,5 +10,19 @@ describe("fmtStamp", () => {
   it("is an em dash for no value and echoes junk", () => {
     expect(fmtStamp(null)).toBe("—");
     expect(fmtStamp("not a date")).toBe("not a date");
+  });
+});
+
+describe("stepActive (keyboard in the item suggestions)", () => {
+  it("ArrowDown walks down and stops at the last suggestion, ArrowUp walks back to none", () => {
+    expect(stepActive(-1, "ArrowDown", 3)).toBe(0);
+    expect(stepActive(0, "ArrowDown", 3)).toBe(1);
+    expect(stepActive(2, "ArrowDown", 3)).toBe(2);
+    expect(stepActive(1, "ArrowUp", 3)).toBe(0);
+    expect(stepActive(0, "ArrowUp", 3)).toBe(-1);
+  });
+  it("ignores other keys and an empty list", () => {
+    expect(stepActive(1, "a", 3)).toBe(1);
+    expect(stepActive(1, "ArrowDown", 0)).toBe(-1);
   });
 });

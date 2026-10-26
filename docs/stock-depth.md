@@ -167,3 +167,14 @@ Permissions: batches settings / receive / adjust = `inventory.adjust`; transfer 
   receiving branch beyond the webhook event; receiving by scanning is not built.
 * Opening a transfer note's PDF needs the Chrome the documents module already uses.
 * Pharmacy imports with batch + expiry create medicine batches only when the `medicines` feature is on.
+
+## Fixes after QA
+
+* Direct purchase form (`purchase-form.tsx`): batch no., manufacture/expiry fields show on every line whose item uses batches
+  (`GET /batches/tracking`), not only for AI-scanned lines; they are sent as `batchNo` / `expiry` on the purchase line.
+* `POST /stock/:itemId/adjust` with `mode: "set"` and a `batchId` sets that batch's quantity (it used to compare with the item total,
+  so setting a batch to 0 failed).
+* POS cart: a line whose quantity is more than the chosen batch had left (when it was picked) shows a soft note that the rest comes
+  from the next batch (FEFO spill). Batch expiry dates use the app's date style ("31 Jan 2027") in the picker and the cart.
+* Stock audit: totals are shown in exact rupees; the default counter name of a member without a typed name is shown as their name,
+  email or "Owner" instead of `user-<id>`.

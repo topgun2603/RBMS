@@ -70,6 +70,18 @@ describe("billingModule", () => {
     for (const s of m.nav) for (const i of s.items) if (i.href !== "") expect(i.feature, i.href).toBeTruthy();
   });
 
+  it("hides the report and credit-book dashboard widgets (and the receive-money action) from roles without the permission", () => {
+    const m = billingModule();
+    const need = (id: string) => m.widgets?.find((w) => w.id === id)?.permission;
+    expect(need("sales-trend")).toBe("reports.view");
+    expect(need("payments-by-method")).toBe("reports.view");
+    expect(need("top-dues")).toBe("invoices.credit-book");
+    expect(m.actions?.find((a) => a.id === "receive-money")?.permission).toBe("invoices.credit-book");
+    // the widgets that only use the bill summary stay open to every member
+    expect(need("recent-bills")).toBeUndefined();
+    expect(need("kpi-sales")).toBeUndefined();
+  });
+
   it("never uses absolute paths (the host picks the basePath)", () => {
     const m = billingModule({ basePath: "/billing" });
     const paths = [...m.routes.map((r) => r.path), ...m.nav.flatMap((s) => s.items.map((i) => i.href)), ...(m.actions ?? []).map((a) => a.href)];

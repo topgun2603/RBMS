@@ -55,6 +55,15 @@ export const e164 = (raw: string | null | undefined) => {
   return d ? `+91${d}` : null;
 };
 
+const expiryFmt = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+
+/** A YYYY-MM-DD batch expiry as "31 Jan 2027" (the app's date style); an em dash when there is none, junk is echoed. */
+export function fmtExpiry(d: string | null | undefined): string {
+  if (!d) return "—";
+  const dt = new Date(`${d}T12:00:00+05:30`);
+  return Number.isNaN(dt.getTime()) ? d : expiryFmt.format(dt);
+}
+
 /** Short local time "14:05". */
 export const timeShort = (d: Date | string | number) =>
   new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }).format(new Date(d));

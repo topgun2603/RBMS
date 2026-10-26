@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, ModuleLink, Page, PageHeading, tOr, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, tOr, useI18n, useModuleNavigate, useOptionalSession, useRouteParams } from "@srirealtime/web";
 import { ArrowLeftIcon, CameraIcon, CheckIcon, ClipboardCheckIcon, DownloadIcon, Loader2Icon, MinusIcon, PlayIcon, PlusIcon, ScanBarcodeIcon, SendIcon, Undo2Icon, XIcon } from "lucide-react";
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ import { AuditStatusPill } from "../components/inventory/audit-bits";
 import { fmtDay, fmtStamp } from "../components/inventory/batch-bits";
 import { cameraScanSupported, ScanDialog } from "../components/inventory/scan-dialog";
 import { useHasPermission } from "../lib/access";
+import { counterLabel } from "../lib/audit-counter";
 import { formatQty, money, parseQty } from "../lib/format";
 import { downloadCsv } from "../lib/queries-v2";
 import { useAudit, useAuditAction, useAuditLines, useCountAudit, usePatchAuditLine } from "../lib/queries-stock";
@@ -71,6 +72,7 @@ export default function StockAuditDetailPage() {
 
 function AuditScreen({ audit }: { audit: StockAudit }) {
   const { t } = useI18n();
+  const me = useOptionalSession()?.me.user;
   const go = useModuleNavigate();
   const canApprove = useHasPermission("inventory.audit.approve");
   const action = useAuditAction(audit.id);
@@ -161,7 +163,7 @@ function AuditScreen({ audit }: { audit: StockAudit }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <AuditStatusPill status={status} />
         <span className="text-sm text-muted-foreground">{t(`billing.audit.hint.${status}`)}</span>
-        {audit.counters.length > 0 && <span className="text-sm text-muted-foreground">{t("billing.audit.counters", { names: audit.counters.join(", ") })}</span>}
+        {audit.counters.length > 0 && <span className="text-sm text-muted-foreground">{t("billing.audit.counters", { names: audit.counters.map((c) => counterLabel(c, me, { owner: t("billing.audit.counterOwner"), member: t("billing.audit.counterMember") })).join(", ") })}</span>}
       </div>
 
       {status === "counting" && <CountPanel audit={audit} />}
@@ -169,9 +171,9 @@ function AuditScreen({ audit }: { audit: StockAudit }) {
         <>
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile label={t("billing.audit.tiles.lines")} value={tot.varianceLines} kind="count" hint={t("billing.audit.tiles.linesHint", { counted: tot.counted, total: tot.lines })} />
-            <StatTile label={t("billing.audit.tiles.surplus")} value={tot.surplusValue} hint={t("billing.audit.tiles.atCost")} />
-            <StatTile label={t("billing.audit.tiles.shortage")} value={tot.shortageValue} iconTone="text-danger-ink" hint={t("billing.audit.tiles.atCost")} />
-            <StatTile label={t("billing.audit.tiles.net")} value={tot.netValue} hint={t("billing.audit.tiles.atCost")} />
+            <StatTile label={t("billing.audit.tiles.surplus")} value={tot.surplusValue} exactMoney hint={t("billing.audit.tiles.atCost")} />
+            <StatTile label={t("billing.audit.tiles.shortage")} value={tot.shortageValue} exactMoney iconTone="text-danger-ink" hint={t("billing.audit.tiles.atCost")} />
+            <StatTile label={t("billing.audit.tiles.net")} value={tot.netValue} exactMoney hint={t("billing.audit.tiles.atCost")} />
           </div>
           {status === "review" && tot.varianceLines > 0 && (
             <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-3">

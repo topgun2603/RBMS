@@ -166,6 +166,17 @@ describe.skipIf(!URL_)("stock depth against Postgres", () => {
     await expect(s.batches.adjust(T, oldId, { mode: "remove", qty: 99 })).rejects.toThrow(/Only 8/);
     await s.batches.adjust(T, oldId, { mode: "set", qty: 9, reason: "adjustment" });
     expect(await batchQty(oldId, main)).toBe(9);
+    // "set" on a named batch compares to that batch, not to the item total (setting a batch to 0 works)
+    const total = await qtyAt(BIS, main);
+    await s.adjust(T, BIS, { mode: "set", qty: 0, batchId: oldId });
+    expect(await batchQty(oldId, main)).toBe(0);
+    expect(await qtyAt(BIS, main)).toBe(total - 9);
+    await s.adjust(T, BIS, { mode: "set", qty: 4, batchId: oldId });
+    expect(await batchQty(oldId, main)).toBe(4);
+    expect(await qtyAt(BIS, main)).toBe(total - 9 + 4);
+    await s.adjust(T, BIS, { mode: "set", qty: 9, batchId: oldId });
+    expect(await batchQty(oldId, main)).toBe(9);
+    expect(await qtyAt(BIS, main)).toBe(total);
     // item without batches: plain stock, then part of it assigned to a batch
     await s.adjust(T, CREAM, { mode: "add", qty: 6, unitCost: 9000 });
     await s.batches.receive(T, { itemId: CREAM, batchNo: "C-1", expiry: day(200), qty: 4, mode: "assign" });

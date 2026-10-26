@@ -222,3 +222,9 @@ weigh tickets (pricing, use once, cancel-reopen); every route typed. Web: admin 
 management in Team, pairing + PIN lock + cashier switch in the POS, full catalogue grid with offline cache, weighing
 station page, ticket scan at the POS. App: pairing by QR, PIN lock, catalogue sync + local cache, ticket scan,
 weighing-station mode.
+
+## Manager PIN for discount approval (billing app too)
+
+The PIN routes (`PUT /pins/me`, `PUT|DELETE /pins/:userId`, `GET /pins`) are not behind `pos.terminals`: a manager PIN also
+approves discounts above a cashier's limit (`x-approval-pin`, see `apps/api/src/discount-guard.ts`) in apps without POS
+terminals. Team & roles shows the PIN controls in every app; setting someone else's PIN still needs `pos.devices`.

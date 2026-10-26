@@ -28,6 +28,8 @@ export const enSecurity: Messages = {
   "web.security.policy.hint": "Owners, admins and managers of this shop must use two-factor to sign in. Anyone without it is guided through the setup at their next sign-in. People already signed in stay signed in until then.",
   "web.security.policy.saved": "Saved",
   "web.security.policy.needsOwn": "Turn on your own two-factor first so you are not locked out.",
+  "web.security.policy.required": "Required for the team",
+  "web.security.policy.notRequired": "Not required",
   "web.security.policy.readOnly": "Only the owner or an admin can change this.",
 
   "web.mfa.enrol.title": "Set up two-factor",
@@ -101,6 +103,8 @@ export const taSecurity: Messages = {
   "web.security.policy.hint": "இந்தக் கடையின் உரிமையாளர்கள், நிர்வாகிகள், மேலாளர்கள் இரு-படி உள்நுழைவைப் பயன்படுத்த வேண்டும். இல்லாதவர்கள் அடுத்த உள்நுழைவில் அமைப்பு வழிகாட்டலைப் பெறுவர். ஏற்கனவே உள்நுழைந்தவர்கள் அதுவரை தொடர்ந்து இருப்பர்.",
   "web.security.policy.saved": "சேமிக்கப்பட்டது",
   "web.security.policy.needsOwn": "பூட்டப்படாமல் இருக்க, முதலில் உங்கள் சொந்த இரு-படி உள்நுழைவை இயக்கவும்.",
+  "web.security.policy.required": "குழுவுக்குக் கட்டாயம்",
+  "web.security.policy.notRequired": "கட்டாயமில்லை",
   "web.security.policy.readOnly": "உரிமையாளர் அல்லது நிர்வாகி மட்டுமே இதை மாற்றலாம்.",
 
   "web.mfa.enrol.title": "இரு-படி அமைப்பு",

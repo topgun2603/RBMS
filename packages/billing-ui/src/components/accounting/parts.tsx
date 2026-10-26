@@ -3,7 +3,7 @@
 import * as React from "react";
 import { BookOpenCheckIcon, LockIcon, PlayIcon, SearchCheckIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, EmptyState, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
 import { DownloadCsvButton } from "../reports/report-ui";
 import { ACC, ACC_POST, ACC_VIEW, accountingPdfPath, sideAmount, useAccountingOverview, useBackfill, type Account } from "../../lib/accounting";
 import { useHasPermission } from "../../lib/access";
@@ -78,6 +78,7 @@ export function SetupBanner() {
   const canPost = useHasPermission(ACC_POST);
   const run = useBackfill();
   const [preview, setPreview] = React.useState<{ posted: number } | null>(null);
+  const [confirmPost, setConfirmPost] = React.useState(false);
   const doPreview = async () => {
     try {
       const r = await run.mutateAsync({ dryRun: true });
@@ -107,7 +108,7 @@ export function SetupBanner() {
               <Button size="sm" variant="outline" onClick={doPreview} disabled={run.isPending}>
                 <SearchCheckIcon /> {t("billing.accounting.setup.previewButton")}
               </Button>
-              <Button size="sm" onClick={doPost} disabled={run.isPending}>
+              <Button size="sm" onClick={() => setConfirmPost(true)} disabled={run.isPending}>
                 <PlayIcon /> {t("billing.accounting.setup.postButton")}
               </Button>
             </>
@@ -119,6 +120,15 @@ export function SetupBanner() {
           </Button>
         </div>
       </AlertDescription>
+      <ConfirmDialog
+        open={confirmPost}
+        onOpenChange={setConfirmPost}
+        destructive={false}
+        title={t("billing.accounting.setup.confirmTitle")}
+        description={t("billing.accounting.setup.confirmBody")}
+        confirmLabel={t("billing.accounting.setup.postButton")}
+        onConfirm={doPost}
+      />
     </Alert>
   );
 }

@@ -2,7 +2,7 @@ import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
 import Fastify from "fastify";
 import { ZodError } from "zod";
 import { describe, expect, it } from "vitest";
-import { parseCsv } from "./csv";
+import { parseCsv, parseCsvLines } from "./csv";
 import { createImportExport } from "./index";
 import { boundaryOf, fileFromMultipart } from "./multipart";
 import { customersExporter, productsImporter, type ProductImportRow } from "./specs";
@@ -248,5 +248,26 @@ describe("exports", () => {
     expect(rows[1]).toContain("Murugan");
     expect(rows[1]).toContain("1500.50");
     expect((await app.inject({ url: "/v1/export/nope.csv" })).statusCode).toBe(404);
+  });
+});
+
+describe("row numbers and the errors CSV", () => {
+  // A title block above the header and a blank line between data rows: the numbers must match the file.
+  const TITLED = ["Products of Raja Stores", "", "Name,SKU,Price,GST %", "Silk Saree,SS-1,250,5", "", "Broken,BR-1,abc,5", "Cotton Dhoti,CD-1,450,5"].join("\n");
+
+  it("reports the real line of the file and keeps the file's own headings in the errors CSV", async () => {
+    const { ie } = setup();
+    const p = await ie.service.preview(TENANT, null, "catalog.products", { fileName: "titled.csv", contentType: "text/csv", data: Buffer.from(TITLED) });
+    expect(p.rows.map((r) => r.row)).toEqual([4, 6, 7]);
+    const job = await ie.service.commit(TENANT, p.jobId, { skipInvalid: true });
+    expect(job.errors).toEqual([expect.objectContaining({ row: 6, raw: ["Broken", "BR-1", "abc", "5"] })]);
+    const { csv } = await ie.service.errorsCsv(TENANT, p.jobId);
+    const lines = csv.replace("﻿", "").trim().split(/\r?\n/);
+    expect(lines[0]).toBe("Row,Problem,Name,SKU,Price,GST %");
+    expect(lines[1]).toMatch(/^6,/);
+  });
+
+  it("parseCsvLines gives the starting line of each row, including multi-line cells", () => {
+    expect(parseCsvLines('a,b\n\n"x\ny",2\n\nc,d').lines).toEqual([1, 3, 6]);
   });
 });

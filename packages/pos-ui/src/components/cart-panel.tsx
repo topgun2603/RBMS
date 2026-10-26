@@ -5,7 +5,8 @@ import { ChevronDownIcon, MinusIcon, PauseIcon, PencilIcon, PlusIcon, ShoppingCa
 import { AnimatedNumber, AnimatePresence, Badge, Button, cn, motion, RollingNumber, useReducedMotionSafe } from "@srirealtime/ui";
 import { useI18n } from "@srirealtime/web";
 import { lineGross, type CartLine, type CartTotals } from "../lib/cart";
-import { formatQty, money } from "../lib/format";
+import { batchSpill } from "../lib/batches";
+import { fmtExpiry, formatQty, money } from "../lib/format";
 
 export interface CartPanelProps {
   lines: CartLine[];
@@ -165,8 +166,13 @@ function LineRow({
               className="max-w-full truncate rounded font-mono text-[11px] text-primary underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t("pos.batch.change")}
             >
-              {line.batch ? (line.batch.expiry ? t("pos.batch.line", { no: line.batch.no, exp: line.batch.expiry }) : t("pos.batch.lineNoExp", { no: line.batch.no })) : t("pos.batch.choose")}
+              {line.batch ? (line.batch.expiry ? t("pos.batch.line", { no: line.batch.no, exp: fmtExpiry(line.batch.expiry) }) : t("pos.batch.lineNoExp", { no: line.batch.no })) : t("pos.batch.choose")}
             </button>
+          ) : null}
+          {onBatch && line.batch && batchSpill(line) > 0 ? (
+            <p className="text-[11px] text-warning-ink" data-batch-spill>
+              {t("pos.batch.spill", { left: formatQty(Math.max(0, line.batch.qty ?? 0)), extra: formatQty(batchSpill(line)) })}
+            </p>
           ) : null}
           {line.ticket ? (
             <Badge variant="muted" className="mt-0.5 font-mono" data-ticket={line.ticket.code}>

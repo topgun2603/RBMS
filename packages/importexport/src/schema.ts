@@ -27,6 +27,8 @@ export interface ImportJobError {
 export interface ImportJobRows {
   headers: string[];
   data: string[][];
+  /** The row number in the uploaded file of each data row (title blocks and blank rows counted). Absent: header = 1, data from 2. */
+  lineNos?: number[];
 }
 
 export const importJobs = pgTable(

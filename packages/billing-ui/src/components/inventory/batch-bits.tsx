@@ -50,7 +50,15 @@ export function ExpiryPill({ status, daysLeft, className }: { status: ExpiryStat
   );
 }
 
-/** Search-as-you-type picker of saved items (name or code). */
+/** The highlighted suggestion after a key press: ArrowDown / ArrowUp move it (stopping at the ends; -1 = none), anything else leaves it. */
+export function stepActive(active: number, key: string, count: number): number {
+  if (count <= 0) return -1;
+  if (key === "ArrowDown") return Math.min(count - 1, active + 1);
+  if (key === "ArrowUp") return Math.max(-1, active - 1);
+  return active;
+}
+
+/** Search-as-you-type picker of saved items (name or code). Arrow keys move through the suggestions, Enter picks, Escape closes. */
 export function ItemCombobox({
   id,
   value,
@@ -69,9 +77,11 @@ export function ItemCombobox({
   placeholder?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(-1);
   const q = useDebounced(value.trim(), 200);
   const { data } = useItems(q, 8, open && q.length > 0);
   const items = open && q.length > 0 ? (data?.items ?? []) : [];
+  const listId = `${id}-list`;
   return (
     <div className="relative">
       <Input
@@ -81,23 +91,45 @@ export function ItemCombobox({
         autoFocus={autoFocus}
         aria-invalid={invalid}
         placeholder={placeholder}
+        role="combobox"
+        aria-expanded={items.length > 0}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={items.length > 0 && active >= 0 ? `${listId}-${active}` : undefined}
         onChange={(e) => {
           onValue(e.target.value);
           setOpen(true);
+          setActive(-1);
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (items.length === 0) return;
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((i) => stepActive(i, e.key, items.length));
+          } else if (e.key === "Enter" && items[active]) {
+            e.preventDefault();
+            onPick(items[active]!);
+            setOpen(false);
+            setActive(-1);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
       />
       {items.length > 0 && (
-        <ul className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-xl border bg-popover p-1 shadow-lg" role="listbox">
-          {items.map((it) => (
-            <li key={it.id}>
+        <ul id={listId} className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-xl border bg-popover p-1 shadow-lg" role="listbox">
+          {items.map((it, i) => (
+            <li key={it.id} id={`${listId}-${i}`}>
               <button
                 type="button"
                 role="option"
-                aria-selected={false}
-                className={cn("flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent")}
+                aria-selected={i === active}
+                tabIndex={-1}
+                className={cn("flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent", i === active && "bg-accent")}
                 onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setActive(i)}
                 onClick={() => {
                   onPick(it);
                   setOpen(false);

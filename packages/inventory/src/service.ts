@@ -1692,7 +1692,9 @@ export class InventoryService {
     await this.db.transaction(async (tx) => {
       // Make sure the row exists, then lock it to read the current qty (needed for "set").
       const [current] = await this.lockRows(tx, tenantId, [loc.id], [itemId]);
-      const delta = adjustmentDelta(b.mode, qtyMilli, toMilli(current?.qty ?? 0));
+      // "set" on a named batch means that batch's quantity, not the item total.
+      const base = b.batchId ? await this.batches.levelMilli(tx, tenantId, b.batchId, loc.id) : toMilli(current?.qty ?? 0);
+      const delta = adjustmentDelta(b.mode, qtyMilli, base);
       if (delta === 0) {
         // Nothing moves; "set" with a cost just records the cost.
         if (unitCost !== null && current) {

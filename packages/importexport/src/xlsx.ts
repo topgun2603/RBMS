@@ -36,6 +36,11 @@ export class XlsxError extends Error {
 
 /** Reads the first worksheet into rows of strings (blank rows skipped; trailing empty cells trimmed). */
 export async function readXlsx(data: Buffer | Uint8Array, opts: { maxRows?: number } = {}): Promise<string[][]> {
+  return (await readXlsxLines(data, opts)).rows;
+}
+
+/** Like readXlsx, plus `lines`: the worksheet row number (as Excel shows it) of each returned row. */
+export async function readXlsxLines(data: Buffer | Uint8Array, opts: { maxRows?: number } = {}): Promise<{ rows: string[][]; lines: number[] }> {
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(data as unknown as ExcelJS.Buffer);
@@ -43,8 +48,9 @@ export async function readXlsx(data: Buffer | Uint8Array, opts: { maxRows?: numb
     throw new XlsxError("This file is not a valid .xlsx workbook");
   }
   const ws = wb.worksheets[0];
-  if (!ws) return [];
+  if (!ws) return { rows: [], lines: [] };
   const rows: string[][] = [];
+  const lines: number[] = [];
   let tooMany = false;
   ws.eachRow({ includeEmpty: false }, (row) => {
     if (tooMany) return;
@@ -54,10 +60,11 @@ export async function readXlsx(data: Buffer | Uint8Array, opts: { maxRows?: numb
     while (values.length && values[values.length - 1] === "") values.pop();
     if (!values.length) return;
     rows.push(values);
+    lines.push(row.number);
     if (opts.maxRows && rows.length > opts.maxRows) tooMany = true;
   });
   if (tooMany) throw new XlsxError(`Too many rows (limit ${(opts.maxRows ?? 1) - 1})`);
-  return rows;
+  return { rows, lines };
 }
 
 export interface SheetColumn {

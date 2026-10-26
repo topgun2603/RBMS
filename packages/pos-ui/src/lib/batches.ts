@@ -28,6 +28,13 @@ export interface BatchPick {
   short: number;
 }
 
+/** How much of a line is more than the chosen batch has left (the server takes that part from the next batch); 0 when it fits or the stock is unknown. */
+export function batchSpill(line: Pick<CartLine, "qty" | "batch">): number {
+  const left = line.batch?.qty;
+  if (left === undefined || line.qty <= left) return 0;
+  return Math.round((line.qty - Math.max(0, left)) * 1000) / 1000;
+}
+
 /** Which of these items use batches (the shop switched batch tracking on for them). */
 export function useBatchTracking(itemIds: string[], enabled: boolean) {
   const ids = [...new Set(itemIds)].sort().join(",");
@@ -73,7 +80,7 @@ export function useAutoBatches(lines: readonly CartLine[], setLines: (fn: (l: Ca
           if (pick.rule !== "fefo") return;
           const first = pick.suggestion[0] && pick.batches.find((b) => b.batchId === pick.suggestion[0]!.batchId);
           if (!first) return;
-          setLines((ls) => ls.map((x) => (x.key === l.key && !x.batch ? { ...x, batch: { id: first.batchId, no: first.batchNo, expiry: first.expiry } } : x)));
+          setLines((ls) => ls.map((x) => (x.key === l.key && !x.batch ? { ...x, batch: { id: first.batchId, no: first.batchNo, expiry: first.expiry, qty: first.qty } } : x)));
         })
         .catch(() => undefined);
     }

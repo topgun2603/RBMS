@@ -52,7 +52,7 @@ export interface CartLine extends CartProduct {
   /** Serial numbers / IMEIs scanned onto this line (one per unit); printed on the bill and marked sold. */
   serials?: string[];
   /** The stock batch the line is sold from (items with batches): printed on the bill, stock is taken from it first. */
-  batch?: { id: string; no: string; expiry: string | null };
+  batch?: { id: string; no: string; expiry: string | null; /** Stock left in the batch when it was chosen. */ qty?: number };
   /** A weigh-ticket line (fixed qty and price; removed with its whole ticket). */
   ticket?: { id: string; code: string };
 }

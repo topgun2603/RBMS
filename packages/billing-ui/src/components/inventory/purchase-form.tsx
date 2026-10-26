@@ -33,6 +33,7 @@ import { MoneyInput } from "../money-input";
 import { money, paiseToInput, parseQty, rupeesToPaise, stateLabel, todayIST } from "../../lib/format";
 import { useItems, useSellerProfile } from "../../lib/queries";
 import { useCreatePurchase } from "../../lib/queries-v2";
+import { useItemTracking } from "../../lib/queries-stock";
 import { useCreatePurchaseOrder } from "../../lib/queries-payables";
 import type { BillDraft, ScanResult } from "../../lib/ai-scan";
 import type { GstRate, Item, LineInput, PurchaseInput, Supplier } from "../../lib/types";
@@ -76,6 +77,11 @@ const blankLine = (gstRate = "5"): LineDraft => ({
   createNew: false,
   mrp: 0,
 });
+
+/** Batch number and expiry show for batch-tracked items, for anything already filled in, and once a scanned line asks for them. */
+export function batchFieldsVisible(a: { tracked: boolean; open: boolean; batchNo: string; expiry: string; ai: string[] }): boolean {
+  return a.tracked || a.open || !!a.batchNo || !!a.expiry || a.ai.includes("batchNo") || a.ai.includes("expiry");
+}
 
 const isBlank = (l: LineDraft) => !l.description.trim() && !l.rate.trim();
 
@@ -592,6 +598,7 @@ function LineRow({
   const id = `pline-${line.key}`;
   const low = (f: string) => aiLowClass(line.ai.includes(f));
   const [showBatch, setShowBatch] = React.useState(false);
+  const tracked = useItemTracking(line.itemId ?? undefined, !!line.itemId);
   const qtyRef = React.useRef<HTMLInputElement>(null);
 
   const pickItem = (item: Item) => {
@@ -731,7 +738,7 @@ function LineRow({
           <FieldError msg={errors.hsn} />
         </div>
       </div>
-      {(showBatch || line.batchNo || line.expiry || line.ai.includes("batchNo") || line.ai.includes("expiry")) ? (
+      {batchFieldsVisible({ tracked: tracked.data === true, open: showBatch, batchNo: line.batchNo, expiry: line.expiry, ai: line.ai }) ? (
         <div className="grid grid-cols-2 items-start gap-x-2 gap-y-3 sm:grid-cols-6 sm:pl-7">
           <div className={cn("col-span-1 grid content-start gap-1.5 sm:col-span-3", low("batchNo"))}>
             <Label htmlFor={`${id}-batch`} className="text-xs text-muted-foreground">

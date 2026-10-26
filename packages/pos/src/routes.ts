@@ -126,22 +126,23 @@ export function posRoutes(service: PosService) {
     });
 
     // ---------------------------------------------------------------- staff PINs
-    app.put("/pins/me", documented({ body: pinBody, response: okSchema }, { feature: TERMINALS, ...SELF }), async (req) => {
+    // Not behind the terminals feature: a manager PIN also approves discounts in the billing app (discount-guard).
+    app.put("/pins/me", documented({ body: pinBody, response: okSchema }, { ...SELF }), async (req) => {
       const user = requireRole(req.ctx, "owner", "admin", "staff");
       const { pin } = pinBody.parse(req.body);
       return service.setPin(requireTenant(req.ctx).id, user.id, pin, actorOf(req));
     });
-    app.get("/pins", documented({ response: pinListResponse }, { feature: TERMINALS, permission: POS_PERMISSION_KEYS.devices }), async (req) => {
+    app.get("/pins", documented({ response: pinListResponse }, { permission: POS_PERMISSION_KEYS.devices }), async (req) => {
       requireRole(req.ctx, "owner", "admin", "staff");
       return service.listPins(requireTenant(req.ctx).id);
     });
-    app.put("/pins/:userId", documented({ body: pinBody, response: okSchema }, manage), async (req) => {
+    app.put("/pins/:userId", documented({ body: pinBody, response: okSchema }, { permission: POS_PERMISSION_KEYS.devices, ...SELF }), async (req) => {
       requireRole(req.ctx, "owner", "admin", "staff");
       const { userId } = userParams.parse(req.params);
       const { pin } = pinBody.parse(req.body);
       return service.setPin(requireTenant(req.ctx).id, userId, pin, actorOf(req));
     });
-    app.delete("/pins/:userId", documented({ response: okSchema }, { feature: TERMINALS, ...SELF }), async (req) => {
+    app.delete("/pins/:userId", documented({ response: okSchema }, { ...SELF }), async (req) => {
       const user = requireRole(req.ctx, "owner", "admin", "staff");
       const { userId } = userParams.parse(req.params);
       if (userId !== user.id && !hasPermission(req.ctx, POS_PERMISSION_KEYS.devices)) throw permissionDenied(POS_PERMISSION_KEYS.devices);

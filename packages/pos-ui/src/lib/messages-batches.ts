@@ -15,6 +15,7 @@ export const batchEn: Messages = {
   "pos.batch.suggest": "Expires soon: consider {pct}% off",
   "pos.batch.expired": "Expired",
   "pos.batch.expiredBlocked": "Expired, can't sell",
+  "pos.batch.spill": "Only {left} left in this batch. {extra} more will come from the next batch.",
 };
 
 export const batchTa: Messages = {
@@ -31,4 +32,5 @@ export const batchTa: Messages = {
   "pos.batch.suggest": "விரைவில் காலாவதி: {pct}% தள்ளுபடி பரிசீலிக்கவும்",
   "pos.batch.expired": "காலாவதி",
   "pos.batch.expiredBlocked": "காலாவதி, விற்க முடியாது",
+  "pos.batch.spill": "இந்த பேட்சில் {left} மட்டுமே உள்ளது. மீதமுள்ள {extra} அடுத்த பேட்சிலிருந்து எடுக்கப்படும்.",
 };

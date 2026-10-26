@@ -6,10 +6,9 @@ import { Badge, cn, Dialog, DialogContent, DialogDescription, DialogHeader, Dial
 import { useI18n } from "@srirealtime/web";
 import type { CartLine } from "../lib/cart";
 import { useBatchPick } from "../lib/batches";
-import { formatQty } from "../lib/format";
+import { fmtExpiry, formatQty } from "../lib/format";
 
-const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-export const fmtExpiry = (d: string | null) => (d ? dateFmt.format(new Date(`${d}T12:00:00+05:30`)) : "—");
+export { fmtExpiry };
 
 /** Choose the batch a counter line is sold from (oldest expiry first; expired batches are marked). */
 export function BatchPickDialog({
@@ -19,7 +18,7 @@ export function BatchPickDialog({
 }: {
   line: CartLine | null;
   onClose: () => void;
-  onPick: (key: string, batch: { id: string; no: string; expiry: string | null } | null) => void;
+  onPick: (key: string, batch: { id: string; no: string; expiry: string | null; qty?: number } | null) => void;
 }) {
   const { t } = useI18n();
   const q = useBatchPick(line?.itemId ?? null, line?.qty ?? 1);
@@ -43,7 +42,7 @@ export function BatchPickDialog({
                 <button
                   type="button"
                   onClick={() => {
-                    if (line) onPick(line.key, { id: b.batchId, no: b.batchNo, expiry: b.expiry });
+                    if (line) onPick(line.key, { id: b.batchId, no: b.batchNo, expiry: b.expiry, qty: b.qty });
                     onClose();
                   }}
                   className={cn(

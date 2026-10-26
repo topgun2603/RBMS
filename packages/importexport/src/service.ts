@@ -4,12 +4,12 @@ import { rupees, type ExportColumn } from "./columns";
 import { tallyXmlTable } from "./tally";
 import { VENDORS, detectVendor, findHeaderRow, isFooterRow, vendorById, withVendor, type VendorId } from "./vendors";
 import { XmlError, looksLikeXml } from "./xml";
-import { CsvError, csvLine, parseCsv } from "./csv";
+import { CsvError, csvLine, parseCsvLines } from "./csv";
 import { autoMap, missingRequired, parseRows, resolveMapping, type DetectedColumn, type Mapping, type ParsedRow } from "./engine";
 import type { ImportExportRegistry, ImportOptions, ImporterDef } from "./registry";
 import type { ImportJobError, ImportJobStatus, ImportJobSummary } from "./schema";
 import { IMPORT_JOB_SORT, MemoryImportRecordStore, importJobListQuerySchema, type ImportJob, type ImportJobListQuery, type ImportJobStore, type ImportRecordStore } from "./store";
-import { XlsxError, readXlsx, writeXlsx, xlsxStream, type XlsxValue } from "./xlsx";
+import { XlsxError, readXlsxLines, writeXlsx, xlsxStream, type XlsxValue } from "./xlsx";
 
 export const COMMIT_JOB = "importexport.commit";
 
@@ -168,7 +168,7 @@ export class ImportExportService {
     file: UploadedFile,
     imp?: ImporterDef<Record<string, unknown>>,
     vendor?: VendorId,
-  ): Promise<{ headers: string[]; data: string[][]; type: "csv" | "xlsx" | "xml"; ignored: number }> {
+  ): Promise<{ headers: string[]; data: string[][]; lineNos?: number[]; type: "csv" | "xlsx" | "xml"; ignored: number }> {
     if (!file.data.length) throw badRequest("The file is empty");
     if (file.data.length > this.limits.maxBytes) {
       throw new AppError(413, "file_too_large", `The file is larger than ${Math.round(this.limits.maxBytes / 1024 / 1024)} MB`);
@@ -177,6 +177,7 @@ export class ImportExportService {
     const isZip = file.data.length >= 4 && file.data[0] === 0x50 && file.data[1] === 0x4b;
     let type: "csv" | "xlsx" | "xml";
     let table: string[][];
+    let tableLines: number[] | undefined;
     if (!isZip && looksLikeXml(file.data)) {
       type = "xml";
       let t;
@@ -193,7 +194,9 @@ export class ImportExportService {
     } else {
       type = detectFileType(file);
       try {
-        table = type === "xlsx" ? await readXlsx(file.data, { maxRows: maxRows + 60 }) : parseCsv(decodeText(file.data), { maxRows: maxRows + 60 });
+        const t = type === "xlsx" ? await readXlsxLines(file.data, { maxRows: maxRows + 60 }) : parseCsvLines(decodeText(file.data), { maxRows: maxRows + 60 });
+        table = t.rows;
+        tableLines = t.lines;
       } catch (err) {
         if (err instanceof CsvError || err instanceof XlsxError) {
           if (/Too many rows/.test(err.message)) throw new AppError(413, "too_many_rows", `The file has more than ${maxRows} rows; split it into smaller files`);
@@ -206,24 +209,33 @@ export class ImportExportService {
     const headerRow = table[headerAt];
     if (!headerRow?.some((h) => h.trim())) throw badRequest("The file has no header row");
     let headers = headerRow.map((h) => h.trim());
-    let data = table
-      .slice(headerAt + 1)
-      .map((r) => r.map((c) => c ?? ""))
-      .filter((r) => r.some((c) => c.trim() !== "") && !(imp?.idempotent && isFooterRow(r)));
+    // Each data row remembers its real row number in the file (title block above the header, skipped blank rows).
+    let data: string[][] = [];
+    let lineNos: number[] | undefined = tableLines ? [] : undefined;
+    table.slice(headerAt + 1).forEach((r, i) => {
+      const cells = r.map((c) => c ?? "");
+      if (!cells.some((c) => c.trim() !== "") || (imp?.idempotent && isFooterRow(cells))) return;
+      data.push(cells);
+      lineNos?.push(tableLines![headerAt + 1 + i]!);
+    });
     let ignored = 0;
     if (imp?.prepare) {
+      const before = new Map(data.map((r, i) => [r, i] as const));
       const p = imp.prepare(headers, data);
       headers = p.headers;
+      const kept = lineNos ? p.data.map((r) => before.get(r)) : [];
+      const original = lineNos;
+      lineNos = original && kept.every((k) => k !== undefined) ? kept.map((k) => original[k!]!) : undefined;
       data = p.data;
       ignored = p.ignored ?? 0;
     }
     if (data.length > maxRows) throw new AppError(413, "too_many_rows", `The file has more than ${maxRows} rows; split it into smaller files`);
     if (!data.length) throw badRequest(ignored ? "The file has no sales/purchase rows (receipts, journals and returns are skipped)" : "The file has a header row but no data rows");
-    return { headers, data, type, ignored };
+    return { headers, data, ...(lineNos ? { lineNos } : {}), type, ignored };
   }
 
-  private parseAll(imp: ImporterDef<Record<string, unknown>>, data: string[][], mapping: Mapping): ParsedRow[] {
-    const parsed = parseRows(data, imp.columns, mapping, imp.validate);
+  private parseAll(imp: ImporterDef<Record<string, unknown>>, data: string[][], mapping: Mapping, lineNos?: number[]): ParsedRow[] {
+    const parsed = parseRows(data, imp.columns, mapping, imp.validate, lineNos?.length === data.length ? lineNos : 2);
     imp.validateSet?.(parsed);
     return parsed;
   }
@@ -252,11 +264,11 @@ export class ImportExportService {
     const imp = this.importer(key);
     const asked = opts.source && opts.source !== "auto" ? vendorById(opts.source)?.id : undefined;
     if (opts.source && opts.source !== "auto" && !asked) throw badRequest(`Unknown source "${opts.source}"`, { allowed: VENDORS.map((v) => v.id) });
-    const { headers, data, type, ignored } = await this.readTable(file, imp, asked);
+    const { headers, data, lineNos, type, ignored } = await this.readTable(file, imp, asked);
     const detected = detectVendor(headers);
     const source: VendorId = asked ?? detected ?? (type === "xml" ? "tally" : "generic");
     const { mapping, detected: cols } = autoMap(headers, withVendor(imp.columns, source));
-    const parsed = this.parseAll(imp, data, mapping);
+    const parsed = this.parseAll(imp, data, mapping, lineNos);
     const already = await this.alreadyImported(tenantId, imp, parsed);
     const invalid = parsed.filter((r) => r.errors.length).length;
     const summary = { ...emptySummary(), rows: parsed.length, valid: parsed.length - invalid, invalid };
@@ -267,7 +279,7 @@ export class ImportExportService {
       fileType: type === "xml" ? "csv" : type,
       fileSize: file.data.length,
       mapping,
-      rows: { headers, data },
+      rows: { headers, data, ...(lineNos ? { lineNos } : {}) },
       summary,
       createdBy: userId,
       source,
@@ -308,7 +320,7 @@ export class ImportExportService {
     }
     const missing = missingRequired(imp.columns, mapping);
     if (missing.length) throw badRequest(`Map the required columns: ${missing.map((c) => c.label).join(", ")}`, { missing: missing.map((c) => c.key) });
-    const parsed = this.parseAll(imp, job.rows.data, mapping);
+    const parsed = this.parseAll(imp, job.rows.data, mapping, job.rows.lineNos);
     const invalidRows = parsed.filter((r) => r.errors.length);
     const skipInvalid = opts.skipInvalid ?? true;
     if (invalidRows.length && !skipInvalid) {
@@ -334,13 +346,16 @@ export class ImportExportService {
     const summary: ImportJobSummary = { ...job.summary, processed: 0, created: 0, updated: 0, failed: 0, skipped: 0 };
     const errors: ImportJobError[] = [];
     const rawOf = new Map<number, string[]>();
-    job.rows.data.forEach((cells, i) => rawOf.set(2 + i, cells));
+    const lineNos = job.rows.lineNos?.length === job.rows.data.length ? job.rows.lineNos : null;
+    job.rows.data.forEach((cells, i) => rawOf.set(lineNos ? lineNos[i]! : 2 + i, cells));
+    // Once finished only the headings stay (for the errors CSV); the cells are dropped.
+    const headingsOnly = { headers: job.rows.headers, data: [] as string[][] };
     const addError = (row: number, message: string) => {
       if (errors.length < this.limits.maxErrors) errors.push({ row, message, ...(rawOf.has(row) ? { raw: rawOf.get(row) } : {}) });
     };
     try {
       const imp = this.importer(job.key);
-      const parsed = this.parseAll(imp, job.rows.data, job.mapping);
+      const parsed = this.parseAll(imp, job.rows.data, job.mapping, job.rows.lineNos);
       let valid = parsed.filter((r) => !r.errors.length);
       for (const r of parsed) {
         if (r.errors.length) {
@@ -405,11 +420,11 @@ export class ImportExportService {
         await this.deps.store.update(tenantId, jobId, { summary: { ...summary } });
       }
       errors.sort((a, b) => a.row - b.row);
-      await this.deps.store.update(tenantId, jobId, { status: "done", summary, errors, rows: null, finishedAt: new Date() });
+      await this.deps.store.update(tenantId, jobId, { status: "done", summary, errors, rows: headingsOnly, finishedAt: new Date() });
     } catch (err) {
       this.log.error({ err, jobId }, "importexport: job failed");
       addError(0, err instanceof AppError ? err.message : "The import failed unexpectedly");
-      await this.deps.store.update(tenantId, jobId, { status: "failed", summary, errors, rows: null, finishedAt: new Date() });
+      await this.deps.store.update(tenantId, jobId, { status: "failed", summary, errors, rows: headingsOnly, finishedAt: new Date() });
     }
   }
 
@@ -447,7 +462,9 @@ export class ImportExportService {
     const job = await this.deps.store.get(tenantId, jobId);
     if (!job) throw notFound("Import job");
     const width = job.errors.reduce((m, e) => Math.max(m, e.raw?.length ?? 0), 0);
-    const lines = [csvLine(["Row", "Problem", ...Array.from({ length: width }, (_, i) => `Column ${i + 1}`)])];
+    // The file's own column headings (kept on the job); "Column N" only for old jobs that have none.
+    const headings = job.rows?.headers ?? [];
+    const lines = [csvLine(["Row", "Problem", ...Array.from({ length: width }, (_, i) => headings[i]?.trim() || `Column ${i + 1}`)])];
     for (const e of job.errors) lines.push(csvLine([e.row, e.message, ...(e.raw ?? [])]));
     const base = (job.fileName ?? job.key).replace(/\.[^.]+$/, "").replace(/[^\w.-]+/g, "_");
     return { csv: "\ufeff" + lines.join(""), filename: `${base}-errors.csv` };

@@ -502,6 +502,17 @@ export class BatchService {
     return { allocations: out, shortMilli: short };
   }
 
+  /** Quantity (milli) of one batch at a location; 0 when it has no stock there. */
+  async levelMilli(tx: DbOrTx, tenantId: string, batchId: string, locationId: string): Promise<number> {
+    await this.batchRow(tx, tenantId, batchId);
+    const [level] = await tx
+      .select({ qty: stockBatchLevels.qty })
+      .from(stockBatchLevels)
+      .where(and(eq(stockBatchLevels.tenantId, tenantId), eq(stockBatchLevels.batchId, batchId), eq(stockBatchLevels.locationId, locationId)))
+      .limit(1);
+    return toMilli(level?.qty ?? 0);
+  }
+
   /** Takes from one named batch (explicit adjustment); refuses when it does not have that much. */
   async takeFrom(tx: DbOrTx, tenantId: string, batchId: string, locationId: string, milli: number, reason: BatchMovementReason, ref: MoveRef = {}): Promise<StockBatchRow> {
     const batch = await this.batchRow(tx, tenantId, batchId);

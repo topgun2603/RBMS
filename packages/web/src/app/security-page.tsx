@@ -187,7 +187,7 @@ function PolicyCard({ ownEnabled }: { ownEnabled: boolean }) {
           <>
             <div className="flex items-center justify-between gap-3">
               <label htmlFor="require-mfa" className="font-medium">
-                {t("web.security.policy.title")}
+                {t(on ? "web.security.policy.required" : "web.security.policy.notRequired")}
               </label>
               <Switch
                 id="require-mfa"

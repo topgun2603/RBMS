@@ -70,7 +70,7 @@ export function resolveMapping(
 export const missingRequired = (columns: readonly ImportColumn[], mapping: Mapping) => columns.filter((c) => c.required && (mapping[c.key] ?? null) === null);
 
 export interface ParsedRow<T = Record<string, unknown>> {
-  /** 1-based row number in the file (header = 1, first data row = 2). */
+  /** 1-based row number in the file as a spreadsheet shows it. */
   row: number;
   data: T;
   errors: string[];
@@ -86,7 +86,8 @@ export function parseRows<T = Record<string, unknown>>(
   columns: readonly ImportColumn[],
   mapping: Mapping,
   validate?: RowValidator<T>,
-  firstRowNumber = 2,
+  /** The first row's number (rows follow), or the number of each row when blank rows / a title block shifted them. */
+  firstRowNumber: number | readonly number[] = 2,
 ): ParsedRow<T>[] {
   return dataRows.map((cells, i) => {
     const data: Record<string, unknown> = {};
@@ -110,6 +111,6 @@ export function parseRows<T = Record<string, unknown>>(
       const more = validate(data as T);
       if (more) errors.push(...(Array.isArray(more) ? more : [more]));
     }
-    return { row: firstRowNumber + i, data: data as T, errors, raw: [...cells] };
+    return { row: typeof firstRowNumber === "number" ? firstRowNumber + i : (firstRowNumber[i] ?? i + 2), data: data as T, errors, raw: [...cells] };
   });
 }
