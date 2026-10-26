@@ -10,6 +10,8 @@ import { enAiImaging, taAiImaging } from "./messages-ai-imaging";
 import { enAiTradesC, taAiTradesC } from "./messages-ai-trades-c";
 import { enAiStore, taAiStore } from "./messages-ai-store";
 import { enAiStudio, taAiStudio } from "./messages-ai-studio";
+import { enPlatform, taPlatform } from "./messages-platform";
+import { enAiSetup, taAiSetup } from "./messages-ai-setup";
 
 /** web.* strings for the shared kit (shell, login, shop resolution, feature gate, Settings → Features). Keep en and ta key sets identical. */
 const en: Messages = {
@@ -275,6 +277,8 @@ const en: Messages = {
   ...enAiTradesC,
   ...enAiStore,
   ...enAiStudio,
+  ...enPlatform,
+  ...enAiSetup,
 };
 
 const ta: Messages = {
@@ -537,6 +541,8 @@ const ta: Messages = {
   ...taAiTradesC,
   ...taAiStore,
   ...taAiStudio,
+  ...taPlatform,
+  ...taAiSetup,
   ...taSecurity,
 };
 

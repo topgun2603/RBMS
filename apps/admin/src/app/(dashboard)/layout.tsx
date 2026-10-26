@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AppWindowIcon,
+  LifeBuoyIcon,
+  MegaphoneIcon,
+  TrendingDownIcon,
   SparklesIcon,
   WandSparklesIcon,
   BlocksIcon,
@@ -45,6 +48,7 @@ import { useFeatures } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import { aiNavLabel, aiStudioNavLabel } from "@/lib/ai-messages";
 import { kycNavLabel } from "@/lib/kyc-messages";
+import { platformNavLabels } from "@/lib/platform-messages";
 import { subsNavLabel } from "@/lib/subscriptions-messages";
 import { readStored, SIDEBAR_KEY, useHydrated, useTenantSlug, useToken, writeStored } from "@/lib/session";
 
@@ -61,6 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const aiNav = aiNavLabel(locale);
   const aiStudioNav = aiStudioNavLabel(locale);
   const subsNav = subsNavLabel(locale);
+  const ptNav = React.useMemo(() => platformNavLabels(locale), [locale]);
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const hydrated = useHydrated();
@@ -125,11 +130,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/kyc", label: kycNav, icon: BadgeCheckIcon },
           { href: "/platform/ai", label: aiNav, icon: SparklesIcon },
           { href: "/platform/studio-requests", label: aiStudioNav, icon: WandSparklesIcon },
+          { href: "/platform/shops-at-risk", label: ptNav.risk, icon: TrendingDownIcon },
+          { href: "/platform/support", label: ptNav.support, icon: LifeBuoyIcon },
+          { href: "/platform/whats-new", label: ptNav.news, icon: MegaphoneIcon },
         ],
       });
     }
     return s;
-  }, [t, kycNav, aiNav, aiStudioNav, subsNav, tenant, superadmin, isModuleOff]);
+  }, [t, kycNav, aiNav, aiStudioNav, subsNav, ptNav, tenant, superadmin, isModuleOff]);
 
   if (hydrated && token && me.isError) {
     return (

@@ -162,7 +162,8 @@ export { DescribeButton, toMarkdown, type DescribeApply, type DescribeFacts } fr
 export { ProductTamilText } from "./components/ai-assist/product-tamil";
 export { AiHelpButton } from "./components/ai-assist/help-panel";
 export { AskShopButton, FiguresTables, type AskTable } from "./components/ai-assist/ask-shop-panel";
-export { StudioAssistant, type StudioChange } from "./components/ai-studio/studio-panel";
+export { StudioAssistant, PlanCard, type StudioChange } from "./components/ai-studio/studio-panel";
+export { SetupAssistant } from "./components/ai-onboarding/setup-assistant";
 export { StudioLink } from "./components/ai-studio/studio-link";
 export { registerStudioPreview, type StudioPreviewProps } from "./components/ai-studio/studio-preview";
 export { AddFromPhotosButton } from "./components/ai-trades-b/catalogue-photos";

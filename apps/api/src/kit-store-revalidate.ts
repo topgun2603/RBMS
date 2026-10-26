@@ -40,6 +40,8 @@ const RULES: Rule[] = [
   [/^\/v1\/catalog(\/|$)/, ["catalog", "offers", "seo", "bookings"]],
   // Studio assistant: applying or undoing a change can restyle the store, its home, menus, pages, settings and features.
   [/^\/v1\/ai\/studio\/changes\/:id\/(apply|undo)$/, ["home", "menus", "pages", "seo", "branding", "config", "features"]],
+  // Shop setup assistant (a Studio change): look, home page, store settings and product groups.
+  [/^\/v1\/ai\/onboarding\/changes\/:id\/(apply|undo)$/, ["home", "branding", "config", "catalog", "seo"]],
   // Approving, rejecting, editing or re-drafting a Tamil product translation changes the Tamil product text the store shows.
   [/^\/v1\/ai\/assist\/translat(e$|ions(\/|$))/, ["catalog", "offers", "seo", "bookings"]],
   // Approving AI photo tags writes tags and attributes to a product, which the store searches and filters on.

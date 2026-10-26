@@ -67,7 +67,16 @@ export interface AiRunRequest<T = unknown> {
   maxSteps?: number;
   /** Masking of the text input. Default: phones and emails on, GSTIN per the shop's setting. false = send as written. */
   mask?: AiMaskOptions | false;
+  /**
+   * A platform tool run by the RBMS team (support triage, release notes): the platform kill switch and the provider still
+   * apply, but no shop's switches or credits do. Pass `tenantId: PLATFORM_TENANT_ID`; the run is recorded there and its
+   * credits are counted, never charged to a shop.
+   */
+  platform?: boolean;
 }
+
+/** The `ai_runs` owner of platform tool runs (`platform: true`): not a shop. */
+export const PLATFORM_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 export interface AiUsage {
   inputTokens: number;

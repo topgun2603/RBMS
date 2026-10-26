@@ -331,3 +331,6 @@ export * from "./money/schema";
 
 // Counter helpers (Phase 5 part A): activity-alert reviews, no-sale events, weekly coaching notes.
 export * from "./counter/schema";
+
+// Platform tools (Phase 7 part B): RBMS support tickets, shop follow-ups (churn signals), What's new notes.
+export * from "./platform/schema";

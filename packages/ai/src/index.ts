@@ -24,6 +24,8 @@ export * as aiStore from "./store";
 export * as aiMoney from "./money";
 export * as imaging from "./imaging";
 export * as aiCounter from "./counter";
+export * as aiOnboarding from "./onboarding";
+export * as aiPlatform from "./platform";
 export { AiService, monthKey, runView, toAppError, DEBUG_KEEP_DAYS } from "./service";
 export type { AiDeps, AiLogger, CreditBalance, CreditsPort } from "./service";
 export { ClaudeProvider, FALLBACK_BETA } from "./claude-provider";

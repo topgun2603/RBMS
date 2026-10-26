@@ -1,6 +1,6 @@
 export * from "./types";
 export * from "./areas";
-export { ALL_OPS, OP_KINDS, opOf, STUDIO_ADDABLE_SECTIONS, NEVER_GRANT, MAX_GRANTS, grantProblem, findSection, effectiveTokens, presetTokens } from "./ops";
+export { ALL_OPS, SETUP_OPS, OP_KINDS, opOf, STUDIO_ADDABLE_SECTIONS, NEVER_GRANT, MAX_GRANTS, grantProblem, findSection, effectiveTokens, presetTokens } from "./ops";
 export { checkPlan, hashOf, stable, permissionProblem, type CheckDeps, type CheckResult, type FeatureStatus } from "./check";
 export { buildPreview } from "./diff";
 export { STUDIO_SYSTEM, STUDIO_FEATURE, STUDIO_JSON_SCHEMA, STUDIO_MAX_REQUEST, studioOutputZ, buildStudioTools, proposePlan, type ModelPlan, type PlanRunner } from "./plan";

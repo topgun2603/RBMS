@@ -362,7 +362,8 @@ export function StudioAssistant() {
   );
 }
 
-function PlanCard(p: {
+/** One checked plan: steps, what is not possible, before -> after, the live store preview, Apply / Cancel / Undo. Also used by the shop setup assistant. */
+export function PlanCard(p: {
   change: StudioChange;
   pick: (b: Bi) => string;
   groupOf: (kind: string) => Bi | undefined;

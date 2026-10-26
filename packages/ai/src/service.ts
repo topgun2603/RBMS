@@ -21,7 +21,7 @@ import type {
   ProviderResponse,
   UsageSegment,
 } from "./types";
-import { AI_FEEDBACK } from "./types";
+import { AI_FEEDBACK, PLATFORM_TENANT_ID } from "./types";
 
 /** The shop's credits this month. `allowance` is the plan's monthly credits (add-ons included); `topUp` are bought packs. */
 export interface CreditBalance {
@@ -161,11 +161,16 @@ export class AiService {
 
     if (!config.enabled) return blocked(err.disabled());
     if (!config.provider) return blocked(err.unavailable());
-    if (!(await this.deps.featureOn(req.tenantId))) return blocked(err.notInPlan());
-    const settings = await this.settingsOf(req.tenantId);
+    // Platform tools (support triage, release notes) are the RBMS team's own runs: no shop switch or credit applies.
+    const platform = req.platform === true;
+    if (platform && req.tenantId !== PLATFORM_TENANT_ID) throw badRequest("Platform runs belong to the platform");
+    if (!platform && !(await this.deps.featureOn(req.tenantId))) return blocked(err.notInPlan());
+    const settings = platform ? { ...AI_SETTINGS_DEFAULTS, enabled: true } : await this.settingsOf(req.tenantId);
     if (!settings.enabled) return blocked(err.off());
     if (featureAllowed(settings.features, req.feature) === false) return blocked(err.featureOff(req.feature));
-    const balance = await this.deps.credits.balance(req.tenantId);
+    const balance: CreditBalance = platform
+      ? { period: monthKey(this.now()), unlimited: true, allowance: 0, allowanceUsed: 0, topUp: 0, remaining: null }
+      : await this.deps.credits.balance(req.tenantId);
     if (balance.remaining !== null && balance.remaining <= 0) return blocked(err.exhausted(balance));
 
     const maskOpts = req.mask === false ? false : { gstin: settings.maskGstin, ...(req.mask ?? {}) };
@@ -197,7 +202,7 @@ export class AiService {
       finished = true;
       const usage = segmentsUsage(segments);
       const micro = segmentsCost(segments);
-      const charged = await this.charge(req.tenantId, creditsForCost(micro));
+      const charged = platform ? creditsForCost(micro) : await this.charge(req.tenantId, creditsForCost(micro));
       await this.record({
         ...base,
         id,
@@ -473,18 +478,19 @@ export class AiService {
     };
   }
 
-  /** The registry minus helpers whose module (`requires`) the shop does not have. */
+  /** The registry minus platform tools (not the shop's) and helpers whose module (`requires`) the shop does not have. */
   private async listedFeatures(tenantId: string) {
+    const shopHelpers = AI_FEATURE_REGISTRY.filter((f) => !f.platform);
     const check = this.deps.featureEnabled;
-    if (!check) return AI_FEATURE_REGISTRY;
+    if (!check) return shopHelpers;
     const keep = await Promise.all(
-      AI_FEATURE_REGISTRY.map(async (f) => {
+      shopHelpers.map(async (f) => {
         if (!f.requires?.length) return true;
         for (const key of f.requires) if (await check(tenantId, key).catch(() => false)) return true;
         return false;
       }),
     );
-    return AI_FEATURE_REGISTRY.filter((_, i) => keep[i]);
+    return shopHelpers.filter((_, i) => keep[i]);
   }
 
   private async spentIn(tenantId: string, period: string): Promise<number> {
@@ -558,8 +564,8 @@ export class AiService {
       inputTokens: Number(r.inputTokens),
       outputTokens: Number(r.outputTokens),
       costMicroUsd: Number(r.costMicroUsd),
-      slug: names.get(r.tenantId)?.slug ?? null,
-      name: names.get(r.tenantId)?.name ?? null,
+      slug: names.get(r.tenantId)?.slug ?? (r.tenantId === PLATFORM_TENANT_ID ? "platform" : null),
+      name: names.get(r.tenantId)?.name ?? (r.tenantId === PLATFORM_TENANT_ID ? "RBMS platform tools" : null),
     }));
     const total = items.reduce((t, r) => ({ runs: t.runs + r.runs, costMicroUsd: t.costMicroUsd + r.costMicroUsd, credits: t.credits + r.credits }), { runs: 0, costMicroUsd: 0, credits: 0 });
     return { period, provider: this.deps.config.providerKind, total, items };

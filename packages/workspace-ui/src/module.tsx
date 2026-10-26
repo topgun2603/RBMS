@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ActivityIcon, FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, SparklesIcon, UsersRoundIcon, WalletIcon, WandSparklesIcon } from "lucide-react";
+import { ActivityIcon, FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, SparklesIcon, StoreIcon, UsersRoundIcon, WalletIcon, WandSparklesIcon } from "lucide-react";
 import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { workspaceMessages } from "./lib/messages";
 
@@ -29,7 +29,7 @@ export const WORKSPACE_PERMISSIONS = {
 } as const;
 
 /** Settings paths the module claims under the app's /settings. */
-export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", studio: "studio", counter: "counter", plan: PLAN_SETTINGS_PATH } as const;
+export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", studio: "studio", counter: "counter", shopSetup: "shop-setup", plan: PLAN_SETTINGS_PATH } as const;
 
 export interface WorkspaceModuleOptions {
   /** Where module-relative links resolve. Everything lives under /settings, so the default "/" is right for any app. */
@@ -53,6 +53,8 @@ export function workspaceModule(opts: WorkspaceModuleOptions = {}): WebModule {
   const P = WORKSPACE_SETTINGS_PATHS;
   const settings: SettingsPage[] = [
     { path: P.setup, label: "workspace.nav.setup", icon: ListChecksIcon, feature: F.onboarding, roles: ["owner", "admin"], component: page(() => import("./pages/setup")) },
+    // Shop setup assistant: five questions, then the trade, product groups, look and home page to apply (docs/ai.md, Phase 7 part A). Owner only.
+    { path: P.shopSetup, label: "workspace.nav.shopSetup", icon: StoreIcon, feature: F.ai, roles: ["owner"], component: page(() => import("./pages/shop-setup")) },
     { path: P.team, label: "workspace.nav.team", icon: UsersRoundIcon, feature: F.staff, permission: WORKSPACE_PERMISSIONS.staff, component: page(() => import("./pages/team")) },
     { path: P.audit, label: "workspace.nav.audit", icon: HistoryIcon, feature: F.audit, permission: WORKSPACE_PERMISSIONS.audit, permissionExplicit: true, component: page(() => import("./pages/audit")) },
     { path: P.import, label: "workspace.nav.import", icon: FileUpIcon, feature: F.importexport, permission: WORKSPACE_PERMISSIONS.importexport, component: page(() => import("./pages/import")) },

@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import NextLink from "next/link";
-import { ArrowRightIcon, CircleHelpIcon, Loader2Icon, SendIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ArrowRightIcon, CircleHelpIcon, LifeBuoyIcon, Loader2Icon, SendIcon } from "lucide-react";
 import { Alert, AlertDescription, Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Textarea } from "@srirealtime/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { useAiAssistAllowed } from "./use-assist";
+import { openSupport } from "../platform/support";
 
 interface HelpResponse {
   answered: boolean;
@@ -45,6 +47,7 @@ export function Answer({ text }: { text: string }) {
 export function AiHelpButton({ resolveScreen }: { resolveScreen: (key: string) => string | null }) {
   const { t, locale } = useI18n();
   const allowed = useAiAssistAllowed();
+  const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -112,6 +115,21 @@ export function AiHelpButton({ resolveScreen }: { resolveScreen: (key: string) =
               <div className="grid gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-border ring-inset" lang={res.language}>
                 <p className="text-xs font-medium text-muted-foreground">{asked}</p>
                 {res.answered ? <Answer text={res.answer} /> : <p className="text-sm">{res.answer || t("web.aiAssist.help.unknown")}</p>}
+                {!res.answered && (
+                  <div className="grid gap-1.5">
+                    <p className="text-meta text-muted-foreground">{t("web.platform.support.contactHint")}</p>
+                    <Button
+                      size="sm"
+                      className="justify-self-start"
+                      onClick={() => {
+                        setOpen(false);
+                        openSupport({ question: asked, screen: pathname });
+                      }}
+                    >
+                      <LifeBuoyIcon /> {t("web.platform.support.contact")}
+                    </Button>
+                  </div>
+                )}
                 {res.answered && res.screens.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {res.screens

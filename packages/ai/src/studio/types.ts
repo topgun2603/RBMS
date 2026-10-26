@@ -119,7 +119,7 @@ export interface OpDef<P = any> {
   visual?: boolean;
 }
 
-export type OpGroup = "theme" | "home" | "menus" | "pages" | "store" | "bills" | "team" | "signin" | "features" | "ai";
+export type OpGroup = "theme" | "home" | "menus" | "pages" | "store" | "bills" | "team" | "signin" | "features" | "ai" | "catalogue";
 
 export const OP_GROUP_LABEL: Record<OpGroup, Bi> = {
   theme: { en: "Store look", ta: "கடையின் தோற்றம்" },
@@ -132,6 +132,7 @@ export const OP_GROUP_LABEL: Record<OpGroup, Bi> = {
   signin: { en: "Sign-in", ta: "உள்நுழைவு" },
   features: { en: "Features", ta: "வசதிகள்" },
   ai: { en: "AI settings", ta: "AI அமைப்புகள்" },
+  catalogue: { en: "Product groups", ta: "பொருள் வகைகள்" },
 };
 
 /** A planned operation as stored and shown. */

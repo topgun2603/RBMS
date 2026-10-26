@@ -171,6 +171,40 @@ export class StudioService {
     return this.view(row);
   }
 
+  /**
+   * Checks and stores a plan that was built in code instead of by the Studio planner (the shop setup assistant, Phase 7
+   * part A). The same checks, preview, apply, stale check and undo apply; `runId` / `credits` are the AI run that read
+   * the answers, if any. Changes nothing.
+   */
+  async planFromOps(
+    tenantId: string,
+    actor: StudioActor,
+    p: { request: string; language: "en" | "ta"; summary: string; notes: string; ops: PlannedOp[]; runId: string | null; credits: number },
+  ): Promise<ChangeView> {
+    if (actor.demo) throw forbidden("The demo account cannot use Studio");
+    const env = await this.d.ports.env(tenantId);
+    const result = await checkPlan(p.ops, [], this.checkDeps(tenantId, actor, env));
+    const status: StudioStatus = result.ops.some((o) => o.status === "ok") ? "planned" : "rejected";
+    const storedOps: StoredOps = { ops: result.ops.map((o, i) => ({ ...o, snapshot: result.snapshots[i] })), refused: [], notes: p.notes, featureRequestSaved: false };
+    const row = await this.d.store.insertChange({
+      tenantId,
+      userId: actor.userId,
+      requestText: maskText(p.request, { phones: true, emails: true }).slice(0, STUDIO_MAX_REQUEST),
+      language: p.language,
+      summary: p.summary || (status === "rejected" ? TXT.noOps[p.language] : ""),
+      classification: result.classification,
+      status,
+      ops: storedOps as unknown as unknown[],
+      unsupported: [],
+      preview: result.preview as unknown as Record<string, unknown>,
+      base: result.baseHash,
+      highRisk: result.highRisk,
+      runId: p.runId,
+      credits: p.credits,
+    });
+    return this.view(row);
+  }
+
   // ------------------------------------------------------------------ read
 
   async get(tenantId: string, id: string): Promise<ChangeView> {

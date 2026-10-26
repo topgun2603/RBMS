@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftRightIcon, LogOutIcon, MenuIcon, PlusIcon, SettingsIcon } from "lucide-react";
+import { ArrowLeftRightIcon, LifeBuoyIcon, LogOutIcon, MegaphoneIcon, MenuIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import {
   AppShell,
   Avatar,
@@ -44,6 +44,7 @@ import { BUILT_IN_SETTINGS } from "./builtins";
 import { buildNavModel, joinPath } from "./model";
 import { AiHelpButton } from "../components/ai-assist/help-panel";
 import { AskShopButton } from "../components/ai-assist/ask-shop-panel";
+import { openSupport, openWhatsNew, PlatformHost, useIsDemo, usePlatformBadges } from "../components/platform/support";
 import { useSettingsHref, useWebApp } from "./navigation";
 import { useSession, useVisible, useVisibleSettings } from "./session";
 import type { IconType, MountedModule, QuickAction } from "./types";
@@ -160,6 +161,7 @@ export function AppFrame({ immersive, children }: { immersive?: boolean; childre
       </div>
       {!immersive && <BottomTabs pathname={pathname} sections={sections} primary={primary} />}
       <UpgradeDialogHost />
+      <PlatformHost />
     </AppShell>
   );
 }
@@ -312,13 +314,18 @@ function UserMenu() {
   const name = displayName(me.user);
   const role = me.tenantRoles[0];
   const storage = getTenantStrategy().from === "storage";
+  const badges = usePlatformBadges();
+  const demo = useIsDemo();
+  const pathname = usePathname() ?? "/";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full" aria-label={t("web.user.menu")}>
+        <Button variant="ghost" size="icon" className="relative rounded-full" aria-label={t("web.user.menu")}>
           <Avatar className="size-8">
             <AvatarFallback className="bg-primary/12 text-xs font-semibold text-primary">{initials(me.user.name ?? name)}</AvatarFallback>
           </Avatar>
+          {/* RBMS replied to a support message, or there is something new: a dot on the avatar. */}
+          {(badges.data?.support ?? 0) + (badges.data?.whatsNew ?? 0) > 0 && <span className="absolute top-0.5 right-0.5 size-2.5 rounded-full bg-destructive ring-2 ring-card" aria-hidden />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
@@ -338,6 +345,16 @@ function UserMenu() {
         {storage && (
           <DropdownMenuItem className="h-10" onSelect={() => setStoredTenant(null)}>
             <ArrowLeftRightIcon /> {t("web.open.switchShop")}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem className="h-10" onSelect={() => openWhatsNew()}>
+          <MegaphoneIcon /> {t("web.platform.menu.whatsNew")}
+          {(badges.data?.whatsNew ?? 0) > 0 && <span className="ml-auto rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{t("web.platform.menu.unread", { n: badges.data!.whatsNew })}</span>}
+        </DropdownMenuItem>
+        {!demo && (
+          <DropdownMenuItem className="h-10" onSelect={() => openSupport({ screen: pathname })}>
+            <LifeBuoyIcon /> {t("web.platform.menu.support")}
+            {(badges.data?.support ?? 0) > 0 && <span className="ml-auto rounded-full bg-destructive px-1.5 text-xs text-white">{t("web.platform.menu.unread", { n: badges.data!.support })}</span>}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

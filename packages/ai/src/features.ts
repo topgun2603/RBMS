@@ -4,6 +4,8 @@ import { DAILY_SUMMARY_SCHEMA } from "./insights/daily-settings";
 import { MONEY_REGISTRY } from "./money/registry";
 import { STORE_REGISTRY } from "./store/registry";
 import { COUNTER_REGISTRY } from "./counter/registry";
+import { ONBOARDING_REGISTRY } from "./onboarding/registry";
+import { PLATFORM_REGISTRY } from "./platform/registry";
 import type { AiTier } from "./types";
 
 /** The module feature (plan / app profile gate, owner can hide it in Settings > Features). The shop's own opt-in is settings `ai.enabled`. */
@@ -52,6 +54,8 @@ export interface AiFeatureInfo {
   requires?: readonly string[];
   /** Sends sensitive data (health records): off until the owner switches this helper on by name, even when AI is on. */
   optIn?: boolean;
+  /** A tool of the RBMS team (Phase 7 part B), run with `platform: true`: never listed in a shop's Settings > AI, never spends a shop's credits. */
+  platform?: boolean;
 }
 
 /**
@@ -396,6 +400,10 @@ export const AI_FEATURE_REGISTRY: readonly AiFeatureInfo[] = [
   ...MONEY_REGISTRY,
   // ---- Phase 5 part A: the counter (Tamil voice billing, unusual-activity alerts, staff coaching, shift planning)
   ...COUNTER_REGISTRY,
+  // ---- Phase 7 part A: the shop setup assistant for new owners (five questions)
+  ...ONBOARDING_REGISTRY,
+  // ---- Phase 7 part B: platform tools of the RBMS team (support triage, what's new notes); hidden from shops
+  ...PLATFORM_REGISTRY,
 ];
 
 export const featureInfo = (key: string) => AI_FEATURE_REGISTRY.find((f) => f.key === key);
@@ -423,6 +431,16 @@ export const AI_SETTINGS_SCHEMA = z.object({
   counter: z.object({ billsPerStaffHour: z.number().min(1).max(200).optional(), alertsInSummary: z.boolean().optional() }).optional(),
   /** Cash-flow forecast: cash and bank in hand on `asOf` (paise; null = not entered) and the warning level (paise). */
   cashflow: z.object({ openingBalance: z.number().int().nullable(), asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), asOfAt: z.string().nullable().optional(), minBalance: z.number().int().min(0) }).optional(),
+  /** Shop setup assistant (Phase 7 part A): progress, the Studio change it planned and the answers as last sent (masked). */
+  onboarding: z
+    .object({
+      status: z.enum(["new", "planned", "applied", "undone", "dismissed"]),
+      changeId: z.string().uuid().nullable(),
+      answers: z.record(z.string().max(20), z.string().max(400)).nullable(),
+      language: z.enum(["en", "ta"]),
+      updatedAt: z.string().max(40),
+    })
+    .optional(),
 });
 export type AiSettings = z.infer<typeof AI_SETTINGS_SCHEMA>;
 export const AI_SETTINGS_DEFAULTS: AiSettings = { enabled: false, features: {}, maskGstin: false, storePrompts: false };

@@ -1,6 +1,6 @@
 import { mergeTokens, type BrandTokens } from "@srirealtime/branding/tokens";
 import type { HomeDoc, MenuItem } from "@srirealtime/cms";
-import type { BrandingArea, DiscountsArea, FeatureArea, HomeArea, MenuArea, PageArea, RolesArea, SettingsArea, SignInArea } from "./areas";
+import type { BrandingArea, CategoriesArea, DiscountsArea, FeatureArea, HomeArea, MenuArea, PageArea, RolesArea, SettingsArea, SignInArea } from "./areas";
 import type { Bi, ChangeLine, StudioEnv, StudioPreview, StudioState } from "./types";
 
 const same = (v: string): Bi => ({ en: v, ta: v });
@@ -144,6 +144,7 @@ const SETTING_LABEL: Record<string, Record<string, Bi>> = {
     policies: { en: "Policy pages", ta: "கொள்கைப் பக்கங்கள்" },
     trust: { en: "Trust badges", ta: "நம்பிக்கை பேட்ஜ்கள்" },
     installBanner: { en: "Install app banner", ta: "செயலி நிறுவல் பேனர்" },
+    businessType: { en: "Type of business", ta: "வணிக வகை" },
   },
   billing: {
     legalName: { en: "Business name on bills", ta: "பில்லில் வணிகப் பெயர்" },
@@ -252,6 +253,18 @@ function signinLines(before: SignInArea, after: SignInArea): ChangeLine[] {
   return out;
 }
 
+function categoryLines(before: CategoriesArea, after: CategoriesArea): ChangeLine[] {
+  const k = (n: string) => n.trim().toLowerCase();
+  const had = new Set(before.items.map((c) => k(c.name)));
+  const will = new Set(after.items.map((c) => k(c.name)));
+  const added = after.items.filter((c) => !had.has(k(c.name))).map((c) => c.name);
+  const removed = before.items.filter((c) => !will.has(k(c.name))).map((c) => c.name);
+  const out: ChangeLine[] = [];
+  if (added.length) out.push(line("categories", { en: "Product groups added", ta: "சேர்க்கப்படும் பொருள் வகைகள்" }, NONE, same(clip(added.join(", "), 160))));
+  if (removed.length) out.push(line("categories", { en: "Empty product groups removed", ta: "நீக்கப்படும் காலியான வகைகள்" }, same(clip(removed.join(", "), 160)), NONE));
+  return out;
+}
+
 /** The before -> after list of everything the plan changes, plus the data the live store preview needs. */
 export function buildPreview(st: StudioState, env: StudioEnv): StudioPreview {
   const lines: ChangeLine[] = [];
@@ -272,6 +285,7 @@ export function buildPreview(st: StudioState, env: StudioEnv): StudioPreview {
     else if (area === "roles") lines.push(...rolesLines(b, a));
     else if (area === "discounts") lines.push(...discountLines(b, a));
     else if (area === "signin") lines.push(...signinLines(b, a));
+    else if (area === "categories") lines.push(...categoryLines(b, a));
     else if (area.startsWith("feature:")) {
       const f = a as FeatureArea;
       lines.push(line(area, { en: `Feature “${f.label}”`, ta: `வசதி “${f.label}”` }, (b as FeatureArea).enabled ? ON : OFF, f.enabled ? ON : OFF));

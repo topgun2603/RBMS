@@ -18,6 +18,8 @@ export const AREA = {
   discounts: "discounts",
   signin: "signin",
   feature: (key: string) => `feature:${key}`,
+  /** The catalogue's categories (names only; the shop setup assistant adds starter groups and removes empty ones). */
+  categories: "categories",
 } as const;
 
 export interface BrandingArea {
@@ -87,6 +89,19 @@ export interface FeatureArea {
   /** Why it is off, when it is: app / plan / dependency / shop. */
   reason: "app" | "plan" | "dependency" | "shop" | null;
   shopToggle: boolean;
+}
+
+export interface CategoryRow {
+  /** null = not created yet (added by a plan). */
+  id: string | null;
+  name: string;
+  slug: string;
+  /** Products in it now: only empty categories may be removed. */
+  products: number;
+  parentId: string | null;
+}
+export interface CategoriesArea {
+  items: CategoryRow[];
 }
 
 /** Sets keys of a settings namespace (both the saved layer and the effective view). Settings merge one level deep: pass whole values. */

@@ -5,6 +5,10 @@ export const aiEn: Messages = {
   "workspace.nav.ai": "AI assistance",
   "workspace.nav.studio": "Studio assistant",
   "workspace.studio.subtitle": "Ask in Tamil, Tanglish or English for a change to how your shop looks or works. You see a plan and a preview first.",
+  "workspace.nav.shopSetup": "Set up your shop",
+  "workspace.shopSetup.subtitle": "Five questions about your shop. Then your product groups, store look and home page are prepared for you to check and apply.",
+  "workspace.onboarding.steps.shop-setup-assistant.label": "Set up your shop in five questions",
+  "workspace.onboarding.steps.shop-setup-assistant.description": "Answer five questions; your product groups, store look and home page are set up for you to check.",
 
   "workspace.ai.title": "AI assistance",
   "workspace.ai.subtitle": "AI helpers that write drafts and answers for you to check. Off until you switch it on.",
@@ -77,6 +81,10 @@ export const aiTa: Messages = {
   "workspace.nav.ai": "AI உதவி",
   "workspace.nav.studio": "ஸ்டுடியோ உதவியாளர்",
   "workspace.studio.subtitle": "உங்கள் கடை எப்படித் தெரிய வேண்டும், எப்படி வேலை செய்ய வேண்டும் என்பதை தமிழ், தங்கிலிஷ் அல்லது ஆங்கிலத்தில் கேளுங்கள். முதலில் திட்டத்தையும் முன்னோட்டத்தையும் காணலாம்.",
+  "workspace.nav.shopSetup": "உங்கள் கடையை அமையுங்கள்",
+  "workspace.shopSetup.subtitle": "உங்கள் கடையைப் பற்றி ஐந்து கேள்விகள். பிறகு உங்கள் பொருள் வகைகள், கடைத் தோற்றம், முகப்புப் பக்கம் தயார் செய்யப்பட்டு நீங்கள் பார்த்து பயன்படுத்தலாம்.",
+  "workspace.onboarding.steps.shop-setup-assistant.label": "ஐந்து கேள்விகளில் உங்கள் கடையை அமையுங்கள்",
+  "workspace.onboarding.steps.shop-setup-assistant.description": "ஐந்து கேள்விகளுக்குப் பதில் சொல்லுங்கள்; உங்கள் பொருள் வகைகள், கடைத் தோற்றம், முகப்புப் பக்கம் நீங்கள் பார்க்க அமைக்கப்படும்.",
 
   "workspace.ai.title": "AI உதவி",
   "workspace.ai.subtitle": "நீங்கள் சரிபார்க்க வரைவுகளையும் பதில்களையும் எழுதும் AI உதவியாளர்கள். நீங்கள் இயக்கும் வரை நிறுத்தப்பட்டிருக்கும்.",

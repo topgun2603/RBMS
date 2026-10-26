@@ -20,6 +20,7 @@ import { createAiKit } from "./kit-ai";
 import { createAiAssistKit } from "./kit-ai-assist";
 import { createAiAsk } from "./kit-ai-ask";
 import { createAiStudio } from "./kit-ai-studio";
+import { createAiOnboardingKit } from "./kit-ai-onboarding";
 import { createAiInsightsKit } from "./kit-ai-insights";
 import { createAiMoneyKit } from "./kit-ai-money";
 import { createAiVision } from "./kit-ai-vision";
@@ -29,6 +30,7 @@ import { createAiStoreKit } from "./kit-ai-store";
 import { createAiImagingKit } from "./kit-ai-imaging";
 import { createAiCounterKit } from "./kit-ai-counter";
 import { createAiTradesC } from "./kit-ai-trades-c";
+import { createAiPlatformKit } from "./kit-ai-platform";
 import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
 import { createBookings } from "@srirealtime/bookings";
 import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
@@ -1422,6 +1424,16 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     storeSettings,
     now: clock,
   });
+  // Phase 7 part A (docs/ai.md): the shop setup assistant (five questions -> a Studio change the owner previews and applies), see kit-ai-onboarding.ts.
+  const aiOnboarding = createAiOnboardingKit({
+    ai: ai.service,
+    studio: aiStudio,
+    aiSettings: settings.service.handle("ai") as never,
+    tenancy: tenancy.service,
+    hasProducts: async (tenantId) => (await catalogue.service.listProducts(tenantId, { limit: 1 })).total > 0,
+    registerStep: onboarding.registerStep,
+    now: clock,
+  });
   // Phase 2 part B (docs/ai.md): daily summary job + delivery, festival-aware reorder, campaign writer, review replies and themes.
   const aiInsights = createAiInsightsKit({
     db,
@@ -1614,6 +1626,22 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   const aiCounter = createAiCounterKit({ db, ai: ai.service, aiSettings: settings.service.handle("ai") as never, log, now: clock });
   aiCounterRef = aiCounter;
 
+  // Phase 7 part B (docs/ai.md): platform tools of the RBMS team (shops at risk, support desk + AI triage, What's new), see kit-ai-platform.ts.
+  const aiPlatform = createAiPlatformKit({
+    db,
+    ai: ai.service,
+    jobs: jobs.service,
+    guides: aiAssist.guides,
+    storeSettings,
+    userName: async (userId) => {
+      const u = await auth.service.getUser(userId).catch(() => null);
+      return u?.name?.trim() || null;
+    },
+    demoSlugs: parseDemoShops(env.DEMO_SHOPS),
+    log,
+    now: clock,
+  });
+
   // POS terminals: pairing, device tokens, staff PINs, catalogue sync, weigh tickets (kit-pos.ts).
   const pos = createPosWiring({
     db,
@@ -1747,6 +1775,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     aiAsk.module,
     aiStudio.module,
     aiStudio.adminModule,
+    aiOnboarding.module,
     aiInsights.module,
     aiMoney.module,
     aiVision,
@@ -1756,6 +1785,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     aiStore.module,
     aiImaging.module,
     aiCounter.module,
+    aiPlatform.module,
+    aiPlatform.adminModule,
     medicines.module,
     dining.module,
     aggregators.module,

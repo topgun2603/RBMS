@@ -26,7 +26,7 @@ export interface StudioKitDeps {
   auth: Pick<AuthService, "signInSettings" | "updateSignInOptions">;
   features: Pick<FeaturesService, "resolve" | "setToggle" | "clearToggles">;
   tenancy: Pick<TenancyService, "getRef" | "getById">;
-  catalogue: Pick<CatalogueService, "listCategories" | "listCollections" | "listProducts">;
+  catalogue: Pick<CatalogueService, "listCategories" | "listCollections" | "listProducts" | "createCategory" | "deleteCategory">;
   audit: AuditPort;
   /** Re-read before the model plans: the shop's own settings namespace "store". */
   storeSettings: { get(scope: { tenantId: string }): Promise<Record<string, unknown>> };
@@ -79,6 +79,9 @@ export function createStudioPorts(d: StudioKitDeps): Ports {
       const o = (await d.auth.signInSettings(tenantId)).options;
       return json({ staff: o.staff, customer: o.customer });
     },
+    categories: async (tenantId) => ({
+      items: (await d.catalogue.listCategories(tenantId)).items.map((c) => ({ id: c.id, name: c.name, slug: c.slug, products: c.productCount, parentId: c.parentId ?? null })),
+    }),
     feature: async (tenantId, area) => {
       const key = area.slice(8);
       const ref = await d.tenancy.getRef(tenantId);
@@ -160,6 +163,25 @@ export function createStudioPorts(d: StudioKitDeps): Ports {
     },
     async signin(c, _a, _before, after) {
       await d.auth.updateSignInOptions(c.tenantId, { staff: after.staff, customer: after.customer }, c.actor.userId);
+    },
+    // Product groups by name: names only in `after` are created, names only in `before` are deleted (the catalogue
+    // refuses to delete a group that has products or sub-groups). Undo runs the same with the two swapped.
+    async categories(c, _a, before, after) {
+      const k = (n: string) => n.trim().toLowerCase();
+      const had = new Map<string, any>(before.items.map((x: any) => [k(x.name), x]));
+      const will = new Map<string, any>(after.items.map((x: any) => [k(x.name), x]));
+      const now = (await d.catalogue.listCategories(c.tenantId)).items;
+      let sort = now.reduce((m, x) => Math.max(m, x.sort ?? 0), 0);
+      for (const [name, x] of will) {
+        if (had.has(name) || now.some((y) => k(y.name) === name)) continue;
+        sort += 10;
+        await d.catalogue.createCategory(c.tenantId, { name: x.name, sort });
+      }
+      for (const [name] of had) {
+        if (will.has(name)) continue;
+        const row = now.find((y) => k(y.name) === name);
+        if (row) await d.catalogue.deleteCategory(c.tenantId, row.id);
+      }
     },
     async feature(c, area, _before, after) {
       const key = area.slice(8);

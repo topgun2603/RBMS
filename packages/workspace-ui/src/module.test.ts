@@ -35,7 +35,7 @@ describe("workspaceModule", () => {
     const m = workspaceModule();
     expect(m.id).toBe("workspace");
     expect(m.nav).toEqual([]);
-    expect((m.settings ?? []).map((p) => p.path)).toEqual(["setup", "team", "audit", "import", "messages", "ai", "counter", "studio", "plan"]);
+    expect((m.settings ?? []).map((p) => p.path)).toEqual(["setup", "shop-setup", "team", "audit", "import", "messages", "ai", "counter", "studio", "plan"]);
     // Customer messages spans features (its events are filtered by feature on the server); owners/admins only.
     for (const p of m.settings ?? []) if (p.path !== "plan" && p.path !== "messages") expect(p.feature, p.path).toBeTruthy();
     expect(m.settings?.find((p) => p.path === "messages")?.roles).toEqual(["owner", "admin"]);
@@ -47,6 +47,7 @@ describe("workspaceModule", () => {
   it("owner-only pieces declare their roles", () => {
     const m = workspaceModule();
     expect(m.settings?.find((p) => p.path === "setup")?.roles).toEqual(["owner", "admin"]);
+    expect(m.settings?.find((p) => p.path === "shop-setup")?.roles).toEqual(["owner"]);
     expect(m.widgets?.[0]?.roles).toEqual(["owner", "admin"]);
     expect(m.widgets?.[0]?.zone).toBe("setup");
     expect(workspaceModule({ onboardingWidget: false }).widgets).toEqual([]);

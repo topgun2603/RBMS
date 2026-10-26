@@ -19,7 +19,9 @@
     "eval:trades-a": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/trades-a.ts",
     "eval:store": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/store.ts",
     "eval:ask": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/ask.ts",
+    "eval:onboarding": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/onboarding.ts",
     "eval:counter": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/counter.ts",
+    "eval:platform": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/platform.ts",
     "models:download": "node scripts/download-models.mjs",
     "eval:studio": "tsx --env-file-if-exists=../../.env.local --env-file-if-exists=../../apps/api/.env --env-file-if-exists=../../apps/api/.env.local evals/studio.ts"
   },
@@ -31,6 +33,7 @@
     "@srirealtime/db": "workspace:*",
     "@srirealtime/gst": "workspace:*",
     "@srirealtime/staff": "workspace:*",
+    "@srirealtime/verticals": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "onnxruntime-node": "^1.30.0",
     "sharp": "^0.34.0",
