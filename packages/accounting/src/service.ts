@@ -43,6 +43,7 @@ import {
   isBalanced,
   mirror,
   openingPartiesPosting,
+  payrollPostings,
   postingHash,
   purchasePostings,
   receiptPostings,
@@ -956,7 +957,7 @@ export class AccountingService {
 
   async loadDocs(tenantId: string) {
     const s = this.deps.sources;
-    const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments] = await Promise.all([
+    const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments, payroll] = await Promise.all([
       s.invoices(tenantId),
       s.invoicePayments(tenantId),
       s.receipts(tenantId),
@@ -970,8 +971,9 @@ export class AccountingService {
       s.shopStateCode(tenantId),
       s.stockAdjustments ? s.stockAdjustments(tenantId) : Promise.resolve([]),
       s.gstPayments ? s.gstPayments(tenantId) : Promise.resolve([]),
+      s.payroll ? s.payroll(tenantId) : Promise.resolve(null),
     ]);
-    return { invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments };
+    return { invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments, payroll };
   }
 
   private postingsOf(docs: Awaited<ReturnType<AccountingService["loadDocs"]>>, o: RuleOptions): Posting[] {
@@ -986,6 +988,7 @@ export class AccountingService {
       ...docs.expenses.flatMap((d) => expensePostings(d, o)),
       ...docs.tills.flatMap((d) => tillPostings(d)),
       ...docs.gstPayments.flatMap((d) => gstPaymentPostings(d)),
+      ...(docs.payroll ? payrollPostings(docs.payroll) : []),
       ...(o.valueStock === false ? [] : docs.stockAdjustments.flatMap((d) => stockAdjustmentPostings(d))),
     ];
   }
@@ -1103,6 +1106,18 @@ export class AccountingService {
           .returning();
         accounts.set(a!.id, a!);
         byKey.set(k, a!.id);
+      }
+      // Standard accounts this shop's chart lacks (added to the chart later, or a code clash when it was topped up).
+      const missingKeys = new Set<string>();
+      for (const x of toPost) for (const l of x.p.lines) if ("key" in l.account && !byKey.has(l.account.key)) missingKeys.add(l.account.key);
+      for (const k of missingKeys) {
+        if (!STANDARD_CHART.some((c) => c.key === k)) continue;
+        const id = await this.accountIdByKey(tenantId, k, tx);
+        const [a] = await tx.select().from(acctAccounts).where(eq(acctAccounts.id, id)).limit(1);
+        if (a) {
+          accounts.set(a.id, a);
+          byKey.set(k, a.id);
+        }
       }
       const methodAccount = (m: string): string | undefined => {
         const chosen = settings.methodAccounts[m];
@@ -1258,7 +1273,16 @@ export class AccountingService {
       await this.lockTenant(tx, tenantId);
       const [again] = await tx.select({ id: acctAccounts.id }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.key, key))).limit(1);
       if (again) return again.id;
-      const [clash] = await tx.select({ id: acctAccounts.id }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.code, row.code))).limit(1);
+      const [clash] = await tx
+        .select({ id: acctAccounts.id, key: acctAccounts.key, name: acctAccounts.name, type: acctAccounts.type })
+        .from(acctAccounts)
+        .where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.code, row.code)))
+        .limit(1);
+      // An older chart had this account without a key (e.g. 2200 Salaries payable): adopt it rather than add a twin.
+      if (clash && !clash.key && clash.type === row.type && clash.name.trim().toLowerCase() === row.name.toLowerCase()) {
+        await tx.update(acctAccounts).set({ key, system: true }).where(eq(acctAccounts.id, clash.id));
+        return clash.id;
+      }
       const code = clash ? await this.nextCode(tx, tenantId, row.type) : row.code;
       const [created] = await tx
         .insert(acctAccounts)

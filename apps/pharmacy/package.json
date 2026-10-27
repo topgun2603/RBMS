@@ -17,6 +17,7 @@
     "@srirealtime/inbox-ui": "workspace:*",
     "@srirealtime/orders-ui": "workspace:*",
     "@srirealtime/pharmacy-ui": "workspace:*",
+    "@srirealtime/payroll-ui": "workspace:*",
     "@srirealtime/pos-ui": "workspace:*",
     "@srirealtime/site-ui": "workspace:*",
     "@srirealtime/ui": "workspace:*",

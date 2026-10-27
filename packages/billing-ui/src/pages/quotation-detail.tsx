@@ -111,7 +111,7 @@ function View({ quotation: q }: { quotation: Quotation }) {
   const duplicate = useDuplicateQuotation();
   const validity = useValidityText();
   const [dialog, setDialog] = React.useState<DialogKind>(null);
-  const [convertTo, setConvertTo] = React.useState<"invoice" | "order">("invoice");
+  const [convertTo, setConvertTo] = React.useState<"invoice" | "order" | "proforma" | "sale_order">("invoice");
   const pdfName = `${q.number.replace(/[/\\]/g, "-")}${q.rev > 1 ? `-rev${q.rev}` : ""}.pdf`;
 
   // ?send=1 (arriving from the form's "Save & send") opens the send dialog once.
@@ -131,7 +131,7 @@ function View({ quotation: q }: { quotation: Quotation }) {
   const left = validity(q.daysLeft);
   const ordersAvailable = ordersOn && !!orderHref;
 
-  const open = (kind: DialogKind, to?: "invoice" | "order") => {
+  const open = (kind: DialogKind, to?: "invoice" | "order" | "proforma" | "sale_order") => {
     if (to) setConvertTo(to);
     setDialog(kind);
   };
@@ -142,8 +142,9 @@ function View({ quotation: q }: { quotation: Quotation }) {
     window.setTimeout(() => (document.title = prev), 500);
   };
 
-  const onConverted = (r: { invoice?: { id: string }; order?: { id: string } }) => {
+  const onConverted = (r: { invoice?: { id: string }; order?: { id: string }; salesDoc?: { kind: "proforma" | "sale_order"; id: string } }) => {
     if (r.invoice) navigate(`invoices/${r.invoice.id}`);
+    else if (r.salesDoc) navigate(`${r.salesDoc.kind === "proforma" ? "proformas" : "sale-orders"}/${r.salesDoc.id}`);
     else if (r.order && orderHref) appNavigate(orderHref(r.order.id));
   };
 
@@ -302,8 +303,14 @@ function View({ quotation: q }: { quotation: Quotation }) {
 
               {q.converted && (
                 <div className="rounded-lg border bg-primary/5 p-3">
-                  <p className="font-medium">{t(q.converted.kind === "invoice" ? "billing.q.billedAs" : "billing.q.orderedAs")}</p>
-                  {q.converted.kind === "invoice" ? (
+                  <p className="font-medium">
+                    {t(q.converted.kind === "invoice" ? "billing.q.billedAs" : q.converted.kind === "proforma" ? "billing.sd.fromQuote.madeProforma" : q.converted.kind === "sale_order" ? "billing.sd.fromQuote.madeOrder" : "billing.q.orderedAs")}
+                  </p>
+                  {q.converted.kind === "proforma" || q.converted.kind === "sale_order" ? (
+                    <Button asChild variant="link" className="h-auto p-0">
+                      <ModuleLink to={`${q.converted.kind === "proforma" ? "proformas" : "sale-orders"}/${q.converted.id}`}>{q.converted.number}</ModuleLink>
+                    </Button>
+                  ) : q.converted.kind === "invoice" ? (
                     <Button asChild variant="link" className="h-auto p-0">
                       <ModuleLink to={`invoices/${q.converted.id}`}>{q.converted.number ?? t("billing.status.draft")}</ModuleLink>
                     </Button>

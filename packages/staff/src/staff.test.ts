@@ -70,6 +70,8 @@ describe("built-in templates", () => {
       "pos.weigh",
       "quotations.manage",
       "quotations.view",
+      "sales-docs.manage",
+      "sales-docs.view",
       "serials.view",
     ]);
   });

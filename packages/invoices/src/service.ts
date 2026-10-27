@@ -135,6 +135,7 @@ import {
   PAYMENT_METHODS,
   type BillingCustomer,
   type BillingItem,
+  type AdvanceAgainstKind,
   type CustomerReceiptRow,
   type InvoicePaymentRow,
   type InvoiceRow,
@@ -369,6 +370,8 @@ export interface Receipt {
   note: string | null;
   /** Paise left unallocated. */
   advance: number;
+  /** An advance against a proforma invoice or a sale order (docs/sales-documents.md). */
+  against: { kind: AdvanceAgainstKind; id: string; number: string | null } | null;
   createdAt: Date;
 }
 
@@ -662,6 +665,8 @@ export interface CreateOptions {
   branchId?: string | null;
   /** Issue with a reserved number (only with `issue: true`); see `reserveSeqBlock`. */
   presetNumber?: PresetNumber;
+  /** "challan": the goods already left on delivery challans, so this bill never moves stock (docs/sales-documents.md). */
+  stockMovedBy?: "challan" | null;
 }
 
 export const invoiceInputSchema = z.object({
@@ -969,6 +974,7 @@ const toReceipt = (r: CustomerReceiptRow): Receipt => ({
   reference: r.reference,
   note: r.note,
   advance: r.advance,
+  against: r.againstKind && r.againstId ? { kind: r.againstKind, id: r.againstId, number: r.againstNumber } : null,
   createdAt: r.createdAt,
 });
 
@@ -1527,6 +1533,120 @@ export class InvoicesService {
       }
     }
     return result;
+  }
+
+  /**
+   * An advance against a proforma invoice or a sale order (docs/sales-documents.md): a customer receipt kept whole as
+   * advance for that document (never allocated to the customer's other open bills). The books post it like any receipt
+   * (money account / Debtors); `applyAdvances` later allocates it to the bill made from the document.
+   */
+  async addAdvance(
+    tenantId: string,
+    customerId: string,
+    input: ReceiptInput,
+    against: { kind: AdvanceAgainstKind; id: string; number: string | null },
+    userId: string | null = null,
+  ): Promise<Receipt> {
+    const b = receiptInputSchema.parse(input);
+    this.assertNotFuture(b.date);
+    const [cust] = await this.db
+      .select({ id: billingCustomers.id })
+      .from(billingCustomers)
+      .where(and(eq(billingCustomers.tenantId, tenantId), eq(billingCustomers.id, customerId), isNull(billingCustomers.deletedAt)))
+      .limit(1);
+    if (!cust) throw notFound("Customer");
+    const [receipt] = await this.db
+      .insert(customerReceipts)
+      .values({
+        tenantId,
+        customerId,
+        amount: b.amount,
+        method: b.method,
+        date: b.date,
+        reference: b.reference ?? null,
+        note: b.note ?? null,
+        advance: b.amount,
+        againstKind: against.kind,
+        againstId: against.id,
+        againstNumber: against.number,
+        createdBy: userId,
+      })
+      .returning();
+    this.log.info({ tenantId, customerId, receiptId: receipt!.id, against: against.kind, againstId: against.id }, "advance recorded");
+    return toReceipt(receipt!);
+  }
+
+  /** Advances (receipts) taken against these documents, oldest first. */
+  async advancesAgainst(tenantId: string, againstIds: string[]): Promise<Receipt[]> {
+    if (againstIds.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(customerReceipts)
+      .where(and(eq(customerReceipts.tenantId, tenantId), inArray(customerReceipts.againstId, againstIds)))
+      .orderBy(asc(customerReceipts.date), asc(customerReceipts.createdAt));
+    return rows.map(toReceipt);
+  }
+
+  /**
+   * Allocates what is left of the advances taken against `againstIds` to an issued bill of the same customer, oldest
+   * first, up to the bill's balance. Returns the paise applied. The books skip allocations (the receipt was posted).
+   */
+  async applyAdvances(tenantId: string, invoiceId: string, againstIds: string[], userId: string | null = null): Promise<number> {
+    if (againstIds.length === 0) return 0;
+    let applied = 0;
+    let paidNow = false;
+    let method: PaymentMethod = "cash";
+    await this.db.transaction(async (tx) => {
+      const inv = await this.row(tx, tenantId, invoiceId, true);
+      if (!(OPEN_STATUSES as readonly string[]).includes(inv.status) || !inv.customerId) return;
+      const receipts = await tx
+        .select()
+        .from(customerReceipts)
+        .where(
+          and(
+            eq(customerReceipts.tenantId, tenantId),
+            eq(customerReceipts.customerId, inv.customerId),
+            inArray(customerReceipts.againstId, againstIds),
+            sql`${customerReceipts.advance} > 0`,
+          ),
+        )
+        .orderBy(asc(customerReceipts.date), asc(customerReceipts.createdAt))
+        .for("update");
+      let room = Math.max(inv.total - inv.paid - inv.credited, 0);
+      for (const r of receipts) {
+        if (room <= 0) break;
+        const amount = Math.min(r.advance, room);
+        await tx.insert(invoicePayments).values({
+          tenantId,
+          invoiceId,
+          amount,
+          method: r.method,
+          date: r.date,
+          reference: r.againstNumber ? `Advance against ${r.againstNumber}` : r.reference,
+          receiptId: r.id,
+          source: "receipt",
+          createdBy: userId,
+        });
+        await tx
+          .update(customerReceipts)
+          .set({ advance: sql`${customerReceipts.advance} - ${amount}` })
+          .where(and(eq(customerReceipts.tenantId, tenantId), eq(customerReceipts.id, r.id)));
+        room -= amount;
+        applied += amount;
+        method = r.method;
+      }
+      if (applied > 0) {
+        const next = applyPaidDelta(inv, applied);
+        paidNow = next.status === "paid" && inv.status !== "paid";
+        await tx.update(invoices).set(next).where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, invoiceId)));
+      }
+    });
+    if (applied > 0) {
+      const invoice = await this.get(tenantId, invoiceId);
+      await this.emit("paymentReceived", tenantId, async (h) => h(tenantId, { invoice, amount: applied, method, source: "receipt" }));
+      if (paidNow) await this.emit("paid", tenantId, async (h) => h(tenantId, invoice));
+    }
+    return applied;
   }
 
   /** Deletes a receipt and takes its allocated money back off the bills. */
@@ -2203,10 +2323,11 @@ export class InvoicesService {
     const { seller, branch } = await this.sellerFor(tenant.id, branchId);
     const values = await this.buildDraft(tenant.id, this.fromInput(b), seller);
     const tillSessionId = b.tillSessionId ? await this.till.assertOpen(tenant.id, b.tillSessionId) : null;
+    const stockMovedBy = opts.stockMovedBy ?? null;
     if (!b.issue) {
       const [row] = await this.db
         .insert(invoices)
-        .values({ tenantId: tenant.id, status: "draft", branchId, tillSessionId, ...values })
+        .values({ tenantId: tenant.id, status: "draft", branchId, tillSessionId, stockMovedBy, ...values })
         .returning();
       return this.toInvoice(row!, [], seller, { warnings: await this.warningsFor(row!), messages: [], creditNotes: [] });
     }
@@ -2224,7 +2345,7 @@ export class InvoicesService {
       async (tx) => {
         const [row] = await tx
           .insert(invoices)
-          .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, ...values })
+          .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, stockMovedBy, ...values })
           .returning();
         return row!;
       },
@@ -2348,7 +2469,8 @@ export class InvoicesService {
   }
 
   private async stockSale(row: InvoiceRow, branch?: IssueBranch): Promise<void> {
-    if (!this.stock) return;
+    // Goods that left on delivery challans were taken out of stock then.
+    if (!this.stock || row.stockMovedBy) return;
     const lines = this.saleLines(row);
     if (lines.length === 0) return;
     const sale: Parameters<StockPort["applySale"]>[1] = { refId: row.id, lines, refNumber: row.number };
@@ -2361,7 +2483,7 @@ export class InvoicesService {
   }
 
   private async stockReverse(row: InvoiceRow): Promise<void> {
-    if (!this.stock || this.saleLines(row).length === 0) return;
+    if (!this.stock || row.stockMovedBy || this.saleLines(row).length === 0) return;
     try {
       await this.stock.reverseSale(row.tenantId, row.id);
     } catch (err) {

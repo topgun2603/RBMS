@@ -115,7 +115,12 @@ export function quotationsRoutes(service: QuotationsService) {
         const { id } = idParam.parse(req.params);
         const user = requireUser(req.ctx);
         const r = await service.convert(requireTenant(req.ctx), id, body(req) as QuotationConvertInput, { userId: user.id, branchId: req.ctx.branch?.id ?? null });
-        req.auditSummary = `Quotation ${r.quotation.number} converted to ${r.invoice ? `bill ${r.invoice.number ?? "(draft)"}` : `order ${r.order?.number ?? ""}`}${r.advanceRecorded ? ` with advance ${formatINR(r.advanceRecorded)}` : ""}`;
+        const to = r.invoice
+          ? `bill ${r.invoice.number ?? "(draft)"}`
+          : r.salesDoc
+            ? `${r.salesDoc.kind === "proforma" ? "proforma invoice" : "sale order"} ${r.salesDoc.number}`
+            : `order ${r.order?.number ?? ""}`;
+        req.auditSummary = `Quotation ${r.quotation.number} converted to ${to}${r.advanceRecorded ? ` with advance ${formatINR(r.advanceRecorded)}` : ""}`;
         return r;
       });
     });

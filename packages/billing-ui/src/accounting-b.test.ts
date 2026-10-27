@@ -5,6 +5,7 @@ import { PART_B_NAV, PART_B_ROUTES, withAccountingPartB } from "./accounting-b";
 import { billingMessages, billingModule } from "./index";
 import { en, ta } from "./lib/messages/accounting-b";
 import { billingModule as baseModule } from "./module";
+import { SALES_DOCS_ROUTES } from "./sales-docs";
 
 const FILES = [
   "pages/acctb-bank.tsx",
@@ -88,8 +89,8 @@ describe("accounting Part B screens", () => {
     for (const r of PART_B_ROUTES) expect(paths).toContain(r.path);
     expect(m.routes.find((r) => r.path === "accounting/bank/import")?.permission).toBe("accounting.bank");
     for (const r of PART_B_ROUTES) expect(r.feature).toBe("accounting");
-    // Nothing of the base module is lost.
-    expect(m.routes.length).toBe(baseModule().routes.length + PART_B_ROUTES.length);
+    // Nothing of the base module is lost (the sales documents screens are added on top; sales-docs.test.ts).
+    expect(m.routes.length).toBe(baseModule().routes.length + PART_B_ROUTES.length + SALES_DOCS_ROUTES.length);
   });
 
   it("merges the messages into the module and the exported billingMessages", () => {

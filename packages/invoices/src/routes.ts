@@ -7,6 +7,7 @@ import { z } from "zod";
 import { FEATURES } from "./features";
 import type { LedgerEntryType } from "./ledger";
 import {
+  ADVANCE_AGAINST_KINDS,
   CREDIT_NOTE_REASONS,
   CREDIT_NOTE_STATUSES,
   INVOICE_STATUSES,
@@ -320,6 +321,8 @@ export const receiptSchema = z.object({
   note: z.string().nullable(),
   /** Paise left unallocated (customer advance). */
   advance: paise,
+  /** An advance against a proforma invoice or a sale order (docs/sales-documents.md); null for money on account. */
+  against: z.object({ kind: z.enum(ADVANCE_AGAINST_KINDS), id: z.string().uuid(), number: z.string().nullable() }).nullable(),
   createdAt: isoDateTime,
 });
 /** Money received on account, spread oldest-first over open bills. */

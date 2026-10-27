@@ -19,6 +19,13 @@ export const INVOICE_PERMISSIONS: PermissionDef[] = [
     label: "Make quotations",
     description: "Create, revise, send, cancel and convert quotations into bills or orders.",
   },
+  { key: "sales-docs.view", module: "invoices", label: "View proformas, sale orders and challans", description: "See proforma invoices, sale orders and delivery challans and download their PDFs." },
+  {
+    key: "sales-docs.manage",
+    module: "invoices",
+    label: "Make proformas, sale orders and challans",
+    description: "Create, edit, send and cancel proforma invoices, sale orders and delivery challans, deliver goods and record returns. Billing them also needs Create bills; advances need Receive payments.",
+  },
   {
     key: "invoices.credit-note",
     module: "invoices",
@@ -59,6 +66,10 @@ export const INVENTORY_PERMISSION_DEFS: PermissionDef[] = INVENTORY_PERMISSIONS.
 const BILL = "/v1/invoices/:id([0-9a-fA-F-]{36})";
 const QUOTE = "/v1/quotations/:id([0-9a-fA-F-]{36})";
 const ORDER = "/v1/orders/:id([0-9a-fA-F-]{36})";
+const SD = "/v1/sales-docs";
+const PI = `${SD}/proformas/:id([0-9a-fA-F-]{36})`;
+const SO = `${SD}/sale-orders/:id([0-9a-fA-F-]{36})`;
+const DC = `${SD}/challans/:id([0-9a-fA-F-]{36})`;
 const COUPON = "/v1/coupons/:id([0-9a-fA-F-]{36})";
 const CATALOGUE_MANAGE = CATALOGUE_PERMISSIONS[0].key;
 
@@ -86,6 +97,42 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   [`POST ${QUOTE}/share`]: "quotations.manage",
   [`POST ${QUOTE}/send`]: "quotations.manage",
   [`POST ${QUOTE}/convert`]: "quotations.manage",
+
+  // ---- proforma invoices, sale orders, delivery challans (docs/sales-documents.md): view / manage; billing them also
+  // needs invoices.create and an advance payments.receive.
+  [`GET ${SD}/summary`]: "sales-docs.view",
+  [`GET ${SD}/settings`]: "sales-docs.view",
+  [`GET ${SD}/linked`]: "sales-docs.view",
+  [`GET ${SD}/proformas`]: "sales-docs.view",
+  [`GET ${PI}`]: "sales-docs.view",
+  [`POST ${SD}/proformas`]: "sales-docs.manage",
+  [`PATCH ${PI}`]: "sales-docs.manage",
+  [`POST ${PI}/issue`]: "sales-docs.manage",
+  [`POST ${PI}/cancel`]: "sales-docs.manage",
+  [`POST ${PI}/share`]: "sales-docs.manage",
+  [`POST ${PI}/send`]: "sales-docs.manage",
+  [`POST ${PI}/advance`]: ["sales-docs.manage", "payments.receive"],
+  [`POST ${PI}/convert`]: ["sales-docs.manage", "invoices.create"],
+  [`GET ${SD}/sale-orders`]: "sales-docs.view",
+  [`GET ${SO}`]: "sales-docs.view",
+  [`POST ${SD}/sale-orders`]: "sales-docs.manage",
+  [`PATCH ${SO}`]: "sales-docs.manage",
+  [`POST ${SO}/cancel`]: "sales-docs.manage",
+  [`POST ${SO}/share`]: "sales-docs.manage",
+  [`POST ${SO}/send`]: "sales-docs.manage",
+  [`POST ${SO}/advance`]: ["sales-docs.manage", "payments.receive"],
+  [`POST ${SO}/deliver`]: "sales-docs.manage",
+  [`POST ${SO}/invoice`]: ["sales-docs.manage", "invoices.create"],
+  [`POST ${SO}/invoice-challans`]: ["sales-docs.manage", "invoices.create"],
+  [`GET ${SD}/challans`]: "sales-docs.view",
+  [`GET ${DC}`]: "sales-docs.view",
+  [`POST ${SD}/challans`]: "sales-docs.manage",
+  [`POST ${SD}/challans/invoice`]: ["sales-docs.manage", "invoices.create"],
+  [`PATCH ${DC}`]: "sales-docs.manage",
+  [`POST ${DC}/return`]: "sales-docs.manage",
+  [`POST ${DC}/cancel`]: "sales-docs.manage",
+  [`POST ${DC}/share`]: "sales-docs.manage",
+  [`POST ${DC}/send`]: "sales-docs.manage",
 
   // ---- invoices: credit notes and POS till sessions
   [`POST ${BILL}/credit-notes`]: "invoices.credit-note",
@@ -183,7 +230,10 @@ async function loyaltyGuard(req: FastifyRequest) {
 /** Making a bill or an order from a quotation needs the permission to make one; recording the advance needs payments.receive. */
 async function convertGuard(req: FastifyRequest) {
   const b = (req.body ?? {}) as { to?: unknown; recordAdvance?: unknown };
-  requirePermission(req.ctx, b.to === "order" ? ORDER_PERMISSIONS_KEYS.manage : "invoices.create");
+  requirePermission(
+    req.ctx,
+    b.to === "order" ? ORDER_PERMISSIONS_KEYS.manage : b.to === "proforma" || b.to === "sale_order" ? "sales-docs.manage" : "invoices.create",
+  );
   if (b.recordAdvance === true) requirePermission(req.ctx, "payments.receive");
 }
 const both =
@@ -200,6 +250,12 @@ export const ROUTE_GUARDS: Record<string, (req: FastifyRequest) => Promise<void>
   "POST /v1/quotations/": discountGuard,
   [`PATCH ${QUOTE}`]: discountGuard,
   [`POST ${QUOTE}/revise`]: discountGuard,
+  // Discounts on a proforma, sale order or challan: same permission as on a bill.
+  [`POST ${SD}/proformas`]: discountGuard,
+  [`PATCH ${PI}`]: discountGuard,
+  [`POST ${SD}/sale-orders`]: discountGuard,
+  [`PATCH ${SO}`]: discountGuard,
+  [`POST ${SD}/challans`]: discountGuard,
   "POST /v1/orders/": loyaltyGuard,
 };
 

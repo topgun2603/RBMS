@@ -27,7 +27,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     description:
       "Applies to staff members without a custom role: view everything, create bills (with discounts), receive payments, add customers and use the credit book.",
     // Everything staff could do before roles existed, except cancelling bills and managing stock, catalogue or settings.
-    permissions: ["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book", "pos.till", "quotations.manage"],
+    permissions: ["*.view", "invoices.create", "invoices.discount", "payments.receive", "customers.create", "invoices.credit-book", "pos.till", "quotations.manage", "sales-docs.manage"],
   },
   {
     key: "manager",
@@ -41,6 +41,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "inventory.*",
       "invoices.*",
       "quotations.*",
+      // Proforma invoices, sale orders, delivery challans (docs/sales-documents.md).
+      "sales-docs.*",
       "payments.*",
       "customers.*",
       "reports.*",
@@ -73,6 +75,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "jewellery.*",
       // AI helpers: run them and rate the drafts (managing AI stays with owners and admins).
       "ai.use",
+      // Staff attendance: mark and correct days, run the check-in screen, approve leave (salaries stay with owners).
+      "payroll.attendance",
     ],
   },
   {
@@ -88,6 +92,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "invoices.credit-note",
       "quotations.view",
       "quotations.manage",
+      "sales-docs.view",
+      "sales-docs.manage",
       "payments.receive",
       "customers.create",
       "catalogue.view",
@@ -109,7 +115,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     key: "accountant",
     name: "Accountant",
     description: "Reports, credit book, purchases and expenses, and the accounting books (journal entries, period lock).",
-    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*", "quotations.view"],
+    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*", "quotations.view", "sales-docs.view"],
   },
   {
     key: "demo",
@@ -248,6 +254,40 @@ export const PREVIOUS_BUILTIN_PERMISSIONS: Readonly<Record<string, readonly (rea
       "scales.*",
       "serials.*",
       "jewellery.*",
+    ],
+    // Before staff attendance added payroll.attendance.
+    [
+      "*.view",
+      "catalogue.*",
+      "orders.*",
+      "coupons.*",
+      "inventory.*",
+      "invoices.*",
+      "quotations.*",
+      "payments.*",
+      "customers.*",
+      "reports.*",
+      "expenses.*",
+      "cms.*",
+      "reviews.*",
+      "documents.*",
+      "importexport.*",
+      "audit.view",
+      "support.*",
+      "chat.*",
+      "loyalty.*",
+      "whatsapp.*",
+      "reports.manage",
+      "pos.*",
+      "medicines.*",
+      "dining.*",
+      "jobcards.*",
+      "bookings.*",
+      "memberships.*",
+      "scales.*",
+      "serials.*",
+      "jewellery.*",
+      "ai.use",
     ],
   ],
   // Before the counter till added pos.till.

@@ -99,6 +99,52 @@ export interface QuotationDocData {
   updatedAt?: Date | string | null;
 }
 
+/** Proforma invoice, sale order or delivery challan (invoices' `SalesDocData` is assignable to it; docs/sales-documents.md). */
+export interface SalesDocDocData {
+  kind: "proforma" | "sale_order" | "challan";
+  id?: string;
+  number: string;
+  /** Proforma: draft | issued | expired | converted | cancelled. Sale order: open ... invoiced | cancelled. Challan: issued ... invoiced | cancelled. */
+  status: string;
+  date: string;
+  customer: DocParty;
+  seller: DocSeller;
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  amountInWords?: string | null;
+  notes: string | null;
+  terms: string | null;
+  updatedAt?: Date | string | null;
+  validUntil?: string | null;
+  deliveryText?: string | null;
+  advancePercent?: number | null;
+  advanceAmount?: number;
+  advanceReceived?: number;
+  quotationNumber?: string | null;
+  promisedDate?: string | null;
+  customerRef?: string | null;
+  progress?: { description: string; unit: string | null; ordered: number; delivered: number }[];
+  reason?: string;
+  returnBy?: string | null;
+  shipTo?: string | null;
+  transport?: {
+    mode?: string | null;
+    transporterName?: string | null;
+    transporterId?: string | null;
+    vehicleNo?: string | null;
+    docNo?: string | null;
+    docDate?: string | null;
+    distanceKm?: number | null;
+  };
+  ewbNo?: string | null;
+  ewbDate?: string | null;
+  saleOrderNumber?: string | null;
+  invoiceNumber?: string | null;
+  returned?: { description: string; unit: string | null; qty: number }[];
+}
+
 export interface DocLedgerEntry {
   date: string;
   type: "opening" | "invoice" | "payment" | "receipt" | "cancel" | (string & {});
@@ -297,6 +343,13 @@ export interface QuotationDocPort {
   quotation(tenantId: string, id: string): Promise<QuotationDocData | null>;
   /** The quotation behind a public share token (null = unknown token, a draft, or the shop's feature is off). */
   publicQuotation(token: string): Promise<{ tenantId?: string | null; quotation: QuotationDocData; branding?: Partial<Branding> | null } | null>;
+}
+
+export interface SalesDocPort {
+  /** A proforma invoice, sale order or delivery challan of the tenant, or null. */
+  doc(kind: SalesDocDocData["kind"], tenantId: string, id: string): Promise<SalesDocDocData | null>;
+  /** The document behind a public share token (null = unknown token, a draft, or the shop's feature is off). */
+  publicDoc(token: string): Promise<{ tenantId?: string | null; doc: SalesDocDocData; branding?: Partial<Branding> | null } | null>;
 }
 
 export interface StatementDocPort {

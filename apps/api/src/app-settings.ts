@@ -101,6 +101,36 @@ export function defineAppSettings(settings: SettingsService) {
     },
   );
 
+  // Proforma invoices, sale orders and delivery challans (invoices package; docs/sales-documents.md).
+  settings.define(
+    "sales-docs",
+    z.object({
+      proformaPrefix: z.string().regex(/^[A-Z0-9-]{1,6}$/, "1–6 capital letters, digits or hyphens"),
+      saleOrderPrefix: z.string().regex(/^[A-Z0-9-]{1,6}$/, "1–6 capital letters, digits or hyphens"),
+      challanPrefix: z.string().regex(/^[A-Z0-9-]{1,6}$/, "1–6 capital letters, digits or hyphens"),
+      /** Days a proforma is valid when none is chosen; 0 = no expiry. */
+      proformaValidityDays: z.number().int().min(0).max(365),
+      proformaTerms: z.string().max(2000),
+      saleOrderTerms: z.string().max(2000),
+      challanTerms: z.string().max(2000),
+      /** Advance % new proformas and sale orders start with (1-100); null = none. */
+      advancePercent: z.number().int().min(1).max(100).nullable(),
+      /** New sale orders hold stock for what is not delivered yet. */
+      reserveStock: z.boolean(),
+    }),
+    {
+      proformaPrefix: "PI",
+      saleOrderPrefix: "SO",
+      challanPrefix: "DC",
+      proformaValidityDays: 15,
+      proformaTerms: "This proforma invoice is valid until the date shown. The tax invoice is issued when the goods are supplied.",
+      saleOrderTerms: "Delivery as agreed after the advance is received. Prices include GST as shown.",
+      challanTerms: "Goods sent on approval remain the property of the seller until billed. Please return goods not kept by the date shown.",
+      advancePercent: null,
+      reserveStock: false,
+    },
+  );
+
   // Order handling (read by the orders module through its OrderSettingsPort).
   settings.define(
     "orders",

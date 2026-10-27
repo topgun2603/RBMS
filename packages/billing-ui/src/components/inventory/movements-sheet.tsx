@@ -21,7 +21,15 @@ import { useMovements } from "../../lib/queries-v2";
 import type { StockMovement, StockRow } from "../../lib/types";
 
 const refHref = (m: StockMovement) =>
-  !m.refId ? null : m.refType === "invoice" ? `invoices/${m.refId}` : m.refType === "purchase" ? `purchases/${m.refId}` : null;
+  !m.refId
+    ? null
+    : m.refType === "invoice"
+      ? `invoices/${m.refId}`
+      : m.refType === "purchase"
+        ? `purchases/${m.refId}`
+        : m.refType === "challan"
+          ? `challans/${m.refId}`
+          : null;
 
 /** Stock history of one item: right sheet on larger screens, bottom sheet on phones. */
 export function MovementsSheet({

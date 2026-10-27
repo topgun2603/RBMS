@@ -42,6 +42,36 @@ const QUOTATION_SENT_TA = "{{shop}}: வணக்கம் {{customer}}, உங�
 const QUOTATION_SENT_SUBJECT_EN = "Quotation {{number}} from {{shop}}";
 const QUOTATION_SENT_SUBJECT_TA = "{{shop}} இடமிருந்து மதிப்பீடு {{number}}";
 
+// Proforma invoices, sale orders, delivery challans (invoices module, docs/sales-documents.md). Vars: shop, customer,
+// number, amount, link.
+const SALES_DOCS = {
+  "proforma.sent": {
+    en: "{{shop}}: Dear {{customer}}, your proforma invoice {{number}} for {{amount}} is ready. View: {{link}}",
+    ta: "{{shop}}: வணக்கம் {{customer}}, உங்கள் முன் விலைப்பட்டியல் (Proforma) {{number}} ({{amount}}) தயாராக உள்ளது. பார்க்க: {{link}}",
+    subjectEn: "Proforma invoice {{number}} from {{shop}}",
+    subjectTa: "{{shop}} இடமிருந்து முன் விலைப்பட்டியல் {{number}}",
+  },
+  "sale-order.sent": {
+    en: "{{shop}}: Dear {{customer}}, we have your order {{number}} for {{amount}}. View: {{link}}",
+    ta: "{{shop}}: வணக்கம் {{customer}}, உங்கள் ஆர்டர் {{number}} ({{amount}}) பதிவானது. பார்க்க: {{link}}",
+    subjectEn: "Order {{number}} confirmed by {{shop}}",
+    subjectTa: "{{shop}} ஆர்டர் {{number}} உறுதி",
+  },
+  "challan.sent": {
+    en: "{{shop}}: Dear {{customer}}, goods sent on delivery challan {{number}} (value {{amount}}). View: {{link}}",
+    ta: "{{shop}}: வணக்கம் {{customer}}, டெலிவரி சலான் {{number}} மூலம் பொருட்கள் அனுப்பப்பட்டன (மதிப்பு {{amount}}). பார்க்க: {{link}}",
+    subjectEn: "Delivery challan {{number}} from {{shop}}",
+    subjectTa: "{{shop}} இடமிருந்து டெலிவரி சலான் {{number}}",
+  },
+} as const;
+
+function salesDocTemplates(): TemplateContent[] {
+  return Object.entries(SALES_DOCS).flatMap(([key, t]) => [
+    ...builtin(key, ["sms", "whatsapp", "email"], "en", t.en, t.subjectEn),
+    ...builtin(key, ["sms", "whatsapp", "email"], "ta", t.ta, t.subjectTa),
+  ]);
+}
+
 // Orders (orders module). Customer messages go out on WhatsApp + email (SMS kept for tenants who switch to it);
 // English SMS stays within GSM-7 and 2 segments. Vars:
 //   order.placed / order.received (to the shop owner): shop, customer, number, amount, items, link
@@ -420,6 +450,7 @@ export const BUILTIN_TEMPLATES: readonly TemplateContent[] = [
   ...builtin("payment.received", ["sms", "whatsapp"], "ta", PAYMENT_RECEIVED_TA, null),
   ...builtin("quotation.sent", ["sms", "whatsapp", "email"], "en", QUOTATION_SENT_EN, QUOTATION_SENT_SUBJECT_EN),
   ...builtin("quotation.sent", ["sms", "whatsapp", "email"], "ta", QUOTATION_SENT_TA, QUOTATION_SENT_SUBJECT_TA),
+  ...salesDocTemplates(),
   ...orderTemplates(),
   ...batch3Templates(),
   ...batch5Templates(),

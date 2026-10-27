@@ -54,6 +54,8 @@ import { createIdempotency } from "@srirealtime/idempotency";
 import { createInventory } from "@srirealtime/inventory";
 import { createInvoices } from "@srirealtime/invoices";
 import { wireQuotations } from "./kit-quotations";
+import { wireSalesDocs } from "./kit-sales-docs";
+import { wirePayroll } from "./kit-payroll";
 import { createJobs } from "@srirealtime/jobs";
 import { createNotify, type NotifyConfig } from "@srirealtime/notify";
 import { createPayments } from "@srirealtime/payments";
@@ -153,6 +155,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   // POS terminals (docs/pos-terminals.md): created after batch 3 (branches); the plan usage source and the bill
   // cancelled hook reach it lazily.
   let posRef: ReturnType<typeof createPosWiring> | undefined;
+  // Proforma invoices, sale orders, delivery challans (docs/sales-documents.md): created after inventory; the bill hooks
+  // (advances onto an issued bill, challans billable again after a cancel) reach it lazily.
+  let salesDocsRef: ReturnType<typeof wireSalesDocs> | undefined;
   const lineItemIds = (inv: { lines: { itemId?: string | null }[] }) =>
     inv.lines.map((l) => l.itemId).filter((x): x is string => Boolean(x));
   // Restaurant orders and kitchen tickets (created after invoices and catalogue); the order hooks reach it lazily.
@@ -433,6 +438,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
         if (jewelleryRef && (await isEnabled(tenantId, "jewellery"))) {
           await jewelleryRef.service.setStatusByItems(tenantId, lineItemIds(inv), "sold");
         }
+        // A bill made from a proforma / sale order takes the advances received against it.
+        await salesDocsRef?.service.onInvoiceIssued(tenantId, inv.id);
       },
       creditNoteIssued: (tenantId, cn) => emit(tenantId, "credit_note.issued", creditNoteEvent(cn)),
       creditNoteCancelled: (tenantId, cn) =>
@@ -459,6 +466,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
         if (jewelleryRef && (await isEnabled(tenantId, "jewellery"))) {
           await jewelleryRef.service.setStatusByItems(tenantId, lineItemIds(inv), "in_stock");
         }
+        // Its delivery challans can be billed again; its sale orders reopen what it billed.
+        await salesDocsRef?.service.onInvoiceCancelled(tenantId, inv.id, inv.number);
       },
       paymentReceived: (tenantId, e) =>
         emit(tenantId, "payment.received", {
@@ -725,6 +734,31 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
   });
 
+  // ---- Proforma invoices, sale orders and delivery challans (docs/sales-documents.md).
+  const salesDocSettings = settings.service.handle("sales-docs");
+  const salesDocs = wireSalesDocs({
+    db,
+    invoices: invoices.service,
+    inventory: () => inventoryRef?.service,
+    features,
+    notify: notify.service,
+    settings: { get: (tenantId) => salesDocSettings.get({ tenantId }) },
+    branding: {
+      get: async (tenantId) => {
+        const b = await branding.service.get(tenantId);
+        return { appName: b.appName, logoUrl: b.logoUrl, css: b.css };
+      },
+    },
+    publicBaseUrl: async (tenantId) => {
+      const tenant = await tenancy.service.getById(tenantId);
+      return billingUrlFor(env.BILLING_PUBLIC_URL, tenant?.appId ?? null).replace("{slug}", tenant?.slug ?? "");
+    },
+    branches: { seller: (tenantId, branchId) => b3!.branchSeller(tenantId, branchId) },
+    now: clock,
+    log,
+  });
+  salesDocsRef = salesDocs;
+
   // ---- Quotations (docs/quotations.md): estimates that turn into a bill or an order in one tap.
   const quotationSettings = settings.service.handle("quotations");
   const quotations = wireQuotations({
@@ -735,6 +769,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     features,
     notify: notify.service,
     audit: audit.service,
+    salesDocs: salesDocs.service,
     settings: { get: (tenantId) => quotationSettings.get({ tenantId }) },
     branding: {
       get: async (tenantId) => {
@@ -795,6 +830,11 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     quotations: {
       quotation: (tenantId, id) => quotations.service.docData(tenantId, id),
       publicQuotation: (token) => quotations.service.publicDocData(token),
+    },
+    // Proforma invoice, sale order and delivery challan PDFs (staff + the customer's share link).
+    salesDocs: {
+      doc: (kind, tenantId, id) => salesDocs.service.docData(kind, tenantId, id),
+      publicDoc: (token) => salesDocs.service.publicDocData(token),
     },
     // Purchase order PDF (print / send to the supplier).
     purchaseOrders: {
@@ -976,6 +1016,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     inventory: inventory.service,
     sellerState: async (tenantId: string) => ((await billingProfile.get({ tenantId })).stateCode as string | null | undefined) ?? null,
     isEnabled: (tenantId: string, key: string) => features.service.isEnabled(tenantId, key),
+    // Staff payroll (created just below; reached lazily on a sync).
+    payroll: { bookSources: (tenantId: string) => payroll.service.bookSources(tenantId) },
   };
   const accounting = createAccounting({
     db,
@@ -1000,6 +1042,28 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     load: (tenantId, id, ctx) => accounting.service.reportTable(tenantId, id, ctx.query).catch((err: { status?: number }) => (err?.status === 404 ? null : Promise.reject(err))),
     render: (table, ctx) => page({ title: table.title, paper: "A4", locale: ctx.locale, branding: ctx.branding, css: REPORT_CSS, body: reportBodyHtml(table) }),
     filename: (table) => `${table.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`,
+  });
+
+  // ---- Staff attendance and payroll (docs/payroll.md): check-in with POS PINs, leave, monthly payroll, payslips; the
+  // books read final payrolls, salary payments, advances and statutory deposits (kit-accounting.ts `payroll`).
+  const payroll = wirePayroll({
+    db,
+    documents,
+    members: async (tenantId) => (await staff.service.listMembers(tenantId)).map((m) => ({ userId: m.userId, name: m.name, phone: m.phone, active: m.active })),
+    memberForPin: async (tenantId, pin) => {
+      const m = posRef ? await posRef.service.memberForPin(tenantId, pin) : null;
+      return m ? { userId: m.userId, name: m.name } : null;
+    },
+    booksChanged: (tenantId) => accounting.service.kick(tenantId),
+    audit: audit.service,
+    shop: async (tenantId) => {
+      const p = await billingProfile.get({ tenantId });
+      const name = (typeof p.legalName === "string" && p.legalName) || "";
+      const address = [p.address, p.city, p.pincode].filter((x) => typeof x === "string" && x.trim()).join(", ");
+      return { name, address: address || null };
+    },
+    now: clock,
+    log,
   });
 
   /**
@@ -1751,6 +1815,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     consent.module,
     invoices.module,
     quotations.module,
+    salesDocs.module,
     payments.module,
     inventory.module,
     catalogue.module,
@@ -1768,6 +1833,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     analytics.module,
     expenses.module,
     accounting.module,
+    payroll.module,
     gstFiling.module,
     ai.module,
     ai.adminModule,
@@ -1821,6 +1887,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     consent,
     invoices,
     quotations,
+    salesDocs,
     payments,
     inventory,
     catalogue,
@@ -1838,6 +1905,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     analytics,
     expenses,
     accounting,
+    payroll,
     gstFiling,
     ai,
     aiAssist,

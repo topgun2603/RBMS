@@ -19,6 +19,7 @@
     "@srirealtime/jewellery-ui": "workspace:*",
     "@srirealtime/marketplace-ui": "workspace:*",
     "@srirealtime/orders-ui": "workspace:*",
+    "@srirealtime/payroll-ui": "workspace:*",
     "@srirealtime/pos-ui": "workspace:*",
     "@srirealtime/scales-ui": "workspace:*",
     "@srirealtime/serials-ui": "workspace:*",

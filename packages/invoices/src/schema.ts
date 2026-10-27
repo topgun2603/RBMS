@@ -40,6 +40,10 @@ export interface LoyaltyRedemption {
 /** Totals stored on an invoice: the computed totals without lines, plus any loyalty redemption. */
 export type StoredInvoiceTotals = Omit<InvoiceTotals, "lines"> & { loyalty?: LoyaltyRedemption };
 
+/** Documents an advance (customer receipt) can be taken against. */
+export const ADVANCE_AGAINST_KINDS = ["proforma", "sale_order"] as const;
+export type AdvanceAgainstKind = (typeof ADVANCE_AGAINST_KINDS)[number];
+
 export const MESSAGE_CHANNELS = ["whatsapp", "sms"] as const;
 export type MessageChannel = (typeof MESSAGE_CHANNELS)[number];
 
@@ -84,12 +88,20 @@ export const customerReceipts = pgTable(
     note: text("note"),
     /** Paise left unallocated (customer advance). */
     advance: integer("advance").notNull().default(0),
+    /**
+     * An advance taken against a proforma invoice or a sale order (docs/sales-documents.md): kept for that document (never
+     * allocated to other open bills) and allocated to the bill made from it.
+     */
+    againstKind: text("against_kind").$type<AdvanceAgainstKind>(),
+    againstId: uuid("against_id"),
+    againstNumber: text("against_number"),
     createdBy: uuid("created_by"),
     ...timestamps(),
   },
   (t) => [
     index("customer_receipts_tenant_customer_date_idx").on(t.tenantId, t.customerId, t.date),
     index("customer_receipts_tenant_date_idx").on(t.tenantId, t.date),
+    index("customer_receipts_tenant_against_idx").on(t.tenantId, t.againstId),
   ],
 );
 
@@ -152,6 +164,11 @@ export const invoices = pgTable(
     imported: boolean("imported").notNull().default(false),
     /** The import batch (import_jobs.id) that created it; undo deletes by this. */
     importBatchId: uuid("import_batch_id"),
+    /**
+     * Who moves the stock of this bill. Null = the bill (on issue, back on cancel). "challan" = its delivery challans
+     * already took the goods out (docs/sales-documents.md), so issuing or cancelling the bill never moves stock again.
+     */
+    stockMovedBy: text("stock_moved_by").$type<"challan">(),
     ...timestamps(),
   },
   (t) => [
@@ -417,7 +434,8 @@ export type QuotationStatus = (typeof QUOTATION_STATUSES)[number];
 export const QUOTATION_DISPLAY_STATUSES = [...QUOTATION_STATUSES, "expired"] as const;
 export type QuotationDisplayStatus = (typeof QUOTATION_DISPLAY_STATUSES)[number];
 
-export const QUOTATION_CONVERSIONS = ["invoice", "order"] as const;
+/** What a quotation became: a bill, an online-store order, or a proforma invoice / sale order (docs/sales-documents.md). */
+export const QUOTATION_CONVERSIONS = ["invoice", "order", "proforma", "sale_order"] as const;
 export type QuotationConversion = (typeof QUOTATION_CONVERSIONS)[number];
 
 /** One entry of a quotation's timeline. */
@@ -523,3 +541,6 @@ export type InvoiceSeries = typeof invoiceSeries.$inferSelect;
 export type CustomerReceiptRow = typeof customerReceipts.$inferSelect;
 export type InvoiceReminderRow = typeof invoiceReminders.$inferSelect;
 export type InvoiceMessageRow = typeof invoiceMessages.$inferSelect;
+
+// Proforma invoices, sale orders and delivery challans (docs/sales-documents.md); drizzle-kit reads this file.
+export * from "./schema-sales";

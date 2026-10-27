@@ -1,11 +1,12 @@
 import { notFound } from "@srirealtime/core";
 import type { PdfDriver } from "./driver";
-import { invoiceFilename, quotationFilename } from "./builtins";
+import { invoiceFilename, quotationFilename, salesDocFilename } from "./builtins";
 import { normalizeLocale } from "./labels";
 import type { DocumentRegistry } from "./registry";
 import { renderInvoice } from "./renderers/invoice";
 import { renderQuotation } from "./renderers/quotation";
-import type { Branding, BrandingPort, DocLocale, InvoiceDocPort, LoggerPort, QuotationDocPort } from "./types";
+import { renderSalesDoc } from "./renderers/sales-doc";
+import type { Branding, BrandingPort, DocLocale, InvoiceDocPort, LoggerPort, QuotationDocPort, SalesDocPort } from "./types";
 
 export interface RenderedDocument {
   pdf: Buffer;
@@ -26,7 +27,15 @@ export function mergeBranding(b: Partial<Branding> | null | undefined): Branding
 export class DocumentsService {
   constructor(
     readonly registry: DocumentRegistry,
-    private readonly deps: { driver: PdfDriver; branding?: BrandingPort; invoices?: InvoiceDocPort; quotations?: QuotationDocPort; log: LoggerPort; timeoutMs?: number },
+    private readonly deps: {
+      driver: PdfDriver;
+      branding?: BrandingPort;
+      invoices?: InvoiceDocPort;
+      quotations?: QuotationDocPort;
+      salesDocs?: SalesDocPort;
+      log: LoggerPort;
+      timeoutMs?: number;
+    },
   ) {}
 
   async branding(tenantId: string | null | undefined): Promise<Branding> {
@@ -92,6 +101,19 @@ export class DocumentsService {
     const html = renderQuotation(found.quotation, { locale, branding });
     const pdf = await this.deps.driver.render(html, { paper: "A4", timeoutMs: this.deps.timeoutMs });
     return { pdf, filename: quotationFilename(found.quotation) };
+  }
+
+  /** PDF of a publicly shared proforma invoice, sale order or delivery challan (share token). */
+  async renderPublicSalesDoc(token: string, opts: { locale?: string } = {}): Promise<RenderedDocument> {
+    const port = this.deps.salesDocs;
+    if (!port) throw notFound("Document");
+    const found = await port.publicDoc(token);
+    if (!found) throw notFound("Document");
+    const locale = normalizeLocale(opts.locale);
+    const branding = found.branding ? mergeBranding(found.branding) : await this.branding(found.tenantId);
+    const html = renderSalesDoc(found.doc, { locale, branding });
+    const pdf = await this.deps.driver.render(html, { paper: "A4", timeoutMs: this.deps.timeoutMs });
+    return { pdf, filename: salesDocFilename(found.doc) };
   }
 
   /** Renders arbitrary HTML (e.g. a type registered elsewhere) through the driver. */

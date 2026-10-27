@@ -35,7 +35,8 @@ export interface QuotationEvent {
 }
 
 export interface QuotationConverted {
-  kind: "invoice" | "order";
+  /** A bill, an online-store order, or a proforma invoice / sale order (docs/sales-documents.md). */
+  kind: "invoice" | "order" | "proforma" | "sale_order";
   id: string;
   number: string | null;
   at: ISODate | null;
@@ -119,11 +120,12 @@ export interface QuotationConvertResult {
   quotation: Quotation;
   invoice?: Invoice;
   order?: { id: string; number: string };
+  salesDoc?: { kind: "proforma" | "sale_order"; id: string; number: string };
   advanceRecorded: number;
 }
 
 export interface QuotationConvertInput {
-  to: "invoice" | "order";
+  to: "invoice" | "order" | "proforma" | "sale_order";
   issue?: boolean;
   recordAdvance?: boolean;
   advanceMethod?: "cash" | "upi" | "card" | "bank" | "cheque" | "other";

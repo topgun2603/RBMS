@@ -6,6 +6,7 @@ import type {
   InvoicePaymentSrc,
   InvoiceSrc,
   MoneyMethod,
+  PayrollSrc,
   PurchaseSrc,
   ReceiptSrc,
   ReconcilePort,
@@ -33,6 +34,8 @@ export interface AccountingAdapterDeps {
   /** The shop's GST state code from the billing profile. */
   sellerState: (tenantId: string) => Promise<string | null>;
   isEnabled: (tenantId: string, key: string) => Promise<boolean>;
+  /** Staff payroll (final payrolls, salaries paid, advances, statutory deposits); see docs/payroll.md. */
+  payroll?: { bookSources(tenantId: string): Promise<PayrollSrc> };
 }
 
 const istDate = (d: Date | null | undefined) => (d ? todayIST(d) : null);
@@ -283,6 +286,12 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           period: r.period,
         }),
       );
+    },
+
+    /** Staff payroll: the payroll module hands over its own documents (cancelled ones left out, so their postings reverse). */
+    async payroll(tenantId) {
+      if (!deps.payroll) return { runs: [], payments: [], advances: [], dues: [] };
+      return deps.payroll.bookSources(tenantId);
     },
 
     async tills(tenantId) {

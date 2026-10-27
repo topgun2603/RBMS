@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/marketplace-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/receipt-print",
+    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/marketplace-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/payroll-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/receipt-print",
       // Only its browser-safe `@srirealtime/tenancy/slug` (shop address rules) is imported by the web kit.
       "@srirealtime/tenancy", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/serials-ui", "@srirealtime/scales-ui", "@srirealtime/jewellery-ui"],
     poweredByHeader: false,

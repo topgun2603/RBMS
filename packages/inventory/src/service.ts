@@ -510,6 +510,23 @@ export const returnInputSchema = z.object({
 });
 export type ReturnInput = z.input<typeof returnInputSchema>;
 
+/**
+ * Stock of a delivery challan (docs/sales-documents.md). `out`: the goods leave `locationId` (default location);
+ * `return`: goods come back where they left from (`key` names the return, so each is applied once); `cancel`: whatever is
+ * still out comes back. Movements carry ref type `challan` and the challan id.
+ */
+export const challanStockInputSchema = z.object({
+  challanId: z.string().trim().min(1).max(100),
+  step: z.enum(["out", "return", "cancel"]),
+  /** Return steps: the return's id (idempotency). */
+  key: opt(z.string().trim().min(1).max(60)),
+  refNumber: opt(z.string().trim().max(50)),
+  locationId: locationIdParam,
+  lines: z.array(z.object({ itemId: uuid, qty: positiveQty, batchId: opt(uuid) })).max(500).default([]),
+  userId: opt(uuid),
+});
+export type ChallanStockInput = z.input<typeof challanStockInputSchema>;
+
 export const supplierInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   phone: opt(phone),
@@ -1956,6 +1973,105 @@ export class InventoryService {
       }
       await this.batches.reverseRef(tx, tenantId, "credit_note", ref, "sale_return_cancel", { refNumber: returns[0]?.refNumber ?? null });
       return { reversed: true, items: net.length };
+    });
+    await this.emitLowStock(tenantId, drops);
+    return result;
+  }
+
+  /**
+   * Moves the stock of a delivery challan (see `challanStockInputSchema`). Idempotent: an `out` or `cancel` that already
+   * happened, or a `return` whose key was already applied, does nothing. Untracked items are skipped. A cancel puts back
+   * only what is still out (sent less returned), into the batches the goods came from.
+   */
+  async applyChallan(tenantId: string, input: ChallanStockInput): Promise<{ applied: boolean; items: number }> {
+    const b = challanStockInputSchema.parse(input);
+    const def = await this.defaultLocationRow(tenantId);
+    const drops = this.dropSink();
+    const note = b.step === "return" ? `Return ${b.key ?? ""}`.trim() : null;
+    if (b.step === "return" && !b.key) throw badRequest("A challan return needs its key");
+    const result = await this.db.transaction(async (tx) => {
+      await lockRef(tx, tenantId, "challan", b.challanId);
+      const moves = await tx
+        .select({
+          locationId: stockMovements.locationId,
+          itemId: stockMovements.itemId,
+          delta: stockMovements.delta,
+          reason: stockMovements.reason,
+          note: stockMovements.note,
+        })
+        .from(stockMovements)
+        .where(and(eq(stockMovements.tenantId, tenantId), eq(stockMovements.refType, "challan"), eq(stockMovements.refId, b.challanId)));
+      if (moves.some((m) => m.reason === "challan_cancel")) return { applied: false, items: 0 };
+      const outs = moves.filter((m) => m.reason === "challan_out");
+      let items = 0;
+      if (b.step === "out") {
+        if (outs.length > 0) return { applied: false, items: 0 };
+        const lines = mergeQtyLines(b.lines);
+        const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
+        const untracked = await this.untrackedOf(tx, tenantId, lines.map((l) => l.itemId));
+        for (const l of lines) {
+          if (untracked.has(l.itemId)) continue;
+          const preferred = b.lines.filter((x) => x.itemId === l.itemId && x.batchId).map((x) => ({ batchId: x.batchId!, milli: toMilli(x.qty) }));
+          await this.change(tx, {
+            tenantId,
+            locationId: loc.id,
+            itemId: l.itemId,
+            deltaMilli: -l.milli,
+            reason: "challan_out",
+            refType: "challan",
+            refId: b.challanId,
+            refNumber: b.refNumber ?? null,
+            createdBy: b.userId ?? null,
+            batchPreferred: preferred,
+          }, drops);
+          items++;
+        }
+      } else if (b.step === "return") {
+        if (outs.length === 0 || moves.some((m) => m.reason === "challan_return" && m.note === note)) return { applied: false, items: 0 };
+        // Never more back than went out (net of earlier returns), per item, at the location it left from.
+        const outAt = netByLocationItem(moves.filter((m) => m.reason === "challan_out" || m.reason === "challan_return"), def.id);
+        for (const l of mergeQtyLines(b.lines)) {
+          const at = outAt.find((n) => n.itemId === l.itemId);
+          const still = at ? -at.milli : 0;
+          const milli = Math.min(l.milli, still);
+          if (!at || milli <= 0) continue;
+          await this.change(tx, {
+            tenantId,
+            locationId: at.locationId,
+            itemId: l.itemId,
+            deltaMilli: milli,
+            reason: "challan_return",
+            refType: "challan",
+            refId: b.challanId,
+            refNumber: b.refNumber ?? null,
+            note,
+            createdBy: b.userId ?? null,
+          });
+          await this.batches.returnToRef(tx, { tenantId, itemId: l.itemId, refType: "challan", refId: b.challanId, refNumber: b.refNumber ?? null, milli, note, userId: b.userId ?? null });
+          items++;
+        }
+      } else {
+        if (outs.length === 0) return { applied: false, items: 0 };
+        const net = netByLocationItem(moves.filter((m) => m.reason === "challan_out" || m.reason === "challan_return"), def.id);
+        for (const n of net) {
+          if (n.milli >= 0) continue;
+          await this.change(tx, {
+            tenantId,
+            locationId: n.locationId,
+            itemId: n.itemId,
+            deltaMilli: -n.milli,
+            reason: "challan_cancel",
+            refType: "challan",
+            refId: b.challanId,
+            refNumber: b.refNumber ?? null,
+            createdBy: b.userId ?? null,
+          });
+          items++;
+        }
+        await this.batches.reverseRef(tx, tenantId, "challan", b.challanId, "sale_cancel", { refNumber: b.refNumber ?? null });
+      }
+      this.log.info({ tenantId, challanId: b.challanId, step: b.step, items }, "inventory: challan stock moved");
+      return { applied: items > 0, items };
     });
     await this.emitLowStock(tenantId, drops);
     return result;

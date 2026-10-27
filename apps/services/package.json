@@ -19,6 +19,7 @@
     "@srirealtime/jobcards-ui": "workspace:*",
     "@srirealtime/memberships-ui": "workspace:*",
     "@srirealtime/orders-ui": "workspace:*",
+    "@srirealtime/payroll-ui": "workspace:*",
     "@srirealtime/pos-ui": "workspace:*",
     "@srirealtime/serials-ui": "workspace:*",
     "@srirealtime/site-ui": "workspace:*",

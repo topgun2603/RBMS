@@ -14,6 +14,7 @@ import {
   type PurchaseDocPort,
   type PurchaseOrderDocPort,
   type QuotationDocPort,
+  type SalesDocPort,
   type StatementDocPort,
   type TillDocPort,
 } from "./types";
@@ -31,6 +32,8 @@ export interface DocumentsDeps {
   purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
   quotations?: QuotationDocPort;
+  /** Proforma invoices, sale orders and delivery challans (docs/sales-documents.md). */
+  salesDocs?: SalesDocPort;
   till?: TillDocPort;
   branding?: BrandingPort;
   log?: LoggerPort;
@@ -59,6 +62,7 @@ export function createDocuments(deps: DocumentsDeps = {}) {
     branding: deps.branding,
     invoices: deps.invoices,
     quotations: deps.quotations,
+    salesDocs: deps.salesDocs,
     log,
     timeoutMs: deps.config?.timeoutMs,
   });
@@ -83,6 +87,7 @@ export { renderPurchase } from "./renderers/purchase";
 export { renderPurchaseOrder } from "./renderers/purchase-order";
 export { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
 export { renderQuotation, renderQuotationThermal } from "./renderers/quotation";
+export { renderSalesDoc, salesDocVariant, challanReasonLabel } from "./renderers/sales-doc";
 export { renderTillReport } from "./renderers/till";
 export { platformInvoiceDoc, renderPlatformInvoice, type PlatformInvoiceDocData, type PlatformInvoiceParty } from "./renderers/platform-invoice";
 export { esc, page, qrSvg, money, fmtDate, fmtDateTime, stateLabel, type QrErrorCorrection } from "./html";

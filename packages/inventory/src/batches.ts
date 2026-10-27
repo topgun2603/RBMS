@@ -244,6 +244,13 @@ export function batchReasonFor(reason: string): BatchMovementReason {
     case "purchase_return_cancel":
     case "purchase_cancel":
       return reason;
+    // Delivery challans: out like a sale, back like a sales return / a cancelled sale.
+    case "challan_out":
+      return "sale";
+    case "challan_return":
+      return "sale_return";
+    case "challan_cancel":
+      return "sale_cancel";
     default:
       return "adjustment";
   }
@@ -599,6 +606,40 @@ export class BatchService {
         refId: p.creditNoteId,
         refNumber: p.refNumber,
         sourceRefId: p.saleRefId,
+      });
+      left -= n;
+      put += n;
+    }
+    return put;
+  }
+
+  /**
+   * Goods that come back under the same reference that took them out (a delivery challan's returned approval goods): they
+   * go back into the batches that reference took from (oldest first, never more than its net take), so a later
+   * `reverseRef` of the reference nets out right. What is left goes back unbatched. Returns the milli put back into batches.
+   */
+  async returnToRef(
+    tx: DbOrTx,
+    p: { tenantId: string; itemId: string; refType: string; refId: string; refNumber?: string | null; milli: number; note?: string | null; userId?: string | null },
+  ): Promise<number> {
+    const m = stockBatchMovements;
+    const net = await tx
+      .select({ batchId: m.batchId, locationId: m.locationId, qty: sum(m.delta), at: sql<Date>`min(${m.createdAt})` })
+      .from(m)
+      .where(and(eq(m.tenantId, p.tenantId), eq(m.refType, p.refType), eq(m.refId, p.refId), eq(m.itemId, p.itemId)))
+      .groupBy(m.batchId, m.locationId);
+    let left = p.milli;
+    let put = 0;
+    for (const s of net.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime() || (a.batchId < b.batchId ? -1 : 1))) {
+      if (left <= 0) break;
+      const n = Math.min(-toMilli(s.qty), left);
+      if (n <= 0) continue;
+      await this.applyDelta(tx, p.tenantId, { id: s.batchId, itemId: p.itemId }, s.locationId, n, "sale_return", {
+        refType: p.refType,
+        refId: p.refId,
+        refNumber: p.refNumber ?? null,
+        note: p.note ?? null,
+        userId: p.userId ?? null,
       });
       left -= n;
       put += n;

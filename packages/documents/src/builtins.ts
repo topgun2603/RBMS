@@ -6,6 +6,7 @@ import { renderPurchaseOrder } from "./renderers/purchase-order";
 import { renderStatement } from "./renderers/statement";
 import { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
 import { renderQuotation, renderQuotationThermal } from "./renderers/quotation";
+import { renderSalesDoc } from "./renderers/sales-doc";
 import { renderTillReport } from "./renderers/till";
 import type {
   CreditNoteDocData,
@@ -20,6 +21,8 @@ import type {
   PurchaseOrderDocPort,
   QuotationDocData,
   QuotationDocPort,
+  SalesDocDocData,
+  SalesDocPort,
   StatementDocData,
   StatementDocPort,
   TillDocData,
@@ -40,6 +43,9 @@ export const DOCUMENT_TYPE_FEATURES = {
   "till-z": "invoices",
   quotation: "invoices.quotations",
   "quotation-thermal": "invoices.quotations",
+  proforma: "invoices.sales-docs",
+  "sale-order": "invoices.sales-docs",
+  challan: "invoices.sales-docs",
 } as const;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -56,10 +62,14 @@ export interface BuiltinPorts {
   purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
   quotations?: QuotationDocPort;
+  salesDocs?: SalesDocPort;
   till?: TillDocPort;
 }
 
 export const quotationFilename = (d: QuotationDocData) => safeFilename(`Quotation-${d.number}${d.rev > 1 ? `-rev${d.rev}` : ""}`);
+
+const SALES_DOC_FILE: Record<SalesDocDocData["kind"], string> = { proforma: "Proforma", sale_order: "Sale-order", challan: "Delivery-challan" };
+export const salesDocFilename = (d: SalesDocDocData) => safeFilename(`${SALES_DOC_FILE[d.kind]}-${d.number}`);
 
 export const creditNoteFilename = (d: CreditNoteDocData) => safeFilename(`Credit-note-${d.number}`);
 
@@ -166,6 +176,26 @@ export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): vo
       filename: quotationFilename,
       version,
     });
+  }
+  const sd = ports.salesDocs;
+  if (sd) {
+    const kinds = [
+      ["proforma", "proforma"],
+      ["sale-order", "sale_order"],
+      ["challan", "challan"],
+    ] as const;
+    for (const [key, kind] of kinds) {
+      reg.register<SalesDocDocData>({
+        key,
+        paper: "A4",
+        feature: DOCUMENT_TYPE_FEATURES[key],
+        permission: "sales-docs.view",
+        load: (tenantId, id) => sd.doc(kind, tenantId, id),
+        render: renderSalesDoc,
+        filename: salesDocFilename,
+        version,
+      });
+    }
   }
   const till = ports.till;
   if (till) {

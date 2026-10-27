@@ -71,6 +71,9 @@ export const REASON_META: Record<StockReason, { icon: Icon; tone: string }> = {
   sale_return_cancel: { icon: Undo2Icon, tone: "text-muted-foreground" },
   purchase: { icon: TruckIcon, tone: "text-success-ink" },
   purchase_cancel: { icon: Undo2Icon, tone: "text-muted-foreground" },
+  challan_out: { icon: TruckIcon, tone: "text-primary" },
+  challan_return: { icon: Undo2Icon, tone: "text-success-ink" },
+  challan_cancel: { icon: Undo2Icon, tone: "text-muted-foreground" },
 };
 
 /** Round to 3 decimals (quantities). */

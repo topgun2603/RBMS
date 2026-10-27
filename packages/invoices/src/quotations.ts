@@ -120,6 +120,18 @@ export interface QuotationOrdersPort {
   isLive?(tenantId: string, orderId: string): Promise<boolean>;
 }
 
+/** "Make proforma" / "Make sale order" (the sales documents service of this package; docs/sales-documents.md). */
+export interface QuotationSalesDocsPort {
+  fromQuotation(
+    tenant: TenantRef,
+    quote: Quotation,
+    kind: "proforma" | "sale_order",
+    ctx: { userId?: string | null; branchId?: string | null },
+  ): Promise<{ id: string; number: string }>;
+  /** Whether it still stands (a cancelled one lets the quotation be converted again). */
+  isLive(tenantId: string, kind: "proforma" | "sale_order", id: string): Promise<boolean>;
+}
+
 /** Audit trail for the customer's public answer (staff actions are audited by the API's request hook). */
 export interface QuotationAuditPort {
   record(e: { tenantId: string; action: string; entityType: string; entityId: string; summary: string }): Promise<void>;
@@ -135,6 +147,8 @@ export interface QuotationsDeps {
   branches?: BranchPort;
   notifier?: QuotationNotifierPort;
   orders?: QuotationOrdersPort;
+  /** Proforma invoices and sale orders (absent = only bills and orders). */
+  salesDocs?: QuotationSalesDocsPort | (() => QuotationSalesDocsPort | undefined);
   featureGate?: FeatureGatePort;
   audit?: QuotationAuditPort;
   log?: LoggerPort;
@@ -304,8 +318,11 @@ export const quotationRespondSchema = z.object({
 export type QuotationRespondInput = z.input<typeof quotationRespondSchema>;
 
 export const quotationConvertSchema = z.object({
-  /** "invoice" makes a draft bill (or an issued one with `issue`); "order" makes an order. */
-  to: z.enum(["invoice", "order"]).default("invoice"),
+  /**
+   * "invoice" makes a draft bill (or an issued one with `issue`); "order" makes an online-store order; "proforma" an
+   * issued proforma invoice; "sale_order" a sale order (docs/sales-documents.md).
+   */
+  to: z.enum(["invoice", "order", "proforma", "sale_order"]).default("invoice"),
   /** Bill only: issue the bill straight away (needed to record the advance on it). */
   issue: z.boolean().optional(),
   /** Record the quotation's advance (advancePercent of the total) as a payment on the new bill / order. */
@@ -360,6 +377,7 @@ export function allocateQuotationSeq(db: DbOrTx, args: { tenantId: string; fy: s
 }
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
+const CONVERTED_LABEL: Record<QuotationConversion, string> = { invoice: "Bill", order: "Order", proforma: "Proforma invoice", sale_order: "Sale order" };
 const num = (v: unknown) => Number(v ?? 0);
 
 /** Fields a draft is built from (after merging a PATCH / revision onto the stored row). */
@@ -390,6 +408,11 @@ export class QuotationsService {
 
   private today() {
     return todayIST(this.now());
+  }
+
+  private salesDocs(): QuotationSalesDocsPort | undefined {
+    const d = this.deps.salesDocs;
+    return typeof d === "function" ? d() : d;
   }
 
   private async baseUrl(tenantId: string): Promise<string> {
@@ -444,6 +467,9 @@ export class QuotationsService {
         .where(and(eq(invoices.tenantId, r.tenantId), eq(invoices.id, r.convertedId)))
         .limit(1);
       missing = !inv || inv.status === "cancelled";
+    } else if (r.convertedKind === "proforma" || r.convertedKind === "sale_order") {
+      const docs = this.salesDocs();
+      if (docs) missing = !(await docs.isLive(r.tenantId, r.convertedKind, r.convertedId).catch(() => true));
     } else if (this.deps.orders?.isLive) {
       missing = !(await this.deps.orders.isLive(r.tenantId, r.convertedId).catch(() => true));
     }
@@ -1092,7 +1118,14 @@ export class QuotationsService {
     id: string,
     input: QuotationConvertInput = {},
     ctx: { userId?: string | null; branchId?: string | null } = {},
-  ): Promise<{ quotation: Quotation; invoice?: Invoice; order?: { id: string; number: string }; advanceRecorded: number }> {
+  ): Promise<{
+    quotation: Quotation;
+    invoice?: Invoice;
+    order?: { id: string; number: string };
+    /** The proforma invoice / sale order made (to: "proforma" | "sale_order"). */
+    salesDoc?: { kind: "proforma" | "sale_order"; id: string; number: string };
+    advanceRecorded: number;
+  }> {
     const b = quotationConvertSchema.parse(input);
     const row = await this.row(this.db, tenant.id, id);
     const converted = await this.convertedOf(row);
@@ -1104,6 +1137,9 @@ export class QuotationsService {
     const quote = await this.toQuotation(row);
     const advance = b.recordAdvance ? quotationAdvance(row.total, row.advancePercent) : 0;
     if (b.recordAdvance && advance <= 0) throw badRequest("This quotation asks for no advance");
+    if ((b.to === "proforma" || b.to === "sale_order") && b.recordAdvance) {
+      throw badRequest("Record the advance on the proforma or sale order once it is made");
+    }
     if (b.to === "invoice" && advance > 0 && !b.issue) throw badRequest("Issue the bill to record the advance on it");
     let target: { kind: QuotationConversion; id: string; number: string | null };
     let invoice: Invoice | undefined;
@@ -1124,6 +1160,11 @@ export class QuotationsService {
         { branchId: ctx.branchId ?? row.branchId },
       );
       target = { kind: "invoice", id: invoice.id, number: invoice.number };
+    } else if (b.to === "proforma" || b.to === "sale_order") {
+      const docs = this.salesDocs();
+      if (!docs) throw new AppError(409, "sales_docs_unavailable", "Proforma invoices and sale orders are not switched on for this shop");
+      const made = await docs.fromQuotation(tenant, quote, b.to, { userId: ctx.userId ?? null, branchId: ctx.branchId ?? row.branchId });
+      target = { kind: b.to, id: made.id, number: made.number };
     } else {
       if (!this.deps.orders) throw new AppError(409, "orders_unavailable", "This shop doesn't take orders");
       order = await this.deps.orders.createFromQuotation(tenant, quote, { userId: ctx.userId ?? null, branchId: ctx.branchId ?? row.branchId });
@@ -1141,7 +1182,7 @@ export class QuotationsService {
         ...(row.status === "declined" ? { respondedAt: null, respondedBy: null } : {}),
         events: [
           ...row.events,
-          this.event("converted", ctx.userId ?? null, `${target.kind === "invoice" ? "Bill" : "Order"} ${target.number ?? "(draft)"}`),
+          this.event("converted", ctx.userId ?? null, `${CONVERTED_LABEL[target.kind]} ${target.number ?? "(draft)"}`),
         ],
       })
       .where(and(eq(quotations.tenantId, tenant.id), eq(quotations.id, id), eq(quotations.latest, true), eq(quotations.status, row.status)))
@@ -1170,7 +1211,8 @@ export class QuotationsService {
     }
     if (invoice && advanceRecorded > 0) invoice = await this.deps.invoices.get(tenant.id, invoice.id);
     this.log.info({ tenantId: tenant.id, quotationId: id, to: target.kind, targetId: target.id }, "quotation converted");
-    return { quotation: await this.toQuotation(updated), ...(invoice ? { invoice } : {}), ...(order ? { order } : {}), advanceRecorded };
+    const salesDoc = target.kind === "proforma" || target.kind === "sale_order" ? { kind: target.kind, id: target.id, number: target.number ?? "" } : undefined;
+    return { quotation: await this.toQuotation(updated), ...(invoice ? { invoice } : {}), ...(order ? { order } : {}), ...(salesDoc ? { salesDoc } : {}), advanceRecorded };
   }
 
   /** Expiry is derived on read; this lists quotations that expire in the next `days` days (for reminders / widgets). */

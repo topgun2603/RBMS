@@ -75,6 +75,7 @@
     "@srirealtime/onboarding": "workspace:*",
     "@srirealtime/orders": "workspace:*",
     "@srirealtime/payments": "workspace:*",
+    "@srirealtime/payroll": "workspace:*",
     "@srirealtime/plans": "workspace:*",
     "@srirealtime/pos": "workspace:*",
     "@srirealtime/reports": "workspace:*",

@@ -22,6 +22,8 @@ only the bill or order made from it does.
   orders module (every line must be a catalogue item; the order reserves stock). `recordAdvance` records `advancePercent` of the total as a
   payment on the new bill (which must then be issued) or order. The quotation becomes `converted` and links to it; if that bill is deleted or cancelled
   it can be converted again. The bill page shows "Made from quotation" with a shortcut to record the advance.
+  `to: "proforma"` / `to: "sale_order"` make an issued proforma invoice or a sale order instead (feature `invoices.sales-docs`,
+  permission `sales-docs.manage`; the advance is then recorded on the new document; `docs/sales-documents.md`).
 - Dashboard: `GET /summary` gives open value, accepted this month and the 90-day conversion rate (tile `kpi-quotations`, list header).
 
 ## Features and permissions

@@ -485,7 +485,19 @@ export interface StockSummary {
   lowItems: StockRow[];
 }
 
-export type StockReason = "opening" | "adjustment" | "sale" | "sale_cancel" | "sale_return" | "sale_return_cancel" | "purchase" | "purchase_cancel";
+export type StockReason =
+  | "opening"
+  | "adjustment"
+  | "sale"
+  | "sale_cancel"
+  | "sale_return"
+  | "sale_return_cancel"
+  | "purchase"
+  | "purchase_cancel"
+  // Delivery challans (docs/sales-documents.md).
+  | "challan_out"
+  | "challan_return"
+  | "challan_cancel";
 
 export interface StockMovement {
   id: string;

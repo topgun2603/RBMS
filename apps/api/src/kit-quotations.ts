@@ -1,6 +1,6 @@
 import { AppError, type AuditEvent, type FeatureGatePort } from "@srirealtime/core";
 import type { Db } from "@srirealtime/db";
-import { createQuotations, type InvoicesService, type QuotationOrdersPort } from "@srirealtime/invoices";
+import { createQuotations, type InvoicesService, type QuotationOrdersPort, type QuotationSalesDocsPort } from "@srirealtime/invoices";
 import type { OrdersService } from "@srirealtime/orders";
 
 /** What the quotations wiring needs from the host's services (structural, so kit.ts passes its own objects). */
@@ -20,6 +20,8 @@ export interface QuotationsWiring {
   branding: { get(tenantId: string): Promise<{ appName: string | null; logoUrl: string | null; css: string }> };
   publicBaseUrl: (tenantId: string) => Promise<string>;
   branches?: Parameters<typeof createQuotations>[0]["branches"];
+  /** Proforma invoices and sale orders (docs/sales-documents.md), for "Make proforma" / "Make sale order". */
+  salesDocs?: QuotationSalesDocsPort;
   now?: () => Date;
   log: Parameters<typeof createQuotations>[0]["log"];
 }
@@ -94,6 +96,17 @@ export function wireQuotations(w: QuotationsWiring) {
       }),
     },
     orders: orderPort,
+    salesDocs: w.salesDocs
+      ? {
+          fromQuotation: async (tenant, quote, kind, ctx) => {
+            if (!(await w.features.service.isEnabled(tenant.id, "invoices.sales-docs"))) {
+              throw new AppError(409, "sales_docs_unavailable", "Proforma invoices and sale orders are not switched on for this shop");
+            }
+            return w.salesDocs!.fromQuotation(tenant, quote, kind, ctx);
+          },
+          isLive: (tenantId, kind, id) => w.salesDocs!.isLive(tenantId, kind, id),
+        }
+      : undefined,
     audit: {
       record: (e) => w.audit.record({ tenantId: e.tenantId, actorUserId: null, action: e.action, entityType: e.entityType, entityId: e.entityId, summary: e.summary }),
     },

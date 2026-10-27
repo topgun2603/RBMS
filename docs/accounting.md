@@ -78,6 +78,7 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Refund (negative payment, with a credit note) | `invoice_payment` | Debtors | Money account |
 | Allocation of a customer receipt to a bill | skipped (the receipt itself is posted) | | |
 | Customer receipt (credit book) | `customer_receipt` | Money account | Debtors (whole amount, advance included) |
+| Advance against a proforma invoice or sale order (docs/sales-documents.md) | `customer_receipt` (it is a customer receipt kept for that document) | Money account | Debtors |
 | Credit note issued (bill not cancelled) | `credit_note` | Sales returns (taxable), GST output (reversal) | Debtors (total) |
 | Purchase bill | `purchase` | Purchases (total - GST - round-off, freight inside), GST input CGST/SGST/IGST | Creditors (total) |
 | Purchase bill cancelled | `purchase_cancel` | mirror | mirror |
@@ -93,6 +94,8 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Composition tax paid by challan (GST filing > Composition) | `gst_payment` (and `gst_payment_cancel` when cancelled) | Composition tax (expense, account 5930) | Money account (by method) |
 | Opening stock (`opening` movement) | `stock_adjustment` | Stock in hand | Opening balance equity |
 | Stock added/removed by hand (`adjustment`) and the differences of an approved stock audit (`audit`) | `stock_adjustment` | Stock in hand / Stock gains and write-offs | the other side |
+| Payroll made final (docs/payroll.md) | `payroll_run` (dated the month's last day) | Salaries and wages (gross), Employer PF and ESI, Round off (net rounded up) | Salaries payable (net), PF / ESI payable (both shares), Professional tax payable, TDS on salaries payable, Advances to staff (recovered), Other income (other deductions), Round off (rounded down) |
+| Salary paid / advance to staff / PF, ESI, PT or salary TDS deposited | `salary_payment` / `staff_advance` / `payroll_due` | Salaries payable / Advances to staff / the dues account | Money account (by method) |
 | Customer and supplier opening balances | `opening_parties` | Debtors (customers who owed), Creditors (suppliers we had paid in advance) | Creditors, Debtors for the opposite, and Opening balance equity for the difference |
 | Opening balance typed on accounts | `account_opening` | accounts with a debit balance | accounts with a credit balance, Opening balance equity for the difference |
 | Imported historical bills and their payments, credit notes, supplier payments | same as above, **only when** Settings > "Bills imported from another software" is "Post like other bills"; default is left out (they were in the old books) | | |
@@ -249,4 +252,4 @@ income-tax block method. One closing journal per year; no partial-year closes.
 
 Budgets, cost centres, per-branch books, multi-currency, recurring journals, GSTR-3B set-off entries, e-way-bill and
 e-invoice cross-checks against the ledger, scheduled sync and an events feed for purchases/expenses, bank feeds (API),
-MT940 / PDF statements, TDS returns in the FVU format, salary TDS (24Q).
+MT940 / PDF statements, TDS returns in the FVU format, salary TDS returns (24Q; payroll takes a manual monthly salary TDS, `docs/payroll.md`).

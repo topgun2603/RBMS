@@ -200,6 +200,10 @@ export const en: Messages = {
   "billing.accounting.source.stock_adjustment": "Stock added or written off",
   "billing.accounting.source.gst_payment": "Composition tax paid",
   "billing.accounting.source.gst_payment_cancel": "Composition tax payment cancelled",
+  "billing.accounting.source.payroll_run": "Payroll",
+  "billing.accounting.source.salary_payment": "Salary paid",
+  "billing.accounting.source.staff_advance": "Advance to staff",
+  "billing.accounting.source.payroll_due": "PF / ESI / PT / salary TDS paid",
 
   // new entry
   "billing.accounting.new.subtitle": "For things that are not bills: rent, the owner's money, moving cash to the bank, or an adjustment from your accountant.",
@@ -596,6 +600,10 @@ export const ta: Messages = {
   "billing.accounting.source.stock_adjustment": "சரக்கு சேர்க்கை அல்லது கழிவு",
   "billing.accounting.source.gst_payment": "கூட்டு வரி செலுத்தியது",
   "billing.accounting.source.gst_payment_cancel": "கூட்டு வரி செலுத்தல் ரத்து",
+  "billing.accounting.source.payroll_run": "சம்பளப் பட்டியல்",
+  "billing.accounting.source.salary_payment": "சம்பளம் செலுத்தப்பட்டது",
+  "billing.accounting.source.staff_advance": "பணியாளருக்கு முன்பணம்",
+  "billing.accounting.source.payroll_due": "PF / ESI / தொழில் வரி / சம்பள TDS செலுத்தப்பட்டது",
 
   "billing.accounting.new.subtitle": "பில் அல்லாதவற்றுக்கு: வாடகை, உரிமையாளர் பணம், ரொக்கத்தை வங்கிக்கு மாற்றுதல் அல்லது உங்கள் கணக்காளரின் சரிசெய்தல்.",
   "billing.accounting.new.kind": "பதிவின் வகை",

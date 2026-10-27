@@ -14,6 +14,7 @@
     "@srirealtime/growth-ui": "workspace:*",
     "@srirealtime/i18n": "workspace:*",
     "@srirealtime/inbox-ui": "workspace:*",
+    "@srirealtime/payroll-ui": "workspace:*",
     "@srirealtime/pos-ui": "workspace:*",
     "@srirealtime/scales-ui": "workspace:*",
     "@srirealtime/ui": "workspace:*",

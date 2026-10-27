@@ -44,6 +44,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "documents",
       "onboarding",
       "expenses",
+      // Staff attendance, leave and payroll (docs/payroll.md; the owner switches it on).
+      "payroll.*",
       // The shop's books (the owner switches them on).
       "accounting",
       // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
@@ -69,6 +71,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "invoices.reports",
       "invoices.gst-reports",
       "invoices.quotations",
+      "invoices.sales-docs",
       "inventory",
       "inventory.locations",
       "payments",
@@ -88,6 +91,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "analytics",
       "onboarding",
       "expenses",
+      // Staff attendance, leave and payroll (docs/payroll.md; the owner switches it on).
+      "payroll.*",
       // The shop's books (the owner switches them on).
       "accounting",
       // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
@@ -121,6 +126,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "documents",
       "onboarding",
       "expenses",
+      // Staff attendance, leave and payroll (docs/payroll.md; the owner switches it on).
+      "payroll.*",
       // The shop's books (the owner switches them on).
       "accounting",
       // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
@@ -168,6 +175,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "analytics",
       "onboarding",
       "expenses",
+      // Staff attendance, leave and payroll (docs/payroll.md; the owner switches it on).
+      "payroll.*",
       // The shop's books (the owner switches them on).
       "accounting",
       // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
@@ -215,6 +224,8 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "analytics",
       "onboarding",
       "expenses",
+      // Staff attendance, leave and payroll (docs/payroll.md; the owner switches it on).
+      "payroll.*",
       // The shop's books (the owner switches them on).
       "accounting",
       // AI helpers (docs/ai.md): off until the owner switches them on; plan credits apply.
@@ -242,9 +253,10 @@ const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo",
 const VERTICALS_FREE = ["medicines", "dining", "jobcards", "bookings", "memberships", "scales", "serials", "jewellery"];
 const VERTICALS_PAID = ["medicines.*", "dining.*", "jobcards.*", "bookings.*", "memberships.*", "scales.*", "serials.*", "jewellery.*"];
 const PLAN_ADDITIONS: Record<string, string[]> = {
-  free: ["invoices.quotations", "catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions", "ai"],
+  free: ["invoices.quotations", "invoices.sales-docs", "catalogue", "orders", "documents", ...STORE_FREE, ...VERTICALS_FREE, "subscriptions", "ai"],
   starter: [
     "invoices.quotations",
+    "invoices.sales-docs",
     "catalogue.*",
     "orders",
     "documents",
@@ -261,9 +273,11 @@ const PLAN_ADDITIONS: Record<string, string[]> = {
     "pos.*",
     "subscriptions",
     "ai",
+    // Staff attendance and leave from starter up; salaries and payslips (payroll.salary) from pro.
+    "payroll",
   ],
-  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting", "ai"],
-  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting", "ai"],
+  pro: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting", "ai", "payroll.*"],
+  enterprise: ["catalogue.*", "orders.*", "coupons.*", "documents.*", "importexport.*", "staff.*", "audit.*", ...STORE_PRO, ...BATCH3_ALL, ...VERTICALS_PAID, "pos.*", "subscriptions", "accounting", "ai", "payroll.*"],
 };
 /** Limits added to the plans package's defaults: paired POS terminals (-1 = unlimited). */
 /**

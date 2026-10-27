@@ -70,6 +70,7 @@ import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui"
 import { InvoiceDocument } from "../components/invoice-document";
 import { CancelDialog, PaymentDialog, ShareDialog } from "../components/invoice-dialogs";
 import { LinkedQuotationBanner } from "../components/quotations/linked-quotation";
+import { LinkedSalesDocsBanner } from "../components/sales-docs/linked-sales-docs";
 import { isOnlinePayment, MessagesTimeline, SendInvoiceButton } from "../components/payments/send-invoice";
 import { StatusBadge } from "../components/status-badge";
 import { printInvoiceDirect } from "../lib/direct-print";
@@ -267,6 +268,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
           setDialog("pay");
         }}
       />
+      <LinkedSalesDocsBanner invoiceId={inv.id} />
 
       {creditWarning && (
         <Alert data-print-hide className="mb-4 border-warning/40 bg-warning/10 text-warning-ink">

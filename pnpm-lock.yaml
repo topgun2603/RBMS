@@ -218,6 +218,9 @@ importers:
       '@srirealtime/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@srirealtime/payroll':
+        specifier: workspace:*
+        version: link:../../packages/payroll
       '@srirealtime/plans':
         specifier: workspace:*
         version: link:../../packages/plans
@@ -300,6 +303,9 @@ importers:
       '@srirealtime/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
+      '@srirealtime/payroll-ui':
+        specifier: workspace:*
+        version: link:../../packages/payroll-ui
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
@@ -367,6 +373,9 @@ importers:
       '@srirealtime/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
+      '@srirealtime/payroll-ui':
+        specifier: workspace:*
+        version: link:../../packages/payroll-ui
       '@srirealtime/pharmacy-ui':
         specifier: workspace:*
         version: link:../../packages/pharmacy-ui
@@ -437,6 +446,9 @@ importers:
       '@srirealtime/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
+      '@srirealtime/payroll-ui':
+        specifier: workspace:*
+        version: link:../../packages/payroll-ui
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
@@ -562,6 +574,9 @@ importers:
       '@srirealtime/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
+      '@srirealtime/payroll-ui':
+        specifier: workspace:*
+        version: link:../../packages/payroll-ui
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
@@ -638,6 +653,9 @@ importers:
       '@srirealtime/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
+      '@srirealtime/payroll-ui':
+        specifier: workspace:*
+        version: link:../../packages/payroll-ui
       '@srirealtime/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
@@ -2084,6 +2102,62 @@ importers:
       fastify:
         specifier: ^5.3.0
         version: 5.12.7
+
+  packages/payroll:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(@opentelemetry/api@1.10.0)(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/payroll-ui:
+    dependencies:
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      '@srirealtime/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@srirealtime/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@srirealtime/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
 
   packages/pharmacy-ui:
     dependencies:

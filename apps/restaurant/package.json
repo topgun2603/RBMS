@@ -16,6 +16,7 @@
     "@srirealtime/i18n": "workspace:*",
     "@srirealtime/inbox-ui": "workspace:*",
     "@srirealtime/orders-ui": "workspace:*",
+    "@srirealtime/payroll-ui": "workspace:*",
     "@srirealtime/pos-ui": "workspace:*",
     "@srirealtime/restaurant-ui": "workspace:*",
     "@srirealtime/site-ui": "workspace:*",

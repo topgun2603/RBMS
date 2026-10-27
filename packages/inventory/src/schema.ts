@@ -22,11 +22,17 @@ export const MOVEMENT_REASONS = [
   "transfer_in",
   /** A physical stock audit (stock count) was approved: the variance counted against the system quantity. */
   "audit",
+  /** Goods sent out on a delivery challan (job work, on approval, delivery before the bill; docs/sales-documents.md). */
+  "challan_out",
+  /** Goods of a delivery challan that came back (approval goods returned, job work back). */
+  "challan_return",
+  /** A cancelled delivery challan: what was still out comes back. */
+  "challan_cancel",
 ] as const;
 export type MovementReason = (typeof MOVEMENT_REASONS)[number];
 
 /** Known movement ref types; reservations may commit with their own ref type (e.g. "order"). */
-export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note", "grn", "debit_note", "audit"] as const;
+export const REF_TYPES = ["invoice", "purchase", "order", "transfer", "credit_note", "grn", "debit_note", "audit", "challan"] as const;
 export type RefType = (typeof REF_TYPES)[number] | (string & {});
 
 export const LOCATION_TYPES = ["store", "warehouse"] as const;

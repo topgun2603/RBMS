@@ -9,6 +9,7 @@ export const FEATURES = {
   reports: "invoices.reports",
   gstReports: "invoices.gst-reports",
   quotations: "invoices.quotations",
+  salesDocs: "invoices.sales-docs",
 } as const;
 
 /** Payments' base feature: the public invoice only offers online payment when it is on. */
@@ -64,6 +65,14 @@ export const INVOICE_FEATURES: FeatureDef[] = [
     module: "invoices",
     label: "Quotations",
     description: "Give customers a quotation before the order: share it, let them accept online, then make the bill or order in one tap.",
+    dependsOn: [FEATURES.base],
+    shopToggle: true,
+  },
+  {
+    key: FEATURES.salesDocs,
+    module: "invoices",
+    label: "Proforma invoices, sale orders and delivery challans",
+    description: "Proforma invoices for advances, sale orders with partial delivery, and delivery challans for goods sent before the bill, on approval or for job work.",
     dependsOn: [FEATURES.base],
     shopToggle: true,
   },

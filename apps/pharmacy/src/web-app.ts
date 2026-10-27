@@ -4,6 +4,7 @@ import { growthModule } from "@srirealtime/growth-ui";
 import { inboxModule } from "@srirealtime/inbox-ui";
 import { ordersModule } from "@srirealtime/orders-ui";
 import { pharmacyModule } from "@srirealtime/pharmacy-ui";
+import { payrollModule } from "@srirealtime/payroll-ui";
 import { posModule } from "@srirealtime/pos-ui";
 import { siteModule } from "@srirealtime/site-ui";
 import { createWebApp } from "@srirealtime/web";
@@ -28,6 +29,7 @@ export const webApp = createWebApp({
     siteModule(),
     inboxModule({ basePath: "/inbox", links: { invoice: (id) => `/invoices/${id}` } }),
     growthModule(),
+    payrollModule(),
     workspaceModule(),
   ],
   home: "dashboard",

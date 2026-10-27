@@ -18,6 +18,8 @@ import type {
   OpeningParty,
   PurchaseSrc,
   GstPaymentSrc,
+  PayrollSrc,
+  PayrollRunSrc,
   ReceiptSrc,
   StockAdjustmentSrc,
   SupplierPaymentSrc,
@@ -334,6 +336,76 @@ export function stockAdjustmentPostings(s: StockAdjustmentSrc): Posting[] {
   ];
 }
 
+// ------------------------------------------------------------------ payroll (packages/payroll, docs/payroll.md)
+
+const DUE_ACCOUNT: Readonly<Record<PayrollSrc["dues"][number]["kind"], string>> = {
+  pf: SYS.pfPayable,
+  esi: SYS.esiPayable,
+  pt: SYS.ptPayable,
+  tds: SYS.salaryTdsPayable,
+};
+const DUE_NAME: Readonly<Record<PayrollSrc["dues"][number]["kind"], string>> = { pf: "PF", esi: "ESI", pt: "Professional tax", tds: "TDS on salaries" };
+
+/**
+ * A final payroll, dated the last day of the month: gross pay and the shop's PF / ESI share are expenses; net pay is owed
+ * to staff (Salaries payable) until paid; PF, ESI, professional tax and salary TDS are owed to the government; advances
+ * recovered reduce Advances to staff; other deductions are other income; rounding goes to Round off.
+ */
+export function payrollRunPostings(r: PayrollRunSrc): Posting[] {
+  const lines = nonZero([
+    dr(key(SYS.salaries), r.gross),
+    dr(key(SYS.staffStatutory), r.employerPf + r.employerEsi),
+    dr(key(SYS.roundOff), r.roundOff),
+    cr(key(SYS.salariesPayable), r.net),
+    cr(key(SYS.pfPayable), r.pf),
+    cr(key(SYS.esiPayable), r.esi),
+    cr(key(SYS.ptPayable), r.pt),
+    cr(key(SYS.salaryTdsPayable), r.tds),
+    cr(key(SYS.staffAdvances), r.advance),
+    cr(key(SYS.otherIncome), r.other),
+  ]);
+  if (lines.length === 0) return [];
+  return [{ sourceType: "payroll_run", sourceId: r.id, date: r.date, narration: `Payroll for ${r.month}`, reference: r.month, lines }];
+}
+
+/** Salaries paid, advances given and statutory dues deposited; each from the money account of its method. */
+export function payrollPostings(p: PayrollSrc): Posting[] {
+  const out: Posting[] = p.runs.flatMap(payrollRunPostings);
+  for (const s of p.payments) {
+    if (s.amount <= 0) continue;
+    out.push({
+      sourceType: "salary_payment",
+      sourceId: s.id,
+      date: s.date,
+      narration: `Salary for ${s.month} paid to ${s.employeeName} (${s.method})`,
+      reference: s.month,
+      lines: [dr(key(SYS.salariesPayable), s.amount), cr(money(s.method), s.amount)],
+    });
+  }
+  for (const a of p.advances) {
+    if (a.amount <= 0) continue;
+    out.push({
+      sourceType: "staff_advance",
+      sourceId: a.id,
+      date: a.date,
+      narration: `Advance to ${a.employeeName} (${a.method})`,
+      lines: [dr(key(SYS.staffAdvances), a.amount), cr(money(a.method), a.amount)],
+    });
+  }
+  for (const d of p.dues) {
+    if (d.amount <= 0) continue;
+    out.push({
+      sourceType: "payroll_due",
+      sourceId: d.id,
+      date: d.date,
+      narration: `${DUE_NAME[d.kind]} for ${d.month} paid (${d.method})`,
+      reference: d.reference,
+      lines: [dr(key(DUE_ACCOUNT[d.kind]), d.amount), cr(money(d.method), d.amount)],
+    });
+  }
+  return out;
+}
+
 // ------------------------------------------------------------------ opening balances
 
 /** Customer and supplier opening balances in one journal, balanced against Opening balance equity. */
@@ -404,6 +476,10 @@ export const SOURCE_TYPES = [
   "stock_adjustment",
   "gst_payment",
   "gst_payment_cancel",
+  "payroll_run",
+  "salary_payment",
+  "staff_advance",
+  "payroll_due",
 ] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
@@ -429,4 +505,8 @@ export const SOURCE_LABELS: Readonly<Record<SourceType, string>> = {
   stock_adjustment: "Stock added or written off",
   gst_payment: "Composition tax paid",
   gst_payment_cancel: "Composition tax payment cancelled",
+  payroll_run: "Payroll",
+  salary_payment: "Salary paid",
+  staff_advance: "Advance to staff",
+  payroll_due: "PF / ESI / PT / salary TDS paid",
 };

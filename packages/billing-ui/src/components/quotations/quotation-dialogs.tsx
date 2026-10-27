@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, CopyIcon, ExternalLinkIcon, FileTextIcon, Loader2Icon, MailIcon, MessageCircleIcon, MessageSquareTextIcon, PackageIcon, Share2Icon } from "lucide-react";
+import { CheckIcon, ClipboardListIcon, CopyIcon, ExternalLinkIcon, FileBadgeIcon, FileTextIcon, Loader2Icon, MailIcon, MessageCircleIcon, MessageSquareTextIcon, PackageIcon, Share2Icon } from "lucide-react";
 import {
   Button,
   cn,
@@ -16,7 +16,7 @@ import {
   Textarea,
   toast,
 } from "@srirealtime/ui";
-import { describeError, useFeature, useI18n, useWebApp } from "@srirealtime/web";
+import { describeError, useFeature, useI18n, usePermission, useWebApp } from "@srirealtime/web";
 import { QrImage } from "../upi-qr";
 import { money, whatsappNumber } from "../../lib/format";
 import { usePublicUrl } from "../../lib/links";
@@ -226,7 +226,7 @@ export function ConvertQuotationDialog({
   quotation: Quotation;
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  initialTo?: "invoice" | "order";
+  initialTo?: "invoice" | "order" | "proforma" | "sale_order";
   onDone: (r: QuotationConvertResult) => void;
 }) {
   const { t } = useI18n();
@@ -234,8 +234,12 @@ export function ConvertQuotationDialog({
   const ordersOn = useFeature("orders");
   const orderHref = useOrderHref();
   const canOrder = ordersOn && !!orderHref;
+  // Proforma invoices and sale orders (docs/sales-documents.md).
+  const salesDocsOn = useFeature("invoices.sales-docs");
+  const canSalesDocs = usePermission("sales-docs.manage");
+  const salesDocs = salesDocsOn && canSalesDocs;
   const allCatalogue = quotation.lines.every((l) => !!l.itemId);
-  const [to, setTo] = React.useState<"invoice" | "order">("invoice");
+  const [to, setTo] = React.useState<"invoice" | "order" | "proforma" | "sale_order">("invoice");
   const [issue, setIssue] = React.useState(false);
   const [advance, setAdvance] = React.useState(false);
   const [method, setMethod] = React.useState<(typeof METHODS)[number]>("cash");
@@ -243,7 +247,7 @@ export function ConvertQuotationDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    setTo(initialTo === "order" && canOrder ? "order" : "invoice");
+    setTo(initialTo === "order" && canOrder ? "order" : (initialTo === "proforma" || initialTo === "sale_order") && salesDocs ? initialTo : "invoice");
     setIssue(false);
     setAdvance(false);
     setMethod("cash");
@@ -251,17 +255,20 @@ export function ConvertQuotationDialog({
   }, [open]);
 
   const issuing = to === "invoice" && (issue || (hasAdvance && advance));
+  const toDoc = to === "proforma" || to === "sale_order";
 
   const submit = async () => {
     try {
       const r = await convert.mutateAsync({
         id: quotation.id,
-        body: { to, ...(to === "invoice" && issuing ? { issue: true } : {}), ...(hasAdvance && advance ? { recordAdvance: true, advanceMethod: method } : {}) },
+        body: { to, ...(to === "invoice" && issuing ? { issue: true } : {}), ...(hasAdvance && advance && !toDoc ? { recordAdvance: true, advanceMethod: method } : {}) },
       });
       toast.success(
         r.invoice
           ? t(r.invoice.number ? "billing.q.convert.doneIssued" : "billing.q.convert.doneDraft", { number: r.invoice.number ?? "" })
-          : t("billing.q.convert.doneOrder", { number: r.order?.number ?? "" }),
+          : r.salesDoc
+            ? t(r.salesDoc.kind === "proforma" ? "billing.sd.fromQuote.doneProforma" : "billing.sd.fromQuote.doneOrder", { number: r.salesDoc.number })
+            : t("billing.q.convert.doneOrder", { number: r.order?.number ?? "" }),
       );
       onOpenChange(false);
       onDone(r);
@@ -270,7 +277,7 @@ export function ConvertQuotationDialog({
     }
   };
 
-  const Option = ({ value, icon: Icon, title, body, disabled }: { value: "invoice" | "order"; icon: React.ComponentType<{ className?: string }>; title: string; body: string; disabled?: boolean }) => (
+  const Option = ({ value, icon: Icon, title, body, disabled }: { value: "invoice" | "order" | "proforma" | "sale_order"; icon: React.ComponentType<{ className?: string }>; title: string; body: string; disabled?: boolean }) => (
     <button
       type="button"
       role="radio"
@@ -311,6 +318,8 @@ export function ConvertQuotationDialog({
                 disabled={!allCatalogue}
               />
             )}
+            {salesDocs && <Option value="proforma" icon={FileBadgeIcon} title={t("billing.sd.fromQuote.proforma")} body={t("billing.sd.fromQuote.proformaBody")} />}
+            {salesDocs && <Option value="sale_order" icon={ClipboardListIcon} title={t("billing.sd.fromQuote.order")} body={t("billing.sd.fromQuote.orderBody")} />}
           </div>
 
           {to === "invoice" && (
@@ -323,7 +332,8 @@ export function ConvertQuotationDialog({
             </label>
           )}
 
-          {hasAdvance && (
+          {hasAdvance && toDoc && <p className="rounded-lg bg-primary/5 p-3 text-meta">{t("billing.sd.fromQuote.advanceLater", { pct: quotation.advancePercent ?? 0 })}</p>}
+          {hasAdvance && !toDoc && (
             <div className="grid gap-2 rounded-lg border p-3">
               <label className="flex items-start gap-2.5 text-sm">
                 <input type="checkbox" className="mt-0.5 size-4 accent-[var(--primary)]" checked={advance} onChange={(e) => setAdvance(e.target.checked)} />
@@ -357,7 +367,7 @@ export function ConvertQuotationDialog({
           </Button>
           <Button size="lg" disabled={convert.isPending || (to === "order" && !allCatalogue)} onClick={() => void submit()}>
             {convert.isPending ? <Loader2Icon className="animate-spin" /> : <CheckIcon />}
-            {to === "order" ? t("billing.q.convert.makeOrder") : issuing ? t("billing.q.convert.makeIssued") : t("billing.q.convert.makeDraft")}
+            {to === "proforma" ? t("billing.sd.fromQuote.makeProforma") : to === "sale_order" ? t("billing.sd.fromQuote.makeOrder") : to === "order" ? t("billing.q.convert.makeOrder") : issuing ? t("billing.q.convert.makeIssued") : t("billing.q.convert.makeDraft")}
           </Button>
         </DialogFooter>
       </DialogContent>

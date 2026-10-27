@@ -15,10 +15,18 @@ import {
   quotations,
   quotationSeries,
   tillSessions,
+  salesDocSeries,
+  proformaInvoices,
+  saleOrders,
+  saleOrderInvoices,
+  deliveryChallans,
 } from "./schema";
 import { InvoicesService, type InvoicesDeps } from "./service";
 import { QuotationsService, type QuotationsDeps } from "./quotations";
 import { quotationsRoutes } from "./quotations-routes";
+import { SalesDocsService } from "./sales-docs";
+import type { SalesDocsDeps } from "./sales-docs-base";
+import { salesDocsRoutes } from "./sales-docs-routes";
 
 export * from "./schema";
 export * from "./calc";
@@ -34,6 +42,12 @@ export * from "./till-calc";
 export * from "./till";
 export * from "./quotations-calc";
 export * from "./quotations";
+export * from "./sales-docs-calc";
+export * from "./sales-docs-base";
+export * from "./proformas";
+export * from "./sale-orders";
+export * from "./challans";
+export * from "./sales-docs";
 export {
   invoicesRoutes,
   billingItemListSchema,
@@ -102,6 +116,20 @@ export function createQuotations(deps: QuotationsDeps) {
     id: "quotations",
     tables: { quotations, quotationSeries },
     routes: quotationsRoutes(service),
+  });
+  return { service, module };
+}
+
+/**
+ * Proforma invoices, sale orders and delivery challans (docs/sales-documents.md) on top of the invoices service. Mounted at
+ * /v1/sales-docs; gated by the `invoices.sales-docs` feature.
+ */
+export function createSalesDocs(deps: SalesDocsDeps) {
+  const service = new SalesDocsService(deps);
+  const module = defineModule({
+    id: "sales-docs",
+    tables: { salesDocSeries, proformaInvoices, saleOrders, saleOrderInvoices, deliveryChallans },
+    routes: salesDocsRoutes(service),
   });
   return { service, module };
 }

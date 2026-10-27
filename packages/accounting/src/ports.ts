@@ -169,6 +169,38 @@ export interface GstPaymentSrc {
   period: string;
 }
 
+/** A final payroll of a month (packages/payroll), in paise. gross + employerPf + employerEsi + roundOff = net + pf + esi + pt + tds + advance + other. */
+export interface PayrollRunSrc {
+  id: string;
+  month: string;
+  /** Last day of the month paid. */
+  date: string;
+  gross: number;
+  employerPf: number;
+  employerEsi: number;
+  /** Net pay to staff (after rounding). */
+  net: number;
+  /** Employee + employer shares. */
+  pf: number;
+  esi: number;
+  pt: number;
+  tds: number;
+  /** Advances recovered. */
+  advance: number;
+  /** Other deductions (fines, canteen ...), booked as other income. */
+  other: number;
+  /** Net rounded up (+) or down (-) to the rupee. */
+  roundOff: number;
+}
+
+/** Payroll documents of a shop: final payrolls, salaries paid, advances given, PF / ESI / PT / salary TDS deposited. */
+export interface PayrollSrc {
+  runs: PayrollRunSrc[];
+  payments: { id: string; date: string; amount: number; method: MoneyMethod; employeeName: string; month: string }[];
+  advances: { id: string; date: string; amount: number; method: MoneyMethod; employeeName: string }[];
+  dues: { id: string; kind: "pf" | "esi" | "pt" | "tds"; month: string; date: string; amount: number; method: MoneyMethod; reference: string | null }[];
+}
+
 export interface OpeningParty {
   id: string;
   name: string;
@@ -188,6 +220,8 @@ export interface SourcesPort {
   tills(tenantId: string): Promise<TillSrc[]>;
   /** Composition tax paid (GST filing); leave out when the shop has no such payments. */
   gstPayments?(tenantId: string): Promise<GstPaymentSrc[]>;
+  /** Staff payroll (packages/payroll); leave out when the shop has none. Cancelled documents are left out (their postings are reversed). */
+  payroll?(tenantId: string): Promise<PayrollSrc>;
   /** Valued stock adjustments; leave out for shops that do not track stock. */
   stockAdjustments?(tenantId: string): Promise<StockAdjustmentSrc[]>;
   openingBalances(tenantId: string): Promise<{ customers: OpeningParty[]; suppliers: OpeningParty[] }>;

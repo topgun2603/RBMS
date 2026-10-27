@@ -68,6 +68,15 @@ export const SYS = {
   assetDisposal: "asset_disposal",
   retainedEarnings: "retained_earnings",
   taxInterest: "tax_interest",
+  // ---- payroll (packages/payroll, docs/payroll.md)
+  salaries: "salaries",
+  staffStatutory: "staff_statutory",
+  salariesPayable: "salaries_payable",
+  pfPayable: "pf_payable",
+  esiPayable: "esi_payable",
+  ptPayable: "pt_payable",
+  salaryTdsPayable: "salary_tds_payable",
+  staffAdvances: "staff_advances",
 } as const;
 export type SysKey = (typeof SYS)[keyof typeof SYS];
 
@@ -109,7 +118,8 @@ export const STANDARD_CHART: readonly ChartRow[] = [
   { code: "2110", name: "GST payable (net, after setting off credit)", type: "liability", group: "tax_liabilities", subGroup: "GST output", key: SYS.taxPayable, about: "Use this when you set off input credit against output and pay the balance to the government." },
   { code: "2120", name: "TDS payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.tdsPayable, about: "Tax you deducted from payments to suppliers and others and must deposit (posted from the TDS register)." },
   { code: "2121", name: "TCS payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.tcsPayable, about: "Tax you collected at source on sales and must deposit (posted from the TCS register)." },
-  { code: "2200", name: "Salaries payable", type: "liability", group: "current_liabilities", about: "Salaries earned by staff but not yet paid." },
+  // Keyed for payroll; shops seeded before that have an unkeyed 2200, which `accountIdByKey` adopts.
+  { code: "2200", name: "Salaries payable", type: "liability", group: "current_liabilities", key: SYS.salariesPayable, about: "Salaries earned by staff but not yet paid. A final payroll credits the net pay here; paying staff debits it." },
   { code: "2300", name: "Bank loan", type: "liability", group: "loans", about: "Loans from banks." },
   { code: "2310", name: "Loans from owner or others", type: "liability", group: "loans", about: "Money lent to the business by the owner, family or others." },
   // ---- equity
@@ -140,6 +150,14 @@ export const STANDARD_CHART: readonly ChartRow[] = [
   { code: "5945", name: "Interest paid", type: "expense", group: "indirect", key: SYS.interestPaid, about: "Interest on loans and overdrafts." },
   { code: "5950", name: "Depreciation", type: "expense", group: "indirect", key: SYS.depreciation, about: "The part of your equipment, furniture and vehicles used up this period." },
   { code: "5955", name: "Interest and late fee on taxes", type: "expense", group: "indirect", key: SYS.taxInterest, about: "Interest and late fees paid on TDS/TCS or other taxes." },
+  // ---- payroll accounts (posted from final payrolls, salary payments, advances and statutory challans)
+  { code: "1410", name: "Advances to staff", type: "asset", group: "current_assets", subGroup: "Staff", key: SYS.staffAdvances, about: "Salary advances and loans given to staff, less what payroll has recovered." },
+  { code: "2210", name: "PF payable", type: "liability", group: "current_liabilities", subGroup: "Staff dues", key: SYS.pfPayable, about: "Provident fund deducted from staff plus the shop's share, to deposit with EPFO." },
+  { code: "2211", name: "ESI payable", type: "liability", group: "current_liabilities", subGroup: "Staff dues", key: SYS.esiPayable, about: "ESI deducted from staff plus the shop's share, to deposit with ESIC." },
+  { code: "2212", name: "Professional tax payable", type: "liability", group: "tax_liabilities", subGroup: "Staff dues", key: SYS.ptPayable, about: "Professional tax deducted from salaries, to pay to the local body." },
+  { code: "2213", name: "TDS on salaries payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.salaryTdsPayable, about: "Income tax deducted from salaries, to deposit (Form 24Q is filed outside RBMS)." },
+  { code: "5960", name: "Salaries and wages", type: "expense", group: "indirect", key: SYS.salaries, about: "Gross salaries, wages, overtime and bonus from payroll. Do not also record salaries in Expenses." },
+  { code: "5965", name: "Employer PF and ESI", type: "expense", group: "indirect", key: SYS.staffStatutory, about: "The shop's own share of PF and ESI on salaries." },
 ];
 
 /** First code of expense-category accounts created on demand from the Expenses categories. */

@@ -354,6 +354,7 @@ describe("createInvoices", () => {
       "invoices.reports",
       "invoices.gst-reports",
       "invoices.quotations",
+      "invoices.sales-docs",
     ]);
   });
 });
