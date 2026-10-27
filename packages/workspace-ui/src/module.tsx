@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ActivityIcon, FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, SparklesIcon, StoreIcon, UsersRoundIcon, WalletIcon, WandSparklesIcon } from "lucide-react";
+import { ActivityIcon, FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, ShieldCheckIcon, SparklesIcon, StoreIcon, UsersRoundIcon, WalletIcon, WandSparklesIcon } from "lucide-react";
 import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
 import { workspaceMessages } from "./lib/messages";
 
@@ -26,10 +26,12 @@ export const WORKSPACE_PERMISSIONS = {
   ai: "ai.manage",
   /** Counter insights (AI Phase 5 part A): the Manager template holds it; owners and admins hold everything. */
   counter: "reports.manage",
+  /** Customers' data requests, retention and the breach register (@srirealtime/consent). */
+  privacy: "privacy.manage",
 } as const;
 
 /** Settings paths the module claims under the app's /settings. */
-export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", studio: "studio", counter: "counter", shopSetup: "shop-setup", plan: PLAN_SETTINGS_PATH } as const;
+export const WORKSPACE_SETTINGS_PATHS = { team: "team", audit: "audit", import: "import", setup: "setup", messages: "messages", ai: "ai", studio: "studio", counter: "counter", privacy: "privacy", shopSetup: "shop-setup", plan: PLAN_SETTINGS_PATH } as const;
 
 export interface WorkspaceModuleOptions {
   /** Where module-relative links resolve. Everything lives under /settings, so the default "/" is right for any app. */
@@ -64,6 +66,8 @@ export function workspaceModule(opts: WorkspaceModuleOptions = {}): WebModule {
     { path: P.ai, label: "workspace.nav.ai", icon: SparklesIcon, feature: F.ai, permission: WORKSPACE_PERMISSIONS.ai, component: page(() => import("./pages/ai")) },
     // Counter insights: unusual-activity alerts, weekly team notes, shift plan (docs/ai.md, Phase 5 part A); owners and managers (`reports.manage`).
     { path: P.counter, label: "workspace.nav.counter", icon: ActivityIcon, feature: F.ai, permission: [WORKSPACE_PERMISSIONS.counter, WORKSPACE_PERMISSIONS.staff], permissionExplicit: true, component: page(() => import("./pages/counter")) },
+    // Privacy & data (DPDP, docs/privacy-dpdp.md): the notice, customers' data requests, retention rules, breach register.
+    { path: P.privacy, label: "workspace.nav.privacy", icon: ShieldCheckIcon, permission: WORKSPACE_PERMISSIONS.privacy, component: page(() => import("./pages/privacy")) },
     // Studio assistant: ask for a change to how the shop looks or works (docs/ai.md, Phase 4 part A); needs `ai` and `ai.manage`.
     { path: P.studio, label: "workspace.nav.studio", icon: WandSparklesIcon, feature: F.ai, permission: WORKSPACE_PERMISSIONS.ai, component: page(() => import("./pages/studio")) },
   ];

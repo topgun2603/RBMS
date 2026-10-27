@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeftIcon, ChevronRightIcon, GiftIcon, HeartIcon, Loader2Icon, LogOutIcon, MapPinIcon, PackageIcon, PlusIcon, Trash2Icon, UserRoundIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, GiftIcon, HeartIcon, Loader2Icon, LogOutIcon, MapPinIcon, PackageIcon, PlusIcon, ShieldCheckIcon, Trash2Icon, UserRoundIcon } from "lucide-react";
 import { Button } from "@srirealtime/ui/components/button";
 import { toast } from "@srirealtime/ui/components/sonner";
 import { cn } from "@srirealtime/ui/lib/utils";
@@ -18,17 +18,19 @@ import { EmptyWishlistArt, NoOrdersArt } from "../components/illustrations";
 import { AccountSkeleton } from "../components/skeletons";
 import { call, errorMessage } from "./api";
 import { AddressForm, AddressText } from "./address-form";
-import { OtpSignIn } from "./sign-in";
+
 import { useStore } from "./store-context";
 import { ChatAboutOrder } from "./help-center";
 import { LoyaltyPanel } from "./loyalty";
+import { PrivacyPanel, recordNoticeAcceptance } from "./privacy";
+import { OtpSignIn } from "./sign-in";
 import { featureOn, STORE_FEATURES } from "../lib/features";
 
-const ALL_TABS = ["orders", "points", "addresses", "wishlist", "profile"] as const;
+const ALL_TABS = ["orders", "points", "addresses", "wishlist", "profile", "privacy"] as const;
 type Tab = (typeof ALL_TABS)[number];
-const ICONS: Record<Tab, React.ComponentType<{ className?: string }>> = { orders: PackageIcon, points: GiftIcon, addresses: MapPinIcon, wishlist: HeartIcon, profile: UserRoundIcon };
+const ICONS: Record<Tab, React.ComponentType<{ className?: string }>> = { orders: PackageIcon, points: GiftIcon, addresses: MapPinIcon, wishlist: HeartIcon, profile: UserRoundIcon, privacy: ShieldCheckIcon };
 /** Tab label keys (`points` belongs to the loyalty module). */
-const TAB_LABEL: Record<Tab, string> = { orders: "account.orders", points: "loyalty.tab", addresses: "account.addresses", wishlist: "account.wishlist", profile: "account.profile" };
+const TAB_LABEL: Record<Tab, string> = { orders: "account.orders", points: "loyalty.tab", addresses: "account.addresses", wishlist: "account.wishlist", profile: "account.profile", privacy: "privacy.tab" };
 
 /** `params` come from the server page (no useSearchParams, so no Suspense boundary that could hydrate after sign-in state loads). */
 export function AccountView({ params }: { params: { tab?: string; order?: string; next?: string } }) {
@@ -102,6 +104,7 @@ export function AccountView({ params }: { params: { tab?: string; order?: string
               {k === "addresses" && <Addresses />}
               {k === "wishlist" && <Wishlist />}
               {k === "profile" && (me.data ? <Profile me={me.data} /> : <div className="sf-shimmer h-60 rounded-3xl" />)}
+              {k === "privacy" && <PrivacyPanel />}
             </motion.div>
           </TabsContent>
         ))}
@@ -415,7 +418,11 @@ function Profile({ me }: { me: Me }) {
   const [email, setEmail] = React.useState(me.customer.email ?? "");
   const [optIn, setOptIn] = React.useState(me.customer.marketingOptIn);
   const save = useMutation({
-    mutationFn: () => call("/store/me", { method: "PATCH", body: { name: name.trim(), email: email.trim(), marketingOptIn: optIn } }),
+    mutationFn: async () => {
+      await call("/store/me", { method: "PATCH", body: { name: name.trim(), email: email.trim(), marketingOptIn: optIn } });
+      // The consent log records the choice with the notice version (DPDP).
+      if (optIn !== me.customer.marketingOptIn) void recordNoticeAcceptance({ marketing: optIn });
+    },
     onSuccess: () => {
       toast.success(t("account.saved"));
       void qc.invalidateQueries({ queryKey: ["me"] });

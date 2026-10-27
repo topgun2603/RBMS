@@ -305,6 +305,35 @@ export interface CreditNoteDocData {
   einvoice?: InvoiceEinvoice | null;
 }
 
+/** A debit note to a customer (CGST s.34(3)): the value of an earlier bill goes up. */
+export interface DebitNoteDocData {
+  id?: string;
+  number: string;
+  status: "issued" | "cancelled" | (string & {});
+  date: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  customer: DocParty;
+  seller: DocSeller;
+  placeOfSupply: string;
+  interState: boolean;
+  lines: LineTotals[];
+  totals: Omit<InvoiceTotals, "lines">;
+  total: number;
+  amountInWords?: string | null;
+  /** "price_revision" | "short_billed" | "freight" | "other_charges" | "other". */
+  reason: string;
+  note: string | null;
+  cancelReason?: string | null;
+  updatedAt?: Date | string | null;
+  /** IRN of the debit note (document type DBN), when generated. */
+  einvoice?: InvoiceEinvoice | null;
+}
+
+export interface DebitNoteDocPort {
+  debitNote(tenantId: string, id: string): Promise<DebitNoteDocData | null>;
+}
+
 export interface TillDocMethodRow {
   method: string;
   amount: number;

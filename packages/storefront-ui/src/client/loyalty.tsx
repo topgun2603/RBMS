@@ -13,6 +13,7 @@ import { formatDate, money } from "../lib/format";
 import type { LoyaltyEntry, LoyaltyMe, LoyaltyQuote } from "../types";
 import { Empty } from "../components/bits";
 import { call, errorMessage } from "./api";
+import { NoticeLine } from "./privacy";
 import { useStore } from "./store-context";
 
 // ------------------------------------------------------------------ account: balance, tier, history
@@ -43,7 +44,13 @@ export function LoyaltyPanel() {
     );
   const me = q.data;
   const m = me.member;
-  if (!me.enrolled || !m) return <Empty icon={<GiftIcon />} title={t("loyalty.notEnrolled")} body={t("loyalty.notEnrolledBody")} />;
+  if (!me.enrolled || !m)
+    return (
+      <div className="grid gap-4">
+        <Empty icon={<GiftIcon />} title={t("loyalty.notEnrolled")} body={t("loyalty.notEnrolledBody")} />
+        <NoticeLine />
+      </div>
+    );
   const pct = tierProgress(me);
   return (
     <div className="grid gap-6" data-testid="loyalty-panel">
@@ -75,6 +82,7 @@ export function LoyaltyPanel() {
           </p>
         </div>
       </motion.section>
+      <NoticeLine className="text-xs text-muted-foreground" />
 
       {me.expiringSoon.length > 0 && (
         <ul className="grid gap-2">

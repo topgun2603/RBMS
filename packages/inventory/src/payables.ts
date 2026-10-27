@@ -174,7 +174,7 @@ export function buildAgeing(
   return { asOf, rows: rows.filter((r) => r.total !== 0 || r.advance !== 0), totals };
 }
 
-export const STATEMENT_TYPES = ["opening", "purchase", "debit_note", "payment", "refund"] as const;
+export const STATEMENT_TYPES = ["opening", "purchase", "expense", "debit_note", "payment", "refund"] as const;
 export type StatementType = (typeof STATEMENT_TYPES)[number];
 
 /** One movement on a supplier's account. `credit` = we owe more (bill, refund received); `debit` = we owe less (payment, return). */
@@ -187,7 +187,7 @@ export interface LedgerEvent {
   description: string;
   credit: number;
   debit: number;
-  /** The id of the source row (purchase / debit note / payment). */
+  /** The id of the source row (purchase / expense / debit note / payment). */
   id?: string;
 }
 export interface StatementRow extends LedgerEvent {
@@ -203,7 +203,7 @@ export interface Statement {
   closingBalance: number;
 }
 
-const ORDER: Record<StatementType, number> = { opening: 0, purchase: 1, refund: 2, debit_note: 3, payment: 4 };
+const ORDER: Record<StatementType, number> = { opening: 0, purchase: 1, expense: 1, refund: 2, debit_note: 3, payment: 4 };
 
 /**
  * Date-wise statement with a running balance (positive = payable). Events before `from` roll into the opening

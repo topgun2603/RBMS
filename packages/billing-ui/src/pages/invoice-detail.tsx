@@ -23,6 +23,7 @@ import {
   RepeatIcon,
   CheckCircle2Icon,
   FileDownIcon,
+  FilePlus2Icon,
   GlobeIcon,
   Loader2Icon,
   IndianRupeeIcon,
@@ -68,6 +69,9 @@ import {
 import { EINVOICE_FEATURE, EInvoiceCard } from "../components/einvoice/einvoice-card";
 import { CreditNoteDialog } from "../components/credit-notes/credit-note-dialog";
 import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui";
+import { DebitNoteDialog } from "../components/debit-notes/debit-note-dialog";
+import { DebitNotesCard } from "../components/debit-notes/debit-notes-card";
+import { useInvoiceDebitNotes } from "../lib/queries-debit-notes";
 import { InvoiceDocument } from "../components/invoice-document";
 import { ExportDetailCard } from "../components/export/export-detail";
 import { GstinStatusWarning } from "../components/gstin/gstin-assist";
@@ -137,7 +141,7 @@ function DetailSkeleton() {
   );
 }
 
-type DialogKind = null | "pay" | "cancel" | "share" | "issue" | "delete" | "creditNote";
+type DialogKind = null | "pay" | "cancel" | "share" | "issue" | "delete" | "creditNote" | "debitNote";
 
 /** Reads ?issued=1 / ?warning=… once, then strips them from the URL. */
 function useArrivalFlags() {
@@ -207,6 +211,11 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   const canCreditNote = usePermission("invoices.credit-note");
   const creditable = !draft && !cancelled && inv.total - credited > 0 && canCreditNote;
   const notes = inv.creditNotes ?? [];
+  // Debit notes to the customer (the bill's value goes up, CGST s.34): issued bills only.
+  const canDebitNote = usePermission("invoices.debit-note");
+  const debitable = !draft && !cancelled && canDebitNote;
+  const debitNotes = useInvoiceDebitNotes(inv.id, !draft).data?.items ?? [];
+  const liveDebitNotes = debitNotes.filter((n) => n.status === "issued").length;
 
   const print = () => {
     const prev = document.title;
@@ -382,7 +391,12 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                         <Undo2Icon /> {t("billing.cn.createLong")}
                       </DropdownMenuItem>
                     )}
-                    {credited === 0 && (
+                    {debitable && (
+                      <DropdownMenuItem className="h-10" onSelect={() => setDialog("debitNote")}>
+                        <FilePlus2Icon /> {t("billing.dn.createLong")}
+                      </DropdownMenuItem>
+                    )}
+                    {credited === 0 && liveDebitNotes === 0 && (
                       <DropdownMenuItem variant="destructive" className="h-10" onSelect={() => setDialog("cancel")}>
                         <BanIcon /> {t("billing.detail.cancel")}
                       </DropdownMenuItem>
@@ -558,6 +572,8 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
             </Card>
           )}
 
+          <DebitNotesCard notes={debitNotes} canCreate={debitable} onCreate={() => setDialog("debitNote")} />
+
           <ExportDetailCard invoice={inv} />
 
           {einvoice && !draft && (!!inv.customer.gstin?.trim() || exported) && <EInvoiceCard invoice={inv} />}
@@ -621,6 +637,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
         }}
       />
       {creditable && <CreditNoteDialog invoice={inv} open={dialog === "creditNote"} onOpenChange={setDialogOpen("creditNote")} />}
+      {debitable && <DebitNoteDialog invoice={inv} existing={liveDebitNotes} open={dialog === "debitNote"} onOpenChange={setDialogOpen("debitNote")} onIssued={(id) => navigate(`sales-debit-notes/${id}`)} />}
       <CancelDialog invoice={inv} open={dialog === "cancel"} onOpenChange={setDialogOpen("cancel")} />
       <ShareDialog invoice={inv} shopName={shopName} open={dialog === "share"} onOpenChange={setDialogOpen("share")} />
       <ConfirmDialog

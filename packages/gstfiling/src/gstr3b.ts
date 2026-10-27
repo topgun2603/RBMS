@@ -40,7 +40,8 @@ export type CellId = (typeof CELLS)[number];
 
 export interface Contribution {
   cell: CellId;
-  docType: "invoice" | "credit_note" | "purchase" | "expense" | "debit_note" | "adjustment";
+  /** `debit_note` = a supplier debit note (purchase return); `sales_debit_note` = a debit note to a customer. */
+  docType: "invoice" | "credit_note" | "sales_debit_note" | "purchase" | "expense" | "debit_note" | "adjustment";
   docId: string;
   number: string;
   date: string;
@@ -166,7 +167,7 @@ export interface Gstr3bResult {
   /** Cash to pay: output tax after set-off + reverse charge + interest + late fee. */
   cashPayable: number;
   contributions: Contribution[];
-  counts: { invoices: number; creditNotes: number; purchases: number; expenses: number; rcm: number; adjustments: number };
+  counts: { invoices: number; creditNotes: number; debitNotes: number; purchases: number; expenses: number; rcm: number; adjustments: number };
 }
 
 /** Which cell an owner-typed adjustment feeds. */
@@ -196,7 +197,7 @@ export function buildGstr3b(input: Gstr3bInput): Gstr3bResult {
   const inPeriod = (m: string | null) => !!m && months.includes(m);
   const cells = Object.fromEntries(CELLS.map((c) => [c, zeroValue()])) as Record<CellId, TaxValue>;
   const contributions: Contribution[] = [];
-  const counts = { invoices: 0, creditNotes: 0, purchases: 0, expenses: 0, rcm: 0, adjustments: 0 };
+  const counts = { invoices: 0, creditNotes: 0, debitNotes: 0, purchases: 0, expenses: 0, rcm: 0, adjustments: 0 };
   const unreg = new Map<string, { pos: string; taxable: number; igst: number }>();
 
   const put = (c: Omit<Contribution, "cess"> & { cess?: number }) => {
@@ -212,15 +213,18 @@ export function buildGstr3b(input: Gstr3bInput): Gstr3bResult {
     }
   };
 
-  // ---- outward supplies (bills and credit notes dated in the month; cancelled ones count for nothing)
+  // ---- outward supplies (bills, credit notes and debit notes to customers dated in the month; cancelled ones count for nothing)
   for (const d of input.sales) {
     if (!d.number || d.status === "draft" || d.status === "cancelled") continue;
     if (d.date < range.from || d.date > range.to) continue;
     if (compositionOn(config, d.date)) continue;
     const note = d.docType === "CRN";
-    if (d.docType && d.docType !== "INV" && !note) continue;
+    const debit = d.docType === "DBN";
+    if (d.docType && d.docType !== "INV" && !note && !debit) continue;
+    // A credit note takes value and tax off; a debit note to a customer adds them (CGST s.34).
     const sign = note ? -1 : 1;
     if (note) counts.creditNotes += 1;
+    else if (debit) counts.debitNotes += 1;
     else counts.invoices += 1;
     const per = new Map<CellId, TaxValue>();
     const unregPer = new Map<string, TaxValue>();
@@ -236,7 +240,7 @@ export function buildGstr3b(input: Gstr3bInput): Gstr3bResult {
         unregPer.set(d.placeOfSupply, u);
       }
     }
-    const base = { docType: note ? ("credit_note" as const) : ("invoice" as const), docId: d.id, number: d.number, date: d.date, party: d.buyer.name ?? "" };
+    const base = { docType: note ? ("credit_note" as const) : debit ? ("sales_debit_note" as const) : ("invoice" as const), docId: d.id, number: d.number, date: d.date, party: d.buyer.name ?? "" };
     for (const [cell, v] of per) {
       // 3.1(c) and 3.1(e) carry only the value.
       const valueOnly = cell === "3.1c" || cell === "3.1e";

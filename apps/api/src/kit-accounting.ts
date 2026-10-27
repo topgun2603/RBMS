@@ -10,6 +10,7 @@ import type {
   PurchaseSrc,
   ReceiptSrc,
   ReconcilePort,
+  SalesDebitNoteSrc,
   SourcesPort,
   StockAdjustmentSrc,
   StockValuePort,
@@ -21,7 +22,7 @@ import type { Db } from "@srirealtime/db";
 import { expenseCategories, expenses, itcOf } from "@srirealtime/expenses";
 import { gstTaxPayments } from "@srirealtime/gstfiling";
 import { todayIST } from "@srirealtime/gst";
-import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, tillSessions, type InvoicesService } from "@srirealtime/invoices";
+import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, salesDebitNotes, tillSessions, type InvoicesService } from "@srirealtime/invoices";
 import { debitNotes, methodAt, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@srirealtime/inventory";
 import { and, eq, gt, inArray, isNull, sql } from "@srirealtime/db";
 import { likePattern } from "@srirealtime/core";
@@ -197,6 +198,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           supplierName: suppliers.name,
           bill: purchases.billNumber,
           billImported: purchases.imported,
+          expenseRef: sql<string | null>`coalesce(${expenses.reference}, ${expenseCategories.name})`,
           kind: purchasePayments.kind,
           amount: purchasePayments.amount,
           mode: purchasePayments.mode,
@@ -206,6 +208,9 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
         .from(purchasePayments)
         .leftJoin(suppliers, eq(suppliers.id, purchasePayments.supplierId))
         .leftJoin(purchases, eq(purchases.id, purchasePayments.purchaseId))
+        // An expense bought on credit, paid through Payables (docs/expenses-debit-notes.md).
+        .leftJoin(expenses, eq(expenses.id, purchasePayments.expenseId))
+        .leftJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
         // TDS settled on a bill (Part B) is posted by its TDS entry (Dr Creditors / Cr TDS payable), not as a payment.
         .where(and(eq(purchasePayments.tenantId, tenantId), sql`coalesce(${purchasePayments.reference}, '') not like ${`${TDS_SETTLEMENT_PREFIX}%`}`));
       return rows.map(
@@ -213,7 +218,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           id: r.id,
           supplierId: r.supplierId,
           supplierName: r.supplierName ?? "Supplier",
-          purchaseBill: r.bill,
+          purchaseBill: r.bill ?? r.expenseRef,
           purchaseImported: !!r.billImported,
           kind: r.kind,
           amount: r.amount,
@@ -254,12 +259,13 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
         .select({ e: expenses, category: expenseCategories.name })
         .from(expenses)
         .leftJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
-        .where(eq(expenses.tenantId, tenantId));
+        // Drafts (recurring expenses waiting to be filled) are not in the books until recorded.
+        .where(and(eq(expenses.tenantId, tenantId), sql`${expenses.status} <> 'draft'`));
       return rows.map(
         ({ e, category }): ExpenseSrc => ({
           id: e.id,
           date: e.date,
-          status: e.status,
+          status: e.status === "cancelled" ? "cancelled" : "recorded",
           categoryId: e.categoryId,
           categoryName: category ?? "Other",
           amount: e.amount,
@@ -269,7 +275,33 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           vendorName: e.vendorName,
           vendorGstin: e.vendorGstin,
           paymentMethod: method(e.paymentMethod),
+          // Bought on credit: owed to the supplier (Creditors) until paid through Payables.
+          onCredit: e.paymentMethod === "credit" && !!e.supplierId,
+          supplierId: e.supplierId,
           cancelledOn: e.status === "cancelled" ? istDate(e.updatedAt) : null,
+        }),
+      );
+    },
+
+    /** Debit notes to customers (docs/expenses-debit-notes.md): the customer owes more, sales and output GST go up. */
+    async salesDebitNotes(tenantId) {
+      const rows = await db.select().from(salesDebitNotes).where(eq(salesDebitNotes.tenantId, tenantId));
+      return rows.map(
+        (r): SalesDebitNoteSrc => ({
+          id: r.id,
+          number: r.number,
+          invoiceNumber: r.invoiceNumber,
+          date: r.date,
+          status: r.status,
+          customerId: r.customerId,
+          customerName: r.customer?.name ?? "Customer",
+          total: r.total,
+          taxable: n(r.totals.taxable),
+          cgst: n(r.totals.cgst),
+          sgst: n(r.totals.sgst),
+          igst: n(r.totals.igst),
+          roundOff: n(r.totals.roundOff),
+          cancelledOn: istDate(r.cancelledAt),
         }),
       );
     },
@@ -383,6 +415,11 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
     async settleSupplierTds(tenantId, p) {
       const reference = `${TDS_SETTLEMENT_PREFIX}${p.tdsId}`;
       const input = { amount: p.amount, mode: "other" as const, reference, date: p.date, note: p.note.slice(0, 500) };
+      if (p.expenseId) {
+        // An expense bought on credit: the tax is settled on that expense in Payables.
+        const r = await deps.inventory.purchasing.paySupplier(tenantId, p.supplierId, { ...input, allocations: [{ expenseId: p.expenseId, amount: p.amount }] }, null);
+        return `group:${r.groupId}`;
+      }
       if (p.purchaseId) {
         await deps.inventory.purchasing.payPurchase(tenantId, p.purchaseId, input, null);
         const [row] = await db

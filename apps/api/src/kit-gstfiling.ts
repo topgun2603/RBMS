@@ -47,7 +47,8 @@ export function gstFilingSources(deps: GstFilingAdapterDeps): GstSourcesPort {
   const toExpense = (e: typeof expenses.$inferSelect): ExpenseSrc => ({
     id: e.id,
     date: e.date,
-    status: e.status,
+    // A draft (a recurring expense waiting to be filled) carries no credit until recorded.
+    status: e.status === "recorded" ? "recorded" : "cancelled",
     categoryName: "",
     amount: e.amount,
     gstRate: e.gstRate,

@@ -99,8 +99,8 @@ export interface CdnrRow {
   noteDate: string;
   invoiceNumber: string;
   invoiceDate: string;
-  /** "C" = credit note. */
-  noteType: "C";
+  /** "C" = credit note, "D" = debit note. */
+  noteType: "C" | "D";
   placeOfSupply: string;
   rate: GstRate;
   taxable: number;
@@ -117,7 +117,7 @@ export interface CdnurRow {
   noteDate: string;
   invoiceNumber: string;
   invoiceDate: string;
-  noteType: "C";
+  noteType: "C" | "D";
   /** Original supply type; only "B2CL" here (notes on B2CS bills are netted into B2CS). */
   type: "B2CL";
   placeOfSupply: string;
@@ -170,9 +170,9 @@ export interface GstSummary {
   b2cl: B2clRow[];
   /** Net of credit notes on B2CS bills. */
   b2cs: B2csRow[];
-  /** Credit notes to registered buyers. */
+  /** Credit and debit notes to registered buyers. */
   cdnr: CdnrRow[];
-  /** Credit notes to unregistered buyers on B2CL bills. */
+  /** Credit and debit notes to unregistered buyers on B2CL bills. */
   cdnur: CdnurRow[];
   /** Net of credit notes. */
   hsn: HsnRow[];
@@ -180,10 +180,12 @@ export interface GstSummary {
   byRate: TaxBreakupRow[];
   /** Net of credit notes. */
   gstr3b: { outwardTaxable: number; igst: number; cgst: number; sgst: number; nilRated: number };
-  /** Invoices count; amounts net of credit notes. */
-  totals: { invoices: number; creditNotes: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
+  /** Invoices count; amounts net of credit notes and with debit notes to customers added. */
+  totals: { invoices: number; creditNotes: number; debitNotes: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
   /** The credit notes' own totals (positive). */
   creditNoteTotals: { count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
+  /** The debit notes' own totals (positive). */
+  debitNoteTotals: { count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
 }
 
 /**
@@ -219,15 +221,16 @@ export function creditNoteSection(n: Pick<GstCreditNote, "customerGstin" | "inte
  * period (by note date). Credit notes are listed in CDNR / CDNUR and taken off B2CS, HSN, the rate breakup, GSTR-3B
  * and the totals.
  */
-export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonly GstCreditNote[] = []): GstSummary {
+export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonly GstCreditNote[] = [], debitNotes: readonly GstCreditNote[] = []): GstSummary {
   const b2b = new Map<string, B2bRow>();
   const b2cl = new Map<string, B2clRow>();
   const b2cs = new Map<string, B2csRow>();
   const hsn = new Map<string, HsnRow>();
   const byRate = new Map<GstRate, TaxBreakupRow>();
   const gstr3b = { outwardTaxable: 0, igst: 0, cgst: 0, sgst: 0, nilRated: 0 };
-  const totals = { invoices: 0, creditNotes: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 };
+  const totals = { invoices: 0, creditNotes: 0, debitNotes: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 };
   const creditNoteTotals = { count: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 };
+  const debitNoteTotals = { count: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 };
   const cdnr: CdnrRow[] = [];
   const cdnur: CdnurRow[] = [];
 
@@ -308,34 +311,37 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
     }
   }
 
-  for (const n of creditNotes) {
+  /** A credit note (sign −1: takes value off) or a debit note to a customer (sign +1: adds value), Table 9B. */
+  const applyNote = (n: GstCreditNote, sign: 1 | -1) => {
     const section = creditNoteSection(n);
-    totals.creditNotes += 1;
-    totals.total -= n.total;
-    creditNoteTotals.count += 1;
-    creditNoteTotals.total += n.total;
+    const own = sign < 0 ? creditNoteTotals : debitNoteTotals;
+    if (sign < 0) totals.creditNotes += 1;
+    else totals.debitNotes += 1;
+    totals.total += sign * n.total;
+    own.count += 1;
+    own.total += n.total;
     const perRate = new Map<GstRate, { taxable: number; cgst: number; sgst: number; igst: number }>();
     for (const l of n.lines) {
       const rate = l.gstRate;
-      totals.taxable -= l.taxable;
-      totals.cgst -= l.cgst;
-      totals.sgst -= l.sgst;
-      totals.igst -= l.igst;
-      creditNoteTotals.taxable += l.taxable;
-      creditNoteTotals.cgst += l.cgst;
-      creditNoteTotals.sgst += l.sgst;
-      creditNoteTotals.igst += l.igst;
-      if (rate > 0) gstr3b.outwardTaxable -= l.taxable;
-      else gstr3b.nilRated -= l.taxable;
-      gstr3b.igst -= l.igst;
-      gstr3b.cgst -= l.cgst;
-      gstr3b.sgst -= l.sgst;
+      totals.taxable += sign * l.taxable;
+      totals.cgst += sign * l.cgst;
+      totals.sgst += sign * l.sgst;
+      totals.igst += sign * l.igst;
+      own.taxable += l.taxable;
+      own.cgst += l.cgst;
+      own.sgst += l.sgst;
+      own.igst += l.igst;
+      if (rate > 0) gstr3b.outwardTaxable += sign * l.taxable;
+      else gstr3b.nilRated += sign * l.taxable;
+      gstr3b.igst += sign * l.igst;
+      gstr3b.cgst += sign * l.cgst;
+      gstr3b.sgst += sign * l.sgst;
 
       const br = getOrAdd(byRate, rate, () => ({ gstRate: rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 }));
-      br.taxable -= l.taxable;
-      br.cgst -= l.cgst;
-      br.sgst -= l.sgst;
-      br.igst -= l.igst;
+      br.taxable += sign * l.taxable;
+      br.cgst += sign * l.cgst;
+      br.sgst += sign * l.sgst;
+      br.igst += sign * l.igst;
 
       const pr = getOrAdd(perRate, rate, () => ({ taxable: 0, cgst: 0, sgst: 0, igst: 0 }));
       pr.taxable += l.taxable;
@@ -345,10 +351,10 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
 
       if (section === "b2cs") {
         const row = getOrAdd(b2cs, `${n.placeOfSupply}|${rate}`, () => ({ placeOfSupply: n.placeOfSupply, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 }));
-        row.taxable -= l.taxable;
-        row.cgst -= l.cgst;
-        row.sgst -= l.sgst;
-        row.igst -= l.igst;
+        row.taxable += sign * l.taxable;
+        row.cgst += sign * l.cgst;
+        row.sgst += sign * l.sgst;
+        row.igst += sign * l.igst;
       }
 
       const code = l.hsn ?? "";
@@ -366,14 +372,14 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
         igst: 0,
         total: 0,
       }));
-      h.qty = round3(h.qty - baseQtyOf(l));
-      h.taxable -= l.taxable;
-      h.cgst -= l.cgst;
-      h.sgst -= l.sgst;
-      h.igst -= l.igst;
-      h.total -= l.taxable + l.cgst + l.sgst + l.igst;
+      h.qty = round3(h.qty + sign * baseQtyOf(l));
+      h.taxable += sign * l.taxable;
+      h.cgst += sign * l.cgst;
+      h.sgst += sign * l.sgst;
+      h.igst += sign * l.igst;
+      h.total += sign * (l.taxable + l.cgst + l.sgst + l.igst);
     }
-    const base = { noteNumber: n.number, noteDate: n.date, invoiceNumber: n.invoiceNumber, invoiceDate: n.invoiceDate, noteType: "C" as const };
+    const base = { noteNumber: n.number, noteDate: n.date, invoiceNumber: n.invoiceNumber, invoiceDate: n.invoiceDate, noteType: sign < 0 ? ("C" as const) : ("D" as const) };
     for (const [rate, a] of [...perRate.entries()].sort((x, y) => x[0] - y[0])) {
       if (section === "cdnr") {
         cdnr.push({
@@ -389,7 +395,9 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
         cdnur.push({ ...base, type: "B2CL", placeOfSupply: n.placeOfSupply, rate, taxable: a.taxable, igst: a.igst, noteValue: n.total });
       }
     }
-  }
+  };
+  for (const n of creditNotes) applyNote(n, -1);
+  for (const n of debitNotes) applyNote(n, 1);
 
   const byPosRate = (a: { placeOfSupply: string; rate: number }, b: { placeOfSupply: string; rate: number }) =>
     a.placeOfSupply.localeCompare(b.placeOfSupply) || a.rate - b.rate;
@@ -406,6 +414,7 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
     gstr3b,
     totals,
     creditNoteTotals,
+    debitNoteTotals,
   };
 }
 
@@ -530,6 +539,12 @@ export const csvBuilders = {
     toCsv(
       ["Date", "Credit note", "Against invoice", "Customer", "Reason", "Refund mode", "Refunded", "Total", "Status"],
       items.map((i) => [i.date, i.number, i.invoiceNumber, i.customerName, i.reason, i.refundMode, rupees(i.refundAmount), rupees(i.total), i.status]),
+    ),
+
+  debitNotes: (items: readonly { date: string; number: string; invoiceNumber: string; customerName: string; customerGstin: string | null; reason: string; total: number; paid: number; balance: number; status: string }[]) =>
+    toCsv(
+      ["Date", "Debit note", "On invoice", "Customer", "Customer GSTIN", "Reason", "Total", "Received", "Balance", "Status"],
+      items.map((i) => [i.date, i.number, i.invoiceNumber, i.customerName, i.customerGstin, i.reason, rupees(i.total), rupees(i.paid), rupees(i.balance), i.status]),
     ),
 
   creditBook: (items: readonly { customer: { name: string; phone: string | null }; balance: number; overdue: number; lastActivity: string | null }[]) =>

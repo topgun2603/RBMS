@@ -110,8 +110,8 @@ export const en: Messages = {
 
   // ---------------------------------------------------------------- branch view
   "billing.valuation.branchesTitle": "By branch (from bills and purchases)",
-  "billing.valuation.branchesNote": "Worked out from bills, purchases and stock, not from the books. Expenses have no branch and are shown in one column.",
-  "billing.valuation.notByBranch": "Not by branch",
+  "billing.valuation.branchesNote": "Worked out from bills, purchases and stock, not from the books. Expenses are shown under their branch; those without a branch are in the shop-wide column.",
+  "billing.valuation.notByBranch": "Shop-wide / not by branch",
   "billing.valuation.metric.netSales": "Net sales",
   "billing.valuation.metric.cogs": "Cost of goods",
   "billing.valuation.metric.grossProfit": "Gross profit",
@@ -264,8 +264,8 @@ export const ta: Messages = {
   "billing.valuation.mode.other": "மற்றவை",
 
   "billing.valuation.branchesTitle": "கிளை வாரியாக (பில்கள், கொள்முதல்களிலிருந்து)",
-  "billing.valuation.branchesNote": "பில்கள், கொள்முதல்கள், இருப்பிலிருந்து கணக்கிட்டது, கணக்குப் புத்தகத்திலிருந்து அல்ல. செலவுகளுக்குக் கிளை இல்லை, ஒரே நெடுவரிசையில் காட்டப்படும்.",
-  "billing.valuation.notByBranch": "கிளை வாரியாக இல்லை",
+  "billing.valuation.branchesNote": "பில்கள், கொள்முதல்கள், இருப்பிலிருந்து கணக்கிட்டது, கணக்குப் புத்தகத்திலிருந்து அல்ல. செலவுகள் அவற்றின் கிளையின் கீழ் காட்டப்படும்; கிளை இல்லாதவை கடை முழுவதும் நெடுவரிசையில் இருக்கும்.",
+  "billing.valuation.notByBranch": "கடை முழுவதும் / கிளை வாரியாக இல்லை",
   "billing.valuation.metric.netSales": "நிகர விற்பனை",
   "billing.valuation.metric.cogs": "பொருள் விலை",
   "billing.valuation.metric.grossProfit": "மொத்த லாபம்",

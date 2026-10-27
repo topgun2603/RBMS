@@ -2,8 +2,12 @@
 
 import * as React from "react";
 import {
+  BarChart3Icon,
+  BellRingIcon,
   FileTextIcon,
   FolderCogIcon,
+  ListIcon,
+  RepeatIcon,
   LayersIcon,
   LockIcon,
   PiggyBankIcon,
@@ -12,8 +16,11 @@ import {
   ReceiptTextIcon,
   WalletIcon,
 } from "lucide-react";
-import { Button, cn, DataTable, DataTableToolbar, EmptyState, StatusPill, type DataTableColumn } from "@srirealtime/ui";
-import { absoluteUrl, api, Page, PageHeading, useI18n, useServerTable, type ListResponse, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, cn, DataTable, DataTableToolbar, EmptyState, StatusPill, Tabs, TabsContent, TabsList, TabsTrigger, type DataTableColumn } from "@srirealtime/ui";
+import { absoluteUrl, api, Page, PageHeading, useI18n, useMyBranches, useServerTable, type ListResponse, type ServerFilterDefs } from "@srirealtime/web";
+import { ExpenseReportPanel } from "../components/expenses/expense-report";
+import { RecurringExpensesPanel } from "../components/expenses/recurring-expenses";
+import { useSuppliers } from "../lib/queries-v2";
 import { BarList } from "../components/charts/bar-list";
 import { ChartCard } from "../components/charts/chart-card";
 import { MonthBars } from "../components/charts/month-bars";
@@ -24,7 +31,7 @@ import { categoryLabel, ExpenseDialog } from "../components/expenses/expense-dia
 import { ChartIllustration } from "../components/illustrations";
 import { DownloadCsvButton, TabError, TileGrid } from "../components/reports/report-ui";
 import { EXPENSES_PERMISSION, useHasPermission } from "../lib/access";
-import { EXPENSE_PAYMENT_METHODS, useExpenseCategories, useExpenseSummary, type Expense, type ExpenseCategory, type ExpenseList } from "../lib/expenses";
+import { EXPENSE_PAYMENT_METHODS, useExpenseCategories, useExpenseSummary, useRecurringSummary, type Expense, type ExpenseCategory, type ExpenseList } from "../lib/expenses";
 import { compactINR, money } from "../lib/format";
 
 export default function ExpensesPage() {
@@ -53,11 +60,22 @@ function Expenses() {
   );
 }
 
+const TABS = ["list", "recurring", "report"] as const;
+type Tab = (typeof TABS)[number];
+const TAB_ICON = { list: ListIcon, recurring: RepeatIcon, report: BarChart3Icon } as const;
+
 function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
   const { t, formatDate } = useI18n();
   const [dialog, setDialog] = React.useState<{ expense: Expense | null } | null>(null);
   const [cats, setCats] = React.useState(false);
+  const [tab, setTab] = React.useState<Tab>("list");
   const dShort = React.useCallback((d: string) => formatDate(d, { day: "numeric", month: "short" }), [formatDate]);
+  const branches = useMyBranches();
+  const branchList = React.useMemo(() => branches.data?.items ?? [], [branches.data]);
+  const branchName = React.useCallback((id: string | null) => (id ? (branchList.find((b) => b.id === id)?.name ?? "") : t("billing.expenses.b.shopWide")), [branchList, t]);
+  const suppliers = useSuppliers("");
+  const supplierOptions = React.useMemo(() => (suppliers.data?.items ?? []).map((s) => ({ value: s.id, label: s.name })), [suppliers.data]);
+  const recurringSummary = useRecurringSummary();
 
   const filters = React.useMemo(
     () =>
@@ -80,11 +98,20 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
           label: t("billing.expenses.filter.status"),
           options: [
             { value: "recorded", label: t("billing.expenses.status.recorded") },
+            { value: "draft", label: t("billing.expenses.b.draftBadge") },
             { value: "cancelled", label: t("billing.expenses.cancelledBadge") },
           ],
         },
+        supplier: { kind: "options", param: "supplierId", label: t("billing.expenses.b.supplier"), options: supplierOptions, dynamic: true },
+        unpaid: { kind: "options", single: true, label: t("billing.expenses.b.unpaidFilter"), options: [{ value: "true", label: t("billing.expenses.b.unpaidOnly") }] },
+        ...(branchList.length
+          ? {
+              branch: { kind: "options", param: "branchId", label: t("billing.expenses.b.branch"), options: branchList.map((b) => ({ value: b.id, label: b.name })), dynamic: true },
+              shopWide: { kind: "options", single: true, label: t("billing.expenses.b.shopWide"), options: [{ value: "true", label: t("billing.expenses.b.shopWideOnly") }] },
+            }
+          : {}),
       }) satisfies ServerFilterDefs,
-    [t, categories],
+    [t, categories, supplierOptions, branchList],
   );
 
   const columns = React.useMemo<DataTableColumn<Expense>[]>(
@@ -101,7 +128,8 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
             {dShort(e.date)}
           </button>
         ),
-        cardCell: (e) => `${dShort(e.date)} · ${categoryLabel(t, { name: e.categoryName })} · ${t(`billing.payment.methods.${e.paymentMethod}`)}`,
+        cardCell: (e) =>
+          `${dShort(e.date)} · ${categoryLabel(t, { name: e.categoryName })} · ${e.paymentMethod === "credit" ? t("billing.expenses.b.onCredit") : t(`billing.payment.methods.${e.paymentMethod}`)}`,
       },
       {
         id: "category",
@@ -127,7 +155,18 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
         sortable: true,
         numeric: true,
         card: "right",
-        cell: (e) => <span className={e.status === "cancelled" ? "text-muted-foreground line-through" : "font-semibold"}>{money(e.amount)}</span>,
+        cell: (e) =>
+          e.status === "draft" ? (
+            <span className="grid justify-items-end">
+              <span className="text-muted-foreground">{e.amount ? money(e.amount) : "—"}</span>
+              <StatusPill tone="warning">{t("billing.expenses.b.draftBadge")}</StatusPill>
+            </span>
+          ) : (
+            <span className="grid justify-items-end">
+              <span className={e.status === "cancelled" ? "text-muted-foreground line-through" : "font-semibold"}>{money(e.amount)}</span>
+              {e.balance > 0 && <span className="text-xs text-warning-ink">{t("billing.expenses.b.toPay", { amount: money(e.balance) })}</span>}
+            </span>
+          ),
       },
       {
         id: "gst",
@@ -152,7 +191,13 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
             <span className="text-xs text-success-ink">{t("billing.expenses.itcShort", { amount: money(e.itc) })}</span>
           ) : null,
       },
-      { id: "method", header: t("billing.expenses.method"), hideBelow: "md", cell: (e) => t(`billing.payment.methods.${e.paymentMethod}`) },
+      {
+        id: "method",
+        header: t("billing.expenses.method"),
+        hideBelow: "md",
+        cell: (e) => (e.paymentMethod === "credit" ? t("billing.expenses.b.onCredit") : t(`billing.payment.methods.${e.paymentMethod}`)),
+      },
+      ...(branchList.length ? [{ id: "branch", header: t("billing.expenses.b.branch"), hideBelow: "lg" as const, cell: (e: Expense) => branchName(e.branchId) }] : []),
       {
         id: "receipt",
         header: t("billing.expenses.receipt"),
@@ -160,7 +205,7 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
         cell: (e) => <ReceiptThumb url={e.receiptUrl} />,
       },
     ],
-    [t, dShort],
+    [t, dShort, branchList, branchName],
   );
 
   const st = useServerTable<Expense, typeof filters>({
@@ -210,6 +255,45 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
         }
       />
 
+      {(recurringSummary.data?.drafts ?? 0) > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm" role="status">
+          <span className="flex items-center gap-2 text-warning-ink">
+            <BellRingIcon className="size-4" /> {t("billing.expenses.b.draftsWaiting", { count: recurringSummary.data!.drafts })}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setTab("list");
+              st.filters.status.set(["draft"]);
+            }}
+          >
+            {t("billing.expenses.b.showDrafts")}
+          </Button>
+        </div>
+      )}
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="gap-4">
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <TabsList aria-label={t("billing.expenses.b.tabsLabel")} className="h-11 w-max rounded-xl p-1 shadow-inner">
+            {TABS.map((k) => {
+              const Icon = TAB_ICON[k];
+              return (
+                <TabsTrigger key={k} value={k} className="h-full rounded-lg px-3 sm:px-4">
+                  <Icon />
+                  {t(`billing.expenses.b.tabs.${k}`)}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+        <TabsContent value="recurring">
+          <RecurringExpensesPanel />
+        </TabsContent>
+        <TabsContent value="report">
+          <ExpenseReportPanel />
+        </TabsContent>
+        <TabsContent value="list">
       <div className="grid gap-4">
         <p className="text-meta text-muted-foreground">{t("billing.expenses.summaryPeriod", { from: dShort(period.from), to: dShort(period.to) })}</p>
         {summary.isError && !s ? (
@@ -297,6 +381,8 @@ function ExpensesList({ categories }: { categories: ExpenseCategory[] }) {
           />
         </section>
       </div>
+        </TabsContent>
+      </Tabs>
 
       <ExpenseDialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)} expense={dialog?.expense ?? null} />
       <CategoriesDialog open={cats} onOpenChange={setCats} />

@@ -76,7 +76,7 @@ import { TransferService } from "./transfers";
 import { chargeInputSchema, computeCharges, CostingService } from "./costing";
 import { allocateCharges } from "./costing-logic";
 import { apportion, purchaseBalance } from "./payables";
-import { noopLogger, type CatalogItem, type EventsPort, type ItemCatalogPort, type LegacyBatchPort, type LoggerPort, type SellerStatePort, type TransferNoticePort } from "./ports";
+import { noopLogger, type CatalogItem, type EventsPort, type ExpenseBillsPort, type ItemCatalogPort, type LegacyBatchPort, type LoggerPort, type SellerStatePort, type TransferNoticePort } from "./ports";
 import {
   LOCATION_TYPES,
   debitNotes,
@@ -141,6 +141,8 @@ export interface InventoryDeps {
   transferNotice?: TransferNoticePort;
   /** Credit note id -> its bill id, for building the cost layers of a shop's history (docs/valuation-reports.md). */
   returnSales?: (tenantId: string) => Promise<Map<string, string>>;
+  /** Expenses bought on credit from suppliers: bills in Payables (docs/expenses-debit-notes.md). */
+  expenseBills?: ExpenseBillsPort;
 }
 
 // ------------------------------------------------------------------ DTOs
@@ -1046,6 +1048,8 @@ export class InventoryService {
   private readonly log: LoggerPort;
   private readonly now: () => Date;
   private readonly events: EventsPort | null;
+  /** @internal Credit expenses as supplier bills (purchasing.ts reads it too). */
+  readonly expenseBills: ExpenseBillsPort | null;
   /** Tenants whose legacy (null-location) rows were moved to the default location by this process. */
   private readonly healed = new Set<string>();
   /** Supplier payments, purchase orders / goods receipts and debit notes. */
@@ -1071,6 +1075,7 @@ export class InventoryService {
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
     this.events = deps.events ?? null;
+    this.expenseBills = deps.expenseBills ?? null;
   }
 
   today() {
@@ -2322,12 +2327,13 @@ export class InventoryService {
 
   /** Paise paid (net of refunds) to a supplier that belong to no bill: settle the opening balance or are advances. */
   private onAccountSql() {
-    return sql<string>`(select coalesce(sum(case when pp.kind = 'payment' then pp.amount else -pp.amount end), 0) from purchase_payments pp where pp.tenant_id = ${suppliers.tenantId} and pp.supplier_id = ${suppliers.id} and pp.purchase_id is null and pp.reversed_at is null)`;
+    return sql<string>`(select coalesce(sum(case when pp.kind = 'payment' then pp.amount else -pp.amount end), 0) from purchase_payments pp where pp.tenant_id = ${suppliers.tenantId} and pp.supplier_id = ${suppliers.id} and pp.purchase_id is null and pp.expense_id is null and pp.reversed_at is null)`;
   }
 
-  /** What we owe a supplier in total: unpaid bills + opening balance - on-account payments. */
+  /** What we owe a supplier in total: unpaid bills + unpaid credit expenses + opening balance - on-account payments. */
   private supplierPayableSql(due: ReturnType<InventoryService["payableSubquery"]>) {
-    return sql<string>`(coalesce(${due.payable}, 0) + ${suppliers.openingBalance} - ${this.onAccountSql()})`;
+    const expenses = this.expenseBills ? sql` + ${this.expenseBills.unpaidSql(sql`${suppliers.tenantId}`, sql`${suppliers.id}`)}` : sql``;
+    return sql<string>`(coalesce(${due.payable}, 0)${expenses} + ${suppliers.openingBalance} - ${this.onAccountSql()})`;
   }
 
   /** Supplier list sort (name / balance = total payable / lastPurchase). Default: name A→Z. */

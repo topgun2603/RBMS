@@ -8,6 +8,7 @@ import {
   BanIcon,
   BookOpenTextIcon,
   CircleCheckIcon,
+  FilePlus2Icon,
   FileTextIcon,
   HandCoinsIcon,
   WalletIcon,
@@ -77,6 +78,7 @@ export const LEDGER_TYPE: Record<LedgerEntryType, { icon: Icon; tone: string }> 
   receipt: { icon: HandCoinsIcon, tone: "text-success-ink" },
   cancel: { icon: BanIcon, tone: "text-muted-foreground" },
   credit_note: { icon: Undo2Icon, tone: "text-success-ink" },
+  debit_note: { icon: FilePlus2Icon, tone: "text-warning-ink" },
   refund: { icon: BanknoteIcon, tone: "text-warning-ink" },
 };
 

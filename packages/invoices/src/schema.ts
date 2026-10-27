@@ -610,3 +610,5 @@ export type InvoiceMessageRow = typeof invoiceMessages.$inferSelect;
 export * from "./schema-sales";
 // Recurring invoices and the GSTIN lookup cache (docs/recurring-export-gstin.md).
 export * from "./schema-recurring";
+// Debit notes to customers (docs/expenses-debit-notes.md).
+export * from "./schema-debit-notes";

@@ -10,7 +10,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm"
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { SYS } from "./chart";
-import type { PartyRef, SourcesPort } from "./ports";
+import type { ExpenseSrc, PartyRef, SourcesPort } from "./ports";
 import type { ReportTable } from "./reports-logic";
 import { acctAccounts } from "./schema";
 import { acctPartyTax, acctTdsChallans, acctTdsEntries, acctTdsSettings, DEDUCTEE_TYPES, TAX_KINDS, type AcctTdsEntry } from "./schema-b";
@@ -352,6 +352,7 @@ export class TdsService {
     let debitAccountId: string;
     let debitParty: { partyType: "customer" | "supplier"; partyId: string } | null = null;
     let sourceRef = p.sourceRef ?? null;
+    let expenseOnCredit: ExpenseSrc | null = null;
     if (p.kind === "tcs") {
       debitAccountId = await this.deps.acct.accountIdByKey(tenantId, SYS.debtors);
       debitParty = { partyType: "customer", partyId: p.partyId! };
@@ -367,8 +368,15 @@ export class TdsService {
     } else if (p.sourceType === "expense") {
       const e = (await this.deps.sources.expenses(tenantId)).find((x) => x.id === p.sourceId);
       if (!e || e.status !== "recorded") throw badRequest("That expense was not found");
-      // The expense was recorded at the full amount from its money account; the deducted part stays in the shop.
-      debitAccountId = await this.deps.acct.methodAccountId(tenantId, e.paymentMethod);
+      if (e.onCredit && e.supplierId) {
+        // Bought on credit: the supplier is owed the expense less the tax kept (Dr Creditors, like a supplier bill).
+        debitAccountId = await this.deps.acct.accountIdByKey(tenantId, SYS.creditors);
+        debitParty = { partyType: "supplier", partyId: e.supplierId };
+        expenseOnCredit = e;
+      } else {
+        // The expense was recorded at the full amount from its money account; the deducted part stays in the shop.
+        debitAccountId = await this.deps.acct.methodAccountId(tenantId, e.paymentMethod);
+      }
       sourceRef = sourceRef ?? `${e.categoryName}${e.vendorName ? ` - ${e.vendorName}` : ""}`;
     } else {
       debitAccountId = (await this.deps.acct.getAccount(tenantId, p.otherAccountId!)).id;
@@ -377,12 +385,14 @@ export class TdsService {
 
     const id = randomUUID();
     let settlementId: string | null = null;
-    if (p.kind === "tds" && p.settle && (p.sourceType === "purchase" || p.sourceType === "supplier") && this.deps.sources.settleSupplierTds) {
+    const settleOn = p.sourceType === "purchase" || p.sourceType === "supplier" || (p.sourceType === "expense" && expenseOnCredit);
+    if (p.kind === "tds" && p.settle && settleOn && this.deps.sources.settleSupplierTds) {
       try {
         settlementId = await this.deps.sources.settleSupplierTds(tenantId, {
           tdsId: id,
-          supplierId: p.partyId!,
+          supplierId: expenseOnCredit?.supplierId ?? p.partyId!,
           purchaseId: p.sourceType === "purchase" ? p.sourceId! : null,
+          expenseId: expenseOnCredit ? expenseOnCredit.id : null,
           amount: p.amount,
           date: p.date,
           note: `TDS u/s ${s.section} deducted (${(p.rate / 100).toFixed(2)}% of ₹${rupees(p.base)})`,

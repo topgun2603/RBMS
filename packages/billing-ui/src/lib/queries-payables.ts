@@ -39,7 +39,7 @@ export const qkp = {
 function useRefreshAll() {
   const qc = useQueryClient();
   return () => {
-    for (const key of [["payables"], ["suppliers"], ["purchases"], ["purchase-orders"], ["debit-notes"], ["stock"], ["reports"]]) {
+    for (const key of [["payables"], ["suppliers"], ["purchases"], ["purchase-orders"], ["debit-notes"], ["stock"], ["reports"], ["expenses"]]) {
       void qc.invalidateQueries({ queryKey: key });
     }
   };

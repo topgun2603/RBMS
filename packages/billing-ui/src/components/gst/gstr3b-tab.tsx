@@ -354,7 +354,7 @@ function CellDialog({ period, cell, onClose }: { period: string; cell: CellId | 
   const { t } = useI18n();
   const text = useGstText();
   const q = useGstr3bCell(period, cell);
-  const href = (type: string, id: string) => (type === "invoice" ? `invoices/${id}` : type === "credit_note" ? `credit-notes/${id}` : type === "purchase" ? `purchases/${id}` : null);
+  const href = (type: string, id: string) => (type === "invoice" ? `invoices/${id}` : type === "credit_note" ? `credit-notes/${id}` : type === "sales_debit_note" ? `sales-debit-notes/${id}` : type === "purchase" ? `purchases/${id}` : null);
   return (
     <Dialog open={!!cell} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-4xl" closeLabel={t("billing.common.close")}>

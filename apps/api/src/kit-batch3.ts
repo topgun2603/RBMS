@@ -7,7 +7,7 @@ import { createChat, MemoryNonceStore, MemoryPubSub, type ChatNotification } fro
 import { createDeveloper, createRouteCollector } from "@srirealtime/developer";
 import { createEInvoice, type EInvoiceSource, type PartySource } from "@srirealtime/einvoice";
 import type { createInventory } from "@srirealtime/inventory";
-import type { createInvoices, CreditNote, Invoice } from "@srirealtime/invoices";
+import type { createInvoices, CreditNote, DebitNote, Invoice } from "@srirealtime/invoices";
 import { createRedisNonceStore, createRedisPubSub, type JobsService } from "@srirealtime/jobs";
 import { createKyc, toVendorKycStatus } from "@srirealtime/kyc";
 import { createLoyalty, toIndianE164 } from "@srirealtime/loyalty";
@@ -428,6 +428,17 @@ export function createBatch3(d: Batch3Deps) {
         for (const n of notes) if (n) out.push(n);
         if (page.items.length < 200) break;
       }
+      // Debit notes to customers of the period (CDNR / CDNUR with note type "D"; docs/expenses-debit-notes.md).
+      for (let offset = 0; ; offset += 200) {
+        const page = await d.invoices.debitNotes.list(tenantId, { from: range.from, to: range.to, limit: 200, offset });
+        const notes = await mapLimit(page.items, PERIOD_LOAD_CONCURRENCY, async (s) => {
+          const dn = await d.invoices.debitNotes.get(tenantId, s.id).catch(nullOn404);
+          const original = dn ? await d.invoices.get(tenantId, dn.invoiceId).catch(nullOn404) : null;
+          return dn ? debitNoteSource(dn, original?.supplyType ?? null) : null;
+        });
+        for (const n of notes) if (n) out.push(n);
+        if (page.items.length < 200) break;
+      }
       return out;
   };
 
@@ -472,7 +483,13 @@ export function createBatch3(d: Batch3Deps) {
         if (inv) return inv.imported ? null : toEInvoiceSource(await withItemHsn(d.invoices, tenantId, inv));
         // A credit note id: e-invoiced as document type CRN referencing its bill.
         const cn = await d.invoices.creditNotes.get(tenantId, invoiceId).catch(nullOn404);
-        if (!cn) return null;
+        if (!cn) {
+          // A debit note to a customer: document type DBN referencing its bill.
+          const dn = await d.invoices.debitNotes.get(tenantId, invoiceId).catch(nullOn404);
+          if (!dn) return null;
+          const bill = await d.invoices.get(tenantId, dn.invoiceId).catch(nullOn404);
+          return debitNoteSource(dn, bill?.supplyType ?? null);
+        }
         const original = await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404);
         return creditNoteSource(cn, original?.total ?? null);
       },
@@ -706,6 +723,29 @@ export function creditNoteSource(cn: CreditNote, invoiceTotal: number | null, su
     docType: "CRN",
     precedingDoc: { number: cn.invoiceNumber, date: cn.invoiceDate, ...(invoiceTotal !== null ? { total: invoiceTotal } : {}) },
     // A note on an export / SEZ bill is reported like its bill (CDNUR EXPWP / EXPWOP, CDNR SEWP / SEWOP).
+    ...(supplyType && supplyType !== "domestic" ? { supplyType } : {}),
+  };
+}
+
+/** A debit note to a customer as the NIC builder / GSTR-1 needs it: document type DBN with the original bill as the preceding document. */
+export function debitNoteSource(dn: DebitNote, supplyType: Invoice["supplyType"] | null = null): EInvoiceSource {
+  const base = toEInvoiceSource({
+    id: dn.id,
+    number: dn.number,
+    status: dn.status === "cancelled" ? "cancelled" : "issued",
+    date: dn.date,
+    seller: dn.seller,
+    customer: dn.customer,
+    placeOfSupply: dn.placeOfSupply,
+    interState: dn.interState,
+    lines: dn.lines,
+    totals: { ...dn.totals, loyalty: undefined },
+    total: dn.total,
+  } as unknown as Invoice);
+  return {
+    ...base,
+    docType: "DBN",
+    precedingDoc: { number: dn.invoiceNumber, date: dn.invoiceDate, total: dn.invoiceTotal },
     ...(supplyType && supplyType !== "domestic" ? { supplyType } : {}),
   };
 }

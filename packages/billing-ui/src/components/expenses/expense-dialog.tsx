@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BanIcon, CheckCircle2Icon, FileTextIcon, ImagePlusIcon, InfoIcon, Loader2Icon, ScanLineIcon, XIcon } from "lucide-react";
+import { BanIcon, CheckCircle2Icon, FileTextIcon, ImagePlusIcon, InfoIcon, Loader2Icon, ScanLineIcon, WalletIcon, XIcon } from "lucide-react";
 import { isValidGstin } from "@srirealtime/gst";
 import {
   Button,
@@ -37,10 +37,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  ModuleLink,
   sendAiFeedback,
+  useCurrentBranch,
   useI18n,
+  useMyBranches,
   type AiOutcome,
 } from "@srirealtime/web";
+import { SupplierPicker, type SupplierParty } from "../inventory/supplier-picker";
+import { PaySupplierDialog } from "../inventory/payables-dialogs";
+import type { Supplier } from "../../lib/types";
 import { ScanDialog } from "../ai/scan-dialog";
 import { ScanFlags, aiLowClass } from "../ai/scan-bits";
 import { GstRateSelect } from "../gst-rate-select";
@@ -53,16 +59,23 @@ import {
   uploadReceipt,
   useCancelExpense,
   useExpenseCategories,
+  useRecordExpense,
   useSaveExpense,
   type Expense,
   type ExpensePaymentMethod,
 } from "../../lib/expenses";
 import type { ReceiptDraft, ScanResult } from "../../lib/ai-scan";
 
+/** Branch picker value for "no branch" (the API's null). */
+const SHOP_WIDE = "shop-wide";
+
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "billing.validation.required"),
   categoryId: z.string(),
   amount: z.string().refine((v) => (rupeesToPaise(v) ?? 0) > 0, "billing.validation.amount"),
+  /** "" = no branch choice (single-branch shops: the server's default). */
+  branch: z.string(),
+  dueDate: z.string(),
   gstRate: z.string(),
   vendorName: z.string().trim().max(200),
   vendorGstin: z
@@ -77,10 +90,13 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const toValues = (e: Expense | null, categoryId: string): Values => ({
+const toValues = (e: Expense | null, categoryId: string, branch = ""): Values => ({
   date: e?.date ?? todayIST(),
   categoryId: e?.categoryId ?? categoryId,
-  amount: e ? paiseToInput(e.amount) : "",
+  // A draft with no amount yet (ask each time) opens empty.
+  amount: e && e.amount > 0 ? paiseToInput(e.amount) : "",
+  branch: e ? (e.branchId ?? SHOP_WIDE) : branch,
+  dueDate: e?.dueDate ?? "",
   gstRate: String(e?.gstRate ?? 0),
   vendorName: e?.vendorName ?? "",
   vendorGstin: e?.vendorGstin ?? "",
@@ -95,17 +111,35 @@ const stable = (o: Record<string, unknown>) => JSON.stringify(Object.keys(o).sor
 
 const isPdf = (url: string) => /\.pdf($|\?)/i.test(url);
 
-/** Add or edit an expense: amount incl. GST with the GST and ITC worked out live, receipt photo, cancel. */
+/** The supplier picker's value for an expense (the expense keeps the supplier's name as the vendor). */
+const partyOf = (e: Expense | null): SupplierParty =>
+  e?.supplierId
+    ? { kind: "saved", supplier: { id: e.supplierId, name: e.vendorName ?? "", gstin: e.vendorGstin, phone: null, email: null, address: null, stateCode: null, payable: 0, createdAt: e.createdAt } satisfies Supplier }
+    : { kind: "none" };
+
+/**
+ * Add or edit an expense: amount incl. GST with the GST and ITC worked out live, supplier (bought on credit = a bill in
+ * Payables), branch, receipt photo, cancel. A draft from a recurring expense is filled in and recorded here.
+ */
 export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; onOpenChange: (o: boolean) => void; expense: Expense | null }) {
   const { t } = useI18n();
   const categories = useExpenseCategories(open);
   const save = useSaveExpense();
+  const record = useRecordExpense();
   const cancel = useCancelExpense();
+  const branches = useMyBranches();
+  const current = useCurrentBranch();
+  const branchList = branches.data?.items ?? [];
+  const defaultBranch = branchList.length ? (current?.id ?? SHOP_WIDE) : "";
+  const [party, setParty] = React.useState<SupplierParty>(() => partyOf(expense));
+  const [payOpen, setPayOpen] = React.useState(false);
+  const [partyError, setPartyError] = React.useState(false);
+  const isDraft = expense?.status === "draft";
   const [confirmCancel, setConfirmCancel] = React.useState(false);
   const [uploadPct, setUploadPct] = React.useState<number | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const fallbackCategory = categories.data?.find((c) => c.builtin && c.name === "Other")?.id ?? categories.data?.[0]?.id ?? "";
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(expense, fallbackCategory) });
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(expense, fallbackCategory, defaultBranch) });
   const readOnly = expense?.status === "cancelled";
   // AI scan of a receipt: fills this form as a draft; the person saves it as usual.
   const [scanOpen, setScanOpen] = React.useState(false);
@@ -116,7 +150,9 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
 
   React.useEffect(() => {
     if (open) {
-      form.reset(toValues(expense, fallbackCategory));
+      form.reset(toValues(expense, fallbackCategory, defaultBranch));
+      setParty(partyOf(expense));
+      setPartyError(false);
       setUploadPct(null);
       setAi(null);
       setScanFile(null);
@@ -126,6 +162,25 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
   React.useEffect(() => {
     if (open && !form.getValues("categoryId") && fallbackCategory) form.setValue("categoryId", fallbackCategory);
   }, [open, fallbackCategory, form]);
+  // The branches load after the dialog opens: a new expense takes the user's current branch.
+  React.useEffect(() => {
+    if (open && !expense && !form.getValues("branch") && defaultBranch) form.setValue("branch", defaultBranch);
+  }, [open, expense, defaultBranch, form]);
+
+  /** A saved supplier fills the vendor fields; "use once" just types the vendor in. */
+  const pickParty = (p: SupplierParty) => {
+    setPartyError(false);
+    if (p.kind === "oneoff") {
+      form.setValue("vendorName", p.name, { shouldDirty: true });
+      setParty({ kind: "none" });
+      return;
+    }
+    setParty(p);
+    if (p.kind === "saved") {
+      form.setValue("vendorName", p.supplier.name, { shouldDirty: true });
+      if (p.supplier.gstin) form.setValue("vendorGstin", p.supplier.gstin, { shouldDirty: true });
+    }
+  };
 
   React.useEffect(() => {
     const sub = form.watch((_v, { name }) => {
@@ -162,7 +217,9 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
     }
   };
 
-  const [amountText, rateText, gstinText, receiptUrl] = form.watch(["amount", "gstRate", "vendorGstin", "receiptUrl"]);
+  const [amountText, rateText, gstinText, receiptUrl, method] = form.watch(["amount", "gstRate", "vendorGstin", "receiptUrl", "paymentMethod"]);
+  const onCredit = method === "credit";
+  const paidOnIt = (expense?.amountPaid ?? 0) > 0;
   const amount = rupeesToPaise(amountText) ?? 0;
   const gst = gstFromInclusive(amount, Number(rateText) || 0);
   const gstinOk = isValidGstin(gstinText.trim().toUpperCase());
@@ -189,31 +246,42 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
   };
 
   const onSubmit = form.handleSubmit(async (v) => {
+    const supplierId = party.kind === "saved" ? party.supplier.id : null;
+    if (v.paymentMethod === "credit" && !supplierId) {
+      setPartyError(true);
+      toast.error(t("billing.expenses.b.creditNeedsSupplier"));
+      return;
+    }
+    const body = {
+      date: v.date,
+      categoryId: v.categoryId || undefined,
+      amount: rupeesToPaise(v.amount) ?? 0,
+      gstRate: Number(v.gstRate) || 0,
+      vendorName: v.vendorName || null,
+      vendorGstin: v.vendorGstin || null,
+      paymentMethod: v.paymentMethod,
+      reference: v.reference || null,
+      note: v.note || null,
+      receiptUrl: v.receiptUrl || null,
+      // Unchanged supplier and method are left out of an edit (a paid credit expense keeps both).
+      ...(!paidOnIt ? { supplierId } : {}),
+      ...(v.branch ? { branchId: v.branch === SHOP_WIDE ? null : v.branch } : {}),
+      dueDate: v.paymentMethod === "credit" && v.dueDate ? v.dueDate : null,
+    };
     try {
-      await save.mutateAsync({
-        id: expense?.id,
-        body: {
-          date: v.date,
-          categoryId: v.categoryId || undefined,
-          amount: rupeesToPaise(v.amount) ?? 0,
-          gstRate: Number(v.gstRate) || 0,
-          vendorName: v.vendorName || null,
-          vendorGstin: v.vendorGstin || null,
-          paymentMethod: v.paymentMethod,
-          reference: v.reference || null,
-          note: v.note || null,
-          receiptUrl: v.receiptUrl || null,
-        },
-      });
+      if (isDraft && expense) await record.mutateAsync({ id: expense.id, body });
+      else await save.mutateAsync({ id: expense?.id, body });
       if (ai && !ai.outcome) void sendAiFeedback(ai.runId, stable(v) === ai.snapshot ? "accepted" : "edited").catch(() => undefined);
-      toast.success(expense ? t("billing.expenses.updated") : t("billing.expenses.created", { amount: money(rupeesToPaise(v.amount)) }));
+      toast.success(
+        isDraft ? t("billing.expenses.b.recorded") : expense ? t("billing.expenses.updated") : t("billing.expenses.created", { amount: money(rupeesToPaise(v.amount)) }),
+      );
       onOpenChange(false);
     } catch (err) {
       toast.error(describeError(err, t));
     }
   });
 
-  const busy = save.isPending || uploadPct !== null;
+  const busy = save.isPending || record.isPending || uploadPct !== null;
 
   return (
     <>
@@ -221,7 +289,9 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
         <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-xl" closeLabel={t("billing.common.close")}>
           <DialogHeader>
             <DialogTitle>{expense ? t("billing.expenses.editTitle") : t("billing.expenses.addTitle")}</DialogTitle>
-            <DialogDescription>{readOnly ? t("billing.expenses.cancelledHint") : t("billing.expenses.dialogHint")}</DialogDescription>
+            <DialogDescription>
+              {readOnly ? t("billing.expenses.cancelledHint") : isDraft ? t("billing.expenses.b.draftHint") : t("billing.expenses.dialogHint")}
+            </DialogDescription>
           </DialogHeader>
           {!expense && (
             ai ? (
@@ -325,6 +395,19 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                   </div>
                 )}
 
+                <div className="grid gap-2">
+                  <span className="text-sm leading-none font-medium">
+                    {t("billing.expenses.b.supplier")}
+                    {!onCredit && <span className="font-normal text-muted-foreground"> ({t("billing.common.optional")})</span>}
+                  </span>
+                  {paidOnIt ? (
+                    <p className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm">{expense?.vendorName}</p>
+                  ) : (
+                    <SupplierPicker value={party} onChange={pickParty} invalid={partyError} />
+                  )}
+                  <p className="text-meta text-muted-foreground">{t("billing.expenses.b.supplierHint")}</p>
+                </div>
+
                 <div className="grid items-start gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -382,12 +465,82 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                       <ChipGroup
                         aria-label={t("billing.expenses.method")}
                         value={field.value}
-                        onChange={(v) => field.onChange(v as ExpensePaymentMethod)}
-                        options={EXPENSE_PAYMENT_METHODS.map((m) => ({ value: m, label: t(`billing.payment.methods.${m}`) }))}
+                        onChange={(v) => !paidOnIt && field.onChange(v as ExpensePaymentMethod)}
+                        options={EXPENSE_PAYMENT_METHODS.map((m) => ({ value: m, label: m === "credit" ? t("billing.expenses.b.onCredit") : t(`billing.payment.methods.${m}`) }))}
                       />
+                      {onCredit && <FormDescription>{t("billing.expenses.b.onCreditHint")}</FormDescription>}
                     </FormItem>
                   )}
                 />
+
+                {(onCredit || branchList.length > 0) && (
+                  <div className="grid items-start gap-4 sm:grid-cols-2">
+                    {onCredit && (
+                      <FormField
+                        control={form.control}
+                        name="dueDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t("billing.expenses.b.dueDate")} <span className="font-normal text-muted-foreground">({t("billing.common.optional")})</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input type="date" min={form.getValues("date") || undefined} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    {branchList.length > 0 && (
+                      <FormField
+                        control={form.control}
+                        name="branch"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("billing.expenses.b.branch")}</FormLabel>
+                            <Select value={field.value || SHOP_WIDE} onValueChange={field.onChange}>
+                              <SelectTrigger className="w-full" aria-label={t("billing.expenses.b.branch")}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={SHOP_WIDE}>{t("billing.expenses.b.shopWide")}</SelectItem>
+                                {branchList.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {expense && expense.paymentMethod === "credit" && expense.status === "recorded" && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2.5 text-sm" aria-live="polite">
+                    <span className="grid">
+                      <span className="text-xs text-muted-foreground">{t("billing.expenses.b.paidSoFar")}</span>
+                      <span className="font-semibold tabular-nums">{money(expense.amountPaid)}</span>
+                    </span>
+                    <span className="grid">
+                      <span className="text-xs text-muted-foreground">{t("billing.expenses.b.balance")}</span>
+                      <span className={cn("font-semibold tabular-nums", expense.balance > 0 ? "text-warning-ink" : "text-success-ink")}>{money(expense.balance)}</span>
+                    </span>
+                    {expense.balance > 0 && expense.supplierId ? (
+                      <Button type="button" variant="outline" size="sm" onClick={() => setPayOpen(true)}>
+                        <WalletIcon /> {t("billing.expenses.b.paySupplier")}
+                      </Button>
+                    ) : expense.supplierId ? (
+                      <ModuleLink to={`suppliers/${expense.supplierId}`} className="text-sm text-primary underline-offset-4 hover:underline">
+                        {t("billing.expenses.b.openStatement")}
+                      </ModuleLink>
+                    ) : null}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
                   <FormField
@@ -487,8 +640,8 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                   </Button>
                   {!readOnly && (
                     <Button type="submit" size="lg" disabled={busy}>
-                      {save.isPending && <Loader2Icon className="animate-spin" />}
-                      {t("billing.common.save")}
+                      {(save.isPending || record.isPending) && <Loader2Icon className="animate-spin" />}
+                      {isDraft ? t("billing.expenses.b.record") : t("billing.common.save")}
                     </Button>
                   )}
                 </div>
@@ -498,6 +651,12 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
         </DialogContent>
       </Dialog>
       <ScanDialog kind="receipt" open={scanOpen} onOpenChange={setScanOpen} onDraft={applyScan} />
+      <PaySupplierDialog
+        open={payOpen}
+        onOpenChange={setPayOpen}
+        supplier={expense?.supplierId ? { id: expense.supplierId, name: expense.vendorName ?? "", payable: expense.balance } : null}
+        expenseId={expense?.id}
+      />
       <ConfirmDialog
         open={confirmCancel}
         onOpenChange={setConfirmCancel}

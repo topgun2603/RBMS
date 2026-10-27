@@ -36,7 +36,22 @@ const AI_CHAT = [
   { re: /^\/v1\/ai\/store\/public\/together$/, methods: ["GET"] },
 ];
 
+/**
+ * Data privacy (DPDP, docs/privacy-dpdp.md): the shop's privacy notice (public), recording a consent decision, and the shopper's own rights
+ * requests. The staff routes of the same module (the request queue, retention, breaches) are not reachable from the store.
+ */
+const PRIVACY_STORE = [
+  { re: /^\/v1\/consent\/notice$/, methods: ["GET"] },
+  { re: /^\/v1\/consent$/, methods: ["POST"] },
+  { re: /^\/v1\/consent\/me$/, methods: ["GET"] },
+  { re: /^\/v1\/consent\/rights$/, methods: ["POST"] },
+  { re: /^\/v1\/consent\/rights\/mine$/, methods: ["GET"] },
+  { re: /^\/v1\/consent\/rights\/mine\/[0-9a-f-]{36}\/(cancel|data)$/, methods: ["GET", "POST"] },
+];
+
 export function isProxyAllowed(path: string, method = "GET"): boolean {
+  const privacy = PRIVACY_STORE.find((r) => r.re.test(path));
+  if (privacy) return privacy.methods.includes(method.toUpperCase());
   const aiChat = AI_CHAT.find((r) => r.re.test(path));
   if (aiChat) return aiChat.methods.includes(method.toUpperCase());
   if (TRYON_READS.some((r) => r.test(path))) return ["GET", "HEAD"].includes(method.toUpperCase());

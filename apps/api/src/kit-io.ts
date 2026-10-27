@@ -4,6 +4,7 @@ import type { createCatalogue, Product } from "@srirealtime/catalogue";
 import type {
   BrandingPort,
   CreditNoteDocPort,
+  DebitNoteDocPort,
   DocSeller,
   InvoiceDocPort,
   OrderDocPort,
@@ -179,6 +180,11 @@ export function documentPorts(d: DocumentPortDeps) {
     creditNote: async (tenantId, id) => withIrn(tenantId, await d.invoices.creditNotes.get(tenantId, id).catch(nullOn404)),
   };
 
+  const debitNotes: DebitNoteDocPort = {
+    // A debit note to a customer (docs/expenses-debit-notes.md); its IRN (document type DBN) is stored under its id.
+    debitNote: async (tenantId, id) => withIrn(tenantId, await d.invoices.debitNotes.get(tenantId, id).catch(nullOn404)),
+  };
+
   const till: TillDocPort | undefined = d.till
     ? {
         session: async (tenantId, id) => {
@@ -203,7 +209,7 @@ export function documentPorts(d: DocumentPortDeps) {
     },
   };
 
-  return { invoices, statements, orders, purchases, creditNotes, till, branding: { get: d.branding } satisfies BrandingPort };
+  return { invoices, statements, orders, purchases, creditNotes, debitNotes, till, branding: { get: d.branding } satisfies BrandingPort };
 }
 
 // ================================================================ import / export

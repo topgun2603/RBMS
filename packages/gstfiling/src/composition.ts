@@ -47,7 +47,7 @@ export function buildCmp08(quarterKey: string, sales: readonly SalesDocSrc[], de
     if (!d.number || d.status === "draft" || d.status === "cancelled" || d.date < q.from || d.date > q.to) continue;
     if (!compositionOn(config, d.date)) continue;
     const note = d.docType === "CRN";
-    if (d.docType && d.docType !== "INV" && !note) continue;
+    if (d.docType && d.docType !== "INV" && !note && d.docType !== "DBN") continue;
     const sign = note ? -1 : 1;
     // A composition bill has no tax; if one was issued with tax anyway, the value still counts and the tax is flagged.
     turnover += sign * d.totals.taxable;

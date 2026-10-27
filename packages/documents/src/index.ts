@@ -86,6 +86,7 @@ export { renderTransferNote, type TransferNoteDocData } from "./renderers/transf
 export { renderPurchase } from "./renderers/purchase";
 export { renderPurchaseOrder } from "./renderers/purchase-order";
 export { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
+export { renderDebitNote, debitNoteVariant, debitReasonLabel } from "./renderers/debit-note";
 export { renderQuotation, renderQuotationThermal } from "./renderers/quotation";
 export { renderSalesDoc, salesDocVariant, challanReasonLabel } from "./renderers/sales-doc";
 export { renderTillReport } from "./renderers/till";

@@ -33,6 +33,7 @@ import {
   useSupplierDueBills,
 } from "../../lib/queries-payables";
 import { PAYMENT_MODES, type PaymentMode, type PurchaseOrder, type PurchasePayables } from "../../lib/types-payables";
+import { useSupplierDueExpenses } from "../../lib/expenses";
 import type { Purchase } from "../../lib/types";
 
 const optional = (t: (k: string) => string) => ` (${t("billing.common.optional")})`;
@@ -186,15 +187,21 @@ export function PayPurchaseDialog({
 
 // ---------------------------------------------------------------- pay a supplier (lump sum)
 
-/** A lump payment to a supplier: oldest bills first (opening balance before them) or the bills you choose. */
+/**
+ * A lump payment to a supplier: oldest bills first (opening balance before them) or the bills you choose. The bills
+ * include expenses bought on credit from the supplier (docs/expenses-debit-notes.md); `expenseId` opens the dialog
+ * with that expense chosen (paying it from the expense).
+ */
 export function PaySupplierDialog({
   open,
   onOpenChange,
   supplier,
+  expenseId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   supplier: { id: string; name: string; payable: number } | null;
+  expenseId?: string;
 }) {
   const { t, formatDate } = useI18n();
   const pay = usePaySupplier();
@@ -207,6 +214,7 @@ export function PaySupplierDialog({
   const [parts, setParts] = React.useState<Record<string, string>>({});
   const [touched, setTouched] = React.useState(false);
   const bills = useSupplierDueBills(supplier?.id ?? "", open && how === "choose");
+  const dueExpenses = useSupplierDueExpenses(supplier?.id ?? "", open && how === "choose");
 
   React.useEffect(() => {
     if (!open || !supplier) return;
@@ -215,14 +223,18 @@ export function PaySupplierDialog({
     setReference("");
     setDate(todayIST());
     setNote("");
-    setHow("oldest");
-    setParts({});
+    setHow(expenseId ? "choose" : "oldest");
+    setParts(expenseId && supplier.payable > 0 ? { [expenseId]: paiseToInput(supplier.payable) } : {});
     setTouched(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when (re)opened
-  }, [open, supplier?.id]);
+  }, [open, supplier?.id, expenseId]);
 
   const paise = rupeesToPaise(amount);
-  const items = bills.data?.items ?? [];
+  // Purchase bills and expenses bought on credit, oldest first.
+  const items: { id: string; billNumber: string; date: string; balance?: number; total: number; expense?: boolean }[] = [
+    ...(bills.data?.items ?? []),
+    ...(dueExpenses.data ?? []).map((e) => ({ id: e.id, billNumber: e.reference || e.categoryName, date: e.date, balance: e.balance, total: e.amount, expense: true })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
   const chosen = items
     .map((b) => ({ b, paise: parts[b.id]?.trim() ? rupeesToPaise(parts[b.id]!) : 0 }))
     .filter((x) => x.paise === null || x.paise > 0);
@@ -259,7 +271,9 @@ export function PaySupplierDialog({
           date,
           ...(reference.trim() ? { reference: reference.trim() } : {}),
           ...(note.trim() ? { note: note.trim() } : {}),
-          ...(how === "choose" && chosen.length > 0 ? { allocations: chosen.map((x) => ({ purchaseId: x.b.id, amount: x.paise! })) } : {}),
+          ...(how === "choose" && chosen.length > 0
+            ? { allocations: chosen.map((x) => (x.b.expense ? { expenseId: x.b.id, amount: x.paise! } : { purchaseId: x.b.id, amount: x.paise! })) }
+            : {}),
         },
       });
       toast.success(
@@ -303,7 +317,7 @@ export function PaySupplierDialog({
             <p className="text-meta text-muted-foreground">{how === "oldest" ? t("billing.payables.oldestHint") : t("billing.payables.chooseHint")}</p>
             {how === "choose" && (
               <div className="grid gap-2 rounded-xl border border-card-ring p-3">
-                {bills.isPending ? (
+                {bills.isPending || dueExpenses.isPending ? (
                   <p className="text-sm text-muted-foreground">{t("billing.payables.loading")}</p>
                 ) : items.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("billing.payables.noOpenBills")}</p>
@@ -318,7 +332,10 @@ export function PaySupplierDialog({
                       {items.map((b) => (
                         <li key={b.id} className="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-3 text-sm">
                           <div className="min-w-0">
-                            <p className="truncate font-mono font-medium">{b.billNumber}</p>
+                            <p className="truncate font-mono font-medium">
+                              {b.billNumber}
+                              {b.expense && <span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">{t("billing.expenses.b.expenseTag")}</span>}
+                            </p>
                             <p className="text-meta text-muted-foreground tabular-nums">
                               {formatDate(b.date)} · {t("billing.payables.dueNow", { amount: money(b.balance ?? b.total) })}
                             </p>

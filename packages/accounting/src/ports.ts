@@ -136,7 +136,29 @@ export interface ExpenseSrc {
   vendorName: string | null;
   vendorGstin: string | null;
   paymentMethod: MoneyMethod;
+  /**
+   * Bought on credit from `supplierId` (docs/expenses-debit-notes.md): owed to the supplier (Creditors) instead of paid
+   * from a money account; paid later through Payables (a supplier payment). `paymentMethod` is then ignored.
+   */
+  onCredit?: boolean;
+  supplierId?: string | null;
   /** IST date it was cancelled. */
+  cancelledOn: string | null;
+}
+
+/** A debit note to a customer (CGST s.34): the customer owes more on an earlier bill (docs/expenses-debit-notes.md). */
+export interface SalesDebitNoteSrc extends TaxParts {
+  id: string;
+  number: string;
+  invoiceNumber: string | null;
+  date: string;
+  status: "issued" | "cancelled";
+  customerId: string | null;
+  customerName: string;
+  total: number;
+  taxable: number;
+  roundOff: number;
+  /** IST date of cancellation. */
   cancelledOn: string | null;
 }
 
@@ -224,6 +246,8 @@ export interface SourcesPort {
   supplierPayments(tenantId: string): Promise<SupplierPaymentSrc[]>;
   debitNotes(tenantId: string): Promise<DebitNoteSrc[]>;
   expenses(tenantId: string): Promise<ExpenseSrc[]>;
+  /** Debit notes to customers; leave out when the shop has none. */
+  salesDebitNotes?(tenantId: string): Promise<SalesDebitNoteSrc[]>;
   tills(tenantId: string): Promise<TillSrc[]>;
   /** Composition tax paid (GST filing); leave out when the shop has no such payments. */
   gstPayments?(tenantId: string): Promise<GstPaymentSrc[]>;
@@ -244,7 +268,10 @@ export interface SourcesPort {
    * by the document sync (`supplierPayments` leaves them out); the TDS entry posts Dr Creditors / Cr TDS payable.
    * Returns an id to undo it with, or null when it could not be recorded (nothing is due on the bill).
    */
-  settleSupplierTds?(tenantId: string, p: { tdsId: string; supplierId: string; purchaseId: string | null; amount: number; date: string; note: string }): Promise<string | null>;
+  settleSupplierTds?(
+    tenantId: string,
+    p: { tdsId: string; supplierId: string; purchaseId: string | null; amount: number; date: string; note: string; expenseId?: string | null },
+  ): Promise<string | null>;
   unsettleSupplierTds?(tenantId: string, settlementId: string, reason: string): Promise<void>;
 }
 

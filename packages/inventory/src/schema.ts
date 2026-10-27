@@ -339,8 +339,8 @@ export const SUPPLIER_PAYMENT_KINDS = ["payment", "refund"] as const;
 export type SupplierPaymentKind = (typeof SUPPLIER_PAYMENT_KINDS)[number];
 
 /**
- * Money paid to (or refunded by) a supplier. `purchaseId` null = on account (settles the opening balance or is an
- * advance). A lump payment split over several bills shares one `groupId`. Reversed rows stay for the audit trail.
+ * Money paid to (or refunded by) a supplier. `purchaseId` (or `expenseId`, an expense bought on credit) null = on account
+ * (settles the opening balance or is an advance). A lump payment split over several bills shares one `groupId`. Reversed rows stay for the audit trail.
  */
 export const purchasePayments = pgTable(
   "purchase_payments",
@@ -349,6 +349,8 @@ export const purchasePayments = pgTable(
     tenantId: tenantId(),
     supplierId: uuid("supplier_id"),
     purchaseId: uuid("purchase_id"),
+    /** An expense bought on credit from the supplier (packages/expenses), paid like a purchase bill; null otherwise. */
+    expenseId: uuid("expense_id"),
     groupId: uuid("group_id").notNull(),
     kind: text("kind").$type<SupplierPaymentKind>().notNull().default("payment"),
     /** Paise, always positive. */
@@ -368,6 +370,7 @@ export const purchasePayments = pgTable(
     index("purchase_payments_tenant_purchase_idx").on(t.tenantId, t.purchaseId),
     index("purchase_payments_tenant_supplier_idx").on(t.tenantId, t.supplierId, t.date),
     index("purchase_payments_tenant_group_idx").on(t.tenantId, t.groupId),
+    index("purchase_payments_tenant_expense_idx").on(t.tenantId, t.expenseId),
   ],
 );
 

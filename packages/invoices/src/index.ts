@@ -6,6 +6,9 @@ import {
   billingItems,
   creditNotes,
   creditNoteSeries,
+  salesDebitNotes,
+  salesDebitNoteSeries,
+  salesDebitNoteAllocations,
   customerReceipts,
   invoiceMessages,
   invoicePayments,
@@ -44,6 +47,8 @@ export * from "./service";
 export * from "./features";
 export * from "./credit-notes-calc";
 export * from "./credit-notes";
+export * from "./debit-notes-calc";
+export * from "./debit-notes";
 export * from "./till-calc";
 export * from "./till";
 export * from "./quotations-calc";
@@ -108,6 +113,9 @@ export function createInvoices(deps: InvoicesDeps) {
       invoiceMessages,
       creditNotes,
       creditNoteSeries,
+      salesDebitNotes,
+      salesDebitNoteSeries,
+      salesDebitNoteAllocations,
       tillSessions,
     },
     routes: invoicesRoutes(service),

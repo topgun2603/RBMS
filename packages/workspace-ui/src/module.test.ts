@@ -35,9 +35,9 @@ describe("workspaceModule", () => {
     const m = workspaceModule();
     expect(m.id).toBe("workspace");
     expect(m.nav).toEqual([]);
-    expect((m.settings ?? []).map((p) => p.path)).toEqual(["setup", "shop-setup", "team", "audit", "import", "messages", "ai", "counter", "studio", "plan"]);
+    expect((m.settings ?? []).map((p) => p.path)).toEqual(["setup", "shop-setup", "team", "audit", "import", "messages", "ai", "counter", "privacy", "studio", "plan"]);
     // Customer messages spans features (its events are filtered by feature on the server); owners/admins only.
-    for (const p of m.settings ?? []) if (p.path !== "plan" && p.path !== "messages") expect(p.feature, p.path).toBeTruthy();
+    for (const p of m.settings ?? []) if (p.path !== "plan" && p.path !== "messages" && p.path !== "privacy") expect(p.feature, p.path).toBeTruthy();
     expect(m.settings?.find((p) => p.path === "messages")?.roles).toEqual(["owner", "admin"]);
     expect(workspaceModule({ planBilling: false }).settings?.map((p) => p.path)).not.toContain("plan");
     for (const w of m.widgets ?? []) expect(w.feature, w.id).toBeTruthy();
@@ -73,7 +73,7 @@ describe("workspaceModule", () => {
       features: [state("onboarding", true), state("importexport", true), state("staff", false), state("audit", false)],
     });
     const m = workspaceModule();
-    expect((m.settings ?? []).filter((p) => check(p.feature).ok).map((p) => p.path)).toEqual(["setup", "import", "messages", "plan"]);
+    expect((m.settings ?? []).filter((p) => check(p.feature).ok).map((p) => p.path)).toEqual(["setup", "import", "messages", "privacy", "plan"]);
   });
 });
 

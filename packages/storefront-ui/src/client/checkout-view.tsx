@@ -27,6 +27,7 @@ import { CartWarnings, CouponForm, Totals } from "./cart-view";
 import { useOrderPayment } from "./payment";
 import { SoldBy, useCartSellers } from "./sellers";
 import { OtpSignIn } from "./sign-in";
+import { NoticeLine, recordNoticeAcceptance } from "./privacy";
 import { useStore } from "./store-context";
 
 /** Step badge: the number, or a check that draws itself when the step completes. */
@@ -312,6 +313,7 @@ export function CheckoutView() {
         },
       });
       setPlaced(true);
+      void recordNoticeAcceptance();
       cart.reset();
       void qc.invalidateQueries({ queryKey: ["orders"] });
       if (r.payment) {
@@ -562,6 +564,7 @@ export function CheckoutView() {
               </AnimatePresence>
             </Button>
           </motion.div>
+          <NoticeLine />
           <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheckIcon className="size-3.5 text-success-ink" />
             {t("checkout.secure")}

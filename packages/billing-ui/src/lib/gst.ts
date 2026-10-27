@@ -215,7 +215,7 @@ export const GSTR1_CODES = [
 export interface Gstr1Issue {
   code: string;
   severity: "error" | "warning";
-  docType?: "invoice" | "credit_note";
+  docType?: "invoice" | "credit_note" | "debit_note";
   docId?: string;
   number?: string;
   detail?: string;
@@ -293,7 +293,7 @@ export interface Gstr3b {
   itcNet: Tax;
   setOff: SetOff;
   cashPayable: number;
-  counts: { invoices: number; creditNotes: number; purchases: number; expenses: number; rcm: number; adjustments: number };
+  counts: { invoices: number; creditNotes: number; debitNotes?: number; purchases: number; expenses: number; rcm: number; adjustments: number };
   json: Record<string, unknown>;
   filename: string;
   qrmp: boolean;
@@ -304,7 +304,8 @@ export interface Gstr3b {
 
 export interface Contribution {
   cell: CellId;
-  docType: "invoice" | "credit_note" | "purchase" | "expense" | "debit_note" | "adjustment";
+  /** `debit_note` = a supplier debit note (purchase return); `sales_debit_note` = a debit note to a customer. */
+  docType: "invoice" | "credit_note" | "sales_debit_note" | "purchase" | "expense" | "debit_note" | "adjustment";
   docId: string;
   number: string;
   date: string;

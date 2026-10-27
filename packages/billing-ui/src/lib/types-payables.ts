@@ -26,6 +26,8 @@ export interface PurchasePayment {
   id: string;
   groupId: string;
   purchaseId: string | null;
+  /** An expense bought on credit (its bill no. / category is `billNumber`). */
+  expenseId?: string | null;
   supplierId: string | null;
   billNumber: string | null;
   kind: "payment" | "refund";
@@ -49,13 +51,14 @@ export interface PaymentInput {
 }
 
 export interface SupplierPaymentInput extends PaymentInput {
-  allocations?: { purchaseId: string; amount: number }[];
+  /** Each part names a purchase bill or an expense bought on credit. */
+  allocations?: ({ purchaseId: string; amount: number } | { expenseId: string; amount: number })[];
 }
 
 export interface SupplierPaymentResult {
   groupId: string;
   amount: number;
-  allocations: { purchaseId: string; billNumber: string; amount: number }[];
+  allocations: { purchaseId: string | null; expenseId: string | null; billNumber: string; amount: number }[];
   onAccount: number;
 }
 
@@ -89,7 +92,7 @@ export interface PayablesSummary {
 
 export interface StatementRow {
   date: string;
-  type: "opening" | "purchase" | "debit_note" | "payment" | "refund";
+  type: "opening" | "purchase" | "expense" | "debit_note" | "payment" | "refund";
   ref: string;
   description: string;
   credit: number;

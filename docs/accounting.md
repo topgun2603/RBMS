@@ -81,6 +81,8 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Customer receipt (credit book) | `customer_receipt` | Money account | Debtors (whole amount, advance included) |
 | Advance against a proforma invoice or sale order (docs/sales-documents.md) | `customer_receipt` (it is a customer receipt kept for that document) | Money account | Debtors |
 | Credit note issued (bill not cancelled) | `credit_note` | Sales returns (taxable), GST output (reversal) | Debtors (total) |
+| Debit note to a customer (CGST s.34(3), docs/expenses-debit-notes.md) | `sales_debit_note` | Debtors (total, with the customer) | Sales (taxable), GST output, round-off |
+| Debit note to a customer cancelled | `sales_debit_note_cancel` | mirror | mirror |
 | Purchase bill | `purchase` | Purchases (total - GST - round-off, freight inside), GST input CGST/SGST/IGST | Creditors (total) |
 | Purchase bill cancelled | `purchase_cancel` | mirror | mirror |
 | Supplier payment | `supplier_payment` | Creditors | Money account (by mode) |
@@ -88,8 +90,9 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Supplier payment reversed | `supplier_payment_reversal` (dated at reversal) | mirror | mirror |
 | Debit note issued | `debit_note` | Creditors (total) | Purchase returns (taxable), GST input (reversal) |
 | Debit note cancelled | `debit_note_cancel` | mirror | mirror |
-| Expense recorded | `expense` | Expense category account (amount - ITC), GST input (ITC; IGST when the vendor GSTIN is from another state than the shop's, else CGST+SGST halves) | Money account (amount) |
+| Expense recorded | `expense` | Expense category account (amount - ITC), GST input (ITC; IGST when the vendor GSTIN is from another state than the shop's, else CGST+SGST halves) | Money account (amount); **Creditors with the supplier** when bought on credit (payment method `credit`, docs/expenses-debit-notes.md), paid later by a supplier payment |
 | Expense cancelled | `expense_cancel` | mirror | mirror |
+| Expense draft (recurring expense waiting to be filled) | not posted until recorded | | |
 | Till closed with a difference | `till_difference` | Cash (excess) or Cash short and excess (short) | the other side |
 | Cash put in / taken out of the drawer by hand | `till_cash` | Cash / Till cash in-out (to review) | the other side |
 | Composition tax paid by challan (GST filing > Composition) | `gst_payment` (and `gst_payment_cancel` when cancelled) | Composition tax (expense, account 5930) | Money account (by method) |

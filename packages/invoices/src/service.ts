@@ -122,6 +122,8 @@ import {
 import { FEATURES, PAYMENTS_FEATURE } from "./features";
 import { gstSummary, rangeProblem, trendRange, zeroFillTrend, type GstCreditNote, type GstSummary, type TrendPoint } from "./reports";
 import { CreditNotesService, type CreditNoteSummary } from "./credit-notes";
+import { DebitNotesService, type DebitNoteSummary } from "./debit-notes";
+import { salesDebitNoteAllocations, salesDebitNotes } from "./schema-debit-notes";
 import {
   applyForeign,
   exportDetailsSchema,
@@ -996,6 +998,8 @@ export function snapshotOf(c: {
 interface CustomerAggregates {
   billed?: unknown;
   credited?: unknown;
+  /** Issued debit notes (they add to what the customer owes). */
+  debited?: unknown;
   paid?: unknown;
   received?: unknown;
   advance?: unknown;
@@ -1016,7 +1020,7 @@ const toCustomer = (c: BillingCustomer, agg: CustomerAggregates = {}): Customer 
   creditLimit: c.creditLimit,
   outstanding: ledgerBalance({
     opening: c.openingBalance,
-    billed: num(agg.billed),
+    billed: num(agg.billed) + num(agg.debited),
     credited: num(agg.credited),
     paid: num(agg.paid),
     received: num(agg.received),
@@ -1136,6 +1140,8 @@ export class InvoicesService {
   private readonly now: () => Date;
   /** Credit notes (returns and value corrections) against issued bills. */
   readonly creditNotes: CreditNotesService;
+  /** Debit notes to customers (the bill's value goes up; CGST s.34(3)). */
+  readonly debitNotes: DebitNotesService;
   /** POS till sessions (cash drawer open / close, X and Z reports). */
   readonly till: TillService;
 
@@ -1164,6 +1170,7 @@ export class InvoicesService {
       },
     );
     this.till = new TillService({ db: deps.db, log: this.log, now: this.now, approvals: deps.tillApprovals });
+    this.debitNotes = new DebitNotesService({ db: deps.db, events: deps.events, log: this.log, now: this.now });
   }
 
   /** Whether a feature is on for the shop (always true without a gate). Gate failures count as off. */
@@ -1275,12 +1282,22 @@ export class InvoicesService {
       .where(and(eq(customerReceipts.tenantId, tenantId), customerId ? eq(customerReceipts.customerId, customerId) : undefined))
       .groupBy(customerReceipts.customerId)
       .as("agg_rcp");
+    // Debit notes to customers raise what they owe (docs/expenses-debit-notes.md).
+    const dbn = this.db
+      .select({
+        customerId: salesDebitNotes.customerId,
+        debited: sql<string>`coalesce(sum(${salesDebitNotes.total}), 0)`.as("cq_debited"),
+      })
+      .from(salesDebitNotes)
+      .where(and(eq(salesDebitNotes.tenantId, tenantId), eq(salesDebitNotes.status, "issued"), customerId ? eq(salesDebitNotes.customerId, customerId) : isNotNull(salesDebitNotes.customerId)))
+      .groupBy(salesDebitNotes.customerId)
+      .as("agg_dbn");
 
-    const balance = sql<string>`(${billingCustomers.openingBalance} + coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0) - coalesce(${pay.paid}, 0) - coalesce(${rcp.received}, 0))`;
+    const balance = sql<string>`(${billingCustomers.openingBalance} + coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0) + coalesce(${dbn.debited}, 0) - coalesce(${pay.paid}, 0) - coalesce(${rcp.received}, 0))`;
     /** Expressions the lists sort and filter by (same SQL the rows compute). */
     const exprs = {
       balance,
-      billed: sql<string>`(coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0))`,
+      billed: sql<string>`(coalesce(${inv.billed}, 0) - coalesce(${inv.credited}, 0) + coalesce(${dbn.debited}, 0))`,
       lastBill: sql<string | null>`${inv.lastInvoice}`,
       oldestDue: sql<string | null>`${inv.oldestDue}`,
       lastPayment: sql<string | null>`greatest(${pay.lastPayment}, ${rcp.lastReceipt})`,
@@ -1291,6 +1308,7 @@ export class InvoicesService {
       c: billingCustomers,
       billed: inv.billed,
       credited: inv.credited,
+      debited: dbn.debited,
       paid: pay.paid,
       received: rcp.received,
       advance: rcp.advance,
@@ -1317,28 +1335,32 @@ export class InvoicesService {
           .from(billingCustomers)
           .leftJoin(inv, eq(inv.customerId, billingCustomers.id))
           .leftJoin(pay, eq(pay.customerId, billingCustomers.id))
-          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id)),
+          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id))
+          .leftJoin(dbn, eq(dbn.customerId, billingCustomers.id)),
       rows: () =>
         this.db
           .select(fields)
           .from(billingCustomers)
           .leftJoin(inv, eq(inv.customerId, billingCustomers.id))
           .leftJoin(pay, eq(pay.customerId, billingCustomers.id))
-          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id)),
+          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id))
+          .leftJoin(dbn, eq(dbn.customerId, billingCustomers.id)),
       count: () =>
         this.db
           .select({ total: count() })
           .from(billingCustomers)
           .leftJoin(inv, eq(inv.customerId, billingCustomers.id))
           .leftJoin(pay, eq(pay.customerId, billingCustomers.id))
-          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id)),
+          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id))
+          .leftJoin(dbn, eq(dbn.customerId, billingCustomers.id)),
       totals: () =>
         this.db
           .select(totalsFields)
           .from(billingCustomers)
           .leftJoin(inv, eq(inv.customerId, billingCustomers.id))
           .leftJoin(pay, eq(pay.customerId, billingCustomers.id))
-          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id)),
+          .leftJoin(rcp, eq(rcp.customerId, billingCustomers.id))
+          .leftJoin(dbn, eq(dbn.customerId, billingCustomers.id)),
     };
   }
 
@@ -1399,7 +1421,7 @@ export class InvoicesService {
         map: (r): CustomerListItem => ({
           ...toCustomer(r.c, r),
           lastBillDate: r.lastBill ?? null,
-          totalBilled: num(r.billed) - num(r.credited),
+          totalBilled: num(r.billed) - num(r.credited) + num(r.debited),
           overdue: num(r.overdue),
         }),
       }),
@@ -1572,7 +1594,9 @@ export class InvoicesService {
         .where(and(eq(invoices.tenantId, tenantId), eq(invoices.customerId, customerId), inArray(invoices.status, [...OPEN_STATUSES])))
         .orderBy(asc(invoices.date), asc(invoices.seq))
         .for("update");
-      const { allocations, advance } = allocateFifo(b.amount, bills);
+      const fifo = allocateFifo(b.amount, bills);
+      const allocations = fifo.allocations;
+      let advance = fifo.advance;
       const [receipt] = await tx
         .insert(customerReceipts)
         .values({
@@ -1611,8 +1635,16 @@ export class InvoicesService {
           if (next.status === "paid" && bill.status !== "paid") paidNow.push(a.invoiceId);
         }
       }
+      // What the open bills don't take settles the customer's open debit notes, oldest first; the rest is advance.
+      const left = await this.debitNotes.allocateReceipt(tx, tenantId, customerId, { id: receipt!.id, date: b.date }, advance);
+      let saved = receipt!;
+      if (left !== advance) {
+        advance = left;
+        const [u] = await tx.update(customerReceipts).set({ advance }).where(and(eq(customerReceipts.tenantId, tenantId), eq(customerReceipts.id, receipt!.id))).returning();
+        saved = u ?? saved;
+      }
       this.log.info({ tenantId, customerId, receiptId: receipt!.id, allocated: allocations.length, advance }, "receipt recorded");
-      return { receipt: toReceipt(receipt!), allocations, advance };
+      return { receipt: toReceipt(saved), allocations, advance };
     });
     if (this.events && result.allocations.length > 0) {
       for (const a of result.allocations) {
@@ -1771,6 +1803,7 @@ export class InvoicesService {
             .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, u.id)));
         }
       }
+      await this.debitNotes.releaseReceipt(tx, tenantId, receiptId);
       await tx.delete(customerReceipts).where(and(eq(customerReceipts.tenantId, tenantId), eq(customerReceipts.id, receiptId)));
     });
   }
@@ -1787,7 +1820,7 @@ export class InvoicesService {
     c: { id: string; openingBalance: number; createdAt: Date },
     range: { from?: string | null; to?: string | null },
   ): Promise<Ledger> {
-    const [bills, payments, receipts, notes] = await Promise.all([
+    const [bills, payments, receipts, notes, debitNotes] = await Promise.all([
       this.db
         .select({
           id: invoices.id,
@@ -1833,6 +1866,7 @@ export class InvoicesService {
         .where(
           and(eq(creditNotes.tenantId, tenantId), eq(creditNotes.status, "issued"), eq(invoices.customerId, c.id), ne(invoices.status, "cancelled")),
         ),
+      this.debitNotes.issuedForCustomer(tenantId, c.id),
     ]);
     const events = ledgerEvents({
       invoices: bills.map((i) => ({
@@ -1873,6 +1907,7 @@ export class InvoicesService {
         // Same transaction as its refund (same created_at): the note comes first.
         at: n.createdAt.getTime() - 1,
       })),
+      debitNotes: debitNotes.map((n) => ({ id: n.id, number: n.number, invoiceNumber: n.invoiceNumber, date: n.date, total: n.total, at: n.issuedAt.getTime() })),
     });
     return buildLedger(c.openingBalance, events, { from: range.from, to: range.to, openingDate: todayIST(c.createdAt) });
   }
@@ -2831,6 +2866,9 @@ export class InvoicesService {
       if (before.imported) {
         throw new AppError(409, "invoice_imported", "This bill was imported from your old software and can't be cancelled here; roll back the import instead");
       }
+      if (await this.debitNotes.hasIssued(tx, tenantId, id)) {
+        throw new AppError(409, "invoice_has_debit_notes", "This bill has debit notes; cancel them first (same day only)");
+      }
       if (before.credited > 0) {
         throw new AppError(
           409,
@@ -3489,6 +3527,19 @@ export class InvoicesService {
       // Imported history was already filed from the old software: keep it out of the GST return summary.
       .where(and(this.billedIn(tenantId, from, to, branchId), eq(invoices.imported, false)));
     const notes = await this.creditNotesIn(tenantId, from, to, branchId);
+    // Debit notes to customers of the period (their own row keeps the original bill's total).
+    const debits = await this.db
+      .select()
+      .from(salesDebitNotes)
+      .where(
+        and(
+          eq(salesDebitNotes.tenantId, tenantId),
+          eq(salesDebitNotes.status, "issued"),
+          gte(salesDebitNotes.date, from),
+          lte(salesDebitNotes.date, to),
+          branchId ? eq(salesDebitNotes.branchId, branchId) : undefined,
+        ),
+      );
     // The original bill's total decides B2CL vs B2CS for notes to unregistered buyers.
     const originals = new Map(
       notes.length
@@ -3526,6 +3577,20 @@ export class InvoicesService {
         lines: r.lines,
       })),
       gstNotes,
+      debits.map((n) => ({
+        id: n.id,
+        number: n.number,
+        date: n.date,
+        invoiceNumber: n.invoiceNumber,
+        invoiceDate: n.invoiceDate,
+        customerName: n.customer.name,
+        customerGstin: n.customer.gstin,
+        placeOfSupply: n.placeOfSupply,
+        interState: n.interState,
+        invoiceTotal: n.invoiceTotal,
+        total: n.total,
+        lines: n.lines,
+      })),
     );
   }
 
@@ -3664,8 +3729,20 @@ export class InvoicesService {
           ),
         ),
       );
+    // Debit notes open as of asOf (receipts allocated to them up to that date), aged from their own due date.
+    const dnPaid = sql<string>`coalesce((select sum(a.amount) from ${salesDebitNoteAllocations} a where a.tenant_id = ${salesDebitNotes.tenantId} and a.debit_note_id = ${salesDebitNotes.id} and a.date <= ${asOf}), 0)`;
+    const notes = await this.db
+      .select({
+        customerId: salesDebitNotes.customerId,
+        name: sql<string>`${salesDebitNotes.customer}->>'name'`,
+        date: salesDebitNotes.date,
+        dueDate: salesDebitNotes.dueDate,
+        balance: sql<string>`${salesDebitNotes.total} - ${dnPaid}`,
+      })
+      .from(salesDebitNotes)
+      .where(and(eq(salesDebitNotes.tenantId, tenantId), eq(salesDebitNotes.status, "issued"), lte(salesDebitNotes.date, asOf), q.branchId ? eq(salesDebitNotes.branchId, q.branchId) : undefined));
     const report = ageingReport(
-      rows.map((r) => ({ customerId: r.customerId, name: r.name ?? "", date: r.date, dueDate: r.dueDate, balance: num(r.balance) })),
+      [...rows, ...notes].map((r) => ({ customerId: r.customerId, name: r.name ?? "", date: r.date, dueDate: r.dueDate, balance: num(r.balance) })),
       asOf,
     );
     return { asOf, ...report };

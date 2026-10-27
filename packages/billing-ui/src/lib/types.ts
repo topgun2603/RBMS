@@ -413,7 +413,7 @@ export interface ReceiptResult {
   advance: number;
 }
 
-export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel" | "credit_note" | "refund";
+export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel" | "credit_note" | "debit_note" | "refund";
 
 export interface LedgerEntry {
   date: string;
@@ -655,8 +655,8 @@ export interface GstSummaryResponse {
   hsn: { hsn: string; description: string; unit: string; qty: number; taxable: number; cgst: number; sgst: number; igst: number; total: number }[];
   byRate: TaxBreakupRow[];
   gstr3b: { outwardTaxable: number; igst: number; cgst: number; sgst: number; nilRated: number };
-  totals?: Partial<Record<"taxable" | "cgst" | "sgst" | "igst" | "total" | "creditNotes", number>>;
-  /** Credit notes to registered buyers (GSTR-1 Table 9B). */
+  totals?: Partial<Record<"taxable" | "cgst" | "sgst" | "igst" | "total" | "creditNotes" | "debitNotes", number>>;
+  /** Credit and debit notes to registered buyers (GSTR-1 Table 9B); `noteType` "C" credit, "D" debit. */
   cdnr?: {
     gstin: string;
     name: string;
@@ -664,6 +664,7 @@ export interface GstSummaryResponse {
     noteDate: string;
     invoiceNumber: string;
     invoiceDate: string;
+    noteType?: "C" | "D";
     placeOfSupply: string;
     rate: number;
     taxable: number;
@@ -673,8 +674,9 @@ export interface GstSummaryResponse {
     noteValue: number;
   }[];
   /** Credit notes to unregistered buyers on B2CL bills. */
-  cdnur?: { noteNumber: string; noteDate: string; invoiceNumber: string; placeOfSupply: string; rate: number; taxable: number; igst: number; noteValue: number }[];
+  cdnur?: { noteNumber: string; noteDate: string; invoiceNumber: string; noteType?: "C" | "D"; placeOfSupply: string; rate: number; taxable: number; igst: number; noteValue: number }[];
   creditNoteTotals?: { count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
+  debitNoteTotals?: { count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number };
 }
 
 export type PaymentSource = "bill" | "receipt" | "online";

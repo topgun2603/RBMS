@@ -236,6 +236,26 @@ describe("GSTR-3B", () => {
     expect(json.inter_sup.unreg_details).toEqual([{ pos: "29", txval: 2000, iamt: 240 }]);
     expect(json.itc_elg.itc_avl.map((x) => x.ty)).toEqual(["IMPG", "IMPS", "ISRC", "ISD", "OTH"]);
   });
+  it("adds debit notes to customers to 3.1(a) (and 3.2 for unregistered inter-State), counted on their own", () => {
+    const sales = [
+      sale("a", "INV/26-27/0001", "2026-10-02", [line(100000, 18)]),
+      sale("n", "CN/26-27/0001", "2026-10-09", [line(10000, 18)], { docType: "CRN" }),
+      sale("d", "DN/26-27/0001", "2026-10-15", [line(20000, 18)], { docType: "DBN" }),
+      sale("u", "DN/26-27/0002", "2026-10-16", [line(5000, 12, true)], { docType: "DBN", interState: true }),
+      sale("z", "DN/26-27/0003", "2026-10-17", [line(7000, 18)], { docType: "DBN", status: "cancelled" }),
+    ];
+    const r = buildGstr3b({ ...base, sales });
+    expect(r.cells["3.1a"].taxable).toBe(100000 - 10000 + 20000 + 5000);
+    expect(r.cells["3.1a"].cgst).toBe(9000 - 900 + 1800);
+    expect(r.cells["3.1a"].igst).toBe(600);
+    expect(r.unregByPos).toEqual([{ pos: "29", taxable: 5000, igst: 600 }]);
+    expect(r.counts).toMatchObject({ invoices: 1, creditNotes: 1, debitNotes: 2 });
+    expect(r.contributions.filter((c) => c.docType === "sales_debit_note").map((c) => [c.number, c.cell, c.taxable])).toEqual([
+      ["DN/26-27/0001", "3.1a", 20000],
+      ["DN/26-27/0002", "3.1a", 5000],
+      ["DN/26-27/0002", "3.2", 5000],
+    ]);
+  });
   it("keeps every cell reconcilable to its documents", () => {
     const sales = [sale("a", "INV/1", "2026-10-02", [line(100000, 18)]), sale("b", "INV/2", "2026-10-03", [line(50000, 18)])];
     const r = buildGstr3b({ ...base, sales });
@@ -351,6 +371,21 @@ describe("GSTR-1 extra tables", () => {
     expect(r.voidedCounted).toBe(1);
     expect(r.gaps).toEqual([{ series: "INV/26-27/", missing: ["INV/26-27/0004"] }]);
     expect(r.doc_det.find((d) => d.doc_num === 5)!.docs[0]!.net_issue).toBe(1);
+  });
+  it("lists debit notes to customers in Table 13 as doc type 4 and adds them to Table 8 rows", () => {
+    const sales = [
+      sale("1", "INV/26-27/0001", "2026-10-01", [line(1000, 0)]),
+      sale("d1", "DN/26-27/0001", "2026-10-06", [line(300, 0)], { docType: "DBN" }),
+      sale("d2", "DN/26-27/0002", "2026-10-07", [line(100, 18)], { docType: "DBN", status: "cancelled" }),
+    ];
+    const r = buildDocIssue(sales, [], range);
+    expect(r.doc_det.map((d) => [d.doc_num, d.doc_typ])).toEqual([
+      [1, "Invoices for outward supply"],
+      [4, "Debit Note"],
+    ]);
+    expect(r.doc_det[1]!.docs[0]).toEqual({ num: 1, from: "DN/26-27/0001", to: "DN/26-27/0002", totnum: 2, cancel: 1, net_issue: 1 });
+    const nil = buildNil(sales, cfg(), range);
+    expect(nil.inv.find((x) => x.sply_ty === "INTRAB2C")?.nil_amt).toBe(13);
   });
   it("validates what would be wrong in the file", () => {
     const bad = [

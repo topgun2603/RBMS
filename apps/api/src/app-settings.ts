@@ -1,4 +1,5 @@
 import { AI_SETTINGS_DEFAULTS, AI_SETTINGS_SCHEMA } from "@srirealtime/ai";
+import { PRIVACY_SETTINGS_DEFAULTS, PRIVACY_SETTINGS_PUBLIC_KEYS, PRIVACY_SETTINGS_SCHEMA } from "@srirealtime/consent";
 import { LOYALTY_SETTINGS_DEFAULTS, LOYALTY_SETTINGS_SCHEMA } from "@srirealtime/loyalty";
 import { JEWELLERY_SETTINGS_DEFAULTS, JEWELLERY_SETTINGS_SCHEMA } from "@srirealtime/jewellery";
 import { MEMBERSHIPS_SETTINGS_DEFAULTS, MEMBERSHIPS_SETTINGS_SCHEMA } from "@srirealtime/memberships";
@@ -229,6 +230,8 @@ export function defineAppSettings(settings: SettingsService) {
   // Platform only: each solution's feature preset (kit-verticals.ts createSolutionPresets).
   settings.define("solutions", SOLUTIONS_SETTINGS_SCHEMA, SOLUTIONS_SETTINGS_DEFAULTS);
   settings.define("whatsapp", WHATSAPP_SETTINGS_SCHEMA, WHATSAPP_SETTINGS_DEFAULTS);
+  // Data privacy (DPDP, docs/privacy-dpdp.md): grievance contact, response deadline, retention periods. App level = the platform.
+  settings.define("privacy", PRIVACY_SETTINGS_SCHEMA, PRIVACY_SETTINGS_DEFAULTS, { publicKeys: PRIVACY_SETTINGS_PUBLIC_KEYS as (keyof typeof PRIVACY_SETTINGS_DEFAULTS)[] });
   // AI helpers (docs/ai.md): the owner's opt-in, per-helper switches, masking and debug storage. Off by default.
   settings.define("ai", AI_SETTINGS_SCHEMA, AI_SETTINGS_DEFAULTS);
   // Restaurant kitchen: the food-cost percentage a dish should stay under (recipes screen, AI Phase 3 part A).

@@ -1,6 +1,7 @@
 import { formatINR } from "@srirealtime/gst";
 import { documented, FULL_ACCESS_ROLES, requireRole, requireTenant, requireUser } from "@srirealtime/core";
 import type { CreditNoteInput, CreditNoteListQuery } from "./credit-notes";
+import type { DebitNoteInput, DebitNoteListQuery } from "./debit-notes";
 import {
   tillCashSchema,
   tillCloseFields,
@@ -348,7 +349,7 @@ export const creditBookSchema = z.object({
 });
 export const ledgerEntrySchema = z.object({
   date: z.string(),
-  type: z.enum(["opening", "invoice", "payment", "receipt", "cancel", "credit_note", "refund"] as const satisfies readonly LedgerEntryType[]),
+  type: z.enum(["opening", "invoice", "payment", "receipt", "cancel", "credit_note", "debit_note", "refund"] as const satisfies readonly LedgerEntryType[]),
   /** The bill, payment, receipt or credit note id (null for the opening line). */
   refId: z.string().nullable(),
   number: z.string().nullable(),
@@ -678,6 +679,37 @@ export function invoicesRoutes(service: InvoicesService) {
         const cn = res.creditNote;
         req.auditSummary = `Credit note ${cn.number} for ${cn.invoiceNumber}: ${formatINR(cn.total)} (${cn.reason}, refund ${cn.refundMode}${cn.refundAmount ? ` ${formatINR(cn.refundAmount)}` : ""})`;
         return res;
+      });
+
+      // debit notes to customers (CGST s.34(3): the bill's value goes up), docs/expenses-debit-notes.md
+      staff.get("/debit-notes", BASE, async (req, reply) => {
+        const q = query(req);
+        const csv = wantsCsv(req);
+        const result = await service.debitNotes.list(requireTenant(req.ctx).id, (csv ? { ...q, limit: "200", offset: "0" } : q) as DebitNoteListQuery);
+        if (!csv) return result;
+        return sendCsv(reply, csvBuilders.debitNotes(result.items), "debit-notes", q.from, q.to);
+      });
+      staff.get("/debit-notes/:id", BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.debitNotes.get(requireTenant(req.ctx).id, id);
+      });
+      staff.post("/debit-notes/:id/cancel", audited(FEATURES.base, { action: "invoices.debit_note.cancel", entity: "debit_note" }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const { reason } = cancelBody.parse(req.body ?? {});
+        const note = await service.debitNotes.cancel(requireTenant(req.ctx).id, id, reason, requireUser(req.ctx).id);
+        req.auditSummary = `Debit note ${note.number} cancelled`;
+        return note;
+      });
+      staff.get(`${BILL_ID}/debit-notes`, BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return { items: await service.debitNotes.forInvoice(requireTenant(req.ctx).id, id) };
+      });
+      staff.post(`${BILL_ID}/debit-notes`, audited(FEATURES.base, { action: "invoices.debit_note.issue", entity: "invoice" }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const note = await service.debitNotes.create(requireTenant(req.ctx).id, id, body(req) as DebitNoteInput, requireUser(req.ctx).id);
+        req.auditSummary = `Debit note ${note.number} on ${note.invoiceNumber}: ${formatINR(note.total)} (${note.reason})`;
+        req.auditDetail = { entityId: note.id };
+        return note;
       });
 
       // POS till sessions

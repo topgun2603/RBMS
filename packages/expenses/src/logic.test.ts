@@ -2,7 +2,7 @@ import { gstinCheckChar } from "@srirealtime/gst";
 import { describe, expect, it } from "vitest";
 import { expensesCsv } from "./csv";
 import { gstFromInclusive, itcOf, profitReport, resolveGst, summarize, ZERO_GST } from "./logic";
-import { expenseInput, reportRange, type ExpenseView } from "./service";
+import { expenseBalance, expenseInput, groupExpenses, reportRange, type ExpenseView } from "./service";
 
 const FIRST14 = "33ABCDE1234F1Z";
 const GSTIN = FIRST14 + gstinCheckChar(FIRST14);
@@ -127,6 +127,66 @@ describe("report range and CSV", () => {
       } as unknown as ExpenseView,
     ]);
     const line = csv.split("\r\n")[1];
-    expect(line).toBe(`2026-10-05,Rent,'=HYPERLINK(),${GSTIN},118.00,18,18.00,18.00,upi,,"Oct, shop",recorded`);
+    expect(line).toBe(`2026-10-05,Rent,'=HYPERLINK(),${GSTIN},118.00,18,18.00,18.00,upi,,"Oct, shop",recorded,Shop-wide,,,`);
+  });
+
+  it("shows the branch name and, for credit expenses, paid and balance", () => {
+    const csv = expensesCsv(
+      [
+        {
+          date: "2026-10-05",
+          categoryName: "Electricity",
+          vendorName: "TNEB",
+          vendorGstin: null,
+          amount: 50000,
+          gstRate: 0,
+          gstAmount: 0,
+          itc: 0,
+          paymentMethod: "credit",
+          reference: "EB-77",
+          note: null,
+          status: "recorded",
+          branchId: "b1",
+          dueDate: "2026-10-20",
+          amountPaid: 20000,
+          balance: 30000,
+        } as unknown as ExpenseView,
+      ],
+      (id) => (id === "b1" ? "Anna Nagar" : "Shop-wide"),
+    );
+    expect(csv.split("\r\n")[1]).toBe("2026-10-05,Electricity,TNEB,,500.00,0,0.00,0.00,credit,EB-77,,recorded,Anna Nagar,2026-10-20,200.00,300.00");
+  });
+});
+
+describe("expense report groups", () => {
+  const row = (over: Record<string, unknown>) =>
+    ({ date: "2026-10-05", categoryId: "rent", supplierId: null, vendorName: null, vendorGstin: null, branchId: null, amount: 10_000, gstAmount: 0, status: "recorded", paymentMethod: "cash", amountPaid: 0, ...over }) as Parameters<typeof groupExpenses>[0][number];
+  const names = { categories: [{ id: "rent", name: "Rent" }, { id: "eb", name: "Electricity" }], branches: [{ id: "b1", name: "Anna Nagar" }] };
+  const rows = [
+    row({ branchId: "b1", amount: 118_000, gstAmount: 18_000, vendorGstin: GSTIN, supplierId: "s1", vendorName: "Kumar Estates", paymentMethod: "credit", amountPaid: 18_000 }),
+    row({ categoryId: "eb", amount: 50_000, vendorName: "TNEB", date: "2026-09-28" }),
+    row({ categoryId: "eb", amount: 9_999, status: "draft" }),
+    row({ amount: 5_000, status: "cancelled" }),
+  ];
+
+  it("by branch: each branch and the shop-wide row; net is after ITC; unpaid only from credit expenses", () => {
+    const g = groupExpenses(rows, "branch", names);
+    expect(g.rows.map((r) => [r.key, r.label, r.count, r.total, r.itc, r.net, r.unpaid])).toEqual([
+      ["b1", "Anna Nagar", 1, 118_000, 18_000, 100_000, 100_000],
+      ["", "", 1, 50_000, 0, 50_000, 0],
+    ]);
+    expect(g.totals).toEqual({ count: 2, total: 168_000, gst: 18_000, itc: 18_000, net: 150_000, unpaid: 100_000 });
+  });
+
+  it("by category, supplier (typed-in vendors by name) and month (oldest first)", () => {
+    expect(groupExpenses(rows, "category", names).rows.map((r) => [r.label, r.total])).toEqual([["Rent", 118_000], ["Electricity", 50_000]]);
+    expect(groupExpenses(rows, "supplier", names).rows.map((r) => [r.key, r.label])).toEqual([["s1", "Kumar Estates"], ["name:tneb", "TNEB"]]);
+    expect(groupExpenses(rows, "month", names).rows.map((r) => r.key)).toEqual(["2026-09", "2026-10"]);
+  });
+
+  it("only recorded credit expenses owe a balance", () => {
+    expect(expenseBalance({ status: "recorded", paymentMethod: "credit", amount: 100, amountPaid: 40 })).toBe(60);
+    expect(expenseBalance({ status: "recorded", paymentMethod: "cash", amount: 100, amountPaid: 0 })).toBe(0);
+    expect(expenseBalance({ status: "draft", paymentMethod: "credit", amount: 100, amountPaid: 0 })).toBe(0);
   });
 });

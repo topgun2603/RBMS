@@ -35,6 +35,7 @@ import {
   accountOpeningPosting,
   creditNotePostings,
   debitNotePostings,
+  salesDebitNotePostings,
   effectiveDate,
   expensePostings,
   gstPaymentPostings,
@@ -957,7 +958,7 @@ export class AccountingService {
 
   async loadDocs(tenantId: string) {
     const s = this.deps.sources;
-    const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments, payroll] = await Promise.all([
+    const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments, payroll, salesDebitNotes] = await Promise.all([
       s.invoices(tenantId),
       s.invoicePayments(tenantId),
       s.receipts(tenantId),
@@ -972,8 +973,9 @@ export class AccountingService {
       s.stockAdjustments ? s.stockAdjustments(tenantId) : Promise.resolve([]),
       s.gstPayments ? s.gstPayments(tenantId) : Promise.resolve([]),
       s.payroll ? s.payroll(tenantId) : Promise.resolve(null),
+      s.salesDebitNotes ? s.salesDebitNotes(tenantId) : Promise.resolve([]),
     ]);
-    return { invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments, payroll };
+    return { invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments, payroll, salesDebitNotes };
   }
 
   private postingsOf(docs: Awaited<ReturnType<AccountingService["loadDocs"]>>, o: RuleOptions): Posting[] {
@@ -982,6 +984,7 @@ export class AccountingService {
       ...docs.payments.flatMap((d) => invoicePaymentPostings(d, o)),
       ...docs.receipts.flatMap((d) => receiptPostings(d)),
       ...docs.creditNotes.flatMap((d) => creditNotePostings(d, o)),
+      ...docs.salesDebitNotes.flatMap((d) => salesDebitNotePostings(d)),
       ...docs.purchases.flatMap((d) => purchasePostings(d, o)),
       ...docs.supplierPayments.flatMap((d) => supplierPaymentPostings(d, o)),
       ...docs.debitNotes.flatMap((d) => debitNotePostings(d, o)),

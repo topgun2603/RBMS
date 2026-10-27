@@ -2,6 +2,7 @@ import { packFor } from "@srirealtime/verticals";
 import { b4En, b4Ta } from "./messages-b4";
 import { aiChatEn, aiChatTa } from "./messages-aichat";
 import { signInEn, signInTa } from "./messages-signin";
+import { privacyEn, privacyTa } from "./messages-privacy";
 import { diningEn, diningTa } from "./messages-dining";
 import { servicesEn, servicesTa } from "./messages-services";
 import { sectionsEn, sectionsTa } from "./messages-sections";
@@ -19,6 +20,7 @@ export const en: Messages = {
   ...b4En,
   ...aiChatEn,
   ...signInEn,
+  ...privacyEn,
   ...diningEn,
   ...servicesEn,
   ...sectionsEn,
@@ -479,6 +481,7 @@ export const ta: Messages = {
   ...b4Ta,
   ...aiChatTa,
   ...signInTa,
+  ...privacyTa,
   ...diningTa,
   ...servicesTa,
   ...sectionsTa,

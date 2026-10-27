@@ -11,6 +11,7 @@ import { Markdown, safeHref, stripLeadingHeading } from "../lib/markdown";
 import type { Block, CmsPage, List, Post, PostSummary } from "../types";
 import { Breadcrumbs, Container, Empty, JsonLd, StoreImage } from "../components/bits";
 import { POLICY_KINDS, type PolicyKind } from "../components/footer";
+import { NoticeBody, type PublicNotice } from "../components/privacy-notice";
 import { AccountView } from "../client/account-view";
 import { CartView } from "../client/cart-view";
 import { CheckoutView } from "../client/checkout-view";
@@ -212,15 +213,18 @@ export async function policyMetadata(kind: string): Promise<Metadata> {
 }
 
 export async function PolicyPage({ kind }: { kind: string }) {
-  const [{ t }, config] = await Promise.all([getRequestInfo(), getConfig()]);
-  if (!isPolicyKind(kind) || !config?.policies[kind]?.trim()) notFound();
+  const [{ t, locale }, config] = await Promise.all([getRequestInfo(), getConfig()]);
+  if (!isPolicyKind(kind) || (kind !== "privacy" && !config?.policies[kind]?.trim())) notFound();
+  const own = config?.policies[kind]?.trim() ?? "";
+  const notice = kind === "privacy" ? await apiGetOrNull<PublicNotice>("/consent/notice", { revalidate: 60 }) : null;
   return (
     <Container className="max-w-3xl py-10">
       <Breadcrumbs items={[{ name: t("nav.home"), href: "/" }, { name: t(`policy.${kind}`) }]} />
       <h1 className="mt-4 mb-8 font-display text-h1 font-semibold">{t(`policy.${kind}`)}</h1>
-      <Markdown source={stripLeadingHeading(config.policies[kind], [t(`policy.${kind}`), kind])} className="text-[17px] leading-relaxed text-foreground/85" />
+      {own && <Markdown source={stripLeadingHeading(own, [t(`policy.${kind}`), kind])} className="text-[17px] leading-relaxed text-foreground/85" />}
+      {notice && <NoticeBody notice={notice} locale={locale} t={t} />}
       <nav className="mt-12 flex flex-wrap gap-2 border-t pt-6" aria-label={t("footer.policies")}>
-        {POLICY_KINDS.filter((k) => k !== kind && config.policies[k]?.trim()).map((k) => (
+        {POLICY_KINDS.filter((k) => k !== kind && config?.policies[k]?.trim()).map((k) => (
           <Link key={k} href={`/policies/${k}`} className="rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent">
             {t(`policy.${k}`)}
           </Link>

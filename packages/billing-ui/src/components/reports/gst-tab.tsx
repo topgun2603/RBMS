@@ -307,10 +307,12 @@ function Gstr1({ data, from, to }: { data: GstSummaryResponse; from: string; to:
 
   const cdnr = data.cdnr ?? [];
   const cdnur = data.cdnur ?? [];
-  const note = (r: { noteNumber: string; invoiceNumber: string }) => (
+  const note = (r: { noteNumber: string; invoiceNumber: string; noteType?: "C" | "D" }) => (
     <span className="grid">
       <span className="font-medium tabular-nums">{r.noteNumber}</span>
-      <span className="text-xs text-muted-foreground">{t("billing.cn.against", { number: r.invoiceNumber })}</span>
+      <span className="text-xs text-muted-foreground">
+        {r.noteType === "D" ? `${t("billing.dn.create")} (D) · ${t("billing.dn.on", { number: r.invoiceNumber })}` : t("billing.cn.against", { number: r.invoiceNumber })}
+      </span>
     </span>
   );
   const cdnrCols: Column<CDNR>[] = [

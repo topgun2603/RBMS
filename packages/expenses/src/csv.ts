@@ -1,4 +1,4 @@
-import type { ExpenseView } from "./service";
+import type { ExpenseReport, ExpenseView } from "./service";
 
 export type CsvValue = string | number | boolean | null | undefined;
 
@@ -25,9 +25,9 @@ export function csvDisposition(name: string, from?: string | null, to?: string |
   return `attachment; filename="${parts}.csv"`;
 }
 
-export function expensesCsv(items: readonly ExpenseView[]): string {
+export function expensesCsv(items: readonly ExpenseView[], branchName: (id: string | null) => string = (id) => (id ? id : "Shop-wide")): string {
   return toCsv(
-    ["Date", "Category", "Vendor", "Vendor GSTIN", "Amount", "GST rate", "GST", "ITC", "Payment method", "Reference", "Note", "Status"],
+    ["Date", "Category", "Vendor", "Vendor GSTIN", "Amount", "GST rate", "GST", "ITC", "Payment method", "Reference", "Note", "Status", "Branch", "Due date", "Paid", "Balance"],
     items.map((e) => [
       e.date,
       e.categoryName,
@@ -41,6 +41,24 @@ export function expensesCsv(items: readonly ExpenseView[]): string {
       e.reference,
       e.note,
       e.status,
+      branchName(e.branchId),
+      e.dueDate,
+      e.paymentMethod === "credit" ? rupees(e.amountPaid) : "",
+      e.paymentMethod === "credit" ? rupees(e.balance) : "",
     ]),
+  );
+}
+
+const GROUP_HEAD: Record<ExpenseReport["groupBy"], string> = { category: "Category", supplier: "Supplier", branch: "Branch", month: "Month" };
+const NONE_LABEL: Record<ExpenseReport["groupBy"], string> = { category: "Other", supplier: "No supplier", branch: "Shop-wide", month: "" };
+
+/** The expense report (by category / supplier / branch / month) with a total row. */
+export function expenseReportCsv(r: ExpenseReport): string {
+  return toCsv(
+    [GROUP_HEAD[r.groupBy], "Expenses", "Amount", "GST", "ITC", "Net of ITC", "Unpaid"],
+    [
+      ...r.rows.map((x) => [x.label || NONE_LABEL[r.groupBy], x.count, rupees(x.total), rupees(x.gst), rupees(x.itc), rupees(x.net), rupees(x.unpaid)]),
+      ["Total", r.totals.count, rupees(r.totals.total), rupees(r.totals.gst), rupees(r.totals.itc), rupees(r.totals.net), rupees(r.totals.unpaid)],
+    ],
   );
 }

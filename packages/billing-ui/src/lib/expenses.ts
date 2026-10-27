@@ -8,8 +8,10 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { absoluteUrl, api, ApiError, apiDownload } from "@srirealtime/web";
 import { isValidGstin } from "@srirealtime/gst";
 
-export const EXPENSE_PAYMENT_METHODS = ["cash", "upi", "card", "bank", "cheque", "other"] as const;
+/** "credit" = not paid yet: a bill in the supplier's Payables (needs a supplier). */
+export const EXPENSE_PAYMENT_METHODS = ["cash", "upi", "card", "bank", "cheque", "other", "credit"] as const;
 export type ExpensePaymentMethod = (typeof EXPENSE_PAYMENT_METHODS)[number];
+export type ExpenseStatus = "recorded" | "cancelled" | "draft";
 
 export interface ExpenseCategory {
   id: string;
@@ -34,7 +36,19 @@ export interface Expense {
   reference: string | null;
   note: string | null;
   receiptUrl: string | null;
-  status: "recorded" | "cancelled";
+  /** `draft` = made by a recurring expense, to check / fill and record. */
+  status: ExpenseStatus;
+  /** Supplier (inventory) the bill is from. */
+  supplierId: string | null;
+  /** null = shop-wide. */
+  branchId: string | null;
+  /** Credit expenses: when the supplier is to be paid. */
+  dueDate: string | null;
+  /** Credit expenses: paid through Payables. */
+  amountPaid: number;
+  /** Credit expenses: still to pay. */
+  balance: number;
+  recurringId: string | null;
   createdAt: string;
 }
 
@@ -49,6 +63,10 @@ export interface ExpenseInput {
   reference?: string | null;
   note?: string | null;
   receiptUrl?: string | null;
+  supplierId?: string | null;
+  /** Left out = the user's current branch; null = shop-wide. */
+  branchId?: string | null;
+  dueDate?: string | null;
 }
 
 export interface ExpenseFilters {
@@ -182,6 +200,195 @@ export function useDeleteCategory() {
 }
 
 export const downloadExpensesCsv = (f: ExpenseFilters) => apiDownload(EXP, { ...f, format: "csv" }, `expenses-${f.from}-to-${f.to}.csv`);
+
+/** Records a draft (made by a recurring expense) with the fields filled in. */
+export function useRecordExpense() {
+  const changed = useChanged();
+  return useMutation({ mutationFn: ({ id, body }: { id: string; body: Partial<ExpenseInput> }) => api.post<Expense>(`${EXP}/${id}/record`, body), onSuccess: changed });
+}
+
+/** Open credit expenses of a supplier (for choosing what a supplier payment settles). Empty without expenses access. */
+export function useSupplierDueExpenses(supplierId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["expenses", "due", supplierId],
+    queryFn: () =>
+      api
+        .get<ExpenseList>(EXP, { supplierId, unpaid: "true", status: "recorded", sort: "date", limit: 200 })
+        .then((r) => r.items)
+        .catch(() => [] as Expense[]),
+    enabled: enabled && !!supplierId,
+  });
+}
+
+// ---------------------------------------------------------------- expense report
+
+export const EXPENSE_REPORT_GROUPS = ["category", "supplier", "branch", "month"] as const;
+export type ExpenseReportGroup = (typeof EXPENSE_REPORT_GROUPS)[number];
+
+export interface ExpenseReportRow {
+  /** Category / supplier / branch id ("" = no supplier / shop-wide), or "YYYY-MM". */
+  key: string;
+  label: string;
+  count: number;
+  total: number;
+  gst: number;
+  itc: number;
+  /** total − itc. */
+  net: number;
+  unpaid: number;
+}
+
+export interface ExpenseReport {
+  from: string;
+  to: string;
+  groupBy: ExpenseReportGroup;
+  rows: ExpenseReportRow[];
+  totals: Omit<ExpenseReportRow, "key" | "label">;
+}
+
+export function useExpenseReport(p: { from: string; to: string; groupBy: ExpenseReportGroup }, enabled = true) {
+  return useQuery({
+    queryKey: ["expenses", "report", p] as const,
+    queryFn: ({ signal }) => api.get<ExpenseReport>(`${EXP}/reports/expenses`, p, { signal }),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+export const downloadExpenseReportCsv = (p: { from: string; to: string; groupBy: ExpenseReportGroup }) =>
+  apiDownload(`${EXP}/reports/expenses`, { ...p, format: "csv" }, `expenses-by-${p.groupBy}-${p.from}-to-${p.to}.csv`);
+
+// ---------------------------------------------------------------- recurring expenses (`/v1/expenses/recurring`)
+
+export const RECURRING_FREQUENCIES = ["weekly", "monthly", "quarterly", "yearly"] as const;
+export type RecurringFrequency = (typeof RECURRING_FREQUENCIES)[number];
+export type RecurringStatus = "active" | "paused" | "ended";
+export type RecurringMode = "auto" | "draft";
+
+export interface RecurringExpense {
+  id: string;
+  name: string;
+  categoryId: string;
+  supplierId: string | null;
+  branchId: string | null;
+  vendorName: string | null;
+  vendorGstin: string | null;
+  /** null = ask each time. */
+  amount: number | null;
+  askEachTime: boolean;
+  gstRate: number;
+  paymentMethod: ExpensePaymentMethod;
+  dueDays: number | null;
+  note: string | null;
+  mode: RecurringMode;
+  frequency: RecurringFrequency;
+  interval: number;
+  dayOfMonth: number | null;
+  weekday: number | null;
+  startDate: string;
+  endDate: string | null;
+  nextRunDate: string | null;
+  status: RecurringStatus;
+  count: number;
+  lastRunAt: string | null;
+}
+
+export interface RecurringExpenseRun {
+  id: string;
+  runDate: string;
+  status: "created" | "draft" | "skipped" | "locked";
+  expenseId: string | null;
+  error: string | null;
+  trigger: string;
+}
+
+export interface RecurringExpenseDetail extends RecurringExpense {
+  runs: RecurringExpenseRun[];
+  upcoming: string[];
+}
+
+export interface RecurringExpenseInput {
+  name: string;
+  categoryId?: string;
+  supplierId?: string | null;
+  branchId?: string | null;
+  vendorName?: string | null;
+  vendorGstin?: string | null;
+  amount: number | null;
+  gstRate: number;
+  paymentMethod: ExpensePaymentMethod;
+  dueDays?: number | null;
+  note?: string | null;
+  mode: RecurringMode;
+  frequency: RecurringFrequency;
+  interval: number;
+  dayOfMonth?: number | null;
+  weekday?: number | null;
+  startDate: string;
+  endDate?: string | null;
+}
+
+const REC = `${EXP}/recurring`;
+
+export const rk = {
+  list: ["expenses", "recurring", "list"] as const,
+  one: (id: string) => ["expenses", "recurring", "one", id] as const,
+  summary: ["expenses", "recurring", "summary"] as const,
+};
+
+export function useRecurringExpenses(enabled = true) {
+  return useQuery({
+    queryKey: rk.list,
+    queryFn: ({ signal }) => api.get<{ items: RecurringExpense[]; total: number }>(REC, { limit: 200 }, { signal }),
+    enabled,
+  });
+}
+
+export function useRecurringExpense(id: string | null) {
+  return useQuery({ queryKey: rk.one(id ?? ""), queryFn: () => api.get<RecurringExpenseDetail>(`${REC}/${id}`), enabled: !!id });
+}
+
+/** Drafts waiting to be filled and what is due in the next 7 days. */
+export function useRecurringSummary(enabled = true) {
+  return useQuery({
+    queryKey: rk.summary,
+    queryFn: () => api.get<{ drafts: number; dueSoon: { id: string; name: string; nextRunDate: string; amount: number | null }[] }>(`${REC}/summary`),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** The next dates of a schedule (the form's preview); errors (a bad schedule) show as no dates. */
+export function useRecurringPreview(p: { frequency: RecurringFrequency; interval: number; dayOfMonth?: number | null; weekday?: number | null; startDate: string; endDate?: string | null }, enabled: boolean) {
+  return useQuery({
+    queryKey: ["expenses", "recurring", "preview", p] as const,
+    queryFn: ({ signal }) => api.get<{ dates: string[] }>(`${REC}/preview`, { ...p, dayOfMonth: p.dayOfMonth ?? undefined, weekday: p.weekday ?? undefined, endDate: p.endDate || undefined }, { signal }),
+    enabled: enabled && /^\d{4}-\d{2}-\d{2}$/.test(p.startDate),
+    retry: false,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useSaveRecurringExpense() {
+  const changed = useChanged();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: RecurringExpenseInput }) =>
+      id ? api.patch<RecurringExpenseDetail>(`${REC}/${id}`, body) : api.post<RecurringExpenseDetail>(REC, body),
+    onSuccess: changed,
+  });
+}
+
+export type RecurringAction = "pause" | "resume" | "skip" | "end" | "run";
+
+export function useRecurringAction() {
+  const changed = useChanged();
+  return useMutation({ mutationFn: ({ id, action }: { id: string; action: RecurringAction }) => api.post<unknown>(`${REC}/${id}/${action}`), onSuccess: changed });
+}
+
+export function useDeleteRecurringExpense() {
+  const changed = useChanged();
+  return useMutation({ mutationFn: (id: string) => api.delete<{ ok: true }>(`${REC}/${id}`), onSuccess: changed });
+}
 
 // ---------------------------------------------------------------- receipt upload (`/v1/uploads`)
 

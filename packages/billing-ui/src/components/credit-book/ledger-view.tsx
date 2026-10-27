@@ -66,8 +66,8 @@ function Particulars({ e, linkInvoices }: { e: LedgerEntry; linkInvoices: boolea
   );
   return (
     <div className="min-w-0">
-      {linkInvoices && (e.type === "invoice" || e.type === "credit_note") && e.refId ? (
-        <ModuleLink to={e.type === "credit_note" ? `credit-notes/${e.refId}` : `invoices/${e.refId}`} className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+      {linkInvoices && (e.type === "invoice" || e.type === "credit_note" || e.type === "debit_note") && e.refId ? (
+        <ModuleLink to={e.type === "credit_note" ? `credit-notes/${e.refId}` : e.type === "debit_note" ? `sales-debit-notes/${e.refId}` : `invoices/${e.refId}`} className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
           {label}
         </ModuleLink>
       ) : (

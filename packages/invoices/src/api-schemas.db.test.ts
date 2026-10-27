@@ -45,6 +45,9 @@ const TABLES = [
   "invoice_messages",
   "credit_notes",
   "credit_note_series",
+  "sales_debit_notes",
+  "sales_debit_note_series",
+  "sales_debit_note_allocations",
   "till_sessions",
 ];
 const tenant = { id: "11111111-1111-4111-8111-111111111111", slug: "sri", planId: "pro", appId: "BL" };

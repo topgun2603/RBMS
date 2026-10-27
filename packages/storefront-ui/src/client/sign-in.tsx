@@ -10,6 +10,7 @@ import { normalizeMobile } from "../lib/format";
 import type { AuthUser } from "../types";
 import { call, errorMessage } from "./api";
 import { isTestTarget, LEGACY_SHOPPER_METHODS, useCentralSignIn, type ShopperMethod } from "./central-sign-in";
+import { NoticeLine, recordNoticeAcceptance } from "./privacy";
 import { useStore } from "./store-context";
 
 interface OtpRequestResult {
@@ -53,6 +54,7 @@ export function OtpSignIn({ onSignedIn, className, compact }: { onSignedIn?: (us
   const id = React.useId();
   const central = useCentralSignIn((u) => {
     toast.success(t("auth.signedIn"));
+    void recordNoticeAcceptance();
     onSignedIn?.(u);
   });
   const methods: ShopperMethod[] = central.methods ?? LEGACY_SHOPPER_METHODS;
@@ -113,6 +115,7 @@ export function OtpSignIn({ onSignedIn, className, compact }: { onSignedIn?: (us
         auth: false,
       });
       await auth.signIn(r.token, r.user);
+      void recordNoticeAcceptance();
       toast.success(t("auth.signedIn"));
       onSignedIn?.(r.user);
     } catch (err) {
@@ -275,6 +278,7 @@ export function OtpSignIn({ onSignedIn, className, compact }: { onSignedIn?: (us
           </button>
         </form>
       )}
+      <NoticeLine />
     </div>
   );
 }

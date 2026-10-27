@@ -13,6 +13,7 @@ export const PDF_PATHS = {
   purchaseOrder: (id: string) => `/documents/purchase-order/${id}.pdf`,
   creditNote: (id: string) => `/documents/credit-note/${id}.pdf`,
   creditNoteThermal: (id: string) => `/documents/credit-note-thermal/${id}.pdf`,
+  debitNote: (id: string) => `/documents/debit-note/${id}.pdf`,
   quotation: (id: string) => `/documents/quotation/${id}.pdf`,
   quotationThermal: (id: string) => `/documents/quotation-thermal/${id}.pdf`,
   transferNote: (id: string) => `/documents/transfer-note/${id}.pdf`,

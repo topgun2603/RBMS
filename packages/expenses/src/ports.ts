@@ -11,6 +11,24 @@ export interface PurchasesReportPort {
   itcTotals(tenantId: string, from: string, to: string): Promise<GstTotals>;
 }
 
+/** A supplier (inventory `suppliers`) as an expense needs it. */
+export interface SupplierRef {
+  id: string;
+  name: string;
+  gstin: string | null;
+}
+
+/** Suppliers (packages/inventory), wired in apps/api. Without it expenses can't be linked to a supplier. */
+export interface SuppliersPort {
+  /** The supplier, or null when it does not exist (or was deleted). */
+  get(tenantId: string, id: string): Promise<SupplierRef | null>;
+}
+
+/** Branches of the shop (packages/branches), for names in the expense report. */
+export interface BranchesPort {
+  list(tenantId: string): Promise<{ id: string; name: string }[]>;
+}
+
 export interface LoggerPort {
   info(o: unknown, m?: string): void;
   warn(o: unknown, m?: string): void;

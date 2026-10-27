@@ -21,6 +21,7 @@ import type {
   PayrollSrc,
   PayrollRunSrc,
   ReceiptSrc,
+  SalesDebitNoteSrc,
   StockAdjustmentSrc,
   SupplierPaymentSrc,
   TillSrc,
@@ -272,15 +273,33 @@ export function itcSplit(itc: number, vendorGstin: string | null, shopState: str
 export function expensePostings(e: ExpenseSrc, o: RuleOptions): Posting[] {
   if (e.amount <= 0) return [];
   const itc = Math.min(Math.max(e.itc, 0), e.amount);
+  // Bought on credit: owed to the supplier until paid through Payables (that payment posts Dr Creditors / Cr money).
+  const credit = e.onCredit && e.supplierId ? cr(key(SYS.creditors), e.amount, party("supplier", e.supplierId)) : cr(money(e.paymentMethod), e.amount);
   const lines = nonZero([
     dr({ expenseCategory: { id: e.categoryId, name: e.categoryName } }, e.amount - itc),
     ...inTax(itcSplit(itc, e.vendorGstin, o.shopState)),
-    cr(money(e.paymentMethod), e.amount),
+    credit,
   ]);
   const what = `Expense - ${e.categoryName}${e.vendorName ? ` - ${e.vendorName}` : ""}`;
   const out: Posting[] = [{ sourceType: "expense", sourceId: e.id, date: e.date, narration: what, lines }];
   if (e.status === "cancelled") {
     out.push({ sourceType: "expense_cancel", sourceId: e.id, date: later(e.date, e.cancelledOn), narration: `Cancelled: ${what}`, lines: mirror(lines) });
+  }
+  return out;
+}
+
+/**
+ * A debit note to a customer: the bill's value goes up — Dr Debtors (the customer) / Cr Sales and output GST, the
+ * same shape as a bill. Cancelling posts the mirror.
+ */
+export function salesDebitNotePostings(d: SalesDebitNoteSrc): Posting[] {
+  if (d.total <= 0) return [];
+  const who = party("customer", d.customerId);
+  const lines = billLines(SYS.sales, { ...d, discount: 0 }, who);
+  const what = `Debit note ${d.number}${d.invoiceNumber ? ` on ${d.invoiceNumber}` : ""} - ${d.customerName}`;
+  const out: Posting[] = [{ sourceType: "sales_debit_note", sourceId: d.id, date: d.date, narration: what, reference: d.number, lines }];
+  if (d.status === "cancelled") {
+    out.push({ sourceType: "sales_debit_note_cancel", sourceId: d.id, date: later(d.date, d.cancelledOn), narration: `Cancelled ${what}`, reference: d.number, lines: mirror(lines) });
   }
   return out;
 }
@@ -486,6 +505,8 @@ export const SOURCE_TYPES = [
   "invoice_payment",
   "customer_receipt",
   "credit_note",
+  "sales_debit_note",
+  "sales_debit_note_cancel",
   "purchase",
   "purchase_cancel",
   "supplier_payment",
@@ -515,6 +536,8 @@ export const SOURCE_LABELS: Readonly<Record<SourceType, string>> = {
   invoice_payment: "Payment on a bill",
   customer_receipt: "Customer receipt",
   credit_note: "Credit note (sales return)",
+  sales_debit_note: "Debit note to a customer",
+  sales_debit_note_cancel: "Customer debit note cancelled",
   purchase: "Purchase bill",
   purchase_cancel: "Purchase bill cancelled",
   supplier_payment: "Supplier payment",

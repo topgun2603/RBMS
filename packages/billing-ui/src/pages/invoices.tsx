@@ -13,7 +13,7 @@ import {
   useServerTable,
   type ServerFilterDefs,
 } from "@srirealtime/web";
-import { FileTextIcon, PlusIcon, Undo2Icon } from "lucide-react";
+import { FilePlus2Icon, FileTextIcon, PlusIcon, Undo2Icon } from "lucide-react";
 import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
 import { BillsIllustration } from "../components/illustrations";
 import { StatusBadge } from "../components/status-badge";
@@ -186,6 +186,11 @@ function InvoicesList() {
             <Button asChild variant="outline" size="lg">
               <ModuleLink to="credit-notes">
                 <Undo2Icon /> {t("billing.nav.creditNotes")}
+              </ModuleLink>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <ModuleLink to="sales-debit-notes">
+                <FilePlus2Icon /> {t("billing.nav.debitNotes")}
               </ModuleLink>
             </Button>
             <Button asChild size="lg" className="hidden sm:inline-flex">

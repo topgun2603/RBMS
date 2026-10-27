@@ -10,3 +10,4 @@ export * from "./audit";
 export * from "./list";
 export type { RouteAuditConfig, RouteSchema } from "./fastify";
 export { documented } from "./route-doc";
+export * from "./schedule";

@@ -92,8 +92,9 @@ Reports > Branches (feature `multi-branch`): `GET /v1/valuation/branches?from&to
 `/v1/documents/profit-report/branches.pdf`), labelled **"By branch (from bills and purchases)"**. Per branch side by
 side with the total: net sales and cost of goods (bills and credit notes carry the branch), gross profit, purchases
 (by the branch whose stock location received the goods; bills with no stock lines stay "Not by branch"), stock value
-(by location, method of the date) and expenses. Expenses carry no branch, so they are one shop-wide column. Not the
-books: journal lines have no branch dimension (out of scope).
+(by location, method of the date) and expenses (net of input credit) under their branch; expenses without a branch, or
+of a deleted branch, are in the "Shop-wide / not by branch" column (docs/expenses-debit-notes.md). Not the books:
+journal lines have no branch dimension (out of scope).
 
 ## Reconciliation (dev DB, 2026-10-27, FY 2026-27 to date)
 
@@ -128,5 +129,5 @@ P&L keeps the periodic method. The report-builder dataset totals equal the item-
 
 ## Not done
 
-Salesperson per bill line (only the cashier via the till), branch on expenses, branch dimension in the books, landed
+Salesperson per bill line (only the cashier via the till), branch dimension in the books, landed
 costs on goods already transferred, voucher cancel after the goods moved, GRN charges editing after receipt.

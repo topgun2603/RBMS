@@ -2,6 +2,7 @@ import type { TenantRef } from "@srirealtime/core";
 import type { InvoiceStatus } from "./schema";
 import type { Customer, Invoice } from "./service";
 import type { CreditNote } from "./credit-notes";
+import type { DebitNote } from "./debit-notes";
 
 /** The shop's own details, read from the `billing` settings namespace (apps/api wires it). */
 export interface SellerProfile {
@@ -260,6 +261,8 @@ export interface InvoiceEventsPort {
   customerCreated?(tenantId: string, customer: Customer): Promise<void> | void;
   creditNoteIssued?(tenantId: string, note: CreditNote, invoice: Invoice): Promise<void> | void;
   creditNoteCancelled?(tenantId: string, note: CreditNote, invoice: Invoice): Promise<void> | void;
+  debitNoteIssued?(tenantId: string, note: DebitNote): Promise<void> | void;
+  debitNoteCancelled?(tenantId: string, note: DebitNote): Promise<void> | void;
 }
 
 export interface LoggerPort {

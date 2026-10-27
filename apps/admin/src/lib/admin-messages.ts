@@ -1,3 +1,4 @@
+import { dataProtectionEn, dataProtectionTa } from "./privacy-messages";
 import type { Messages } from "@srirealtime/i18n/client";
 
 /**
@@ -1563,4 +1564,4 @@ const ta: Messages = {
   "admin.featureNames.payments": "இணையவழிக் கட்டணங்கள் (Razorpay)",
 };
 
-export const adminMessages: { en: Messages; ta: Messages } = { en, ta };
+export const adminMessages: { en: Messages; ta: Messages } = { en: { ...en, ...dataProtectionEn }, ta: { ...ta, ...dataProtectionTa } };

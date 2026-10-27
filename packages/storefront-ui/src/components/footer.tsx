@@ -264,7 +264,8 @@ export function StoreFooter({
     shop.social.whatsapp && { href: whatsappUrl(shop.social.whatsapp), label: "WhatsApp", icon: MessageCircleIcon },
   ].filter(Boolean) as Social[];
 
-  const policyLinks = POLICY_KINDS.filter((k) => policies[k]?.trim());
+  // The privacy notice is always linked: without the shop's own text the page shows the generated notice (DPDP).
+  const policyLinks = POLICY_KINDS.filter((k) => k === "privacy" || policies[k]?.trim());
   const columns = footerColumns(
     menu,
     help,

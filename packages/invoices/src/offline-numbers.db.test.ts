@@ -13,7 +13,7 @@ import { InvoicesService } from "./service";
 
 const URL_ = process.env.INVOICES_TEST_DATABASE_URL;
 const SCHEMA = `invoices_offnum_${Math.random().toString(36).slice(2, 10)}`;
-const TABLES = ["billing_customers", "billing_items", "invoices", "invoice_payments", "invoice_series", "credit_notes", "credit_note_series", "till_sessions", "invoice_messages", "invoice_reminders", "customer_receipts"];
+const TABLES = ["billing_customers", "billing_items", "invoices", "invoice_payments", "invoice_series", "credit_notes", "credit_note_series", "sales_debit_notes", "sales_debit_note_series", "sales_debit_note_allocations", "till_sessions", "invoice_messages", "invoice_reminders", "customer_receipts"];
 const tenant = { id: randomUUID(), slug: "sri", planId: "pro", appId: "BL" };
 
 describe.skipIf(!URL_)("reserved invoice numbers (Postgres)", () => {

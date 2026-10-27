@@ -5,11 +5,14 @@ import { renderPurchase } from "./renderers/purchase";
 import { renderPurchaseOrder } from "./renderers/purchase-order";
 import { renderStatement } from "./renderers/statement";
 import { renderCreditNote, renderCreditNoteThermal } from "./renderers/credit-note";
+import { renderDebitNote } from "./renderers/debit-note";
 import { renderQuotation, renderQuotationThermal } from "./renderers/quotation";
 import { renderSalesDoc } from "./renderers/sales-doc";
 import { renderTillReport } from "./renderers/till";
 import type {
   CreditNoteDocData,
+  DebitNoteDocData,
+  DebitNoteDocPort,
   CreditNoteDocPort,
   InvoiceDocData,
   InvoiceDocPort,
@@ -40,6 +43,7 @@ export const DOCUMENT_TYPE_FEATURES = {
   "purchase-order": "inventory.purchases",
   "credit-note": "invoices",
   "credit-note-thermal": "invoices",
+  "debit-note": "invoices",
   "till-z": "invoices",
   "till-z-58": "invoices",
   "till-z-a4": "invoices",
@@ -63,6 +67,7 @@ export interface BuiltinPorts {
   purchases?: PurchaseDocPort;
   purchaseOrders?: PurchaseOrderDocPort;
   creditNotes?: CreditNoteDocPort;
+  debitNotes?: DebitNoteDocPort;
   quotations?: QuotationDocPort;
   salesDocs?: SalesDocPort;
   till?: TillDocPort;
@@ -156,6 +161,18 @@ export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): vo
       load: (tenantId, id) => cn.creditNote(tenantId, id),
       render: renderCreditNoteThermal,
       filename: creditNoteFilename,
+      version,
+    });
+  }
+  const dn = ports.debitNotes;
+  if (dn) {
+    reg.register<DebitNoteDocData>({
+      key: "debit-note",
+      paper: "A4",
+      feature: DOCUMENT_TYPE_FEATURES["debit-note"],
+      load: (tenantId, id) => dn.debitNote(tenantId, id),
+      render: renderDebitNote,
+      filename: (d) => safeFilename(`Debit-note-${d.number}`),
       version,
     });
   }

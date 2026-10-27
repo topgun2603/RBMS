@@ -45,7 +45,7 @@ import {
   type LedgerEvent,
   type Statement,
 } from "./payables";
-import type { LoggerPort } from "./ports";
+import type { ExpenseBill, LoggerPort } from "./ports";
 import {
   PAYMENT_MODES,
   PO_STATUSES,
@@ -96,10 +96,17 @@ export const paymentInputSchema = z.object({
 });
 export type PaymentInput = z.input<typeof paymentInputSchema>;
 
-/** Pay a supplier a lump sum: oldest bills first (opening balance before them), or the chosen bills. */
+/**
+ * Pay a supplier a lump sum: oldest bills first (opening balance before them), or the chosen bills. A chosen part names
+ * a purchase bill (`purchaseId`) or an expense bought on credit (`expenseId`, docs/expenses-debit-notes.md).
+ */
 export const supplierPaymentInputSchema = paymentInputSchema.extend({
   allocations: z
-    .array(z.object({ purchaseId: uuid, amount: positiveMoney }))
+    .array(
+      z
+        .object({ purchaseId: uuid.optional(), expenseId: uuid.optional(), amount: positiveMoney })
+        .refine((a) => !!a.purchaseId !== !!a.expenseId, { message: "Each part names one purchase bill or one expense" }),
+    )
     .max(200)
     .optional(),
 });
@@ -245,7 +252,8 @@ export type GrnListQuery = z.input<typeof grnListQuerySchema>;
 export interface SupplierPaymentResult {
   groupId: string;
   amount: number;
-  allocations: { purchaseId: string; billNumber: string; amount: number }[];
+  /** `purchaseId` for a purchase bill, `expenseId` for an expense bought on credit (the other one null). */
+  allocations: { purchaseId: string | null; expenseId: string | null; billNumber: string; amount: number }[];
   /** Paise not matched to a bill: settled the opening balance or stays as an advance. */
   onAccount: number;
 }
@@ -367,6 +375,22 @@ export class PurchasingService {
     return row!;
   }
 
+  /** Recomputes what is paid on an expense bought on credit from its live payment rows (stored on the expense). */
+  private async syncExpense(tx: DbOrTx, tenantId: string, expenseId: string): Promise<void> {
+    const port = this.inv.expenseBills;
+    if (!port) return;
+    const [pay] = await tx
+      .select({ net: sql<string>`coalesce(sum(case when ${purchasePayments.kind} = 'payment' then ${purchasePayments.amount} else -${purchasePayments.amount} end), 0)` })
+      .from(purchasePayments)
+      .where(and(eq(purchasePayments.tenantId, tenantId), eq(purchasePayments.expenseId, expenseId), isNull(purchasePayments.reversedAt)));
+    await port.setPaid(tx, tenantId, expenseId, Number(pay?.net ?? 0));
+  }
+
+  /** Credit expenses as supplier bills (none when the expenses module is not wired). */
+  private async expenseBillsOf(tx: DbOrTx, tenantId: string, q: { supplierId?: string; ids?: string[]; lock?: boolean }): Promise<ExpenseBill[]> {
+    return this.inv.expenseBills ? this.inv.expenseBills.bills(tx, tenantId, q) : [];
+  }
+
   private async recordedPurchase(tx: DbOrTx, tenantId: string, id: string): Promise<PurchaseRow> {
     const p = await this.inv.purchaseRow(tx, tenantId, id, true);
     if (p.status !== "recorded") throw badRequest(`A ${p.status} purchase can't take payments`);
@@ -437,6 +461,7 @@ export class PurchasingService {
           eq(purchasePayments.tenantId, tenantId),
           eq(purchasePayments.supplierId, s.id),
           isNull(purchasePayments.purchaseId),
+          isNull(purchasePayments.expenseId),
           isNull(purchasePayments.reversedAt),
         ),
       );
@@ -461,11 +486,13 @@ export class PurchasingService {
         .where(and(eq(purchases.tenantId, tenantId), eq(purchases.supplierId, supplierId), eq(purchases.status, "recorded")))
         .orderBy(asc(purchases.id))
         .for("update");
-      const balances = new Map(bills.map((p) => [p.id, purchaseBalance(p)]));
+      const exps = await this.expenseBillsOf(tx, tenantId, { supplierId, lock: true });
+      const balances = new Map([...bills.map((p) => [p.id, purchaseBalance(p)] as const), ...exps.map((e) => [e.id, e.total - e.amountPaid] as const)]);
+      const expById = new Map(exps.map((e) => [e.id, e]));
       let parts: Allocation[];
       let onAccount: number;
       if (b.allocations && b.allocations.length > 0) {
-        const chosen = b.allocations.map((a) => ({ id: a.purchaseId, amount: a.amount }));
+        const chosen = b.allocations.map((a) => ({ id: (a.purchaseId ?? a.expenseId)!, amount: a.amount }));
         const problem = allocationProblem(b.amount, chosen, balances);
         if (problem) throw badRequest(problem);
         parts = chosen;
@@ -475,20 +502,34 @@ export class PurchasingService {
         const toOpening = Math.min(b.amount, opening);
         const { allocations, remainder } = allocateOldestFirst(
           b.amount - toOpening,
-          bills.map((p) => ({ id: p.id, balance: balances.get(p.id)!, date: p.date, createdAt: p.createdAt.getTime() })),
+          [
+            ...bills.map((p) => ({ id: p.id, balance: balances.get(p.id)!, date: p.date, createdAt: p.createdAt.getTime() })),
+            ...exps.map((e) => ({ id: e.id, balance: balances.get(e.id)!, date: e.date, createdAt: e.createdAt.getTime() })),
+          ],
         );
         parts = allocations;
         onAccount = toOpening + remainder;
       }
       const base = { tenantId, supplierId, groupId, kind: "payment" as const, mode: b.mode, reference: b.reference ?? null, date, note: b.note ?? null, createdBy: userId };
       const byId = new Map(bills.map((p) => [p.id, p]));
-      for (const a of parts) await tx.insert(purchasePayments).values({ ...base, purchaseId: a.id, amount: a.amount });
+      for (const a of parts) {
+        const exp = expById.has(a.id);
+        await tx.insert(purchasePayments).values({ ...base, purchaseId: exp ? null : a.id, expenseId: exp ? a.id : null, amount: a.amount });
+      }
       if (onAccount > 0) await tx.insert(purchasePayments).values({ ...base, purchaseId: null, amount: onAccount });
-      for (const a of parts) await this.syncPurchase(tx, tenantId, a.id);
+      for (const a of parts) {
+        if (expById.has(a.id)) await this.syncExpense(tx, tenantId, a.id);
+        else await this.syncPurchase(tx, tenantId, a.id);
+      }
       return {
         groupId,
         amount: b.amount,
-        allocations: parts.map((a) => ({ purchaseId: a.id, billNumber: byId.get(a.id)!.billNumber, amount: a.amount })),
+        allocations: parts.map((a) => {
+          const e = expById.get(a.id);
+          return e
+            ? { purchaseId: null, expenseId: a.id, billNumber: e.ref, amount: a.amount }
+            : { purchaseId: a.id, expenseId: null, billNumber: byId.get(a.id)!.billNumber, amount: a.amount };
+        }),
         onAccount,
       } satisfies SupplierPaymentResult;
     });
@@ -539,6 +580,8 @@ export class PurchasingService {
         .where(and(eq(purchasePayments.tenantId, tenantId), inArray(purchasePayments.id, open.map((r) => r.id))));
       const bills = [...new Set(open.map((r) => r.purchaseId).filter((x): x is string => !!x))];
       for (const id of bills) await this.syncPurchase(tx, tenantId, id);
+      const exps = [...new Set(open.map((r) => r.expenseId).filter((x): x is string => !!x))];
+      for (const id of exps) await this.syncExpense(tx, tenantId, id);
       return { reversed: open.length };
     });
   }
@@ -557,7 +600,9 @@ export class PurchasingService {
       .where(and(...conds))
       .orderBy(desc(purchasePayments.date), desc(purchasePayments.createdAt))
       .limit(500);
-    return { items: rows.map((r) => ({ ...r.p, billNumber: r.billNumber ?? null })), total: rows.length };
+    const expIds = [...new Set(rows.map((r) => r.p.expenseId).filter((x): x is string => !!x))];
+    const refs = new Map((expIds.length ? await this.expenseBillsOf(this.db, tenantId, { ids: expIds }) : []).map((e) => [e.id, e.ref]));
+    return { items: rows.map((r) => ({ ...r.p, billNumber: r.billNumber ?? (r.p.expenseId ? (refs.get(r.p.expenseId) ?? null) : null) })), total: rows.length };
   }
 
   // ================================================================ statement, ageing, summary
@@ -566,7 +611,7 @@ export class PurchasingService {
     const { from, to } = statementQuerySchema.parse(query);
     const sup = await this.inv.supplierRow(this.db, tenantId, supplierId);
     if (!sup) throw notFound("Supplier");
-    const [bills, notes, pays] = await Promise.all([
+    const [bills, notes, pays, exps] = await Promise.all([
       this.db
         .select()
         .from(purchases)
@@ -579,8 +624,9 @@ export class PurchasingService {
         .select()
         .from(purchasePayments)
         .where(and(eq(purchasePayments.tenantId, tenantId), eq(purchasePayments.supplierId, supplierId), isNull(purchasePayments.reversedAt))),
+      this.expenseBillsOf(this.db, tenantId, { supplierId }),
     ]);
-    const billNo = new Map(bills.map((p) => [p.id, p.billNumber]));
+    const billNo = new Map([...bills.map((p) => [p.id, p.billNumber] as const), ...exps.map((e) => [e.id, e.ref] as const)]);
     const events: LedgerEvent[] = [];
     if (sup.openingBalance !== 0) {
       events.push({
@@ -596,13 +642,17 @@ export class PurchasingService {
     for (const p of bills) {
       events.push({ date: p.date, at: p.createdAt.getTime(), type: "purchase", ref: p.billNumber, description: p.notes ? `Purchase bill - ${p.notes}` : "Purchase bill", credit: p.total, debit: 0, id: p.id });
     }
+    for (const e of exps) {
+      events.push({ date: e.date, at: e.createdAt.getTime(), type: "expense", ref: e.ref, description: `Expense - ${e.category}`, credit: e.total, debit: 0, id: e.id });
+    }
     for (const n of notes) {
       events.push({ date: n.date, at: n.createdAt.getTime(), type: "debit_note", ref: n.number, description: `Debit note${billNo.get(n.purchaseId) ? ` against ${billNo.get(n.purchaseId)}` : ""}`, credit: 0, debit: n.total, id: n.id });
     }
     for (const x of pays) {
-      const bill = x.purchaseId ? billNo.get(x.purchaseId) : null;
+      const doc = x.purchaseId ?? x.expenseId;
+      const bill = doc ? billNo.get(doc) : null;
       const how = [x.mode, x.reference].filter(Boolean).join(" ");
-      const label = x.kind === "refund" ? "Refund received" : x.purchaseId ? "Payment" : "Payment on account";
+      const label = x.kind === "refund" ? "Refund received" : doc ? "Payment" : "Payment on account";
       events.push({
         date: x.date,
         at: x.createdAt.getTime(),
@@ -625,7 +675,7 @@ export class PurchasingService {
   async payablesAgeing(tenantId: string, query: { asOf?: string } = {}): Promise<AgeingReport> {
     const { asOf: given } = ageingQuerySchema.parse(query);
     const asOf = given ?? this.today();
-    const [bills, sups, onAcct] = await Promise.all([
+    const [bills, sups, onAcct, exps] = await Promise.all([
       this.db
         .select({
           supplierId: purchases.supplierId,
@@ -646,8 +696,9 @@ export class PurchasingService {
           net: sql<string>`sum(case when ${purchasePayments.kind} = 'payment' then ${purchasePayments.amount} else -${purchasePayments.amount} end)`,
         })
         .from(purchasePayments)
-        .where(and(eq(purchasePayments.tenantId, tenantId), isNull(purchasePayments.purchaseId), isNull(purchasePayments.reversedAt)))
+        .where(and(eq(purchasePayments.tenantId, tenantId), isNull(purchasePayments.purchaseId), isNull(purchasePayments.expenseId), isNull(purchasePayments.reversedAt)))
         .groupBy(purchasePayments.supplierId),
+      this.expenseBillsOf(this.db, tenantId, {}),
     ]);
     const paid = new Map(onAcct.map((r) => [r.supplierId, Number(r.net)]));
     const openings = sups
@@ -655,7 +706,10 @@ export class PurchasingService {
       .filter((o) => o.unsettled !== 0);
     const report = buildAgeing(
       asOf,
-      bills.map((b) => ({ supplierId: b.supplierId, supplierName: b.name ?? "Cash purchase", date: b.date, dueDate: b.dueDate, balance: Number(b.balance) })),
+      [
+        ...bills.map((b) => ({ supplierId: b.supplierId, supplierName: b.name ?? "Cash purchase", date: b.date, dueDate: b.dueDate, balance: Number(b.balance) })),
+        ...exps.map((e) => ({ supplierId: e.supplierId, supplierName: e.supplierName, date: e.date, dueDate: e.dueDate, balance: e.total - e.amountPaid })),
+      ],
       openings,
     );
     return report;
@@ -677,10 +731,13 @@ export class PurchasingService {
           lte(purchases.dueDate, soon),
         ),
       );
+    const expSoon = (await this.expenseBillsOf(this.db, tenantId, {}))
+      .filter((e) => e.total - e.amountPaid > 0 && e.dueDate && e.dueDate >= asOf && e.dueDate <= soon)
+      .reduce((t, e) => t + e.total - e.amountPaid, 0);
     return {
       payable: report.totals.total,
       overdue: report.totals.overdue,
-      dueSoon: Number(r?.sum ?? 0),
+      dueSoon: Number(r?.sum ?? 0) + expSoon,
       advance: report.totals.advance,
       suppliers: report.rows.filter((x) => x.total > 0).length,
       asOf,

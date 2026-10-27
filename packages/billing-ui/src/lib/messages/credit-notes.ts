@@ -96,9 +96,9 @@ export const en: Messages = {
   "billing.cn.bill.refund": "Refund",
 
   // GST report sections
-  "billing.reports.gst.cdnr": "Credit notes to registered buyers (CDNR)",
-  "billing.reports.gst.cdnrHint": "GSTR-1 Table 9B, per note and rate. B2CS and HSN above are already net of credit notes.",
-  "billing.reports.gst.cdnur": "Credit notes to unregistered buyers (CDNUR)",
+  "billing.reports.gst.cdnr": "Credit and debit notes to registered buyers (CDNR)",
+  "billing.reports.gst.cdnrHint": "GSTR-1 Table 9B, per note and rate. B2CS and HSN above already take off credit notes and add debit notes.",
+  "billing.reports.gst.cdnur": "Credit and debit notes to unregistered buyers (CDNUR)",
   "billing.reports.gst.cdnurHint": "Notes on large inter-state B2C bills (B2CL).",
 };
 
@@ -192,8 +192,8 @@ export const ta: Messages = {
   "billing.cn.bill.fullyReturned": "முழுவதும் வரவு வைக்கப்பட்டது",
   "billing.cn.bill.refund": "திருப்பம்",
 
-  "billing.reports.gst.cdnr": "பதிவு பெற்றவர்களுக்கான வரவுக் குறிப்புகள் (CDNR)",
-  "billing.reports.gst.cdnrHint": "GSTR-1 அட்டவணை 9B, குறிப்பு மற்றும் விகிதம் வாரியாக. மேலே உள்ள B2CS, HSN ஏற்கெனவே வரவுக் குறிப்புகளைக் கழித்தவை.",
-  "billing.reports.gst.cdnur": "பதிவு இல்லாதவர்களுக்கான வரவுக் குறிப்புகள் (CDNUR)",
+  "billing.reports.gst.cdnr": "பதிவு பெற்றவர்களுக்கான வரவு / பற்றுக் குறிப்புகள் (CDNR)",
+  "billing.reports.gst.cdnrHint": "GSTR-1 அட்டவணை 9B, குறிப்பு மற்றும் விகிதம் வாரியாக. மேலே உள்ள B2CS, HSN ஏற்கெனவே வரவுக் குறிப்புகளைக் கழித்து, பற்றுக் குறிப்புகளைக் கூட்டியவை.",
+  "billing.reports.gst.cdnur": "பதிவு இல்லாதவர்களுக்கான வரவு / பற்றுக் குறிப்புகள் (CDNUR)",
   "billing.reports.gst.cdnurHint": "பெரிய மாநிலங்களுக்கு இடையிலான B2C பில்களின் குறிப்புகள் (B2CL).",
 };

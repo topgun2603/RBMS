@@ -40,6 +40,13 @@ export const INVOICE_PERMISSIONS: PermissionDef[] = [
     label: "Credit notes and returns",
     description: "Issue credit notes against bills (full or partial returns, price corrections) with refunds, and cancel them the same day.",
   },
+  // Debit notes to customers (docs/expenses-debit-notes.md).
+  {
+    key: "invoices.debit-note",
+    module: "invoices",
+    label: "Debit notes to customers",
+    description: "Issue debit notes that raise the value of a bill (price revised, quantity short-billed, freight or charges billed later), and cancel them the same day.",
+  },
   { key: "pos.till", module: "invoices", label: "Open and close the till", description: "Open and close the POS cash drawer, record cash in / out and print the Z report." },
   { key: "invoices.discount", module: "invoices", label: "Give discounts", description: "Add discounts to bill lines." },
   {
@@ -162,6 +169,8 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   // ---- invoices: credit notes and POS till sessions
   [`POST ${BILL}/credit-notes`]: "invoices.credit-note",
   "POST /v1/invoices/credit-notes/:id/cancel": "invoices.credit-note",
+  [`POST ${BILL}/debit-notes`]: "invoices.debit-note",
+  "POST /v1/invoices/debit-notes/:id/cancel": "invoices.debit-note",
   "POST /v1/invoices/till/open": "pos.till",
   "POST /v1/invoices/till/:id/cash": "pos.till",
   "POST /v1/invoices/till/:id/close": "pos.till",

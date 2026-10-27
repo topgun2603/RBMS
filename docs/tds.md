@@ -44,6 +44,8 @@ bills from that supplier in the year (value without GST).
   sync skips those rows, so nothing is posted twice). The owner then pays the supplier the bill less the tax. Cancelling
   reverses the entry and the Payables row.
 - Expense: the expense is recorded at the full amount; Dr the expense's money account / Cr TDS payable (the tax kept).
+  An expense bought on credit from a supplier (docs/expenses-debit-notes.md): Dr Creditors (with the supplier) / Cr TDS
+  payable, and with "settle on the bill" the tax is settled on that expense in Payables.
 - Other payee: Dr the chosen account / Cr TDS payable.
 - TCS: Dr Debtors (with the customer) / Cr TCS payable (shown as an explained difference in the self-check, since the
   credit book does not carry TCS).

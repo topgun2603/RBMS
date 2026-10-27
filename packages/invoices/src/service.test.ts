@@ -112,7 +112,9 @@ describe("customerQuery", () => {
   it("computes balances with grouped subqueries (no N+1)", () => {
     const cq = svc.customerQuery("t1");
     const { sql, params } = cq.rows().where(cq.base).toSQL();
-    expect(sql.match(/group by/g)).toHaveLength(3);
+    // Bills, payments on bills, receipts and debit notes to customers.
+    expect(sql.match(/group by/g)).toHaveLength(4);
+    expect(sql).toContain('"agg_dbn" on "agg_dbn"."customer_id" = "billing_customers"."id"');
     expect(sql).toContain('left join (select "invoices"."customer_id"');
     expect(sql).toContain('"cq_advance"');
     expect(sql).toContain('greatest("cq_last_invoice", "cq_last_payment", "cq_last_receipt")');
@@ -124,12 +126,13 @@ describe("customerQuery", () => {
   it("narrows every subquery to one customer when asked", () => {
     const cq = svc.customerQuery("t1", "c1");
     const { params } = cq.rows().where(cq.base).toSQL();
-    expect(params.filter((p) => p === "c1").length).toBe(4);
+    expect(params.filter((p) => p === "c1").length).toBe(5);
   });
   it("totals receivables and advances over the same balance", () => {
     const cq = svc.customerQuery("t1");
     const { sql } = cq.totals().where(cq.base).toSQL();
     expect(sql).toContain('sum(greatest(("billing_customers"."opening_balance"');
+    expect(sql).toContain('+ coalesce("cq_debited", 0)');
     expect(sql).toContain("count(*) filter (where");
   });
 });
@@ -342,6 +345,9 @@ describe("createInvoices", () => {
         "invoiceReminders",
         "invoiceSeries",
         "invoices",
+        "salesDebitNoteAllocations",
+        "salesDebitNotes",
+        "salesDebitNoteSeries",
         "tillSessions",
       ].sort(),
     );

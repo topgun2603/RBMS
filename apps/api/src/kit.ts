@@ -12,9 +12,10 @@ import { createConsent } from "@srirealtime/consent";
 import { createCoupons } from "@srirealtime/coupons";
 import { createDelivery, DELIVERY_TRACK_JOB } from "@srirealtime/delivery";
 import { createDocuments, page, type DocSeller } from "@srirealtime/documents";
-import { createExpenses } from "@srirealtime/expenses";
+import { createExpenses, RECURRING_EXPENSES_CRON, RECURRING_EXPENSES_JOB } from "@srirealtime/expenses";
 import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "@srirealtime/accounting";
 import { accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
+import { createPrivacyHost, wirePrivacy } from "./kit-privacy";
 import { createGstFiling } from "@srirealtime/gstfiling";
 import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
 import { createAiKit } from "./kit-ai";
@@ -57,6 +58,7 @@ import { createInvoices } from "@srirealtime/invoices";
 import { wireQuotations } from "./kit-quotations";
 import { wireSalesDocs } from "./kit-sales-docs";
 import { RECURRING_CRON, RECURRING_JOB, wireRecurringExport } from "./kit-recurring";
+import { expenseBillsPort, expenseBranchesPort, expenseSuppliersPort } from "./kit-expenses";
 import { wirePayroll } from "./kit-payroll";
 import { createJobs } from "@srirealtime/jobs";
 import { createNotify, type NotifyConfig } from "@srirealtime/notify";
@@ -325,7 +327,18 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     log,
   });
 
-  const consent = createConsent({ db, queue: jobs.service, log });
+  const consent = createConsent({
+    db,
+    queue: jobs.service,
+    log,
+    audit: audit.service,
+    privacy: createPrivacyHost({ db, settings: settings.service, features: () => features.service, uploads: () => uploads.service }),
+  });
+  // DPDP (docs/privacy-dpdp.md): customer records per module for rights requests, and the retention categories.
+  wirePrivacy({ db, uploads: () => uploads.service, rights: consent.privacy.rights, retention: consent.privacy.retention });
+  defineJob("privacy.retention", async () => {
+    log.info(await consent.privacy.retention.runAll(), "privacy: retention run");
+  });
   // Erasers run in reverse registration order, so auth (registered first) anonymises the user last.
   consent.service.registerExporter("auth", (userId) => auth.service.exportUser(userId));
   consent.service.registerEraser("auth", (userId) => auth.service.eraseUser(userId));
@@ -454,6 +467,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       creditNoteIssued: (tenantId, cn) => emit(tenantId, "credit_note.issued", creditNoteEvent(cn)),
       creditNoteCancelled: (tenantId, cn) =>
         emit(tenantId, "credit_note.cancelled", { ...creditNoteEvent(cn), reason: cn.cancelReason, cancelledAt: cn.cancelledAt }),
+      // Debit notes to customers (docs/expenses-debit-notes.md) only nudge the books (no webhook event yet).
+      debitNoteIssued: (tenantId) => accountingRef?.service.kick(tenantId),
+      debitNoteCancelled: (tenantId) => accountingRef?.service.kick(tenantId),
       paid: async (tenantId, inv) => {
         await emit(tenantId, "invoice.paid", invoiceEvent(inv));
         // Bills made from store orders don't earn points: the order earns its own.
@@ -527,6 +543,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     // Batches and expiry: pharmacy (medicines) batches stay in Pharmacy; the generic batches read them (docs/stock-depth.md).
     legacyBatches: legacyBatchPort({ db, medicines: () => medicinesRef, isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key) }),
+    // Expenses bought on credit are bills in the supplier's Payables (docs/expenses-debit-notes.md).
+    expenseBills: expenseBillsPort(db),
     log,
   });
   inventoryRef = inventory;
@@ -1023,6 +1041,11 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
         return { taxable: itc.taxable, cgst: itc.cgst, sgst: itc.sgst, igst: itc.igst };
       },
     },
+    // Supplier link (bought on credit = a Payables bill), branch names, the books' period lock (recurring expenses).
+    suppliers: expenseSuppliersPort(() => inventory.service),
+    branches: expenseBranchesPort(db),
+    lockedThrough: async (tenantId) => ((await features.service.isEnabled(tenantId, "accounting")) ? ((await accounting.service.settings(tenantId)).lockedThrough ?? null) : null),
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
     log,
   });
 
@@ -1430,6 +1453,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     now: clock,
   });
   defineJob(RECURRING_JOB, recurringExport.runDue);
+  // Recurring expenses (rent, electricity, subscriptions): idempotent per date like recurring invoices.
+  defineJob(RECURRING_EXPENSES_JOB, async () => log.info(await expenses.runDue(), "recurring expenses run"));
 
   // ---- GST filing depth: GSTR-3B, ITC and GSTR-2B reconciliation, reverse charge, composition, GSTR-1 extras (docs/gst-filing.md).
   const gstFiling = createGstFiling({
@@ -2068,9 +2093,11 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await jobs.service.schedule(DEVELOPER_JOBS.sweep, "*/5 * * * *");
       await jobs.service.schedule(batch3.reports.service.dueJob().name, batch3.reports.service.dueJob().cron);
       await jobs.service.schedule("consent.sweep", "0 * * * *");
+      await jobs.service.schedule("privacy.retention", "40 2 * * *");
       await jobs.service.schedule("uploads.cleanup", "30 3 * * *");
       await jobs.service.schedule("invoices.reminders", "0 10 * * *");
       await jobs.service.schedule(RECURRING_JOB, RECURRING_CRON);
+      await jobs.service.schedule(RECURRING_EXPENSES_JOB, RECURRING_EXPENSES_CRON);
       await jobs.service.schedule("inventory.expiry-alerts", "30 7 * * *");
       await jobs.service.schedule("payments.retry", "*/15 * * * *");
       await jobs.service.schedule("audit.purge", "15 4 * * *");

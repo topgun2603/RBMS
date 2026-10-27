@@ -40,17 +40,31 @@ import { qk } from "@/lib/queries";
 import { readStored, writeStored } from "@/lib/session";
 import type { ConsentMe, DataRequest } from "@/lib/types";
 
+interface NoticeBody {
+  title: string;
+  intro: string;
+  sections: { id: string; heading: string; paragraphs: string[]; items?: string[] }[];
+}
+/** RBMS's own privacy notice for shop owners and staff (`GET /v1/consent/notice` without a shop). */
+interface PlatformNotice {
+  version: number;
+  content: { en: NoticeBody; ta: NoticeBody };
+  contact: { name: string; role: string; phone: string; email: string; address: string };
+}
+
 const LAST_EXPORT_KEY = "sr_last_export";
 const OPEN = ["pending", "processing"];
 
 export default function PrivacyPage() {
-  const { t, formatDate, formatDateTime } = useI18n();
+  const { t, locale, formatDate, formatDateTime } = useI18n();
   const qc = useQueryClient();
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [exportId, setExportId] = React.useState<string | null>(null);
   React.useEffect(() => setExportId(readStored(LAST_EXPORT_KEY)), []);
 
   const me = useQuery({ queryKey: qk.consentMe, queryFn: () => api.get<ConsentMe>("/consent/me") });
+
+  const notice = useQuery({ queryKey: ["consent", "platform-notice"], queryFn: () => api.get<PlatformNotice>("/consent/notice", undefined, { tenant: null }), staleTime: 5 * 60_000 });
 
   const exportReq = useQuery({
     queryKey: ["consent", "export", exportId],
@@ -159,6 +173,41 @@ export default function PrivacyPage() {
               )}
             </CardContent>
           </Card>
+
+          {notice.data && (
+            <Card className="gap-4">
+              <CardHeader>
+                <CardTitle>{t("admin.dp.platformNotice")}</CardTitle>
+                <CardDescription>
+                  {t("admin.dp.platformContact").split(" (")[0]}:{" "}
+                  {[notice.data.contact.name, notice.data.contact.phone, notice.data.contact.email].filter(Boolean).join(" · ") || "—"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium">{notice.data.content[locale === "ta" ? "ta" : "en"].title}</summary>
+                  <div className="mt-3 grid gap-3 text-sm leading-relaxed" data-testid="platform-notice">
+                    <p>{notice.data.content[locale === "ta" ? "ta" : "en"].intro}</p>
+                    {notice.data.content[locale === "ta" ? "ta" : "en"].sections.map((sec) => (
+                      <div key={sec.id} className="grid gap-1">
+                        <h4 className="font-semibold">{sec.heading}</h4>
+                        {sec.paragraphs.map((p, i) => (
+                          <p key={i}>{p}</p>
+                        ))}
+                        {sec.items && (
+                          <ul className="list-disc space-y-0.5 pl-5">
+                            {sec.items.map((it, i) => (
+                              <li key={i}>{it}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="gap-4">
             <CardHeader>

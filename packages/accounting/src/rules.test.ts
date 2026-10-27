@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SYS } from "./chart";
-import type { CreditNoteSrc, DebitNoteSrc, ExpenseSrc, InvoicePaymentSrc, InvoiceSrc, PurchaseSrc, SupplierPaymentSrc, TillSrc } from "./ports";
+import type { CreditNoteSrc, DebitNoteSrc, ExpenseSrc, InvoicePaymentSrc, InvoiceSrc, PurchaseSrc, SalesDebitNoteSrc, SupplierPaymentSrc, TillSrc } from "./ports";
 import {
   accountOpeningPosting,
   creditNotePostings,
@@ -16,6 +16,7 @@ import {
   postingHash,
   purchasePostings,
   receiptPostings,
+  salesDebitNotePostings,
   stockAdjustmentPostings,
   supplierPaymentPostings,
   tillPostings,
@@ -247,6 +248,30 @@ describe("expense and till rules", () => {
     expect(p!.lines.at(-1)).toMatchObject({ account: { method: "bank" }, credit: 118_000 });
   });
 
+  it("an expense bought on credit is owed to the supplier (Creditors with the party), not paid from a money account", () => {
+    const [p] = expensePostings(exp({ onCredit: true, supplierId: "s1", paymentMethod: "other" }), opts);
+    expect(isBalanced(p!.lines)).toBe(true);
+    expect(amountOn(p!, SYS.creditors)).toBe(-118_000);
+    expect(p!.lines.find((l) => "key" in l.account && l.account.key === SYS.creditors)?.party).toEqual({ type: "supplier", id: "s1" });
+    expect(p!.lines.some((l) => "method" in l.account)).toBe(false);
+    expect(amountOn(p!, SYS.gstInCgst) + amountOn(p!, SYS.gstInSgst)).toBe(18_000);
+    // Paid later through Payables: the supplier payment clears the creditor.
+    const [pay] = supplierPaymentPostings(
+      { id: "pp1", supplierId: "s1", supplierName: "Kumar Estates", purchaseBill: "RENT-OCT", purchaseImported: false, kind: "payment", amount: 118_000, mode: "bank", date: "2026-10-20", reversedOn: null },
+      opts,
+    );
+    expect(amountOn(p!, SYS.creditors) + amountOn(pay!, SYS.creditors)).toBe(0);
+    // Cancelled: the mirror takes it all back.
+    const both = expensePostings(exp({ onCredit: true, supplierId: "s1", status: "cancelled", cancelledOn: "2026-10-03" }), opts);
+    expect(both.map((x) => x.sourceType)).toEqual(["expense", "expense_cancel"]);
+    expect(amountOn(both[0]!, SYS.creditors) + amountOn(both[1]!, SYS.creditors)).toBe(0);
+  });
+
+  it("onCredit without a supplier falls back to the money account", () => {
+    const [p] = expensePostings(exp({ onCredit: true, supplierId: null }), opts);
+    expect(p!.lines.at(-1)).toMatchObject({ account: { method: "bank" }, credit: 118_000 });
+  });
+
   it("expenses without ITC put the whole amount in the expense", () => {
     const [p] = expensePostings(exp({ itc: 0 }), opts);
     expect(p!.lines).toHaveLength(2);
@@ -274,6 +299,54 @@ describe("expense and till rules", () => {
     expect(out[2]!.sourceId).toBe("t1:b");
     expect(tillPostings({ ...till, status: "open", difference: null, cashEntries: [] })).toHaveLength(0);
     expect(tillPostings({ ...till, difference: 300, cashEntries: [] })[0]!.lines[0]).toMatchObject({ account: { key: SYS.cash }, debit: 300 });
+  });
+});
+
+describe("debit notes to customers", () => {
+  // Price revised on a bill: ₹1,000 more at 18% intra-state = ₹1,180.
+  const dn = (over: Partial<SalesDebitNoteSrc> = {}): SalesDebitNoteSrc => ({
+    id: "dn1",
+    number: "DN/26-27/0001",
+    invoiceNumber: "INV/26-27/0040",
+    date: "2026-10-15",
+    status: "issued",
+    customerId: "c1",
+    customerName: "Meena Stores",
+    total: 118_000,
+    taxable: 100_000,
+    cgst: 9_000,
+    sgst: 9_000,
+    igst: 0,
+    roundOff: 0,
+    cancelledOn: null,
+    ...over,
+  });
+
+  it("Dr Debtors (the customer) / Cr Sales and output GST, balanced", () => {
+    const [p] = salesDebitNotePostings(dn());
+    expect(p!.sourceType).toBe("sales_debit_note");
+    expect(isBalanced(p!.lines)).toBe(true);
+    expect(amountOn(p!, SYS.debtors)).toBe(118_000);
+    expect(p!.lines.find((l) => "key" in l.account && l.account.key === SYS.debtors)?.party).toEqual({ type: "customer", id: "c1" });
+    expect(amountOn(p!, SYS.sales)).toBe(-100_000);
+    expect(amountOn(p!, SYS.gstOutCgst)).toBe(-9_000);
+    expect(amountOn(p!, SYS.gstOutSgst)).toBe(-9_000);
+    expect(p!.reference).toBe("DN/26-27/0001");
+  });
+
+  it("IGST for an inter-state note, round-off in its own account", () => {
+    const [p] = salesDebitNotePostings(dn({ cgst: 0, sgst: 0, igst: 18_000, total: 118_050, roundOff: 50 }));
+    expect(isBalanced(p!.lines)).toBe(true);
+    expect(amountOn(p!, SYS.gstOutIgst)).toBe(-18_000);
+    expect(amountOn(p!, SYS.roundOff)).toBe(-50);
+    expect(amountOn(p!, SYS.sales)).toBe(-100_000);
+  });
+
+  it("a cancelled note posts the mirror on its cancel date", () => {
+    const out = salesDebitNotePostings(dn({ status: "cancelled", cancelledOn: "2026-10-15" }));
+    expect(out.map((x) => x.sourceType)).toEqual(["sales_debit_note", "sales_debit_note_cancel"]);
+    expect(totalOf([...out[0]!.lines, ...out[1]!.lines]).debit).toBe(totalOf([...out[0]!.lines, ...out[1]!.lines]).credit);
+    expect(amountOn(out[0]!, SYS.debtors) + amountOn(out[1]!, SYS.debtors)).toBe(0);
   });
 });
 

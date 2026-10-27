@@ -6,7 +6,7 @@
 import { createDb, sql } from "@srirealtime/db";
 import { baseQtyOf } from "@srirealtime/gst";
 import { describe, expect, it } from "vitest";
-import { aggregateProfit, baseQtySql, type ProfitLineRow } from "./kit-valuation";
+import { aggregateProfit, baseQtySql, expensesByBranch, type ProfitLineRow } from "./kit-valuation";
 
 const OIL = "dddddddd-0000-4000-8000-000000000002";
 const line = (p: Partial<ProfitLineRow>): ProfitLineRow => ({
@@ -59,5 +59,29 @@ describe("item-wise profit in base units", () => {
     } finally {
       await close();
     }
+  });
+});
+
+describe("branch report: expenses by branch", () => {
+  it("puts each branch's expenses in its column and the rest (no branch, or a deleted one) shop-wide", () => {
+    const A = "aaaaaaaa-0000-4000-8000-000000000001";
+    const B = "bbbbbbbb-0000-4000-8000-000000000002";
+    const GONE = "cccccccc-0000-4000-8000-000000000003";
+    const m = expensesByBranch(
+      [
+        { branch_id: A, v: "250000" },
+        { branch_id: null, v: "40000" },
+        { branch_id: GONE, v: "1000" },
+        { branch_id: B, v: 7000 },
+      ],
+      [A, B],
+    );
+    expect([...m.entries()]).toEqual([
+      [A, 250_000],
+      [null, 41_000],
+      [B, 7_000],
+    ]);
+    const total = [...m.values()].reduce((s, x) => s + x, 0);
+    expect(total).toBe(298_000);
   });
 });

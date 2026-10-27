@@ -64,7 +64,7 @@ describe("customer list", () => {
     expect(render({}).sql).toContain('order by lower("billing_customers"."name") asc nulls last, "billing_customers"."id" asc');
     expect(render({ sort: "-balance" }).sql).toMatch(/order by \("billing_customers"\."opening_balance" \+ .* desc nulls last/);
     expect(render({ sort: "-lastBill" }).sql).toContain('order by "cq_last_invoice" desc nulls last');
-    expect(render({ sort: "billed" }).sql).toContain('order by (coalesce("cq_billed", 0) - coalesce("cq_credited", 0)) asc');
+    expect(render({ sort: "billed" }).sql).toContain('order by (coalesce("cq_billed", 0) - coalesce("cq_credited", 0) + coalesce("cq_debited", 0)) asc');
     expect(() => render({ sort: "phone" })).toThrow(AppError);
   });
 });

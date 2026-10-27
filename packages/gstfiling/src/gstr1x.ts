@@ -32,7 +32,8 @@ export function buildNil(sales: readonly SalesDocSrc[], config: GstConfig, range
     if (!d.number || d.status === "draft" || d.status === "cancelled" || d.date < range.from || d.date > range.to) continue;
     if (compositionOn(config, d.date)) continue;
     const note = d.docType === "CRN";
-    if (d.docType && d.docType !== "INV" && !note) continue;
+    if (d.docType && d.docType !== "INV" && !note && d.docType !== "DBN") continue;
+    // Credit notes take value off the row; debit notes to customers add to it.
     const sign = note ? -1 : 1;
     const b2b = !!d.buyer.gstin && isValidGstin(d.buyer.gstin) && normalizeGstin(d.buyer.gstin) !== normalizeGstin(d.seller.gstin ?? "");
     const type: NilRow["sply_ty"] = `${d.interState ? "INTR" : "INTRA"}${b2b ? "B2B" : "B2C"}` as NilRow["sply_ty"];
@@ -189,12 +190,14 @@ export interface DocIssueResult {
 /**
  * Table 13 for a period. Every numbered bill counts (cancelled ones as cancelled), and so does every offline-billing
  * number released in the period (unused numbers of a closed block, bills cancelled at the counter), so a range such as
- * INV/26-27/0100 to INV/26-27/0150 is complete. Credit notes are listed as "Credit Note" (doc_num 5).
+ * INV/26-27/0100 to INV/26-27/0150 is complete. Debit notes to customers are listed as "Debit Note" (doc_num 4), credit
+ * notes as "Credit Note" (doc_num 5).
  */
 export function buildDocIssue(sales: readonly SalesDocSrc[], voided: readonly VoidedNumberSrc[], range: { from: string; to: string }): DocIssueResult {
   type Acc = { numbers: Map<string, boolean>; };
   const inv = new Map<string, Acc>();
   const crn = new Map<string, Acc>();
+  const dbn = new Map<string, Acc>();
   const addTo = (m: Map<string, Acc>, no: string, cancelled: boolean) => {
     const { series } = splitNumber(no);
     const a = m.get(series) ?? { numbers: new Map<string, boolean>() };
@@ -205,8 +208,8 @@ export function buildDocIssue(sales: readonly SalesDocSrc[], voided: readonly Vo
   for (const d of sales) {
     const no = (d.number ?? "").trim();
     if (!no || d.status === "draft" || d.date < range.from || d.date > range.to) continue;
-    if (d.docType && d.docType !== "INV" && d.docType !== "CRN") continue;
-    addTo(d.docType === "CRN" ? crn : inv, no, d.status === "cancelled");
+    if (d.docType && d.docType !== "INV" && d.docType !== "CRN" && d.docType !== "DBN") continue;
+    addTo(d.docType === "CRN" ? crn : d.docType === "DBN" ? dbn : inv, no, d.status === "cancelled");
   }
   let voidedCounted = 0;
   const issued = new Set([...inv.values()].flatMap((a) => [...a.numbers.keys()]));
@@ -245,9 +248,11 @@ export function buildDocIssue(sales: readonly SalesDocSrc[], voided: readonly Vo
       });
   const invRows = rows(inv, true);
   const crnRows = rows(crn, false);
+  const dbnRows = rows(dbn, false);
   return {
     doc_det: [
       ...(invRows.length ? [{ doc_num: 1, doc_typ: "Invoices for outward supply", docs: invRows }] : []),
+      ...(dbnRows.length ? [{ doc_num: 4, doc_typ: "Debit Note", docs: dbnRows }] : []),
       ...(crnRows.length ? [{ doc_num: 5, doc_typ: "Credit Note", docs: crnRows }] : []),
     ],
     gaps,
@@ -277,7 +282,7 @@ export interface Gstr1Issue {
     | "negative_total"
     | "no_documents";
   severity: Severity;
-  docType?: "invoice" | "credit_note";
+  docType?: "invoice" | "credit_note" | "debit_note";
   docId?: string;
   number?: string;
   /** Short English detail (buyer name, line text, expected digits ...). The UI translates the code and shows this beside it. */
@@ -305,7 +310,7 @@ export function validateGstr1(sales: readonly SalesDocSrc[], opts: ValidateOptio
   for (const d of sales) {
     const no = (d.number ?? "").trim();
     if (!no || d.status === "draft" || d.date < opts.range.from || d.date > opts.range.to) continue;
-    const docType = d.docType === "CRN" ? ("credit_note" as const) : ("invoice" as const);
+    const docType = d.docType === "CRN" ? ("credit_note" as const) : d.docType === "DBN" ? ("debit_note" as const) : ("invoice" as const);
     const at = { docType, docId: d.id, number: no };
     seen.set(no, (seen.get(no) ?? 0) + 1);
     if (d.status === "cancelled") continue;

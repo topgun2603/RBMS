@@ -127,6 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/platform/apps", label: t("admin.nav.platformApps"), icon: AppWindowIcon },
           { href: "/platform/solutions", label: t("admin.nav.solutions"), icon: BlocksIcon },
           { href: "/platform/privacy-requests", label: t("admin.nav.privacyRequests"), icon: FileLockIcon },
+          { href: "/platform/data-protection", label: t("admin.nav.dataProtection"), icon: ShieldCheckIcon },
           { href: "/platform/kyc", label: kycNav, icon: BadgeCheckIcon },
           { href: "/platform/ai", label: aiNav, icon: SparklesIcon },
           { href: "/platform/studio-requests", label: aiStudioNav, icon: WandSparklesIcon },

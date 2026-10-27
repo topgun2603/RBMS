@@ -170,6 +170,20 @@ const marginOf = (gp: number, net: number) => (net !== 0 ? Math.round((gp / net)
 export type ProfitLineRow = Pick<ProfitLine, "kind" | "item_id" | "description" | "base_qty" | "sales" | "cogs" | "cost_source" | "category" | "brand" | "staff" | "branch" | "date">;
 
 /**
+ * Expenses of the branch report by column (docs/expenses-debit-notes.md): each branch's own, and those without a branch
+ * — or of a branch that no longer exists — in the shop-wide column (key null). `v` is paise net of input credit.
+ */
+export function expensesByBranch(rows: readonly { branch_id: string | null; v: string | number }[], branchIds: readonly string[]): Map<string | null, number> {
+  const known = new Set(branchIds);
+  const out = new Map<string | null, number>();
+  for (const r of rows) {
+    const key = r.branch_id && known.has(r.branch_id) ? r.branch_id : null;
+    out.set(key, (out.get(key) ?? 0) + Number(r.v ?? 0));
+  }
+  return out;
+}
+
+/**
  * Groups profit lines. Quantities are in the base unit (`base_qty`), so a box line and a piece line of the same item
  * are one row, labelled with the item's name. `landed`: later landed costs on goods already sold (cost only).
  */
@@ -440,11 +454,16 @@ export function wireValuation(d: ValuationWiringDeps) {
         FROM purchases p WHERE p.tenant_id = ${tenantId} AND p.status = 'recorded' AND NOT p.imported AND p.date BETWEEN ${q.from} AND ${q.to}`),
     );
     for (const p of pr) col(p.location_id ? (branchOfLocation.get(p.location_id) ?? null) : null).purchases += n(p.taxable) + n(p.extra);
-    // Expenses carry no branch: one shop-wide figure (net of the GST credit, like the books).
-    const [e] = rows<{ v: string }>(
-      await db.execute(sql`SELECT coalesce(sum(e.amount - CASE WHEN coalesce(e.vendor_gstin, '') <> '' THEN e.gst_amount ELSE 0 END), 0) AS v FROM expenses e WHERE e.tenant_id = ${tenantId} AND e.status = 'recorded' AND e.date BETWEEN ${q.from} AND ${q.to}`).catch(() => [] as never),
+    // Expenses by their branch (net of the GST credit, like the books); those without a branch are shop-wide (the
+    // "not by branch" column). An expense of a branch that no longer exists counts shop-wide too.
+    const ex = rows<{ branch_id: string | null; v: string }>(
+      await db
+        .execute(
+          sql`SELECT e.branch_id::text AS branch_id, coalesce(sum(e.amount - CASE WHEN coalesce(e.vendor_gstin, '') <> '' THEN e.gst_amount ELSE 0 END), 0) AS v FROM expenses e WHERE e.tenant_id = ${tenantId} AND e.status = 'recorded' AND e.date BETWEEN ${q.from} AND ${q.to} GROUP BY e.branch_id`,
+        )
+        .catch(() => [] as never),
     );
-    col(null).expenses += n(e?.v);
+    for (const [branchId, v] of expensesByBranch(ex, list.map((b) => b.id))) col(branchId).expenses += v;
     const asOf = q.to < todayIST(new Date()) ? q.to : todayIST(new Date());
     const val = await inv.costing.valuation(tenantId, { asOf, groupBy: "location" });
     for (const r of val.rows) col(r.locationId ? (branchOfLocation.get(r.locationId) ?? null) : null).stockValue += r.value;
@@ -501,9 +520,9 @@ export function wireValuation(d: ValuationWiringDeps) {
       return {
         title: "By branch (from bills and purchases)",
         subtitle: subtitle(from, to),
-        columns: [text("label", ""), ...cols.map((x) => money(x.k, x.c.id === null ? "Not by branch" : x.c.name))],
-        rows: [line("Net sales", "netSales"), line("Cost of goods", "cogs"), { ...line("Gross profit", "grossProfit"), style: "total" as const }, line("Purchases", "purchases"), line("Expenses (shop-wide)", "expenses"), line("Stock value", "stockValue")],
-        notes: ["Not the books: journal entries carry no branch. Expenses have no branch and are shown shop-wide."],
+        columns: [text("label", ""), ...cols.map((x) => money(x.k, x.c.id === null ? "Shop-wide / not by branch" : x.c.name))],
+        rows: [line("Net sales", "netSales"), line("Cost of goods", "cogs"), { ...line("Gross profit", "grossProfit"), style: "total" as const }, line("Purchases", "purchases"), line("Expenses", "expenses"), line("Stock value", "stockValue")],
+        notes: ["Not the books: journal entries carry no branch. Expenses are shown under their branch; expenses without a branch are in the shop-wide column."],
       };
     }
     const view = SALES_VIEWS.find((v) => `sales-${v}` === report);

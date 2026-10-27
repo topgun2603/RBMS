@@ -14,9 +14,10 @@ function hsnQty(l: { qty: number; unit?: string | null; unitFactor?: number | nu
 
 /**
  * GSTR-1 JSON in the GSTN offline-tool / API layout: `gstin`, `fp` (MMYYYY) and the sections b2b, b2cl, b2cs, cdnr,
- * cdnur, hsn and doc_issue. Amounts are rupees with 2 decimals (summed in paise first). Credit notes (document type CRN)
- * go to cdnr (registered buyers) or cdnur (B2CL bills); notes on B2CS bills are netted into b2cs, and every note is
- * taken off the HSN summary. Debit notes, nil-rated (Table 8) and advances are not produced. Exports (place of supply 96
+ * cdnur, hsn and doc_issue. Amounts are rupees with 2 decimals (summed in paise first). Credit notes (document type CRN,
+ * note type "C") and debit notes to customers (DBN, note type "D") go to cdnr (registered buyers) or cdnur (B2CL bills);
+ * notes on B2CS bills are netted into b2cs (credit notes take value off, debit notes add it), and the HSN summary
+ * moves the same way. Nil-rated (Table 8) and advances are not produced here (packages/gstfiling adds them). Exports (place of supply 96
  * or an export supply type) are left out of B2B / B2CL / B2CS: they belong in table 6A (`exp`, built by
  * packages/gstfiling); their credit notes go to CDNUR as EXPWP / EXPWOP. Supplies to an SEZ are B2B with invoice type
  * SEWP / SEWOP (always IGST). Their HSN lines are in the HSN summary like any other supply.
@@ -258,6 +259,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
   const hsn = { b2b: new Map<string, Gstr1HsnRow & { p: Amounts }>(), b2c: new Map<string, Gstr1HsnRow & { p: Amounts }>() };
   const docs = new Map<string, { numbers: string[]; seqs: number[]; cancelled: number }>();
   const noteDocs = new Map<string, { numbers: string[]; seqs: number[]; cancelled: number }>();
+  const debitDocs = new Map<string, { numbers: string[]; seqs: number[]; cancelled: number }>();
   const cdnr = new Map<string, Gstr1Note[]>();
   const cdnur: Gstr1Cdnur[] = [];
 
@@ -265,12 +267,10 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
   for (const inv of sorted) {
     const no = (inv.number ?? "").trim();
     if (!no || inv.status === "draft") continue;
-    const isNote = inv.docType === "CRN";
-    if (inv.docType && inv.docType !== "INV" && !isNote) {
-      warnings.push(`${no}: debit notes are not exported yet`);
-      counts.skipped += 1;
-      continue;
-    }
+    const isDebit = inv.docType === "DBN";
+    const isNote = inv.docType === "CRN" || isDebit;
+    // Credit notes take value off B2CS / HSN; debit notes add it.
+    const sign = isDebit ? 1 : -1;
     if (inv.date < range.from || inv.date > range.to) {
       warnings.push(`${no}: dated ${inv.date}, outside ${opts.period}`);
       counts.skipped += 1;
@@ -282,9 +282,9 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       continue;
     }
 
-    // doc_issue counts every numbered bill (and credit note), cancelled ones included.
+    // doc_issue counts every numbered bill (and credit / debit note), cancelled ones included.
     const { series, seq } = splitDocNumber(no);
-    const docMap = isNote ? noteDocs : docs;
+    const docMap = isDebit ? debitDocs : isNote ? noteDocs : docs;
     const d = docMap.get(series) ?? { numbers: [], seqs: [], cancelled: 0 };
     d.numbers.push(no);
     if (seq !== null) d.seqs.push(seq);
@@ -306,7 +306,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
     if (isNote) {
       const ns = exportDoc ? "cdnur" : noteSection(inv);
       const rates = byRate(inv);
-      const note = { ntty: "C" as const, nt_num: no, nt_dt: toGstr1Date(inv.date), pos, val: rupees(inv.totals.total) };
+      const note = { ntty: isDebit ? ("D" as const) : ("C" as const), nt_num: no, nt_dt: toGstr1Date(inv.date), pos, val: rupees(inv.totals.total) };
       if (ns === "cdnr") {
         counts.cdnr += 1;
         const ctin = normalizeGstin(inv.buyer.gstin!);
@@ -317,13 +317,13 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
         counts.cdnur += 1;
         cdnur.push({ typ: exportDoc ? (withIgstPaid(inv) ? "EXPWP" : "EXPWOP") : "B2CL", ...note, itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, true, true) })) });
       } else {
-        // Notes on small B2C bills reduce the B2CS figures of the period.
+        // Notes on small B2C bills change the B2CS figures of the period (credit notes down, debit notes up).
         counts.b2cs += 1;
         for (const [rt, a] of rates) {
           const sply = inter ? "INTER" : "INTRA";
           const key = `${sply}|${pos}|${rt}`;
           const row = b2cs.get(key) ?? { sply, pos, rt, a: zero() };
-          add(row.a, { taxable: -a.taxable, igst: -a.igst, cgst: -a.cgst, sgst: -a.sgst });
+          add(row.a, { taxable: sign * a.taxable, igst: sign * a.igst, cgst: sign * a.cgst, sgst: sign * a.sgst });
           b2cs.set(key, row);
         }
       }
@@ -348,8 +348,8 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
           csamt: 0,
           p: zero(),
         };
-        if (!service) row.qty = roundTo(row.qty - hq.qty, 3);
-        add(row.p, { taxable: -l.taxable, igst: -l.igst, cgst: -l.cgst, sgst: -l.sgst });
+        if (!service) row.qty = roundTo(row.qty + sign * hq.qty, 3);
+        add(row.p, { taxable: sign * l.taxable, igst: sign * l.igst, cgst: sign * l.cgst, sgst: sign * l.sgst });
         tab.set(key, row);
       }
       continue;
@@ -448,6 +448,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
     });
   const docRows = docRowsOf(docs);
   const noteRows = docRowsOf(noteDocs);
+  const debitRows = docRowsOf(debitDocs);
 
   const json: Gstr1Json = {
     gstin,
@@ -475,6 +476,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
     doc_issue: {
       doc_det: [
         ...(docRows.length ? [{ doc_num: 1, doc_typ: "Invoices for outward supply", docs: docRows }] : []),
+        ...(debitRows.length ? [{ doc_num: 4, doc_typ: "Debit Note", docs: debitRows }] : []),
         ...(noteRows.length ? [{ doc_num: 5, doc_typ: "Credit Note", docs: noteRows }] : []),
       ],
     },

@@ -1,3 +1,5 @@
+import type { DbOrTx } from "@srirealtime/db";
+import type { SQL } from "drizzle-orm";
 /** Saved item details; items are owned by the invoices module (apps/api wires the adapter). */
 export interface CatalogItem {
   id: string;
@@ -22,6 +24,36 @@ export interface ItemCatalogPort {
   getItems(tenantId: string, ids: string[]): Promise<CatalogItem[]>;
   /** All saved items of the tenant, optionally filtered by name/HSN. */
   listItems(tenantId: string, q?: string): Promise<CatalogItem[]>;
+}
+
+/**
+ * Expenses bought on credit from a supplier (packages/expenses, wired in apps/api): bills in the supplier's Payables,
+ * paid through "Pay supplier" like purchase bills (docs/expenses-debit-notes.md). Only recorded expenses with payment
+ * method "credit" and a supplier are bills.
+ */
+export interface ExpenseBill {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  /** The supplier's bill number (the expense reference) or the category name. */
+  ref: string;
+  category: string;
+  date: string;
+  dueDate: string | null;
+  /** Paise including GST. */
+  total: number;
+  /** Paise paid through Payables. */
+  amountPaid: number;
+  createdAt: Date;
+}
+
+export interface ExpenseBillsPort {
+  /** Credit expenses of one supplier (or of the given ids, or of every supplier); `lock` = select … for update. */
+  bills(db: DbOrTx, tenantId: string, q: { supplierId?: string; ids?: string[]; lock?: boolean }): Promise<ExpenseBill[]>;
+  /** Stores what has been paid on an expense (the sum of its live payment rows). */
+  setPaid(db: DbOrTx, tenantId: string, expenseId: string, amountPaid: number): Promise<void>;
+  /** SQL: paise still unpaid on the credit expenses of the supplier `supplierId` of shop `tenantId` (supplier list balances). */
+  unpaidSql(tenantId: SQL, supplierId: SQL): SQL<string>;
 }
 
 /** The shop's own GST state code (from the billing seller profile). */

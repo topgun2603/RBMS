@@ -115,7 +115,7 @@ export function reverseAllocations(
 
 // ------------------------------------------------------------------ ledger (statement)
 
-export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel" | "credit_note" | "refund";
+export type LedgerEntryType = "opening" | "invoice" | "payment" | "receipt" | "cancel" | "credit_note" | "debit_note" | "refund";
 
 export interface LedgerEntry {
   date: string;
@@ -169,6 +169,15 @@ export interface LedgerSource {
   }[];
   /** Issued (not cancelled) credit notes: each one is a credit to the customer. */
   creditNotes?: readonly {
+    id: string;
+    number: string;
+    invoiceNumber: string | null;
+    date: string;
+    total: number;
+    at: number;
+  }[];
+  /** Issued (not cancelled) debit notes: each one is a debit (the customer owes more). */
+  debitNotes?: readonly {
     id: string;
     number: string;
     invoiceNumber: string | null;
@@ -270,6 +279,18 @@ export function ledgerEvents(src: LedgerSource): LedgerEvent[] {
       description: [`Credit note ${c.number}`, c.invoiceNumber ? `against ${c.invoiceNumber}` : null].filter(Boolean).join(" "),
       debit: 0,
       credit: c.total,
+    });
+  }
+  for (const d of src.debitNotes ?? []) {
+    out.push({
+      date: d.date,
+      at: d.at,
+      type: "debit_note",
+      refId: d.id,
+      number: d.number,
+      description: [`Debit note ${d.number}`, d.invoiceNumber ? `on ${d.invoiceNumber}` : null].filter(Boolean).join(" "),
+      debit: d.total,
+      credit: 0,
     });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at);
