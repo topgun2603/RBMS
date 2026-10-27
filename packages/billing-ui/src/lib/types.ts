@@ -107,6 +107,8 @@ export interface Item {
   /** With stock tracking: quantity on hand (all locations) and its status. */
   stockQty?: number | null;
   stockStatus?: "in" | "low" | "out" | "untracked" | null;
+  /** Catalogue items: alternate units (box of 12 ...); `unit` is the base (stock) unit. */
+  units?: import("./types-pricing").ItemUnit[];
 }
 
 /** GET /invoices/items: `categories` names the ids in `facets.category`. */

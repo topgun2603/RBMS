@@ -108,13 +108,14 @@ export function netByItem(movements: readonly { itemId: string; delta: number | 
  * cost of an item bought on two lines is the weighted average of both.
  */
 export function mergePurchaseLines(
-  lines: readonly { itemId?: string | null; qty: number; taxable: number }[],
+  lines: readonly { itemId?: string | null; qty: number; taxable: number; unitFactor?: number | null }[],
 ): { itemId: string; milli: number; taxable: number }[] {
   const byItem = new Map<string, { milli: number; taxable: number }>();
   for (const l of lines) {
     if (!l.itemId) continue;
     const cur = byItem.get(l.itemId) ?? { milli: 0, taxable: 0 };
-    cur.milli += toMilli(l.qty);
+    // Stock is kept in the base unit: 2 boxes of 12 are 24 pieces (docs/price-lists-units.md).
+    cur.milli += baseMilliOf(l);
     cur.taxable += l.taxable;
     byItem.set(l.itemId, cur);
   }
@@ -123,6 +124,10 @@ export function mergePurchaseLines(
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([itemId, v]) => ({ itemId, ...v }));
 }
+
+/** A line's quantity in thousandths of the item's base unit: `qty × unitFactor` (alternate units, e.g. 1 box = 12 pcs). */
+export const baseMilliOf = (l: { qty: number; unitFactor?: number | null }): number =>
+  toMilli(l.unitFactor && l.unitFactor > 0 && l.unitFactor !== 1 ? Math.round(l.qty * l.unitFactor * 1000) / 1000 : l.qty);
 
 /** Paise → "1234.56" for CSV exports. */
 export function paiseToRupees(paise: number | null | undefined): string {

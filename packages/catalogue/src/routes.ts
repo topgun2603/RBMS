@@ -28,6 +28,7 @@ import {
   type VendorScopePort,
 } from "./service";
 import type { RecommendationQuery } from "./recommend";
+import { itemUnitsInputSchema } from "./units";
 import type { ProductScope } from "./types";
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -76,7 +77,26 @@ export const variantLookupSchema = z.object({
   isDefault: z.boolean(),
   status: z.enum(PRODUCT_STATUSES),
   channels: z.array(z.enum(CHANNELS)),
+  /** Alternate units (box of 12 …); `unit` above is the base (stock) unit. */
+  units: z.array(z.lazy(() => itemUnitSchema)).optional(),
+  /** `GET /variants/lookup` only: the scanned code was this alternate unit's barcode. */
+  scannedUnit: z.string().optional(),
 });
+/** An alternate unit of an item (docs/price-lists-units.md). Money in paise. */
+export const itemUnitSchema = z.object({
+  unit: z.string(),
+  /** Base units in one of this unit (12 pieces in a box). */
+  factor: z.number(),
+  barcode: z.string().nullable(),
+  /** The unit's own price (null = factor × the item price). */
+  ownPrice: z.number().int().nullable(),
+  /** As sold (incl. GST when tax-inclusive). */
+  price: z.number().int(),
+  /** GST-exclusive. */
+  rate: z.number().int(),
+  mrp: z.number().int().nullable(),
+});
+export const itemUnitsSchema = z.object({ variantId: z.string().uuid(), baseUnit: z.string(), units: z.array(itemUnitSchema) });
 export const variantSearchResultSchema = z.object({ items: z.array(variantLookupSchema), total: z.number().int() });
 const VARIANTS = { config: { feature: CATALOGUE_FEATURE_KEYS.variants } };
 const isoDateTime = z.string().datetime();
@@ -421,6 +441,15 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
       staff.get("/variants/lookup", base({ query: codeQuerySchema, response: variantLookupSchema }), async (req) => {
         const { code } = codeQuerySchema.parse(query(req));
         return service.lookupCode(tid(req), code);
+      });
+      // alternate units (box of 12 …, docs/price-lists-units.md)
+      staff.get("/variants/:id/units", base({ response: itemUnitsSchema }), async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.units.list(tid(req), id);
+      });
+      staff.put("/variants/:id/units", documented({ body: itemUnitsInputSchema, response: itemUnitsSchema }, BASE.config), async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.units.set(tid(req), id, body(req));
       });
       staff.get("/variants/search", base({ query: variantSearchQuerySchema, response: variantSearchResultSchema }), async (req) =>
         service.searchVariants(tid(req), query(req) as VariantSearchQuery),

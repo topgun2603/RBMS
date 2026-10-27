@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CustomerPricingCard } from "../components/pricing/customer-pricing-card";
 import { ConfirmDialog, describeError, ModuleLink, Page, QueryError, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
 import {
   BellRingIcon,
@@ -182,6 +183,7 @@ export default function CustomerDetailPage() {
           </div>
 
           {creditBook && <RiskCard customerId={c.id} />}
+          <CustomerPricingCard customerId={c.id} />
           {creditBook && <LedgerCard customer={c} />}
 
           <Card className="gap-2">

@@ -30,6 +30,11 @@ export interface PosItem {
   stock: { qty: number; status: "ok" | "low" | "out" | "untracked" } | null;
   active: boolean;
   updatedAt: Date;
+  /**
+   * Alternate units (docs/price-lists-units.md): 1 box = `factor` × `unit`. `price` is for one of the unit (its own
+   * price, else factor × price); a unit barcode adds one of that unit. Absent = sold in `unit` only.
+   */
+  units?: { unit: string; factor: number; barcode: string | null; price: number; ownPrice: number | null; mrp: number | null }[];
   /** Packaging weight of the scale PLU (kg); internal (weigh-ticket pricing), never sent to clients. */
   tareKg?: number | null;
 }

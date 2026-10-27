@@ -114,6 +114,10 @@ export interface VariantLookup {
   optionValues: Record<string, string>;
   isDefault: boolean;
   status: string;
+  /** Alternate units of the item (docs/price-lists-units.md). */
+  units?: { unit: string; factor: number; barcode: string | null; ownPrice: number | null; price: number; rate: number; mrp: number | null }[];
+  /** The scanned code was this unit's barcode. */
+  scannedUnit?: string;
 }
 
 export interface CatalogCategory {

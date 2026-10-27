@@ -3,6 +3,7 @@ import { printingEn, printingTa } from "./messages-printing";
 import { offlineEn, offlineTa } from "./messages-offline";
 import { batchEn, batchTa } from "./messages-batches";
 import { alsoEn, alsoTa } from "./messages-also";
+import { pricingEn, pricingTa } from "./messages-pricing";
 import { voiceEn, voiceTa } from "./messages-voice";
 import { terminalEn, terminalTa } from "./messages-terminal";
 
@@ -834,4 +835,4 @@ const ta: Messages = {
   "pos.returns.printSlip": "சீட்டு அச்சிடு",
 };
 
-export const posMessages = { en: { ...en, ...terminalEn, ...printingEn, ...offlineEn, ...batchEn, ...alsoEn, ...voiceEn }, ta: { ...ta, ...terminalTa, ...printingTa, ...offlineTa, ...batchTa, ...alsoTa, ...voiceTa } } as const;
+export const posMessages = { en: { ...en, ...terminalEn, ...printingEn, ...offlineEn, ...batchEn, ...alsoEn, ...voiceEn, ...pricingEn }, ta: { ...ta, ...terminalTa, ...printingTa, ...offlineTa, ...batchTa, ...alsoTa, ...voiceTa, ...pricingTa } } as const;

@@ -32,6 +32,7 @@ import {
   type PublicCollectionPage,
 } from "./collections";
 import { CATALOGUE_FEATURE_KEYS } from "./features";
+import { CatalogueUnits } from "./units";
 import { effectiveGstRate, exclusiveOf, gstRateAtPrice, GST_RATES, isGstRateRule, type GstRateRule } from "@srirealtime/gst";
 import {
   buildTree,
@@ -704,11 +705,14 @@ export class CatalogueService {
   private readonly db: Db;
   private readonly log: LoggerPort;
   private readonly now: () => Date;
+  /** Alternate units of items (box of 12 …, docs/price-lists-units.md). */
+  readonly units: CatalogueUnits;
 
   constructor(private readonly deps: CatalogueDeps) {
     this.db = deps.db;
     this.log = deps.log ?? noopLogger;
     this.now = deps.now ?? (() => new Date());
+    this.units = new CatalogueUnits(this.db, this.now);
   }
 
   // ================================================================ categories
@@ -1646,26 +1650,32 @@ export class CatalogueService {
     if (unique.length === 0) return [];
     const rows = await this.variantJoin().where(this.live(tenantId, inArray(catalogVariants.id, unique)));
     const byId = new Map(rows.map((r) => [r.v.id, toLookup(r.v, r.p)]));
-    return unique.map((id) => byId.get(id)).filter((x): x is VariantLookup => Boolean(x));
+    return this.units.attach(tenantId, unique.map((id) => byId.get(id)).filter((x): x is VariantLookup => Boolean(x)));
   }
 
-  /** POS scanning: exact barcode, or SKU (case-insensitive). */
-  async lookupCode(tenantId: string, rawCode: string): Promise<VariantLookup> {
+  /**
+   * POS scanning: exact barcode, or SKU (case-insensitive), else the barcode of an alternate unit (a box's barcode):
+   * then `unit` names the unit the scan stands for.
+   */
+  async lookupCode(tenantId: string, rawCode: string): Promise<VariantLookup & { scannedUnit?: string }> {
     const { code: c } = codeQuerySchema.parse({ code: rawCode });
     const rows = await this.variantJoin()
       .where(this.live(tenantId, or(eq(catalogVariants.barcode, c), sql`lower(${catalogVariants.sku}) = lower(${c})`)))
       .orderBy(sql`(${catalogVariants.barcode} = ${c}) desc`)
       .limit(1);
     const row = rows[0];
-    if (!row) throw notFound("Variant");
-    return toLookup(row.v, row.p);
+    if (row) return (await this.units.attach(tenantId, [toLookup(row.v, row.p)]))[0]!;
+    const unit = await this.units.byBarcode(tenantId, c);
+    const found = unit ? await this.variantWithProduct(tenantId, unit.variantId) : null;
+    if (!unit || !found) throw notFound("Variant");
+    return { ...(await this.units.attach(tenantId, [toLookup(found.v, found.p)]))[0]!, scannedUnit: unit.unit };
   }
 
   /** Flattened "Product – Variant" rows for pickers (archived products excluded). */
   async searchVariants(tenantId: string, query: VariantSearchQuery = {}): Promise<ListResult<VariantLookup>> {
     const parsed = variantSearchQuerySchema.parse(query);
     const { rows, total } = await this.searchRows(tenantId, parsed);
-    return { items: rows.map((r) => toLookup(r.v, r.p)), total };
+    return { items: await this.units.attach(tenantId, rows.map((r) => toLookup(r.v, r.p))), total };
   }
 
   // ================================================================ public storefront
@@ -2850,12 +2860,12 @@ export class CatalogueService {
           .orderBy(asc(catalogCategories.name))
       : [];
     return {
-      items: rows.map((r) => ({
+      items: await this.units.attach(tenantId, rows.map((r) => ({
         ...toCatalogItem(r.v, r.p),
         active: r.p.status === "active",
         stockQty: r.stockQty === null ? null : Number(r.stockQty),
         stockStatus: (r.stockStatus as BillingItemListPage["items"][number]["stockStatus"]) ?? null,
-      })),
+      }))),
       total: counted?.total ?? 0,
       facets: {
         category: facetCounts(byCategory),
@@ -2876,14 +2886,14 @@ export class CatalogueService {
       const rows = await this.variantJoin().where(this.live(tenantId, inArray(catalogVariants.id, chunk)));
       for (const r of rows) out.set(r.v.id, toCatalogItem(r.v, r.p));
     }
-    return unique.map((id) => out.get(id)).filter((x): x is CatalogItem => Boolean(x));
+    return this.units.attach(tenantId, unique.map((id) => out.get(id)).filter((x): x is CatalogItem => Boolean(x)));
   }
 
   /** Throws 404 "Item not found". */
   async getItem(tenantId: string, variantId: string): Promise<CatalogItem> {
     const found = z.string().uuid().safeParse(variantId).success ? await this.variantWithProduct(tenantId, variantId) : null;
     if (!found) throw notFound("Item");
-    return toCatalogItem(found.v, found.p);
+    return (await this.units.attach(tenantId, [toCatalogItem(found.v, found.p)]))[0]!;
   }
 
   /** A billing-style item: one active product with one default variant (price = rate, not tax-inclusive). */

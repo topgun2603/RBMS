@@ -13,6 +13,8 @@ export interface CatalogItem {
   /** Optional: scan codes (stock audits match a scanned code against these). */
   sku?: string | null;
   barcode?: string | null;
+  /** Optional: grams per unit (landed charges spread by weight). */
+  weightGrams?: number | null;
 }
 
 export interface ItemCatalogPort {

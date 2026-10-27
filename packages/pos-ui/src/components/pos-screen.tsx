@@ -55,7 +55,9 @@ import { fitPayments, paymentsFor } from "../lib/tender";
 import { customerPhone, NO_CUSTOMER, type BillingItem, type Paged, type PosCustomer, type VariantLookup } from "../lib/types";
 import { useCounterKeys, useFinePointer, useMediaQuery } from "../lib/use-keys";
 import { needsWeight, resolveScan, type ScanHit, type ServerHit } from "../lib/scan";
-import { getTicketByCode, markTicketUsed } from "../lib/terminal-api";
+import { getTicketByCode, markTicketUsed, usePricingCache } from "../lib/terminal-api";
+import { listsFor, repriceLines, setLineUnit } from "../lib/units";
+import { PriceListPicker } from "./price-list-picker";
 import type { WeighTicket } from "../lib/terminal-types";
 import { addTicket, isTicketCode, markTicketsUsed, removeLineOrTicket, ticketIdsOf } from "../lib/weigh-ticket";
 import { CameraScanDialog } from "./camera-scan";
@@ -189,6 +191,24 @@ function Counter() {
 
   const lines = cart.lines;
   const customer = cart.customer;
+
+  // Price lists (docs/price-lists-units.md): the customer's list or the one picked here, priced from the cached lists
+  // (offline too). Lines whose price was changed by hand keep it.
+  const [priceChoice, setPriceChoice] = useLocalState<string>(storageKey("price-list", env.tenant), "");
+  const pricingFallback = usePricingCache(!catalog.pricing && env.online.online);
+  const pricing = catalog.pricing ?? pricingFallback ?? null;
+  const customerId = customer.kind === "saved" ? customer.customer.id : null;
+  const priceLists = React.useMemo(() => listsFor(pricing, { customerId, chosen: priceChoice || null }), [pricing, customerId, priceChoice]);
+  const autoListName = React.useMemo(() => listsFor(pricing, { customerId })[0]?.name ?? null, [pricing, customerId]);
+  const priceSig = lines.map((l) => `${l.key}:${l.unit}:${l.qty}:${l.price}:${l.listPrice}`).join("|");
+  React.useEffect(() => {
+    if (!pricing) return;
+    const today = todayIST();
+    setCart((c) => {
+      const next = repriceLines(c.lines, priceLists, today);
+      return next === c.lines ? c : { ...c, lines: next };
+    });
+  }, [pricing, priceLists, priceSig, setCart]);
   const sellerState = env.sellerState ?? "00";
   const placeOfSupply = (customer.kind === "saved" && customer.customer.stateCode) || sellerState;
   const totals = React.useMemo(() => cartTotals(lines, { sellerState, placeOfSupply, taxFree: env.seller.taxScheme === "composition" }), [lines, sellerState, placeOfSupply, env.seller.taxScheme]);
@@ -654,13 +674,16 @@ function Counter() {
       payBlocked={payBlocked}
       suggestions={<AlsoBuyChips lines={lines} onAdd={(p) => add(p)} />}
       customerBar={
-        <CustomerBar
-          value={customer}
-          onChange={(c) => setCart((s) => ({ ...s, customer: c, points: 0 }))}
-          inputRef={customerRef}
-          quote={quote.data}
-          quoteLoading={quote.isFetching}
-        />
+        <>
+          <CustomerBar
+            value={customer}
+            onChange={(c) => setCart((s) => ({ ...s, customer: c, points: 0 }))}
+            inputRef={customerRef}
+            quote={quote.data}
+            quoteLoading={quote.isFetching}
+          />
+          <PriceListPicker pricing={pricing} value={priceChoice} onChange={setPriceChoice} autoName={autoListName} />
+        </>
       }
     />
   );
@@ -792,7 +815,7 @@ function Counter() {
         line={editing}
         onClose={() => setEditKey(null)}
         onSave={(key, e) => {
-          updateLines((l) => setDiscount(setPrice(setQty(l, key, e.qty), key, e.price), key, e.discount));
+          updateLines((l) => setDiscount(setPrice(setQty(e.unit ? setLineUnit(l, key, e.unit) : l, key, e.qty), key, e.price), key, e.discount));
           setEditKey(null);
         }}
       />

@@ -22,7 +22,7 @@ import { expenseCategories, expenses, itcOf } from "@srirealtime/expenses";
 import { gstTaxPayments } from "@srirealtime/gstfiling";
 import { todayIST } from "@srirealtime/gst";
 import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, tillSessions, type InvoicesService } from "@srirealtime/invoices";
-import { debitNotes, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@srirealtime/inventory";
+import { debitNotes, methodAt, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@srirealtime/inventory";
 import { and, eq, gt, inArray, isNull, sql } from "@srirealtime/db";
 import { likePattern } from "@srirealtime/core";
 
@@ -336,6 +336,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           unitCost: stockMovements.unitCost,
           at: stockMovements.createdAt,
           avgCost: stockItems.avgCost,
+          costFifo: stockMovements.costFifo,
         })
         .from(stockMovements)
         .leftJoin(
@@ -343,10 +344,13 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           and(eq(stockItems.tenantId, stockMovements.tenantId), eq(stockItems.itemId, stockMovements.itemId), sql`${stockItems.locationId} is not distinct from ${stockMovements.locationId}`),
         )
         .where(and(eq(stockMovements.tenantId, tenantId), sql`${stockMovements.reason} in ('opening', 'adjustment', 'audit')`));
+      // From the date a shop values stock by FIFO, a write-off is valued at the FIFO cost it took (docs/valuation-reports.md).
+      const history = await deps.inventory.costing.history(tenantId);
       return rows.flatMap((r): StockAdjustmentSrc[] => {
         const delta = Number(r.delta);
         const unit = delta > 0 ? (r.unitCost ?? r.avgCost ?? 0) : (r.avgCost ?? r.unitCost ?? 0);
-        const value = Math.round(delta * unit);
+        const fifo = history.length > 0 && r.costFifo !== null && methodAt(history, todayIST(r.at)) === "fifo";
+        const value = fifo ? r.costFifo! : Math.round(delta * unit);
         return value ? [{ id: r.id, date: todayIST(r.at), reason: r.reason === "opening" ? "opening" : "adjustment", value, itemName: null }] : [];
       });
     },
@@ -398,35 +402,42 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
   };
 }
 
-/** Stock value from the moving-average cost: quantity at the date (current quantity less later movements) x average cost. */
-export function accountingStock(deps: Pick<AccountingAdapterDeps, "db" | "isEnabled" | "sellerState">): StockValuePort {
+/**
+ * Stock value from the moving-average cost: quantity at the date (current quantity less later movements) x average cost.
+ * From the date a shop switched to FIFO (docs/valuation-reports.md) the FIFO layers left as of the date instead.
+ */
+export function accountingStock(deps: Pick<AccountingAdapterDeps, "db" | "isEnabled" | "sellerState"> & { inventory?: InventoryService }): StockValuePort {
   const { db } = deps;
   return {
     async value(tenantId, asOf) {
       if (!(await deps.isEnabled(tenantId, "inventory"))) return null;
-      const items = await db
-        .select({ itemId: stockItems.itemId, locationId: stockItems.locationId, qty: stockItems.qty, avgCost: stockItems.avgCost })
-        .from(stockItems)
-        .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.track, true)));
-      const key = (i: string, l: string | null) => `${i}|${l ?? ""}`;
-      const after = new Map<string, number>();
-      if (asOf < todayIST(new Date())) {
-        const cutoff = new Date(`${asOf}T23:59:59.999+05:30`);
-        const rows = await db
-          .select({ itemId: stockMovements.itemId, locationId: stockMovements.locationId, delta: sql<string>`sum(${stockMovements.delta})` })
-          .from(stockMovements)
-          .where(and(eq(stockMovements.tenantId, tenantId), gt(stockMovements.createdAt, cutoff)))
-          .groupBy(stockMovements.itemId, stockMovements.locationId);
-        for (const r of rows) after.set(key(r.itemId, r.locationId), Number(r.delta));
-      }
-      let total = 0;
-      for (const i of items) {
-        const qty = Math.max(0, Number(i.qty) - (after.get(key(i.itemId, i.locationId)) ?? 0));
-        total += Math.round(qty * (i.avgCost ?? 0));
-      }
-      return total;
+      if (deps.inventory) return deps.inventory.costing.bookValue(tenantId, asOf, () => averageValue(tenantId, asOf));
+      return averageValue(tenantId, asOf);
     },
   };
+  async function averageValue(tenantId: string, asOf: string): Promise<number> {
+    const items = await db
+      .select({ itemId: stockItems.itemId, locationId: stockItems.locationId, qty: stockItems.qty, avgCost: stockItems.avgCost })
+      .from(stockItems)
+      .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.track, true)));
+    const key = (i: string, l: string | null) => `${i}|${l ?? ""}`;
+    const after = new Map<string, number>();
+    if (asOf < todayIST(new Date())) {
+      const cutoff = new Date(`${asOf}T23:59:59.999+05:30`);
+      const rows = await db
+        .select({ itemId: stockMovements.itemId, locationId: stockMovements.locationId, delta: sql<string>`sum(${stockMovements.delta})` })
+        .from(stockMovements)
+        .where(and(eq(stockMovements.tenantId, tenantId), gt(stockMovements.createdAt, cutoff)))
+        .groupBy(stockMovements.itemId, stockMovements.locationId);
+      for (const r of rows) after.set(key(r.itemId, r.locationId), Number(r.delta));
+    }
+    let total = 0;
+    for (const i of items) {
+      const qty = Math.max(0, Number(i.qty) - (after.get(key(i.itemId, i.locationId)) ?? 0));
+      total += Math.round(qty * (i.avgCost ?? 0));
+    }
+    return total;
+  }
 }
 
 /** The credit book and payables totals, and the existing GST summaries, to reconcile the books against. */

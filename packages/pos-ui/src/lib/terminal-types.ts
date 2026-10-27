@@ -113,6 +113,8 @@ export interface PosItem {
   stock: PosItemStock | null;
   active: boolean;
   updatedAt: string;
+  /** Alternate units (box of 12 ...): `price` for one of the unit; a unit's barcode adds one of it. */
+  units?: { unit: string; factor: number; barcode: string | null; price: number; ownPrice: number | null; mrp: number | null }[];
 }
 
 export interface CatalogPage {

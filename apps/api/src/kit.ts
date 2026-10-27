@@ -112,6 +112,8 @@ import { createStoreLocalizer } from "./kit-store-localize";
 import { createStoreRevalidator, storeRevalidateConfig } from "./kit-store-revalidate";
 import { createPosWiring } from "./kit-pos";
 import { posInvoicesPort } from "./kit-pos-offline";
+import { createPriceListsWiring, registerPriceImportExport, withLinePricing } from "./kit-pricing";
+import { returnSales, wireValuation, withItemWeights } from "./kit-valuation";
 
 /**
  * Composition root: builds every module and connects them through their ports.
@@ -505,7 +507,10 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     db,
     now: clock,
     events,
-    catalog: catalogue.itemCatalog,
+    // Item weights added for landed charges spread by weight (kit-valuation.ts).
+    catalog: withItemWeights(catalogue.itemCatalog, db),
+    // Credit note -> bill, for building the FIFO cost layers of a shop's history (docs/valuation-reports.md).
+    returnSales: returnSales(db),
     sellerState: {
       stateCode: async (tenantId) => {
         const code = (await billingProfile.get({ tenantId })).stateCode;
@@ -524,6 +529,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await invoices.service.recordOnlinePayment({ ...p, invoiceId: p.purposeId });
     },
   });
+
+  // Price lists, wholesale slabs and customer groups; bill lines get units checked and prices filled (kit-pricing.ts).
+  const priceLists = createPriceListsWiring({ db, catalogue: () => catalogue.service, isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key), log });
 
   // Collection-scoped automatic offers ask the catalogue which products are in which collections.
   const coupons = createCoupons({ db, collections: { membership: (tenantId, cols, products) => catalogue.service.collectionMembership(tenantId, cols, products) } });
@@ -871,6 +879,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     medicines: () => medicinesRef,
     isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
   });
+  registerPriceImportExport(importExport.registry, { priceLists: priceLists.service, catalogue: () => catalogue.service });
 
   // ================================================================ online store (docs/commerce-batch2.md)
   const isEnabled = (tenantId: string, key: string) => features.service.isEnabled(tenantId, key);
@@ -1390,6 +1399,16 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   });
   b3 = batch3;
 
+  // ---- Stock valuation (FIFO / weighted average), landed costs, item-wise profit, packaged and branch reports (docs/valuation-reports.md).
+  const valuation = wireValuation({
+    db,
+    inventory: () => inventory.service,
+    documents,
+    reports: batch3.reports.service,
+    isEnabled: (tenantId, key) => features.service.isEnabled(tenantId, key),
+    lockedThrough: async (tenantId) => ((await features.service.isEnabled(tenantId, "accounting")) ? ((await accounting.service.settings(tenantId)).lockedThrough ?? null) : null),
+  });
+
   // ---- GST filing depth: GSTR-3B, ITC and GSTR-2B reconciliation, reverse charge, composition, GSTR-1 extras (docs/gst-filing.md).
   const gstFiling = createGstFiling({
     db,
@@ -1728,7 +1747,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       return b ? { id: b.id, locationId: b.stockLocationId, active: b.active } : null;
     },
     billExists: async (tenantId, invoiceId) => Boolean(await invoices.service.get(tenantId, invoiceId).catch(() => null)),
-    invoices: posInvoicesPort(invoices.service, db),
+    invoices: posInvoicesPort(invoices.service, db, (tenantId, lines) => priceLists.prepareLines(tenantId, lines, { unitsOnly: true })),
     audit: audit.service,
     log,
   });
@@ -1819,6 +1838,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     payments.module,
     inventory.module,
     catalogue.module,
+    priceLists.module,
     staff.module,
     audit.module,
     orders.module,
@@ -1868,6 +1888,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     idempotency.module,
     mobile.module,
     ...batch3.modules,
+    valuation.module,
     ...batch5.modules,
     demoAuthModule(demoDeps),
   ];
@@ -1890,6 +1911,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     salesDocs,
     payments,
     inventory,
+    valuation,
     catalogue,
     staff,
     audit,
@@ -1930,7 +1952,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await handler();
     },
     /** Host-side `config.permission` for the billing, inventory, catalogue, orders and coupons routes. */
-    routeRules: routePermissions(ROUTE_PERMISSIONS, {
+    // Document lines get their units checked and missing prices filled first (kit-pricing.ts), then the guards below.
+    routeRules: routePermissions(ROUTE_PERMISSIONS, withLinePricing({
       ...ROUTE_GUARDS,
       // Per-role / per-member discount limits with manager-PIN approval (discount-guard.ts), after the permission guards.
       ...withDiscountLimits(
@@ -1942,7 +1965,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
         ),
       ),
       "POST /v1/support/public/tickets": guestTicketGuard((tenantId, token) => auth.service.verifyGuestToken(tenantId, token)),
-    }),
+    }, () => priceLists.prepareLines)),
     /** Collects every route for the developer module's `GET /v1/developer/openapi.json` (registered after routeRules). */
     routeCollector: batch3.routeCollector,
     /** Error reporter + metrics registry (docs/ops.md). */

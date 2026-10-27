@@ -4,6 +4,15 @@ import type { EInvoiceSource } from "./ports";
 import { toUqc } from "./units";
 
 /**
+ * HSN summary quantity and unit of a bill line: alternate-unit lines (2 boxes of 12 pcs) count in the item's base unit
+ * (24 pcs → NOS), so one HSN keeps one UQC however the goods were packed (docs/price-lists-units.md).
+ */
+function hsnQty(l: { qty: number; unit?: string | null; unitFactor?: number | null; baseUnit?: string | null }): { qty: number; unit: string | null } {
+  if (l.unitFactor && l.unitFactor !== 1 && l.baseUnit) return { qty: roundTo(l.qty * l.unitFactor, 3), unit: l.baseUnit };
+  return { qty: l.qty, unit: l.unit ?? null };
+}
+
+/**
  * GSTR-1 JSON in the GSTN offline-tool / API layout: `gstin`, `fp` (MMYYYY) and the sections b2b, b2cl, b2cs, cdnr,
  * cdnur, hsn and doc_issue. Amounts are rupees with 2 decimals (summed in paise first). Credit notes (document type CRN)
  * go to cdnr (registered buyers) or cdnur (B2CL bills); notes on B2CS bills are netted into b2cs, and every note is
@@ -301,7 +310,8 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       for (const l of inv.lines) {
         const code = (l.hsn ?? "").replace(/\s+/g, "");
         const service = isServiceHsn(code);
-        const uqc = service ? "NA" : toUqc(l.unit);
+        const hq = hsnQty(l);
+        const uqc = service ? "NA" : toUqc(hq.unit);
         const key = `${code}|${uqc}|${l.gstRate}`;
         const row = tab.get(key) ?? {
           num: 0,
@@ -317,7 +327,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
           csamt: 0,
           p: zero(),
         };
-        if (!service) row.qty = roundTo(row.qty - l.qty, 3);
+        if (!service) row.qty = roundTo(row.qty - hq.qty, 3);
         add(row.p, { taxable: -l.taxable, igst: -l.igst, cgst: -l.cgst, sgst: -l.sgst });
         tab.set(key, row);
       }
@@ -362,7 +372,8 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       const code = (l.hsn ?? "").replace(/\s+/g, "");
       if (!code) warnings.push(`${no}: a line without HSN ("${l.description}") is reported under HSN "" — add HSN codes`);
       const service = isServiceHsn(code);
-      const uqc = service ? "NA" : toUqc(l.unit);
+      const hq = hsnQty(l);
+      const uqc = service ? "NA" : toUqc(hq.unit);
       const key = `${code}|${uqc}|${l.gstRate}`;
       const row = tab.get(key) ?? {
         num: 0,
@@ -378,7 +389,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
         csamt: 0,
         p: zero(),
       };
-      if (!service) row.qty = roundTo(row.qty + l.qty, 3);
+      if (!service) row.qty = roundTo(row.qty + hq.qty, 3);
       add(row.p, l);
       tab.set(key, row);
     }

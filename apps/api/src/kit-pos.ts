@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AuthService } from "@srirealtime/auth";
-import { catalogCategories, catalogProducts, catalogVariants, itemName } from "@srirealtime/catalogue";
+import { catalogCategories, catalogItemUnits, catalogProducts, catalogVariants, itemName } from "@srirealtime/catalogue";
 import { forbidden, type AuditPort } from "@srirealtime/core";
 import { gstRateAtPrice } from "@srirealtime/gst";
 import { and, eq, gt, inArray, sql, type Db, type SQL } from "@srirealtime/db";
@@ -43,6 +43,8 @@ export function posCatalogPort(db: Db, stockOn: (tenantId: string) => Promise<bo
         qty: withStock ? sql<string | null>`${stockOf(sql`sum(si.qty)`)}` : sql<string | null>`null`,
         reorder: withStock ? sql<string | null>`${stockOf(sql`sum(si.reorder_level)`)}` : sql<string | null>`null`,
         track: withStock ? sql<boolean | null>`${stockOf(sql`bool_and(si.track)`)}` : sql<boolean | null>`null`,
+        // Alternate units (box of 12 …); a change touches the variant's updated_at, so deltas carry it.
+        units: sql<{ unit: string; factor: string | number; barcode: string | null; price: number | null; mrp: number | null }[] | null>`(select json_agg(json_build_object('unit', u.unit, 'factor', u.factor, 'barcode', u.barcode, 'price', u.price, 'mrp', u.mrp) order by u.position) from ${catalogItemUnits} u where u.tenant_id = ${v.tenantId} and u.variant_id = ${v.id})`,
       })
       .from(v)
       .innerJoin(p, eq(p.id, v.productId))
@@ -95,6 +97,12 @@ export function posCatalogPort(db: Db, stockOn: (tenantId: string) => Promise<bo
         updatedAt: new Date(r.changedAt),
         tareKg: r.scale?.tareGrams ? r.scale.tareGrams / 1000 : null,
       };
+      if (r.units?.length) {
+        item.units = r.units.map((u) => {
+          const factor = Number(u.factor);
+          return { unit: u.unit, factor, barcode: u.barcode, ownPrice: u.price, price: u.price ?? Math.round(r.v.price * factor), mrp: u.mrp ?? (r.v.mrp ? Math.round(r.v.mrp * factor) : null) };
+        });
+      }
       return { id: r.v.id, sellable: Boolean(r.sellable), item };
     });
   }

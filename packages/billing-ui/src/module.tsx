@@ -25,6 +25,7 @@ import {
   ListTreeIcon,
   LockIcon,
   PackageIcon,
+  TagsIcon,
   PercentIcon,
   PlusIcon,
   ReceiptIndianRupeeIcon,
@@ -59,6 +60,8 @@ export const BILLING_FEATURES = {
   expenses: "expenses",
   /** PDF downloads (@srirealtime/documents). */
   documents: "documents",
+  /** Price lists, wholesale slabs and customer groups (@srirealtime/pricelists, docs/price-lists-units.md). */
+  priceLists: "catalogue.price-lists",
   /** Double-entry books: chart of accounts, journal, ledgers, trial balance, P&L, balance sheet (@srirealtime/accounting). */
   accounting: "accounting",
 } as const;
@@ -107,6 +110,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
   ];
   const stock = [
     { href: "items", label: "billing.nav.items", icon: PackageIcon, feature: F.invoices },
+    { href: "price-lists", label: "billing.nav.priceLists", icon: TagsIcon, feature: F.priceLists },
     { href: "stock", label: "billing.nav.stock", icon: WarehouseIcon, feature: F.inventory },
     { href: "batches", label: "billing.nav.batches", icon: CalendarClockIcon, feature: F.inventory },
     { href: "pricing-hints", label: "billing.nav.pricingHints", icon: TrendingUpIcon, feature: F.inventory, permission: ["reports.view", "inventory.adjust", "inventory.purchases"] },
@@ -166,6 +170,7 @@ export function billingModule(opts: BillingModuleOptions = {}): WebModule {
     { path: "customers/:id", component: page(() => import("./pages/customer-detail")), feature: F.invoices },
     { path: "credit-book", component: page(() => import("./pages/credit-book")), feature: F.creditBook },
     { path: "items", component: page(() => import("./pages/items")), feature: F.invoices },
+    { path: "price-lists", component: page(() => import("./pages/price-lists")), feature: F.priceLists },
     { path: "stock", component: page(() => import("./pages/stock")), feature: F.inventory },
     { path: "batches", component: page(() => import("./pages/batches")), feature: F.inventory },
     { path: "pricing-hints", component: page(() => import("./pages/pricing-hints")), feature: F.inventory, permission: ["reports.view", "inventory.adjust", "inventory.purchases"] },

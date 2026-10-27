@@ -206,6 +206,10 @@ describe("createInventory", () => {
       "stockAudits",
       "stockAuditLines",
       "stockAuditEntries",
+      "stockValuationSettings",
+      "stockCostLayers",
+      "stockCostDraws",
+      "landedCostVouchers",
     ]);
     expect(service).toBeInstanceOf(InventoryService);
   });

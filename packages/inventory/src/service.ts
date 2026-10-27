@@ -48,6 +48,7 @@ import {
   stockStatus,
   stockValue,
   toMilli,
+  baseMilliOf,
   unitCostOf,
   type StockStatus,
 } from "./logic";
@@ -72,6 +73,8 @@ import { AuditService } from "./audit";
 import { BatchService, batchFieldsSchema, batchReasonFor, type TakeResult } from "./batches";
 import { PurchasingService } from "./purchasing";
 import { TransferService } from "./transfers";
+import { chargeInputSchema, computeCharges, CostingService } from "./costing";
+import { allocateCharges } from "./costing-logic";
 import { apportion, purchaseBalance } from "./payables";
 import { noopLogger, type CatalogItem, type EventsPort, type ItemCatalogPort, type LegacyBatchPort, type LoggerPort, type SellerStatePort, type TransferNoticePort } from "./ports";
 import {
@@ -103,6 +106,7 @@ import {
   type StockItemRow,
   type SupplierRow,
   type SupplierSnapshot,
+  type PurchaseCharge,
 } from "./schema";
 
 export const MODULE_ID = "inventory";
@@ -135,6 +139,8 @@ export interface InventoryDeps {
   legacyBatches?: LegacyBatchPort;
   /** Tells the receiving branch that a transfer is on its way. */
   transferNotice?: TransferNoticePort;
+  /** Credit note id -> its bill id, for building the cost layers of a shop's history (docs/valuation-reports.md). */
+  returnSales?: (tenantId: string) => Promise<Map<string, string>>;
 }
 
 // ------------------------------------------------------------------ DTOs
@@ -334,6 +340,8 @@ export interface Purchase {
   dueDate: string | null;
   freight: number;
   otherCharges: number;
+  /** Landed charges (freight, customs duty, insurance...) with their GST. */
+  charges: PurchaseCharge[];
   purchaseOrderId: string | null;
   goodsReceiptId: string | null;
   status: PurchaseStatus;
@@ -560,6 +568,9 @@ export const purchaseLineSchema = z
     batchNo: opt(z.string().trim().max(60)),
     mfgDate: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
     expiry: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+    /** Alternate unit (1 box = 12 pcs → 12): stock comes in as `qty × unitFactor` of `baseUnit`; set by the API host. */
+    unitFactor: z.number().positive().max(1_000_000).optional(),
+    baseUnit: opt(z.string().trim().max(16)),
   })
   .superRefine((l, ctx) => {
     if ((l.discount ?? 0) > lineAmount(l.qty, l.rate)) {
@@ -575,6 +586,10 @@ export const purchaseLineSchema = z
     if (l.batchNo) out.batchNo = l.batchNo;
     if (l.mfgDate) out.mfgDate = l.mfgDate;
     if (l.expiry) out.expiry = l.expiry;
+    if (l.unitFactor && l.unitFactor !== 1) {
+      out.unitFactor = l.unitFactor;
+      if (l.baseUnit) out.baseUnit = l.baseUnit;
+    }
     return out;
   });
 
@@ -602,6 +617,8 @@ export const purchaseInputSchema = z.object({
   /** Supplier's freight and other charges (no GST); added to the bill total and spread over the stock cost. */
   freight: money.optional(),
   otherCharges: money.optional(),
+  /** Landed charges with GST and how to spread them (docs/valuation-reports.md). */
+  charges: z.array(chargeInputSchema).max(10).optional(),
   /** Where the stock arrives (default location when omitted). */
   locationId: locationIdParam,
 });
@@ -786,6 +803,7 @@ const toPurchase = (r: PurchaseRow): Purchase => ({
   dueDate: r.dueDate,
   freight: r.freight,
   otherCharges: r.otherCharges,
+  charges: r.charges ?? [],
   purchaseOrderId: r.purchaseOrderId,
   goodsReceiptId: r.goodsReceiptId,
   status: r.status,
@@ -1009,6 +1027,10 @@ interface StockChange {
   batchPreferred?: readonly { batchId: string; milli: number }[];
   /** Returned goods: the sale they came from (stored on the batch ledger). */
   batchSourceRefId?: string | null;
+  /** Returned goods: the document they went out on, so they come back at that cost (costing). */
+  costSourceRef?: { refType: string; refId: string } | null;
+  /** Take these documents' cost layers first (a debit note returns its purchase's goods). */
+  layerPrefer?: readonly { refType: string; refId: string }[];
 }
 
 /** Transaction-scoped advisory lock so two applySale/reverseSale (or reserve/release/commit) calls for one ref can't interleave. */
@@ -1034,12 +1056,15 @@ export class InventoryService {
   readonly audits: AuditService;
   /** Transfers with the in-transit step. */
   readonly transfers: TransferService;
+  /** FIFO cost layers, the cost of each movement under both methods, valuation and landed costs. */
+  readonly costing: CostingService;
 
   constructor(deps: InventoryDeps) {
     this.purchasing = new PurchasingService(this, deps);
     this.batches = new BatchService(this, deps);
     this.audits = new AuditService(this, deps);
     this.transfers = new TransferService(this, deps);
+    this.costing = new CostingService(this, deps);
     this.db = deps.db;
     this.catalog = deps.catalog;
     this.sellerState = deps.sellerState;
@@ -1357,6 +1382,7 @@ export class InventoryService {
       });
     }
     let avgCost = row!.avgCost;
+    const avgBefore = avgCost;
     const unitCost = c.unitCost ?? null;
     if (unitCost !== null && c.deltaMilli > 0) {
       const next = movingAverageCost(qtyMilli - c.deltaMilli, avgCost, c.deltaMilli, unitCost);
@@ -1368,7 +1394,8 @@ export class InventoryService {
           .where(and(eq(stockItems.tenantId, c.tenantId), eq(stockItems.id, row!.id)));
       }
     }
-    await tx.insert(stockMovements).values({
+    const movedAt = this.now();
+    const [moved] = await tx.insert(stockMovements).values({
       tenantId: c.tenantId,
       locationId: c.locationId,
       itemId: c.itemId,
@@ -1381,8 +1408,8 @@ export class InventoryService {
       unitCost,
       note: c.note ?? null,
       createdBy: c.createdBy ?? null,
-      createdAt: this.now(),
-    });
+      createdAt: movedAt,
+    }).returning({ id: stockMovements.id });
     // Stock going out of an item that has batches comes out of them (chosen batch, then first-expiry-first-out).
     const batches: TakeResult =
       c.deltaMilli < 0 && !c.skipBatch
@@ -1400,6 +1427,8 @@ export class InventoryService {
             userId: c.createdBy ?? null,
           })
         : { allocations: [], shortMilli: Math.max(0, -c.deltaMilli) };
+    // Its cost under both methods and the FIFO layers (docs/valuation-reports.md); the average above is unchanged.
+    await this.costing.onChange(tx, c, { movementId: moved!.id, at: movedAt, qtyAfterMilli: qtyMilli, avgBefore, batches });
     return { qtyMilli, avgCost, batches };
   }
 
@@ -1719,6 +1748,7 @@ export class InventoryService {
             .update(stockItems)
             .set({ avgCost: unitCost })
             .where(and(eq(stockItems.tenantId, tenantId), eq(stockItems.id, current.id)));
+          await this.costing.setUnitCost(tx, tenantId, itemId, loc.id, unitCost);
         }
         return;
       }
@@ -1917,6 +1947,7 @@ export class InventoryService {
           refType: "credit_note",
           refId: b.refId,
           refNumber: b.refNumber ?? null,
+          costSourceRef: { refType: "invoice", refId: b.saleRefId },
         });
         await this.batches.returnToSource(tx, {
           tenantId,
@@ -2494,22 +2525,33 @@ export class InventoryService {
       throw badRequest("Complete the business profile (state) in billing settings, or give the supplier's state");
     }
     const supplierState = supplier.stateCode ?? placeOfSupply;
-    const totals = computeInvoice(b.lines, { sellerState: supplierState, placeOfSupply });
+    // Landed charges: GST that can be claimed goes into the bill's GST totals (input tax credit, like the goods');
+    // the rest of each charge (and GST that can't be claimed) is outside them, like freight (docs/valuation-reports.md).
+    const charges = computeCharges(b.charges ?? [], { sellerState: supplierState, placeOfSupply });
+    const folded = charges.filter((c) => c.claimable && c.gst > 0);
+    const totals = computeInvoice([...b.lines, ...folded.map((c) => ({ description: c.label ?? c.kind, qty: 1, rate: c.amount, gstRate: c.gstRate as GstRate }))], { sellerState: supplierState, placeOfSupply });
+    const itemLines = totals.lines.slice(0, b.lines.length) as PurchaseLine[];
     const freight = b.freight ?? 0;
     const otherCharges = b.otherCharges ?? 0;
-    const grandTotal = totals.total + freight + otherCharges;
+    const outside = charges.filter((c) => !folded.includes(c)).reduce((s, c) => s + c.amount + c.gst, 0);
+    const grandTotal = totals.total + freight + otherCharges + outside;
     if (grandTotal > MAX_PAISE) throw badRequest("Purchase total is too large");
     const amountPaid = b.paid ? grandTotal : (b.amountPaid ?? 0);
     if (amountPaid > grandTotal) throw badRequest("The amount paid can't be more than the bill total");
     if (b.dueDate && b.dueDate < b.date) throw badRequest("The due date can't be before the bill date");
 
-    const stockLines = mergePurchaseLines(totals.lines as PurchaseLine[]);
+    const stockLines = mergePurchaseLines(itemLines);
+    const weights = new Map<string, number | null>();
     if (stockLines.length > 0) {
       const ids = stockLines.map((l) => l.itemId);
-      const found = new Set((await this.catalog.getItems(tenantId, ids)).map((i) => i.id));
+      const known = await this.catalog.getItems(tenantId, ids);
+      for (const i of known) weights.set(i.id, i.weightGrams ?? null);
+      const found = new Set(known.map((i) => i.id));
       const missing = ids.filter((id) => !found.has(id));
       if (missing.length > 0) throw badRequest("Some lines refer to items that no longer exist", { itemIds: missing });
     }
+    // Paise of landed cost per stock line: each charge on its own basis, the old freight / other charges by value.
+    const landed = allocateCharges(stockLines.map((l) => ({ taxable: l.taxable, milli: l.milli, weightGrams: weights.get(l.itemId) ?? null })), charges, freight + otherCharges);
 
     const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
     const row = await this.db.transaction(async (tx) => {
@@ -2523,7 +2565,7 @@ export class InventoryService {
           date: b.date,
           placeOfSupply,
           interState: isInterState(supplierState, placeOfSupply),
-          lines: totals.lines as PurchaseLine[],
+          lines: itemLines,
           totals: withoutLines(totals),
           total: grandTotal,
           paid: grandTotal - amountPaid <= 0,
@@ -2531,6 +2573,7 @@ export class InventoryService {
           dueDate: b.dueDate ?? null,
           freight,
           otherCharges,
+          charges,
           purchaseOrderId: extra.purchaseOrderId ?? null,
           goodsReceiptId: extra.goodsReceiptId ?? null,
           status: "recorded",
@@ -2538,7 +2581,7 @@ export class InventoryService {
           createdBy: userId,
         })
         .returning();
-      if (!extra.skipStock) await this.addPurchaseStock(tx, tenantId, loc.id, created!, stockLines, userId, freight + otherCharges);
+      if (!extra.skipStock) await this.addPurchaseStock(tx, tenantId, loc.id, created!, stockLines, userId, landed);
       if (amountPaid > 0) {
         await tx.insert(purchasePayments).values({
           tenantId,
@@ -2567,16 +2610,16 @@ export class InventoryService {
     p: PurchaseRow,
     lines: { itemId: string; milli: number; taxable: number }[],
     userId: string | null,
-    /** Freight and other charges, spread over the lines by taxable value into the unit cost. */
-    landed = 0,
+    /** Freight and other charges, spread over the lines by taxable value into the unit cost (or the shares per line). */
+    landed: number | readonly number[] = 0,
   ) {
     if (lines.length === 0) return;
     // Lines that name a batch put their quantity into it (the totals below already include it).
     const batched = (p.lines as (PurchaseLine & { batchNo?: string; mfgDate?: string; expiry?: string })[]).filter((l) => l.itemId && l.batchNo);
-    const shares = apportion(
+    const shares = typeof landed === "number" ? apportion(
       landed,
       lines.map((l) => l.taxable),
-    );
+    ) : landed;
     const untracked = await this.untrackedOf(
       tx,
       tenantId,
@@ -2603,8 +2646,9 @@ export class InventoryService {
         tenantId,
         itemId: l.itemId!,
         locationId,
-        milli: toMilli(l.qty),
-        batch: { batchNo: l.batchNo!, mfgDate: l.mfgDate, expiry: l.expiry, cost: l.qty > 0 ? Math.round(l.taxable / l.qty) : undefined, supplierName: p.supplier?.name },
+        milli: baseMilliOf(l),
+        // Per base unit (a box line's cost is spread over its pieces).
+        batch: { batchNo: l.batchNo!, mfgDate: l.mfgDate, expiry: l.expiry, cost: baseMilliOf(l) > 0 ? Math.round((l.taxable * 1000) / baseMilliOf(l)) : undefined, supplierName: p.supplier?.name },
         reason: "receive",
         refType: "purchase",
         refId: p.id,

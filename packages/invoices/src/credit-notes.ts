@@ -15,6 +15,7 @@ import {
 import type { Db, DbOrTx } from "@srirealtime/db";
 import {
   amountInWordsINR,
+  baseQtyOf,
   computeCreditNote,
   CreditNoteError,
   creditState,
@@ -475,7 +476,7 @@ export class CreditNotesService {
 
   /** Stock back in and loyalty points taken back. Failures are logged, never undo the note. */
   private async afterIssue(tenantId: string, note: CreditNoteRow): Promise<void> {
-    const lines = note.lines.filter((l) => l.restock && l.itemId && l.qty > 0).map((l) => ({ itemId: l.itemId!, qty: l.qty }));
+    const lines = note.lines.filter((l) => l.restock && l.itemId && l.qty > 0).map((l) => ({ itemId: l.itemId!, qty: baseQtyOf(l) }));
     if (lines.length > 0 && this.deps.stock?.applyReturn) {
       try {
         const locationId = (await this.host.stockLocation?.(tenantId, note.branchId)) ?? null;

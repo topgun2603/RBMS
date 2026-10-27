@@ -449,6 +449,8 @@ export class BatchService {
       createdBy: ref.userId ?? null,
       createdAt: this.now(),
     });
+    // Goods into a batch: the cost layer just made for them gets the batch (FIFO draws follow the batch picked).
+    if (deltaMilli > 0 && reason !== "assign") await this.inv.costing.tagBatch(tx, { tenantId, itemId: batch.itemId, locationId, batchId: batch.id, milli: deltaMilli });
     return after;
   }
 

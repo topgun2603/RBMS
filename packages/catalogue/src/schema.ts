@@ -7,6 +7,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   real,
   text,
@@ -151,6 +152,37 @@ export const catalogVariants = pgTable(
   ],
 );
 
+/**
+ * Alternate units of a variant (docs/price-lists-units.md): 1 box = 12 pcs, 1 bag = 25 kg. The product's `unit` is the
+ * base unit and stock is always kept in it; a bill line in boxes moves `qty × factor` pieces. A unit may have its own
+ * barcode (scanning it adds one box) and its own price (paise, on the variant's price basis: incl. GST when the
+ * product is tax-inclusive); without a price it sells at `factor × variant price`.
+ */
+export const catalogItemUnits = pgTable(
+  "catalog_item_units",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => catalogVariants.id, { onDelete: "cascade" }),
+    /** "box", "bag", "dozen". */
+    unit: text("unit").notNull(),
+    /** Base units in one of this unit (12 pieces in a box; 0.001 when a gram of a kg item). */
+    factor: numeric("factor", { precision: 14, scale: 6 }).notNull(),
+    barcode: text("barcode"),
+    /** Paise for one of this unit; null = factor × the variant's price. */
+    price: integer("price"),
+    mrp: integer("mrp"),
+    position: integer("position").notNull().default(0),
+    ...timestamps(),
+  },
+  (t) => [
+    uniqueIndex("catalog_item_units_variant_unit_uq").on(t.tenantId, t.variantId, sql`lower(${t.unit})`),
+    uniqueIndex("catalog_item_units_tenant_barcode_uq").on(t.tenantId, t.barcode).where(sql`${t.barcode} is not null`),
+  ],
+);
+
 export const COLLECTION_TYPES = ["manual", "rule"] as const;
 export type CollectionType = (typeof COLLECTION_TYPES)[number];
 
@@ -194,3 +226,4 @@ export type CategoryRow = typeof catalogCategories.$inferSelect;
 export type ProductRow = typeof catalogProducts.$inferSelect;
 export type VariantRow = typeof catalogVariants.$inferSelect;
 export type CollectionRow = typeof catalogCollections.$inferSelect;
+export type ItemUnitRow = typeof catalogItemUnits.$inferSelect;

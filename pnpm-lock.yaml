@@ -227,6 +227,9 @@ importers:
       '@srirealtime/pos':
         specifier: workspace:*
         version: link:../../packages/pos
+      '@srirealtime/pricelists':
+        specifier: workspace:*
+        version: link:../../packages/pricelists
       '@srirealtime/reports':
         specifier: workspace:*
         version: link:../../packages/reports
@@ -2242,6 +2245,9 @@ importers:
       '@srirealtime/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@srirealtime/pricelists':
+        specifier: workspace:*
+        version: link:../pricelists
       '@srirealtime/receipt-print':
         specifier: workspace:*
         version: link:../receipt-print
@@ -2285,6 +2291,28 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.3.0(react@19.3.0)
+
+  packages/pricelists:
+    dependencies:
+      '@srirealtime/core':
+        specifier: workspace:*
+        version: link:../core
+      '@srirealtime/db':
+        specifier: workspace:*
+        version: link:../db
+      '@srirealtime/gst':
+        specifier: workspace:*
+        version: link:../gst
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(@opentelemetry/api@1.10.0)(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
 
   packages/receipt-print: {}
 

@@ -1,5 +1,6 @@
 import type { CartProduct } from "./cart";
-import { findByCode, fromPosItem, type CatalogIndex } from "./catalog-sync";
+import { findByCode, findUnitByCode, fromPosItem, type CatalogIndex } from "./catalog-sync";
+import { inUnit } from "./units";
 import type { WeighTicket } from "./terminal-types";
 import { isTicketCode, normalizeTicketCode, ticketErrorOf } from "./weigh-ticket";
 
@@ -50,6 +51,9 @@ export async function resolveScan(raw: string, deps: ScanDeps): Promise<ScanHit>
     const p = fromPosItem(cached);
     return { kind: "item", product: p, soldBy: p.soldBy, source: "cache" };
   }
+  // A box's (alternate unit's) barcode: one box, never weighed.
+  const boxed = deps.cache ? findUnitByCode(deps.cache, code) : null;
+  if (boxed) return { kind: "item", product: inUnit(fromPosItem(boxed.item), boxed.unit), soldBy: "unit", source: "cache" };
   const hit = await deps.server(code);
   if (!hit) return { kind: "miss" };
   if (hit.weighTicket) return { kind: "ticket", ticket: hit.weighTicket };

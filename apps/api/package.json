@@ -78,6 +78,7 @@
     "@srirealtime/payroll": "workspace:*",
     "@srirealtime/plans": "workspace:*",
     "@srirealtime/pos": "workspace:*",
+    "@srirealtime/pricelists": "workspace:*",
     "@srirealtime/reports": "workspace:*",
     "@srirealtime/reviews": "workspace:*",
     "@srirealtime/scales": "workspace:*",

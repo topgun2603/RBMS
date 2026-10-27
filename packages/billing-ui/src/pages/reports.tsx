@@ -4,6 +4,10 @@ import * as React from "react";
 import { Page, PageHeading, useFeatures, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
 import {
   BarChart3Icon,
+  Building2Icon,
+  ChartColumnIcon,
+  CoinsIcon,
+  LayersIcon,
   CalendarClockIcon,
   HandCoinsIcon,
   LandmarkIcon,
@@ -22,15 +26,26 @@ import { ProfitTab } from "../components/reports/profit-tab";
 import { PurchasesTab } from "../components/reports/purchases-tab";
 import { SalesTab } from "../components/reports/sales-tab";
 import { StockTab } from "../components/reports/stock-tab";
+import { AnalysisTab } from "../components/reports/analysis-tab";
+import { BranchesTab } from "../components/reports/branches-tab";
+import { ItemProfitTab } from "../components/reports/item-profit-tab";
+import { ValuationTab } from "../components/reports/valuation-tab";
 import { EXPENSES_PERMISSION, useHasPermission } from "../lib/access";
+import { PURCHASES_PERMISSION } from "../lib/valuation";
 
 /** Each tab belongs to a feature; the page itself needs invoices.reports (see billingModule). */
 const TABS = [
   { key: "sales", icon: TrendingUpIcon, feature: "invoices.reports" },
+  // Packaged sales reports (docs/valuation-reports.md): by cashier, hour / weekday heatmap, category, brand, mode, branch.
+  { key: "analysis", icon: ChartColumnIcon, feature: "invoices.reports" },
   { key: "gst", icon: LandmarkIcon, feature: "invoices.gst-reports" },
   { key: "payments", icon: HandCoinsIcon, feature: "invoices.reports" },
   { key: "dues", icon: WalletCardsIcon, feature: "invoices.reports" },
   { key: "stock", icon: WarehouseIcon, feature: "inventory" },
+  // Stock valuation as of a date (weighted average and FIFO), item-wise profit and the branch view need cost prices.
+  { key: "valuation", icon: LayersIcon, feature: "inventory" },
+  { key: "itemProfit", icon: CoinsIcon, feature: "inventory" },
+  { key: "branches", icon: Building2Icon, feature: "multi-branch" },
   { key: "purchases", icon: ShoppingCartIcon, feature: "inventory.purchases" },
   // Needs expenses.manage too (the profit API is part of the expenses module).
   { key: "profit", icon: PiggyBankIcon, feature: "expenses" },
@@ -52,7 +67,10 @@ function Reports() {
   const params = useQueryParams();
   const features = useFeatures();
   const canExpenses = useHasPermission(EXPENSES_PERMISSION);
-  const tabs = TABS.filter((x) => features.isEnabled(x.feature) && (x.key !== "profit" || canExpenses));
+  const canCost = useHasPermission(PURCHASES_PERMISSION);
+  const tabs = TABS.filter(
+    (x) => features.isEnabled(x.feature) && (x.key !== "profit" || canExpenses) && ((x.key !== "itemProfit" && x.key !== "branches") || canCost) && (x.key !== "branches" || features.isEnabled("inventory")),
+  );
   const param = params.get("tab");
   const tab: TabKey = isTab(param) && tabs.some((x) => x.key === param) ? param : (tabs[0]?.key ?? "sales");
   const [range, setRange] = React.useState<DateRangeValue>(() => initialRange("thisMonth"));
@@ -105,7 +123,7 @@ function Reports() {
           ) : (
             <>
               <DateRangePicker value={range} onChange={setRange} />
-              {tab === "dues" && (
+              {(tab === "dues" || tab === "valuation") && (
                 <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                   <CalendarClockIcon className="size-3.5 text-primary" />
                   {t("billing.reports.asOf", { date: dLong(to) })}
@@ -123,6 +141,10 @@ function Reports() {
         <TabsContent value="stock">{tab === "stock" && <StockTab />}</TabsContent>
         <TabsContent value="purchases">{tab === "purchases" && <PurchasesTab from={from} to={to} />}</TabsContent>
         <TabsContent value="profit">{tab === "profit" && <ProfitTab from={from} to={to} />}</TabsContent>
+        <TabsContent value="analysis">{tab === "analysis" && <AnalysisTab from={from} to={to} />}</TabsContent>
+        <TabsContent value="valuation">{tab === "valuation" && <ValuationTab asOf={to} />}</TabsContent>
+        <TabsContent value="itemProfit">{tab === "itemProfit" && <ItemProfitTab from={from} to={to} />}</TabsContent>
+        <TabsContent value="branches">{tab === "branches" && <BranchesTab from={from} to={to} />}</TabsContent>
       </Tabs>
     </Page>
   );

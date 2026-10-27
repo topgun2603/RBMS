@@ -246,6 +246,8 @@ export interface OrderLineProgress {
   toDeliver: number;
   /** Delivered on challans that are not billed yet (billed by billing those challans). */
   onChallans: number;
+  /** Alternate unit: base units in one `unit` (stock holds count `toDeliver × unitFactor`). */
+  unitFactor?: number;
 }
 
 export interface OrderFulfilmentInput {
@@ -282,6 +284,7 @@ export function orderProgress(lines: readonly SalesDocLine[], f: OrderFulfilment
       invoiced: round3(billed + ch.billed),
       toDeliver: round3(Math.max(l.qty - delivered, 0)),
       onChallans: round3(Math.max(ch.net - ch.billed, 0)),
+      ...(l.unitFactor && l.unitFactor !== 1 ? { unitFactor: l.unitFactor } : {}),
     };
   });
 }
@@ -298,7 +301,8 @@ export function orderStatusOf(progress: readonly OrderLineProgress[], cancelled 
 /** Quantities still to hold in stock per item (undelivered, catalogue items only). */
 export function reservationLines(progress: readonly OrderLineProgress[]): { itemId: string; qty: number }[] {
   const by = new Map<string, number>();
-  for (const p of progress) if (p.itemId && p.toDeliver > 0) by.set(p.itemId, round3((by.get(p.itemId) ?? 0) + p.toDeliver));
+  // Holds are in the item's base unit (boxes × pieces per box).
+  for (const p of progress) if (p.itemId && p.toDeliver > 0) by.set(p.itemId, round3((by.get(p.itemId) ?? 0) + p.toDeliver * (p.unitFactor ?? 1)));
   return [...by.entries()].map(([itemId, qty]) => ({ itemId, qty }));
 }
 

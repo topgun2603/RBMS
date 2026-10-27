@@ -111,6 +111,8 @@ const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g
 export interface CatalogIndex {
   /** Barcode (exact) and SKU (upper case) → item. */
   byCode: Map<string, PosItem>;
+  /** Barcodes of alternate units (a box) → the item and the unit. */
+  byUnitCode?: Map<string, { item: PosItem; unit: string }>;
   /** Scales PLU → item. */
   byPlu: Map<string, PosItem>;
   /** Sorted by name; each with its search text. */
@@ -120,16 +122,24 @@ export interface CatalogIndex {
 export function buildCatalogIndex(items: Iterable<PosItem>): CatalogIndex {
   const byCode = new Map<string, PosItem>();
   const byPlu = new Map<string, PosItem>();
+  const byUnitCode = new Map<string, { item: PosItem; unit: string }>();
   const list: { item: PosItem; text: string }[] = [];
   for (const item of items) {
     if (!item.active) continue;
     for (const b of item.barcodes) if (b) byCode.set(b.trim(), item);
+    for (const u of item.units ?? []) if (u.barcode) byUnitCode.set(u.barcode.trim(), { item, unit: u.unit });
     if (item.sku && !byCode.has(item.sku.trim().toUpperCase())) byCode.set(item.sku.trim().toUpperCase(), item);
     if (item.plu) byPlu.set(String(Number(item.plu)), item);
     list.push({ item, text: norm([item.name, item.variantTitle, item.sku ?? "", ...item.barcodes, item.plu ?? ""].join(" ")) });
   }
   list.sort((a, b) => a.item.name.localeCompare(b.item.name) || a.item.variantTitle.localeCompare(b.item.variantTitle));
-  return { byCode, byPlu, list };
+  return { byCode, byPlu, byUnitCode, list };
+}
+
+/** A scanned code that is an alternate unit's barcode (a box): the item in that unit. */
+export function findUnitByCode(index: CatalogIndex, code: string): { item: PosItem; unit: string } | null {
+  const c = code.trim();
+  return c ? (index.byUnitCode?.get(c) ?? null) : null;
 }
 
 /** A scanned / typed code in the cache: barcode exactly, else SKU (any case). */
@@ -187,5 +197,6 @@ export function fromPosItem(i: PosItem): CartProduct & { soldBy: PosItem["soldBy
     ...(i.gstRule ? { gstRule: i.gstRule } : {}),
     image: i.image,
     soldBy: i.soldBy,
+    ...(i.units?.length ? { baseUnit: i.unit || "pcs", basePrice: i.price, units: i.units } : {}),
   };
 }

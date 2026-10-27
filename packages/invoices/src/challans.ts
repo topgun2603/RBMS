@@ -21,7 +21,7 @@ import {
   type TenantRef,
 } from "@srirealtime/core";
 import type { DbOrTx } from "@srirealtime/db";
-import { amountInWordsINR, financialYear, formatInvoiceNumber, type LineInput } from "@srirealtime/gst";
+import { amountInWordsINR, baseQtyOf, financialYear, formatInvoiceNumber, type LineInput } from "@srirealtime/gst";
 import { and, count, eq, gte, inArray, lte, ne, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { addDaysISO, moneyText } from "./ledger";
@@ -420,8 +420,9 @@ export class ChallansService {
 
   // ---------------------------------------------------------------- writes
 
-  private stockLines(lines: readonly { itemId?: string | null; batchId?: string | null; qty: number }[]) {
-    return lines.filter((l) => l.itemId && l.qty > 0).map((l) => ({ itemId: l.itemId!, qty: l.qty, ...(l.batchId ? { batchId: l.batchId } : {}) }));
+  /** Stock moves in the item's base unit (`qty × unitFactor`, docs/price-lists-units.md). */
+  private stockLines(lines: readonly { itemId?: string | null; batchId?: string | null; qty: number; unitFactor?: number | null }[]) {
+    return lines.filter((l) => l.itemId && l.qty > 0).map((l) => ({ itemId: l.itemId!, qty: baseQtyOf(l), ...(l.batchId ? { batchId: l.batchId } : {}) }));
   }
 
   private async moveStock(tenantId: string, challan: ChallanRow, step: "out" | "return" | "cancel", lines: { itemId: string; qty: number; batchId?: string }[], key?: string, userId?: string | null) {
@@ -646,7 +647,7 @@ export class ChallansService {
       return { row: updated!, entry };
     });
     const byKey = new Map(ret.row.lines.map((l) => [l.key, l]));
-    const stockLines = this.stockLines(ret.entry.lines.map((l) => ({ itemId: byKey.get(l.key)?.itemId ?? null, qty: l.qty })));
+    const stockLines = this.stockLines(ret.entry.lines.map((l) => ({ itemId: byKey.get(l.key)?.itemId ?? null, qty: l.qty, unitFactor: byKey.get(l.key)?.unitFactor ?? null })));
     await this.moveStock(tenantId, ret.row, "return", stockLines, ret.entry.id, userId);
     if (ret.row.saleOrderId) await this.onOrderChange(tenantId, [ret.row.saleOrderId]);
     return this.toChallan(ret.row);

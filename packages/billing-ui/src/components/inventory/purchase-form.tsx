@@ -24,8 +24,11 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { cleanQty } from "./stock-meta";
+import { ChargesEditor, chargeInputs, chargesTotal, type ChargeDraft } from "./landed-charges";
 import { SupplierPicker, supplierPartyState, type SupplierParty } from "./supplier-picker";
 import { GstRateSelect } from "../gst-rate-select";
+import { UnitPicker } from "../pricing/line-pricing";
+import type { ItemUnit } from "../../lib/types-pricing";
 import { ItemDialog, UnitList } from "../item-dialog";
 import { ScanDialog } from "../ai/scan-dialog";
 import { ScanFlags, aiLowClass } from "../ai/scan-bits";
@@ -57,6 +60,9 @@ interface LineDraft {
   createNew: boolean;
   /** Printed MRP per unit (paise) from a scan; 0 when none. Used as the selling price of a new item. */
   mrp: number;
+  /** The saved item's alternate units and base unit (buy in boxes, stock in pieces; docs/price-lists-units.md). */
+  units?: ItemUnit[];
+  baseUnit?: string;
 }
 
 let keySeq = 0;
@@ -134,6 +140,8 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
   const [lines, setLines] = React.useState<LineDraft[]>(() => [blankLine()]);
   const [notes, setNotes] = React.useState("");
   const [showNotes, setShowNotes] = React.useState(false);
+  // Landed charges (freight, customs duty, insurance, loading...) spread into the stock cost (docs/valuation-reports.md).
+  const [charges, setCharges] = React.useState<ChargeDraft[]>([]);
   const [submitted, setSubmitted] = React.useState(false);
   const [focusKey, setFocusKey] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
@@ -264,7 +272,12 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
       }
       return;
     }
-    if (paidSoFarPaise === null || (!paid && paidSoFarPaise > totals.total)) {
+    const chargeList = chargeInputs(charges);
+    if (chargeList === null) {
+      toast.error(t("billing.landed.badAmount"));
+      return;
+    }
+    if (paidSoFarPaise === null || (!paid && paidSoFarPaise > totals.total + chargesTotal(charges))) {
       toast.error(t("billing.payables.paidSoFarTooBig"));
       return;
     }
@@ -276,6 +289,7 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
       ...(!paid && paidSoFarPaise ? { amountPaid: paidSoFarPaise } : {}),
       ...(dueDate ? { dueDate } : {}),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
+      ...(chargeList.length ? { charges: chargeList } : {}),
     };
     if (party.kind === "saved") body.supplierId = party.supplier.id;
     else if (party.kind === "oneoff") {
@@ -431,6 +445,8 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
           </CardContent>
         </Card>
 
+        {!order && <ChargesEditor value={charges} onChange={setCharges} itemIds={filled.flatMap((p) => (p.line.itemId ? [p.line.itemId] : []))} />}
+
         {showNotes ? (
           <Card className="gap-2">
             <CardContent className="grid gap-1.5">
@@ -466,9 +482,10 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
             {totals.roundOff !== 0 && (
               <Row label={t("billing.totals.roundOff")} value={`${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`} />
             )}
+            {!order && chargesTotal(charges) > 0 && <Row label={t("billing.landed.summary")} value={money(chargesTotal(charges))} />}
             <div className="mt-2 flex items-baseline justify-between border-t pt-3">
               <span className="font-semibold">{t("billing.totals.grandTotal")}</span>
-              <AnimatedNumber value={totals.total} format={(n) => money(Math.round(n))} className="font-heading text-2xl font-bold text-primary tabular-nums" />
+              <AnimatedNumber value={totals.total + (order ? 0 : chargesTotal(charges))} format={(n) => money(Math.round(n))} className="font-heading text-2xl font-bold text-primary tabular-nums" />
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-success/14 px-3 py-2.5">
               <div>
@@ -609,6 +626,8 @@ function LineRow({
       unit: item.unit || "pcs",
       rate: paiseToInput(item.rate),
       gstRate: String(item.gstRate),
+      units: item.units?.length ? item.units : undefined,
+      baseUnit: item.unit || "pcs",
     });
     window.setTimeout(() => {
       qtyRef.current?.focus();
@@ -682,7 +701,11 @@ function LineRow({
           <Label htmlFor={`${id}-unit`} className="text-xs text-muted-foreground">
             {t("billing.form.unit")}
           </Label>
-          <Input id={`${id}-unit`} list="sr-units" autoComplete="off" size="sm" maxLength={16} value={line.unit} onChange={(e) => onChange({ unit: e.target.value })} />
+          {line.units?.length ? (
+            <UnitPicker id={`${id}-unit`} unit={line.unit} baseUnit={line.baseUnit || "pcs"} units={line.units} onChange={(unit) => onChange({ unit })} />
+          ) : (
+            <Input id={`${id}-unit`} list="sr-units" autoComplete="off" size="sm" maxLength={16} value={line.unit} onChange={(e) => onChange({ unit: e.target.value })} />
+          )}
         </div>
         <div className={cn("grid content-start gap-1.5", low("gstRate"))}>
           <Label htmlFor={`${id}-gst`} className="text-xs text-muted-foreground">

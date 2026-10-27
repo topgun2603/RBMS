@@ -1,7 +1,8 @@
 import { pk, tenantId, timestamps } from "@srirealtime/db";
 import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
 import { sql } from "drizzle-orm";
-import { boolean, date, index, integer, jsonb, numeric, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, date, index, integer, jsonb, numeric, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import type { PurchaseCharge } from "./schema-costing";
 
 export const MOVEMENT_REASONS = [
   "opening",
@@ -196,6 +197,10 @@ export const stockMovements = pgTable(
     refNumber: text("ref_number"),
     /** Paise per unit, for incoming stock. */
     unitCost: integer("unit_cost"),
+    /** Value of the movement at weighted-average cost (paise, signed like delta): the cost of goods sold for a sale. */
+    costAvg: bigint("cost_avg", { mode: "number" }),
+    /** The same at FIFO cost (from the cost layers, docs/valuation-reports.md). */
+    costFifo: bigint("cost_fifo", { mode: "number" }),
     note: text("note"),
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -309,6 +314,8 @@ export const purchases = pgTable(
     /** Supplier's freight and other charges (no GST), included in `total` and capitalised into stock cost. */
     freight: integer("freight").notNull().default(0),
     otherCharges: integer("other_charges").notNull().default(0),
+    /** Landed charges with their GST and how they are spread (docs/valuation-reports.md); included in `total`. */
+    charges: jsonb("charges").$type<PurchaseCharge[]>().notNull().default(sql`'[]'::jsonb`),
     purchaseOrderId: uuid("purchase_order_id"),
     goodsReceiptId: uuid("goods_receipt_id"),
     status: text("status").$type<PurchaseStatus>().notNull().default("recorded"),
@@ -430,6 +437,8 @@ export const goodsReceipts = pgTable(
     lines: jsonb("lines").$type<GrnLine[]>().notNull(),
     freight: integer("freight").notNull().default(0),
     otherCharges: integer("other_charges").notNull().default(0),
+    /** Landed charges (freight, customs duty, insurance...) spread into the stock cost; passed on to the bill. */
+    charges: jsonb("charges").$type<PurchaseCharge[]>().notNull().default(sql`'[]'::jsonb`),
     /** The purchase bill made from this receipt, once billed. */
     purchaseId: uuid("purchase_id"),
     note: text("note"),
@@ -482,8 +491,8 @@ export const debitNotes = pgTable(
   ],
 );
 
-/** po / grn / dn = purchasing documents; tr = stock transfer note; sa = stock audit. */
-export const PURCHASE_DOC_KINDS = ["po", "grn", "dn", "tr", "sa"] as const;
+/** po / grn / dn = purchasing documents; tr = stock transfer note; sa = stock audit; lc = landed-cost voucher. */
+export const PURCHASE_DOC_KINDS = ["po", "grn", "dn", "tr", "sa", "lc"] as const;
 export type PurchaseDocKind = (typeof PURCHASE_DOC_KINDS)[number];
 
 /** Per-tenant, per-FY counters for PO / GRN / debit note numbers (like `credit_note_series`). */
@@ -720,3 +729,5 @@ export type StockBatchSettingsRow = typeof stockBatchSettings.$inferSelect;
 export type StockAuditRow = typeof stockAudits.$inferSelect;
 export type StockAuditLineRow = typeof stockAuditLines.$inferSelect;
 export type StockAuditEntryRow = typeof stockAuditEntries.$inferSelect;
+
+export * from "./schema-costing";

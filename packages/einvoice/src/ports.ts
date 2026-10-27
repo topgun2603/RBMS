@@ -29,6 +29,9 @@ export interface SourceLine {
   /** Up to 3 decimals. */
   qty: number;
   unit?: string | null;
+  /** Alternate unit (1 box = 12 pcs → 12): GSTR-1's HSN summary counts `qty × unitFactor` of `baseUnit`. */
+  unitFactor?: number | null;
+  baseUnit?: string | null;
   /** Paise per unit, GST-exclusive. */
   rate: number;
   /** Paise, whole line. */

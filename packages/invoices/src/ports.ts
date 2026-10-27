@@ -123,6 +123,11 @@ export interface ItemSourceRecord {
   active?: boolean;
   stockQty?: number | null;
   stockStatus?: "in" | "low" | "out" | "untracked" | null;
+  /**
+   * Alternate units (catalogue, docs/price-lists-units.md): `factor` base units in one; `price` as sold, `rate`
+   * GST-exclusive paise for one of the unit. `unit` above is the base (stock) unit.
+   */
+  units?: { unit: string; factor: number; barcode: string | null; ownPrice: number | null; price: number; rate: number; mrp: number | null }[];
 }
 
 /** The item list query handed to a source (already validated; `sort` is one of ITEM_SORT_KEYS, "-" = descending). */

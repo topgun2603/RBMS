@@ -136,6 +136,22 @@ export interface ProductEventData {
   updatedAt: Date;
 }
 
+/**
+ * An alternate unit of an item (docs/price-lists-units.md): `factor` base units in one (1 box = 12 pcs). Prices in paise:
+ * `price` on the variant's basis (incl. GST when tax-inclusive), `rate` GST-exclusive; both are the unit's own price or
+ * `factor × the variant's price`.
+ */
+export interface ItemUnit {
+  unit: string;
+  factor: number;
+  barcode: string | null;
+  /** Set on the unit (null = factor × the variant price). */
+  ownPrice: number | null;
+  price: number;
+  rate: number;
+  mrp: number | null;
+}
+
 /** A sellable variant as other modules see it (ports: invoices, inventory, orders). */
 export interface CatalogItem {
   /** Variant id. */
@@ -161,6 +177,8 @@ export interface CatalogItem {
   createdAt: Date;
   /** The product's category (null = none). */
   categoryId?: string | null;
+  /** Alternate units (box of 12 …); absent / empty = sold in `unit` only. `unit` is the base (stock) unit. */
+  units?: ItemUnit[];
 }
 
 /** Staff lookups (`GET /variants*`): the item plus the variant and product details pickers need. */

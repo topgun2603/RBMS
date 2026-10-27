@@ -28,6 +28,7 @@ import {
   isGstRateRule,
   isInterState,
   lineGstRate,
+  baseQtyOf,
   isValidDate,
   isValidGstin,
   isValidStateCode,
@@ -260,6 +261,8 @@ export interface Item {
   /** Catalogue items with inventory: quantity on hand over all locations and its status. */
   stockQty?: number | null;
   stockStatus?: ItemStockStatus | "untracked" | null;
+  /** Catalogue items only: alternate units (box of 12 …); `unit` is the base unit (docs/price-lists-units.md). */
+  units?: ItemSourceRecord["units"];
 }
 
 export interface InvoiceSummary {
@@ -588,6 +591,12 @@ export const lineInputSchema = z
     batchNo: opt(z.string().trim().max(60)),
     mfgDate: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
     expiry: opt(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+    /**
+     * Alternate unit (docs/price-lists-units.md): base units in one `unit` (1 box = 12 pcs → 12); stock moves
+     * `qty × unitFactor` of `baseUnit`. The API host sets both from the catalogue for lines of saved items.
+     */
+    unitFactor: z.number().positive().max(1_000_000).optional(),
+    baseUnit: opt(z.string().trim().max(16)),
   })
   .superRefine((l, ctx) => {
     if ((l.discount ?? 0) > lineAmount(l.qty, l.rate)) {
@@ -617,6 +626,10 @@ export const lineInputSchema = z
     if (l.batchNo) out.batchNo = l.batchNo;
     if (l.mfgDate) out.mfgDate = l.mfgDate;
     if (l.expiry) out.expiry = l.expiry;
+    if (l.unitFactor && l.unitFactor !== 1) {
+      out.unitFactor = l.unitFactor;
+      if (l.baseUnit) out.baseUnit = l.baseUnit;
+    }
     return out;
   });
 
@@ -883,6 +896,10 @@ export const toLineInput = (l: LineTotals): LineInput => {
   if (l.batchNo) out.batchNo = l.batchNo;
   if (l.mfgDate) out.mfgDate = l.mfgDate;
   if (l.expiry) out.expiry = l.expiry;
+  if (l.unitFactor && l.unitFactor !== 1) {
+    out.unitFactor = l.unitFactor;
+    if (l.baseUnit) out.baseUnit = l.baseUnit;
+  }
   return out;
 };
 
@@ -952,6 +969,7 @@ const toItem = (i: BillingItem | ItemSourceRecord): Item => ({
   ...("active" in i && i.active !== undefined ? { active: i.active } : {}),
   ...("stockQty" in i && i.stockQty !== undefined ? { stockQty: i.stockQty } : {}),
   ...("stockStatus" in i && i.stockStatus !== undefined ? { stockStatus: i.stockStatus } : {}),
+  ...("units" in i && i.units?.length ? { units: i.units } : {}),
 });
 
 const toPayment = (p: InvoicePaymentRow): InvoicePayment => ({
@@ -2465,7 +2483,8 @@ export class InvoicesService {
   }
 
   private saleLines(row: Pick<InvoiceRow, "lines">) {
-    return row.lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId!, qty: l.qty, ...(l.batchId ? { batchId: l.batchId } : {}) }));
+    // Stock is kept in the base unit: a line of 2 boxes of 12 takes 24 pieces (docs/price-lists-units.md).
+    return row.lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId!, qty: baseQtyOf(l), ...(l.batchId ? { batchId: l.batchId } : {}) }));
   }
 
   private async stockSale(row: InvoiceRow, branch?: IssueBranch): Promise<void> {

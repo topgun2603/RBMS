@@ -214,6 +214,10 @@ export function computeCreditNote(input: CreditNoteCalcInput): CreditNoteCalc {
     if (orig.hsn) line.hsn = orig.hsn;
     if (orig.unit) line.unit = orig.unit;
     if (orig.itemId) line.itemId = orig.itemId;
+    if (orig.unitFactor && orig.unitFactor !== 1) {
+      line.unitFactor = orig.unitFactor;
+      if (orig.baseUnit) line.baseUnit = orig.baseUnit;
+    }
     lines.push(line);
   }
 

@@ -25,7 +25,9 @@ import {
 import { and, asc, count, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { batchFieldsSchema } from "./batches";
-import { toMilli, unitCostOf } from "./logic";
+import { chargeInputSchema, computeCharges } from "./costing";
+import { allocateCharges } from "./costing-logic";
+import { baseMilliOf, toMilli, unitCostOf } from "./logic";
 import { netByLocationItem } from "./levels";
 import {
   allocateOldestFirst,
@@ -158,7 +160,7 @@ const billFields = {
 };
 const billSchema = z.object(billFields);
 
-const chargeFields = { freight: money.optional(), otherCharges: money.optional() };
+const chargeFields = { freight: money.optional(), otherCharges: money.optional(), charges: z.array(chargeInputSchema).max(10).optional() };
 
 /** A batch received on a goods-receipt line (the batch numbers printed on the supplier's challan). */
 const receiveBatchPartSchema = batchFieldsSchema.extend({ qty: z.coerce.number().positive().max(1_000_000) });
@@ -270,13 +272,17 @@ export interface PurchaseOrderDetail extends PurchaseOrderRow {
   receipts: GoodsReceiptRow[];
 }
 
-export const DOC_PREFIX: Record<PurchaseDocKind, string> = { po: "PO", grn: "GRN", dn: "DN", tr: "TR", sa: "SA" };
+export const DOC_PREFIX: Record<PurchaseDocKind, string> = { po: "PO", grn: "GRN", dn: "DN", tr: "TR", sa: "SA", lc: "LC" };
 
 const partLine = (l: PoLine | PurchaseLine, qty: number): LineInput & { itemId?: string } => {
   const out: LineInput & { itemId?: string } = { description: l.description, qty, rate: l.rate, gstRate: l.gstRate };
   if (l.itemId) out.itemId = l.itemId;
   if (l.hsn) out.hsn = l.hsn;
   if (l.unit) out.unit = l.unit;
+  if (l.unitFactor && l.unitFactor !== 1) {
+    out.unitFactor = l.unitFactor;
+    if (l.baseUnit) out.baseUnit = l.baseUnit;
+  }
   const d = returnedDiscount(l.discount ?? 0, l.qty, qty);
   if (d) out.discount = d;
   return out;
@@ -896,7 +902,7 @@ export class PurchasingService {
     const po = await this.poRow(this.db, tenantId, poId);
     const lines = po.lines.map((l, lineIndex) => ({ lineIndex, qty: poRemaining(l) })).filter((l) => l.qty > 0);
     if (lines.length === 0) throw badRequest("Everything on this order was already received");
-    const grn = await this.receiveLines(tenantId, poId, { date: b.date, locationId: b.locationId, lines, freight: b.freight, otherCharges: b.otherCharges, note: b.note }, userId);
+    const grn = await this.receiveLines(tenantId, poId, { date: b.date, locationId: b.locationId, lines, freight: b.freight, otherCharges: b.otherCharges, charges: b.charges, note: b.note }, userId);
     return this.tryBill(tenantId, grn, b, userId);
   }
 
@@ -919,6 +925,7 @@ export class PurchasingService {
       lines: { lineIndex: number; qty: number; batches?: z.output<typeof receiveBatchPartSchema>[] }[];
       freight?: number;
       otherCharges?: number;
+      charges?: z.output<typeof chargeInputSchema>[];
       note?: string | null;
     },
     userId: string | null,
@@ -951,10 +958,26 @@ export class PurchasingService {
         parts.map((x) => partLine(x.line, x.qty)),
         { sellerState: po.supplier.stateCode ?? po.placeOfSupply, placeOfSupply: po.placeOfSupply },
       );
-      const shares = apportion(
-        freight + otherCharges,
-        priced.lines.map((l) => (l.itemId ? l.taxable : 0)),
-      );
+      // Landed charges (docs/valuation-reports.md): each on its own basis (value, quantity or weight), with GST that
+      // can't be claimed inside the cost; the old freight / other charges by value.
+      const charges = computeCharges(b.charges ?? [], { sellerState: po.supplier.stateCode ?? po.placeOfSupply, placeOfSupply: po.placeOfSupply });
+      const weights = charges.some((c) => c.basis === "weight")
+        ? new Map((await this.inv.catalogItems(tenantId, [...new Set(parts.flatMap((x) => (x.line.itemId ? [x.line.itemId] : [])))])).map((c) => [c.id, c.weightGrams ?? null]))
+        : new Map<string, number | null>();
+      const shares = charges.length
+        ? allocateCharges(
+            priced.lines.map((l, i) => ({
+              taxable: l.itemId ? l.taxable : 0,
+              milli: l.itemId ? baseMilliOf({ qty: parts[i]!.qty, unitFactor: parts[i]!.line.unitFactor ?? null }) : 0,
+              weightGrams: l.itemId ? (weights.get(l.itemId) ?? null) : null,
+            })),
+            charges,
+            freight + otherCharges,
+          )
+        : apportion(
+            freight + otherCharges,
+            priced.lines.map((l) => (l.itemId ? l.taxable : 0)),
+          );
       const grnLines: GrnLine[] = parts.map((x, i) => ({
         lineIndex: x.lineIndex,
         ...(x.line.itemId ? { itemId: x.line.itemId } : {}),
@@ -967,14 +990,16 @@ export class PurchasingService {
       const number = await this.nextNumber(tx, tenantId, "grn", date);
       const [created] = await tx
         .insert(goodsReceipts)
-        .values({ tenantId, number, purchaseOrderId: poId, supplierId: po.supplierId, date, locationId: loc.id, lines: grnLines, freight, otherCharges, note: b.note ?? null, createdBy: userId })
+        .values({ tenantId, number, purchaseOrderId: poId, supplierId: po.supplierId, date, locationId: loc.id, lines: grnLines, freight, otherCharges, charges, note: b.note ?? null, createdBy: userId })
         .returning();
       // Stock in, in item order so concurrent receipts lock rows alike.
       const stock = grnLines.filter((l) => l.itemId).sort((a, c) => (a.itemId! < c.itemId! ? -1 : a.itemId! > c.itemId! ? 1 : 0));
       const untracked = await this.inv.untrackedOf(tx, tenantId, stock.map((l) => l.itemId!));
       for (const l of stock) {
         if (untracked.has(l.itemId!)) continue;
-        const milli = toMilli(l.qty);
+        // In the item's base unit (the PO line may be in boxes).
+        const factor = po.lines[l.lineIndex]?.unitFactor ?? null;
+        const milli = baseMilliOf({ qty: l.qty, unitFactor: factor });
         await this.inv.change(tx, {
           tenantId,
           locationId: loc.id,
@@ -994,7 +1019,7 @@ export class PurchasingService {
             tenantId,
             itemId: l.itemId!,
             locationId: loc.id,
-            milli: toMilli(bp.qty),
+            milli: baseMilliOf({ qty: bp.qty, unitFactor: factor }),
             batch: { batchNo: bp.batchNo, mfgDate: bp.mfgDate ?? undefined, expiry: bp.expiry ?? undefined, mrp: bp.mrp ?? undefined, cost: unitCost, supplierName: po.supplier.name },
             reason: "receive",
             refType: "grn",
@@ -1162,6 +1187,7 @@ export class PurchasingService {
         dueDate: b.dueDate,
         freight: grn.freight,
         otherCharges: grn.otherCharges,
+        charges: grn.charges ?? [],
         locationId: grn.locationId,
       } as never,
       userId,
@@ -1252,7 +1278,7 @@ export class PurchasingService {
         .returning();
       // Stock out, per item in item order.
       const out = new Map<string, number>();
-      for (const l of dnLines) if (l.itemId) out.set(l.itemId, (out.get(l.itemId) ?? 0) + toMilli(l.qty));
+      for (const l of dnLines) if (l.itemId) out.set(l.itemId, (out.get(l.itemId) ?? 0) + baseMilliOf(l));
       const itemIds = [...out.keys()].sort();
       const untracked = await this.inv.untrackedOf(tx, tenantId, itemIds);
       for (const itemId of itemIds) {
@@ -1268,6 +1294,8 @@ export class PurchasingService {
           refNumber: number,
           createdBy: userId,
           batchPreferred: await this.inv.batches.receivedBy(tx, tenantId, [p.id, ...(p.goodsReceiptId ? [p.goodsReceiptId] : [])], itemId),
+          // FIFO: the goods go back at the cost they came in with on this purchase.
+          layerPrefer: [{ refType: "purchase", refId: p.id }, ...(p.goodsReceiptId ? [{ refType: "grn", refId: p.goodsReceiptId }] : [])],
         });
       }
       if (refund > 0) {
@@ -1388,6 +1416,7 @@ function purchaseLineInput(l: LineInput & { itemId?: string }) {
     ...(l.hsn ? { hsn: l.hsn } : {}),
     qty: l.qty,
     ...(l.unit ? { unit: l.unit } : {}),
+    ...(l.unitFactor && l.unitFactor !== 1 ? { unitFactor: l.unitFactor, ...(l.baseUnit ? { baseUnit: l.baseUnit } : {}) } : {}),
     rate: l.rate,
     ...(l.discount ? { discount: l.discount } : {}),
     gstRate: l.gstRate,

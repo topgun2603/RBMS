@@ -20,6 +20,7 @@ import {
 import { describeError, useI18n } from "@srirealtime/web";
 import { MoneyInput } from "../money-input";
 import { GrnBatchFields, type GrnBatchInput } from "./grn-batch-fields";
+import { ChargesEditor, chargeInputs, type ChargeDraft } from "./landed-charges";
 import { cleanQty, round3 } from "./stock-meta";
 import { formatQty, money, paiseToInput, parseQty, rupeesToPaise, todayIST } from "../../lib/format";
 import {
@@ -506,6 +507,8 @@ export function ReceiveDialog({
   const [batches, setBatches] = React.useState<Record<number, GrnBatchInput>>({});
   const [freight, setFreight] = React.useState("");
   const [other, setOther] = React.useState("");
+  // Freight, customs duty, insurance... with GST and a basis (docs/valuation-reports.md).
+  const [charges, setCharges] = React.useState<ChargeDraft[]>([]);
   const [withBill, setWithBill] = React.useState(false);
   const [billNumber, setBillNumber] = React.useState("");
   const [dueDate, setDueDate] = React.useState("");
@@ -521,6 +524,7 @@ export function ReceiveDialog({
     setBatches({});
     setFreight("");
     setOther("");
+    setCharges([]);
     setWithBill(false);
     setBillNumber("");
     setDueDate("");
@@ -539,7 +543,7 @@ export function ReceiveDialog({
     ? t("billing.payables.receiveNothing")
     : bad
       ? t("billing.payables.receiveTooMuch")
-      : freightPaise === null || otherPaise === null
+      : freightPaise === null || otherPaise === null || chargeInputs(charges) === null
         ? t("billing.validation.amount")
         : billOn && !billNumber.trim()
           ? t("billing.purchaseForm.errors.billNumber")
@@ -554,6 +558,7 @@ export function ReceiveDialog({
       date,
       ...(freightPaise ? { freight: freightPaise } : {}),
       ...(otherPaise ? { otherCharges: otherPaise } : {}),
+      ...(chargeInputs(charges)?.length ? { charges: chargeInputs(charges)! } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
     };
     const bill = billOn ? { billNumber: billNumber.trim(), ...(dueDate ? { dueDate } : {}) } : null;
@@ -616,6 +621,7 @@ export function ReceiveDialog({
             </div>
           </div>
           <p className="-mt-2 text-meta text-muted-foreground">{t("billing.payables.landedHint")}</p>
+          <ChargesEditor idPrefix="rc-chg" value={charges} onChange={setCharges} itemIds={(order?.lines ?? []).flatMap((l) => (l.itemId ? [l.itemId] : []))} />
           {!convert && (
             <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
               <Label htmlFor="rc-bill-on">{t("billing.payables.makeBill")}</Label>

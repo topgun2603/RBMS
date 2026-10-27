@@ -84,6 +84,18 @@ export const lockPinSession = () => api.post<{ ok: true }>(`${POS}/session/lock`
 export const fetchCatalogPage = (q: { since?: string; after?: string; limit: number }, signal?: AbortSignal) =>
   api<CatalogPage>(`${POS}/catalog`, { query: q as QueryParams, signal });
 export const fetchPosCategories = () => api.get<{ items: PosCategory[] }>(`${POS}/catalog/categories`).then((r) => r.items);
+/** Price lists, customer groups and links for offline pricing (docs/price-lists-units.md). */
+export const fetchPricingCache = () => api.get<import("./units").PricingCache>("/pricelists/cache");
+/** The same for counters without the POS catalogue cache (null when the shop has no price lists). */
+export function usePricingCache(enabled: boolean) {
+  return useQuery({
+    queryKey: ["pos", "pricing"],
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: () => fetchPricingCache().catch(() => null),
+  }).data;
+}
 
 // ---------------------------------------------------------------- weigh tickets
 

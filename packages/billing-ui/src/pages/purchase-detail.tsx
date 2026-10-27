@@ -26,6 +26,8 @@ import {
 import { DebitNoteDialog, PayPurchaseDialog } from "../components/inventory/payables-dialogs";
 import { PurchasePaymentsCard, PurchaseReturnsCard } from "../components/inventory/purchase-payables-cards";
 import { PurchaseStatusPill } from "../components/inventory/stock-meta";
+import { ChargesList, LandedCostsCard } from "../components/inventory/landed-charges";
+import type { PurchaseCharge } from "../lib/valuation";
 import { useHasPermission } from "../lib/access";
 import type { PurchasePayables } from "../lib/types-payables";
 import { formatQty, money, stateLabel } from "../lib/format";
@@ -235,6 +237,7 @@ export default function PurchaseDetailPage() {
 
           <PurchasePaymentsCard purchaseId={p.id} cancelled={cancelled} />
           <PurchaseReturnsCard purchaseId={p.id} />
+          {!(p as { imported?: boolean }).imported && (p.lines as { itemId?: string }[]).some((l) => l.itemId) && <LandedCostsCard purchaseId={p.id} cancelled={cancelled} />}
 
           {p.notes && (
             <Card className="gap-2">
@@ -294,6 +297,7 @@ export default function PurchaseDetailPage() {
                       <span className="tabular-nums">{money((p.freight ?? 0) + (p.otherCharges ?? 0))}</span>
                     </DetailRow>
                   )}
+                  <ChargesList charges={(p as { charges?: PurchaseCharge[] }).charges ?? []} />
                   <DetailRow label={t("billing.payables.paidSoFar")}>
                     <span className="tabular-nums">{money(amountPaid)}</span>
                   </DetailRow>

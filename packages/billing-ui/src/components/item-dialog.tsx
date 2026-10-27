@@ -20,6 +20,7 @@ import { GstRateSelect } from "./gst-rate-select";
 import { MoneyInput } from "./money-input";
 import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, useFeature, useHsnSuggest, useI18n } from "@srirealtime/web";
 import { ItemBatchToggle } from "./inventory/item-batch-toggle";
+import { ItemUnitsEditor } from "./pricing/item-units-editor";
 import { cleanQty } from "./inventory/stock-meta";
 import { formatQty, paiseToInput, parseQty, rupeesToPaise, UNITS } from "../lib/format";
 import { useSaveItem } from "../lib/queries";
@@ -249,6 +250,7 @@ export function ItemDialog({
                 <p className="text-meta text-muted-foreground">{t("billing.itemsStock.openingHint")}</p>
               </div>
             )}
+            {item && <ItemUnitsEditor itemId={item.id} baseUnit={item.unit || "pcs"} />}
             {item && inventory && <ItemBatchToggle itemId={item.id} itemName={item.name} unit={item.unit} />}
             <UnitList />
             <DialogFooter className="gap-2">

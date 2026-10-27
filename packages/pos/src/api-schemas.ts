@@ -136,6 +136,10 @@ export const posItemSchema = z.object({
   stock: z.object({ qty: z.number(), status: z.enum(["ok", "low", "out", "untracked"]) }).nullable(),
   active: z.boolean(),
   updatedAt: iso,
+  /** Alternate units (box of 12 …): `price` for one of the unit; a unit barcode adds one of it. */
+  units: z
+    .array(z.object({ unit: z.string(), factor: z.number(), barcode: z.string().nullable(), price: z.number().int(), ownPrice: z.number().int().nullable(), mrp: z.number().int().nullable() }))
+    .optional(),
 });
 export const catalogResponse = z.object({
   items: z.array(posItemSchema),

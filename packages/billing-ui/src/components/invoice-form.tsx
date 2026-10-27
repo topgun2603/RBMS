@@ -36,6 +36,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { CustomerPicker, type Party } from "./customer-picker";
+import { PriceListPicker, UnitPicker, useLinePricing, type PriceListChoice } from "./pricing/line-pricing";
 import { RiskHint } from "./money/risk";
 import { GstRateSelect } from "./gst-rate-select";
 import { LoyaltyRedeemCard, LoyaltySummaryRows, useLoyaltyRedeem } from "./loyalty-redeem";
@@ -47,6 +48,7 @@ import { redeemFailure } from "../lib/loyalty";
 import { addDays, money, paiseToInput, parseQty, rupeesToPaise, stateLabel, todayIST } from "../lib/format";
 import { sellerProfileGaps, useCustomer, useItems, useSaveInvoice, useSellerProfile } from "../lib/queries";
 import type { GstRate, Invoice, InvoiceInput, Item } from "../lib/types";
+import type { ItemUnit } from "../lib/types-pricing";
 
 export interface LineDraft {
   key: string;
@@ -65,6 +67,17 @@ export interface LineDraft {
   batchId?: string;
   batchNo?: string;
   batchExpiry?: string;
+  /** The saved item's alternate units (box of 12 ...) and its base unit; the unit picker offers them. */
+  units?: ItemUnit[];
+  baseUnit?: string;
+  /** GST-exclusive paise of one base unit (switching back from a box). */
+  baseRate?: number;
+  /** Base units in the chosen unit (kept from a saved bill whose item units aren't loaded). */
+  unitFactor?: number;
+  /** The rate was typed by hand: price lists no longer change it. */
+  rateManual?: boolean;
+  /** Where the automatic price came from ("Wholesale · 10+"). */
+  priceNote?: string;
 }
 
 let keySeq = 0;
@@ -108,6 +121,15 @@ export function parseLine(l: LineDraft): { input: LineInput | null; errors: Line
   if (l.itemId) input.itemId = l.itemId;
   if (l.hsn.trim()) input.hsn = l.hsn.trim();
   if (l.unit.trim()) input.unit = l.unit.trim();
+  // Alternate unit: base units per unit (the API sets the real factor from the catalogue).
+  const alt = l.units?.find((u) => u.unit.toLowerCase() === l.unit.trim().toLowerCase());
+  if (alt && l.baseUnit) {
+    input.unitFactor = alt.factor;
+    input.baseUnit = l.baseUnit;
+  } else if (!l.units && l.unitFactor && l.unitFactor !== 1) {
+    input.unitFactor = l.unitFactor;
+    if (l.baseUnit) input.baseUnit = l.baseUnit;
+  }
   if (discount) input.discount = discount;
   if (l.batchId && l.batchNo) {
     input.batchId = l.batchId;
@@ -135,6 +157,9 @@ export function linesFromInvoice(inv: Pick<Invoice, "lines">): LineDraft[] {
     gstRate: String(l.gstRate),
     ...(l.gstRule ? { gstRule: l.gstRule } : {}),
     ...(l.batchId && l.batchNo ? { batchId: l.batchId, batchNo: l.batchNo, ...(l.expiry ? { batchExpiry: l.expiry } : {}) } : {}),
+    ...(l.unitFactor && l.unitFactor !== 1 ? { unitFactor: l.unitFactor, ...(l.baseUnit ? { baseUnit: l.baseUnit } : {}) } : {}),
+    // A saved document keeps its prices: price lists only fill new lines.
+    rateManual: true,
   }));
 }
 
@@ -188,6 +213,9 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const [submitted, setSubmitted] = React.useState(false);
   const [focusKey, setFocusKey] = React.useState<string | null>(null);
   const [planError, setPlanError] = React.useState<string | null>(null);
+  const [priceListId, setPriceListId] = React.useState<PriceListChoice>("");
+  // Lines of saved items follow the customer's price list, slabs and units (docs/price-lists-units.md).
+  useLinePricing({ lines, setLines, customerId: party.kind === "saved" ? party.customer.id : null, priceListId, date });
 
   // ?customer=<id> preselects a saved customer.
   React.useEffect(() => {
@@ -339,6 +367,9 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
                 <RiskHint customerId={party.customer.id} />
               </div>
             )}
+            <div className="mt-3">
+              <PriceListPicker value={priceListId} onChange={setPriceListId} customerId={party.kind === "saved" ? party.customer.id : null} />
+            </div>
           </CardContent>
         </Card>
 
@@ -600,6 +631,12 @@ export function LineRow({
       rate: paiseToInput(item.rate),
       gstRate: String(item.gstRate),
       gstRule: item.gstRule ?? null,
+      units: item.units?.length ? item.units : undefined,
+      baseUnit: item.unit || "pcs",
+      baseRate: item.rate,
+      unitFactor: undefined,
+      rateManual: false,
+      priceNote: undefined,
       batchId: undefined,
       batchNo: undefined,
       batchExpiry: undefined,
@@ -629,7 +666,7 @@ export function LineRow({
             value={line.description}
             invalid={!!errors.description}
             autoFocus={autoFocus}
-            onChange={(description) => onChange({ description, itemId: undefined, batchId: undefined, batchNo: undefined, batchExpiry: undefined })}
+            onChange={(description) => onChange({ description, itemId: undefined, units: undefined, baseUnit: undefined, unitFactor: undefined, priceNote: undefined, batchId: undefined, batchNo: undefined, batchExpiry: undefined })}
             onPick={pickItem}
           />
           <FieldError id={`${id}-desc-err`} msg={errors.description} />
@@ -668,15 +705,19 @@ export function LineRow({
           <Label htmlFor={`${id}-unit`} className="text-xs text-muted-foreground">
             {t("billing.form.unit")}
           </Label>
-          <Input
-            id={`${id}-unit`}
-            list="sr-units"
-            autoComplete="off"
-            size="sm"
-            maxLength={16}
-            value={line.unit}
-            onChange={(e) => onChange({ unit: e.target.value })}
-          />
+          {line.units?.length ? (
+            <UnitSelect id={`${id}-unit`} line={line} onChange={onChange} />
+          ) : (
+            <Input
+              id={`${id}-unit`}
+              list="sr-units"
+              autoComplete="off"
+              size="sm"
+              maxLength={16}
+              value={line.unit}
+              onChange={(e) => onChange({ unit: e.target.value })}
+            />
+          )}
         </div>
         <div className="grid content-start gap-1.5">
           <Label htmlFor={`${id}-gst`} className="text-xs text-muted-foreground">
@@ -695,10 +736,11 @@ export function LineRow({
             value={line.rate}
             aria-invalid={!!errors.rate}
             aria-describedby={errors.rate ? `${id}-rate-err` : undefined}
-            onChange={(e) => onChange({ rate: e.target.value })}
+            onChange={(e) => onChange({ rate: e.target.value, rateManual: true, priceNote: undefined })}
             onKeyDown={onEnter}
           />
           <FieldError id={`${id}-rate-err`} msg={errors.rate} />
+          {line.priceNote && !errors.rate && <span className="truncate text-[11px] leading-tight text-primary">{line.priceNote}</span>}
         </div>
         <div className="grid content-start gap-1.5">
           <Label htmlFor={`${id}-disc`} className="text-xs text-muted-foreground">
@@ -760,6 +802,26 @@ export function LineRow({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The unit of a line of an item with alternate units: its base unit or one of them (1 box = 12 pcs). Changing it
+ * prices the line for that unit right away; price lists then refine it.
+ */
+function UnitSelect({ id, line, onChange }: { id: string; line: LineDraft; onChange: (patch: Partial<LineDraft>) => void }) {
+  return (
+    <UnitPicker
+      id={id}
+      unit={line.unit}
+      baseUnit={line.baseUnit || "pcs"}
+      units={line.units ?? []}
+      onChange={(v) => {
+        const u = line.units?.find((x) => x.unit === v);
+        const rate = u ? u.rate : (line.baseRate ?? null);
+        onChange({ unit: v, ...(line.rateManual || rate === null ? {} : { rate: paiseToInput(rate), priceNote: undefined }) });
+      }}
+    />
   );
 }
 

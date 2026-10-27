@@ -243,3 +243,13 @@ describe("buildGstr1 for a quarter (QRMP)", () => {
     expect(buildGstr1(all, { gstin: SELLER_GSTIN, period: "122026" }).counts.b2b).toBe(1);
   });
 });
+
+describe("HSN summary of alternate-unit lines (docs/price-lists-units.md)", () => {
+  it("counts boxes in the item's base unit so one HSN keeps one UQC", () => {
+    const boxes = { ...line("Soap", "3401", 2, "box", 60000, 18, false), unitFactor: 12, baseUnit: "pcs" };
+    const pieces = line("Soap", "3401", 5, "pcs", 5000, 18, false);
+    const { json } = buildGstr1([invoice({ id: "u1", number: "INV/26-27/0100", date: "2026-10-02", lines: [boxes, pieces] })], { gstin: SELLER_GSTIN, period: "102026" });
+    if (!("hsn_b2b" in json.hsn)) throw new Error("expected split layout");
+    expect(json.hsn.hsn_b2b.map((r) => [r.hsn_sc, r.uqc, r.qty])).toEqual([["3401", "NOS", 29]]);
+  });
+});

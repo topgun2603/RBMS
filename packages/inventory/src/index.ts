@@ -4,6 +4,7 @@ import { inventoryRoutes } from "./routes";
 import {
   debitNotes,
   goodsReceipts,
+  landedCostVouchers,
   purchaseDocSeries,
   purchaseOrders,
   purchasePayments,
@@ -16,11 +17,14 @@ import {
   stockBatchMovements,
   stockBatchSettings,
   stockBatches,
+  stockCostDraws,
+  stockCostLayers,
   stockItems,
   stockLocations,
   stockMovements,
   stockReservations,
   stockTransfers,
+  stockValuationSettings,
   suppliers,
 } from "./schema";
 import { InventoryService, type InventoryDeps } from "./service";
@@ -35,6 +39,8 @@ export * from "./transfers";
 export * from "./levels";
 export * from "./payables";
 export * from "./purchasing";
+export * from "./costing";
+export * from "./costing-logic";
 export * from "./permissions";
 export * from "./csv";
 export * from "./service";
@@ -78,6 +84,10 @@ export function createInventory(deps: InventoryDeps) {
       stockAudits,
       stockAuditLines,
       stockAuditEntries,
+      stockValuationSettings,
+      stockCostLayers,
+      stockCostDraws,
+      landedCostVouchers,
     },
     routes: inventoryRoutes(service),
     features: INVENTORY_FEATURES,

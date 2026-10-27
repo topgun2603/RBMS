@@ -41,6 +41,14 @@ export interface LineInput {
    * `inclusiveTotal` for tax-inclusive lines) and returns that as `gstRate`; `gstRate` on input is only a hint.
    */
   gstRule?: GstRateRule | null;
+  /**
+   * Alternate unit (docs/price-lists-units.md): how many base units one `unit` holds (1 box = 12 pcs → 12; 1 g of a
+   * kg item → 0.001). Stock always moves `qty × unitFactor` of the item's `baseUnit`, and GST reports count the base
+   * unit. Absent (or 1) = the line is in the item's base unit. The server sets it from the catalogue.
+   */
+  unitFactor?: number;
+  /** The item's base (stock) unit when `unitFactor` is set, e.g. "pcs". */
+  baseUnit?: string;
 }
 
 export interface LineTotals extends LineInput {

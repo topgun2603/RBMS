@@ -3,7 +3,7 @@
  * Parsing and validation are pure; committing and reading rows go through ports the kit implements
  * with the catalogue, invoices and inventory services.
  */
-import { col, rupees, stateName, type ExportColumn, type GstRate, type ImportColumn } from "./columns";
+import { col, parseMoney, ParseError, rupees, stateName, type ExportColumn, type GstRate, type ImportColumn } from "./columns";
 import type { RowValidator } from "./engine";
 import type { CommitOptions, CommitResult, CommitRow, ExporterDef, ImporterDef } from "./registry";
 
@@ -44,7 +44,43 @@ export interface ProductImportRow {
   batchNo?: string;
   expiry?: string;
   mfgDate?: string;
+  /** Alternate units ("box=12; bag=25@1200#8901234567890"); undefined = the column was empty (units left as they are). */
+  units?: ImportUnit[];
 }
+
+/** One alternate unit from the Units cell (docs/price-lists-units.md). Price in paise. */
+export interface ImportUnit {
+  unit: string;
+  factor: number;
+  price?: number;
+  barcode?: string;
+}
+
+/**
+ * The "Units" cell: `unit=factor[@price][#barcode]`, several separated by ";" or "|", e.g. `box=12; carton=144@6,400`
+ * (1 box = 12 of the item's unit; a carton sells at ₹6,400). "-" clears the item's units.
+ */
+export function parseUnitsCell(value: string): ImportUnit[] {
+  const v = value.trim();
+  if (v === "-") return [];
+  const out: ImportUnit[] = [];
+  for (const part of v.split(/[;|]/).map((x) => x.trim()).filter(Boolean)) {
+    const m = /^([^=@#]+?)\s*=\s*([0-9]+(?:\.[0-9]{1,6})?)\s*(?:@\s*([^#]+?))?\s*(?:#\s*([A-Za-z0-9-]{1,64}))?$/.exec(part);
+    if (!m) throw new ParseError(`"${part}" should look like box=12 or box=12@540`);
+    const factor = Number(m[2]);
+    if (!(factor > 0) || factor === 1) throw new ParseError(`"${part}": the conversion must be more than 0 and not 1`);
+    const u: ImportUnit = { unit: m[1]!.trim().slice(0, 16), factor };
+    if (m[3]) u.price = parseMoney(m[3]);
+    if (m[4]) u.barcode = m[4];
+    out.push(u);
+  }
+  if (out.length > 10) throw new ParseError("At most 10 units");
+  return out;
+}
+
+/** Units back to the cell format. */
+export const formatUnitsCell = (units: readonly { unit: string; factor: number; ownPrice?: number | null; barcode?: string | null }[]): string =>
+  units.map((u) => `${u.unit}=${u.factor}${u.ownPrice !== null && u.ownPrice !== undefined ? `@${rupees(u.ownPrice)}` : ""}${u.barcode ? `#${u.barcode}` : ""}`).join("; ");
 
 const HSN = /^\d{4}(\d{2}){0,2}$/;
 
@@ -68,6 +104,14 @@ export const productColumns: ImportColumn[] = [
   col.list("tags", "Tags", { example: "cotton, summer" }),
   col.text("batch_no", "Batch no", { max: 60, help: "Optional; the opening stock goes into this batch. Several rows of one item with different batch numbers become its batches", aliases: ["batch", "batch number", "batch no."] }),
   col.batchDate("expiry", "Expiry", "expiry", { help: "Optional; the batch's last day to sell, e.g. 03/2027", aliases: ["expiry date", "exp date", "exp"] }),
+  {
+    key: "units",
+    label: "Units",
+    parse: parseUnitsCell,
+    example: "box=12; carton=144@6,400",
+    help: "Optional alternate units: unit=how many of Unit in one[@price][#barcode], e.g. box=12@540. '-' removes them",
+    aliases: ["alternate units", "alt units", "packing"],
+  },
   col.batchDate("mfg_date", "Mfg date", "mfg", { help: "Optional; manufacturing date of the batch, e.g. 09/2026", aliases: ["mfg", "mfg date", "manufacturing date", "mfd"] }),
 ];
 
@@ -103,6 +147,7 @@ export function toProductRow(d: Record<string, unknown>): ProductImportRow {
     batchNo: d.batch_no as string | undefined,
     expiry: d.expiry as string | undefined,
     mfgDate: d.mfg_date as string | undefined,
+    units: d.units as ImportUnit[] | undefined,
   };
 }
 
@@ -123,6 +168,8 @@ export interface ProductExportRow {
   stock?: number | null;
   status: string;
   tags?: string[];
+  /** Alternate units in the Units cell format. */
+  units?: string | null;
 }
 
 export const productExportColumns: ExportColumn<ProductExportRow>[] = [
@@ -142,6 +189,54 @@ export const productExportColumns: ExportColumn<ProductExportRow>[] = [
   { key: "opening_stock", label: "Opening stock", value: (r) => r.stock ?? null },
   { key: "status", label: "Status" },
   { key: "tags", label: "Tags", value: (r) => r.tags?.join(", ") ?? null },
+  { key: "units", label: "Units", value: (r) => r.units ?? null },
+];
+
+// ------------------------------------------------------------------ pricelists.prices
+
+/** One price of a price list (docs/price-lists-units.md). Paise. */
+export interface PriceImportRow {
+  list: string;
+  /** SKU, barcode or exact item name. */
+  item: string;
+  /** Empty = the item's base unit. */
+  unit?: string;
+  minQty: number;
+  price: number;
+}
+
+export const priceColumns: ImportColumn[] = [
+  col.text("price_list", "Price list", { required: true, max: 60, example: "Wholesale", aliases: ["list", "price list name", "tier"] }),
+  col.text("item", "Item", { required: true, max: 200, example: "SOAP-100G", help: "SKU, barcode or the exact item name", aliases: ["sku", "barcode", "item name", "product"] }),
+  col.text("unit", "Unit", { max: 16, example: "box", help: "Empty for the item's own unit, else one of its alternate units", aliases: ["uom"] }),
+  col.decimal("min_qty", "From quantity", { decimals: 3, min: 0, example: "10", default: 0, help: "Quantity slab: the price applies from this quantity up (0 = any)", aliases: ["min qty", "slab", "qty from"] }),
+  col.money("price", "Price", { required: true, example: "45.00", help: "Price for one unit in rupees (incl. GST when the item's price includes GST)", aliases: ["rate", "list price"] }),
+];
+
+export const toPriceRow = (d: Record<string, unknown>): PriceImportRow => ({
+  list: d.price_list as string,
+  item: d.item as string,
+  unit: d.unit as string | undefined,
+  minQty: (d.min_qty as number | undefined) ?? 0,
+  price: d.price as number,
+});
+
+export interface PriceExportRow {
+  list: string;
+  item: string;
+  sku: string | null;
+  unit: string | null;
+  minQty: number;
+  price: number;
+}
+
+export const priceExportColumns: ExportColumn<PriceExportRow>[] = [
+  { key: "price_list", label: "Price list", value: (r) => r.list },
+  { key: "item", label: "Item", width: 32, value: (r) => r.sku || r.item },
+  { key: "item_name", label: "Item name", value: (r) => r.item },
+  { key: "unit", label: "Unit" },
+  { key: "min_qty", label: "From quantity", value: (r) => r.minQty },
+  { key: "price", label: "Price", value: (r) => rupees(r.price) },
 ];
 
 // ------------------------------------------------------------------ invoices.customers / inventory.suppliers
@@ -364,6 +459,13 @@ export const suppliersImporter = (port: ImportPort<SupplierImportRow>, opts: { f
     port,
   );
 
+export const pricesImporter = (port: ImportPort<PriceImportRow>, opts: { feature?: string; permission?: string } = {}) =>
+  importer(
+    { key: "pricelists.prices", label: "Price list prices", feature: opts.feature ?? "catalogue.price-lists", permission: opts.permission ?? "catalogue.manage", columns: priceColumns },
+    toPriceRow,
+    port,
+  );
+
 export const stockImporter = (port: ImportPort<StockImportRow>, opts: { feature?: string; permission?: string } = {}) =>
   importer(
     { key: "inventory.stock", label: "Stock", feature: opts.feature ?? "inventory", permission: opts.permission ?? "inventory.adjust", columns: stockColumns, validate: validateStockRow },
@@ -384,4 +486,6 @@ export const productsExporter = (port: ExportPort<ProductExportRow>, feature = "
 export const customersExporter = (port: ExportPort<PartyExportRow>, feature = "invoices") => exporter("invoices.customers", "Customers", feature, customerExportColumns, port);
 export const suppliersExporter = (port: ExportPort<PartyExportRow>, feature = "inventory.purchases") =>
   exporter("inventory.suppliers", "Suppliers", feature, supplierExportColumns, port);
+export const pricesExporter = (port: ExportPort<PriceExportRow>, feature = "catalogue.price-lists") =>
+  exporter("pricelists.prices", "Price list prices", feature, priceExportColumns, port, "catalogue.manage");
 export const stockExporter = (port: ExportPort<StockExportRow>, feature = "inventory") => exporter("inventory.stock", "Stock", feature, stockExportColumns, port);

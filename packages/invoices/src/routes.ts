@@ -155,6 +155,9 @@ export const invoiceLineSchema = z.object({
   batchNo: z.string().nullish(),
   mfgDate: z.string().nullish(),
   expiry: z.string().nullish(),
+  /** Alternate unit: base units in one `unit` (1 box = 12 pcs → 12); stock moved `qty × unitFactor` of `baseUnit`. */
+  unitFactor: z.number().nullish(),
+  baseUnit: z.string().nullish(),
   amount: paise,
   taxable: paise,
   cgst: paise,
@@ -347,6 +350,10 @@ export const billingItemSchema = z.object({
   active: z.boolean().optional(),
   stockQty: z.number().nullable().optional(),
   stockStatus: z.enum([...ITEM_STOCK_STATUSES, "untracked"]).nullable().optional(),
+  /** Catalogue items: alternate units (`factor` base units in one; `price` as sold, `rate` GST-exclusive). */
+  units: z
+    .array(z.object({ unit: z.string(), factor: z.number(), barcode: z.string().nullable(), ownPrice: paise.nullable(), price: paise, rate: paise, mrp: paise.nullable() }))
+    .optional(),
 });
 export const billingItemListSchema = z.object({
   items: z.array(billingItemSchema),

@@ -15,6 +15,7 @@
     "@hookform/resolvers": "^5.1.0",
     "@srirealtime/gst": "workspace:*",
     "@srirealtime/i18n": "workspace:*",
+    "@srirealtime/pricelists": "workspace:*",
     "@srirealtime/receipt-print": "workspace:*",
     "@srirealtime/ui": "workspace:*",
     "@srirealtime/web": "workspace:*",

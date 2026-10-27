@@ -196,6 +196,7 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   "POST /v1/catalog/products/:id/variants/generate": CATALOGUE_MANAGE,
   "PATCH /v1/catalog/variants/:id": CATALOGUE_MANAGE,
   "DELETE /v1/catalog/variants/:id": CATALOGUE_MANAGE,
+  "PUT /v1/catalog/variants/:id/units": CATALOGUE_MANAGE,
 
   // ---- orders (status changes are checked per target status inside the route: cancel / ship / deliver / manage)
   "POST /v1/orders/": ORDER_PERMISSIONS_KEYS.manage,

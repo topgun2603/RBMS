@@ -1,12 +1,13 @@
 import { gstRateAtPrice } from "@srirealtime/gst";
 import type { CartProduct } from "./cart";
+import { inUnit } from "./units";
 import type { BillingItem, CatalogVariant, Product, VariantLookup } from "./types";
 
 /** "Product – M / Red" (the catalogue's item name). */
 export const itemName = (product: string, variant: string) => (variant.trim() ? `${product} – ${variant}` : product);
 
 export function fromLookup(v: VariantLookup): CartProduct {
-  return {
+  const p: CartProduct = {
     itemId: v.id,
     productId: v.productId,
     name: v.name || itemName(v.productName, v.title),
@@ -19,7 +20,12 @@ export function fromLookup(v: VariantLookup): CartProduct {
     gstRate: v.gstRate,
     ...(v.gstRule ? { gstRule: v.gstRule } : {}),
     image: v.image,
+    ...(v.units?.length
+      ? { baseUnit: v.unit || "pcs", basePrice: v.price, units: v.units.map((u) => ({ unit: u.unit, factor: u.factor, barcode: u.barcode, price: u.price, ownPrice: u.ownPrice, mrp: u.mrp })) }
+      : {}),
   };
+  // A box's barcode: the line is one box.
+  return v.scannedUnit ? inUnit(p, v.scannedUnit) : p;
 }
 
 export function fromVariant(p: Product, v: CatalogVariant): CartProduct {

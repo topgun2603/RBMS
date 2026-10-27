@@ -465,7 +465,7 @@ describe("createCatalogue", () => {
   it("returns the service, the module (mounted at /v1/catalog) and the port adapters", () => {
     const { service, module, itemSource, itemCatalog } = createCatalogue({ db });
     expect(module.id).toBe("catalog");
-    expect(Object.keys(module.tables ?? {}).sort()).toEqual(["catalogCategories", "catalogCollections", "catalogProducts", "catalogVariants"]);
+    expect(Object.keys(module.tables ?? {}).sort()).toEqual(["catalogCategories", "catalogCollections", "catalogItemUnits", "catalogProducts", "catalogVariants"]);
     expect(module.features).toEqual([
       expect.objectContaining({ key: "catalogue", module: "catalogue", label: "Product catalogue" }),
       expect.objectContaining({

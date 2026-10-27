@@ -151,12 +151,30 @@ export function lineGstRate(line: {
   gstRate: number;
   gstRule?: GstRateRule | null;
   inclusiveTotal?: number | null;
+  unitFactor?: number | null;
 }): number {
   if (!isRule(line.gstRule)) return line.gstRate;
-  if (line.inclusiveTotal !== undefined && line.inclusiveTotal !== null) return gstRateForInclusive(line.gstRule, line.inclusiveTotal, line.qty).rate;
+  // The band is per piece: a box of 12 is tested on its value over 12 pieces (base units).
+  const pieces = baseQtyOf(line);
+  if (line.inclusiveTotal !== undefined && line.inclusiveTotal !== null) return gstRateForInclusive(line.gstRule, line.inclusiveTotal, pieces).rate;
   const milli = Math.round(line.qty * 1000);
   const amount = round((milli * line.rate) / 1000);
-  return effectiveGstRate(line.gstRule, amount - (line.discount ?? 0), line.qty);
+  return effectiveGstRate(line.gstRule, amount - (line.discount ?? 0), pieces);
+}
+
+/**
+ * A line's quantity in the item's base (stock) unit: `qty × unitFactor` to 3 decimals (docs/price-lists-units.md).
+ * Lines without an alternate unit return `qty` unchanged.
+ */
+export function baseQtyOf(line: { qty: number; unitFactor?: number | null }): number {
+  const f = line.unitFactor;
+  if (f === undefined || f === null || !(f > 0) || f === 1) return line.qty;
+  return Math.round(line.qty * f * 1000) / 1000;
+}
+
+/** The unit GST reports (HSN summary UQC) count a line in: the base unit for alternate-unit lines. */
+export function baseUnitOf(line: { unit?: string | null; unitFactor?: number | null; baseUnit?: string | null }): string | null {
+  return line.unitFactor && line.unitFactor !== 1 && line.baseUnit ? line.baseUnit : (line.unit ?? null);
 }
 
 /**

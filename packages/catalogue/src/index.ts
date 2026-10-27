@@ -1,7 +1,7 @@
 import { defineModule } from "@srirealtime/core";
 import { CATALOGUE_FEATURES } from "./features";
 import { catalogueRoutes } from "./routes";
-import { catalogCategories, catalogCollections, catalogProducts, catalogVariants } from "./schema";
+import { catalogCategories, catalogCollections, catalogItemUnits, catalogProducts, catalogVariants } from "./schema";
 import { CatalogueService, type CatalogueDeps } from "./service";
 import { billingItemSource, inventoryItemCatalog } from "./adapters";
 
@@ -15,6 +15,7 @@ export * from "./csv";
 export * from "./service";
 export * from "./features";
 export * from "./adapters";
+export * from "./units";
 export {
   catalogueRoutes,
   PRODUCT_CSV_COLUMNS,
@@ -33,6 +34,8 @@ export {
   variantLookupSchema,
   variantSchema,
   variantSearchResultSchema,
+  itemUnitSchema,
+  itemUnitsSchema,
   type CatalogueRouteOptions,
 } from "./routes";
 
@@ -47,7 +50,7 @@ export function createCatalogue(deps: CatalogueDeps) {
   const service = new CatalogueService(deps);
   const module = defineModule({
     id: CATALOGUE_MODULE_ID,
-    tables: { catalogCategories, catalogProducts, catalogVariants, catalogCollections },
+    tables: { catalogCategories, catalogProducts, catalogVariants, catalogCollections, catalogItemUnits },
     routes: catalogueRoutes(service, { vendorScope: deps.vendorScope }),
     features: CATALOGUE_FEATURES,
   });

@@ -19,6 +19,11 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   ToggleGroup,
   ToggleGroupItem,
 } from "@srirealtime/ui";
@@ -27,11 +32,14 @@ import { lineAmount } from "@srirealtime/gst";
 import { cartLineGstRate, clampDiscount, percentDiscount, type CartLine } from "../lib/cart";
 import { money, paiseToInput, parseQty, rupeesToPaise } from "../lib/format";
 import { usePos } from "./pos-context";
+import { setLineUnit } from "../lib/units";
 
 export interface LineEdit {
   qty: number;
   price: number;
   discount: number;
+  /** A different unit picked for the line (box instead of pieces); applied before qty and price. */
+  unit?: string;
 }
 
 /** Quantity, price (needs invoices.discount) and line discount in ₹ or % (needs invoices.discount). */
@@ -43,9 +51,11 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
   const [disc, setDisc] = React.useState("");
   const [mode, setMode] = React.useState<"amount" | "percent">("amount");
   const [touched, setTouched] = React.useState(false);
+  const [unit, setUnit] = React.useState("");
 
   React.useEffect(() => {
     if (!line) return;
+    setUnit(line.unit);
     setQty(String(line.qty));
     setPrice(paiseToInput(line.price));
     setDisc(line.discount ? paiseToInput(line.discount) : "");
@@ -56,7 +66,7 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
   if (!line) return <Dialog open={false} />;
 
   const q = parseQty(qty);
-  const p = can.price ? rupeesToPaise(price) : line.price;
+  const p = can.price || (unit && unit !== line.unit) ? rupeesToPaise(price) : line.price;
   const pct = mode === "percent" ? Number(disc || "0") : null;
   const pctOk = pct === null || (Number.isFinite(pct) && pct >= 0 && pct <= 100);
   const rawDisc = !can.discount ? line.discount : mode === "amount" ? (disc.trim() ? rupeesToPaise(disc) : 0) : null;
@@ -70,7 +80,7 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
     e.preventDefault();
     setTouched(true);
     if (!valid) return;
-    onSave(line.key, { qty: q!, price: p!, discount: discount! });
+    onSave(line.key, { qty: q!, price: p!, discount: discount!, ...(unit && unit !== line.unit ? { unit } : {}) });
   };
 
   return (
@@ -84,13 +94,39 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
               {line.taxInclusive ? ` · ${t("pos.edit.inclGst", { rate: cartLineGstRate(line) })}` : ` · ${t("pos.edit.plusGst", { rate: cartLineGstRate(line) })}`}
             </DialogDescription>
           </DialogHeader>
+          {line.units?.length && !line.ticket ? (
+            <Field>
+              <FieldLabel>{t("pos.edit.unit")}</FieldLabel>
+              <Select
+                value={unit}
+                onValueChange={(v) => {
+                  setUnit(v);
+                  // The price follows the unit (scaled when it was changed by hand).
+                  const next = setLineUnit([line], line.key, v)[0]!;
+                  setPrice(paiseToInput(next.price));
+                }}
+              >
+                <SelectTrigger size="lg" className="w-full" aria-label={t("pos.edit.unit")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={line.baseUnit ?? line.unit}>{line.baseUnit ?? line.unit}</SelectItem>
+                  {line.units.map((u) => (
+                    <SelectItem key={u.unit} value={u.unit}>
+                      {t("pos.edit.unitOption", { unit: u.unit, factor: u.factor, base: line.baseUnit ?? "" })} · {money(u.price)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          ) : null}
           <FieldRow cols={2}>
             <Field>
               <FieldLabel>{t("pos.edit.qty")}</FieldLabel>
               <FieldControl>
                 <InputGroup size="lg">
                   <InputGroupInput value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" autoFocus onFocus={(e) => e.target.select()} />
-                  <InputGroupAddon>{line.unit}</InputGroupAddon>
+                  <InputGroupAddon>{unit || line.unit}</InputGroupAddon>
                 </InputGroup>
               </FieldControl>
               <FieldError>{touched && q === null ? t("pos.edit.qtyInvalid") : null}</FieldError>

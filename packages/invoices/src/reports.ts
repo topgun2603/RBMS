@@ -1,5 +1,5 @@
 /** Pure report shaping: GST return summaries, zero-filled trends and CSV (no database). */
-import { isValidGstin, type GstRate, type LineTotals, type TaxBreakupRow } from "@srirealtime/gst";
+import { baseQtyOf, baseUnitOf, isValidGstin, type GstRate, type LineTotals, type TaxBreakupRow } from "@srirealtime/gst";
 import { addDaysISO, daysBetween } from "./ledger";
 
 /** GSTR-1 B2CL threshold: inter-state invoices to unregistered buyers above ₹1,00,000. */
@@ -285,7 +285,8 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
       }
 
       const code = l.hsn ?? "";
-      const unit = (l.unit ?? "").trim().toLowerCase();
+      // Alternate-unit lines (boxes of 12) count in the item's base unit, so one HSN keeps one unit.
+      const unit = (baseUnitOf(l) ?? "").trim().toLowerCase();
       const h = getOrAdd(hsn, `${code}|${unit}|${rate}`, () => ({
         hsn: code,
         description: l.description,
@@ -298,7 +299,7 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
         igst: 0,
         total: 0,
       }));
-      h.qty = round3(h.qty + l.qty);
+      h.qty = round3(h.qty + baseQtyOf(l));
       h.taxable += l.taxable;
       h.cgst += l.cgst;
       h.sgst += l.sgst;
@@ -351,7 +352,8 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
       }
 
       const code = l.hsn ?? "";
-      const unit = (l.unit ?? "").trim().toLowerCase();
+      // Alternate-unit lines (boxes of 12) count in the item's base unit, so one HSN keeps one unit.
+      const unit = (baseUnitOf(l) ?? "").trim().toLowerCase();
       const h = getOrAdd(hsn, `${code}|${unit}|${rate}`, () => ({
         hsn: code,
         description: l.description,
@@ -364,7 +366,7 @@ export function gstSummary(invoices: readonly GstInvoice[], creditNotes: readonl
         igst: 0,
         total: 0,
       }));
-      h.qty = round3(h.qty - l.qty);
+      h.qty = round3(h.qty - baseQtyOf(l));
       h.taxable -= l.taxable;
       h.cgst -= l.cgst;
       h.sgst -= l.sgst;

@@ -12,6 +12,7 @@ import type {
   TillDocPort,
 } from "@srirealtime/documents";
 import {
+  formatUnitsCell,
   customersExporter,
   customersImporter,
   productsExporter,
@@ -262,6 +263,8 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
   }
 
   const stockFor: { row: number; variantId: string; name: string; qty?: number; cost?: number; note?: string; batches: ImportBatch[] }[] = [];
+  // Alternate units of the rows that filled the Units column (docs/price-lists-units.md), set once the variants exist.
+  const unitsFor: { row: number; variantId: string; units: NonNullable<ProductImportRow["units"]> }[] = [];
   const stockNote = (r: ProductImportRow) => `Opening stock (import)${r.batchNo ? `, batch ${r.batchNo}` : ""}${r.expiry ? `, expiry ${r.expiry}` : ""}`;
   // Rows of one item (same name and variant) that differ by batch number are the batches of that item, not variants.
   const batchesOf = new Map<CommitRow<ProductImportRow>, ImportBatch[]>();
@@ -314,6 +317,7 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
         result.records.push({ entity: "product", key: `product:${nameKey(first.name)}`, id: product.id, action: "created", meta: { variantIds: product.variants.map((x) => x.id) } });
         group.forEach((r, i) => {
           const v = simple ? product.variants[0] : product.variants.find((x) => x.title === (r.data.variant ?? "")) ?? product.variants[i];
+          if (v && r.data.units) unitsFor.push({ row: r.row, variantId: v.id, units: r.data.units });
           if (v && (r.data.openingStock !== undefined || (batchesOf.get(r)?.length ?? 0) > 0)) stockFor.push({ row: r.row, variantId: v.id, name: first.name, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data), batches: batchesOf.get(r) ?? [] });
         });
         continue;
@@ -330,6 +334,7 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
           const v = match ? await d.catalogue.updateVariant(tenantId, match.id, input) : await d.catalogue.addVariant(tenantId, existing.id, input);
           if (match) result.updated++;
           else result.created++;
+          if (r.data.units) unitsFor.push({ row: r.row, variantId: v.id, units: r.data.units });
           if (r.data.openingStock !== undefined || (batchesOf.get(r)?.length ?? 0) > 0) stockFor.push({ row: r.row, variantId: v.id, name: first.name, qty: r.data.openingStock, cost: r.data.cost, note: stockNote(r.data), batches: batchesOf.get(r) ?? [] });
         } catch (e) {
           result.errors.push({ row: r.row, message: message(e) });
@@ -337,6 +342,14 @@ async function importProducts(d: ImportExportPortDeps, tenantId: string, rows: C
       }
     } catch (e) {
       for (const r of group) result.errors.push({ row: r.row, message: message(e) });
+    }
+  }
+
+  for (const u of unitsFor) {
+    try {
+      await d.catalogue.units.set(tenantId, u.variantId, { units: u.units.map((x) => ({ unit: x.unit, factor: x.factor, price: x.price ?? null, barcode: x.barcode ?? null })) });
+    } catch (e) {
+      result.errors.push({ row: u.row, message: `Product saved, but its units failed: ${message(e)}` });
     }
   }
 
@@ -508,9 +521,13 @@ async function importStock(d: ImportExportPortDeps, tenantId: string, rows: Comm
 
 async function* exportProducts(d: ImportExportPortDeps, tenantId: string): AsyncIterable<ProductExportRow> {
   const rows = await d.catalogue.exportProducts(tenantId, {});
-  const stock = new Map((await d.inventory.listStock(tenantId, {})).items.map((s) => [s.itemId, s]));
+  const [stock, units] = await Promise.all([
+    d.inventory.listStock(tenantId, {}).then((page) => new Map(page.items.map((s) => [s.itemId, s]))),
+    d.catalogue.units.all(tenantId),
+  ]);
   for (const r of rows) {
     const s = stock.get(r.variant.id);
+    const u = units.get(r.variant.id);
     yield {
       name: r.product.name,
       variant: r.variant.title,
@@ -528,6 +545,7 @@ async function* exportProducts(d: ImportExportPortDeps, tenantId: string): Async
       stock: s && s.track ? s.qty : null,
       status: r.product.status,
       tags: r.product.tags,
+      units: u?.length ? formatUnitsCell(u.map((x) => ({ unit: x.unit, factor: Number(x.factor), ownPrice: x.price, barcode: x.barcode }))) : null,
     };
   }
 }

@@ -39,7 +39,25 @@ export interface CartProduct {
   image?: string | null;
   /** From the POS catalogue: by-weight items ask for the weight when tapped. */
   soldBy?: "unit" | "weight";
+  /**
+   * Alternate units (docs/price-lists-units.md): `unit` is what the line is sold in, `baseUnit` the item's stock unit
+   * and `basePrice` its catalogue price per base unit; `units` the units it can be sold in (1 box = 12 pcs).
+   */
+  baseUnit?: string;
+  basePrice?: number;
+  units?: { unit: string; factor: number; barcode: string | null; price: number; ownPrice?: number | null; mrp?: number | null }[];
 }
+
+/** Base units in the product's unit (1 for the base unit). */
+export function cartUnitFactor(p: Pick<CartProduct, "unit" | "baseUnit" | "units">): number {
+  const k = p.unit.trim().toLowerCase();
+  if (!p.units?.length || !p.baseUnit || k === p.baseUnit.trim().toLowerCase()) return 1;
+  return p.units.find((u) => u.unit.trim().toLowerCase() === k)?.factor ?? 1;
+}
+
+/** The product with its catalogue price per base unit noted (for unit changes and price lists). */
+const withBase = (p: CartProduct): CartProduct =>
+  p.basePrice !== undefined ? p : { ...p, baseUnit: p.baseUnit ?? p.unit, basePrice: Math.round(p.price / cartUnitFactor(p)) };
 
 export interface CartLine extends CartProduct {
   /** Stable key for React and edits. */
@@ -80,7 +98,8 @@ export const clampDiscount = (discount: number, gross: number) => Math.min(Math.
  * returns the new lines and the key of the line that changed (for the scan flash).
  */
 export function addProduct(lines: readonly CartLine[], p: CartProduct, qty = 1, serial?: string | null): { lines: CartLine[]; key: string } {
-  const same = lines.find((l) => !l.ticket && l.itemId === p.itemId && l.price === p.price && l.discount === 0);
+  p = withBase(p);
+  const same = lines.find((l) => !l.ticket && l.itemId === p.itemId && l.unit === p.unit && l.price === p.price && l.discount === 0);
   if (serial) {
     // A unit with a serial / IMEI: one unit per scan; the same unit scanned twice is not added again.
     const holder = lines.find((l) => l.serials?.includes(serial));
@@ -147,11 +166,13 @@ export const removeLine = (lines: readonly CartLine[], key: string) => lines.fil
  * piece's value after the line discount — the charged amount for tax-inclusive prices, the exclusive amount otherwise.
  * The server re-bands the same way (the line carries `gstRule`).
  */
-export function cartLineGstRate(l: Pick<CartLine, "qty" | "price" | "discount" | "taxInclusive" | "gstRate" | "gstRule">): GstRate {
+export function cartLineGstRate(l: Pick<CartLine, "qty" | "price" | "discount" | "taxInclusive" | "gstRate" | "gstRule"> & Partial<Pick<CartLine, "unit" | "baseUnit" | "units">>): GstRate {
   if (!l.gstRule) return gstOf(l.gstRate);
   const gross = lineGross(l);
   const charged = gross - clampDiscount(l.discount, gross);
-  return gstOf(l.taxInclusive ? gstRateForInclusive(l.gstRule, charged, l.qty).rate : effectiveGstRate(l.gstRule, charged, l.qty));
+  // Banded per piece: a box of 12 is tested over its 12 pieces.
+  const pieces = Math.round(l.qty * cartUnitFactor({ unit: l.unit ?? "", baseUnit: l.baseUnit, units: l.units }) * 1000) / 1000;
+  return gstOf(l.taxInclusive ? gstRateForInclusive(l.gstRule, charged, pieces).rate : effectiveGstRate(l.gstRule, charged, pieces));
 }
 
 export function toLineInput(l: CartLine): LineInput {
@@ -173,6 +194,12 @@ export function toLineInput(l: CartLine): LineInput {
   }
   if (l.hsn) input.hsn = l.hsn;
   if (l.unit) input.unit = l.unit;
+  // Alternate unit: stock moves qty × factor base units (the API checks the factor against the catalogue).
+  const factor = cartUnitFactor(l);
+  if (factor !== 1 && l.baseUnit) {
+    input.unitFactor = factor;
+    input.baseUnit = l.baseUnit;
+  }
   if (l.serials?.length) input.serials = [...l.serials];
   if (l.batch) {
     input.batchId = l.batch.id;

@@ -8,7 +8,12 @@ import type { OfflineFlag, PosBillInfo, PosInvoicesPort } from "@srirealtime/pos
  * with a reserved number, and the payments taken at the counter. Fallbacks that keep a sale from being lost: an unknown
  * customer becomes a walk-in, a till that was closed meanwhile is left off the bill (both flagged for review).
  */
-export function posInvoicesPort(invoices: InvoicesService, db: Db): PosInvoicesPort {
+export function posInvoicesPort(
+  invoices: InvoicesService,
+  db: Db,
+  /** Checks alternate units against the catalogue and sets the server's unit factor (kit-pricing.ts). */
+  prepareLines?: (tenantId: string, lines: unknown[]) => Promise<unknown[]>,
+): PosInvoicesPort {
   const info = (inv: { id: string; number: string | null; total: number; paid: number; balance: number }): PosBillInfo => ({
     invoiceId: inv.id,
     number: inv.number,
@@ -34,12 +39,13 @@ export function posInvoicesPort(invoices: InvoicesService, db: Db): PosInvoicesP
         }
       }
       let tillSessionId = input.tillSessionId;
+      const lines = prepareLines ? await prepareLines(tenant.id, input.lines as unknown[]) : input.lines;
       const make = (till: string | undefined) =>
         invoices.create(
           tenant,
           {
             date: input.date,
-            lines: input.lines,
+            lines,
             issue: true,
             ...(customerId ? { customerId } : { customer: walkIn ?? { name: "Walk-in" } }),
             ...(input.notes ? { notes: input.notes } : {}),

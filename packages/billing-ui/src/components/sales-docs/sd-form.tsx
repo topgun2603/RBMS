@@ -28,6 +28,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { CustomerPicker, type Party } from "../customer-picker";
+import { PriceListPicker, useLinePricing, type PriceListChoice } from "../pricing/line-pricing";
 import { blankLine, isBlank, LineRow, linesFromInvoice, parseLine, partyFromInvoice, partyState, Row, type LineDraft } from "../invoice-form";
 import { UnitList } from "../item-dialog";
 import { StateSelect } from "../state-select";
@@ -80,6 +81,9 @@ export function SalesDocForm({
   const [pos, setPos] = React.useState(() => existing?.placeOfSupply ?? "");
   const [posTouched, setPosTouched] = React.useState(editing);
   const [lines, setLines] = React.useState<LineDraft[]>(() => (existing?.lines.length ? linesFromInvoice(existing) : [blankLine()]));
+  // Lines of saved items follow the customer's price list, slabs and units (docs/price-lists-units.md).
+  const [priceListId, setPriceListId] = React.useState<PriceListChoice>("");
+  useLinePricing({ lines, setLines, customerId: party.kind === "saved" ? party.customer.id : null, priceListId, date });
   const [notes, setNotes] = React.useState(() => existing?.notes ?? "");
   const [showNotes, setShowNotes] = React.useState(() => !!existing?.notes);
   const [terms, setTerms] = React.useState(() => existing?.terms ?? "");
@@ -287,6 +291,9 @@ export function SalesDocForm({
               <>
                 <CustomerPicker value={party} onChange={setParty} invalid={submitted && !!partyError} />
                 {submitted && partyError && <p className="mt-1.5 text-meta text-destructive">{partyError}</p>}
+                <div className="mt-3">
+                  <PriceListPicker value={priceListId} onChange={setPriceListId} customerId={party.kind === "saved" ? party.customer.id : null} />
+                </div>
               </>
             )}
           </CardContent>

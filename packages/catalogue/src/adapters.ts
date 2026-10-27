@@ -20,6 +20,8 @@ export interface BillingItemRecord {
   /** With stock wired: quantity on hand over all locations, and its status. */
   stockQty?: number | null;
   stockStatus?: "in" | "low" | "out" | "untracked" | null;
+  /** Alternate units (box of 12 …); `unit` is the base unit. */
+  units?: CatalogItem["units"];
 }
 
 export interface BillingItemInput {
@@ -56,6 +58,7 @@ export const toBillingItem = (i: CatalogItem): BillingItemRecord => ({
   rate: i.rate,
   gstRate: i.gstRate,
   ...(i.gstRule ? { gstRule: i.gstRule } : {}),
+  ...(i.units?.length ? { units: i.units } : {}),
   createdAt: i.createdAt,
 });
 
