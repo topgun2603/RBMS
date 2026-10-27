@@ -1,6 +1,22 @@
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { AppError } from "@srirealtime/core";
 import type { Browser, Page } from "puppeteer-core";
 import { noopLogger, type LoggerPort, type Paper } from "./types";
+
+/**
+ * Loads puppeteer-core through its CommonJS build, never `import()`.
+ *
+ * The ESM build pulls in `@puppeteer/browsers` CLI.js, which does `import { stdin } from "node:process"`. Node builds
+ * the ESM facade of `node:process` by reading every property, so the first such import initialises `process.stdin`.
+ * On Windows, when stdin is an inherited pipe that a parent is already reading (turbo → pnpm → `tsx watch`, which
+ * listens on stdin for "Return to restart"), opening it blocks the main thread forever: the whole API stops answering
+ * at the first PDF after every restart. The CJS build only touches `stdin` inside its interactive prompt.
+ */
+export function loadPuppeteer(): typeof import("puppeteer-core") {
+  const mod = createRequire(import.meta.url)("puppeteer-core") as typeof import("puppeteer-core") & { default?: typeof import("puppeteer-core") };
+  return mod.default ?? mod;
+}
 
 /** Turns a complete HTML document into a PDF. Swap it for a Lambda/container driver in production if needed. */
 export interface PdfDriver {
@@ -93,12 +109,27 @@ class Gate {
   private active = 0;
   private readonly waiters: (() => void)[] = [];
   constructor(private readonly max: number) {}
-  async acquire(): Promise<void> {
+  /** Waits for a slot; with `timeoutMs`, gives up (and leaves the queue) after that long. */
+  async acquire(timeoutMs?: number): Promise<void> {
     if (this.active < this.max) {
       this.active++;
       return;
     }
-    await new Promise<void>((resolve) => this.waiters.push(resolve));
+    await new Promise<void>((resolve, reject) => {
+      let timer: NodeJS.Timeout | undefined;
+      const waiter = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      this.waiters.push(waiter);
+      if (timeoutMs !== undefined) {
+        timer = setTimeout(() => {
+          const i = this.waiters.indexOf(waiter);
+          if (i >= 0) this.waiters.splice(i, 1);
+          reject(pdfTimeout("waiting for a free PDF renderer", timeoutMs));
+        }, timeoutMs);
+      }
+    });
   }
   release(): void {
     const next = this.waiters.shift();
@@ -107,10 +138,15 @@ class Gate {
   }
 }
 
+/** 504 in the API's error shape: the PDF could not be produced in time. */
+export function pdfTimeout(what: string, ms: number): AppError {
+  return new AppError(504, "pdf_timeout", `PDF ${what} timed out after ${ms} ms`);
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms);
+    timer = setTimeout(() => reject(pdfTimeout(what, ms)), Math.max(1, ms));
   });
   return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
 }
@@ -146,7 +182,7 @@ export class PuppeteerPdfDriver implements PdfDriver {
     if (!executablePath) {
       throw new Error("No Chrome/Chromium/Edge found for PDF rendering; set documents config chromePath (or CHROME_PATH)");
     }
-    const { default: puppeteer } = await import("puppeteer-core");
+    const puppeteer = loadPuppeteer();
     const platform = this.opts.platform ?? process.platform;
     const args = [
       "--disable-gpu",
@@ -188,12 +224,20 @@ export class PuppeteerPdfDriver implements PdfDriver {
   async render(html: string, opts: { paper: Paper; timeoutMs?: number }): Promise<Buffer> {
     if (this.closed) throw new Error("PDF driver is closed");
     const timeoutMs = opts.timeoutMs ?? this.opts.timeoutMs ?? 30_000;
-    await this.gate.acquire();
+    // One deadline for the whole job (queue + browser + page + render), so a request can never wait forever.
+    const deadline = Date.now() + timeoutMs;
+    const left = () => Math.max(1, deadline - Date.now());
+    await this.gate.acquire(timeoutMs);
     let page: Page | null = null;
     let reusable = false;
     try {
-      const browser = await this.getBrowser();
-      page = this.idle.pop() ?? (await this.newPage(browser));
+      const acquiring = this.getBrowser().then((browser) => this.idle.pop() ?? this.newPage(browser));
+      // A page that shows up after the deadline is closed instead of leaking.
+      acquiring.catch(() => undefined);
+      page = await withTimeout(acquiring, left(), "browser start").catch((err) => {
+        void acquiring.then((p) => p.close()).catch(() => undefined);
+        throw err;
+      });
       const pg = page;
       const pdf = await withTimeout(
         (async () => {
@@ -208,8 +252,8 @@ export class PuppeteerPdfDriver implements PdfDriver {
           }
           return pg.pdf({ format: opts.paper, printBackground: true, preferCSSPageSize: true, timeout: timeoutMs });
         })(),
-        timeoutMs,
-        "PDF rendering",
+        left(),
+        "rendering",
       );
       reusable = true;
       return Buffer.from(pdf);

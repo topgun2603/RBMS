@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createDocuments } from "./index";
 import { DocumentRegistry, safeFilename } from "./registry";
 import { sampleInvoice, sampleStatement } from "./test-fixtures";
-import type { PdfDriver } from "./driver";
+import { pdfTimeout, type PdfDriver } from "./driver";
 
 const TENANT = "11111111-1111-4111-8111-111111111111";
 
@@ -109,6 +109,14 @@ describe("routes", () => {
     expect((await a.inject({ url: "/v1/documents/invoice/abc.png" })).statusCode).toBe(404);
     expect((await a.inject({ url: "/v1/documents/invoice-thermal/abc.pdf" })).statusCode).toBe(200);
     expect(calls.at(-1)!.paper).toBe("80mm");
+  });
+
+  it("answers 504 pdf_timeout when the renderer gives up", async () => {
+    const driver: PdfDriver = { render: async () => Promise.reject(pdfTimeout("rendering", 10)), close: async () => {} };
+    const { a } = await app(staff, { driver, invoices: { invoice: async () => sampleInvoice(), publicInvoice: async () => null } });
+    const res = await a.inject({ url: "/v1/documents/invoice/abc.pdf" });
+    expect(res.statusCode).toBe(504);
+    expect(res.json()).toEqual({ error: { code: "pdf_timeout" } });
   });
 
   it("requires a staff member", async () => {
