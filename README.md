@@ -1,6 +1,6 @@
-# srikit — @srirealtime shared module library
+# RBMS — shared module library
 
-Reusable modules for every Srirealtime app (Ecommerce SaaS, Matrimony, LMS, School ERP, SiteBook, Tailoring,
+Reusable modules for every RBMS app (Ecommerce SaaS, Matrimony, LMS, School ERP, SiteBook, Tailoring,
 Billing and the rest), built once and switched on per tenant and per plan. Module ids match the
 [Module Catalogue](https://claude.ai/artifact/CfVyjYrEmtnqNqsH5F3Nf1).
 
