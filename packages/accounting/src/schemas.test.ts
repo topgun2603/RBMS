@@ -6,10 +6,10 @@ const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
 
 describe("module declarations", () => {
-  it("declares one feature that is off until the owner switches it on, and three permissions", () => {
+  it("declares one feature that is off until the owner switches it on, and five permissions (Part B adds bank and tds)", () => {
     expect(ACCOUNTING_FEATURES).toHaveLength(1);
     expect(ACCOUNTING_FEATURES[0]).toMatchObject({ key: "accounting", shopToggle: true, defaultOn: false, dependsOn: ["invoices"] });
-    expect(ACCOUNTING_PERMISSIONS.map((p) => p.key)).toEqual(["accounting.view", "accounting.post", "accounting.lock"]);
+    expect(ACCOUNTING_PERMISSIONS.map((p) => p.key)).toEqual(["accounting.view", "accounting.post", "accounting.lock", "accounting.bank", "accounting.tds"]);
     for (const p of ACCOUNTING_PERMISSIONS) expect(p.module).toBe("accounting");
   });
 });

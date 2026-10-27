@@ -5,6 +5,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql, type SQL } 
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { ACCOUNT_GROUPS, EXPENSE_CATEGORY_CODE_BASE, GROUP_BY_KEY, NORMAL_SIDE, STANDARD_CHART, SYS } from "./chart";
+import { CLOSING_SOURCE_TYPES, PART_B_LABELS, PART_B_SOURCE_TYPES, type PartBSourceType } from "./part-b-types";
 import type { FeatureGatePort, LoggerPort, MoneyMethod, ReconcilePort, SourcesPort, StockValuePort } from "./ports";
 import { noopLogger } from "./ports";
 import {
@@ -181,7 +182,7 @@ export const entryListQuery = listQuerySchema({ defaultLimit: 50, maxLimit: 200 
     origin: listFilter.oneOf(["manual", "auto"] as const),
     status: listFilter.oneOf(["posted", "reversed"] as const),
     accountId: listFilter.id(),
-    sourceType: listFilter.oneOf(SOURCE_TYPES),
+    sourceType: listFilter.oneOf([...SOURCE_TYPES, ...PART_B_SOURCE_TYPES] as const),
   })
   .superRefine(rangeOrder("from", "to"));
 export type EntryListQuery = z.input<typeof entryListQuery>;
@@ -274,6 +275,8 @@ export class AccountingService {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly fresh = new Map<string, number>();
   private readonly running = new Map<string, Promise<unknown>>();
+  /** Part B reports (bank reconciliation, TDS data and certificates) for the CSV / PDF downloads; set by createAccounting. */
+  extraReport?: (tenantId: string, report: string, q: Record<string, string | undefined>, shop: string) => Promise<ReportTable | null>;
 
   constructor(private readonly deps: AccountingDeps) {
     this.db = deps.db;
@@ -341,7 +344,7 @@ export class AccountingService {
     });
   }
 
-  private async settings(tenantId: string, db: DbOrTx = this.db): Promise<AcctSettings> {
+  async settings(tenantId: string, db: DbOrTx = this.db): Promise<AcctSettings> {
     const [s] = await db.select().from(acctSettings).where(eq(acctSettings.tenantId, tenantId)).limit(1);
     if (!s) {
       this.ready.delete(tenantId);
@@ -350,7 +353,7 @@ export class AccountingService {
     return s;
   }
 
-  private async lockTenant(tx: DbOrTx, tenantId: string) {
+  async lockTenant(tx: DbOrTx, tenantId: string) {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`acct:${tenantId}`}))`);
   }
 
@@ -416,7 +419,7 @@ export class AccountingService {
     return this.getSettings(tenantId);
   }
 
-  private assertOpen(lockedThrough: string | null | undefined, d: string) {
+  assertOpen(lockedThrough: string | null | undefined, d: string) {
     if (lockedThrough && d <= lockedThrough) {
       throw conflict(`The books are locked up to ${lockedThrough}. Pick a later date, or ask the person who can unlock the period.`);
     }
@@ -535,23 +538,36 @@ export class AccountingService {
     return { ok: true as const };
   }
 
-  private async accountInfos(tenantId: string, db: DbOrTx = this.db): Promise<AccountInfo[]> {
+  async accountInfos(tenantId: string, db: DbOrTx = this.db): Promise<AccountInfo[]> {
     const rows = await db.select().from(acctAccounts).where(eq(acctAccounts.tenantId, tenantId));
     return rows.map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, group: a.group, subGroup: a.subGroup, key: a.key, isCash: a.isCash, isBank: a.isBank }));
   }
 
   // ================================================================ balances (SQL)
 
-  private async balancesBetween(tenantId: string, from: string | null, to: string | null): Promise<Map<string, Balance>> {
+  /**
+   * Sums per account between two dates. `excludeClosing` leaves out the year-end closing journals (and their
+   * reversals), so the profit and loss and the trial balance of a closed year still show the year's figures.
+   */
+  async balancesBetween(tenantId: string, from: string | null, to: string | null, opts: { excludeClosing?: boolean } = {}): Promise<Map<string, Balance>> {
     const rows = await this.db
       .select({ id: acctLines.accountId, debit: sql<string>`coalesce(sum(${acctLines.debit}), 0)`, credit: sql<string>`coalesce(sum(${acctLines.credit}), 0)` })
       .from(acctLines)
-      .where(and(eq(acctLines.tenantId, tenantId), from ? gte(acctLines.entryDate, from) : undefined, to ? lte(acctLines.entryDate, to) : undefined))
+      .where(
+        and(
+          eq(acctLines.tenantId, tenantId),
+          from ? gte(acctLines.entryDate, from) : undefined,
+          to ? lte(acctLines.entryDate, to) : undefined,
+          opts.excludeClosing
+            ? sql`${acctLines.entryId} not in (select e.id from ${acctEntries} e where e.tenant_id = ${tenantId} and e.source_type in (${sql.join(CLOSING_SOURCE_TYPES.map((x) => sql`${x}`), sql`, `)}))`
+            : undefined,
+        ),
+      )
       .groupBy(acctLines.accountId);
     return new Map(rows.map((r) => [r.id, { debit: num(r.debit), credit: num(r.credit) }]));
   }
-  private balancesTo(tenantId: string, to: string) {
-    return this.balancesBetween(tenantId, null, to);
+  balancesTo(tenantId: string, to: string, opts: { excludeClosing?: boolean } = {}) {
+    return this.balancesBetween(tenantId, null, to, opts);
   }
 
   // ================================================================ entries
@@ -776,7 +792,7 @@ export class AccountingService {
 
   // ================================================================ reports
 
-  private async range(q: { from?: string | null; to?: string | null }) {
+  async range(q: { from?: string | null; to?: string | null }) {
     const p = rangeQuery.parse({ from: q.from ?? undefined, to: q.to ?? undefined });
     const to = p.to ?? this.today();
     return { from: p.from ?? fyStart(to), to };
@@ -786,7 +802,7 @@ export class AccountingService {
     await this.ensureInit(tenantId);
     await this.ensureFresh(tenantId);
     const { from, to } = await this.range(q);
-    const [accounts, before, during] = await Promise.all([this.accountInfos(tenantId), this.balancesTo(tenantId, addDays(from, -1)), this.balancesBetween(tenantId, from, to)]);
+    const [accounts, before, during] = await Promise.all([this.accountInfos(tenantId), this.balancesTo(tenantId, addDays(from, -1)), this.balancesBetween(tenantId, from, to, { excludeClosing: true })]);
     return buildTrialBalance(accounts, before, during, { from, to });
   }
 
@@ -831,13 +847,13 @@ export class AccountingService {
     return { ...ledger, accounts: accounts.map((a) => ({ id: a.id, name: a.name, isBank: a.isBank, isCash: a.isCash })) };
   }
 
-  private async stockPart(tenantId: string, from: string, to: string, accounts: readonly AccountInfo[]) {
+  async stockPart(tenantId: string, from: string, to: string, accounts: readonly AccountInfo[]) {
     const s = await this.settings(tenantId);
     if (!s.valueStock || !this.deps.stock) return { opening: 0, closing: 0, ledgerNow: 0, enabled: false };
     const stockIds = accounts.filter((a) => a.group === "stock").map((a) => a.id);
     const [vOpen, vClose] = await Promise.all([this.deps.stock.value(tenantId, addDays(from, -1)), this.deps.stock.value(tenantId, to)]);
     if (vClose === null && vOpen === null) return { opening: 0, closing: 0, ledgerNow: 0, enabled: false };
-    const [bBefore, bTo] = await Promise.all([this.balancesTo(tenantId, addDays(from, -1)), this.balancesTo(tenantId, to)]);
+    const [bBefore, bTo] = await Promise.all([this.balancesTo(tenantId, addDays(from, -1), { excludeClosing: true }), this.balancesTo(tenantId, to, { excludeClosing: true })]);
     const sum = (m: Map<string, Balance>) => stockIds.reduce((t, id) => t + ((m.get(id)?.debit ?? 0) - (m.get(id)?.credit ?? 0)), 0);
     const moved = sum(bTo) - sum(bBefore);
     return { opening: (vOpen ?? 0) + moved, closing: vClose ?? 0, ledgerNow: sum(bTo), enabled: true };
@@ -848,7 +864,7 @@ export class AccountingService {
     await this.ensureFresh(tenantId);
     const { from, to } = await this.range(q);
     const accounts = await this.accountInfos(tenantId);
-    const cur = await this.balancesBetween(tenantId, from, to);
+    const cur = await this.balancesBetween(tenantId, from, to, { excludeClosing: true });
     const stock = await this.stockPart(tenantId, from, to, accounts);
     let cmp: Parameters<typeof buildProfitLoss>[4] = null;
     if (q.compare === "previous" || q.compareFrom) {
@@ -860,7 +876,7 @@ export class AccountingService {
         cf = addDays(ct, -days);
       }
       if (!isValidDate(cf) || !isValidDate(ct) || cf > ct) throw badRequest("Check the comparison dates");
-      cmp = { balances: await this.balancesBetween(tenantId, cf, ct), stock: await this.stockPart(tenantId, cf, ct, accounts), from: cf, to: ct };
+      cmp = { balances: await this.balancesBetween(tenantId, cf, ct, { excludeClosing: true }), stock: await this.stockPart(tenantId, cf, ct, accounts), from: cf, to: ct };
     }
     return buildProfitLoss(accounts, cur, stock, { from, to }, cmp);
   }
@@ -909,7 +925,7 @@ export class AccountingService {
   }
 
   /** Keeps reads current: a sync at most every 20 seconds per shop while posting is on. */
-  private async ensureFresh(tenantId: string) {
+  async ensureFresh(tenantId: string) {
     const last = this.fresh.get(tenantId) ?? 0;
     if (this.now().getTime() - last < FRESH_MS) return;
     const s = await this.settings(tenantId);
@@ -938,7 +954,7 @@ export class AccountingService {
     });
   }
 
-  private async loadDocs(tenantId: string) {
+  async loadDocs(tenantId: string) {
     const s = this.deps.sources;
     const [invoices, payments, receipts, creditNotes, purchases, supplierPayments, debitNotes, expenses, tills, openings, shopState, stockAdjustments, gstPayments] = await Promise.all([
       s.invoices(tenantId),
@@ -1226,6 +1242,177 @@ export class AccountingService {
     return r;
   }
 
+  // ================================================================ Part B posting (bank, cheques, TDS/TCS, assets, year-end)
+
+  /**
+   * The id of a standard account by its key, creating it when this shop's chart lacks it (a newer chart, or a code
+   * clash when it was topped up): the standard code if free, else the next free code of its type.
+   */
+  async accountIdByKey(tenantId: string, key: string, db: DbOrTx = this.db): Promise<string> {
+    await this.ensureInit(tenantId);
+    const [a] = await db.select({ id: acctAccounts.id }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.key, key))).limit(1);
+    if (a) return a.id;
+    const row = STANDARD_CHART.find((c) => c.key === key);
+    if (!row) throw notFound(`Account ${key}`);
+    const create = async (tx: DbOrTx) => {
+      await this.lockTenant(tx, tenantId);
+      const [again] = await tx.select({ id: acctAccounts.id }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.key, key))).limit(1);
+      if (again) return again.id;
+      const [clash] = await tx.select({ id: acctAccounts.id }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.code, row.code))).limit(1);
+      const code = clash ? await this.nextCode(tx, tenantId, row.type) : row.code;
+      const [created] = await tx
+        .insert(acctAccounts)
+        .values({ tenantId, code, name: row.name, type: row.type, group: row.group, subGroup: row.subGroup ?? null, key, system: true, isCash: !!row.isCash, isBank: !!row.isBank, description: row.about ?? null, sort: 900 })
+        .returning({ id: acctAccounts.id });
+      return created!.id;
+    };
+    return db === this.db ? this.db.transaction(create) : create(db);
+  }
+
+  /** Net balance (debit - credit, paise) of one account at the end of a date. */
+  async accountBalance(tenantId: string, accountId: string, asOf: string): Promise<number> {
+    const [r] = await this.db
+      .select({ net: sql<string>`coalesce(sum(${acctLines.debit} - ${acctLines.credit}), 0)` })
+      .from(acctLines)
+      .where(and(eq(acctLines.tenantId, tenantId), eq(acctLines.accountId, accountId), lte(acctLines.entryDate, asOf)));
+    return num(r?.net);
+  }
+
+  /** Money account (cash or bank) a payment method posts to, following the settings mapping. */
+  async methodAccountId(tenantId: string, method: string): Promise<string> {
+    const s = await this.ensureInit(tenantId);
+    const chosen = s.methodAccounts[method];
+    if (chosen) {
+      const [a] = await this.db.select({ id: acctAccounts.id }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), eq(acctAccounts.id, chosen))).limit(1);
+      if (a) return a.id;
+    }
+    return this.accountIdByKey(tenantId, method === "cash" ? SYS.cash : SYS.bank);
+  }
+
+  /**
+   * Posts a journal entry for a Part B record (a bank charge, a TDS deduction, depreciation, the closing journal ...).
+   * It is an automatic entry (origin auto) with its own source type, so the document sync never touches it and it
+   * can't be reversed from the journal screen: the record's own screen cancels it. Refused in a locked period unless
+   * `ignoreLock` (the year-end close only). Pass `tx` to post inside the caller's transaction.
+   */
+  async postModuleEntry(
+    tenantId: string,
+    p: {
+      sourceType: PartBSourceType;
+      sourceId: string;
+      date: string;
+      narration: string;
+      reference?: string | null;
+      lines: { accountId: string; debit: number; credit: number; memo?: string | null; partyType?: "customer" | "supplier" | null; partyId?: string | null }[];
+    },
+    opts: { tx?: DbOrTx; userId?: string | null; ignoreLock?: boolean } = {},
+  ): Promise<string> {
+    const lines = p.lines.filter((l) => l.debit > 0 || l.credit > 0);
+    for (const l of p.lines) {
+      if (l.debit < 0 || l.credit < 0 || (l.debit > 0 && l.credit > 0) || !Number.isInteger(l.debit) || !Number.isInteger(l.credit)) throw badRequest("A line is either a debit or a credit, in whole paise");
+    }
+    const debit = lines.reduce((t, l) => t + l.debit, 0);
+    const credit = lines.reduce((t, l) => t + l.credit, 0);
+    if (lines.length < 2 || debit !== credit || debit <= 0) throw badRequest(`The entry does not balance (debits ${debit}, credits ${credit})`, { debit, credit });
+    if (debit > MAX_PAISE) throw badRequest("The amount is too large");
+    if (!isValidDate(p.date)) throw badRequest("Use a YYYY-MM-DD date");
+    await this.ensureInit(tenantId);
+    const run = async (tx: DbOrTx) => {
+      await this.lockTenant(tx, tenantId);
+      const s = await this.settings(tenantId, tx);
+      if (!opts.ignoreLock) this.assertOpen(s.lockedThrough, p.date);
+      const ids = [...new Set(lines.map((l) => l.accountId))];
+      const accs = await tx.select({ id: acctAccounts.id, active: acctAccounts.active, name: acctAccounts.name }).from(acctAccounts).where(and(eq(acctAccounts.tenantId, tenantId), inArray(acctAccounts.id, ids)));
+      if (accs.length !== ids.length) throw badRequest("One of the accounts was not found");
+      const off = accs.find((a) => !a.active);
+      if (off) throw badRequest(`Account "${off.name}" is switched off`);
+      const [prev] = await tx
+        .select({ v: sql<string>`coalesce(max(${acctEntries.sourceVersion}), 0)` })
+        .from(acctEntries)
+        .where(and(eq(acctEntries.tenantId, tenantId), eq(acctEntries.sourceType, p.sourceType), eq(acctEntries.sourceId, p.sourceId)));
+      const seq = await this.nextNumbers(tx, tenantId, 1);
+      const id = randomUUID();
+      await tx.insert(acctEntries).values({
+        id,
+        tenantId,
+        seq,
+        number: this.numberOf("auto", seq),
+        voucherType: "auto",
+        origin: "auto",
+        date: p.date,
+        narration: p.narration.slice(0, 500),
+        reference: p.reference ?? null,
+        total: debit,
+        sourceType: p.sourceType,
+        sourceId: p.sourceId,
+        sourceVersion: num(prev?.v) + 1,
+        contentHash: postingHash({ date: p.date, narration: p.narration, lines: lines.map((l) => ({ account: { id: l.accountId }, debit: l.debit, credit: l.credit })) }),
+        createdBy: opts.userId ?? null,
+      });
+      await tx.insert(acctLines).values(
+        lines.map((l, i) => ({
+          tenantId,
+          entryId: id,
+          lineNo: i + 1,
+          accountId: l.accountId,
+          entryDate: p.date,
+          debit: l.debit,
+          credit: l.credit,
+          memo: l.memo ?? null,
+          partyType: l.partyType ?? null,
+          partyId: l.partyId ?? null,
+        })),
+      );
+      return id;
+    };
+    const id = opts.tx ? await run(opts.tx) : await this.db.transaction(run);
+    this.fresh.delete(tenantId);
+    return id;
+  }
+
+  /** Reverses a Part B entry (lines swapped, dated `date`), marking the original reversed. Returns the reversal's id. */
+  async reverseModuleEntry(
+    tenantId: string,
+    entryId: string,
+    p: { date: string; reason: string; sourceType: PartBSourceType },
+    opts: { tx?: DbOrTx; userId?: string | null; ignoreLock?: boolean } = {},
+  ): Promise<string> {
+    const run = async (tx: DbOrTx) => {
+      await this.lockTenant(tx, tenantId);
+      const s = await this.settings(tenantId, tx);
+      const [e] = await tx.select().from(acctEntries).where(and(eq(acctEntries.tenantId, tenantId), eq(acctEntries.id, entryId))).limit(1);
+      if (!e) throw notFound("Entry");
+      if (e.status === "reversed") throw conflict("This entry is already reversed");
+      const when = p.date < e.date ? e.date : p.date;
+      if (!opts.ignoreLock) this.assertOpen(s.lockedThrough, when);
+      const lines = await tx.select().from(acctLines).where(eq(acctLines.entryId, entryId)).orderBy(asc(acctLines.lineNo));
+      const seq = await this.nextNumbers(tx, tenantId, 1);
+      const id = randomUUID();
+      await tx.insert(acctEntries).values({
+        id,
+        tenantId,
+        seq,
+        number: this.numberOf("reversal", seq),
+        voucherType: "reversal",
+        origin: "auto",
+        date: when,
+        narration: `Reversal of ${e.number}: ${p.reason}`.slice(0, 500),
+        total: e.total,
+        sourceType: p.sourceType,
+        sourceId: e.sourceId,
+        sourceVersion: e.sourceVersion,
+        reversalOfId: e.id,
+        createdBy: opts.userId ?? null,
+      });
+      await tx.insert(acctLines).values(lines.map((l) => ({ tenantId, entryId: id, lineNo: l.lineNo, accountId: l.accountId, entryDate: when, debit: l.credit, credit: l.debit, memo: l.memo, partyType: l.partyType, partyId: l.partyId })));
+      await tx.update(acctEntries).set({ status: "reversed", reversedById: id, reversedAt: this.now(), reversalReason: p.reason.slice(0, 300) }).where(eq(acctEntries.id, e.id));
+      return id;
+    };
+    const id = opts.tx ? await run(opts.tx) : await this.db.transaction(run);
+    this.fresh.delete(tenantId);
+    return id;
+  }
+
   // ================================================================ reconciliation
 
   async reconcile(tenantId: string, q: { from?: string; to?: string } = {}) {
@@ -1303,6 +1490,22 @@ export class AccountingService {
       const r = manualRows.find((m) => m.acct === keyId.get(k));
       return r ? num(r.debit) - num(r.credit) : 0;
     };
+    // Part B entries on the control accounts (TCS collected, bank-statement entries with a party, TDS not settled in
+    // Payables) are not in the credit book / Payables: set aside like manual entries.
+    const partBRows = await this.db
+      .select({ acct: acctLines.accountId, net: sql<string>`coalesce(sum(${acctLines.debit} - ${acctLines.credit}), 0)` })
+      .from(acctLines)
+      .innerJoin(acctEntries, eq(acctEntries.id, acctLines.entryId))
+      .where(
+        and(
+          eq(acctLines.tenantId, tenantId),
+          inArray(acctLines.accountId, [keyId.get(SYS.debtors)!, keyId.get(SYS.creditors)!]),
+          inArray(acctEntries.sourceType, [...PART_B_SOURCE_TYPES]),
+          sql`not exists (select 1 from acct_tds_entries t where t.tenant_id = ${tenantId} and t.id::text = ${acctEntries.sourceId} and t.settlement_id is not null)`,
+        ),
+      )
+      .groupBy(acctLines.accountId);
+    const partBOf = (k: string) => num(partBRows.find((r) => r.acct === keyId.get(k))?.net);
     const walkIn = partyRows.filter((r) => r.acct === keyId.get(SYS.debtors) && r.type === "customer" && r.id === null).reduce((t, r) => t + num(r.debit) - num(r.credit), 0);
 
     // What the imported-history setting leaves out of the books but the credit book still counts.
@@ -1320,11 +1523,12 @@ export class AccountingService {
       add({
         key: "receivables",
         label: "Customers (debtors) in the books match the credit book",
-        ledger: debtorsNet - walkIn - manualOf(SYS.debtors),
+        ledger: debtorsNet - walkIn - manualOf(SYS.debtors) - partBOf(SYS.debtors),
         source: custTotal - importedDebtors,
         explained: [
           ...(walkIn ? [{ label: "Bills to walk-in customers with no name on file (not in the credit book)", amount: walkIn }] : []),
           ...(manualOf(SYS.debtors) ? [{ label: "Manual journal entries on the debtors account", amount: manualOf(SYS.debtors) }] : []),
+          ...(partBOf(SYS.debtors) ? [{ label: "TCS collected and bank-statement entries on customers (not in the credit book)", amount: partBOf(SYS.debtors) }] : []),
           ...(importedDebtors ? [{ label: "Imported historical bills left out of the books", amount: importedDebtors }] : []),
         ],
         note: "Compared after setting aside the explained items below.",
@@ -1332,10 +1536,11 @@ export class AccountingService {
       add({
         key: "payables",
         label: "Suppliers (creditors) in the books match Payables",
-        ledger: creditorsNet + manualOf(SYS.creditors),
+        ledger: creditorsNet + manualOf(SYS.creditors) + partBOf(SYS.creditors),
         source: suppTotal - importedCreditors,
         explained: [
           ...(manualOf(SYS.creditors) ? [{ label: "Manual journal entries on the creditors account", amount: -manualOf(SYS.creditors) }] : []),
+          ...(partBOf(SYS.creditors) ? [{ label: "TDS not recorded on the bills in Payables, and bank-statement entries on suppliers", amount: -partBOf(SYS.creditors) }] : []),
           ...(importedCreditors ? [{ label: "Imported historical purchase bills left out of the books", amount: importedCreditors }] : []),
         ],
         note: "Compared after setting aside the explained items below.",
@@ -1399,6 +1604,8 @@ export class AccountingService {
   /** Any report as a flat table (CSV download and PDF). `report` is the URL name: trial-balance, profit-loss, ... */
   async reportTable(tenantId: string, report: string, q: Record<string, string | undefined> = {}): Promise<ReportTable> {
     const shop = (await this.deps.shopName?.(tenantId)) ?? "";
+    const extra = this.extraReport ? await this.extraReport(tenantId, report, q, shop) : null;
+    if (extra) return extra;
     switch (report) {
       case "trial-balance":
         return trialBalanceTable(await this.trialBalance(tenantId, q), shop);
@@ -1457,6 +1664,7 @@ export class AccountingService {
 
 export function kindLabel(e: { voucherType: string; sourceType: string | null }): string {
   if (e.sourceType && e.sourceType in SOURCE_LABELS) return SOURCE_LABELS[e.sourceType as SourceType];
+  if (e.sourceType && e.sourceType in PART_B_LABELS) return PART_B_LABELS[e.sourceType as PartBSourceType];
   switch (e.voucherType) {
     case "journal":
       return "Journal voucher";

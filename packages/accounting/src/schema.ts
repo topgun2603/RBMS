@@ -183,3 +183,6 @@ export type AcctAccount = typeof acctAccounts.$inferSelect;
 export type AcctEntry = typeof acctEntries.$inferSelect;
 export type AcctLine = typeof acctLines.$inferSelect;
 export type AcctSettings = typeof acctSettings.$inferSelect;
+
+// Part B tables (bank reconciliation, cheques, TDS/TCS, fixed assets, year-end close).
+export * from "./schema-b";

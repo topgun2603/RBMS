@@ -363,7 +363,8 @@ export function tableToCsv(t: ReportTable): string {
     t.columns
       .map((c) => {
         const v = r.cells[c.key] ?? null;
-        return csvCell(c.kind === "money" && typeof v === "number" ? rupees(v) : v);
+        // Money is written as a number (a minus sign is not a formula), so no quote guard.
+        return c.kind === "money" && typeof v === "number" ? rupees(v) : csvCell(v);
       })
       .join(","),
   );

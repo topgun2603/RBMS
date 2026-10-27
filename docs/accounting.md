@@ -4,8 +4,8 @@
 purchases, payments, expenses and the till keep working exactly as before, and the books **read** them through ports
 (`ports.ts`, implemented in `apps/api/src/kit-accounting.ts`) and write only their own five tables. Compared with Tally,
 Zoho Books and Vyapar it gives the same core books (chart of accounts, vouchers, day book, ledgers, trial balance, P&L,
-balance sheet, period lock, GST ledger) in plain words for an owner who is not an accountant; bank reconciliation, TDS/TCS
-and depreciation are Part B.
+balance sheet, period lock, GST ledger) in plain words for an owner who is not an accountant; bank reconciliation, TDS/TCS,
+depreciation and the year-end close are Part B (below).
 
 - Feature `accounting` (module `accounting`, depends on `invoices`): off until the owner switches it on (`shopToggle`,
   `defaultOn: false`); the app profile and plan must grant it (Pro and Enterprise in `seed-fixtures.ts`).
@@ -142,7 +142,10 @@ journal with a live debit/credit check), Day book, Ledger (with cash book button
 comparison), Balance sheet, GST summary, Chart of accounts (add/edit/switch off, opening balance, bank account details),
 Self-check (reconciliation), Books and period lock (also in the settings rail at `/settings/accounting`: lock, imported
 bills, stock valuation, payment method to bank account mapping, post history, preview), and "How your books work" for owners.
-Report screens have CSV and PDF downloads.
+Report screens have CSV and PDF downloads. Part B adds Bank and cheques (accounts, statement import, matching,
+reconciliation statement, cheque register), TDS and TCS (with settings and PAN), Fixed assets and Year-end close; they are
+added to the Accounts section by `withAccountingPartB` (`billing-ui/src/accounting-b.tsx`, EN/TA in
+`lib/messages/accounting-b.ts`, tests in `accounting-b.test.ts`).
 
 ## Operations
 
@@ -159,8 +162,8 @@ Report screens have CSV and PDF downloads.
    cash-basis switch (not built).
 2. **Stock: periodic, average cost.** No perpetual inventory and no per-sale cost of goods (sales don't carry their cost).
    Gross profit is only as good as the stock valuation. Old dates use today's average cost.
-3. No year-end closing entries: P&L accounts run on; reports take any date range, so use financial-year dates. Opening
-   balances for a new year come from the running ledger.
+3. Year-end closing entries are optional (Part B, Year-end close). Until a year is closed, P&L accounts run on and the
+   balance sheet shows "profit to date".
 4. Expense ITC is split CGST+SGST unless the vendor GSTIN is from another state. Purchases/debit notes use the split on the
    bill. CGST/SGST/IGST set-off order and the GST payment entries are done by hand with journal entries on *GST payable*.
 5. Bills for walk-in customers (no customer record) are in the books but not in the credit book; the self-check explains
@@ -176,10 +179,74 @@ Report screens have CSV and PDF downloads.
     move this to a scheduled job and an events feed from the source modules (the ports are the seam).
 11. The audit page does not yet name accounting actions (they are logged as `accounting.post /journal-entries` and so on).
 
-## Part B (not built)
+## Part B (built 2026-10-26)
 
-Bank statement import and reconciliation (statement tables, matching, cheque/PDC tracking: the `is_bank` flag and the
-bank detail columns are the hook), TDS/TCS postings and returns (the accounts exist), depreciation and fixed-asset
-register, year-end close and carry-forward, budgets, cost centres, per-branch books, multi-currency, recurring journals,
-GSTR-3B set-off entries, e-way-bill and e-invoice cross-checks against the ledger, scheduled sync and an events feed
-for purchases/expenses.
+Bank reconciliation with statement import and a cheque register, TDS/TCS, fixed assets with depreciation, and the
+financial-year close. Details: `docs/bank-reconciliation.md` and `docs/tds.md`. Migration `0044_accounting_part_b` (12 new
+tables, additive; no Part A table changed): `acct_bank_statements`, `acct_bank_lines`, `acct_bank_matches`,
+`acct_bank_recons`, `acct_cheques`, `acct_tds_settings`, `acct_party_tax`, `acct_tds_entries`, `acct_tds_challans`,
+`acct_fixed_assets`, `acct_depreciation`, `acct_year_closes`.
+
+**Design.** Part B lives in the same package (`bank.ts`, `tds.ts`, `assets.ts` with `YearEndService`, routes in
+`routes-b.ts`; pure logic in `bank-import.ts`, `xlsx-lite.ts`, `bank-match.ts`, `tds-rules.ts`, `assets-logic.ts`). Every
+journal it posts goes through two new engine methods, `postModuleEntry` / `reverseModuleEntry`: origin `auto`, its own
+source type (`bank_entry`, `bank_difference`, `cheque_bounce`, `tds_deduction`, `tcs_collection`, `tds_challan`,
+`asset_purchase`, `asset_opening`, `depreciation`, `asset_disposal`, `year_close`, each with a `*_reversal`;
+`part-b-types.ts`). These are outside the document sync's `SOURCE_TYPES`, so a sync never reverses them, and the journal
+screen can't reverse them (they are cancelled from their own screen, which posts the `*_reversal`). They respect the
+period lock like manual vouchers (refused in a locked period), except the year-end close. New standard accounts (seeded
+on top-up; a code clash falls back to a free code): 1590 Accumulated depreciation, 3050 Retained earnings, 4120 Interest
+received, 4130 Profit or loss on sale of assets, 5940 Bank charges, 5945 Interest paid, 5950 Depreciation, 5955 Interest
+and late fee on taxes. Permissions: `accounting.bank` (statements, matching, cheques) and `accounting.tds` (TDS/TCS) are
+new; fixed assets need `accounting.post`; year-end close and re-open need `accounting.lock`. The Accountant role
+(`accounting.*`) gets them all; everything is readable with `accounting.view`.
+
+**Posting rules (Part B).**
+
+| Event | Source type | Debit | Credit |
+|---|---|---|---|
+| Statement line not in the books (preset) | `bank_entry` | money out: Bank charges / Interest paid / Other expenses / Drawings / Cash / chosen account; money in: the bank | the other side |
+| Grouped match with a difference (card / UPI fee) | `bank_difference` | chosen account (fee) | bank (and the other way for an extra receipt); reversed when the match is removed |
+| Cheque bounced, bank's charges | `cheque_bounce` | Bank charges | the bank account. A manual payment entry linked to the cheque is reversed; an automatic one is fixed in its document (the bill or Payables) |
+| TDS on a supplier bill or payment | `tds_deduction` | Creditors (with the supplier) | TDS payable; the same amount is settled on the bill in Payables (a supplier payment of mode "other", reference `TDS:<id>`, which the document sync skips) |
+| TDS on an expense | `tds_deduction` | the expense's money account (the expense is recorded gross) | TDS payable |
+| TDS, other payee | `tds_deduction` | chosen account | TDS payable |
+| TCS on a sale | `tcs_collection` | Debtors (with the customer) | TCS payable |
+| Challan (ITNS 281) | `tds_challan` | TDS/TCS payable (tax), Interest and late fee on taxes | the cash / bank account paid from |
+| Fixed asset bought (optional) | `asset_purchase` | the fixed-asset account | cash / bank / loan (not Debtors / Creditors) |
+| Depreciation charged before the books | `asset_opening` | Opening balance equity | Accumulated depreciation |
+| Depreciation run | `depreciation` | Depreciation (one line per asset) | Accumulated depreciation |
+| Asset sold or scrapped | `asset_disposal` | money account (sale), Accumulated depreciation | the asset account at cost; Profit or loss on sale of assets for the difference |
+| Year-end close | `year_close` (dated 31 March) | income accounts, Stock (up to valued closing stock) | expense accounts, Retained earnings (profit; a loss the other way) |
+
+**Year-end close.** Moves each income and expense account's net for the year, and brings Stock in hand to the valued
+closing stock (periodic method; so the balance sheet's live-value adjustment restarts from that value), into Retained
+earnings; locks the books to 31 March when the lock is earlier (logged in `acct_lock_log`). The profit and loss and the
+trial-balance movement columns leave out `year_close` entries (`balancesBetween(..., { excludeClosing: true })`), so a
+closed year still reports its own profit; the opening of the next year (balances before 1 April) includes them, so
+income and expense open at zero and Retained earnings holds the profit. Re-open (permission `accounting.lock`, reason
+required, recorded in `acct_year_closes` and the audit log): reverses the closing journal on the same date and moves the
+lock back to where it was before the close; a later closed year must be re-opened first. Checks before closing: trial
+balance (blocking), the year has ended (blocking), open statement lines, undeposited TDS, depreciation not posted
+(warnings).
+
+**Self-check.** The receivables and payables checks now set aside Part B entries on the control accounts that the
+credit book / Payables don't know about (TCS collected, bank-statement entries with a party, TDS not settled on the bill),
+listed as explained items.
+
+**Per-branch books: not built (gap).** Journal lines have no `branch_id`; a branch dimension would need a column on
+`acct_lines`, the branch on every source document read through the ports, and branch filters on every report. Not cheap,
+so left for later (see Limits).
+
+**Limits (Part B).** PDFs: the bank reconciliation, TDS quarterly data and certificate summary are report tables served
+through `/v1/documents/accounting-report/<name>.pdf` (CSV works the same way); in this dev environment every
+accounting PDF (Part A ones too) hung in the renderer during testing, so the PDFs were not seen. A bounced cheque on a bill
+payment must be undone in the bill (the books follow the document). TDS reasons, quarterly notes and alerts built on the
+server are English in the Tamil screens. Depreciation is book depreciation (SLM / WDV by days in use), not the
+income-tax block method. One closing journal per year; no partial-year closes.
+
+## Not built yet
+
+Budgets, cost centres, per-branch books, multi-currency, recurring journals, GSTR-3B set-off entries, e-way-bill and
+e-invoice cross-checks against the ledger, scheduled sync and an events feed for purchases/expenses, bank feeds (API),
+MT940 / PDF statements, TDS returns in the FVU format, salary TDS (24Q).

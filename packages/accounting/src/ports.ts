@@ -193,7 +193,29 @@ export interface SourcesPort {
   openingBalances(tenantId: string): Promise<{ customers: OpeningParty[]; suppliers: OpeningParty[] }>;
   /** The shop's 2-digit GST state code (to split expense ITC into CGST+SGST or IGST). */
   shopStateCode(tenantId: string): Promise<string | null>;
+
+  // ---- Part B (TDS/TCS). Optional: without them the TDS screens work on typed-in parties only.
+  /** Suppliers or customers (not deleted) with their GSTIN, for the TDS/TCS screens. */
+  parties?(tenantId: string, type: "supplier" | "customer", q?: { ids?: string[]; search?: string; limit?: number }): Promise<PartyRef[]>;
+  /**
+   * Records the TDS deducted from a supplier against the bill (or on account) in Payables, so the bill's balance drops
+   * by the tax as well: a supplier payment row of mode "other" with reference `TDS:<tdsId>`. Such rows are NOT posted
+   * by the document sync (`supplierPayments` leaves them out); the TDS entry posts Dr Creditors / Cr TDS payable.
+   * Returns an id to undo it with, or null when it could not be recorded (nothing is due on the bill).
+   */
+  settleSupplierTds?(tenantId: string, p: { tdsId: string; supplierId: string; purchaseId: string | null; amount: number; date: string; note: string }): Promise<string | null>;
+  unsettleSupplierTds?(tenantId: string, settlementId: string, reason: string): Promise<void>;
 }
+
+export interface PartyRef {
+  id: string;
+  name: string;
+  gstin: string | null;
+  phone: string | null;
+}
+
+/** Reference prefix of the Payables rows that settle TDS (see settleSupplierTds). */
+export const TDS_SETTLEMENT_PREFIX = "TDS:";
 
 /** Stock value (paise) as of a date from the inventory moving-average cost; null when the shop does not track stock. */
 export interface StockValuePort {

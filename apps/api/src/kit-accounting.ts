@@ -15,15 +15,17 @@ import type {
   SupplierPaymentSrc,
   TillSrc,
 } from "@srirealtime/accounting";
+import { TDS_SETTLEMENT_PREFIX } from "@srirealtime/accounting";
 import type { Db } from "@srirealtime/db";
 import { expenseCategories, expenses, itcOf } from "@srirealtime/expenses";
 import { gstTaxPayments } from "@srirealtime/gstfiling";
 import { todayIST } from "@srirealtime/gst";
 import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, tillSessions, type InvoicesService } from "@srirealtime/invoices";
 import { debitNotes, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@srirealtime/inventory";
-import { and, eq, gt, isNull, sql } from "@srirealtime/db";
+import { and, eq, gt, inArray, isNull, sql } from "@srirealtime/db";
+import { likePattern } from "@srirealtime/core";
 
-/** Ports of the accounting module over the invoices, inventory and expenses tables. Read-only: nothing here writes. */
+/** Ports of the accounting module over the invoices, inventory and expenses tables. Read-only, except settleSupplierTds / unsettleSupplierTds (Part B), which record and undo the TDS on a supplier bill through the inventory service. */
 export interface AccountingAdapterDeps {
   db: Db;
   invoices: InvoicesService;
@@ -199,7 +201,8 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
         .from(purchasePayments)
         .leftJoin(suppliers, eq(suppliers.id, purchasePayments.supplierId))
         .leftJoin(purchases, eq(purchases.id, purchasePayments.purchaseId))
-        .where(eq(purchasePayments.tenantId, tenantId));
+        // TDS settled on a bill (Part B) is posted by its TDS entry (Dr Creditors / Cr TDS payable), not as a payment.
+        .where(and(eq(purchasePayments.tenantId, tenantId), sql`coalesce(${purchasePayments.reference}, '') not like ${`${TDS_SETTLEMENT_PREFIX}%`}`));
       return rows.map(
         (r): SupplierPaymentSrc => ({
           id: r.id,
@@ -340,6 +343,49 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
     },
 
     shopStateCode: (tenantId) => deps.sellerState(tenantId),
+
+    // ---- Part B (TDS/TCS): parties with their GSTIN, and the TDS settled on supplier bills in Payables.
+    async parties(tenantId, type, q = {}) {
+      const limit = Math.min(Math.max(q.limit ?? 50, 1), 500);
+      const n = q.ids?.length ? q.ids.length : limit;
+      if (type === "supplier") {
+        return db
+          .select({ id: suppliers.id, name: suppliers.name, gstin: suppliers.gstin, phone: suppliers.phone })
+          .from(suppliers)
+          .where(and(eq(suppliers.tenantId, tenantId), isNull(suppliers.deletedAt), q.ids?.length ? inArray(suppliers.id, q.ids) : undefined, q.search ? sql`${suppliers.name} ilike ${likePattern(q.search)}` : undefined))
+          .orderBy(sql`lower(${suppliers.name})`)
+          .limit(n);
+      }
+      return db
+        .select({ id: billingCustomers.id, name: billingCustomers.name, gstin: billingCustomers.gstin, phone: billingCustomers.phone })
+        .from(billingCustomers)
+        .where(and(eq(billingCustomers.tenantId, tenantId), isNull(billingCustomers.deletedAt), q.ids?.length ? inArray(billingCustomers.id, q.ids) : undefined, q.search ? sql`${billingCustomers.name} ilike ${likePattern(q.search)}` : undefined))
+        .orderBy(sql`lower(${billingCustomers.name})`)
+        .limit(n);
+    },
+
+    async settleSupplierTds(tenantId, p) {
+      const reference = `${TDS_SETTLEMENT_PREFIX}${p.tdsId}`;
+      const input = { amount: p.amount, mode: "other" as const, reference, date: p.date, note: p.note.slice(0, 500) };
+      if (p.purchaseId) {
+        await deps.inventory.purchasing.payPurchase(tenantId, p.purchaseId, input, null);
+        const [row] = await db
+          .select({ id: purchasePayments.id })
+          .from(purchasePayments)
+          .where(and(eq(purchasePayments.tenantId, tenantId), eq(purchasePayments.reference, reference), isNull(purchasePayments.reversedAt)))
+          .limit(1);
+        return row ? `payment:${row.id}` : null;
+      }
+      const r = await deps.inventory.purchasing.paySupplier(tenantId, p.supplierId, input, null);
+      return `group:${r.groupId}`;
+    },
+
+    async unsettleSupplierTds(tenantId, settlementId, reason) {
+      const [kind, id] = settlementId.split(":");
+      if (!id) return;
+      if (kind === "group") await deps.inventory.purchasing.reversePaymentGroup(tenantId, id, { reason }, null);
+      else await deps.inventory.purchasing.reversePayment(tenantId, id, { reason }, null);
+    },
   };
 }
 

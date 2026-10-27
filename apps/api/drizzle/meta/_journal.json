@@ -311,6 +311,13 @@
       "breakpoints": true
     },
     {
+      "idx": 44,
+      "version": "7",
+      "when": 1793020207671,
+      "tag": "0044_accounting_part_b",
+      "breakpoints": true
+    },
+    {
       "idx": 45,
       "version": "7",
       "when": 1793028969676,
@@ -323,12 +330,13 @@
       "when": 1793029438868,
       "tag": "0046_ai_money",
       "breakpoints": true
-    }
-  ]
-}    },
+    },
     {
       "idx": 47,
       "version": "7",
       "when": 1793047017023,
       "tag": "0047_platform_tools",
       "breakpoints": true
+    }
+  ]
+}

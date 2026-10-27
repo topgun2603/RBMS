@@ -59,6 +59,15 @@ export const SYS = {
   otherExpense: "other_expense",
   stockAdjustment: "stock_adjustment",
   compositionTax: "composition_tax",
+  // ---- Part B (bank, TDS/TCS, fixed assets, year-end close)
+  bankCharges: "bank_charges",
+  interestReceived: "interest_received",
+  interestPaid: "interest_paid",
+  depreciation: "depreciation",
+  accumulatedDepreciation: "accumulated_depreciation",
+  assetDisposal: "asset_disposal",
+  retainedEarnings: "retained_earnings",
+  taxInterest: "tax_interest",
 } as const;
 export type SysKey = (typeof SYS)[keyof typeof SYS];
 
@@ -98,8 +107,8 @@ export const STANDARD_CHART: readonly ChartRow[] = [
   { code: "2102", name: "GST output - IGST", type: "liability", group: "tax_liabilities", subGroup: "GST output", key: SYS.gstOutIgst, about: "IGST collected on sales to other states." },
   { code: "2103", name: "GST output - Cess", type: "liability", group: "tax_liabilities", subGroup: "GST output", key: SYS.gstOutCess, about: "Cess collected on your sales." },
   { code: "2110", name: "GST payable (net, after setting off credit)", type: "liability", group: "tax_liabilities", subGroup: "GST output", key: SYS.taxPayable, about: "Use this when you set off input credit against output and pay the balance to the government." },
-  { code: "2120", name: "TDS payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.tdsPayable, about: "Tax you deducted from payments and must deposit (placeholder, not posted automatically)." },
-  { code: "2121", name: "TCS payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.tcsPayable, about: "Tax you collected at source and must deposit (placeholder, not posted automatically)." },
+  { code: "2120", name: "TDS payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.tdsPayable, about: "Tax you deducted from payments to suppliers and others and must deposit (posted from the TDS register)." },
+  { code: "2121", name: "TCS payable", type: "liability", group: "tax_liabilities", subGroup: "Income tax", key: SYS.tcsPayable, about: "Tax you collected at source on sales and must deposit (posted from the TCS register)." },
   { code: "2200", name: "Salaries payable", type: "liability", group: "current_liabilities", about: "Salaries earned by staff but not yet paid." },
   { code: "2300", name: "Bank loan", type: "liability", group: "loans", about: "Loans from banks." },
   { code: "2310", name: "Loans from owner or others", type: "liability", group: "loans", about: "Money lent to the business by the owner, family or others." },
@@ -121,6 +130,16 @@ export const STANDARD_CHART: readonly ChartRow[] = [
   { code: "5920", name: "Stock gains and write-offs", type: "expense", group: "indirect", key: SYS.stockAdjustment, about: "Value of stock added or written off by hand (found stock, damage, theft). Opening stock goes to Opening balance equity instead." },
   { code: "5930", name: "Composition tax", type: "expense", group: "indirect", key: SYS.compositionTax, about: "Tax a composition taxable person pays on turnover (CMP-08). It is an expense: a composition shop collects no GST and has no input credit." },
   { code: "5990", name: "Other expenses", type: "expense", group: "indirect", key: SYS.otherExpense, about: "Anything that does not fit another expense account." },
+  // ---- Part B accounts (bank reconciliation, TDS/TCS, fixed assets, year-end close). Codes picked away from the ranges
+  // used for accounts the owner adds (1700+, 2400+, 3300+, 4300+, 5300+); a clash falls back to a free code.
+  { code: "1590", name: "Accumulated depreciation", type: "asset", group: "fixed_assets", key: SYS.accumulatedDepreciation, about: "Depreciation charged so far on your fixed assets. It reduces their value on the balance sheet (a credit balance)." },
+  { code: "3050", name: "Retained earnings (profit kept)", type: "equity", group: "capital", key: SYS.retainedEarnings, about: "Profit of closed financial years carried forward. The year-end close moves each year's profit here." },
+  { code: "4120", name: "Interest received", type: "income", group: "other_income", key: SYS.interestReceived, about: "Interest the bank or others paid you." },
+  { code: "4130", name: "Profit or loss on sale of assets", type: "income", group: "other_income", key: SYS.assetDisposal, about: "What you gained (or lost) when you sold or scrapped a fixed asset." },
+  { code: "5940", name: "Bank charges", type: "expense", group: "indirect", key: SYS.bankCharges, about: "Fees the bank takes: SMS, cheque book, card and UPI fees, bounced cheque charges." },
+  { code: "5945", name: "Interest paid", type: "expense", group: "indirect", key: SYS.interestPaid, about: "Interest on loans and overdrafts." },
+  { code: "5950", name: "Depreciation", type: "expense", group: "indirect", key: SYS.depreciation, about: "The part of your equipment, furniture and vehicles used up this period." },
+  { code: "5955", name: "Interest and late fee on taxes", type: "expense", group: "indirect", key: SYS.taxInterest, about: "Interest and late fees paid on TDS/TCS or other taxes." },
 ];
 
 /** First code of expense-category accounts created on demand from the Expenses categories. */
