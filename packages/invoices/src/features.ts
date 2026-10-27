@@ -10,6 +10,7 @@ export const FEATURES = {
   gstReports: "invoices.gst-reports",
   quotations: "invoices.quotations",
   salesDocs: "invoices.sales-docs",
+  recurring: "invoices.recurring",
 } as const;
 
 /** Payments' base feature: the public invoice only offers online payment when it is on. */
@@ -73,6 +74,14 @@ export const INVOICE_FEATURES: FeatureDef[] = [
     module: "invoices",
     label: "Proforma invoices, sale orders and delivery challans",
     description: "Proforma invoices for advances, sale orders with partial delivery, and delivery challans for goods sent before the bill, on approval or for job work.",
+    dependsOn: [FEATURES.base],
+    shopToggle: true,
+  },
+  {
+    key: FEATURES.recurring,
+    module: "invoices",
+    label: "Recurring invoices",
+    description: "Bill customers automatically every week, month, quarter or year: as drafts to check, or issued and sent on WhatsApp.",
     dependsOn: [FEATURES.base],
     shopToggle: true,
   },

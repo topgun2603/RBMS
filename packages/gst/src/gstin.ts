@@ -35,3 +35,60 @@ export function stateFromGstin(gstin: string | null | undefined): string | null 
   const m = /^\s*(\d{2})/.exec(gstin);
   return m ? normalizeStateCode(m[1]) : null;
 }
+
+/** What the 4th character of a PAN says about its holder (Income-tax Department codes). */
+export const PAN_HOLDER_TYPES = {
+  P: "individual",
+  C: "company",
+  H: "huf",
+  F: "firm",
+  A: "aop",
+  T: "trust",
+  B: "boi",
+  L: "local_authority",
+  J: "artificial_juridical_person",
+  G: "government",
+  E: "llp",
+} as const;
+export type PanHolderType = (typeof PAN_HOLDER_TYPES)[keyof typeof PAN_HOLDER_TYPES];
+
+/** Everything a GSTIN says about itself, read offline from the number (no lookup). */
+export interface GstinParts {
+  /** Normalised (upper case, no spaces). */
+  gstin: string;
+  /** Format and check character are right. */
+  valid: boolean;
+  /** Why it is not valid: wrong length / layout, or a wrong check character (a typo). */
+  problem: "format" | "checksum" | null;
+  /** 2-digit state code, when the first two characters are a known state. */
+  stateCode: string | null;
+  /** The PAN inside the GSTIN (characters 3–12), when the layout is right. */
+  pan: string | null;
+  /** Holder type from the PAN's 4th character (company, individual, firm ...), null when unknown. */
+  panHolder: PanHolderType | null;
+  /** 13th character: the registration number of this PAN in the state (1 = first). */
+  entityNumber: string | null;
+  /** The check character the first 14 characters need (to point at a typo). */
+  expectedCheck: string | null;
+}
+
+/** Reads a GSTIN offline: checksum, state and PAN. Never throws. */
+export function parseGstin(input: string | null | undefined): GstinParts {
+  const g = normalizeGstin(typeof input === "string" ? input : "");
+  const layout = GSTIN_FORMAT.test(g);
+  const expected = g.length >= 14 ? gstinCheckChar(g.slice(0, 14)) : null;
+  const valid = layout && expected === g[14];
+  const state = layout ? normalizeStateCode(g.slice(0, 2)) : null;
+  const pan = layout ? g.slice(2, 12) : null;
+  const holder = pan ? ((PAN_HOLDER_TYPES as Record<string, PanHolderType>)[pan[3]!] ?? null) : null;
+  return {
+    gstin: g,
+    valid,
+    problem: valid ? null : layout ? "checksum" : "format",
+    stateCode: state,
+    pan,
+    panHolder: holder,
+    entityNumber: layout ? g[12]! : null,
+    expectedCheck: expected,
+  };
+}

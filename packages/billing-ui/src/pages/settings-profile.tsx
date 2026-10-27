@@ -64,6 +64,9 @@ const schema = z.object({
     .string()
     .trim()
     .regex(/^$|^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/, "billing.validation.upi"),
+  /** Letter of Undertaking for exports / SEZ supplies without IGST (docs/recurring-export-gstin.md). */
+  lutNumber: z.string().trim().regex(/^$|^[A-Za-z0-9/-]{4,30}$/, "billing.validation.required"),
+  lutDate: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/, "billing.validation.required"),
 });
 type Values = z.infer<typeof schema>;
 
@@ -82,6 +85,8 @@ const EMPTY: Values = {
   accountNumber: "",
   ifsc: "",
   upiId: "",
+  lutNumber: "",
+  lutDate: "",
 };
 
 const toValues = (p?: Partial<SellerProfile>): Values => {
@@ -310,6 +315,17 @@ function ProfileForm({ initial, canEdit }: { initial: Partial<SellerProfile>; ca
               {text("bankName", t("billing.settings.bankName"))}
               {text("accountNumber", t("billing.settings.accountNumber"), { inputMode: "numeric", mono: true, max: 20 })}
               {text("ifsc", t("billing.settings.ifsc"), { upper: true, mono: true, max: 11 })}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("billing.settings.lut")}</CardTitle>
+              <CardDescription>{t("billing.settings.lutHint")}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid items-start gap-4 sm:grid-cols-2">
+              {text("lutNumber", t("billing.settings.lutNumber"), { mono: true, upper: true, max: 30 })}
+              {text("lutDate", t("billing.settings.lutDate"), { type: "date" })}
             </CardContent>
           </Card>
 

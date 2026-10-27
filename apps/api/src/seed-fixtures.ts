@@ -72,6 +72,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "invoices.gst-reports",
       "invoices.quotations",
       "invoices.sales-docs",
+      "invoices.recurring",
       "inventory",
       "inventory.locations",
       "payments",
@@ -257,6 +258,8 @@ const PLAN_ADDITIONS: Record<string, string[]> = {
   starter: [
     "invoices.quotations",
     "invoices.sales-docs",
+    // Recurring bills (docs/recurring-export-gstin.md): paid plans; invoices.* plans have it already.
+    "invoices.recurring",
     "catalogue.*",
     "orders",
     "documents",

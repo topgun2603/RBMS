@@ -54,6 +54,9 @@ export function defineAppSettings(settings: SettingsService) {
       accountNumber: z.string().regex(/^$|^[0-9]{6,20}$/, "Invalid account number"),
       ifsc: z.string().regex(/^$|^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC"),
       upiId: z.string().regex(/^$|^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID"),
+      /** Letter of Undertaking for exports / SEZ supplies without IGST (docs/recurring-export-gstin.md): ARN and date. */
+      lutNumber: z.string().regex(/^$|^[A-Za-z0-9/-]{4,30}$/, "LUT number: 4–30 letters, digits, / or -"),
+      lutDate: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date"),
       /** WhatsApp reminders for overdue bills, sent N days after the due date. */
       autoReminders: z.boolean(),
       reminderDays: z.array(z.number().int().min(0).max(365)).max(6),
@@ -75,6 +78,8 @@ export function defineAppSettings(settings: SettingsService) {
       accountNumber: "",
       ifsc: "",
       upiId: "",
+      lutNumber: "",
+      lutDate: "",
       autoReminders: false,
       reminderDays: [1, 7, 15],
       sendPaymentReceipts: true,
@@ -260,6 +265,24 @@ export function defineAppSettings(settings: SettingsService) {
       drawerPin: 0,
     },
   );
+
+  // Cash close rules of the counter (docs/counter-close-display-labels.md): a cash difference above the limit needs a manager's PIN.
+  settings.define("till", z.object({ varianceLimit: z.number().int().min(0).max(10_000_000) }), { varianceLimit: 10_000 });
+
+  // Customer-facing display: the idle screen's messages (English / Tamil).
+  settings.define(
+    "display",
+    z.object({
+      welcomeEn: z.string().max(80),
+      welcomeTa: z.string().max(80),
+      offerEn: z.string().max(160),
+      offerTa: z.string().max(160),
+    }),
+    { welcomeEn: "", welcomeTa: "", offerEn: "", offerTa: "" },
+  );
+
+  // Barcode label designer: the shop's default design (JSON written by the designer; this computer can override it).
+  settings.define("labels", z.object({ design: z.string().max(4000) }), { design: "" });
 
   settings.define(
     "notifications",

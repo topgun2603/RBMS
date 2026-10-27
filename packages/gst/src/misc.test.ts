@@ -128,6 +128,8 @@ describe("GST_STATES", () => {
       else expect(codes).toContain(c);
     }
     expect(codes).toContain("97");
+    expect(codes).toContain("96");
+    expect(stateName("96")).toBe("Other Countries");
     expect(new Set(codes).size).toBe(codes.length);
     expect(stateName("33")).toBe("Tamil Nadu");
     expect(stateName("01")).toBe("Jammu and Kashmir");

@@ -1,4 +1,5 @@
-import { amountInWordsINR, upiLink } from "@srirealtime/gst";
+import { amountInWordsINR, countryName, formatForeign, formatRate, upiLink } from "@srirealtime/gst";
+import { exportLabels, supplyDeclaration } from "../export-labels";
 import { esc, escLines, fmtDate, fmtDateTime, money, page, pct, qrSvg, qty, safeImageUrl, stateLabel } from "../html";
 import { labels, type Labels } from "../labels";
 import type { DocLocale, InvoiceDocData, InvoiceEinvoice, RenderContext } from "../types";
@@ -48,6 +49,8 @@ const CSS = `
 .irn{font-family:"SR Noto Sans",monospace;font-size:7.5pt;word-break:break-all;overflow-wrap:anywhere}
 .einv .qrbox{flex:none;text-align:center}
 .mockeinv{display:inline-block;margin-top:4px;border:1.5px solid #dc2626;color:#dc2626;font-weight:700;font-size:8pt;padding:1px 6px;border-radius:4px}
+.decl{margin-top:8px;border:1.5px solid var(--primary);border-radius:6px;padding:5px 8px;text-align:center}
+.decl .b{color:var(--primary);text-transform:uppercase;letter-spacing:.02em;font-size:9pt}
 `;
 
 /**
@@ -195,6 +198,18 @@ export function renderInvoice(
   const refund = cn ? refundLine(cn, t) : null;
   const taxCols = inter ? `<th class="r">IGST</th>` : `<th class="r">CGST</th><th class="r">SGST</th>`;
   const totRow = (label: string, value: string) => `<div class="tot"><dt>${esc(label)}</dt><dd class="num">${esc(value)}</dd></div>`;
+  // Export / SEZ / foreign-currency bills (docs/recurring-export-gstin.md): the Rule 46 declaration, LUT, shipping bill
+  // and both currencies; the rupee figures stay the tax figures.
+  const xt = exportLabels(ctx.locale);
+  const plainBill = !cn && !qt && !sd;
+  const declaration = plainBill ? supplyDeclaration(inv.supplyType, xt) : null;
+  const xd = plainBill ? (inv.exportDetails ?? null) : null;
+  const fx = plainBill && inv.foreign ? inv.foreign : null;
+  const lutText =
+    declaration && xd?.lutNumber && (inv.supplyType === "export_wopay" || inv.supplyType === "sez_wopay")
+      ? xt.lut.replace("{no}", xd.lutNumber).replace("{date}", d(xd.lutDate))
+      : null;
+  const fxCur = (k: "amountIn" | "totalIn" | "taxIn" | "inrNote") => xt[k].replace("{cur}", fx?.currency ?? "");
 
   const sellerLines = [
     seller.legalName && seller.legalName !== brandName ? `<p class="strong">${esc(seller.legalName)}</p>` : "",
@@ -215,7 +230,7 @@ export function renderInvoice(
 <td class="r num">${esc(money(l.rate))}</td>
 <td class="r num">${esc(money(l.taxable))}</td>
 <td class="r num">${esc(pct(l.gstRate))}</td>
-${inter ? `<td class="r num">${esc(money(l.igst))}</td>` : `<td class="r num">${esc(money(l.cgst))}</td><td class="r num">${esc(money(l.sgst))}</td>`}
+${inter ? `<td class="r num">${esc(money(l.igst))}</td>` : `<td class="r num">${esc(money(l.cgst))}</td><td class="r num">${esc(money(l.sgst))}</td>`}${fx ? `<td class="r num">${esc(formatForeign(fx.lines[i]?.taxable ?? 0, fx.currency))}</td>` : ""}
 <td class="r num b">${esc(money(l.total))}</td>
 </tr>`,
     )
@@ -242,6 +257,8 @@ ${totals.taxBreakup
     inter ? totRow("IGST", money(totals.igst)) : totRow("CGST", money(totals.cgst)) + totRow("SGST", money(totals.sgst)),
     totals.roundOff !== 0 ? totRow(t.roundOff, `${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`) : "",
     `<div class="tot grand"><dt>${sd?.totalLabel ? esc(sd.totalLabel) : L("grandTotal")}</dt><dd class="num">${esc(money(totals.total))}</dd></div>`,
+    fx && fx.tax > 0 ? totRow(fxCur("taxIn"), formatForeign(fx.tax, fx.currency)) : "",
+    fx ? `<div class="tot b"><dt>${esc(fxCur("totalIn"))}</dt><dd class="num">${esc(formatForeign(fx.total, fx.currency))}</dd></div>` : "",
     ...(sd ? sd.totals.map(([k, v]) => totRow(k, v)) : []),
     !cn && !qt && !sd && inv.paid > 0 ? totRow(t.paid, money(inv.paid)) + `<div class="tot b"><dt>${L("balance")}</dt><dd class="num">${esc(money(inv.balance))}</dd></div>` : "",
     refund ? totRow(refund[0], refund[1]) : "",
@@ -277,16 +294,20 @@ ${stamp ? `<div class="stamp" aria-hidden="true">${stamp}</div>` : ""}
             ? `<dt>${L("dueDate")}</dt><dd class="num">${esc(d(inv.dueDate))}</dd>`
             : ""
       }
-      <dt>${L("placeOfSupply")}</dt><dd>${esc(stateLabel(inv.placeOfSupply))}</dd>
+      <dt>${L("placeOfSupply")}</dt><dd>${esc(stateLabel(inv.placeOfSupply))}</dd>${
+        xd?.shippingBillNo ? `<dt>${esc(xt.shippingBill)}</dt><dd class="num">${esc(xd.shippingBillNo)}${xd.shippingBillDate ? ` · ${esc(d(xd.shippingBillDate))}` : ""}</dd>` : ""
+      }${xd?.portCode ? `<dt>${esc(xt.portCode)}</dt><dd class="num">${esc(xd.portCode)}</dd>` : ""}${
+        fx ? `<dt>${esc(xt.exchangeRate)}</dt><dd class="num">1 ${esc(fx.currency)} = ₹${esc(formatRate(fx.exchangeRate))}</dd>` : ""
+      }
     </dl>
   </div>
-</header>${einvoiceBlockA4(inv.einvoice, t, ctx.locale)}
+</header>${declaration ? `<section class="decl avoid"><p class="b">${esc(declaration)}</p>${lutText ? `<p class="small">${esc(lutText)}</p>` : ""}</section>` : ""}${einvoiceBlockA4(inv.einvoice, t, ctx.locale)}
 <section class="buyer avoid">
   <p class="label">${sd ? esc(sd.forLabel) : qt ? L("quotationFor") : L("billTo")}</p>
   <p class="b">${esc(buyer.name || "—")}</p>
   ${buyer.address ? `<p class="muted">${escLines(buyer.address)}</p>` : ""}
   <p class="small muted">${[
-    buyer.stateCode ? `${L("state")}: ${esc(stateLabel(buyer.stateCode))}` : "",
+    buyer.country ? `${esc(xt.country)}: ${esc(countryName(buyer.country) ?? buyer.country)}` : buyer.stateCode ? `${L("state")}: ${esc(stateLabel(buyer.stateCode))}` : "",
     buyer.phone ? esc(buyer.phone) : "",
     buyer.email ? esc(buyer.email) : "",
   ]
@@ -295,7 +316,7 @@ ${stamp ? `<div class="stamp" aria-hidden="true">${stamp}</div>` : ""}
   ${buyer.gstin ? `<p class="small b">GSTIN: <span class="mono">${esc(buyer.gstin)}</span></p>` : ""}
 </section>
 <table class="lines">
-<thead><tr><th>#</th><th>${L("item")}</th><th>${L("hsn")}</th><th class="r">${L("qty")}</th><th class="r">${L("rate")}</th><th class="r">${L("taxable")}</th><th class="r">${L("gst")}</th>${taxCols}<th class="r">${L("amount")}</th></tr></thead>
+<thead><tr><th>#</th><th>${L("item")}</th><th>${L("hsn")}</th><th class="r">${L("qty")}</th><th class="r">${L("rate")}</th><th class="r">${L("taxable")}</th><th class="r">${L("gst")}</th>${taxCols}${fx ? `<th class="r">${esc(fxCur("amountIn"))}</th>` : ""}<th class="r">${L("amount")}</th></tr></thead>
 <tbody>
 ${lines}
 </tbody>
@@ -303,7 +324,7 @@ ${lines}
 <section class="sum avoid">
   <div class="left">
     ${breakup}
-    <div class="words"><p class="xs muted">${L("amountInWords")}</p><p class="b">${esc(words)}</p></div>
+    <div class="words"><p class="xs muted">${L("amountInWords")}</p><p class="b">${esc(words)}</p></div>${fx ? `<p class="xs muted" style="margin-top:6px">${esc(fxCur("inrNote"))}</p>` : ""}
   </div>
   <dl class="right">${totalsHtml}</dl>
 </section>
@@ -344,6 +365,9 @@ export function renderInvoiceThermal(inv: InvoiceDocData, ctx: RenderContext, va
   const upi = cn || qt ? null : invoiceUpi(inv, brandName, "Invoice");
   const refund = cn ? refundLine(cn, t) : null;
   const row = (label: string, value: string, cls = "") => `<tr class="${cls}"><td>${esc(label)}</td><td class="r num">${esc(value)}</td></tr>`;
+  const xt = exportLabels(ctx.locale);
+  const declaration = !cn && !qt ? supplyDeclaration(inv.supplyType, xt) : null;
+  const fx = !cn && !qt && inv.foreign ? inv.foreign : null;
 
   const css = `
 body{font-size:8.5pt;line-height:1.3;width:74mm}
@@ -383,6 +407,7 @@ ${qr ? `<div class="c">${qr}</div>` : ""}`;
   ${!qt && s.taxScheme === "composition" && (!s.compositionFrom || inv.date >= s.compositionFrom) ? `<p class="xs c">${esc(t.compositionNote)}</p>` : ""}
 </div>
 ${stampKey ? `<div class="stamp c">${L(stampKey)}</div>` : ""}
+${declaration ? `<p class="xs b c">${esc(declaration)}</p>` : ""}
 <hr>
 <table>
   ${row(qt ? t.quotationNo : cn ? t.creditNoteNo : t.number, inv.number ?? t.draft)}
@@ -407,6 +432,7 @@ ${inv.lines
   ${inv.interState ? row("IGST", money(totals.igst)) : row("CGST", money(totals.cgst)) + row("SGST", money(totals.sgst))}
   ${totals.roundOff !== 0 ? row(t.roundOff, `${totals.roundOff > 0 ? "+" : "−"}${money(Math.abs(totals.roundOff))}`) : ""}
   ${row(t.grandTotal, money(totals.total), "grand")}
+  ${fx ? row(xt.totalIn.replace("{cur}", fx.currency), formatForeign(fx.total, fx.currency), "b") + row(xt.exchangeRate, `1 ${fx.currency} = ₹${formatRate(fx.exchangeRate)}`, "small") : ""}
   ${!cn && !qt && inv.paid > 0 ? row(t.paid, money(inv.paid)) + row(t.balance, money(inv.balance), "b") : ""}
   ${refund ? row(refund[0], refund[1], "b") : ""}${qt && qt.advancePercent && qt.advanceAmount > 0 ? row(`${t.advanceRequired} (${qt.advancePercent}%)`, money(qt.advanceAmount), "b") : ""}
 </table>

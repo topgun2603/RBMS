@@ -96,6 +96,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           amount: invoicePayments.amount,
           method: invoicePayments.method,
           receiptId: invoicePayments.receiptId,
+          forexDiff: invoicePayments.forexDiff,
         })
         .from(invoicePayments)
         .innerJoin(invoices, and(eq(invoices.id, invoicePayments.invoiceId), eq(invoices.tenantId, tenantId)))
@@ -112,6 +113,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           amount: r.amount,
           method: method(r.method),
           receiptId: r.receiptId,
+          ...(r.forexDiff ? { forexDiff: r.forexDiff } : {}),
         }),
       );
     },
@@ -296,7 +298,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
 
     async tills(tenantId) {
       const rows = await db
-        .select({ id: tillSessions.id, register: tillSessions.register, status: tillSessions.status, closedAt: tillSessions.closedAt, difference: tillSessions.difference, cashEntries: tillSessions.cashEntries })
+        .select({ id: tillSessions.id, register: tillSessions.register, status: tillSessions.status, closedAt: tillSessions.closedAt, difference: tillSessions.difference, cashEntries: tillSessions.cashEntries, handovers: tillSessions.handovers })
         .from(tillSessions)
         .where(eq(tillSessions.tenantId, tenantId));
       return rows.map(
@@ -306,7 +308,8 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           status: r.status,
           closedOn: istDate(r.closedAt),
           difference: r.difference,
-          cashEntries: (r.cashEntries ?? []).map((c) => ({ id: c.id, amount: c.amount, reason: c.reason, on: todayIST(new Date(c.at)) })),
+          cashEntries: (r.cashEntries ?? []).map((c) => ({ id: c.id, amount: c.amount, reason: c.reason, on: todayIST(new Date(c.at)), ...(c.category ? { category: c.category } : {}) })),
+          handovers: (r.handovers ?? []).map((h) => ({ id: h.id, difference: h.difference, on: todayIST(new Date(h.at)) })),
         }),
       );
     },

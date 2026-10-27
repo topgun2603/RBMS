@@ -34,10 +34,12 @@ import {
   isValidStateCode,
   lineAmount,
   taxableOfInclusive,
+  normalizeCountry,
   normalizeGstin,
   normalizeStateCode,
   stateFromGstin,
   todayIST,
+  EXPORT_PLACE_OF_SUPPLY,
   type GstRate,
   type GstRateRule,
   type InvoiceTotals,
@@ -120,7 +122,29 @@ import {
 import { FEATURES, PAYMENTS_FEATURE } from "./features";
 import { gstSummary, rangeProblem, trendRange, zeroFillTrend, type GstCreditNote, type GstSummary, type TrendPoint } from "./reports";
 import { CreditNotesService, type CreditNoteSummary } from "./credit-notes";
-import { TillService } from "./till";
+import {
+  applyForeign,
+  exportDetailsSchema,
+  foreignBalanceOf,
+  foreignInputOf,
+  foreignInputSchema,
+  foreignPaymentRequestSchema,
+  foreignTotals,
+  forcesIgst,
+  isSezSupply,
+  normalizeExportDetails,
+  splitForeignPayment,
+  supplyPlace,
+  SUPPLY_TYPES,
+  taxSellerState,
+  withoutPayment,
+  type ExportDetails,
+  type ForeignAmounts,
+  type ForeignInput,
+  type ForeignPaymentRequest,
+  type SupplyType,
+} from "./export-calc";
+import { TillService, type TillApprovalPort } from "./till";
 import {
   billingCustomers,
   billingItems,
@@ -203,6 +227,8 @@ export interface InvoicesDeps {
   loyalty?: LoyaltyRedeemPort;
   /** Domain events (issued, paid, cancelled, payment received, customer created), called after commit. */
   events?: InvoiceEventsPort;
+  /** Cash-difference limit and manager PIN check for the till (Z report, handover); without it no difference needs approval. */
+  tillApprovals?: TillApprovalPort;
   log?: LoggerPort;
   /** Clock override for tests. */
   now?: () => Date;
@@ -223,6 +249,8 @@ export interface Customer {
   gstin: string | null;
   address: string | null;
   stateCode: string | null;
+  /** ISO 3166 alpha-2 country of a buyer outside India (state code 96); null = India. */
+  country: string | null;
   /** Paise; + = owed to the shop before using the app, − = advance. */
   openingBalance: number;
   /** Paise; null = no limit. */
@@ -295,6 +323,8 @@ export interface InvoicePayment {
   source: PaymentSource;
   /** Credit note of a refund. */
   creditNoteId: string | null;
+  /** Received in a foreign currency: minor units, the bank's rate and the exchange gain (+) / loss (−) in paise. */
+  foreign?: { currency: string; amount: number; rate: number; forexDiff: number } | null;
   createdAt: Date;
 }
 
@@ -329,6 +359,17 @@ export interface Invoice extends InvoiceSummary {
   creditNotes: CreditNoteSummary[];
   /** POS till session the bill was made at. */
   tillSessionId: string | null;
+  /** "domestic", or an export / SEZ supply with or without IGST (docs/recurring-export-gstin.md). */
+  supplyType: SupplyType;
+  /** Foreign-currency bill: ISO 4217 code and rupees per unit; null = rupees. The rupee figures are the truth. */
+  currency: string | null;
+  exchangeRate: number | null;
+  /** Foreign figures (minor units), next to the rupee ones. */
+  foreign: ForeignAmounts | null;
+  /** Shipping bill and LUT details of an export / SEZ bill. */
+  exportDetails: ExportDetails | null;
+  /** The recurring-invoice run that made the bill. */
+  recurringRunId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -513,6 +554,15 @@ export const stateCode = z.union([z.string(), z.number()]).transform((v, ctx) =>
   return c;
 });
 const gstin = z.string().transform(normalizeGstin).refine(isValidGstin, "Invalid GSTIN");
+/** ISO 3166 alpha-2 country of a buyer outside India. */
+const country = z.string().transform((v, ctx) => {
+  const c = normalizeCountry(v);
+  if (!c) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pick a country from the list" });
+    return z.NEVER;
+  }
+  return c;
+});
 const phone = z.string().trim().regex(/^\+?[0-9][0-9 -]{5,19}$/, "Invalid phone number");
 const email = z.string().trim().toLowerCase().email().max(254);
 const hsn = z.string().trim().regex(/^[0-9]{2,8}$/, "HSN/SAC must be 2–8 digits");
@@ -538,6 +588,8 @@ export const customerInputSchema = z.object({
   gstin: opt(gstin),
   address: opt(z.string().trim().max(500)),
   stateCode: opt(stateCode),
+  /** A buyer outside India: their country (the state code becomes 96 "Other Countries"). */
+  country: opt(country),
   /** Paise; + = they owe the shop, − = advance. */
   openingBalance: signedMoney.optional(),
   /** Paise; null = no limit. */
@@ -640,6 +692,7 @@ export const walkInSchema = z.object({
   gstin: opt(gstin),
   address: opt(z.string().trim().max(500)),
   stateCode: opt(stateCode),
+  country: opt(country),
 });
 
 const loyaltyPointsSchema = z.number().int("Points are whole numbers").positive().max(MAX_PAISE);
@@ -680,6 +733,8 @@ export interface CreateOptions {
   presetNumber?: PresetNumber;
   /** "challan": the goods already left on delivery challans, so this bill never moves stock (docs/sales-documents.md). */
   stockMovedBy?: "challan" | null;
+  /** The recurring-invoice run making this bill (docs/recurring-export-gstin.md). */
+  recurringRunId?: string | null;
 }
 
 export const invoiceInputSchema = z.object({
@@ -695,6 +750,12 @@ export const invoiceInputSchema = z.object({
   loyaltyPoints: loyaltyPointsSchema.optional(),
   /** POS till session the bill is made at (create only). */
   tillSessionId: opt(z.string().uuid()),
+  /** Export / SEZ supply (docs/recurring-export-gstin.md); default domestic. */
+  supplyType: z.enum(SUPPLY_TYPES).optional(),
+  /** A foreign-currency bill: currency, typed exchange rate and one foreign price per line (the rupee rates follow). */
+  foreign: foreignInputSchema.nullish(),
+  /** Shipping bill no. / date / port code of an export. */
+  exportDetails: exportDetailsSchema.nullish(),
 });
 export const invoicePatchSchema = invoiceInputSchema.omit({ tillSessionId: true }).partial();
 export type InvoiceInput = z.input<typeof invoiceInputSchema>;
@@ -881,6 +942,9 @@ interface DraftSource {
   placeOfSupply: string | null;
   lines: LineInput[];
   notes: string | null;
+  supplyType: SupplyType;
+  foreign: ForeignInput | null;
+  exportDetails: ExportDetails | null;
 }
 
 export const toLineInput = (l: LineTotals): LineInput => {
@@ -912,16 +976,20 @@ export function snapshotOf(c: {
   gstin?: string | null;
   address?: string | null;
   stateCode?: string | null;
+  country?: string | null;
 }): CustomerSnapshot {
   const gst = c.gstin ?? null;
-  return {
+  const snap: CustomerSnapshot = {
     name: c.name,
     phone: c.phone ?? null,
     email: c.email ?? null,
     gstin: gst,
     address: c.address ?? null,
-    stateCode: c.stateCode ?? (gst ? stateFromGstin(gst) : null),
+    // A buyer abroad has no GST state: place of supply 96 "Other Countries".
+    stateCode: c.stateCode ?? (gst ? stateFromGstin(gst) : c.country ? EXPORT_PLACE_OF_SUPPLY : null),
   };
+  if (c.country) snap.country = c.country;
+  return snap;
 }
 
 /** Per-customer sums from the aggregate subqueries (strings from Postgres, null when no rows). */
@@ -943,6 +1011,7 @@ const toCustomer = (c: BillingCustomer, agg: CustomerAggregates = {}): Customer 
   gstin: c.gstin,
   address: c.address,
   stateCode: c.stateCode,
+  country: c.country ?? null,
   openingBalance: c.openingBalance,
   creditLimit: c.creditLimit,
   outstanding: ledgerBalance({
@@ -980,6 +1049,9 @@ const toPayment = (p: InvoicePaymentRow): InvoicePayment => ({
   reference: p.reference,
   source: p.source,
   creditNoteId: p.creditNoteId ?? null,
+  ...(p.currency && p.foreignAmount !== null && p.exchangeRate !== null
+    ? { foreign: { currency: p.currency, amount: p.foreignAmount, rate: p.exchangeRate, forexDiff: p.forexDiff } }
+    : {}),
   createdAt: p.createdAt,
 });
 
@@ -1091,7 +1163,7 @@ export class InvoicesService {
           branchId && this.branches ? ((await this.branches.seller(tenantId, branchId).catch(() => null))?.stockLocationId ?? null) : null,
       },
     );
-    this.till = new TillService({ db: deps.db, log: this.log, now: this.now });
+    this.till = new TillService({ db: deps.db, log: this.log, now: this.now, approvals: deps.tillApprovals });
   }
 
   /** Whether a feature is on for the shop (always true without a gate). Gate failures count as off. */
@@ -1374,8 +1446,10 @@ export class InvoicesService {
     if (b.email !== undefined) set.email = b.email;
     if (b.gstin !== undefined) set.gstin = b.gstin;
     if (b.address !== undefined) set.address = b.address;
+    if (b.country !== undefined) set.country = b.country;
     if (b.stateCode !== undefined) set.stateCode = b.stateCode;
     else if (b.gstin && !existing.stateCode) set.stateCode = stateFromGstin(b.gstin);
+    else if (b.country && !existing.stateCode) set.stateCode = EXPORT_PLACE_OF_SUPPLY;
     if (b.openingBalance !== undefined) set.openingBalance = b.openingBalance;
     if (b.creditLimit !== undefined) set.creditLimit = b.creditLimit;
     if (Object.keys(set).length > 0) {
@@ -2028,6 +2102,12 @@ export class InvoicesService {
       messages,
       creditNotes: notes,
       tillSessionId: row.tillSessionId ?? null,
+      supplyType: row.supplyType ?? "domestic",
+      currency: row.currency ?? null,
+      exchangeRate: row.exchangeRate ?? null,
+      foreign: row.foreign ?? null,
+      exportDetails: row.exportDetails ?? null,
+      recurringRunId: row.recurringRunId ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -2267,15 +2347,20 @@ export class InvoicesService {
   /** Validates and computes everything stored on a draft. Totals are always recomputed here. */
   private async buildDraft(tenantId: string, src: DraftSource, seller: SellerProfile) {
     const { customerId, customer } = await this.resolveCustomer(this.db, tenantId, src);
-    const placeOfSupply = src.placeOfSupply ?? customer.stateCode ?? seller.stateCode;
+    const supplyType = src.supplyType;
+    // An export's place of supply is 96 "Other Countries" whatever was picked.
+    const placeOfSupply = supplyPlace(supplyType, src.placeOfSupply ?? customer.stateCode ?? seller.stateCode);
     if (!placeOfSupply) {
       throw badRequest("Choose a place of supply, or complete the business profile (state) in billing settings");
     }
     if (src.dueDate && src.dueDate < src.date) throw badRequest("Due date can't be before the invoice date");
+    if (isSezSupply(supplyType) && !customer.gstin) throw badRequest("A supply to an SEZ needs the SEZ unit's GSTIN on the customer");
+    if (src.foreign && src.foreign.lines.length !== src.lines.length) throw badRequest("Give a foreign-currency price for every line");
     // Without a seller state (profile incomplete) drafts are computed as intra-state; issue() recomputes.
     const sellerState = seller.stateCode ?? placeOfSupply;
-    // A composition taxpayer's bill of supply carries no tax (Section 10(4) CGST); bills before the scheme started are untouched.
-    const totals = computeInvoice(isCompositionBill(seller, src.date) ? withoutTax(src.lines) : src.lines, { sellerState, placeOfSupply });
+    // Foreign-currency bills: each line's rupee price is its foreign price at the bill's rate.
+    const lines = src.foreign ? applyForeign(src.lines, src.foreign) : src.lines;
+    const totals = computeInvoice(this.taxedLines(seller, src.date, supplyType, lines), { sellerState: taxSellerState(sellerState, supplyType), placeOfSupply });
     if (totals.total > MAX_PAISE) throw badRequest("Invoice total is too large");
     return {
       customerId,
@@ -2283,12 +2368,25 @@ export class InvoicesService {
       date: src.date,
       dueDate: src.dueDate,
       placeOfSupply,
-      interState: isInterState(sellerState, placeOfSupply),
+      interState: forcesIgst(supplyType) || isInterState(sellerState, placeOfSupply),
       lines: totals.lines,
       totals: withoutLines(totals),
       total: totals.total,
       notes: src.notes,
+      supplyType,
+      currency: src.foreign?.currency ?? null,
+      exchangeRate: src.foreign?.exchangeRate ?? null,
+      foreign: src.foreign ? foreignTotals(totals.lines, src.foreign, totals) : null,
+      exportDetails: supplyType === "domestic" ? null : src.exportDetails,
     };
+  }
+
+  /**
+   * The lines as taxed: no tax on a composition taxpayer's bill of supply (Section 10(4) CGST; bills before the scheme
+   * started are untouched) or on an export / SEZ supply under LUT or bond (zero-rated without payment of IGST).
+   */
+  private taxedLines(seller: SellerProfile, date: string, supplyType: SupplyType, lines: LineInput[]): LineInput[] {
+    return isCompositionBill(seller, date) || withoutPayment(supplyType) ? withoutTax(lines) : lines;
   }
 
   private fromInput(b: ParsedInvoice): DraftSource {
@@ -2301,6 +2399,9 @@ export class InvoicesService {
       placeOfSupply: b.placeOfSupply ?? null,
       lines: b.lines,
       notes: b.notes ?? null,
+      supplyType: b.supplyType ?? "domestic",
+      foreign: b.foreign ?? null,
+      exportDetails: normalizeExportDetails(b.exportDetails),
     };
   }
 
@@ -2342,17 +2443,18 @@ export class InvoicesService {
     const values = await this.buildDraft(tenant.id, this.fromInput(b), seller);
     const tillSessionId = b.tillSessionId ? await this.till.assertOpen(tenant.id, b.tillSessionId) : null;
     const stockMovedBy = opts.stockMovedBy ?? null;
+    const recurringRunId = opts.recurringRunId ?? null;
     if (!b.issue) {
       const [row] = await this.db
         .insert(invoices)
-        .values({ tenantId: tenant.id, status: "draft", branchId, tillSessionId, stockMovedBy, ...values })
+        .values({ tenantId: tenant.id, status: "draft", branchId, tillSessionId, stockMovedBy, recurringRunId, ...values })
         .returning();
       return this.toInvoice(row!, [], seller, { warnings: await this.warningsFor(row!), messages: [], creditNotes: [] });
     }
     const loyalty = b.loyaltyPoints ? this.loyaltyFor(b.loyaltyPoints, values.customer) : null;
     // The id exists before the insert so a points redemption can reference the bill.
     const id = newId();
-    const check = { lines: values.lines.map(toLineInput), placeOfSupply: values.placeOfSupply };
+    const check = { lines: values.lines.map(toLineInput), placeOfSupply: values.placeOfSupply, supplyType: values.supplyType };
     const issued = await this.issueWith(
       tenant,
       id,
@@ -2363,7 +2465,7 @@ export class InvoicesService {
       async (tx) => {
         const [row] = await tx
           .insert(invoices)
-          .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, stockMovedBy, ...values })
+          .values({ id, tenantId: tenant.id, status: "draft", branchId, tillSessionId, stockMovedBy, recurringRunId, ...values })
           .returning();
         return row!;
       },
@@ -2379,15 +2481,23 @@ export class InvoicesService {
     const row = await this.row(this.db, tenant.id, id);
     if (row.status !== "draft") throw badRequest("Only draft invoices can be edited");
     const customerChanged = b.customerId !== undefined || b.customer !== undefined;
+    const supplyType = b.supplyType ?? row.supplyType ?? "domestic";
+    const supplyChanged = supplyType !== (row.supplyType ?? "domestic");
+    if (b.lines && b.foreign === undefined && row.foreign) {
+      throw badRequest("This bill is in a foreign currency: send its foreign prices with the lines");
+    }
     const src: DraftSource = {
       customerId: customerChanged ? (b.customerId ?? null) : row.customerId,
       walkIn: customerChanged ? (b.customer ?? null) : row.customerId ? null : row.customer,
       fallback: customerChanged ? null : row.customer,
       date: b.date ?? row.date,
       dueDate: b.dueDate !== undefined ? b.dueDate : row.dueDate,
-      placeOfSupply: b.placeOfSupply !== undefined ? b.placeOfSupply : customerChanged ? null : row.placeOfSupply,
+      placeOfSupply: b.placeOfSupply !== undefined ? b.placeOfSupply : customerChanged || supplyChanged ? null : row.placeOfSupply,
       lines: b.lines ?? row.lines.map(toLineInput),
       notes: b.notes !== undefined ? b.notes : row.notes,
+      supplyType,
+      foreign: b.foreign !== undefined ? (b.foreign ?? null) : row.foreign ? foreignInputOf(row.foreign) : null,
+      exportDetails: b.exportDetails !== undefined ? normalizeExportDetails(b.exportDetails) : (row.exportDetails ?? null),
     };
     const { seller } = await this.sellerFor(tenant.id, row.branchId);
     const values = await this.buildDraft(tenant.id, src, seller);
@@ -2468,7 +2578,7 @@ export class InvoicesService {
       });
       loyalty = this.loyaltyFor(o.loyaltyPoints, customer);
     }
-    const check = { lines: row.lines.map(toLineInput), placeOfSupply: row.placeOfSupply };
+    const check = { lines: row.lines.map(toLineInput), placeOfSupply: row.placeOfSupply, supplyType: row.supplyType ?? "domestic" };
     const issued = await this.issueWith(tenant, id, seller, branch, check, loyalty, (tx) => this.row(tx, tenant.id, id, true));
     return this.afterIssue(issued, branch);
   }
@@ -2520,7 +2630,7 @@ export class InvoicesService {
     invoiceId: string,
     seller: SellerProfile,
     branch: IssueBranch,
-    check: { lines: LineInput[]; placeOfSupply: string },
+    check: { lines: LineInput[]; placeOfSupply: string; supplyType?: SupplyType },
     loyalty: IssueLoyalty | null,
     load: (tx: DbOrTx) => Promise<InvoiceRow>,
     preset?: PresetNumber,
@@ -2529,7 +2639,7 @@ export class InvoicesService {
       throw badRequest("Complete the business profile (state, GSTIN, address) in billing settings before issuing invoices");
     }
     // Fail fast before touching the quota; applyIssue re-checks inside the transaction.
-    const expected = this.assertIssuable(check.lines, check.placeOfSupply, seller);
+    const expected = this.assertIssuable(check.lines, check.placeOfSupply, seller, check.supplyType);
 
     await this.entitlements?.consume(tenant, QUOTA_KEY, 1);
     let redeemed = false;
@@ -2567,9 +2677,9 @@ export class InvoicesService {
     }
   }
 
-  private assertIssuable(lines: LineInput[], placeOfSupply: string, seller: SellerProfile) {
+  private assertIssuable(lines: LineInput[], placeOfSupply: string, seller: SellerProfile, supplyType: SupplyType = "domestic") {
     if (lines.length === 0) throw badRequest("Add at least one line before issuing");
-    const totals = computeInvoice(lines, { sellerState: seller.stateCode!, placeOfSupply });
+    const totals = computeInvoice(lines, { sellerState: taxSellerState(seller.stateCode!, supplyType), placeOfSupply });
     if (totals.total <= 0) throw badRequest("Invoice total must be more than zero to issue");
     return totals;
   }
@@ -2629,8 +2739,13 @@ export class InvoicesService {
     preset?: PresetNumber,
   ): Promise<InvoiceRow> {
     if (draft.status !== "draft") throw badRequest("Only drafts can be issued");
+    const supplyType = draft.supplyType ?? "domestic";
+    if (withoutPayment(supplyType) && (!seller.lutNumber || !seller.lutDate)) {
+      throw new AppError(400, "lut_missing", "Add your LUT number and date in billing settings before issuing a bill without IGST");
+    }
+    if (redemption && draft.currency) throw badRequest("Loyalty points can't be used on a foreign-currency bill");
     const issueLines = draft.lines.map(toLineInput);
-    let totals = this.assertIssuable(isCompositionBill(seller, draft.date) ? withoutTax(issueLines) : issueLines, draft.placeOfSupply, seller);
+    let totals = this.assertIssuable(this.taxedLines(seller, draft.date, supplyType, issueLines), draft.placeOfSupply, seller, supplyType);
     let stored: StoredInvoiceTotals = withoutLines(totals);
     if (redemption) {
       // The points were redeemed against this exact bill amount.
@@ -2641,7 +2756,7 @@ export class InvoicesService {
         throw new AppError(409, "loyalty_redeem", "The points discount can't be more than the bill");
       }
       if (d > 0) {
-        totals = computeInvoice(applyBillDiscount(totals.lines, d), { sellerState: seller.stateCode!, placeOfSupply: draft.placeOfSupply });
+        totals = computeInvoice(applyBillDiscount(totals.lines, d), { sellerState: taxSellerState(seller.stateCode!, supplyType), placeOfSupply: draft.placeOfSupply });
         if (totals.total <= 0) throw new AppError(409, "loyalty_redeem", "The points discount can't be more than the bill");
       }
       stored = { ...withoutLines(totals), loyalty: { points: redemption.points, discount: d } };
@@ -2651,6 +2766,16 @@ export class InvoicesService {
       walkIn: null,
       fallback: draft.customer,
     });
+    if (isSezSupply(supplyType) && !customer.gstin) throw badRequest("A supply to an SEZ needs the SEZ unit's GSTIN on the customer");
+    // The shop's LUT is frozen on a bill without IGST; the foreign figures follow the issued totals.
+    const exportDetails: ExportDetails | null =
+      supplyType === "domestic"
+        ? null
+        : {
+            ...(draft.exportDetails ?? { shippingBillNo: null, shippingBillDate: null, portCode: null }),
+            ...(withoutPayment(supplyType) ? { lutNumber: seller.lutNumber ?? null, lutDate: seller.lutDate ?? null } : {}),
+          };
+    const foreign = draft.foreign ? foreignTotals(totals.lines, foreignInputOf(draft.foreign), totals) : null;
 
     const fy = financialYear(draft.date);
     let prefix = seller.invoicePrefix ?? DEFAULT_INVOICE_PREFIX;
@@ -2676,10 +2801,12 @@ export class InvoicesService {
         branchId: branch.branchId,
         seller,
         customer,
-        interState: isInterState(seller.stateCode!, draft.placeOfSupply),
+        interState: forcesIgst(supplyType) || isInterState(seller.stateCode!, draft.placeOfSupply),
         lines: totals.lines,
         totals: stored,
         total: totals.total,
+        foreign,
+        exportDetails,
         issuedAt: this.now(),
       })
       .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, draft.id), eq(invoices.status, "draft")))
@@ -2751,7 +2878,37 @@ export class InvoicesService {
     return invoice;
   }
 
-  async addPayment(tenantId: string, id: string, input: PaymentInput, userId: string | null = null): Promise<Invoice> {
+  /**
+   * A payment received in a foreign-currency bill's currency at the bank's (realised) rate: it settles the bill at the
+   * bill's own rate and keeps the exchange gain / loss on the payment for the books (docs/recurring-export-gstin.md).
+   */
+  async addForeignPayment(tenantId: string, id: string, input: ForeignPaymentRequest, userId: string | null = null): Promise<Invoice> {
+    const b = foreignPaymentRequestSchema.parse(input);
+    const inv = await this.get(tenantId, id);
+    if (!inv.currency || !inv.foreign || !inv.exchangeRate) throw badRequest("This bill is in rupees; record the payment in rupees");
+    const split = splitForeignPayment(b, {
+      currency: inv.currency,
+      exchangeRate: inv.exchangeRate,
+      balance: inv.balance,
+      foreignBalance: foreignBalanceOf(inv.foreign, inv.balance),
+    });
+    if (split.settled <= 0) throw badRequest("Nothing is left to pay on this bill");
+    return this.addPayment(tenantId, id, { amount: split.settled, method: b.method, date: b.date, reference: b.reference ?? null }, userId, {
+      currency: inv.currency,
+      foreignAmount: b.amount,
+      exchangeRate: b.realisedRate,
+      forexDiff: split.forexDiff,
+    });
+  }
+
+  async addPayment(
+    tenantId: string,
+    id: string,
+    input: PaymentInput,
+    userId: string | null = null,
+    /** A foreign receipt (`addForeignPayment`): what came in and the exchange difference. */
+    foreign?: { currency: string; foreignAmount: number; exchangeRate: number; forexDiff: number },
+  ): Promise<Invoice> {
     const b = paymentInputSchema.parse(input);
     this.assertNotFuture(b.date);
     let before: InvoiceStatus | null = null;
@@ -2771,6 +2928,7 @@ export class InvoicesService {
         source: "manual",
         tillSessionId,
         createdBy: userId,
+        ...(foreign ?? {}),
       });
       const paid = inv.paid + b.amount;
       const [updated] = await tx

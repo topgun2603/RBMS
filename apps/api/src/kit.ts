@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createAnalytics, ANALYTICS_JOBS } from "@srirealtime/analytics";
 import { authSessions, createAuth, SlidingWindow, storeOriginsFor } from "@srirealtime/auth";
 import { discountLimitGuard } from "./discount-guard";
+import { tillApprovals } from "./till-approval";
 import { DEMO_DEFAULT_LIMITS, demoAuthModule, demoGuard, parseDemoShops } from "./demo-auth";
 import { createBranding } from "@srirealtime/branding";
 import { createAudit } from "@srirealtime/audit";
@@ -55,6 +56,7 @@ import { createInventory } from "@srirealtime/inventory";
 import { createInvoices } from "@srirealtime/invoices";
 import { wireQuotations } from "./kit-quotations";
 import { wireSalesDocs } from "./kit-sales-docs";
+import { RECURRING_CRON, RECURRING_JOB, wireRecurringExport } from "./kit-recurring";
 import { wirePayroll } from "./kit-payroll";
 import { createJobs } from "@srirealtime/jobs";
 import { createNotify, type NotifyConfig } from "@srirealtime/notify";
@@ -402,6 +404,12 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     entitlements: opts.skipInvoiceQuota ? undefined : plans.service,
     now: clock,
+    // A cash difference above the shop's limit needs a manager's POS PIN at Z close and cashier handover.
+    tillApprovals: tillApprovals({
+      limit: async (tenantId) => Number((await settings.service.handle("till").get({ tenantId })).varianceLimit ?? 10_000),
+      memberForPin: async (tenantId, pin) => (posRef ? posRef.service.memberForPin(tenantId, pin) : null),
+      audit: audit.service,
+    }),
     branding: {
       get: async (tenantId) => {
         const b = await branding.service.get(tenantId);
@@ -1409,6 +1417,20 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     lockedThrough: async (tenantId) => ((await features.service.isEnabled(tenantId, "accounting")) ? ((await accounting.service.settings(tenantId)).lockedThrough ?? null) : null),
   });
 
+  // ---- Recurring invoices, export / foreign-currency payments and the GSTIN lookup (docs/recurring-export-gstin.md).
+  const recurringExport = wireRecurringExport({
+    db,
+    env,
+    invoices: invoices.service,
+    tenantRef: (tenantId) => tenancy.service.getRef(tenantId),
+    prepareLines: (tenantId, lines, o) => priceLists.prepareLines(tenantId, lines, { customerId: o.customerId ?? null, date: o.date ?? null }),
+    lockedThrough: async (tenantId) => ((await features.service.isEnabled(tenantId, "accounting")) ? ((await accounting.service.settings(tenantId)).lockedThrough ?? null) : null),
+    featureGate: features.gate,
+    log,
+    now: clock,
+  });
+  defineJob(RECURRING_JOB, recurringExport.runDue);
+
   // ---- GST filing depth: GSTR-3B, ITC and GSTR-2B reconciliation, reverse charge, composition, GSTR-1 extras (docs/gst-filing.md).
   const gstFiling = createGstFiling({
     db,
@@ -1748,6 +1770,18 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     billExists: async (tenantId, invoiceId) => Boolean(await invoices.service.get(tenantId, invoiceId).catch(() => null)),
     invoices: posInvoicesPort(invoices.service, db, (tenantId, lines) => priceLists.prepareLines(tenantId, lines, { unitsOnly: true })),
+    // Customer display (kit-pos.ts): the shop's logo and idle messages; the feed rides on the shared pub/sub.
+    display: {
+      brand: async (tenantId) => {
+        const b = await branding.service.get(tenantId);
+        return { name: b.appName, logoUrl: b.logoUrl, primary: null };
+      },
+      messages: async (tenantId) => {
+        const v = await settings.service.handle("display").get({ tenantId });
+        return { welcomeEn: String(v.welcomeEn ?? ""), welcomeTa: String(v.welcomeTa ?? ""), offerEn: String(v.offerEn ?? ""), offerTa: String(v.offerTa ?? "") };
+      },
+      pubsub: batch3.pubsub,
+    },
     audit: audit.service,
     log,
   });
@@ -1835,6 +1869,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     invoices.module,
     quotations.module,
     salesDocs.module,
+    ...recurringExport.modules,
     payments.module,
     inventory.module,
     catalogue.module,
@@ -1909,6 +1944,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     invoices,
     quotations,
     salesDocs,
+    recurring: recurringExport.recurring,
+    gstinLookup: recurringExport.gstin,
     payments,
     inventory,
     valuation,
@@ -2033,6 +2070,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
       await jobs.service.schedule("consent.sweep", "0 * * * *");
       await jobs.service.schedule("uploads.cleanup", "30 3 * * *");
       await jobs.service.schedule("invoices.reminders", "0 10 * * *");
+      await jobs.service.schedule(RECURRING_JOB, RECURRING_CRON);
       await jobs.service.schedule("inventory.expiry-alerts", "30 7 * * *");
       await jobs.service.schedule("payments.retry", "*/15 * * * *");
       await jobs.service.schedule("audit.purge", "15 4 * * *");

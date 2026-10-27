@@ -4,7 +4,9 @@ import { POS_FEATURES, POS_PERMISSIONS } from "./ports";
 import { posRoutes } from "./routes";
 import { OfflineBillingService } from "./offline";
 import { offlineRoutes } from "./offline-routes";
-import { posNumberBlocks, posOfflineBills, posPinAttempts, posStaffPins, posTerminals, posWeighTickets } from "./schema";
+import { DisplayService } from "./display";
+import { displayRoutes } from "./display-routes";
+import { posDisplays, posNumberBlocks, posOfflineBills, posPinAttempts, posStaffPins, posTerminals, posWeighTickets } from "./schema";
 import { PosService, type PosDeps } from "./service";
 
 export * from "./schema";
@@ -18,6 +20,8 @@ export { offlineRoutes } from "./offline-routes";
 export { PosService, SlidingWindow, type Actor, type Pairing, type PosDeps, type PosItemPage } from "./service";
 export { DEVICE_HEADER, deviceContextHook } from "./hook";
 export { posRoutes, requireDevice } from "./routes";
+export * from "./display";
+export { displayRoutes } from "./display-routes";
 
 /**
  * POS terminals (docs/pos-terminals.md): pairing, the device token, staff PINs and PIN sessions, the catalogue sync and
@@ -33,19 +37,30 @@ export function createPos(deps: PosDeps) {
     ...(deps.log ? { log: deps.log } : {}),
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const display = new DisplayService({
+    db: deps.db,
+    catalog: deps.catalog,
+    tenants: deps.tenants,
+    ...(deps.display ? { host: deps.display } : {}),
+    ...(deps.audit ? { audit: deps.audit } : {}),
+    ...(deps.log ? { log: deps.log } : {}),
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const base = posRoutes(service);
+  const displayR = displayRoutes(display);
   const offlineR = offlineRoutes(offline);
   const module = defineModule({
     id: "pos",
-    tables: { posTerminals, posStaffPins, posPinAttempts, posWeighTickets, posNumberBlocks, posOfflineBills },
+    tables: { posTerminals, posStaffPins, posPinAttempts, posWeighTickets, posNumberBlocks, posOfflineBills, posDisplays },
     routes: (app) => {
       base(app);
       offlineR(app);
+      displayR(app);
     },
     features: POS_FEATURES,
     permissions: POS_PERMISSIONS,
   });
   const deviceHook = deviceContextHook(service, deps.tenants);
-  return { service, offline, module, deviceHook };
+  return { service, offline, display, module, deviceHook };
 }
 export type Pos = ReturnType<typeof createPos>;

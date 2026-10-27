@@ -8,6 +8,7 @@ import {
   KeyRoundIcon,
   LockIcon,
   LogOutIcon,
+  MonitorIcon,
   MonitorSmartphoneIcon,
   UsersRoundIcon,
   MapPinIcon,
@@ -49,6 +50,8 @@ export interface TopBarProps {
   onHolds: () => void;
   onReturns: () => void;
   onDay: () => void;
+  /** The customer display dialog. */
+  onDisplay: () => void;
   onHelp: () => void;
   onExit: () => void;
 }
@@ -166,6 +169,9 @@ export function TopBar(p: TopBarProps) {
               <CalendarClockIcon /> {t("pos.top.day")}
             </DropdownMenuItem>
             <NoSaleMenuItem />
+            <DropdownMenuItem onSelect={p.onDisplay}>
+              <MonitorIcon /> {t("pos.display.menu")}
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={p.onHelp}>
               <CircleHelpIcon /> {t("pos.top.help")}
               <DropdownMenuShortcut>?</DropdownMenuShortcut>

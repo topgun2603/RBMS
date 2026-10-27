@@ -244,11 +244,12 @@ export class PuppeteerPdfDriver implements PdfDriver {
           pg.setDefaultTimeout(timeoutMs);
           await pg.setContent(html, { waitUntil: "load", timeout: timeoutMs });
           await pg.evaluate("document.fonts.ready.then(() => true)");
-          if (opts.paper === "80mm") {
-            await pg.setViewport({ width: Math.round(80 / MM_PER_PX), height: 600 });
+          if (opts.paper === "80mm" || opts.paper === "58mm") {
+            const widthMm = opts.paper === "58mm" ? 58 : 80;
+            await pg.setViewport({ width: Math.round(widthMm / MM_PER_PX), height: 600 });
             const px = Number(await pg.evaluate("Math.ceil(document.documentElement.scrollHeight)"));
             const heightMm = Math.max(60, Math.ceil(px * MM_PER_PX) + 6);
-            return pg.pdf({ width: "80mm", height: `${heightMm}mm`, printBackground: true, timeout: timeoutMs });
+            return pg.pdf({ width: `${widthMm}mm`, height: `${heightMm}mm`, printBackground: true, timeout: timeoutMs });
           }
           return pg.pdf({ format: opts.paper, printBackground: true, preferCSSPageSize: true, timeout: timeoutMs });
         })(),

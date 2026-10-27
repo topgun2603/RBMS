@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AddFromPhotosButton, api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
-import { BoxesIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { BoxesIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, TagsIcon, Trash2Icon } from "lucide-react";
 import {
   Badge,
   Button,
@@ -22,6 +22,7 @@ import {
 import { BoxIllustration } from "../components/illustrations";
 import { StockStatusPill } from "../components/inventory/stock-meta";
 import { ItemDialog } from "../components/item-dialog";
+import { LabelDialog, type LabelSeed } from "../components/labels/label-dialog";
 import { formatQty, GST_RATES, money } from "../lib/format";
 import { useDeleteItem } from "../lib/queries";
 import type { Item, ItemListResponse } from "../lib/types";
@@ -58,6 +59,8 @@ function Items({ categories }: { categories: { id: string; name: string }[] }) {
   const del = useDeleteItem();
   const [editing, setEditing] = React.useState<{ open: boolean; item: Item | null }>({ open: false, item: null });
   const [deleting, setDeleting] = React.useState<Item | null>(null);
+  // Barcode labels: one item from its row menu, or the designer with an empty list from the header.
+  const [labels, setLabels] = React.useState<{ open: boolean; seeds: LabelSeed[] }>({ open: false, seeds: [] });
   const categoryName = React.useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
 
   const filters = React.useMemo(
@@ -211,6 +214,9 @@ function Items({ categories }: { categories: { id: string; name: string }[] }) {
                   </ModuleLink>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem className="h-10" onSelect={() => setLabels({ open: true, seeds: [{ itemId: it.id, copies: 1 }] })}>
+                <TagsIcon /> {t("billing.labels.print")}
+              </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" className="h-10" onSelect={() => setDeleting(it)}>
                 <Trash2Icon /> {t("billing.common.delete")}
               </DropdownMenuItem>
@@ -254,6 +260,9 @@ function Items({ categories }: { categories: { id: string; name: string }[] }) {
                 </ModuleLink>
               </Button>
             )}
+            <Button variant="outline" size="lg" onClick={() => setLabels({ open: true, seeds: [] })}>
+              <TagsIcon /> {t("billing.labels.print")}
+            </Button>
             <AddFromPhotosButton />
             {addButton}
           </>
@@ -279,6 +288,7 @@ function Items({ categories }: { categories: { id: string; name: string }[] }) {
       />
 
       <ItemDialog open={editing.open} item={editing.item} onOpenChange={(open) => setEditing((e) => ({ ...e, open }))} />
+      <LabelDialog open={labels.open} seeds={labels.seeds} onClose={() => setLabels((l) => ({ ...l, open: false }))} />
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}

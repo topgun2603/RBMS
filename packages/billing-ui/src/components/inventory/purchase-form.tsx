@@ -26,6 +26,7 @@ import {
 import { cleanQty } from "./stock-meta";
 import { ChargesEditor, chargeInputs, chargesTotal, type ChargeDraft } from "./landed-charges";
 import { SupplierPicker, supplierPartyState, type SupplierParty } from "./supplier-picker";
+import { GstinStatusWarning } from "../gstin/gstin-assist";
 import { GstRateSelect } from "../gst-rate-select";
 import { UnitPicker } from "../pricing/line-pricing";
 import type { ItemUnit } from "../../lib/types-pricing";
@@ -342,6 +343,7 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
               <p className="mt-1.5 text-meta text-muted-foreground">{t("billing.ai.supplierNew", { name: ai.draft.supplier.name })}</p>
             )}
             {submitted && partyError && <p className="mt-1.5 text-meta text-destructive">{partyError}</p>}
+            <GstinStatusWarning gstin={party.kind === "saved" ? party.supplier.gstin : party.kind === "oneoff" ? party.gstin : null} className="mt-3" />
           </CardContent>
         </Card>
 

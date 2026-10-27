@@ -27,6 +27,12 @@ import { quotationsRoutes } from "./quotations-routes";
 import { SalesDocsService } from "./sales-docs";
 import type { SalesDocsDeps } from "./sales-docs-base";
 import { salesDocsRoutes } from "./sales-docs-routes";
+import { recurringProfiles, recurringRuns, gstinLookups, gstinLookupLog } from "./schema-recurring";
+import { RecurringService, type RecurringDeps } from "./recurring";
+import { recurringRoutes } from "./recurring-routes";
+import { GstinLookupService, type GstinLookupDeps } from "./gstin-lookup";
+import { gstinRoutes } from "./gstin-routes";
+import { exportBillingRoutes } from "./export-routes";
 
 export * from "./schema";
 export * from "./calc";
@@ -48,6 +54,10 @@ export * from "./proformas";
 export * from "./sale-orders";
 export * from "./challans";
 export * from "./sales-docs";
+export * from "./export-calc";
+export * from "./recurring-calc";
+export * from "./recurring";
+export * from "./gstin-lookup";
 export {
   invoicesRoutes,
   billingItemListSchema,
@@ -132,4 +142,26 @@ export function createSalesDocs(deps: SalesDocsDeps) {
     routes: salesDocsRoutes(service),
   });
   return { service, module };
+}
+
+/**
+ * Recurring invoices (docs/recurring-export-gstin.md): profiles per customer and the scheduler that makes their bills
+ * through the invoices service. Mounted at /v1/recurring; gated by the `invoices.recurring` feature.
+ */
+export function createRecurring(deps: RecurringDeps) {
+  const service = new RecurringService(deps);
+  const module = defineModule({ id: "recurring", tables: { recurringProfiles, recurringRuns }, routes: recurringRoutes(service) });
+  return { service, module };
+}
+
+/** GSTIN lookup (offline checksum / State / PAN, then a pluggable provider with a 30-day cache). Mounted at /v1/gstin. */
+export function createGstinLookup(deps: GstinLookupDeps) {
+  const service = new GstinLookupService(deps);
+  const module = defineModule({ id: "gstin", tables: { gstinLookups, gstinLookupLog }, routes: gstinRoutes(service) });
+  return { service, module };
+}
+
+/** Export / foreign-currency helpers over the invoices service (currency list, foreign receipts). Mounted at /v1/export-billing. */
+export function createExportBilling(invoices: InvoicesService) {
+  return { module: defineModule({ id: "export-billing", routes: exportBillingRoutes(invoices) }) };
 }

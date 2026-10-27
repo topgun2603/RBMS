@@ -16,6 +16,8 @@ export const SELLER_DEFAULTS: Required<Omit<SellerProfile, "taxScheme" | "compos
   accountNumber: "",
   ifsc: "",
   upiId: "",
+  lutNumber: "",
+  lutDate: "",
   autoReminders: false,
   reminderDays: [1, 7, 15],
   sendPaymentReceipts: true,

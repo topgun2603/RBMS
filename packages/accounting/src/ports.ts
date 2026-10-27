@@ -46,6 +46,11 @@ export interface InvoicePaymentSrc {
   method: MoneyMethod;
   /** Set when the row is the allocation of a customer receipt (the receipt itself is what is posted). */
   receiptId: string | null;
+  /**
+   * A payment received in a foreign currency (docs/recurring-export-gstin.md): rupees received above (+) or below (−)
+   * `amount`, the part of the bill it settled at the bill's rate. Absent / 0 = none.
+   */
+  forexDiff?: number;
 }
 
 export interface ReceiptSrc {
@@ -144,7 +149,9 @@ export interface TillSrc {
   /** counted - expected cash (paise), set when closed. */
   difference: number | null;
   /** Cash put in (+) or taken out (-) by hand. `on` is the IST date. */
-  cashEntries: { id: string; amount: number; reason: string; on: string }[];
+  cashEntries: { id: string; amount: number; reason: string; on: string; category?: string }[];
+  /** Differences found when the drawer changed hands (counted - expected, paise); posted like a closing difference. */
+  handovers?: { id: string; difference: number; on: string }[];
 }
 
 /** Stock put in or written off by hand (opening stock, adjustments), valued in paise: + = stock added, - = removed. */

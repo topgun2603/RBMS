@@ -34,6 +34,10 @@ export interface SalesDocSrc {
   lines: SalesLineSrc[];
   totals: { taxable: number; cgst: number; sgst: number; igst: number; roundOff: number; total: number };
   precedingDoc?: { number: string; date: string; total?: number } | null;
+  /** Export / SEZ supply of the bill (docs/recurring-export-gstin.md); absent = domestic. */
+  supplyType?: "domestic" | "export_wpay" | "export_wopay" | "sez_wpay" | "sez_wopay" | null;
+  /** Shipping bill no. / date (YYYY-MM-DD) / port code of an export (GSTR-1 table 6A). */
+  exportDetails?: { shippingBillNo?: string | null; shippingBillDate?: string | null; portCode?: string | null } | null;
 }
 
 export interface PurchaseLineSrc {

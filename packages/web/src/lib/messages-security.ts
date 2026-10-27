@@ -77,6 +77,13 @@ export const enSecurity: Messages = {
   "web.approval.cancel": "Cancel",
   "web.approval.wrong": "That PIN can't approve this discount.",
   "web.approval.wrongLeft": "That PIN can't approve this discount. {count} tries left.",
+  "web.approval.tillHint": "The cash count differs from what the till expects by more than the shop's limit. Ask a manager to enter their POS PIN to approve it.",
+  "web.approval.tillDifference": "{side} {amount}",
+  "web.approval.tillShort": "Short",
+  "web.approval.tillExtra": "Extra",
+  "web.approval.tillLimit": "limit {amount}",
+  "web.approval.tillWrong": "That PIN can't approve this.",
+  "web.approval.tillWrongLeft": "That PIN can't approve this. {count} tries left.",
 };
 
 export const taSecurity: Messages = {
@@ -152,4 +159,11 @@ export const taSecurity: Messages = {
   "web.approval.cancel": "ரத்து",
   "web.approval.wrong": "இந்த PIN இந்தத் தள்ளுபடியை அனுமதிக்க முடியாது.",
   "web.approval.wrongLeft": "இந்த PIN இந்தத் தள்ளுபடியை அனுமதிக்க முடியாது. இன்னும் {count} முயற்சிகள்.",
+  "web.approval.tillHint": "எண்ணிய ரொக்கம் கல்லா எதிர்பார்ப்பதிலிருந்து கடையின் வரம்பைவிட அதிகமாக வேறுபடுகிறது. அனுமதிக்க மேலாளரை அவர்களின் POS PIN உள்ளிடச் சொல்லவும்.",
+  "web.approval.tillDifference": "{side} {amount}",
+  "web.approval.tillShort": "குறைவு",
+  "web.approval.tillExtra": "கூடுதல்",
+  "web.approval.tillLimit": "வரம்பு {amount}",
+  "web.approval.tillWrong": "இந்த PIN இதை அனுமதிக்க முடியாது.",
+  "web.approval.tillWrongLeft": "இந்த PIN இதை அனுமதிக்க முடியாது. இன்னும் {count} முயற்சிகள்.",
 };

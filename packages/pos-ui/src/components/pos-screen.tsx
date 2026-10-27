@@ -17,7 +17,8 @@ import {
   SheetTitle,
   toast,
 } from "@srirealtime/ui";
-import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, usePermission, useSettingsHref } from "@srirealtime/web";
+import { upiLink } from "@srirealtime/gst";
+import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, useOptionalShop, usePermission, useSettingsHref } from "@srirealtime/web";
 import {
   addPayment,
   createBill,
@@ -51,6 +52,8 @@ import { fromBillingItem, fromLookup, looksLikeCode } from "../lib/products";
 import type { ShortcutAction } from "../lib/shortcuts";
 import { dropHold, holdBill, pushRecent, storageKey, toggleFavourite, useLocalState, type HeldBill } from "../lib/storage";
 import { migrateLocalDay, useRegisterName, useTillActions, useTillSession } from "../lib/till";
+import { buildDisplayState } from "../lib/display";
+import { useCustomerDisplay, useDisplays } from "../lib/display-client";
 import { fitPayments, paymentsFor } from "../lib/tender";
 import { customerPhone, NO_CUSTOMER, type BillingItem, type Paged, type PosCustomer, type VariantLookup } from "../lib/types";
 import { useCounterKeys, useFinePointer, useMediaQuery } from "../lib/use-keys";
@@ -66,6 +69,7 @@ import { AlsoBuyChips } from "./also-buy-chips";
 import { CartPanel } from "./cart-panel";
 import { CustomerBar } from "./customer-bar";
 import { DayDialog } from "./day-dialog";
+import { DisplayDialog } from "./display/display-dialog";
 import { HelpDialog } from "./help-dialog";
 import { HoldDialog, HoldsDialog } from "./holds-dialog";
 import { BatchPickDialog } from "./batch-pick-dialog";
@@ -95,7 +99,7 @@ interface CartState {
 
 const EMPTY_CART: CartState = { lines: [], customer: NO_CUSTOMER, points: 0 };
 
-type DialogKind = "pay" | "hold" | "holds" | "returns" | "day" | "help" | "camera" | "clear" | "pending" | "exit";
+type DialogKind = "display" | "pay" | "hold" | "holds" | "returns" | "day" | "help" | "camera" | "clear" | "pending" | "exit";
 
 /** The full-screen counter (covers the app shell). */
 
@@ -152,7 +156,7 @@ function Counter() {
   const env = usePos();
   const catalog = useCatalog();
   const offline = useOffline();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const qc = useQueryClient();
   const appNavigate = useAppNavigate();
   const settingsHref = useSettingsHref();
@@ -237,6 +241,40 @@ function Counter() {
   const tillActions = useTillActions(register, env.branch?.id ?? null);
   const dayOpen = !!till && till.status === "open";
   const refreshTill = React.useCallback(() => void qc.invalidateQueries({ queryKey: ["pos", "till"] }), [qc]);
+
+  // Customer display (docs/counter-close-display-labels.md): the bill, the total, the UPI QR while paying by UPI, then
+  // "Thank you" for a few seconds. Same-PC tabs hear it at once; paired screens get it from the server.
+  const [upiAmount, setUpiAmount] = React.useState(0);
+  const [thanks, setThanks] = React.useState(false);
+  const shopBrand = useOptionalShop();
+  const screens = useDisplays(register, env.online.online);
+  const displayState = React.useMemo(
+    () =>
+      buildDisplayState({
+        lines,
+        totals,
+        payable,
+        pointsDiscount,
+        customerName: customer.kind === "saved" ? customer.customer.name : null,
+        paying: dialog === "pay",
+        upiAmount,
+        upiLink: env.seller.upiId ? upiLink({ vpa: env.seller.upiId, name: env.seller.legalName || env.shopName, amountPaise: upiAmount, note: t("pos.pay.upiNote") }) : null,
+        sale: sale && thanks ? { total: sale.invoice.total, change: sale.change } : null,
+        locale: locale === "ta" ? "ta" : "en",
+        shop: { name: env.shopName, logoUrl: shopBrand?.logoUrl ?? null },
+        now: Date.now(),
+      }),
+    // `now` is taken when the bill changes, not on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lines, totals, payable, pointsDiscount, customer, dialog, upiAmount, env.seller.upiId, env.seller.legalName, env.shopName, sale, thanks, locale, shopBrand?.logoUrl],
+  );
+  useCustomerDisplay({ tenant: env.tenant, register, remote: (screens.data ?? []).some((d) => d.paired), state: displayState });
+  React.useEffect(() => {
+    if (!sale) return setThanks(false);
+    setThanks(true);
+    const id = window.setTimeout(() => setThanks(false), 12_000);
+    return () => window.clearTimeout(id);
+  }, [sale]);
 
   // ---------------------------------------------------------------- cart updates
 
@@ -696,6 +734,7 @@ function Counter() {
         onHolds={() => setDialog("holds")}
         onReturns={() => setDialog("returns")}
         onDay={() => setDialog("day")}
+        onDisplay={() => setDialog("display")}
         onHelp={() => setDialog("help")}
         onExit={exit}
       />
@@ -810,6 +849,7 @@ function Counter() {
         points={cart.points}
         onPoints={(n) => setCart((c) => ({ ...c, points: n }))}
         onComplete={complete}
+        onUpi={setUpiAmount}
       />
       <LineEditDialog
         line={editing}
@@ -887,6 +927,7 @@ function Counter() {
         onRegister={env.terminal ? () => undefined : setRegister}
         canTill={env.can.till}
       />
+      <DisplayDialog open={dialog === "display"} onClose={() => setDialog(null)} register={register} />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
       <PendingBillsDialog
         open={dialog === "pending"}

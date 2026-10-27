@@ -243,3 +243,45 @@ export const posOfflineBills = pgTable(
 
 export type NumberBlockRow = typeof posNumberBlocks.$inferSelect;
 export type OfflineBillRow = typeof posOfflineBills.$inferSelect;
+
+export interface DisplaySettings {
+  /** Language of the screen: "auto" follows the cashier's choice sent with each bill. */
+  language?: "auto" | "en" | "ta";
+  /** Seconds each idle slide stays up (3–60, default 8). */
+  slideSeconds?: number;
+}
+
+/**
+ * A customer-facing display (docs/counter-close-display-labels.md): a second screen or tablet that shows the bill the
+ * cashier is ringing up. It belongs to one register (the till / terminal name), has no account: it holds a scoped
+ * token that can only read that register's display feed. Only the sha256 of the token and of a pending pairing code
+ * is stored; revoking sets `revokedAt`.
+ */
+export const posDisplays = pgTable(
+  "pos_displays",
+  {
+    id: pk(),
+    tenantId: tenantId(),
+    name: text("name").notNull(),
+    /** The register (terminal name) whose bill this screen shows. */
+    register: text("register").notNull(),
+    settings: jsonb("settings").$type<DisplaySettings>().notNull().default({}),
+    /** sha256 (hex) of the display token; null until paired. */
+    tokenHash: text("token_hash"),
+    pairedAt: timestamp("paired_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    /** sha256 (hex) of the pending pairing code (6 digits). */
+    pairingCodeHash: text("pairing_code_hash"),
+    pairingExpiresAt: timestamp("pairing_expires_at", { withTimezone: true }),
+    createdBy: uuid("created_by"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [
+    uniqueIndex("pos_displays_token_uq").on(t.tokenHash),
+    uniqueIndex("pos_displays_pairing_code_uq").on(t.pairingCodeHash),
+    index("pos_displays_tenant_register_idx").on(t.tenantId, t.register),
+  ],
+);
+
+export type DisplayRow = typeof posDisplays.$inferSelect;

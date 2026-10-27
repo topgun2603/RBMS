@@ -21,6 +21,12 @@ export interface SellerProfile {
   accountNumber: string | null;
   ifsc: string | null;
   upiId: string | null;
+  /**
+   * Letter of Undertaking (or bond) for exports / SEZ supplies without payment of IGST (docs/recurring-export-gstin.md):
+   * its ARN / reference and date, printed on such bills. Optional: profiles saved before it read as null.
+   */
+  lutNumber?: string | null;
+  lutDate?: string | null;
   /** WhatsApp reminders for overdue bills (default false). */
   autoReminders: boolean;
   /** Reminders go out this many days after the due date (default [1, 7, 15]). */
@@ -53,6 +59,8 @@ export const SELLER_FIELDS = [
   "accountNumber",
   "ifsc",
   "upiId",
+  "lutNumber",
+  "lutDate",
 ] as const satisfies readonly (keyof SellerProfile)[];
 
 /** Buyer details frozen on the invoice. */
@@ -63,6 +71,8 @@ export interface CustomerSnapshot {
   gstin: string | null;
   address: string | null;
   stateCode: string | null;
+  /** ISO 3166 alpha-2 country of a buyer outside India (place of supply 96); absent = India. */
+  country?: string | null;
 }
 
 export interface SellerProfilePort {

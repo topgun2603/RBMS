@@ -82,6 +82,19 @@ export const envSchema = z.object({
   EINVOICE_GSP_SANDBOX_URL: optionalString(),
   EINVOICE_GSP_CLIENT_ID: optionalString(),
   EINVOICE_GSP_CLIENT_SECRET: optionalString(),
+  /**
+   * GSTIN lookup (docs/recurring-export-gstin.md). Unset = offline only (checksum, State and PAN from the number).
+   * "gstn-search": an HTTP endpoint answering the GSTN taxpayer-search JSON (a GSP's or a public search API);
+   * GSTIN_LOOKUP_URL has `{gstin}` where the number goes; the key is sent in GSTIN_LOOKUP_HEADER (default Authorization).
+   */
+  GSTIN_LOOKUP_PROVIDER: z.enum(["gstn-search"]).optional().catch(undefined),
+  GSTIN_LOOKUP_URL: optionalString(),
+  GSTIN_LOOKUP_KEY: optionalString(),
+  GSTIN_LOOKUP_HEADER: optionalString(),
+  /** Provider calls per shop per hour / day (cache hits are free) and the cache life in days. */
+  GSTIN_LOOKUP_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(30),
+  GSTIN_LOOKUP_PER_DAY: z.coerce.number().int().min(1).max(100_000).default(200),
+  GSTIN_LOOKUP_CACHE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   // ---- Batch 5: plan subscriptions (docs/batch5.md)
   /** The platform's own Razorpay account for plan subscriptions. All three unset = the mock provider (development only). */
   PLATFORM_RAZORPAY_KEY_ID: optionalString(),

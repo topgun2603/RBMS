@@ -128,6 +128,17 @@ export async function printReceiptDirect(config: PrinterConfig, data: ReceiptDat
   }
 }
 
+/** Sends raw bytes on the configured connection (label printer commands). Never rejects. */
+export async function sendBytesDirect(config: PrinterConfig, bytes: Uint8Array, o: DirectOptions = {}): Promise<DirectResult> {
+  if (!isDirectConfigured(config)) return { ok: false, code: "not_configured" };
+  try {
+    const res = await send(config, bytes, o);
+    return isResult(res) ? res : { ok: true, raster: false, lossy: false, paired: res.paired };
+  } catch (err) {
+    return failure(err);
+  }
+}
+
 /** Opens the cash drawer without printing ("No sale"). */
 export async function openDrawerDirect(config: PrinterConfig, o: DirectOptions = {}): Promise<DirectResult> {
   if (!isDirectConfigured(config)) return { ok: false, code: "not_configured" };

@@ -14,6 +14,7 @@ import {
 import type { Db } from "@srirealtime/db";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { z } from "zod";
+import type { DisplayHostPorts } from "./display";
 import {
   catalogQuery,
   pairBody,
@@ -92,6 +93,8 @@ export interface PosDeps {
   bills?: PosBillsPort;
   /** Invoices, for offline billing (number blocks and bill sync); without it those routes answer 503. */
   invoices?: PosInvoicesPort;
+  /** The customer display's idle screen (shop brand, messages) and the Redis pub/sub that spreads its feed. */
+  display?: DisplayHostPorts;
   audit?: AuditPort;
   log?: LoggerPort;
   now?: () => Date;

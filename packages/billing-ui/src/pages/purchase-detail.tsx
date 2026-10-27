@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n, useRouteParams } from "@srirealtime/web";
-import { BanIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, HandCoinsIcon, Link2Icon, Loader2Icon, ReceiptTextIcon, StoreIcon, TruckIcon, Undo2Icon } from "lucide-react";
+import { BanIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, TagsIcon, HandCoinsIcon, Link2Icon, Loader2Icon, ReceiptTextIcon, StoreIcon, TruckIcon, Undo2Icon } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -24,6 +24,8 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { DebitNoteDialog, PayPurchaseDialog } from "../components/inventory/payables-dialogs";
+import { GstinStatusWarning } from "../components/gstin/gstin-assist";
+import { LabelDialog, type LabelSeed } from "../components/labels/label-dialog";
 import { PurchasePaymentsCard, PurchaseReturnsCard } from "../components/inventory/purchase-payables-cards";
 import { PurchaseStatusPill } from "../components/inventory/stock-meta";
 import { ChargesList, LandedCostsCard } from "../components/inventory/landed-charges";
@@ -42,6 +44,7 @@ export default function PurchaseDetailPage() {
   const [cancelling, setCancelling] = React.useState(false);
   const [paying, setPaying] = React.useState(false);
   const [returning, setReturning] = React.useState(false);
+  const [labelling, setLabelling] = React.useState(false);
   const canPay = useHasPermission("inventory.purchases.pay");
   const documents = useFeature("documents");
   const pdf = usePdf();
@@ -85,6 +88,11 @@ export default function PurchaseDetailPage() {
     }
   };
 
+  // One label per unit received (the catalogue items on the bill; batch and expiry come from the lines).
+  const labelSeeds: LabelSeed[] = p.lines.flatMap((l) =>
+    l.itemId ? [{ itemId: l.itemId, copies: Math.min(999, Math.max(1, Math.ceil(l.qty))), batch: l.batchNo ?? null, expiry: l.expiry ?? null }] : [],
+  );
+
   return (
     <Page>
       <PageHeading
@@ -108,6 +116,11 @@ export default function PurchaseDetailPage() {
                 onClick={() => void pdf.run("purchase", PDF_PATHS.purchase(p.id), { mode: "download", fallbackName: `${p.billNumber || "purchase"}.pdf` })}
               >
                 {pdf.busy ? <Loader2Icon className="animate-spin" /> : <FileDownIcon />} {t("billing.pdf.purchase")}
+              </Button>
+            )}
+            {!cancelled && labelSeeds.length > 0 && (
+              <Button variant="outline" size="lg" onClick={() => setLabelling(true)}>
+                <TagsIcon /> {t("billing.labels.print")}
               </Button>
             )}
             {!cancelled && (
@@ -164,6 +177,7 @@ export default function PurchaseDetailPage() {
                   <p className="font-semibold">{p.supplier?.name ?? "—"}</p>
                 )}
                 {p.supplier?.gstin && <p className="font-mono text-xs">GSTIN {p.supplier.gstin}</p>}
+                <GstinStatusWarning gstin={p.supplier?.gstin} className="mt-2" />
                 <p className="text-meta text-muted-foreground">
                   {[p.supplier?.phone, p.supplier?.stateCode && stateLabel(p.supplier.stateCode)].filter(Boolean).join(" · ") ||
                     t("billing.picker.noDetails")}
@@ -339,6 +353,7 @@ export default function PurchaseDetailPage() {
 
       <PayPurchaseDialog open={paying} onOpenChange={setPaying} purchase={{ id: p.id, billNumber: p.billNumber, balance }} />
       <DebitNoteDialog open={returning} onOpenChange={setReturning} purchase={p} />
+      <LabelDialog open={labelling} seeds={labelSeeds} note={t("billing.labels.fromPurchaseBody")} onClose={() => setLabelling(false)} />
       <ConfirmDialog
         open={cancelling}
         onOpenChange={setCancelling}

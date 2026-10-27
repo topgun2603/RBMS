@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarCheckIcon, Loader2Icon, LockIcon, MinusIcon, PlusIcon, PrinterIcon, StoreIcon, WifiOffIcon } from "lucide-react";
+import { ArrowRightLeftIcon, CalendarCheckIcon, Loader2Icon, LockIcon, MinusIcon, PlusIcon, PrinterIcon, RefreshCwIcon, StoreIcon, WifiOffIcon } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -35,12 +35,15 @@ import {
   ToggleGroupItem,
   toast,
 } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { ApprovalCancelled, describeError, useDiscountApproval, useI18n } from "@srirealtime/web";
 import { fetchPdf, usePaymentsReport } from "../lib/api";
 import { money, rupeesToPaise, timeShort, todayIST } from "../lib/format";
+import { closeBlockers } from "../lib/close-check";
 import { printPdfBlob } from "../lib/print";
+import { storageKey, useLocalState } from "../lib/storage";
 import { countTotal, DENOMINATIONS, type Denomination, type DenominationCounts } from "../lib/tender";
-import { tillReportPath, useTillActions, useTillReport, type TillReport, type TillSession } from "../lib/till";
+import { CASH_CATEGORIES, REPORT_PAPERS, tillReportPath, useClosedTills, useTillActions, useTillReport, zLabel, type CashCategory, type ReportPaper, type TillReport, type TillSession } from "../lib/till";
+import { useOffline } from "./offline/offline-provider";
 import { usePos } from "./pos-context";
 
 export interface DayDialogProps {
@@ -78,8 +81,12 @@ export function DayDialog(props: DayDialogProps) {
   const s = props.session;
   const isOpen = !!s && s.status === "open";
   const [closed, setClosed] = React.useState<{ session: TillSession; report: TillReport } | null>(null);
+  const [tab, setTab] = React.useState("summary");
   React.useEffect(() => {
-    if (props.open) setClosed(null);
+    if (props.open) {
+      setClosed(null);
+      setTab("summary");
+    }
   }, [props.open]);
 
   const body = !online.online ? (
@@ -94,7 +101,7 @@ export function DayDialog(props: DayDialogProps) {
       <Skeleton className="h-40 rounded-xl" />
     </div>
   ) : closed ? (
-    <ClosedSummary session={closed.session} report={closed.report} onPrint={() => void printSlip(tillReportPath(closed.session.id), locale).catch((e) => toast.error(describeError(e, t)))} />
+    <ClosedSummary session={closed.session} report={closed.report} onPrint={(paper) => void printSlip(tillReportPath(closed.session.id, paper), locale).catch((e) => toast.error(describeError(e, t)))} />
   ) : !props.canTill ? (
     <Alert variant="warning">
       <LockIcon />
@@ -104,17 +111,25 @@ export function DayDialog(props: DayDialogProps) {
   ) : !isOpen ? (
     <OpenForm register={props.register} onRegister={props.onRegister} onOpened={props.onClose} />
   ) : (
-    <Tabs defaultValue="summary" className="grid gap-4">
+    <Tabs value={tab} onValueChange={setTab} className="grid gap-4">
       <TabsList className="w-full">
         <TabsTrigger value="summary">{t("pos.day.tabSummary")}</TabsTrigger>
         <TabsTrigger value="cash">{t("pos.day.tabCash")}</TabsTrigger>
+        <TabsTrigger value="handover">{t("pos.day.tabHandover")}</TabsTrigger>
         <TabsTrigger value="close">{t("pos.day.tabClose")}</TabsTrigger>
       </TabsList>
       <TabsContent value="summary">
-        <XReport session={s!} onPrint={() => void printSlip(tillReportPath(s!.id), locale).catch((e) => toast.error(describeError(e, t)))} />
+        <XReport
+          session={s!}
+          onPrint={(paper) => void printSlip(tillReportPath(s!.id, paper), locale).catch((e) => toast.error(describeError(e, t)))}
+          onPrintZ={(id, paper) => void printSlip(tillReportPath(id, paper), locale).catch((e) => toast.error(describeError(e, t)))}
+        />
       </TabsContent>
       <TabsContent value="cash">
         <CashMove session={s!} register={props.register} />
+      </TabsContent>
+      <TabsContent value="handover">
+        <HandoverForm session={s!} register={props.register} onDone={() => setTab("summary")} />
       </TabsContent>
       <TabsContent value="close">
         <CloseForm session={s!} register={props.register} onClosed={setClosed} />
@@ -131,7 +146,7 @@ export function DayDialog(props: DayDialogProps) {
             {closed
               ? t("pos.day.closedAt", { time: timeShort(closed.session.closedAt ?? Date.now()) })
               : isOpen
-                ? t("pos.till.openSince", { register: s!.register, time: timeShort(s!.openedAt), by: s!.openedByName ?? "" })
+                ? t("pos.till.openSince", { register: s!.register, time: timeShort(s!.openedAt), by: s!.cashierName ?? s!.openedByName ?? "" })
                 : t("pos.day.notOpen")}
           </DialogDescription>
         </DialogHeader>
@@ -216,11 +231,63 @@ function OpenForm({ register, onRegister, onOpened }: { register: string; onRegi
   );
 }
 
-function XReport({ session, onPrint }: { session: TillSession; onPrint: () => void }) {
+/** Paper the Z / X report prints on, remembered on this device (58 / 80 mm roll or A4). */
+function usePaper(): [ReportPaper, (p: ReportPaper) => void] {
+  const { tenant } = usePos();
+  const [paper, setPaper] = useLocalState<ReportPaper>(storageKey("reportPaper", tenant), "80");
+  return [REPORT_PAPERS.includes(paper) ? paper : "80", setPaper];
+}
+
+function PaperPicker({ value, onChange }: { value: ReportPaper; onChange: (p: ReportPaper) => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground">{t("pos.day.paper")}</span>
+      <ToggleGroup type="single" size="sm" variant="outline" value={value} onValueChange={(v) => v && onChange(v as ReportPaper)} aria-label={t("pos.day.paper")}>
+        {REPORT_PAPERS.map((p) => (
+          <ToggleGroupItem key={p} value={p} className="h-7 px-2 text-xs">
+            {t(`pos.day.paper.${p}`)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  );
+}
+
+/** Earlier days of this register: reprint any Z report (they never change once closed). */
+function ZHistory({ register, paper, onPrintZ }: { register: string; paper: ReportPaper; onPrintZ: (id: string, paper: ReportPaper) => void }) {
+  const { t } = useI18n();
+  const closed = useClosedTills(register, true);
+  if (!closed.data?.length) return null;
+  return (
+    <section className="grid gap-1.5">
+      <h3 className="text-sm font-semibold">{t("pos.day.history")}</h3>
+      <ul className="grid gap-1 text-sm tabular-nums">
+        {closed.data.map((s) => (
+          <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
+            <span className="truncate">
+              {zLabel(s)} · {s.date}
+              {s.closedByName ? ` · ${s.closedByName}` : ""}
+            </span>
+            <span className="flex items-center gap-2">
+              <span className={cn((s.difference ?? 0) < 0 && "text-destructive")}>{((s.difference ?? 0) > 0 ? "+" : "") + money(s.difference ?? 0)}</span>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={t("pos.till.printZ")} onClick={() => onPrintZ(s.id, paper)}>
+                <PrinterIcon />
+              </Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function XReport({ session, onPrint, onPrintZ }: { session: TillSession; onPrint: (paper: ReportPaper) => void; onPrintZ: (id: string, paper: ReportPaper) => void }) {
   const { t } = useI18n();
   const { has, branch } = usePos();
   const x = useTillReport(session.id, true);
   const shop = usePaymentsReport(todayIST(), branch?.id ?? null, has.reports);
+  const [paper, setPaper] = usePaper();
   const label = (m: string) => t(`pos.day.method.${m}`);
   const r = x.data?.report;
   return (
@@ -239,6 +306,8 @@ function XReport({ session, onPrint }: { session: TillSession; onPrint: () => vo
           <section className="grid gap-1.5">
             <h3 className="text-sm font-semibold">{t("pos.till.thisRegister", { register: session.register })}</h3>
             <dl className="grid gap-1 rounded-xl border p-3 text-sm tabular-nums">
+              <Row label={t("pos.day.cashier")} value={session.cashierName ?? "—"} />
+              {r.billRange?.from && <Row label={t("pos.day.billRange")} value={r.billRange.to && r.billRange.to !== r.billRange.from ? `${r.billRange.from} – ${r.billRange.to}` : r.billRange.from} />}
               <Row label={t("pos.day.openingCash")} value={money(r.cash.opening)} />
               {r.payments.map((p) => (
                 <Row key={p.method} label={`${label(p.method)} · ${p.count}`} value={money(p.amount)} />
@@ -247,13 +316,46 @@ function XReport({ session, onPrint }: { session: TillSession; onPrint: () => vo
               {r.refunds.map((p) => (
                 <Row key={`r-${p.method}`} label={t("pos.till.refundsBy", { method: label(p.method), count: p.count })} value={`−${money(p.amount)}`} tone="destructive" />
               ))}
+              {!!r.discounts?.total && <Row label={t("pos.day.discounts", { count: r.discounts.bills })} value={`−${money(r.discounts.total)}`} />}
+              {r.creditNotes.count > 0 && <Row label={t("pos.day.returns", { count: r.creditNotes.count })} value={`−${money(r.creditNotes.total)}`} />}
+              {!!r.voids?.count && <Row label={t("pos.day.voids", { count: r.voids.count })} value={money(r.voids.total)} />}
               {(r.cash.cashIn > 0 || r.cash.cashOut > 0) && <Row label={t("pos.day.cashMoves")} value={money(r.cash.cashIn - r.cash.cashOut)} />}
+              {!!r.cash.handoverAdjust && <Row label={t("pos.day.handoverAdj")} value={money(r.cash.handoverAdjust)} />}
               <Row label={t("pos.day.expected")} value={money(r.cash.expected)} bold />
             </dl>
           </section>
-          <Button type="button" variant="outline" onClick={onPrint}>
-            <PrinterIcon /> {t("pos.till.printX")}
-          </Button>
+          {!!r.taxByRate?.length && (
+            <section className="grid gap-1.5">
+              <h3 className="text-sm font-semibold">{t("pos.day.taxByRate")}</h3>
+              <dl className="grid gap-1 rounded-xl border p-3 text-sm tabular-nums">
+                {r.taxByRate.map((x2) => (
+                  <Row key={x2.gstRate} label={t("pos.day.taxRow", { rate: x2.gstRate, taxable: money(x2.taxable) })} value={money(x2.cgst + x2.sgst + x2.igst)} />
+                ))}
+              </dl>
+            </section>
+          )}
+          {!!r.cashByCategory?.length && (
+            <section className="grid gap-1.5">
+              <h3 className="text-sm font-semibold">{t("pos.day.byCategory")}</h3>
+              <dl className="grid gap-1 rounded-xl border p-3 text-sm tabular-nums">
+                {r.cashByCategory.map((c) => (
+                  <Row
+                    key={c.category}
+                    label={`${t(`pos.cash.cat.${c.category}`)} · ${c.count}`}
+                    value={[c.cashIn ? `+${money(c.cashIn)}` : "", c.cashOut ? `−${money(c.cashOut)}` : ""].filter(Boolean).join(" ")}
+                  />
+                ))}
+              </dl>
+            </section>
+          )}
+          <p className="text-xs text-muted-foreground">{t("pos.day.xNote")}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <PaperPicker value={paper} onChange={setPaper} />
+            <Button type="button" variant="outline" onClick={() => onPrint(paper)}>
+              <PrinterIcon /> {t("pos.till.printX")}
+            </Button>
+          </div>
+          {has.reports && <ZHistory register={session.register} paper={paper} onPrintZ={onPrintZ} />}
         </>
       )}
       {has.reports && (
@@ -286,10 +388,17 @@ function CashMove({ session, register }: { session: TillSession; register: strin
   const { cashier, branch } = usePos();
   const actions = useTillActions(register, branch?.id ?? null);
   const [dir, setDir] = React.useState<"in" | "out">("out");
+  const [category, setCategory] = React.useState<CashCategory>("petty_expense");
   const [text, setText] = React.useState("");
   const [note, setNote] = React.useState("");
   const amount = rupeesToPaise(text);
   const busy = actions.cash.isPending;
+  // Out: tea, courier, drawings. In: change float. "Other" fits both.
+  const categories = CASH_CATEGORIES.filter((c) => (dir === "out" ? c !== "change_float" : c !== "petty_expense" && c !== "owner_drawing"));
+  React.useEffect(() => {
+    setCategory((c) => (categories.includes(c) ? c : dir === "out" ? "petty_expense" : "change_float"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `categories` follows `dir`
+  }, [dir]);
   return (
     <form
       className="grid gap-4"
@@ -297,7 +406,7 @@ function CashMove({ session, register }: { session: TillSession; register: strin
         e.preventDefault();
         if (!amount || busy) return;
         try {
-          await actions.cash.mutateAsync({ id: session.id, amount: dir === "in" ? amount : -amount, reason: note.trim(), actorName: cashier });
+          await actions.cash.mutateAsync({ id: session.id, amount: dir === "in" ? amount : -amount, category, reason: note.trim(), actorName: cashier });
           setText("");
           setNote("");
           toast.success(t("pos.till.cashRecorded"));
@@ -329,6 +438,17 @@ function CashMove({ session, register }: { session: TillSession; register: strin
         </Field>
       </FieldRow>
       <Field>
+        <FieldLabel htmlFor={null}>{t("pos.cash.category")}</FieldLabel>
+        <ToggleGroup type="single" variant="outline" value={category} onValueChange={(v) => v && setCategory(v as CashCategory)} className="flex flex-wrap justify-start gap-1">
+          {categories.map((c) => (
+            <ToggleGroupItem key={c} value={c} className="px-3">
+              {t(`pos.cash.cat.${c}`)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <FieldHint>{t("pos.cash.catHint")}</FieldHint>
+      </Field>
+      <Field>
         <FieldLabel optional={t("pos.common.optional")}>{t("pos.day.moveNote")}</FieldLabel>
         <FieldControl>
           <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value.slice(0, 120))} placeholder={t("pos.day.moveNotePlaceholder")} />
@@ -342,7 +462,8 @@ function CashMove({ session, register }: { session: TillSession; register: strin
           {session.cashEntries.map((m) => (
             <li key={m.id} className="flex justify-between gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
               <span className="truncate">
-                {timeShort(m.at)} · {m.reason || (m.amount > 0 ? t("pos.day.cashIn") : t("pos.day.cashOut"))}
+                {timeShort(m.at)} · {t(`pos.cash.cat.${m.category ?? "other"}`)}
+                {m.reason ? ` · ${m.reason}` : ""}
                 {m.byName ? ` · ${m.byName}` : ""}
               </span>
               <span className={cn(m.amount < 0 && "text-destructive")}>{money(m.amount)}</span>
@@ -354,35 +475,28 @@ function CashMove({ session, register }: { session: TillSession; register: strin
   );
 }
 
-function CloseForm({ session, register, onClosed }: { session: TillSession; register: string; onClosed: (r: { session: TillSession; report: TillReport }) => void }) {
+/** The count, what the till expects, the difference and (when it differs) the reason: shared by closing and handover. */
+function CountSection({
+  counts,
+  onCounts,
+  expected,
+  reason,
+  onReason,
+}: {
+  counts: DenominationCounts;
+  onCounts: (c: DenominationCounts) => void;
+  expected: number | null;
+  reason: string;
+  onReason: (r: string) => void;
+}) {
   const { t } = useI18n();
-  const { cashier, branch } = usePos();
-  const actions = useTillActions(register, branch?.id ?? null);
-  const x = useTillReport(session.id, true);
-  const [counts, setCounts] = React.useState<DenominationCounts>({});
-  const [note, setNote] = React.useState("");
   const counted = countTotal(counts);
-  const expected = x.data?.report.cash.expected ?? null;
   const diff = expected === null ? 0 : counted - expected;
-  const busy = actions.close.isPending;
   return (
-    <form
-      className="grid gap-4"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (busy) return;
-        try {
-          const r = await actions.close.mutateAsync({ id: session.id, count: counts, note: note.trim(), actorName: cashier });
-          toast.success(t("pos.day.closed"));
-          onClosed(r);
-        } catch (err) {
-          toast.error(describeError(err, t));
-        }
-      }}
-    >
+    <>
       <Field>
         <FieldLabel htmlFor={null}>{t("pos.day.count")}</FieldLabel>
-        <DenominationCounter counts={counts} onChange={setCounts} />
+        <DenominationCounter counts={counts} onChange={onCounts} />
       </Field>
       <div className="grid grid-cols-3 gap-3">
         <Tile label={t("pos.day.expected")} value={expected === null ? "…" : money(expected)} />
@@ -393,6 +507,141 @@ function CloseForm({ session, register, onClosed }: { session: TillSession; regi
           tone={diff === 0 ? "success" : diff > 0 ? "warning" : "destructive"}
         />
       </div>
+      {diff !== 0 && expected !== null && (
+        <Field>
+          <FieldLabel>{t("pos.day.reason")}</FieldLabel>
+          <FieldControl>
+            <Textarea rows={2} value={reason} onChange={(e) => onReason(e.target.value.slice(0, 200))} aria-invalid={!reason.trim()} />
+          </FieldControl>
+          <FieldHint>{t("pos.day.reasonHint")}</FieldHint>
+        </Field>
+      )}
+    </>
+  );
+}
+
+/** Bills made offline that have not synced are not in the Z report: say so, offer to sync, and let the cashier choose. */
+function OfflinePending({ closeAnyway, onCloseAnyway }: { closeAnyway: boolean; onCloseAnyway: (v: boolean) => void }) {
+  const { t } = useI18n();
+  const offline = useOffline();
+  const { online } = usePos();
+  if (offline.counts.pending === 0) return null;
+  return (
+    <Alert variant="warning">
+      <WifiOffIcon />
+      <AlertTitle>{t("pos.day.offlinePending", { count: offline.counts.pending })}</AlertTitle>
+      <AlertDescription className="grid gap-2">
+        <div>
+          <Button type="button" size="sm" variant="outline" disabled={!online.online || offline.syncing} onClick={() => void offline.syncNow()}>
+            {offline.syncing ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />} {offline.syncing ? t("pos.day.syncing") : t("pos.day.syncNow")}
+          </Button>
+        </div>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={closeAnyway} onChange={(e) => onCloseAnyway(e.target.checked)} />
+          <span>{t("pos.day.closeAnyway")}</span>
+        </label>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function CloseForm({ session, register, onClosed }: { session: TillSession; register: string; onClosed: (r: { session: TillSession; report: TillReport }) => void }) {
+  const { t } = useI18n();
+  const { cashier, branch } = usePos();
+  const offline = useOffline();
+  const approval = useDiscountApproval();
+  const actions = useTillActions(register, branch?.id ?? null);
+  const x = useTillReport(session.id, true);
+  const [counts, setCounts] = React.useState<DenominationCounts>({});
+  const [note, setNote] = React.useState("");
+  const [reason, setReason] = React.useState("");
+  const [closeAnyway, setCloseAnyway] = React.useState(false);
+  const counted = countTotal(counts);
+  const expected = x.data?.report.cash.expected ?? null;
+  const blockers = closeBlockers({ counted, expected, reason, pendingBills: offline.counts.pending, closeAnyway });
+  const busy = actions.close.isPending;
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy || blockers.length > 0) return;
+        try {
+          // A difference beyond the shop's limit asks for a manager's PIN, then sends the same close again.
+          const r = await approval.run((pin) => actions.close.mutateAsync({ id: session.id, count: counts, note: note.trim(), reason, actorName: cashier, ...(pin ? { pin } : {}) }));
+          toast.success(t("pos.day.closed"));
+          onClosed(r);
+        } catch (err) {
+          if (!(err instanceof ApprovalCancelled)) toast.error(describeError(err, t));
+        }
+      }}
+    >
+      <OfflinePending closeAnyway={closeAnyway} onCloseAnyway={setCloseAnyway} />
+      <CountSection counts={counts} onCounts={setCounts} expected={expected} reason={reason} onReason={setReason} />
+      <Field>
+        <FieldLabel optional={t("pos.common.optional")}>{t("pos.day.closeNote")}</FieldLabel>
+        <FieldControl>
+          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value.slice(0, 300))} />
+        </FieldControl>
+      </Field>
+      <p className="text-xs text-muted-foreground">{t("pos.day.closeNote2")}</p>
+      {blockers.includes("reason") && counted > 0 && <p className="text-xs text-destructive">{t("pos.day.reasonRequired")}</p>}
+      <DialogFooter>
+        <Button type="submit" size="lg" disabled={busy || blockers.length > 0}>
+          {busy ? <Loader2Icon className="animate-spin" /> : <CalendarCheckIcon />} {t("pos.day.close")}
+        </Button>
+      </DialogFooter>
+      {approval.dialog}
+    </form>
+  );
+}
+
+/** Hands the open drawer to the next cashier: a count, both names recorded, the day stays open. */
+function HandoverForm({ session, register, onDone }: { session: TillSession; register: string; onDone: () => void }) {
+  const { t } = useI18n();
+  const { cashier, branch } = usePos();
+  const approval = useDiscountApproval();
+  const actions = useTillActions(register, branch?.id ?? null);
+  const x = useTillReport(session.id, true);
+  const [to, setTo] = React.useState("");
+  const [counts, setCounts] = React.useState<DenominationCounts>({});
+  const [reason, setReason] = React.useState("");
+  const [note, setNote] = React.useState("");
+  const counted = countTotal(counts);
+  const expected = x.data?.report.cash.expected ?? null;
+  // Offline bills only matter at close (the Z report); a handover just needs a count and, when it differs, a reason.
+  const blockers = closeBlockers({ counted, expected, reason, pendingBills: 0, closeAnyway: false });
+  const busy = actions.handover.isPending;
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy || blockers.length > 0 || !to.trim()) return;
+        try {
+          await approval.run((pin) => actions.handover.mutateAsync({ id: session.id, toName: to.trim(), count: counts, note: note.trim(), reason, actorName: cashier, ...(pin ? { pin } : {}) }));
+          toast.success(t("pos.handover.done", { name: to.trim() }));
+          setTo("");
+          setCounts({});
+          setReason("");
+          setNote("");
+          onDone();
+        } catch (err) {
+          if (!(err instanceof ApprovalCancelled)) toast.error(describeError(err, t));
+        }
+      }}
+    >
+      <div>
+        <h3 className="text-sm font-semibold">{t("pos.handover.title")}</h3>
+        <p className="text-sm text-muted-foreground">{t("pos.handover.hint")}</p>
+      </div>
+      <Field>
+        <FieldLabel>{t("pos.handover.to")}</FieldLabel>
+        <FieldControl>
+          <Input value={to} maxLength={80} onChange={(e) => setTo(e.target.value)} placeholder={t("pos.handover.toPlaceholder")} />
+        </FieldControl>
+      </Field>
+      <CountSection counts={counts} onCounts={setCounts} expected={expected} reason={reason} onReason={setReason} />
       <Field>
         <FieldLabel optional={t("pos.common.optional")}>{t("pos.day.closeNote")}</FieldLabel>
         <FieldControl>
@@ -400,30 +649,58 @@ function CloseForm({ session, register, onClosed }: { session: TillSession; regi
         </FieldControl>
       </Field>
       <DialogFooter>
-        <Button type="submit" size="lg" disabled={busy}>
-          {busy ? <Loader2Icon className="animate-spin" /> : <CalendarCheckIcon />} {t("pos.day.close")}
+        <Button type="submit" size="lg" disabled={busy || blockers.length > 0 || !to.trim() || counted === 0}>
+          {busy ? <Loader2Icon className="animate-spin" /> : <ArrowRightLeftIcon />} {t("pos.handover.submit")}
         </Button>
       </DialogFooter>
+      {session.handovers.length > 0 && (
+        <section className="grid gap-1.5">
+          <h3 className="text-sm font-semibold">{t("pos.handover.list")}</h3>
+          <ul className="grid gap-1 text-sm tabular-nums">
+            {session.handovers.map((h) => (
+              <li key={h.id} className="grid gap-0.5 rounded-lg bg-muted/50 px-3 py-1.5">
+                <span className="flex justify-between gap-2">
+                  <span>
+                    {timeShort(h.at)} · {t("pos.handover.line", { from: h.fromName ?? "?", to: h.toName })}
+                  </span>
+                  <span className={cn(h.difference < 0 && "text-destructive")}>{(h.difference > 0 ? "+" : "") + money(h.difference)}</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {t("pos.handover.counted", { counted: money(h.counted), expected: money(h.expected) })}
+                  {h.note ? ` · ${h.note}` : ""}
+                  {h.approvedByName ? ` · ${t("pos.day.approvedBy", { name: h.approvedByName })}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {approval.dialog}
     </form>
   );
 }
 
-function ClosedSummary({ session, report, onPrint }: { session: TillSession; report: TillReport; onPrint: () => void }) {
+function ClosedSummary({ session, report, onPrint }: { session: TillSession; report: TillReport; onPrint: (paper: ReportPaper) => void }) {
   const { t } = useI18n();
+  const [paper, setPaper] = usePaper();
   const diff = session.difference ?? 0;
   return (
     <div className="grid gap-4">
       <div className="grid justify-items-center gap-2 py-1 text-center">
         <SuccessCheck size={56} />
-        <p className="font-semibold">{t("pos.till.closedTitle", { register: session.register })}</p>
+        <p className="font-semibold">{t("pos.day.closedZ", { register: session.register, z: zLabel(session) })}</p>
+        {session.closeApprovedByName && <p className="text-xs text-muted-foreground">{t("pos.day.approvedBy", { name: session.closeApprovedByName })}</p>}
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Tile label={t("pos.day.bills")} value={String(report.bills.count)} />
         <Tile label={t("pos.day.counted")} value={money(session.countedCash ?? 0)} />
         <Tile label={t("pos.day.difference")} value={(diff > 0 ? "+" : "") + money(diff)} tone={diff === 0 ? "success" : diff > 0 ? "warning" : "destructive"} />
       </div>
-      <DialogFooter>
-        <Button type="button" size="lg" onClick={onPrint}>
+      {session.differenceReason && <p className="text-sm text-muted-foreground">{session.differenceReason}</p>}
+      <p className="text-xs text-muted-foreground">{t("pos.day.closeNote2")}</p>
+      <DialogFooter className="items-center sm:justify-between">
+        <PaperPicker value={paper} onChange={setPaper} />
+        <Button type="button" size="lg" onClick={() => onPrint(paper)}>
           <PrinterIcon /> {t("pos.till.printZ")}
         </Button>
       </DialogFooter>

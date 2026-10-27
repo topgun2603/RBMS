@@ -16,8 +16,26 @@ function hsnQty(l: { qty: number; unit?: string | null; unitFactor?: number | nu
  * GSTR-1 JSON in the GSTN offline-tool / API layout: `gstin`, `fp` (MMYYYY) and the sections b2b, b2cl, b2cs, cdnr,
  * cdnur, hsn and doc_issue. Amounts are rupees with 2 decimals (summed in paise first). Credit notes (document type CRN)
  * go to cdnr (registered buyers) or cdnur (B2CL bills); notes on B2CS bills are netted into b2cs, and every note is
- * taken off the HSN summary. Debit notes, exports, nil-rated (Table 8) and advances are not produced.
+ * taken off the HSN summary. Debit notes, nil-rated (Table 8) and advances are not produced. Exports (place of supply 96
+ * or an export supply type) are left out of B2B / B2CL / B2CS: they belong in table 6A (`exp`, built by
+ * packages/gstfiling); their credit notes go to CDNUR as EXPWP / EXPWOP. Supplies to an SEZ are B2B with invoice type
+ * SEWP / SEWOP (always IGST). Their HSN lines are in the HSN summary like any other supply.
  */
+
+/** An export: an export supply type, or (bills before supply types existed) place of supply 96. */
+export function isExportDoc(inv: Pick<EInvoiceSource, "supplyType" | "placeOfSupply">): boolean {
+  if (inv.supplyType === "export_wpay" || inv.supplyType === "export_wopay") return true;
+  if (inv.supplyType === "sez_wpay" || inv.supplyType === "sez_wopay") return false;
+  return normalizeStateCode(inv.placeOfSupply) === "96";
+}
+
+/** With payment of IGST: the supply type says so, else IGST was charged. */
+export const withIgstPaid = (inv: Pick<EInvoiceSource, "supplyType" | "totals">): boolean =>
+  inv.supplyType === "export_wpay" || inv.supplyType === "sez_wpay" ? true : inv.supplyType === "export_wopay" || inv.supplyType === "sez_wopay" ? false : inv.totals.igst > 0;
+
+/** GSTR-1 invoice type of a B2B document: SEZ with / without payment, else regular. */
+export const b2bInvoiceType = (inv: Pick<EInvoiceSource, "supplyType">): Gstr1B2bInvoice["inv_typ"] =>
+  inv.supplyType === "sez_wpay" ? "SEWP" : inv.supplyType === "sez_wopay" ? "SEWOP" : "R";
 
 /** B2CL: inter-state supply to an unregistered buyer above ₹1,00,000 (from Aug 2024; was ₹2,50,000). */
 export const B2CL_THRESHOLD_PAISE = 100_000_00;
@@ -140,7 +158,7 @@ export interface Gstr1Options {
 export interface Gstr1Result {
   json: Gstr1Json;
   warnings: string[];
-  counts: { b2b: number; b2cl: number; b2cs: number; cdnr: number; cdnur: number; cancelled: number; skipped: number };
+  counts: { b2b: number; b2cl: number; b2cs: number; cdnr: number; cdnur: number; cancelled: number; skipped: number; exp: number };
 }
 
 /** "102026" → { from: "2026-10-01", to: "2026-10-31" }; null when malformed. */
@@ -232,7 +250,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
   if (!range || !periodRange(opts.period)) throw new RangeError(`Invalid return period: ${opts.period} (use MMYYYY)`);
   const gstin = normalizeGstin(opts.gstin);
   const warnings: string[] = [];
-  const counts = { b2b: 0, b2cl: 0, b2cs: 0, cdnr: 0, cdnur: 0, cancelled: 0, skipped: 0 };
+  const counts = { b2b: 0, b2cl: 0, b2cs: 0, cdnr: 0, cdnur: 0, cancelled: 0, skipped: 0, exp: 0 };
 
   const b2b = new Map<string, Gstr1B2bInvoice[]>();
   const b2cl = new Map<string, Gstr1B2cl["inv"]>();
@@ -279,22 +297,25 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
 
     const pos = normalizeStateCode(inv.placeOfSupply) ?? inv.placeOfSupply;
     const sellerState = stateFromGstin(gstin);
-    const inter = sellerState ? sellerState !== pos : inv.interState;
+    const exportDoc = isExportDoc(inv);
+    const sez = inv.supplyType === "sez_wpay" || inv.supplyType === "sez_wopay";
+    // Exports and SEZ supplies are inter-State (IGST) whatever the States.
+    const inter = exportDoc || sez ? true : sellerState ? sellerState !== pos : inv.interState;
     if (inter !== inv.interState) warnings.push(`${no}: inter-state flag does not match the place of supply; using ${inter ? "IGST" : "CGST/SGST"}`);
 
     if (isNote) {
-      const ns = noteSection(inv);
+      const ns = exportDoc ? "cdnur" : noteSection(inv);
       const rates = byRate(inv);
       const note = { ntty: "C" as const, nt_num: no, nt_dt: toGstr1Date(inv.date), pos, val: rupees(inv.totals.total) };
       if (ns === "cdnr") {
         counts.cdnr += 1;
         const ctin = normalizeGstin(inv.buyer.gstin!);
         const list = cdnr.get(ctin) ?? [];
-        list.push({ ...note, rchrg: "N", inv_typ: "R", itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, inter) })) });
+        list.push({ ...note, rchrg: "N", inv_typ: b2bInvoiceType(inv), itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, inter) })) });
         cdnr.set(ctin, list);
       } else if (ns === "cdnur") {
         counts.cdnur += 1;
-        cdnur.push({ typ: "B2CL", ...note, itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, true, true) })) });
+        cdnur.push({ typ: exportDoc ? (withIgstPaid(inv) ? "EXPWP" : "EXPWOP") : "B2CL", ...note, itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, true, true) })) });
       } else {
         // Notes on small B2C bills reduce the B2CS figures of the period.
         counts.b2cs += 1;
@@ -334,13 +355,21 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
       continue;
     }
 
-    const section = gstr1Section(inv);
-    counts[section] += 1;
     const rates = byRate(inv);
     const idt = toGstr1Date(inv.date);
     const val = rupees(inv.totals.total);
+    // Table 6A (exports) is built by gstfiling; an SEZ supply is B2B (with the SEZ unit's GSTIN).
+    let section: Section | "exp";
+    if (exportDoc) section = "exp";
+    else {
+      section = gstr1Section(inv);
+      if (sez && section !== "b2b") warnings.push(`${no}: supply to an SEZ without a valid buyer GSTIN; reported as B2C`);
+    }
+    counts[section] += 1;
 
-    if (section === "b2b") {
+    if (section === "exp") {
+      // Reported in table 6A; only the HSN summary below.
+    } else if (section === "b2b") {
       const ctin = normalizeGstin(inv.buyer.gstin!);
       const list = b2b.get(ctin) ?? [];
       list.push({
@@ -349,7 +378,7 @@ export function buildGstr1(invoices: readonly EInvoiceSource[], opts: Gstr1Optio
         val,
         pos,
         rchrg: "N",
-        inv_typ: "R",
+        inv_typ: b2bInvoiceType(inv),
         itms: rates.map(([rt, a], i) => ({ num: i + 1, itm_det: itemDetail(rt, a, inter) })),
       });
       b2b.set(ctin, list);

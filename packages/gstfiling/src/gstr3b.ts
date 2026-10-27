@@ -94,8 +94,13 @@ const ZERO_RATED_POS = "96";
 
 /** The class of a sales line in GSTR-3B / GSTR-1: where its value goes. */
 export type LineClass = "taxable" | "zero" | "nil" | "exempt" | "nongst";
-export function classifyLine(doc: Pick<SalesDocSrc, "placeOfSupply">, line: Pick<SalesLineSrc, "gstRate" | "hsn">, config: Pick<GstConfig, "zeroRateClass" | "zeroRateRules">): LineClass {
-  if (doc.placeOfSupply === ZERO_RATED_POS) return "zero";
+export function classifyLine(
+  doc: Pick<SalesDocSrc, "placeOfSupply"> & Partial<Pick<SalesDocSrc, "supplyType">>,
+  line: Pick<SalesLineSrc, "gstRate" | "hsn">,
+  config: Pick<GstConfig, "zeroRateClass" | "zeroRateRules">,
+): LineClass {
+  // Exports (place of supply 96) and supplies to an SEZ are zero-rated (IGST Act section 16), with or without IGST.
+  if (doc.placeOfSupply === ZERO_RATED_POS || (doc.supplyType && doc.supplyType !== "domestic")) return "zero";
   if (line.gstRate > 0) return "taxable";
   return zeroClassOf(config, line.hsn);
 }

@@ -20,6 +20,7 @@ import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   BanIcon,
+  RepeatIcon,
   CheckCircle2Icon,
   FileDownIcon,
   GlobeIcon,
@@ -68,6 +69,8 @@ import { EINVOICE_FEATURE, EInvoiceCard } from "../components/einvoice/einvoice-
 import { CreditNoteDialog } from "../components/credit-notes/credit-note-dialog";
 import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui";
 import { InvoiceDocument } from "../components/invoice-document";
+import { ExportDetailCard } from "../components/export/export-detail";
+import { GstinStatusWarning } from "../components/gstin/gstin-assist";
 import { CancelDialog, PaymentDialog, ShareDialog } from "../components/invoice-dialogs";
 import { LinkedQuotationBanner } from "../components/quotations/linked-quotation";
 import { LinkedSalesDocsBanner } from "../components/sales-docs/linked-sales-docs";
@@ -168,6 +171,8 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
   const whatsapp = useFeature("invoices.whatsapp");
   const documents = useFeature("documents");
   const einvoice = useFeature(EINVOICE_FEATURE);
+  const recurring = useFeature("invoices.recurring");
+  const exported = inv.supplyType === "export_wpay" || inv.supplyType === "export_wopay";
   const pdf = usePdf();
   const pdfName = `${(inv.number ?? t("billing.status.draft")).replace(/[/\\]/g, "-")}.pdf`;
   const downloadPdf = () => void pdf.run("a4", PDF_PATHS.invoice(inv.id), { mode: "download", fallbackName: pdfName });
@@ -283,6 +288,8 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
         </Alert>
       )}
 
+      <GstinStatusWarning gstin={inv.customer.gstin} className="mb-4" />
+
       {/* Title + actions */}
       <div className="mb-section flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between" data-print-hide>
         <div className="flex min-w-0 items-center gap-3">
@@ -358,6 +365,11 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
                 <DropdownMenuItem className="h-10" onSelect={print}>
                   <PrinterIcon /> {t("billing.detail.savePdf")}
                 </DropdownMenuItem>
+                {recurring && inv.customerId && !draft && (
+                  <DropdownMenuItem className="h-10" onSelect={() => navigate(`recurring/new?customer=${inv.customerId}`)}>
+                    <RepeatIcon /> {t("billing.export.makeRecurring")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 {draft ? (
                   <DropdownMenuItem variant="destructive" className="h-10" onSelect={() => setDialog("delete")}>
@@ -546,7 +558,9 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
             </Card>
           )}
 
-          {einvoice && !draft && !!inv.customer.gstin?.trim() && <EInvoiceCard invoice={inv} />}
+          <ExportDetailCard invoice={inv} />
+
+          {einvoice && !draft && (!!inv.customer.gstin?.trim() || exported) && <EInvoiceCard invoice={inv} />}
 
           {sendable && whatsapp && (
             <Card>

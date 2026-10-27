@@ -2,6 +2,7 @@ import { pk, tenantId, timestamps } from "@srirealtime/db";
 import {
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -16,6 +17,7 @@ import {
 import { sql } from "drizzle-orm";
 import type { CreditNoteLineTotals, CreditNoteTotals, InvoiceTotals, LineTotals } from "./calc";
 import type { CustomerSnapshot, SellerProfile } from "./ports";
+import type { ExportDetails, ForeignAmounts, SupplyType } from "./export-calc";
 
 export const INVOICE_STATUSES = ["draft", "issued", "partially_paid", "paid", "cancelled"] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
@@ -59,6 +61,8 @@ export const billingCustomers = pgTable(
     gstin: text("gstin"),
     address: text("address"),
     stateCode: text("state_code"),
+    /** ISO 3166 alpha-2 country of a buyer outside India (state code 96); null = India. */
+    country: text("country"),
     /** Paise; + = they owed the shop before using the app, − = advance held. */
     openingBalance: integer("opening_balance").notNull().default(0),
     /** Paise; null = no limit. */
@@ -169,6 +173,18 @@ export const invoices = pgTable(
      * already took the goods out (docs/sales-documents.md), so issuing or cancelling the bill never moves stock again.
      */
     stockMovedBy: text("stock_moved_by").$type<"challan">(),
+    /** Domestic, export with / without IGST, SEZ with / without IGST (docs/recurring-export-gstin.md). */
+    supplyType: text("supply_type").$type<SupplyType>().notNull().default("domestic"),
+    /** ISO 4217 code of a foreign-currency bill; null = rupees. Rupee columns stay the accounting truth. */
+    currency: text("currency"),
+    /** Rupees for one unit of `currency`, as typed (4 decimals). */
+    exchangeRate: doublePrecision("exchange_rate"),
+    /** Foreign-currency figures of the bill (minor units), stored next to the rupee ones. */
+    foreign: jsonb("foreign").$type<ForeignAmounts>(),
+    /** Shipping bill no. / date / port code and the frozen LUT of an export or SEZ bill. */
+    exportDetails: jsonb("export_details").$type<ExportDetails>(),
+    /** The recurring run that made this bill (docs/recurring-export-gstin.md); one bill per run. */
+    recurringRunId: uuid("recurring_run_id"),
     ...timestamps(),
   },
   (t) => [
@@ -202,6 +218,14 @@ export const invoicePayments = pgTable(
     source: text("source").$type<PaymentSource>().notNull().default("manual"),
     /** Credit note a refund (source "refund") belongs to. */
     creditNoteId: uuid("credit_note_id"),
+    /**
+     * A payment received in a foreign currency: what came in (minor units of `currency`) at the rate the bank gave.
+     * `amount` is what it settled on the bill (at the bill's rate); `forex_diff` = rupees received − amount (+ = gain).
+     */
+    currency: text("currency"),
+    foreignAmount: integer("foreign_amount"),
+    exchangeRate: doublePrecision("exchange_rate"),
+    forexDiff: integer("forex_diff").notNull().default(0),
     /** POS till session the money went into / came out of. */
     tillSessionId: uuid("till_session_id"),
     createdBy: uuid("created_by"),
@@ -370,11 +394,17 @@ export const creditNoteSeries = pgTable(
 export const TILL_STATUSES = ["open", "closed"] as const;
 export type TillStatus = (typeof TILL_STATUSES)[number];
 
+/** Why cash went in (pay-in) or out (pay-out) of the drawer; the Z report totals them. */
+export const TILL_CASH_CATEGORIES = ["petty_expense", "owner_drawing", "change_float", "other"] as const;
+export type TillCashCategory = (typeof TILL_CASH_CATEGORIES)[number];
+
 /** Cash put into (+) or taken out of (−) the drawer during a session. */
 export interface TillCashEntry {
   id: string;
   /** Paise, signed: + = cash in, − = cash out. */
   amount: number;
+  /** Absent on entries made before categories existed (read as "other"). */
+  category?: TillCashCategory;
   reason: string;
   by: string | null;
   byName: string | null;
@@ -383,6 +413,27 @@ export interface TillCashEntry {
 
 /** Notes and coins counted, e.g. { "500": 4, "100": 7 }. */
 export type DenominationCount = Record<string, number>;
+
+/**
+ * The drawer handed from one cashier to the next without closing the day: the outgoing cashier's count, what was
+ * expected at that moment and the difference. The next leg starts from the counted cash, so the difference stays with
+ * the cashier who handed over.
+ */
+export interface TillHandover {
+  id: string;
+  at: string;
+  fromBy: string | null;
+  fromName: string | null;
+  toBy: string | null;
+  toName: string;
+  count: DenominationCount | null;
+  expected: number;
+  counted: number;
+  /** counted − expected (paise; + = extra, − = short). */
+  difference: number;
+  note: string | null;
+  approvedByName: string | null;
+}
 
 /** One cash drawer session of a register (device) at a branch: opened with a float, closed with a count. */
 export const tillSessions = pgTable(
@@ -410,6 +461,15 @@ export const tillSessions = pgTable(
     difference: integer("difference"),
     /** X report frozen at close (the Z report). */
     summary: jsonb("summary"),
+    /** Z report number of the register (Z1, Z2 ...), set at close; never reused, a closed session cannot be re-opened. */
+    zNumber: integer("z_number"),
+    /** Cashier changes during the session (the drawer counted and handed over). */
+    handovers: jsonb("handovers").$type<TillHandover[]>().notNull().default([]),
+    /** Why the count differs from the expected cash (required when it does). */
+    differenceReason: text("difference_reason"),
+    /** Manager who approved a difference beyond the shop's limit at close. */
+    closeApprovedBy: uuid("close_approved_by"),
+    closeApprovedByName: text("close_approved_by_name"),
     note: text("note"),
     closedBy: uuid("closed_by"),
     closedByName: text("closed_by_name"),
@@ -422,6 +482,10 @@ export const tillSessions = pgTable(
       .on(t.tenantId, sql`coalesce(${t.branchId}, '00000000-0000-0000-0000-000000000000'::uuid)`, sql`lower(${t.register})`)
       .where(sql`${t.status} = 'open'`),
     index("till_sessions_tenant_date_idx").on(t.tenantId, t.date),
+    // Z numbers run per register (and branch) and never repeat.
+    uniqueIndex("till_sessions_z_number_uq")
+      .on(t.tenantId, sql`coalesce(${t.branchId}, '00000000-0000-0000-0000-000000000000'::uuid)`, sql`lower(${t.register})`, t.zNumber)
+      .where(sql`${t.zNumber} is not null`),
   ],
 );
 
@@ -544,3 +608,5 @@ export type InvoiceMessageRow = typeof invoiceMessages.$inferSelect;
 
 // Proforma invoices, sale orders and delivery challans (docs/sales-documents.md); drizzle-kit reads this file.
 export * from "./schema-sales";
+// Recurring invoices and the GSTIN lookup cache (docs/recurring-export-gstin.md).
+export * from "./schema-recurring";

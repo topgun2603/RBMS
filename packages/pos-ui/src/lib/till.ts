@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { APPROVAL_PIN_HEADER } from "@srirealtime/web";
 import { posApi, isNetworkError } from "./api";
 import { reportNetwork } from "./online";
 import { readJson, storageKey, writeJson, type DayRecord } from "./storage";
@@ -14,9 +15,14 @@ import type { PaymentMethod } from "./types";
  * closing and cash in / out need the server.
  */
 
+/** Why cash went in or out of the drawer (pay-in / pay-out). */
+export const CASH_CATEGORIES = ["petty_expense", "owner_drawing", "change_float", "other"] as const;
+export type CashCategory = (typeof CASH_CATEGORIES)[number];
+
 export interface TillCashEntry {
   id: string;
   amount: number;
+  category?: CashCategory;
   reason: string;
   by: string | null;
   byName: string | null;
@@ -29,6 +35,26 @@ export interface TillMethodRow {
   count: number;
 }
 
+export interface TillTaxRow {
+  gstRate: number;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+}
+
+export interface TillHandover {
+  id: string;
+  at: string;
+  fromName: string | null;
+  toName: string;
+  expected: number;
+  counted: number;
+  difference: number;
+  note: string | null;
+  approvedByName: string | null;
+}
+
 export interface TillReport {
   bills: { count: number; total: number; cancelled: number };
   payments: TillMethodRow[];
@@ -37,7 +63,14 @@ export interface TillReport {
   onCredit: number;
   collected: number;
   refunded: number;
-  cash: { opening: number; sales: number; refunds: number; cashIn: number; cashOut: number; expected: number };
+  cash: { opening: number; sales: number; refunds: number; cashIn: number; cashOut: number; handoverAdjust?: number; expected: number };
+  /** Reports frozen before the Z numbering do not have the blocks below. */
+  voids?: { count: number; total: number };
+  discounts?: { total: number; bills: number };
+  taxByRate?: TillTaxRow[];
+  returnsTaxByRate?: TillTaxRow[];
+  billRange?: { from: string | null; to: string | null };
+  cashByCategory?: { category: CashCategory; cashIn: number; cashOut: number; count: number }[];
 }
 
 export interface TillSession {
@@ -51,11 +84,18 @@ export interface TillSession {
   openedByName: string | null;
   openedAt: string;
   cashEntries: TillCashEntry[];
+  /** Z number of the register (1 = Z1), set at close. */
+  zNumber: number | null;
+  /** Who has the drawer now. */
+  cashierName: string | null;
+  handovers: TillHandover[];
   closingCount: Record<string, number> | null;
   expectedCash: number | null;
   countedCash: number | null;
   difference: number | null;
   note: string | null;
+  differenceReason: string | null;
+  closeApprovedByName: string | null;
   closedByName: string | null;
   closedAt: string | null;
   summary: TillReport | null;
@@ -120,6 +160,17 @@ export function useTillReport(id: string | null, enabled: boolean) {
   });
 }
 
+/** The register's closed days, newest first (needs the reports permission): for reprinting an earlier Z report. */
+export function useClosedTills(register: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["pos", "till", "closed", register.toLowerCase()],
+    queryFn: () => posApi.get<{ items: TillSession[]; total: number }>(`${TILL}/sessions`, { register, status: "closed", limit: 8 }).then((r) => r.items),
+    enabled,
+    staleTime: 30_000,
+    retry: 0,
+  });
+}
+
 export interface OpenInput {
   register: string;
   openingCash?: number;
@@ -139,20 +190,42 @@ export function useTillActions(register: string, branch: string | null) {
     onSuccess: (s) => refresh(s),
   });
   const cash = useMutation({
-    mutationFn: (b: { id: string; amount: number; reason: string; actorName: string }) =>
-      posApi.post<TillSession>(`${TILL}/${b.id}/cash`, { amount: b.amount, reason: b.reason, actorName: b.actorName }),
+    mutationFn: (b: { id: string; amount: number; category?: CashCategory; reason: string; actorName: string }) =>
+      posApi.post<TillSession>(`${TILL}/${b.id}/cash`, { amount: b.amount, category: b.category ?? "other", reason: b.reason, actorName: b.actorName }),
     onSuccess: (s) => refresh(s),
   });
+  // A difference beyond the shop's limit is refused (403 till_approval_required) until a manager's PIN comes with it.
   const close = useMutation({
-    mutationFn: (b: { id: string; count: DenominationCounts; note: string; actorName: string }) =>
-      posApi.post<{ session: TillSession; report: TillReport }>(`${TILL}/${b.id}/close`, { count: b.count, note: b.note || null, actorName: b.actorName }),
+    mutationFn: (b: { id: string; count: DenominationCounts; note: string; reason?: string; actorName: string; pin?: string }) =>
+      posApi.post<{ session: TillSession; report: TillReport }>(
+        `${TILL}/${b.id}/close`,
+        { count: b.count, note: b.note || null, reason: b.reason?.trim() || null, actorName: b.actorName },
+        b.pin ? { headers: { [APPROVAL_PIN_HEADER]: b.pin } } : undefined,
+      ),
     onSuccess: () => refresh(null),
   });
-  return { open, cash, close };
+  // The drawer changes hands without closing the day.
+  const handover = useMutation({
+    mutationFn: (b: { id: string; toName: string; count: DenominationCounts; note: string; reason?: string; actorName: string; pin?: string }) =>
+      posApi.post<{ session: TillSession; report: TillReport }>(
+        `${TILL}/${b.id}/handover`,
+        { toName: b.toName, count: b.count, note: b.note || null, reason: b.reason?.trim() || null, actorName: b.actorName },
+        b.pin ? { headers: { [APPROVAL_PIN_HEADER]: b.pin } } : undefined,
+      ),
+    onSuccess: (r) => refresh(r.session),
+  });
+  return { open, cash, close, handover };
 }
 
-/** Z (or X) report of a session, 80 mm. */
-export const tillReportPath = (id: string) => `/documents/till-z/${id}.pdf`;
+/** Paper widths the Z / X report prints on: 58 and 80 mm rolls, or A4. */
+export type ReportPaper = "58" | "80" | "a4";
+export const REPORT_PAPERS: readonly ReportPaper[] = ["80", "58", "a4"];
+
+/** Z (or X) report of a session as a PDF, 80 mm unless told otherwise. */
+export const tillReportPath = (id: string, paper: ReportPaper = "80") => `/documents/${paper === "80" ? "till-z" : `till-z-${paper}`}/${id}.pdf`;
+
+/** "Z7" for a closed session of this register, "X" for one still open. */
+export const zLabel = (s: Pick<TillSession, "status" | "zNumber">) => (s.status === "closed" && s.zNumber ? `Z${s.zNumber}` : "X");
 
 /**
  * The device-only day the counter kept before till sessions moved to the server. Today's open day (no server session

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MonitorSmartphoneIcon, PrinterIcon, ScanBarcodeIcon } from "lucide-react";
+import { MonitorSmartphoneIcon, PrinterIcon, ScanBarcodeIcon, SlidersHorizontalIcon } from "lucide-react";
 import type { RouteDef, SettingsPage, WebModule } from "@srirealtime/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "./lib/access";
 import { posMessages } from "./lib/messages";
@@ -15,8 +15,10 @@ export interface PosModuleOptions {
 
 /** Terminal mode (pairing, PIN lock, the counter or the weighing station on a paired device), module-relative. */
 export const POS_TERMINAL_PATH = "terminal";
+/** Customer-facing display screen (public: paired by a code, no sign-in), module-relative. */
+export const POS_DISPLAY_PATH = "display";
 /** Settings pages the module claims under the app's /settings. */
-export const POS_SETTINGS_PATHS = { terminals: "pos-terminals", printing: "pos-printing" } as const;
+export const POS_SETTINGS_PATHS = { terminals: "pos-terminals", printing: "pos-printing", rules: "pos-rules" } as const;
 
 const page = (load: () => Promise<{ default: React.ComponentType }>) => React.lazy(load);
 
@@ -28,7 +30,11 @@ export function posModule(opts: PosModuleOptions = {}): WebModule {
   const gate = { feature: POS_FEATURES.invoices, permission: POS_PERMISSIONS.create } as const;
   const routes: RouteDef[] = [{ path: "", component: page(() => import("./pages/pos")), immersive: true, ...gate }];
   // A paired device has no staff sign-in: terminal mode is public and gates itself (GET /pos/device features, PIN).
-  const publicRoutes: RouteDef[] = [{ path: POS_TERMINAL_PATH, component: page(() => import("./pages/terminal")) }];
+  const publicRoutes: RouteDef[] = [
+    { path: POS_TERMINAL_PATH, component: page(() => import("./pages/terminal")) },
+    // The customer display holds a scoped display token, not a session: it gates itself with a pairing code.
+    { path: POS_DISPLAY_PATH, component: page(() => import("./pages/display")) },
+  ];
   const settings: SettingsPage[] = [
     {
       path: POS_SETTINGS_PATHS.terminals,
@@ -46,6 +52,15 @@ export function posModule(opts: PosModuleOptions = {}): WebModule {
       feature: POS_FEATURES.invoices,
       permission: POS_PERMISSIONS.create,
       component: page(() => import("./pages/printing")),
+    },
+    // Cash difference limit for closing the day, and the customer display's idle messages.
+    {
+      path: POS_SETTINGS_PATHS.rules,
+      label: "pos.nav.rules",
+      icon: SlidersHorizontalIcon,
+      feature: POS_FEATURES.invoices,
+      permission: POS_PERMISSIONS.devices,
+      component: page(() => import("./pages/counter-rules")),
     },
   ];
   return {

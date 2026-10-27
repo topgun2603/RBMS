@@ -117,7 +117,7 @@ export class DocumentsService {
   }
 
   /** Renders arbitrary HTML (e.g. a type registered elsewhere) through the driver. */
-  htmlToPdf(html: string, paper: "A4" | "80mm" | "A6" = "A4"): Promise<Buffer> {
+  htmlToPdf(html: string, paper: "A4" | "80mm" | "58mm" | "A6" = "A4"): Promise<Buffer> {
     return this.deps.driver.render(html, { paper, timeoutMs: this.deps.timeoutMs });
   }
 }

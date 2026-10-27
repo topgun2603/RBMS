@@ -43,6 +43,8 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
       "quotations.*",
       // Proforma invoices, sale orders, delivery challans (docs/sales-documents.md).
       "sales-docs.*",
+      // Recurring bills (docs/recurring-export-gstin.md).
+      "recurring.*",
       "payments.*",
       "customers.*",
       "reports.*",
@@ -115,7 +117,7 @@ export const BUILTIN_ROLES: readonly RoleTemplate[] = [
     key: "accountant",
     name: "Accountant",
     description: "Reports, credit book, purchases and expenses, and the accounting books (journal entries, period lock).",
-    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*", "quotations.view", "sales-docs.view"],
+    permissions: ["reports.view", "invoices.credit-book", "inventory.purchases", "inventory.purchases.pay", "expenses.manage", "accounting.*", "quotations.view", "sales-docs.view", "recurring.view"],
   },
   {
     key: "demo",

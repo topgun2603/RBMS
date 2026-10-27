@@ -47,6 +47,9 @@ export interface SellerProfile {
   /** Set from GST filing settings: "composition" shops issue bills of supply with no tax from `compositionFrom`. */
   taxScheme?: "regular" | "composition";
   compositionFrom?: string | null;
+  /** Letter of Undertaking for exports / SEZ supplies without IGST (docs/recurring-export-gstin.md). */
+  lutNumber?: string;
+  lutDate?: string;
 }
 
 export interface SettingsValues<T> {
@@ -62,6 +65,8 @@ export interface Customer {
   gstin: string | null;
   address: string | null;
   stateCode: string | null;
+  /** ISO 3166 alpha-2 country of a buyer outside India (state code 96). */
+  country?: string | null;
   /** Paise: ledger balance (opening + bills − payments − receipts). Negative = advance. */
   outstanding: number;
   /** v2: paise, + = they owe the shop, − = advance. */
@@ -86,6 +91,8 @@ export interface CustomerInput {
   gstin?: string;
   address?: string;
   stateCode?: string;
+  /** A buyer outside India (place of supply 96). */
+  country?: string | null;
   openingBalance?: number;
   creditLimit?: number | null;
 }
@@ -156,6 +163,7 @@ export interface InvoiceParty {
   gstin: string | null;
   address: string | null;
   stateCode: string | null;
+  country?: string | null;
 }
 
 export interface Payment {
@@ -169,6 +177,8 @@ export interface Payment {
   source?: "bill" | "manual" | "receipt" | "online" | "refund";
   creditNoteId?: string | null;
   provider?: "razorpay" | "mock" | null;
+  /** Received in a foreign currency: minor units, the bank rate and the exchange gain (+) / loss (−) in paise. */
+  foreign?: { currency: string; amount: number; rate: number; forexDiff: number } | null;
 }
 
 export interface Invoice extends InvoiceSummary {
@@ -194,6 +204,14 @@ export interface Invoice extends InvoiceSummary {
   messages?: InvoiceMessage[];
   /** Credit notes against the bill (issued and cancelled), oldest first. */
   creditNotes?: CreditNoteSummary[];
+  /** Export / SEZ / foreign-currency bills (docs/recurring-export-gstin.md). */
+  supplyType?: import("./types-export").SupplyType;
+  currency?: string | null;
+  exchangeRate?: number | null;
+  foreign?: import("./types-export").ForeignAmounts | null;
+  exportDetails?: import("./types-export").ExportDetails | null;
+  /** The recurring run that made the bill. */
+  recurringRunId?: string | null;
 }
 
 // ---------------------------------------------------------------- credit notes
@@ -320,6 +338,10 @@ export interface InvoiceInput {
   issue?: boolean;
   /** Loyalty points to redeem as a bill discount. Only with `issue: true` (a draft can't redeem). */
   loyaltyPoints?: number;
+  /** Export / SEZ supply; foreign currency with one foreign price per line; shipping bill (docs/recurring-export-gstin.md). */
+  supplyType?: import("./types-export").SupplyType;
+  foreign?: import("./types-export").ForeignInput | null;
+  exportDetails?: { shippingBillNo?: string | null; shippingBillDate?: string | null; portCode?: string | null } | null;
 }
 
 export interface PublicInvoiceResponse {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { upiLink } from "@srirealtime/gst";
+import { countryName, formatForeign, upiLink } from "@srirealtime/gst";
 import { cn } from "@srirealtime/ui";
 import { BrandMark, useI18n } from "@srirealtime/web";
 import { QrImage } from "./upi-qr";
@@ -145,9 +145,39 @@ export function InvoiceDocument({
             )}
             <dt className="text-muted-foreground">{t("billing.doc.placeOfSupply")}</dt>
             <dd>{stateLabel(inv.placeOfSupply)}</dd>
+            {!doc && !quotation && inv.exportDetails?.shippingBillNo && (
+              <>
+                <dt className="text-muted-foreground">{t("billing.export.shippingBillNo")}</dt>
+                <dd className="tabular-nums">
+                  {inv.exportDetails.shippingBillNo}
+                  {inv.exportDetails.shippingBillDate ? ` · ${date(inv.exportDetails.shippingBillDate)}` : ""}
+                </dd>
+              </>
+            )}
+            {!doc && !quotation && inv.exportDetails?.portCode && (
+              <>
+                <dt className="text-muted-foreground">{t("billing.export.portCode")}</dt>
+                <dd>{inv.exportDetails.portCode}</dd>
+              </>
+            )}
+            {!doc && !quotation && inv.foreign && (
+              <>
+                <dt className="text-muted-foreground">{t("billing.export.rate", { cur: inv.foreign.currency })}</dt>
+                <dd className="tabular-nums">{inv.foreign.exchangeRate}</dd>
+              </>
+            )}
           </dl>
         </div>
       </header>
+      {/* Export / SEZ declaration (Rule 46) and the frozen LUT */}
+      {!doc && !quotation && inv.supplyType && inv.supplyType !== "domestic" && (
+        <p className="avoid-break mt-3 rounded-md border border-primary/40 px-3 py-1.5 text-center text-xs font-semibold tracking-wide text-primary uppercase">
+          {t(`billing.export.declaration.${inv.supplyType}`)}
+          {inv.exportDetails?.lutNumber && (inv.supplyType === "export_wopay" || inv.supplyType === "sez_wopay") && (
+            <span className="block font-normal normal-case">{t("billing.export.lut", { no: inv.exportDetails.lutNumber, date: inv.exportDetails.lutDate ? date(inv.exportDetails.lutDate) : "—" })}</span>
+          )}
+        </p>
+      )}
 
       {/* Buyer */}
       <section className="avoid-break grid gap-1 border-b py-4 text-sm">
@@ -155,10 +185,16 @@ export function InvoiceDocument({
         <p className="font-semibold">{buyer.name || "—"}</p>
         {buyer.address && <p className="text-muted-foreground whitespace-pre-line">{buyer.address}</p>}
         <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-          {buyer.stateCode && (
+          {buyer.country ? (
             <span>
-              {t("billing.doc.state")}: {stateLabel(buyer.stateCode)}
+              {t("billing.gstin.country")}: {countryName(buyer.country) ?? buyer.country}
             </span>
+          ) : (
+            buyer.stateCode && (
+              <span>
+                {t("billing.doc.state")}: {stateLabel(buyer.stateCode)}
+              </span>
+            )
           )}
           {buyer.phone && <span>{buyer.phone}</span>}
           {buyer.email && <span>{buyer.email}</span>}
@@ -300,6 +336,15 @@ export function InvoiceDocument({
             <dt className="font-semibold">{doc?.totalLabel ?? t("billing.totals.grandTotal")}</dt>
             <dd className="font-heading text-xl font-bold text-primary tabular-nums">{money(totals.total)}</dd>
           </div>
+          {!doc && !quotation && inv.foreign && (
+            <>
+              {inv.foreign.tax > 0 && <TotalRow label={t("billing.export.taxIn", { cur: inv.foreign.currency })} value={formatForeign(inv.foreign.tax, inv.foreign.currency)} />}
+              <div className="flex items-baseline justify-between gap-4 text-sm">
+                <dt className="font-medium">{t("billing.export.totalIn", { cur: inv.foreign.currency })}</dt>
+                <dd className="font-semibold tabular-nums">{formatForeign(inv.foreign.total, inv.foreign.currency)}</dd>
+              </div>
+            </>
+          )}
           {doc?.totals.map(([k, v]) => (
             <div key={k} className="flex items-baseline justify-between gap-4 text-sm">
               <dt className="font-medium">{k}</dt>

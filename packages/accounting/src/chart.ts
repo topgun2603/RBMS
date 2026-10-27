@@ -66,6 +66,8 @@ export const SYS = {
   depreciation: "depreciation",
   accumulatedDepreciation: "accumulated_depreciation",
   assetDisposal: "asset_disposal",
+  // ---- foreign currency (export bills, docs/recurring-export-gstin.md)
+  forex: "forex_gain_loss",
   retainedEarnings: "retained_earnings",
   taxInterest: "tax_interest",
   // ---- payroll (packages/payroll, docs/payroll.md)
@@ -146,6 +148,7 @@ export const STANDARD_CHART: readonly ChartRow[] = [
   { code: "3050", name: "Retained earnings (profit kept)", type: "equity", group: "capital", key: SYS.retainedEarnings, about: "Profit of closed financial years carried forward. The year-end close moves each year's profit here." },
   { code: "4120", name: "Interest received", type: "income", group: "other_income", key: SYS.interestReceived, about: "Interest the bank or others paid you." },
   { code: "4130", name: "Profit or loss on sale of assets", type: "income", group: "other_income", key: SYS.assetDisposal, about: "What you gained (or lost) when you sold or scrapped a fixed asset." },
+  { code: "4140", name: "Foreign exchange gain or loss", type: "income", group: "other_income", key: SYS.forex, about: "On foreign-currency bills: what the bank paid in rupees above (gain) or below (loss) the rupee value the bill was booked at." },
   { code: "5940", name: "Bank charges", type: "expense", group: "indirect", key: SYS.bankCharges, about: "Fees the bank takes: SMS, cheque book, card and UPI fees, bounced cheque charges." },
   { code: "5945", name: "Interest paid", type: "expense", group: "indirect", key: SYS.interestPaid, about: "Interest on loans and overdrafts." },
   { code: "5950", name: "Depreciation", type: "expense", group: "indirect", key: SYS.depreciation, about: "The part of your equipment, furniture and vehicles used up this period." },

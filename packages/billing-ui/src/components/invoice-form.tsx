@@ -44,6 +44,7 @@ import { LineBatchSelect } from "./inventory/line-batch-select";
 import { UnitList } from "./item-dialog";
 import { MoneyInput } from "./money-input";
 import { StateSelect } from "./state-select";
+import { ExportCard, exportBody, exportTaxing, foreignSummary, ForeignTotalRows, useExportDraft } from "./export/export-card";
 import { redeemFailure } from "../lib/loyalty";
 import { addDays, money, paiseToInput, parseQty, rupeesToPaise, stateLabel, todayIST } from "../lib/format";
 import { sellerProfileGaps, useCustomer, useItems, useSaveInvoice, useSellerProfile } from "../lib/queries";
@@ -214,6 +215,9 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const [focusKey, setFocusKey] = React.useState<string | null>(null);
   const [planError, setPlanError] = React.useState<string | null>(null);
   const [priceListId, setPriceListId] = React.useState<PriceListChoice>("");
+  // Export / SEZ / foreign-currency bill (docs/recurring-export-gstin.md).
+  const [exp, setExp] = useExportDraft(invoice, lines);
+  const taxing = exportTaxing(exp);
   // Lines of saved items follow the customer's price list, slabs and units (docs/price-lists-units.md).
   useLinePricing({ lines, setLines, customerId: party.kind === "saved" ? party.customer.id : null, priceListId, date });
 
@@ -229,6 +233,11 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
     if (posTouched) return;
     setPos(partyState(party) || sellerState);
   }, [party, sellerState, posTouched]);
+  // A buyer abroad (state 96): the bill starts as an export under LUT.
+  React.useEffect(() => {
+    if (partyState(party) === "96" && !exp.on) setExp((d) => ({ ...d, on: true, supplyType: "export_wopay" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the customer changes
+  }, [party]);
 
   const effectivePos = pos || sellerState;
   const parsed = lines.map((l) => ({ line: l, ...parseLine(l) }));
@@ -237,14 +246,15 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
     () =>
       computeInvoice(
         // Composition taxpayer: a bill of supply, the prices carry no tax (the server does the same).
-        priced.map((p) => (seller.data?.taxScheme === "composition" ? { ...p.input!, gstRate: 0 as const, gstRule: null } : p.input!)),
-        { sellerState: sellerState || effectivePos || "33", placeOfSupply: effectivePos || sellerState || "33" },
+        priced.map((p) => taxing.line(seller.data?.taxScheme === "composition" ? { ...p.input!, gstRate: 0 as const, gstRule: null } : p.input!)),
+        { sellerState: taxing.sellerState(sellerState || effectivePos || "33"), placeOfSupply: taxing.pos(effectivePos || sellerState || "33") },
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `priced` is derived from lines
-    [lines, sellerState, effectivePos, seller.data?.taxScheme],
+    [lines, sellerState, effectivePos, seller.data?.taxScheme, taxing.supplyType],
   );
   const lineTotals = new Map(priced.map((p, i) => [p.line.key, totals.lines[i]]));
-  const inter = totals.igst > 0 || (!!sellerState && !!effectivePos && sellerState !== effectivePos);
+  const inter = taxing.supplyType !== "domestic" || totals.igst > 0 || (!!sellerState && !!effectivePos && sellerState !== effectivePos);
+  const foreign = foreignSummary(exp, priced.map((p) => p.line), totals.igst);
   const gaps = sellerProfileGaps(seller.data);
   const loyalty = useLoyaltyRedeem(party, totals.total);
 
@@ -284,6 +294,13 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
       notes: notes.trim() || undefined,
       issue,
     };
+    const ex = exportBody(exp, filled.map((p) => p.line), !!invoice);
+    if (ex.error) {
+      toast.error(t(ex.error, { cur: exp.currency }));
+      return;
+    }
+    Object.assign(body, ex.fields);
+    if (taxing.pos("") === "96") body.placeOfSupply = "96";
     // Points are redeemed only when the bill is issued; a draft can't redeem.
     if (issue && loyalty.points > 0) body.loyaltyPoints = loyalty.points;
     if (party.kind === "saved") {
@@ -424,6 +441,15 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
           </CardContent>
         </Card>
 
+        <ExportCard
+          draft={exp}
+          setDraft={setExp}
+          lines={lines.filter((l) => !isBlank(l))}
+          setLineRate={(key, rate) => updateLine(key, { rate, rateManual: true })}
+          lut={{ number: seller.data?.lutNumber || null, date: seller.data?.lutDate || null }}
+          partyHasGstin={party.kind === "saved" ? !!party.customer.gstin : party.kind === "walkin" ? !!party.gstin.trim() : false}
+        />
+
         {/* Lines */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -517,6 +543,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
               />
             </div>
             {totals.total > 0 && <p className="text-meta leading-snug text-muted-foreground">{amountInWordsINR(totals.total)}</p>}
+            <ForeignTotalRows summary={foreign} />
             <LoyaltySummaryRows state={loyalty} total={totals.total} />
             {totals.taxBreakup.length > 1 && (
               <div className="mt-2 grid gap-1 rounded-md bg-muted/50 p-2 text-xs">

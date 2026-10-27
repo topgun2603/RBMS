@@ -41,6 +41,8 @@ export const DOCUMENT_TYPE_FEATURES = {
   "credit-note": "invoices",
   "credit-note-thermal": "invoices",
   "till-z": "invoices",
+  "till-z-58": "invoices",
+  "till-z-a4": "invoices",
   quotation: "invoices.quotations",
   "quotation-thermal": "invoices.quotations",
   proforma: "invoices.sales-docs",
@@ -74,6 +76,9 @@ export const salesDocFilename = (d: SalesDocDocData) => safeFilename(`${SALES_DO
 export const creditNoteFilename = (d: CreditNoteDocData) => safeFilename(`Credit-note-${d.number}`);
 
 /** Registers the built-in types whose data port is present. */
+const tillFilename = (d: TillDocData) =>
+  safeFilename(d.status === "closed" && d.zNumber ? `Z${d.zNumber}-${d.register}-${d.date}` : `${d.status === "closed" ? "Z" : "X"}-report-${d.register}-${d.date}`);
+
 export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): void {
   const inv = ports.invoices;
   if (inv) {
@@ -205,10 +210,23 @@ export function registerBuiltins(reg: DocumentRegistry, ports: BuiltinPorts): vo
       feature: DOCUMENT_TYPE_FEATURES["till-z"],
       permission: "pos.till",
       load: (tenantId, id) => till.session(tenantId, id),
-      render: renderTillReport,
-      filename: (d) => safeFilename(`${d.status === "closed" ? "Z" : "X"}-report-${d.register}-${d.date}`),
+      render: (d, ctx) => renderTillReport(d, ctx, "80mm"),
+      filename: tillFilename,
       version,
     });
+    // The same report on 58 mm rolls and on A4 (the counter picks the width of its printer).
+    for (const [key, paper] of [["till-z-58", "58mm"], ["till-z-a4", "A4"]] as const) {
+      reg.register<TillDocData>({
+        key,
+        paper,
+        feature: DOCUMENT_TYPE_FEATURES[key],
+        permission: "pos.till",
+        load: (tenantId, id) => till.session(tenantId, id),
+        render: (d, ctx) => renderTillReport(d, ctx, paper),
+        filename: tillFilename,
+        version,
+      });
+    }
   }
   const pur = ports.purchases;
   if (pur) {

@@ -137,7 +137,12 @@ export function invoicePaymentPostings(p: InvoicePaymentSrc, o: RuleOptions): Po
   const who = party("customer", p.customerId);
   const refund = p.amount < 0;
   const amt = Math.abs(p.amount);
-  const lines = refund ? [dr(key(SYS.debtors), amt, who), cr(money(p.method), amt)] : [dr(money(p.method), amt), cr(key(SYS.debtors), amt, who)];
+  // A foreign receipt: the bank gets what it really paid in rupees, the bill is settled at its own rate, and the
+  // difference is an exchange gain (credit) or loss (debit).
+  const fx = refund ? 0 : (p.forexDiff ?? 0);
+  const lines = refund
+    ? [dr(key(SYS.debtors), amt, who), cr(money(p.method), amt)]
+    : nonZero([dr(money(p.method), amt + fx), cr(key(SYS.debtors), amt, who), cr(key(SYS.forex), fx)]);
   const what = refund ? "Refund" : "Payment";
   return [
     {
@@ -293,6 +298,13 @@ export function gstPaymentPostings(p: GstPaymentSrc): Posting[] {
   return out;
 }
 
+const CASH_CATEGORY_NAMES: Readonly<Record<string, string>> = {
+  petty_expense: "petty expense",
+  owner_drawing: "owner drawing",
+  change_float: "change float",
+  other: "other",
+};
+
 export function tillPostings(t: TillSrc): Posting[] {
   const out: Posting[] = [];
   if (t.status === "closed" && t.closedOn && t.difference) {
@@ -305,6 +317,17 @@ export function tillPostings(t: TillSrc): Posting[] {
       lines: d > 0 ? [dr(key(SYS.cash), d), cr(key(SYS.cashShortExcess), d)] : [dr(key(SYS.cashShortExcess), -d), cr(key(SYS.cash), -d)],
     });
   }
+  for (const h of t.handovers ?? []) {
+    if (!h.difference) continue;
+    const d = h.difference;
+    out.push({
+      sourceType: "till_difference",
+      sourceId: `${t.id}:h:${h.id}`,
+      date: h.on,
+      narration: `${d > 0 ? "Cash excess" : "Cash short"} at handover of ${t.register}`,
+      lines: d > 0 ? [dr(key(SYS.cash), d), cr(key(SYS.cashShortExcess), d)] : [dr(key(SYS.cashShortExcess), -d), cr(key(SYS.cash), -d)],
+    });
+  }
   for (const c of t.cashEntries) {
     if (!c.amount) continue;
     const a = Math.abs(c.amount);
@@ -312,7 +335,7 @@ export function tillPostings(t: TillSrc): Posting[] {
       sourceType: "till_cash",
       sourceId: `${t.id}:${c.id}`,
       date: c.on,
-      narration: `${c.amount > 0 ? "Cash put in" : "Cash taken out"} of ${t.register}${c.reason ? `: ${c.reason}` : ""}`,
+      narration: `${c.amount > 0 ? "Cash put in" : "Cash taken out"} of ${t.register}${c.category ? ` (${CASH_CATEGORY_NAMES[c.category] ?? c.category})` : ""}${c.reason ? `: ${c.reason}` : ""}`,
       lines: c.amount > 0 ? [dr(key(SYS.cash), a), cr(key(SYS.tillClearing), a)] : [dr(key(SYS.tillClearing), a), cr(key(SYS.cash), a)],
     });
   }

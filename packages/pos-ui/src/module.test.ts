@@ -23,7 +23,7 @@ const state = (key: string, enabled: boolean): FeatureState => ({
 describe("terminal mode and Settings → POS terminals", () => {
   it("terminal mode is a public route (a paired device has no staff sign-in)", () => {
     const m = posModule();
-    expect(m.publicRoutes?.map((r) => r.path)).toEqual(["terminal"]);
+    expect(m.publicRoutes?.map((r) => r.path)).toEqual(["terminal", "display"]);
     // It gates itself from GET /pos/device; no feature on the route (visitors would just see not found).
     expect(m.publicRoutes?.[0]?.feature).toBeUndefined();
   });
@@ -123,6 +123,9 @@ describe("messages", () => {
       ...["open", "used", "cancelled"].map((s) => `pos.weigh.status.${s}`),
       ...["notFound", "used", "expired", "cancelled", "network", "other"].map((e) => `pos.ticket.error.${e}`),
       ...["weak", "taken"].map((e) => `pos.pin.error.${e}`),
+      ...["petty_expense", "owner_drawing", "change_float", "other"].map((c) => `pos.cash.cat.${c}`),
+      ...["58", "80", "a4"].map((p) => `pos.day.paper.${p}`),
+      ...["auto", "en", "ta"].map((l) => `pos.display.lang.${l}`),
       ...["format", "weak", "mismatch"].map((e) => `pos.pin.problem.${e}`),
     ];
     expect(used.size).toBeGreaterThan(200);

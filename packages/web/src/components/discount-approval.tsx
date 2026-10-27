@@ -17,10 +17,15 @@ export interface DiscountApprovalDetails {
   maxPercent?: number | null;
   maxAmount?: number | null;
   attemptsLeft?: number;
+  /** A till difference (Z close / handover): paise counted − expected, and the shop's limit. */
+  difference?: number;
+  limit?: number;
 }
 
-export const needsDiscountApproval = (err: unknown): err is ApiError => err instanceof ApiError && err.code === "discount_approval_required";
-const wrongApprover = (err: unknown): err is ApiError => err instanceof ApiError && err.code === "discount_approval_invalid";
+/** 403 `discount_approval_required`, or `till_approval_required` for a cash difference beyond the limit at the till. */
+export const needsDiscountApproval = (err: unknown): err is ApiError =>
+  err instanceof ApiError && (err.code === "discount_approval_required" || err.code === "till_approval_required");
+const wrongApprover = (err: unknown): err is ApiError => err instanceof ApiError && (err.code === "discount_approval_invalid" || err.code === "till_approval_invalid");
 
 /** Thrown by `run` when the cashier closes the approval dialog: the sale simply isn't sent. */
 export class ApprovalCancelled extends Error {
@@ -31,6 +36,7 @@ export class ApprovalCancelled extends Error {
 }
 
 interface Pending {
+  till: boolean;
   details: DiscountApprovalDetails;
   message: string;
   resolve: (pin: string) => void;
@@ -58,7 +64,7 @@ export function useDiscountApproval() {
   const ask = React.useCallback(
     (err: ApiError) =>
       new Promise<string>((resolve, reject) => {
-        setPending({ details: (err.details ?? {}) as DiscountApprovalDetails, message: err.message, resolve, reject });
+        setPending({ till: err.code.startsWith("till_"), details: (err.details ?? {}) as DiscountApprovalDetails, message: err.message, resolve, reject });
       }),
     [],
   );
@@ -76,7 +82,12 @@ export function useDiscountApproval() {
           if (needsDiscountApproval(err) || (pin !== undefined && wrongApprover(err))) {
             if (wrongApprover(err)) {
               const left = (err.details as DiscountApprovalDetails | undefined)?.attemptsLeft;
-              setError(left !== undefined ? t("web.approval.wrongLeft", { count: left }) : t("web.approval.wrong"));
+              const till = err.code.startsWith("till_");
+              setError(
+                left !== undefined
+                  ? t(till ? "web.approval.tillWrongLeft" : "web.approval.wrongLeft", { count: left })
+                  : t(till ? "web.approval.tillWrong" : "web.approval.wrong"),
+              );
             } else {
               setError(null);
             }
@@ -116,6 +127,10 @@ function ApprovalDialog({ pending, error, busy, onCancel }: { pending: Pending |
   }, [pending]);
   const d = pending?.details ?? {};
   const facts: string[] = [];
+  if (d.difference !== undefined) {
+    facts.push(t("web.approval.tillDifference", { amount: rupees(Math.abs(d.difference)), side: d.difference < 0 ? t("web.approval.tillShort") : t("web.approval.tillExtra") }));
+    if (d.limit !== undefined) facts.push(t("web.approval.tillLimit", { amount: rupees(d.limit) }));
+  }
   if (d.requestedPercent !== undefined) facts.push(t("web.approval.asked", { percent: d.requestedPercent }));
   if (d.maxPercent !== null && d.maxPercent !== undefined) facts.push(t("web.approval.limitPercent", { percent: d.maxPercent }));
   if (d.requestedAmount !== undefined && d.maxAmount !== null && d.maxAmount !== undefined) {
@@ -137,7 +152,7 @@ function ApprovalDialog({ pending, error, busy, onCancel }: { pending: Pending |
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheckIcon className="size-5 text-primary" /> {t("web.approval.title")}
             </DialogTitle>
-            <DialogDescription>{t("web.approval.hint")}</DialogDescription>
+            <DialogDescription>{t(pending?.till ? "web.approval.tillHint" : "web.approval.hint")}</DialogDescription>
           </DialogHeader>
           {facts.length > 0 && <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground">{facts.join(" · ")}</p>}
           <Input

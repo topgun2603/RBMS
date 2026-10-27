@@ -1,7 +1,18 @@
 import { formatINR } from "@srirealtime/gst";
-import { documented, requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { documented, FULL_ACCESS_ROLES, requireRole, requireTenant, requireUser } from "@srirealtime/core";
 import type { CreditNoteInput, CreditNoteListQuery } from "./credit-notes";
-import { tillCashSchema, tillCloseFields, tillOpenFields, type TillCashInput, type TillCloseInput, type TillListQuery, type TillOpenInput } from "./till";
+import {
+  tillCashSchema,
+  tillCloseFields,
+  tillHandoverFields,
+  tillOpenFields,
+  type TillApprovalInput,
+  type TillCashInput,
+  type TillCloseInput,
+  type TillHandoverInput,
+  type TillListQuery,
+  type TillOpenInput,
+} from "./till";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { FEATURES } from "./features";
@@ -15,6 +26,7 @@ import {
   PAYMENT_METHODS,
   PAYMENT_SOURCES,
   REFUND_MODES,
+  TILL_CASH_CATEGORIES,
   TILL_STATUSES,
 } from "./schema";
 import { csvBuilders, csvDisposition } from "./reports";
@@ -115,6 +127,8 @@ export const customerSnapshotSchema = z.object({
   gstin: z.string().nullable(),
   address: z.string().nullable(),
   stateCode: z.string().nullable(),
+  /** ISO 3166 alpha-2 country of a buyer outside India (state code 96). */
+  country: z.string().nullable().optional(),
 });
 /** The seller details on a bill (the billing profile, or the branch's details over it). */
 export const sellerProfileSchema = z.object({
@@ -132,6 +146,9 @@ export const sellerProfileSchema = z.object({
   accountNumber: z.string().nullable(),
   ifsc: z.string().nullable(),
   upiId: z.string().nullable(),
+  /** Letter of Undertaking for exports / SEZ supplies without IGST (docs/recurring-export-gstin.md). */
+  lutNumber: z.string().nullable().optional(),
+  lutDate: z.string().nullable().optional(),
   autoReminders: z.boolean(),
   reminderDays: z.array(z.number().int()),
   sendPaymentReceipts: z.boolean(),
@@ -187,6 +204,8 @@ export const invoicePaymentSchema = z.object({
   reference: z.string().nullable(),
   source: z.enum(PAYMENT_SOURCES),
   creditNoteId: z.string().uuid().nullable(),
+  /** Received in a foreign currency: minor units, the bank's rate, exchange gain (+) / loss (-) in paise. */
+  foreign: z.object({ currency: z.string(), amount: z.number().int(), rate: z.number(), forexDiff: paise }).nullable().optional(),
   createdAt: isoDateTime,
 });
 export const creditNoteSummarySchema = z.object({
@@ -227,6 +246,36 @@ export const invoiceSchema = invoiceSummarySchema.extend({
   messages: z.array(z.object({ template: z.string(), channel: z.enum(MESSAGE_CHANNELS), to: z.string(), sentAt: isoDateTime })),
   creditNotes: z.array(creditNoteSummarySchema),
   tillSessionId: z.string().uuid().nullable(),
+  /** Export / SEZ supply (docs/recurring-export-gstin.md). */
+  supplyType: z.enum(["domestic", "export_wpay", "export_wopay", "sez_wpay", "sez_wopay"]),
+  /** Foreign-currency bill: ISO 4217 code and rupees per unit; null = rupees (the rupee figures are the truth). */
+  currency: z.string().nullable(),
+  exchangeRate: z.number().nullable(),
+  /** Foreign figures in minor units, one entry per line. */
+  foreign: z
+    .object({
+      currency: z.string(),
+      exchangeRate: z.number(),
+      lines: z.array(z.object({ rate: z.number().int(), discount: z.number().int(), amount: z.number().int(), taxable: z.number().int() })),
+      subtotal: z.number().int(),
+      discount: z.number().int(),
+      taxable: z.number().int(),
+      tax: z.number().int(),
+      total: z.number().int(),
+    })
+    .nullable(),
+  /** Shipping bill no. / date / port code and the frozen LUT. */
+  exportDetails: z
+    .object({
+      shippingBillNo: z.string().nullable(),
+      shippingBillDate: z.string().nullable(),
+      portCode: z.string().nullable(),
+      lutNumber: z.string().nullable().optional(),
+      lutDate: z.string().nullable().optional(),
+    })
+    .nullable(),
+  /** The recurring-invoice run that made the bill. */
+  recurringRunId: z.string().uuid().nullable(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });
@@ -248,6 +297,8 @@ export const customerSchema = z.object({
   gstin: z.string().nullable(),
   address: z.string().nullable(),
   stateCode: z.string().nullable(),
+  /** ISO 3166 alpha-2 country of a buyer outside India. */
+  country: z.string().nullable(),
   /** + = owed to the shop before using the app, - = advance. */
   openingBalance: paise,
   /** Null = no limit. */
@@ -364,6 +415,7 @@ export const billingItemListSchema = z.object({
 });
 
 const methodRowSchema = z.object({ method: z.enum(PAYMENT_METHODS), amount: paise, count: z.number().int() });
+const tillTaxRowSchema = z.object({ gstRate: z.number(), taxable: paise, cgst: paise, sgst: paise, igst: paise });
 /** X report (running totals) of a till session; the Z report is the same frozen at close. */
 export const tillReportSchema = z.object({
   bills: z.object({ count: z.number().int(), total: paise, cancelled: z.number().int() }),
@@ -373,7 +425,15 @@ export const tillReportSchema = z.object({
   onCredit: paise,
   collected: paise,
   refunded: paise,
-  cash: z.object({ opening: paise, sales: paise, refunds: paise, cashIn: paise, cashOut: paise, expected: paise }),
+  cash: z.object({ opening: paise, sales: paise, refunds: paise, cashIn: paise, cashOut: paise, handoverAdjust: paise.optional(), expected: paise }),
+  voids: z.object({ count: z.number().int(), total: paise }).optional(),
+  discounts: z.object({ total: paise, bills: z.number().int() }).optional(),
+  taxByRate: z.array(tillTaxRowSchema).optional(),
+  returnsTaxByRate: z.array(tillTaxRowSchema).optional(),
+  billRange: z.object({ from: z.string().nullable(), to: z.string().nullable() }).optional(),
+  cashByCategory: z
+    .array(z.object({ category: z.enum(TILL_CASH_CATEGORIES), cashIn: paise, cashOut: paise, count: z.number().int() }))
+    .optional(),
 });
 /** Notes and coins counted: rupee denomination -> count, e.g. `{ "500": 4 }`. */
 const denominationCountSchema = z.record(z.string(), z.number().int());
@@ -391,13 +451,44 @@ export const tillSessionSchema = z.object({
   openedAt: isoDateTime,
   /** Cash put in (+) or taken out (-) during the session. */
   cashEntries: z.array(
-    z.object({ id: z.string(), amount: paise, reason: z.string(), by: z.string().nullable(), byName: z.string().nullable(), at: isoDateTime }),
+    z.object({
+      id: z.string(),
+      amount: paise,
+      category: z.enum(TILL_CASH_CATEGORIES).optional(),
+      reason: z.string(),
+      by: z.string().nullable(),
+      byName: z.string().nullable(),
+      at: isoDateTime,
+    }),
+  ),
+  /** Z report number of the register (1 = Z1), set at close. */
+  zNumber: z.number().int().nullable(),
+  /** Who has the drawer now. */
+  cashierName: z.string().nullable(),
+  /** Cashier changes during the session. */
+  handovers: z.array(
+    z.object({
+      id: z.string(),
+      at: isoDateTime,
+      fromBy: z.string().nullable(),
+      fromName: z.string().nullable(),
+      toBy: z.string().nullable(),
+      toName: z.string(),
+      count: denominationCountSchema.nullable(),
+      expected: paise,
+      counted: paise,
+      difference: paise,
+      note: z.string().nullable(),
+      approvedByName: z.string().nullable(),
+    }),
   ),
   closingCount: denominationCountSchema.nullable(),
   expectedCash: paise.nullable(),
   countedCash: paise.nullable(),
   difference: paise.nullable(),
   note: z.string().nullable(),
+  differenceReason: z.string().nullable(),
+  closeApprovedByName: z.string().nullable(),
   closedBy: z.string().uuid().nullable(),
   closedByName: z.string().nullable(),
   closedAt: isoDateTime.nullable(),
@@ -416,6 +507,11 @@ const audited = (key: string, audit: { action: string; entity: string; idParam?:
 const base = (schema: Parameters<typeof documented>[0]) => documented(schema, BASE.config);
 /** A CREDIT_BOOK route with its API document shapes. */
 const creditBook = (schema: Parameters<typeof documented>[0]) => documented(schema, CREDIT_BOOK.config);
+/** The manager's PIN the cashier typed for a difference beyond the limit (same header as discount approvals). */
+const approvalOf = (req: { headers: Record<string, string | string[] | undefined>; ctx: { user: { tenantRoles: string[] } | null } }): TillApprovalInput => {
+  const raw = req.headers["x-approval-pin"];
+  return { pin: (Array.isArray(raw) ? raw[0] : raw) ?? null, selfApprove: !!req.ctx.user?.tenantRoles.some((r) => FULL_ACCESS_ROLES.includes(r)) };
+};
 /** The cashier's display name the counter sends with till actions (see `actorName`). */
 const actorField = { actorName: z.string().max(80).nullish() };
 
@@ -637,8 +733,23 @@ export function invoicesRoutes(service: InvoicesService) {
         const { id } = idParam.parse(req.params);
         const user = requireUser(req.ctx);
         const b = body(req);
-        const res = await service.till.close(requireTenant(req.ctx).id, id, b as TillCloseInput, { id: user.id, name: actorName(b) });
-        req.auditSummary = `Till ${res.session.register} closed: expected ${formatINR(res.session.expectedCash ?? 0)}, counted ${formatINR(res.session.countedCash ?? 0)}`;
+        const res = await service.till.close(requireTenant(req.ctx).id, id, b as TillCloseInput, { id: user.id, name: actorName(b) }, approvalOf(req));
+        req.auditSummary = `Till ${res.session.register} closed (Z${res.session.zNumber}): expected ${formatINR(res.session.expectedCash ?? 0)}, counted ${formatINR(res.session.countedCash ?? 0)}`;
+        return res;
+      });
+      // The drawer changes hands without closing the day: the outgoing cashier counts it (docs/counter-close-display-labels.md).
+      staff.post(
+        "/till/:id/handover",
+        documented(
+          { body: tillHandoverFields.extend(actorField), response: tillReportResponseSchema },
+          audited(FEATURES.base, { action: "invoices.till.handover", entity: "till_session" }).config,
+        ), async (req) => {
+        const { id } = idParam.parse(req.params);
+        const user = requireUser(req.ctx);
+        const b = body(req);
+        const res = await service.till.handover(requireTenant(req.ctx).id, id, b as TillHandoverInput, { id: user.id, name: actorName(b) }, approvalOf(req));
+        const h = res.session.handovers.at(-1);
+        if (h) req.auditSummary = `Till ${res.session.register} handed from ${h.fromName ?? "?"} to ${h.toName}: counted ${formatINR(h.counted)}, difference ${formatINR(h.difference)}`;
         return res;
       });
 

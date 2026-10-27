@@ -26,6 +26,14 @@ export const INVOICE_PERMISSIONS: PermissionDef[] = [
     label: "Make proformas, sale orders and challans",
     description: "Create, edit, send and cancel proforma invoices, sale orders and delivery challans, deliver goods and record returns. Billing them also needs Create bills; advances need Receive payments.",
   },
+  // Recurring invoices (docs/recurring-export-gstin.md).
+  { key: "recurring.view", module: "invoices", label: "View recurring bills", description: "See recurring bill profiles and the bills they made." },
+  {
+    key: "recurring.manage",
+    module: "invoices",
+    label: "Set up recurring bills",
+    description: "Create, edit, pause, skip and end recurring bills, and bill one now. Also needs Create bills.",
+  },
   {
     key: "invoices.credit-note",
     module: "invoices",
@@ -71,6 +79,7 @@ const PI = `${SD}/proformas/:id([0-9a-fA-F-]{36})`;
 const SO = `${SD}/sale-orders/:id([0-9a-fA-F-]{36})`;
 const DC = `${SD}/challans/:id([0-9a-fA-F-]{36})`;
 const COUPON = "/v1/coupons/:id([0-9a-fA-F-]{36})";
+const RECURRING = "/v1/recurring/:id([0-9a-fA-F-]{36})";
 const CATALOGUE_MANAGE = CATALOGUE_PERMISSIONS[0].key;
 
 export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
@@ -134,12 +143,29 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   [`POST ${DC}/share`]: "sales-docs.manage",
   [`POST ${DC}/send`]: "sales-docs.manage",
 
+  // ---- recurring invoices (docs/recurring-export-gstin.md): a profile makes bills, so changing one needs invoices.create too
+  "GET /v1/recurring/": "recurring.view",
+  "GET /v1/recurring/summary": "recurring.view",
+  "GET /v1/recurring/preview": "recurring.view",
+  [`GET ${RECURRING}`]: "recurring.view",
+  "POST /v1/recurring/": ["recurring.manage", "invoices.create"],
+  [`PATCH ${RECURRING}`]: ["recurring.manage", "invoices.create"],
+  [`DELETE ${RECURRING}`]: "recurring.manage",
+  [`POST ${RECURRING}/pause`]: "recurring.manage",
+  [`POST ${RECURRING}/resume`]: "recurring.manage",
+  [`POST ${RECURRING}/skip`]: "recurring.manage",
+  [`POST ${RECURRING}/end`]: "recurring.manage",
+  [`POST ${RECURRING}/run`]: ["recurring.manage", "invoices.create"],
+  // ---- export bills: a payment received in a foreign currency
+  "POST /v1/export-billing/invoices/:id([0-9a-fA-F-]{36})/payments": "payments.receive",
+
   // ---- invoices: credit notes and POS till sessions
   [`POST ${BILL}/credit-notes`]: "invoices.credit-note",
   "POST /v1/invoices/credit-notes/:id/cancel": "invoices.credit-note",
   "POST /v1/invoices/till/open": "pos.till",
   "POST /v1/invoices/till/:id/cash": "pos.till",
   "POST /v1/invoices/till/:id/close": "pos.till",
+  "POST /v1/invoices/till/:id/handover": "pos.till",
   // Other registers' sessions.
   "GET /v1/invoices/till/sessions": "reports.view",
   [`DELETE ${BILL}/payments/:paymentId`]: "payments.receive",
@@ -257,6 +283,9 @@ export const ROUTE_GUARDS: Record<string, (req: FastifyRequest) => Promise<void>
   [`POST ${SD}/sale-orders`]: discountGuard,
   [`PATCH ${SO}`]: discountGuard,
   [`POST ${SD}/challans`]: discountGuard,
+  // A recurring profile's discount goes on every bill it makes.
+  "POST /v1/recurring/": discountGuard,
+  [`PATCH ${RECURRING}`]: discountGuard,
   "POST /v1/orders/": loyaltyGuard,
 };
 

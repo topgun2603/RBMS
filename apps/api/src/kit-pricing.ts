@@ -168,6 +168,9 @@ export const PRICED_LINE_ROUTES = [
   `POST ${SD}/sale-orders`,
   `PATCH ${SD}/sale-orders/:id([0-9a-fA-F-]{36})`,
   `POST ${SD}/challans`,
+  // Recurring bill profiles (docs/recurring-export-gstin.md): units checked and lines priced when saved.
+  "POST /v1/recurring/",
+  "PATCH /v1/recurring/:id([0-9a-fA-F-]{36})",
 ] as const;
 /** Purchase documents: units only (the supplier's rate is typed in). */
 export const UNIT_LINE_ROUTES = [

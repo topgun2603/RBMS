@@ -24,8 +24,30 @@ import { toUqc } from "./units";
 export const NIC_SCHEMA_VERSION = "1.1";
 export const SUPPLY_TYPES = ["B2B", "SEZWP", "SEZWOP", "EXPWP", "EXPWOP", "DEXP"] as const;
 export type SupplyType = (typeof SUPPLY_TYPES)[number];
-/** Only regular B2B supplies are built and accepted today. */
-export const SUPPORTED_SUPPLY_TYPES: readonly SupplyType[] = ["B2B"];
+/** Regular B2B, SEZ with / without payment and exports with / without payment (deemed exports are not built). */
+export const SUPPORTED_SUPPLY_TYPES: readonly SupplyType[] = ["B2B", "SEZWP", "SEZWOP", "EXPWP", "EXPWOP"];
+const EXPORT_TYPES: readonly SupplyType[] = ["EXPWP", "EXPWOP"];
+const IGST_TYPES: readonly SupplyType[] = ["SEZWP", "SEZWOP", "EXPWP", "EXPWOP"];
+
+/** NIC supply type of a bill from its invoices supply type (docs/recurring-export-gstin.md). */
+export function nicSupplyTypeOf(t: EInvoiceSource["supplyType"]): SupplyType {
+  return t === "export_wpay" ? "EXPWP" : t === "export_wopay" ? "EXPWOP" : t === "sez_wpay" ? "SEZWP" : t === "sez_wopay" ? "SEZWOP" : "B2B";
+}
+
+/** Export details (NIC schema 1.1 `ExpDtls`). */
+export interface NicExpDtls {
+  ShipBNo?: string;
+  /** "DD/MM/YYYY". */
+  ShipBDt?: string;
+  /** 6-character port code. */
+  Port?: string;
+  /** Refund of IGST claimed: "Y" for an export with payment, else "N". */
+  RefClm: "Y" | "N";
+  /** ISO 4217 code of the bill's currency. */
+  ForCur?: string;
+  /** ISO 3166 alpha-2 country of the buyer. */
+  CntCode?: string;
+}
 
 export interface NicTranDtls {
   TaxSch: "GST";
@@ -107,6 +129,7 @@ export interface EInvoicePayload {
   ItemList: NicItem[];
   ValDtls: NicValDtls;
   RefDtls?: NicRefDtls;
+  ExpDtls?: NicExpDtls;
 }
 
 // ------------------------------------------------------------------ mapping helpers
@@ -197,7 +220,7 @@ function party(p: PartySource): NicParty {
 }
 
 export interface BuildOptions {
-  /** Default "B2B" (the only supported type today). */
+  /** Default: from the bill's supply type (B2B for a domestic bill). */
   supplyType?: SupplyType;
   /** Reverse charge. Default "N". */
   reverseCharge?: boolean;
@@ -205,18 +228,21 @@ export interface BuildOptions {
 
 /** Builds the NIC e-invoice v1.1 JSON from a bill. Pure; check the result with `validateEInvoice`. */
 export function buildEInvoice(src: EInvoiceSource, opts: BuildOptions = {}): EInvoicePayload {
+  const supplyType = opts.supplyType ?? nicSupplyTypeOf(src.supplyType);
+  const exporting = EXPORT_TYPES.includes(supplyType);
   const seller = party(src.seller);
   const b = party(src.buyer);
+  // A buyer abroad: GSTIN "URP" (unregistered person), state and place of supply 96, PIN 999999 (NIC rules for exports).
   const buyer: NicBuyer = {
-    Gstin: b.Gstin,
+    Gstin: exporting ? "URP" : b.Gstin,
     LglNm: b.LglNm,
     ...(b.TrdNm ? { TrdNm: b.TrdNm } : {}),
-    Pos: normalizeStateCode(src.placeOfSupply) ?? src.placeOfSupply,
-    Addr1: b.Addr1,
+    Pos: exporting ? "96" : (normalizeStateCode(src.placeOfSupply) ?? src.placeOfSupply),
+    Addr1: b.Addr1 || cut(clean(src.buyer.name), 100),
     ...(b.Addr2 ? { Addr2: b.Addr2 } : {}),
-    Loc: b.Loc,
-    Pin: b.Pin,
-    Stcd: b.Stcd,
+    Loc: exporting && b.Loc.length < 3 ? cut(clean(src.exportDetails?.country ?? "Abroad"), 50) : b.Loc,
+    Pin: exporting ? 999999 : b.Pin,
+    Stcd: exporting ? "96" : b.Stcd,
     ...(b.Ph ? { Ph: b.Ph } : {}),
     ...(b.Em ? { Em: b.Em } : {}),
   };
@@ -248,7 +274,7 @@ export function buildEInvoice(src: EInvoiceSource, opts: BuildOptions = {}): EIn
   const sum = (k: "taxable" | "cgst" | "sgst" | "igst") => src.lines.reduce((s, l) => s + l[k], 0);
   const payload: EInvoicePayload = {
     Version: NIC_SCHEMA_VERSION,
-    TranDtls: { TaxSch: "GST", SupTyp: opts.supplyType ?? "B2B", RegRev: opts.reverseCharge ? "Y" : "N", IgstOnIntra: "N" },
+    TranDtls: { TaxSch: "GST", SupTyp: supplyType, RegRev: opts.reverseCharge ? "Y" : "N", IgstOnIntra: "N" },
     DocDtls: { Typ: src.docType ?? "INV", No: (src.number ?? "").trim(), Dt: toNicDate(src.date) },
     SellerDtls: seller,
     BuyerDtls: buyer,
@@ -267,6 +293,16 @@ export function buildEInvoice(src: EInvoiceSource, opts: BuildOptions = {}): EIn
   };
   if (src.precedingDoc && payload.DocDtls.Typ !== "INV") {
     payload.RefDtls = { PrecDocDtls: [{ InvNo: src.precedingDoc.number, InvDt: toNicDate(src.precedingDoc.date) }] };
+  }
+  if (exporting) {
+    const x = src.exportDetails ?? {};
+    const exp: NicExpDtls = { RefClm: supplyType === "EXPWP" ? "Y" : "N" };
+    if (x.shippingBillNo) exp.ShipBNo = cut(clean(x.shippingBillNo), 20);
+    if (x.shippingBillDate) exp.ShipBDt = toNicDate(x.shippingBillDate);
+    if (x.portCode) exp.Port = clean(x.portCode).toUpperCase();
+    if (x.currency) exp.ForCur = x.currency.toUpperCase();
+    if (x.country) exp.CntCode = x.country.toUpperCase();
+    payload.ExpDtls = exp;
   }
   return payload;
 }
@@ -327,7 +363,9 @@ export function validateEInvoice(p: EInvoicePayload, opts: ValidateOptions = {})
   if (t?.TaxSch !== "GST") err("TranDtls.TaxSch", "tax_scheme", 'Tax scheme must be "GST"');
   if (!SUPPLY_TYPES.includes(t?.SupTyp)) err("TranDtls.SupTyp", "supply_type", "Unknown supply type");
   else if (!SUPPORTED_SUPPLY_TYPES.includes(t.SupTyp))
-    err("TranDtls.SupTyp", "supply_type_unsupported", `Only B2B e-invoices are supported (got ${t.SupTyp})`);
+    err("TranDtls.SupTyp", "supply_type_unsupported", `Deemed exports are not supported (got ${t.SupTyp})`);
+  const exporting = EXPORT_TYPES.includes(t?.SupTyp);
+  const igstOnly = IGST_TYPES.includes(t?.SupTyp);
   if (t?.RegRev !== "Y" && t?.RegRev !== "N") err("TranDtls.RegRev", "reverse_charge", 'RegRev must be "Y" or "N"');
   if (t?.IgstOnIntra !== "N" && t?.IgstOnIntra !== "Y") err("TranDtls.IgstOnIntra", "igst_on_intra", 'IgstOnIntra must be "Y" or "N"');
 
@@ -372,16 +410,37 @@ export function validateEInvoice(p: EInvoicePayload, opts: ValidateOptions = {})
     if (x.Em !== undefined && !nicEmail(x.Em)) err(`${path}.Em`, "email", `${who} email is invalid`);
   };
   checkParty("SellerDtls", p.SellerDtls, "Seller");
-  checkParty("BuyerDtls", p.BuyerDtls, "Buyer");
+  if (exporting) {
+    // A buyer abroad: URP, 96, 999999; name, address and place as for any party.
+    const x = p.BuyerDtls;
+    if (!x) err("BuyerDtls", "party_missing", "Buyer details are missing");
+    else {
+      if (x.Gstin !== "URP") err("BuyerDtls.Gstin", "export_buyer_gstin", 'An export buyer\'s GSTIN must be "URP"');
+      if (x.Stcd !== "96" || x.Pos !== "96") err("BuyerDtls.Stcd", "export_buyer_state", "An export buyer's state and place of supply must be 96");
+      if (x.Pin !== 999999) err("BuyerDtls.Pin", "export_buyer_pin", "An export buyer's PIN must be 999999");
+      const name = x.LglNm ?? "";
+      if (name.length < 3 || name.length > 100) err("BuyerDtls.LglNm", "legal_name", "Buyer legal name must be 3–100 characters");
+      if (!x.Addr1 || x.Addr1.length > 100) err("BuyerDtls.Addr1", "address", "Buyer address line 1 is required (≤ 100 characters)");
+      if (!x.Loc || x.Loc.length < 3 || x.Loc.length > 50) err("BuyerDtls.Loc", "location", "Buyer city / location must be 3–50 characters");
+    }
+    if (!p.ExpDtls) err("ExpDtls", "export_details", "Export details are missing");
+    else {
+      if (!p.ExpDtls.CntCode) warn("ExpDtls.CntCode", "export_country", "Add the buyer's country on the customer");
+      if (!p.ExpDtls.ForCur) warn("ExpDtls.ForCur", "export_currency", "The bill has no foreign currency");
+      if (p.ExpDtls.Port !== undefined && !/^[A-Z0-9]{6}$/.test(p.ExpDtls.Port)) err("ExpDtls.Port", "export_port", "Port code is 6 letters and digits");
+    }
+  } else checkParty("BuyerDtls", p.BuyerDtls, "Buyer");
   const sellerGstin = p.SellerDtls?.Gstin;
   const buyer = p.BuyerDtls;
   if (buyer?.Gstin && sellerGstin && normalizeGstin(buyer.Gstin) === normalizeGstin(sellerGstin))
     err("BuyerDtls.Gstin", "buyer_is_seller", "Buyer GSTIN cannot be the same as the seller GSTIN");
-  if (buyer?.Gstin?.toUpperCase() === "URP")
-    err("BuyerDtls.Gstin", "buyer_unregistered", "E-invoices need a registered buyer (B2B); exports are not supported yet");
+  if (!exporting && buyer?.Gstin?.toUpperCase() === "URP")
+    err("BuyerDtls.Gstin", "buyer_unregistered", "E-invoices need a registered buyer (B2B), or an export supply type");
   const pos = buyer?.Pos;
-  if (!isValidStateCode(pos)) err("BuyerDtls.Pos", "place_of_supply", "Place of supply must be a valid 2-digit state code");
-  const inter = Boolean(pos) && Boolean(p.SellerDtls?.Stcd) && pos !== p.SellerDtls.Stcd;
+  // 96 "Other Country" is only the place of supply of an export.
+  if (!isValidStateCode(pos) && !(exporting && pos === "96")) err("BuyerDtls.Pos", "place_of_supply", "Place of supply must be a valid 2-digit state code");
+  // SEZ and export supplies are IGST even inside the State.
+  const inter = igstOnly || (Boolean(pos) && Boolean(p.SellerDtls?.Stcd) && pos !== p.SellerDtls.Stcd);
 
   // ---- items
   const items = Array.isArray(p.ItemList) ? p.ItemList : [];
@@ -473,11 +532,14 @@ export function validateSource(src: EInvoiceSource, tolerancePaise = 100): Valid
   const err = (path: string, code: string, message: string) => issues.push({ path, code, message, severity: "error" });
   if (src.status === "draft") err("status", "draft", "Issue the bill before generating an e-invoice");
   if (src.status === "cancelled") err("status", "cancelled", "This bill is cancelled");
-  if (!src.buyer.gstin) err("BuyerDtls.Gstin", "buyer_gstin_missing", "E-invoices are only for registered (B2B) buyers: add the customer's GSTIN");
+  const st = nicSupplyTypeOf(src.supplyType);
+  if (!src.buyer.gstin && !EXPORT_TYPES.includes(st)) {
+    err("BuyerDtls.Gstin", "buyer_gstin_missing", "E-invoices are only for registered (B2B) buyers: add the customer's GSTIN");
+  }
   if (!src.seller.gstin) err("SellerDtls.Gstin", "seller_gstin_missing", "Add the shop's GSTIN in billing settings");
   const sellerState = stateFromGstin(src.seller.gstin) ?? normalizeStateCode(src.seller.stateCode);
   const pos = normalizeStateCode(src.placeOfSupply);
-  if (sellerState && pos && src.interState !== (sellerState !== pos))
+  if (sellerState && pos && !IGST_TYPES.includes(st) && src.interState !== (sellerState !== pos))
     err("BuyerDtls.Pos", "inter_state_flag", "The bill's inter-state flag does not match the seller state and place of supply");
   const sum = (k: "taxable" | "cgst" | "sgst" | "igst") => src.lines.reduce((s, l) => s + l[k], 0);
   for (const k of ["taxable", "cgst", "sgst", "igst"] as const) {

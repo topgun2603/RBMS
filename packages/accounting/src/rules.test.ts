@@ -277,6 +277,21 @@ describe("expense and till rules", () => {
   });
 });
 
+describe("till handover and categories", () => {
+  const base: TillSrc = { id: "t1", register: "Counter 1", status: "open", closedOn: null, difference: null, cashEntries: [] };
+  it("posts a handover difference like a closing one, once per handover", () => {
+    const out = tillPostings({ ...base, handovers: [{ id: "h1", difference: -300, on: "2026-10-02" }, { id: "h2", difference: 0, on: "2026-10-02" }] });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ sourceType: "till_difference", sourceId: "t1:h:h1", date: "2026-10-02" });
+    expect(out[0]!.lines[0]).toMatchObject({ account: { key: SYS.cashShortExcess }, debit: 300 });
+    expect(isBalanced(out[0]!.lines)).toBe(true);
+  });
+  it("names the pay-in / pay-out category in the narration", () => {
+    const [p] = tillPostings({ ...base, cashEntries: [{ id: "a", amount: -5_000, reason: "tea", on: "2026-10-02", category: "petty_expense" }] });
+    expect(p!.narration).toBe("Cash taken out of Counter 1 (petty expense): tea");
+  });
+});
+
 describe("stock adjustments", () => {
   it("opening stock goes against opening equity, found stock to gains, write-offs the other way", () => {
     const [open] = stockAdjustmentPostings({ id: "m1", date: "2026-04-01", reason: "opening", value: 50_000, itemName: "Cable" });

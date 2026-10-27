@@ -75,6 +75,7 @@ customer or supplier id so the control accounts can be reconciled per party.
 | Invoice issued (not draft) | `invoice` | Debtors (total), Discount allowed (discount) | Sales (total + discount - GST - round-off), GST output CGST/SGST/IGST, Round off (if positive; a negative round-off is a debit) |
 | Invoice cancelled | `invoice_cancel` (dated at cancellation) | mirror of the invoice | mirror of the invoice |
 | Payment on a bill (any method, incl. online) | `invoice_payment` | Money account | Debtors |
+| Payment received in a foreign currency on an export bill (docs/recurring-export-gstin.md) | `invoice_payment` | Money account (foreign amount x the bank's rate), Foreign exchange gain or loss (a loss) | Debtors (foreign amount x the bill's rate), Foreign exchange gain or loss (a gain) |
 | Refund (negative payment, with a credit note) | `invoice_payment` | Debtors | Money account |
 | Allocation of a customer receipt to a bill | skipped (the receipt itself is posted) | | |
 | Customer receipt (credit book) | `customer_receipt` | Money account | Debtors (whole amount, advance included) |
@@ -103,6 +104,11 @@ customer or supplier id so the control accounts can be reconciled per party.
 Rules that mirror the existing modules exactly: the customer ledger counts a cancelled bill as bill plus cancellation,
 keeps payments of cancelled bills, and leaves credit notes of cancelled bills out; the books do the same, so the
 receivables control equals the credit book.
+
+**Foreign currency.** A bill in a foreign currency is booked in rupees at its own (typed) rate like any bill; the foreign
+figures are only stored and printed. A payment received in the currency settles the debtor at the bill's rate and the
+difference to what the bank paid (the realised rate) goes to the standard account *Foreign exchange gain or loss* (4140,
+other income; a loss is a debit there). Year-end revaluation of open foreign balances is not done.
 
 ## Reports
 

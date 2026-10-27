@@ -134,6 +134,7 @@ const PAGE_CSS: Record<Paper, string> = {
   A6: "@page{size:A6;margin:4mm}",
   // Height is set by the driver from the content; width is the roll.
   "80mm": "@page{margin:2mm 3mm}",
+  "58mm": "@page{margin:2mm 2mm}",
 };
 
 const BASE_CSS = `

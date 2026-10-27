@@ -78,6 +78,22 @@ export interface EInvoiceSource {
   otherCharges?: number;
   /** For credit / debit notes: the original invoice (its grand total decides CDNUR B2CL vs B2CS). */
   precedingDoc?: { number: string; date: string; total?: number } | null;
+  /**
+   * Export / SEZ supply (invoices `supplyType`, docs/recurring-export-gstin.md); absent = domestic. A credit note carries
+   * its bill's. Exports go to GSTR-1 table 6A (built by gstfiling), SEZ supplies to B2B as SEWP / SEWOP.
+   */
+  supplyType?: "domestic" | "export_wpay" | "export_wopay" | "sez_wpay" | "sez_wopay" | null;
+  /** Shipping bill, port, the bill's currency and the buyer's country (e-invoice ExpDtls, GSTR-1 6A). */
+  exportDetails?: {
+    shippingBillNo?: string | null;
+    /** YYYY-MM-DD. */
+    shippingBillDate?: string | null;
+    portCode?: string | null;
+    /** ISO 4217 code of the bill's currency. */
+    currency?: string | null;
+    /** ISO 3166 alpha-2 country of the buyer. */
+    country?: string | null;
+  } | null;
 }
 
 /**

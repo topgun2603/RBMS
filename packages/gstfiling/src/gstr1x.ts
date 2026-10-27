@@ -64,6 +64,10 @@ export interface ExpInvoice {
   inum: string;
   idt: string;
   val: number;
+  /** Port code, shipping bill number and date ("DD-MM-YYYY"), when known. */
+  sbpcode?: string;
+  sbnum?: string;
+  sbdt?: string;
   itms: { txval: number; rt: number; iamt: number; csamt: number }[];
 }
 export interface ExpBlock {
@@ -73,13 +77,18 @@ export interface ExpBlock {
 
 const toPortalDate = (iso: string) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 
-/** Table 6A: bills with place of supply 96 (export of goods / services). With IGST = WPAY, without = WOPAY (under LUT). */
+/**
+ * Table 6A: exports — bills of an export supply type, or with place of supply 96 (export of goods / services). With
+ * payment of IGST = WPAY, under LUT / bond = WOPAY (the supply type says which; older bills: IGST charged or not), with
+ * the shipping bill and port when the bill has them. SEZ supplies are B2B (SEWP / SEWOP), not here.
+ */
 export function buildExp(sales: readonly SalesDocSrc[], range: { from: string; to: string }): ExpBlock[] {
   const wpay: ExpInvoice[] = [];
   const wopay: ExpInvoice[] = [];
   for (const d of sales) {
     if (!d.number || d.status === "draft" || d.status === "cancelled" || d.docType === "CRN" || (d.docType && d.docType !== "INV")) continue;
-    if (d.placeOfSupply !== "96" || d.date < range.from || d.date > range.to) continue;
+    const exported = d.supplyType === "export_wpay" || d.supplyType === "export_wopay" || ((!d.supplyType || d.supplyType === "domestic") && d.placeOfSupply === "96");
+    if (!exported || d.date < range.from || d.date > range.to) continue;
     const byRate = new Map<number, { taxable: number; igst: number }>();
     for (const l of d.lines) {
       const r = byRate.get(l.gstRate) ?? { taxable: 0, igst: 0 };
@@ -87,11 +96,15 @@ export function buildExp(sales: readonly SalesDocSrc[], range: { from: string; t
       r.igst += l.igst;
       byRate.set(l.gstRate, r);
     }
-    const paid = d.totals.igst > 0;
+    const paid = d.supplyType === "export_wpay" ? true : d.supplyType === "export_wopay" ? false : d.totals.igst > 0;
+    const x = d.exportDetails ?? null;
     const inv: ExpInvoice = {
       inum: d.number,
       idt: toPortalDate(d.date),
       val: money(d.totals.total),
+      ...(x?.portCode ? { sbpcode: x.portCode } : {}),
+      ...(x?.shippingBillNo ? { sbnum: x.shippingBillNo } : {}),
+      ...(x?.shippingBillDate ? { sbdt: toPortalDate(x.shippingBillDate) } : {}),
       itms: [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rt, a]) => ({ txval: money(a.taxable), rt, iamt: money(a.igst), csamt: 0 })),
     };
     (paid ? wpay : wopay).push(inv);

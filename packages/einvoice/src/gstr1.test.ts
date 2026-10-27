@@ -55,7 +55,7 @@ describe("buildGstr1", () => {
   it("header", () => {
     expect(json.gstin).toBe(SELLER_GSTIN);
     expect(json.fp).toBe("102026");
-    expect(counts).toEqual({ b2b: 3, b2cl: 1, b2cs: 2, cdnr: 0, cdnur: 0, cancelled: 1, skipped: 2 });
+    expect(counts).toEqual({ b2b: 3, b2cl: 1, b2cs: 2, cdnr: 0, cdnur: 0, cancelled: 1, skipped: 2, exp: 0 });
     expect(warnings).toEqual([expect.stringContaining("INV/26-27/0039"), expect.stringContaining("DN/26-27/0001")]);
   });
 

@@ -246,9 +246,9 @@ describe("validateEInvoice", () => {
     expect(codes(p)).toEqual(expect.arrayContaining(["pincode", "location", "legal_name", "address", "phone", "email"]));
   });
 
-  it("only B2B is supported, other supply types are known but rejected", () => {
+  it("deemed exports are known but rejected", () => {
     const p = base();
-    p.TranDtls.SupTyp = "EXPWP";
+    p.TranDtls.SupTyp = "DEXP";
     expect(codes(p)).toEqual(["supply_type_unsupported"]);
     (p.TranDtls as { SupTyp: string }).SupTyp = "XYZ";
     expect(codes(p)).toEqual(["supply_type"]);

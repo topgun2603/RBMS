@@ -19,6 +19,7 @@ import {
   toast,
 } from "@srirealtime/ui";
 import { StateSelect } from "../state-select";
+import { GstinAssist } from "../gstin/gstin-assist";
 import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@srirealtime/web";
 import { MoneyInput } from "../money-input";
 import { paiseToInput, rupeesToPaise, stateLabel } from "../../lib/format";
@@ -197,6 +198,15 @@ export function SupplierDialog({
                       : t("billing.suppliers.gstinHint")}
                   </FormDescription>
                   <FormMessage />
+                  <GstinAssist
+                    gstin={gstin ?? ""}
+                    onApply={(d) => {
+                      if (d.name) form.setValue("name", d.name.slice(0, 120), { shouldDirty: true });
+                      if (d.address) form.setValue("address", d.address.slice(0, 300), { shouldDirty: true });
+                      if (d.stateCode) form.setValue("stateCode", d.stateCode, { shouldDirty: true });
+                      toast.success(t("billing.gstin.filled"));
+                    }}
+                  />
                 </FormItem>
               )}
             />

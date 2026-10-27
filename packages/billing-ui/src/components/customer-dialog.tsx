@@ -21,6 +21,8 @@ import {
 } from "@srirealtime/ui";
 import { MoneyInput } from "./money-input";
 import { StateSelect } from "./state-select";
+import { CountrySelect } from "./gstin/country-select";
+import { GstinAssist } from "./gstin/gstin-assist";
 import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFeature, useI18n } from "@srirealtime/web";
 import { paiseToInput, rupeesToPaise, stateLabel } from "../lib/format";
 import { useSaveCustomer } from "../lib/queries";
@@ -40,6 +42,8 @@ const schema = z.object({
     .refine((v) => v === "" || isValidGstin(v), "billing.validation.gstin"),
   address: z.string().trim().max(300),
   stateCode: z.string(),
+  /** ISO alpha-2 of a buyer outside India; "" = India. */
+  country: z.string(),
   /** Rupees as typed; "" = none. */
   opening: z.string().refine((v) => v.trim() === "" || rupeesToPaise(v) !== null, "billing.creditBook.form.invalidAmount"),
   openingSide: z.enum(["owe", "advance"]),
@@ -55,6 +59,7 @@ const toValues = (c?: Partial<Customer> | null): Values => ({
   gstin: c?.gstin ?? "",
   address: c?.address ?? "",
   stateCode: c?.stateCode ?? "",
+  country: c?.country ?? "",
   opening: c?.openingBalance ? paiseToInput(Math.abs(c.openingBalance)) : "",
   openingSide: (c?.openingBalance ?? 0) < 0 ? "advance" : "owe",
   creditLimit: typeof c?.creditLimit === "number" ? paiseToInput(c.creditLimit) : "",
@@ -106,7 +111,9 @@ export function CustomerDialog({
         email: v.email.trim(),
         gstin: v.gstin.trim().toUpperCase(),
         address: v.address.trim(),
-        stateCode: v.stateCode,
+        // A buyer abroad: place of supply 96 "Other Countries".
+        stateCode: v.country ? "96" : v.stateCode,
+        country: v.country || null,
         // Credit book (v2): + = they owe the shop, − = advance. Empty credit limit = no limit (null).
         // Without the credit book feature these fields aren't shown, so they're left untouched.
         ...(creditBook
@@ -207,6 +214,32 @@ export function CustomerDialog({
                       : t("billing.customers.gstinHint")}
                   </FormDescription>
                   <FormMessage />
+                  <GstinAssist
+                    gstin={gstin ?? ""}
+                    onApply={(d) => {
+                      if (d.name) form.setValue("name", d.name.slice(0, 120), { shouldDirty: true });
+                      if (d.address) form.setValue("address", d.address.slice(0, 300), { shouldDirty: true });
+                      if (d.stateCode) form.setValue("stateCode", d.stateCode, { shouldDirty: true });
+                      toast.success(t("billing.gstin.filled"));
+                    }}
+                  />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("billing.gstin.country")}</FormLabel>
+                  <CountrySelect
+                    value={field.value}
+                    onChange={(v) => {
+                      field.onChange(v);
+                      if (v) form.setValue("stateCode", "96", { shouldDirty: true });
+                    }}
+                  />
+                  {field.value && <FormDescription>{t("billing.gstin.countryHint")}</FormDescription>}
                 </FormItem>
               )}
             />

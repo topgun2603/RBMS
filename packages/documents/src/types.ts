@@ -5,7 +5,7 @@ import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
  * own types, so the kit can pass those objects straight through; this package never imports them.
  */
 
-export type Paper = "A4" | "80mm" | "A6";
+export type Paper = "A4" | "80mm" | "58mm" | "A6";
 export type DocLocale = "en" | "ta";
 
 /** The shop's details printed on documents (invoices' PublicSeller is assignable to it). */
@@ -35,6 +35,29 @@ export interface DocParty {
   gstin?: string | null;
   address?: string | null;
   stateCode?: string | null;
+  /** ISO 3166 alpha-2 country of a buyer outside India. */
+  country?: string | null;
+}
+
+/** Foreign-currency figures of an export bill (minor units; invoices' `ForeignAmounts`). */
+export interface DocForeign {
+  currency: string;
+  exchangeRate: number;
+  lines: { rate: number; discount: number; amount: number; taxable: number }[];
+  subtotal: number;
+  discount: number;
+  taxable: number;
+  tax: number;
+  total: number;
+}
+
+/** Shipping bill and the frozen LUT of an export / SEZ bill. */
+export interface DocExportDetails {
+  shippingBillNo?: string | null;
+  shippingBillDate?: string | null;
+  portCode?: string | null;
+  lutNumber?: string | null;
+  lutDate?: string | null;
 }
 
 /** A GST invoice (invoices' `Invoice` and `PublicInvoice` are assignable to it). */
@@ -58,6 +81,11 @@ export interface InvoiceDocData {
   updatedAt?: Date | string | null;
   /** GST e-invoice registration (from the einvoice module); printed as an "e-Invoice" block with the signed QR. */
   einvoice?: InvoiceEinvoice | null;
+  /** Export / SEZ supply (docs/recurring-export-gstin.md): "export_wpay" | "export_wopay" | "sez_wpay" | "sez_wopay". */
+  supplyType?: string | null;
+  /** A foreign-currency bill: both currencies are printed (rupees stay the tax figures). */
+  foreign?: DocForeign | null;
+  exportDetails?: DocExportDetails | null;
 }
 
 /** IRN details of an e-invoice. Dates are ISO strings, "YYYY-MM-DD HH:mm:ss" (IST) or Dates. */
@@ -295,7 +323,14 @@ export interface TillDocData {
   closedAt: Date | string | null;
   closedByName: string | null;
   openingCash: number;
-  cashEntries: { amount: number; reason: string; byName?: string | null; at: string }[];
+  cashEntries: { amount: number; category?: string; reason: string; byName?: string | null; at: string }[];
+  /** Z number of the register (1 = Z1), set at close. */
+  zNumber?: number | null;
+  /** Who has the drawer now. */
+  cashierName?: string | null;
+  handovers?: { at: string; fromName: string | null; toName: string; expected: number; counted: number; difference: number; note: string | null; approvedByName: string | null }[];
+  differenceReason?: string | null;
+  closeApprovedByName?: string | null;
   closingCount: Record<string, number> | null;
   expectedCash: number | null;
   countedCash: number | null;
@@ -309,7 +344,13 @@ export interface TillDocData {
     onCredit: number;
     collected: number;
     refunded: number;
-    cash: { opening: number; sales: number; refunds: number; cashIn: number; cashOut: number; expected: number };
+    cash: { opening: number; sales: number; refunds: number; cashIn: number; cashOut: number; handoverAdjust?: number; expected: number };
+    voids?: { count: number; total: number };
+    discounts?: { total: number; bills: number };
+    taxByRate?: { gstRate: number; taxable: number; cgst: number; sgst: number; igst: number }[];
+    returnsTaxByRate?: { gstRate: number; taxable: number; cgst: number; sgst: number; igst: number }[];
+    billRange?: { from: string | null; to: string | null };
+    cashByCategory?: { category: string; cashIn: number; cashOut: number; count: number }[];
   };
   seller: DocSeller;
   updatedAt?: Date | string | null;

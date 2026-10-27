@@ -365,6 +365,20 @@
       "when": 1793099031908,
       "tag": "0051_valuation_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793105180356,
+      "tag": "0052_recurring_export_gstin",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793105396692,
+      "tag": "0053_counter_close_display",
+      "breakpoints": true
     }
   ]
 }

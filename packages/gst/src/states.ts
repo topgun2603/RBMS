@@ -45,8 +45,13 @@ export const GST_STATES: readonly GstState[] = [
   { code: "36", name: "Telangana" },
   { code: "37", name: "Andhra Pradesh" },
   { code: "38", name: "Ladakh" },
+  // Place of supply of an export (a buyer outside India; docs/recurring-export-gstin.md). No GSTIN starts with it.
+  { code: "96", name: "Other Countries" },
   { code: "97", name: "Other Territory" },
 ];
+
+/** Place of supply of exports (a buyer outside India). */
+export const EXPORT_PLACE_OF_SUPPLY = "96";
 
 const BY_CODE = new Map(GST_STATES.map((s) => [s.code, s.name]));
 

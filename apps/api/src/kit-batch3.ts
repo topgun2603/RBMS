@@ -423,7 +423,7 @@ export function createBatch3(d: Batch3Deps) {
         const notes = await mapLimit(page.items, PERIOD_LOAD_CONCURRENCY, async (s) => {
           const cn = await d.invoices.creditNotes.get(tenantId, s.id).catch(nullOn404);
           const original = cn ? await d.invoices.get(tenantId, cn.invoiceId).catch(nullOn404) : null;
-          return cn ? creditNoteSource(cn, original?.total ?? null) : null;
+          return cn ? creditNoteSource(cn, original?.total ?? null, original?.supplyType ?? null) : null;
         });
         for (const n of notes) if (n) out.push(n);
         if (page.items.length < 200) break;
@@ -623,6 +623,8 @@ export function createBatch3(d: Batch3Deps) {
     developer,
     reports,
     routeCollector,
+    /** The shared pub/sub (Redis across API instances, in memory in dev): the POS customer display feed rides on it. */
+    pubsub,
     events,
     vendorFor,
     memberKeyOf,
@@ -685,7 +687,7 @@ export function addressParts(address: string | null | undefined): { city: string
 }
 
 /** A credit note as the NIC builder needs it: document type CRN with the original bill as the preceding document. */
-export function creditNoteSource(cn: CreditNote, invoiceTotal: number | null): EInvoiceSource {
+export function creditNoteSource(cn: CreditNote, invoiceTotal: number | null, supplyType: Invoice["supplyType"] | null = null): EInvoiceSource {
   const base = toEInvoiceSource({
     id: cn.id,
     number: cn.number,
@@ -703,6 +705,8 @@ export function creditNoteSource(cn: CreditNote, invoiceTotal: number | null): E
     ...base,
     docType: "CRN",
     precedingDoc: { number: cn.invoiceNumber, date: cn.invoiceDate, ...(invoiceTotal !== null ? { total: invoiceTotal } : {}) },
+    // A note on an export / SEZ bill is reported like its bill (CDNUR EXPWP / EXPWOP, CDNR SEWP / SEWOP).
+    ...(supplyType && supplyType !== "domestic" ? { supplyType } : {}),
   };
 }
 
@@ -802,6 +806,19 @@ function toEInvoiceSource(inv: Invoice): EInvoiceSource {
       roundOff: inv.totals.roundOff,
       total: inv.total,
     },
+    // Export / SEZ bills (docs/recurring-export-gstin.md): supply type, shipping bill, currency and the buyer's country.
+    ...(inv.supplyType && inv.supplyType !== "domestic"
+      ? {
+          supplyType: inv.supplyType,
+          exportDetails: {
+            shippingBillNo: inv.exportDetails?.shippingBillNo ?? null,
+            shippingBillDate: inv.exportDetails?.shippingBillDate ?? null,
+            portCode: inv.exportDetails?.portCode ?? null,
+            currency: inv.currency ?? null,
+            country: inv.customer.country ?? null,
+          },
+        }
+      : {}),
   };
 }
 

@@ -62,6 +62,8 @@ export interface PaymentDialogProps {
   points: number;
   onPoints: (points: number) => void;
   onComplete: (r: PaymentResult) => Promise<boolean>;
+  /** Paise being taken by UPI while the UPI tab is open (0 otherwise); the customer display draws its QR from it. */
+  onUpi?: (paise: number) => void;
 }
 
 const METHOD_ICON: Record<Method, React.ComponentType<{ className?: string }>> = {
@@ -105,6 +107,13 @@ export function PaymentDialog(props: PaymentDialogProps) {
   };
   const s = settle(payable, tenders, { upiConfirmed, hasCustomer: customer.kind === "saved", creditAllowed: creditOn });
   const blocked = !sellerState ? "profile" : null;
+
+  // The customer display shows the UPI QR while this tab is on.
+  const onUpi = props.onUpi;
+  React.useEffect(() => {
+    onUpi?.(props.open && method === "upi" ? tenders.upi : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `onUpi` is a state setter of the counter
+  }, [props.open, method, tenders.upi]);
 
   // Fresh dialog every time it opens.
   React.useEffect(() => {

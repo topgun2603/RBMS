@@ -82,7 +82,8 @@ describe("normalizeSeller", () => {
     expect(s.stateCode).toBe("07");
     expect(s.invoicePrefix).toBe("INV");
     expect(s.upiId).toBeNull();
-    expect(Object.keys(s)).toHaveLength(17);
+    // 14 text fields (+ lutNumber, lutDate for export bills) and the three messaging settings.
+    expect(Object.keys(s)).toHaveLength(19);
   });
   it("defaults the messaging settings when missing", () => {
     const s = normalizeSeller({});
