@@ -92,7 +92,7 @@ function Board({ onNew }: { onNew?: () => void }) {
 
   if (board.isError) return <InlineError title={describeError(board.error, t)} />;
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchField value={q} onChange={setQ} placeholder={t("jobcards.list.search")} className="sm:max-w-sm" />
         <ChipGroup
@@ -118,7 +118,7 @@ function Board({ onNew }: { onNew?: () => void }) {
         />
       ) : (
         <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-          <div className="grid min-w-max auto-cols-[17rem] grid-flow-col gap-3 xl:min-w-0 xl:auto-cols-fr">
+          <div className="grid min-w-max auto-cols-[17rem] grid-flow-col gap-3">
             {BOARD_STATUSES.map((s) => {
               const jobs = byStatus.get(s) ?? [];
               return (

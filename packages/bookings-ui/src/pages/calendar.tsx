@@ -141,7 +141,7 @@ function DayView({
   const closed = (d?.appointments.length ?? 0) - active;
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="icon" aria-label={t("bookings.calendar.prev")} onClick={() => setDate(addDays(date, -1))}>
           <ChevronLeftIcon />

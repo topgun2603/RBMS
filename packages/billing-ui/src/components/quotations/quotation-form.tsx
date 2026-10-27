@@ -198,7 +198,7 @@ export function QuotationForm({
   const saveLabel = mode === "revise" ? t("billing.q.form.saveRevision") : mode === "edit" ? t("billing.form.updateDraft") : t("billing.form.saveDraft");
 
   return (
-    <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="grid min-w-0 gap-section">
         {mode === "revise" && quotation && (
           <Alert className="border-info/40 bg-info/5">

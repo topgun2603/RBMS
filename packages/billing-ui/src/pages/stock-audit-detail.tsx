@@ -312,7 +312,7 @@ function CountPanel({ audit }: { audit: StockAudit }) {
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 rounded-2xl border bg-card p-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[1fr_auto_auto]">
           <div className="grid gap-1.5">
             <Label htmlFor="ac-code">{t("billing.audit.count.scan")}</Label>
             <form
@@ -496,7 +496,7 @@ function ReviewTable({ audit, editable }: { audit: StockAudit; editable: boolean
   };
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <ChipGroup
           value={filter}

@@ -49,7 +49,7 @@ export function ProfitTab({ from, to }: RangeProps) {
         ]}
       </TileGrid>
 
-      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Card className="px-card">
           <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <span className="icon-chip size-8 text-primary">

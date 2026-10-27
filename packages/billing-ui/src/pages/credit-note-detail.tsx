@@ -60,7 +60,7 @@ function Detail() {
       {cn.isError ? (
         <QueryError error={cn.error} onRetry={() => void cn.refetch()} />
       ) : cn.isPending ? (
-        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
           <Skeleton className="h-[60vh] rounded-2xl" />
           <Skeleton className="h-72 rounded-2xl" />
         </div>

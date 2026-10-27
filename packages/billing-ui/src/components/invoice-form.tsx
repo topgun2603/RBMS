@@ -304,7 +304,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
   const pending = save.variables?.body.issue;
 
   return (
-    <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="grid min-w-0 gap-section">
         {gaps.length > 0 && (
           <Alert className="border-amber-500/40 bg-amber-500/5">

@@ -299,7 +299,7 @@ export function PurchaseForm({ mode = "bill" }: { mode?: "bill" | "order" } = {}
   const busy = create.isPending || createOrder.isPending || done;
 
   return (
-    <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="grid min-w-0 gap-section">
         {!order && (
           <>

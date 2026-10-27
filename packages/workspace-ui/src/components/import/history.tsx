@@ -139,7 +139,7 @@ export function ImportHistory() {
   const filtered = st.table.activeFilterCount > 0;
 
   return (
-    <section aria-labelledby="import-history" className="grid gap-3">
+    <section aria-labelledby="import-history" className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <h2 id="import-history" className="flex items-center gap-2 font-heading text-base font-semibold">
         <FileClockIcon className="size-4 text-primary" /> {t("workspace.import.historyTitle")}
       </h2>

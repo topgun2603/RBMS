@@ -192,7 +192,7 @@ function AuditLog() {
               : t("workspace.audit.count", { count: st.total })
         }
       />
-      <div className="grid gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
         <DataTableToolbar table={st.table}>
           <Button variant="outline" size="sm" className="h-9" onClick={() => void download()} disabled={downloading || st.total === 0}>
             {downloading ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />} {t("workspace.common.csv")}

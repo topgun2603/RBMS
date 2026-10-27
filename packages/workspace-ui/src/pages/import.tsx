@@ -43,7 +43,7 @@ function ImportExport() {
           </TabsList>
           <TabsContent value="import">
             {tab === "import" && (
-              <div className="grid gap-8">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-8">
                 <ImportWizard />
                 <ImportHistory />
               </div>

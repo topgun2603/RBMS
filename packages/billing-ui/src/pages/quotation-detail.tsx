@@ -83,7 +83,7 @@ function Detail() {
       {q.isError ? (
         <QueryError error={q.error} onRetry={() => void q.refetch()} />
       ) : q.isPending ? (
-        <div data-print-hide className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div data-print-hide className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
           <Skeleton className="h-[70vh] rounded-2xl" />
           <Skeleton className="h-72 rounded-2xl" />
         </div>
@@ -257,7 +257,7 @@ function View({ quotation: q }: { quotation: Quotation }) {
         </div>
       </div>
 
-      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
         <FadeIn className="min-w-0">
           <InvoiceDocument invoice={doc} quotation={meta} shopName={shopName} logoUrl={logoUrl} />
         </FadeIn>

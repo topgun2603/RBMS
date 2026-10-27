@@ -92,14 +92,14 @@ export default function CheckinPage() {
         )}
         {result && <ResultCard r={result} />}
 
-        <section className="grid gap-2">
+        <section className="grid grid-cols-[minmax(0,1fr)] gap-2">
           <h2 className="text-sm font-semibold text-muted-foreground">{t("memberships.checkin.recent")}</h2>
           {today.isPending ? (
             <Skeleton className="h-40" />
           ) : visits.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("memberships.checkin.none")}</p>
           ) : (
-            <ul className="grid gap-1">
+            <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
               {visits.slice(0, 50).map((v) => (
                 <li key={v.id}>
                   <ModuleLink to={`m/${v.memberId}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60">

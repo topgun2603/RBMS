@@ -21,9 +21,9 @@ function Tile({ label, value, hint, icon: Icon, tone = "text-primary" }: { label
           <Icon className="size-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-meta text-muted-foreground">{label}</p>
+          <p className="text-meta break-words text-muted-foreground">{label}</p>
           {value === undefined ? <Skeleton className="mt-1 h-6 w-24" /> : <p className="font-heading text-xl font-semibold tabular-nums">{money(value)}</p>}
-          {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
+          {hint && <p className="text-meta break-words text-muted-foreground">{hint}</p>}
         </div>
       </CardContent>
     </Card>

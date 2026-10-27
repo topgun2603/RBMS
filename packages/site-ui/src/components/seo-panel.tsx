@@ -77,7 +77,7 @@ export function SeoPanel({
 
   return (
     <Section id={`${idPrefix}-seo`} icon={SearchIcon} tone="text-info-ink" title={t("site.seo.title")} description={t("site.seo.subtitle")}>
-      <figure className="grid gap-1 rounded-xl border bg-background p-4" aria-label={t("site.seo.previewLabel")}>
+      <figure className="grid grid-cols-[minmax(0,1fr)] gap-1 rounded-xl border bg-background p-4" aria-label={t("site.seo.previewLabel")}>
         <figcaption className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t("site.seo.preview")}</figcaption>
         <p className="truncate text-xs text-[#4d5156] dark:text-[#bdc1c6]">{host}</p>
         <p className="text-lg leading-snug text-[#1a0dab] dark:text-[#8ab4f8]">{cut(title || t("site.seo.untitled"), SNIPPET_TITLE)}</p>
@@ -99,7 +99,7 @@ export function SeoPanel({
         hint={t("site.seo.count", { n: value.title.length, max: SNIPPET_TITLE })}
         onChange={(v) => set("title", v)}
       />
-      <div className="grid content-start gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2">
         <Label htmlFor={`${idPrefix}-seo-desc`}>
           {t("site.seo.metaDescription")}
           <Optional />
@@ -119,7 +119,7 @@ export function SeoPanel({
         </p>
         <FieldError code={errors?.description} />
       </div>
-      <div className="grid content-start gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2">
         <Label>
           {t("site.seo.image")}
           <Optional />

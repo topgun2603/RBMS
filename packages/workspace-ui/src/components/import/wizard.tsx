@@ -99,7 +99,7 @@ export function ImportWizard() {
         );
       if (!list.length) return <EmptyState icon={FileUpIcon} title={t("workspace.import.noImporters")} />;
       return (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
           <SourcePicker sources={sources.data ?? []} value={source} onChange={setSource} />
           <Stagger className="grid gap-3 sm:grid-cols-2" stagger={0.05}>
           {list.map((imp) => {
@@ -268,7 +268,7 @@ function UploadStep({
           <AlertDescription>{sourceInfo.exports[importer.key]}</AlertDescription>
         </Alert>
       )}
-      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Dropzone
           accept={`.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet${XML_KEYS.has(importer.key) ? ",.xml,application/xml,text/xml" : ""}`}
           onFile={onFile}
@@ -341,7 +341,7 @@ function PreviewStep({
     );
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <StepHeader importer={importer} onBack={onBack} title={t("workspace.import.steps.preview", { file: preview.fileName ?? "" })} />
       <div className="grid grid-cols-3 gap-2 sm:max-w-xl">
         <CountTile label={t("workspace.import.totals.rows")} value={preview.totals.rows} />
@@ -532,7 +532,7 @@ function JobStep({ importer, initial, onAgain }: { importer: Importer; initial: 
   const pct = job.valid > 0 ? Math.min(100, Math.round((job.processed / job.valid) * 100)) : running ? 0 : 100;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <StepHeader importer={importer} title={job.fileName ?? ""} />
       <Card className="px-card">
         {running ? (

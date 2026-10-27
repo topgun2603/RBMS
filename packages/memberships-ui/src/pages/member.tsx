@@ -133,7 +133,7 @@ function MemberView({ member }: { member: MemberDetail }) {
               {member.subscriptions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("memberships.member.noHistory")}</p>
               ) : (
-                <ul className="grid gap-1">
+                <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
                   {member.subscriptions.map((s) => (
                     <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-2 odd:bg-muted/40">
                       <span className="grid gap-0.5">
@@ -165,7 +165,7 @@ function MemberView({ member }: { member: MemberDetail }) {
             <CardHeader>
               <CardTitle>{t("memberships.member.profile")}</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-2">
+            <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-2">
               <DetailRow label={t("memberships.members.col.code")}>
                 <span className="font-mono">{member.memberCode}</span>
               </DetailRow>
@@ -190,7 +190,7 @@ function MemberView({ member }: { member: MemberDetail }) {
               {member.checkins.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("memberships.member.noVisits")}</p>
               ) : (
-                <ul className="grid gap-1">
+                <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
                   {member.checkins.map((c) => (
                     <li key={c.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 odd:bg-muted/40">
                       <span className="grid">
@@ -257,7 +257,7 @@ function CurrentPlan({ sub, memberId, expiringDays, canManage }: { sub: Subscrip
   const busy = a.freeze.isPending || a.unfreeze.isPending || a.bill.isPending;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-lg font-semibold">{sub.planName}</span>
         <StatePill state={sub.state} />

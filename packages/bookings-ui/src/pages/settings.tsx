@@ -38,7 +38,7 @@ const DEFAULT_DAY: DayRow = { weekday: 1, opens: "10:00", closes: "20:00", break
 /** Settings → Appointments: bookable services, staff, weekly hours (shop and per person) and time off. */
 export default function BookingsSettingsPage() {
   return (
-    <div className="grid gap-section">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-section">
       <ServicesCard />
       <StaffCard />
       <HoursCard />
@@ -86,7 +86,7 @@ function ServicesCard() {
         </CardTitle>
         <CardDescription>{t("bookings.settings.servicesBody")}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-5">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-5">
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={async (e) => {
@@ -122,7 +122,7 @@ function ServicesCard() {
         ) : list.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("bookings.settings.noServices")}</p>
         ) : (
-          <ul className="grid gap-1">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
             {list.map((s) => (
               <ServiceRow key={s.id} s={s} />
             ))}
@@ -279,7 +279,7 @@ function StaffCard() {
         </CardTitle>
         <CardDescription>{t("bookings.settings.staffBody")}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-5">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-5">
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={async (e) => {
@@ -298,7 +298,7 @@ function StaffCard() {
         ) : list.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("bookings.settings.noStaff")}</p>
         ) : (
-          <ul className="grid gap-1">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
             {list.map((s) => (
               <StaffRow key={s.id} s={s} services={services.data?.items ?? []} />
             ))}
@@ -406,7 +406,7 @@ function HoursCard() {
         </CardTitle>
         <CardDescription>{t("bookings.settings.hoursBody")}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <Select value={who} onValueChange={setWho}>
             <SelectTrigger className="w-56" aria-label={t("bookings.settings.hoursFor")}>
@@ -468,16 +468,16 @@ function DayEditor({ weekday, row, onChange }: { weekday: number; row: DayRow | 
       {row ? (
         <>
           <span className="flex items-center gap-1.5">
-            <Input type="time" step={900} className="h-8 w-28" aria-label={t("bookings.settings.opens")} value={row.opens} onChange={(e) => onChange({ ...row, opens: e.target.value })} />
+            <Input type="time" step={900} className="h-8 w-32" aria-label={t("bookings.settings.opens")} value={row.opens} onChange={(e) => onChange({ ...row, opens: e.target.value })} />
             <span className="text-muted-foreground">–</span>
-            <Input type="time" step={900} className="h-8 w-28" aria-label={t("bookings.settings.closes")} value={row.closes} onChange={(e) => onChange({ ...row, closes: e.target.value })} />
+            <Input type="time" step={900} className="h-8 w-32" aria-label={t("bookings.settings.closes")} value={row.closes} onChange={(e) => onChange({ ...row, closes: e.target.value })} />
           </span>
           {row.breaks.map((b, i) => (
             <span key={i} className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-meta">
               {t("bookings.settings.break")}
-              <Input type="time" step={900} className="h-7 w-24" value={b.from} onChange={(e) => onChange({ ...row, breaks: row.breaks.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)) })} />
+              <Input type="time" step={900} className="h-7 w-32" value={b.from} onChange={(e) => onChange({ ...row, breaks: row.breaks.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)) })} />
               –
-              <Input type="time" step={900} className="h-7 w-24" value={b.to} onChange={(e) => onChange({ ...row, breaks: row.breaks.map((x, j) => (j === i ? { ...x, to: e.target.value } : x)) })} />
+              <Input type="time" step={900} className="h-7 w-32" value={b.to} onChange={(e) => onChange({ ...row, breaks: row.breaks.map((x, j) => (j === i ? { ...x, to: e.target.value } : x)) })} />
               <Button type="button" size="icon" variant="ghost" className="size-6" aria-label={t("bookings.common.remove")} onClick={() => onChange({ ...row, breaks: row.breaks.filter((_, j) => j !== i) })}>
                 <XIcon />
               </Button>
@@ -524,7 +524,7 @@ function TimeoffCard() {
         </CardTitle>
         <CardDescription>{t("bookings.settings.timeoffBody")}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-5">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-5">
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={async (e) => {
@@ -554,14 +554,14 @@ function TimeoffCard() {
             {t("bookings.settings.from")}
             <span className="flex gap-1">
               <Input type="date" className="w-38" value={fromDate} onChange={(e) => (setFromDate(e.target.value), !toDate && setToDate(e.target.value))} />
-              <Input type="time" className="w-26" value={fromTime} onChange={(e) => setFromTime(e.target.value)} />
+              <Input type="time" className="w-32" value={fromTime} onChange={(e) => setFromTime(e.target.value)} />
             </span>
           </label>
           <label className="grid gap-1 text-meta text-muted-foreground">
             {t("bookings.settings.to")}
             <span className="flex gap-1">
               <Input type="date" className="w-38" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-              <Input type="time" className="w-26" value={toTime} onChange={(e) => setToTime(e.target.value)} />
+              <Input type="time" className="w-32" value={toTime} onChange={(e) => setToTime(e.target.value)} />
             </span>
           </label>
           <Input className="w-48" placeholder={t("bookings.settings.reasonPlaceholder")} value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
@@ -574,7 +574,7 @@ function TimeoffCard() {
         ) : (off.data?.items ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("bookings.settings.noTimeoff")}</p>
         ) : (
-          <ul className="grid gap-1">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
             {(off.data?.items ?? []).map((o) => {
               const s = o.staffId ? names.get(o.staffId) : undefined;
               return (

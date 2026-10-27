@@ -168,7 +168,7 @@ export default function PrintingPage() {
       <SettingsNav />
       <PageHeading icon={PrinterIcon} title={t("pos.printing.title")} description={t("pos.printing.subtitle")} />
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>{t("pos.printing.device.title")}</CardTitle>

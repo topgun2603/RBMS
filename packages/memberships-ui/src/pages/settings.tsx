@@ -33,7 +33,7 @@ import type { Plan } from "../lib/types";
 /** Settings → Memberships: the plans on sale (create, edit, switch off, delete unused) and the check-in rules. */
 export default function MembershipsSettingsPage() {
   return (
-    <div className="grid gap-section">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-section">
       <PlansCard />
       <RulesCard />
     </div>
@@ -71,7 +71,7 @@ function PlansCard() {
         ) : list.length === 0 ? (
           <EmptyState compact icon={TicketIcon} title={t("memberships.settings.noPlansTitle")} description={t("memberships.settings.noPlansBody")} />
         ) : (
-          <ul className="grid gap-1">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
             {list.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-2 odd:bg-muted/40">
                 <span className="grid min-w-0 gap-0.5">

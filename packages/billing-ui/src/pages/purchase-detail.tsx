@@ -136,7 +136,7 @@ export default function PurchaseDetailPage() {
       {cancelled && (
         <Alert className="mb-4">
           <BanIcon />
-          <AlertTitle>{t("billing.purchases.cancelledTitle")}</AlertTitle>
+          <AlertTitle className="line-clamp-none">{t("billing.purchases.cancelledTitle")}</AlertTitle>
           <AlertDescription>{t("billing.purchases.cancelledBody")}</AlertDescription>
         </Alert>
       )}

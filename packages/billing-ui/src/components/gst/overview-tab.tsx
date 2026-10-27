@@ -81,7 +81,7 @@ export function OverviewTab({ overview, period, onPeriod, go }: { overview: GstO
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3">
           <SchemeBadge scheme={scheme} />
-          <p className="min-w-0 flex-1 text-sm text-muted-foreground">{t(`billing.gst.scheme.${scheme}Body`)}</p>
+          <p className="min-w-0 flex-1 break-words text-sm text-muted-foreground">{t(`billing.gst.scheme.${scheme}Body`)}</p>
           <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={() => go({ tab: "settings" })}>
             {t("billing.gst.scheme.change")}
           </Button>

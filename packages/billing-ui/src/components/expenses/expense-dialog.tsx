@@ -389,7 +389,7 @@ export function ExpenseDialog({ open, onOpenChange, expense }: { open: boolean; 
                   )}
                 />
 
-                <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
                   <FormField
                     control={form.control}
                     name="note"

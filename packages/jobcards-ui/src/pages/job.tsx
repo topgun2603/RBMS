@@ -185,7 +185,7 @@ function JobScreen({ job }: { job: Job }) {
 
       <div data-print-hide className="grid gap-section">
         <Stepper job={job} />
-        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid h-fit gap-section">
             <ApprovalCard job={job} canManage={canManage && !closed} onRecord={setDeciding} />
             <Card>

@@ -352,7 +352,7 @@ function HomeEditor({ initial, slug }: { initial: StaffHome; slug: string | null
               }
             />
           ) : (
-            <ol className="grid gap-3" aria-label={t("site.home.sections")}>
+            <ol className="grid grid-cols-[minmax(0,1fr)] gap-3" aria-label={t("site.home.sections")}>
               <AnimatePresence initial={false}>
                 {items.map((it, i) => {
                   const Icon = SECTION_ICONS[it.form.type];

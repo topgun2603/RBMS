@@ -17,7 +17,7 @@ export default function EditInvoicePage() {
       {inv.isError ? (
         <QueryError error={inv.error} onRetry={() => void inv.refetch()} />
       ) : inv.isPending ? (
-        <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid gap-section">
             <Skeleton className="h-28 rounded-2xl" />
             <Skeleton className="h-28 rounded-2xl" />

@@ -122,7 +122,7 @@ function DetailSkeleton() {
           <Skeleton className="h-4 w-64" />
         </div>
       </div>
-      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_21rem]">
         <Skeleton className="h-[70vh] rounded-2xl" />
         <div className="grid content-start gap-section">
           <Skeleton className="h-64 rounded-2xl" />
@@ -381,7 +381,7 @@ function InvoiceView({ invoice: inv }: { invoice: Invoice }) {
         </div>
       </div>
 
-      <div className="grid gap-section lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
         <FadeIn>
           <InvoiceDocument invoice={inv} shopName={shopName} logoUrl={logoUrl} />
         </FadeIn>

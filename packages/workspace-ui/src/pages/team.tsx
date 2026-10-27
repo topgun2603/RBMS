@@ -35,6 +35,7 @@ function Team() {
         <NoPermission permission={PERMISSIONS.staff} />
       ) : (
         <Tabs value={tab} onValueChange={setTab} className="gap-4">
+          <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
           <TabsList aria-label={t("workspace.team.tabs")} className="h-11 w-max rounded-xl p-1 shadow-inner">
             <TabsTrigger value="members" className="h-full rounded-lg px-4">
               <UsersRoundIcon /> {t("workspace.team.membersTab")}
@@ -46,6 +47,7 @@ function Team() {
               <PercentIcon /> {t("workspace.discounts.tab")}
             </TabsTrigger>
           </TabsList>
+          </div>
           <TabsContent value="members">{tab === "members" && <MembersTab />}</TabsContent>
           <TabsContent value="roles">{tab === "roles" && <RolesTab />}</TabsContent>
           <TabsContent value="discounts">{tab === "discounts" && <DiscountLimitsTab />}</TabsContent>
