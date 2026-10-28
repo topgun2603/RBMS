@@ -14,6 +14,7 @@ import { POLICY_KINDS, type PolicyKind } from "../components/footer";
 import { NoticeBody, type PublicNotice } from "../components/privacy-notice";
 import { AccountView } from "../client/account-view";
 import { CartView } from "../client/cart-view";
+import { EnquiryForm } from "../client/enquiry-form";
 import { CheckoutView } from "../client/checkout-view";
 
 /** Slugs that are routes of their own (never CMS pages). */
@@ -90,6 +91,8 @@ function BlockView({ b }: { b: Block }) {
           <iframe className="size-full" src={`https://www.youtube-nocookie.com/embed/${b.youtubeId}`} title={b.title ?? "Video"} loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
         </div>
       ) : null;
+    case "enquiry-form":
+      return <EnquiryForm cfg={b} />;
     case "divider":
       return <hr className="border-border" />;
   }

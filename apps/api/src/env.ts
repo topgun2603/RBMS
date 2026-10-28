@@ -19,7 +19,7 @@ export const envSchema = z.object({
   CORS_ORIGINS: z
     .string()
     .default(
-      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004,http://localhost:3005,http://localhost:3006,http://*.localhost:3006,http://localhost:3007,http://*.localhost:3007,http://localhost:3008,http://*.localhost:3008",
+      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004,http://localhost:3005,http://localhost:3006,http://*.localhost:3006,http://localhost:3007,http://*.localhost:3007,http://localhost:3008,http://*.localhost:3008,http://localhost:3009,http://*.localhost:3009",
     ),
   /** Billing app URL for invoice share links; {slug} is replaced with the shop's subdomain. */
   BILLING_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/billing,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007/billing,SV=http://{slug}.localhost:3008"),
@@ -111,7 +111,7 @@ export const envSchema = z.object({
   /** The public landing site (sign-up, pricing). */
   WWW_PUBLIC_URL: z.string().url().default("http://localhost:3005"),
   /** Where each app opens a shop ({slug} = shop subdomain): sign-up's `appUrl` and handoff links. APP=template pairs. */
-  APP_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008"),
+  APP_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008,SC=http://{slug}.localhost:3009"),
   // ---- Batch 6: operational safety net (docs/ops.md)
   /** Sentry-compatible DSN; set = 5xx errors and final job failures are sent there (otherwise only logged). */
   SENTRY_DSN: optionalString(),

@@ -6,6 +6,7 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CalendarClockIcon,
+  GraduationCapIcon,
   CheckIcon,
   CircleAlertIcon,
   Loader2Icon,
@@ -426,6 +427,7 @@ function NeedStep({ value, onChange, t }: { value: AppId | null; onChange: (a: A
     { id: "PH", icon: <PillIcon />, title: t("products.pharmacy.title"), body: t("products.pharmacy.body") },
     { id: "RS", icon: <UtensilsCrossedIcon />, title: t("products.restaurant.title"), body: t("products.restaurant.body") },
     { id: "SV", icon: <CalendarClockIcon />, title: t("products.services.title"), body: t("products.services.body") },
+    { id: "SC", icon: <GraduationCapIcon />, title: t("products.school.title"), body: t("products.school.body") },
   ];
   return (
     <div className="space-y-6">

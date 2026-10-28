@@ -13,6 +13,7 @@ import { reviewsEn, reviewsTa } from "./messages-reviews";
 import { pwaEn, pwaTa } from "./messages-pwa";
 import { layoutsEn, layoutsTa } from "./messages-layouts";
 import { trustEn, trustTa } from "./messages-trust";
+import { enquiryEn, enquiryTa } from "./messages-enquiry";
 import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
 
 /** Storefront UI strings. Shop content (product names, CMS text) stays as the shop entered it. */
@@ -31,6 +32,7 @@ export const en: Messages = {
   ...pwaEn,
   ...layoutsEn,
   ...trustEn,
+  ...enquiryEn,
   "nav.home": "Home",
   "nav.shopAll": "Shop all",
   "nav.menu": "Menu",
@@ -81,6 +83,7 @@ export const en: Messages = {
   "product.off": "{pct}% off",
   "product.mrp": "MRP",
   "product.from": "from {price}",
+  "product.priceOnRequest": "Price on request",
   "product.inclTax": "Inclusive of all taxes",
   "product.plusGst": "+ GST",
   "product.inclGstRate": "Inclusive of {rate}% GST",
@@ -492,6 +495,7 @@ export const ta: Messages = {
   ...pwaTa,
   ...layoutsTa,
   ...trustTa,
+  ...enquiryTa,
   "nav.home": "முகப்பு",
   "nav.shopAll": "அனைத்தும்",
   "nav.menu": "பட்டியல்",
@@ -542,6 +546,7 @@ export const ta: Messages = {
   "product.off": "{pct}% தள்ளுபடி",
   "product.mrp": "அதிகபட்ச விலை",
   "product.from": "{price} முதல்",
+  "product.priceOnRequest": "விலை கேட்டு அறியவும்",
   "product.inclTax": "அனைத்து வரிகளும் உட்பட",
   "product.plusGst": "+ ஜிஎஸ்டி",
   "product.inclGstRate": "{rate}% ஜிஎஸ்டி உட்பட",
@@ -949,7 +954,13 @@ export function packMessages(businessType: string | null | undefined, locale: Lo
   const pack = packFor(businessType);
   if (!pack) return {};
   const c = pack.copy[locale === "ta" ? "ta" : "en"];
-  return { "search.placeholder": c.search, "nav.newArrivals": c.newItems, "footer.newsletterText": c.newsletter };
+  // A website-only trade (school) quotes fees, not prices, and lists programmes, not services.
+  const fee: Messages = pack.site
+    ? locale === "ta"
+      ? { "product.priceOnRequest": "கட்டணம்: விசாரித்து அறிக", "list.countServices": "{count, plural, one {# பாடத்திட்டம்} other {# பாடத்திட்டங்கள்}}", "pwa.install.body": "செய்திகள், நிகழ்வுகள், சேர்க்கை விவரங்கள் முகப்புத் திரையிலேயே. இடம் எடுக்காது, மெதுவான இணையத்திலும் இயங்கும்." }
+      : { "product.priceOnRequest": "Fee on enquiry", "list.countServices": "{count, plural, one {# programme} other {# programmes}}", "pwa.install.body": "News, events and admissions on your home screen. It takes no space and works on slow networks." }
+    : {};
+  return { "search.placeholder": c.search, "nav.newArrivals": c.newItems, "footer.newsletterText": c.newsletter, ...fee };
 }
 
 /** Store strings for a locale, with the shop's pack wording on top when `businessType` is given. */

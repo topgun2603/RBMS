@@ -150,7 +150,7 @@ export interface ReleaseNoteItem {
   id: string;
   en: string;
   ta: string;
-  /** App ids (BL, EC, PH, RS, SV); empty = every app. */
+  /** App ids (BL, EC, PH, RS, SV, SC); empty = every app. */
   apps: string[];
   /** Business types (grocery, pharmacy...); empty = every trade. */
   trades: string[];

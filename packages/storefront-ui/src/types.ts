@@ -326,6 +326,7 @@ type Sections =
   | { type: "location"; title?: string; address?: string; hours: { label: string; value: string }[]; phone?: string; whatsapp?: string; coords?: string; mapLink?: string }
   | { type: "menu-board"; title?: string; groups: { name: string; items: { name: string; description?: string; price?: number; diet?: Diet }[] }[]; cta?: Cta }
   | { type: "appointment"; heading: string; text?: string; services: { name: string; duration?: string; price?: number }[]; cta?: Cta }
+  | ({ type: "enquiry-form" } & EnquiryFormConfig)
   | { type: "before-after"; title?: string; text?: string; beforeUrl: string; afterUrl: string; beforeLabel?: string; afterLabel?: string }
   | { type: "gold-rates"; title?: string; text?: string; showSilver: boolean }
   | { type: "instagram"; title?: string; handle: string; images: { url: string; alt: string; href?: string }[] }
@@ -488,6 +489,25 @@ export interface PublicHome {
   translations?: Partial<Record<string, Record<string, unknown>>>;
 }
 
+/** A contact / admission enquiry form (home section and page block share it). */
+export interface EnquiryFormConfig {
+  heading: string;
+  text?: string;
+  /** Sent with every enquiry (e.g. "Admission 2027-28"). */
+  topic?: string;
+  askStudent: boolean;
+  studentLabel?: string;
+  optionLabel?: string;
+  /** Choices for a select; the select is hidden when empty. */
+  options: string[];
+  askEmail: boolean;
+  askMessage: boolean;
+  submitLabel?: string;
+  successText?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+}
+
 export type Block =
   | { type: "heading"; id?: string; level: 2 | 3; text: string }
   | { type: "paragraph"; id?: string; markdown: string }
@@ -496,7 +516,8 @@ export type Block =
   | { type: "button"; id?: string; label: string; href: string; style: "primary" | "secondary" }
   | { type: "faq"; id?: string; items: { q: string; a: string }[] }
   | { type: "video"; id?: string; youtubeId: string; title?: string }
-  | { type: "divider"; id?: string };
+  | { type: "divider"; id?: string }
+  | ({ type: "enquiry-form"; id?: string } & EnquiryFormConfig);
 
 export interface CmsPage {
   id: string;

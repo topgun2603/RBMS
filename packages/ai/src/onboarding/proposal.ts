@@ -9,7 +9,7 @@ type Bi = { en: string; ta: string };
 /** The shop as it is now: what the proposal is compared with. */
 export interface ShopContext {
   shopName: string;
-  /** The app the shop runs on (BL, EC, PH, RS, SV); a trade of another app is only suggested. */
+  /** The app the shop runs on (BL, EC, PH, RS, SV, SC); a trade of another app is only suggested. */
   appId: string | null;
   /** The saved business type ("" when none). */
   trade: string;

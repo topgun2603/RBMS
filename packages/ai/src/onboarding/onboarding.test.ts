@@ -60,6 +60,8 @@ describe("rules: trade from the answers", () => {
     ["aquarium is pet shop", { sell: "aquarium fish and pet food" }, "pet_shop"],
     ["tea kadai", { sell: "tea kadai with bajji and juice" }, "tea_stall"],
     ["Tamil jewellery", { sell: "தங்க நகை, வெள்ளி கொலுசு" }, "jewellery"],
+    ["school", { sell: "CBSE school with admissions open for LKG to class 12" }, "school"],
+    ["Tamil school", { sell: "மெட்ரிக் பள்ளி, மாணவர் சேர்க்கை" }, "school"],
     ["pattasu", { sell: "Sivakasi pattasu, Deepavali crackers" }, "crackers"],
     ["vague", { sell: "many things" }, null],
     ["out of scope", { sell: "second hand cars and bikes" }, null],

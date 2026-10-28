@@ -36,6 +36,6 @@ describe("retention categories", () => {
 describe("subject handlers", () => {
   it("cover the shop's customer records", () => {
     const ids = createSubjectHandlers({ db: {} as Db, uploads: () => ({}) as never }).map((h) => h.id);
-    expect(ids).toEqual(["store_customers", "billing_customers", "loyalty_members", "membership_members", "wa_contacts", "support_tickets"]);
+    expect(ids).toEqual(["store_customers", "billing_customers", "loyalty_members", "membership_members", "wa_contacts", "support_tickets", "enquiries"]);
   });
 });

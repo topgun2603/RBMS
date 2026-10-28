@@ -9,6 +9,7 @@ import { cn } from "@srirealtime/ui/lib/utils";
 import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
 import type { List, WishlistItem } from "../types";
 import { call, errorMessage } from "./api";
+import { siteOnly } from "../lib/site";
 import { useStore } from "./store-context";
 
 /** The shopper's wishlist (one shared query; disabled when signed out; `off` when the shop has wishlists switched off). */
@@ -26,7 +27,7 @@ export function useWishlist() {
 
 /** Heart toggle with a pop + particle burst when saved. Signed-out shoppers are sent to sign in. */
 export function WishlistHeart({ productId, className, size = "md" }: { productId: string; className?: string; size?: "sm" | "md" }) {
-  const { t, auth } = useStore();
+  const { t, auth, shell } = useStore();
   const qc = useQueryClient();
   const router = useRouter();
   const reduced = useReducedMotionSafe();
@@ -34,7 +35,8 @@ export function WishlistHeart({ productId, className, size = "md" }: { productId
   const saved = ids.has(productId);
   const [busy, setBusy] = React.useState(false);
   const [burst, setBurst] = React.useState(0);
-  if (off) return null;
+  // Website-only trades (schools) have no wishlist.
+  if (off || siteOnly(shell.businessType)) return null;
 
   const toggle = async (e: React.MouseEvent) => {
     e.preventDefault();

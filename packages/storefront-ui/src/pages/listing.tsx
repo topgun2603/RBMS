@@ -1,3 +1,4 @@
+import { siteOnly } from "../lib/site";
 import { countLabel, listKind, type ListKind } from "../lib/service-item";
 import * as React from "react";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, LayoutGr
 import { cn } from "@srirealtime/ui/lib/utils";
 import { Pagination as Pager, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink } from "@srirealtime/ui/components/pagination";
 import { breadcrumbJsonLd, STORE_PATHS } from "@srirealtime/cms/seo";
-import { apiGet, apiGetOrNull, apiGetSafe, getRequestInfo, requireStore, themeView } from "../server/api";
+import { apiGet, apiGetOrNull, apiGetSafe, getRequestInfo, getStoreT, requireStore, themeView } from "../server/api";
 import { getRatings, type SearchParams } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { imageUrl, percentOff } from "../lib/format";
@@ -189,7 +190,7 @@ async function Listing({
   category?: Category;
   subcategories?: SubcategoryChip[];
 }) {
-  const { t } = await getRequestInfo();
+  const t = await getStoreT();
   const config = await requireStore();
   const theme = themeView(config.shop.theme);
   const result = await apiGet<SearchResult>("/catalog/public/search", { query: apiSearchQuery(sp, { categoryId }), revalidate: 30 }).catch(
@@ -199,11 +200,12 @@ async function Listing({
   const sort = valuesOf(sp, "sort")[0] ?? (valuesOf(sp, "q")[0] ? "relevance" : "relevance");
   const sorts = SORTS.map((s) => ({ value: s, label: t(`list.sort.${s}`), href: hrefWith(path, sp, { sort: s === "relevance" ? undefined : s }) }));
   const active = activeFilters(path, sp, result.facets, t, !!categoryId);
-  const groups = filterGroups(path, sp, result.facets, t, !!categoryId);
+  const site = siteOnly(config.shop.businessType);
+  const groups = filterGroups(path, sp, result.facets, t, !!categoryId, site);
   const filters = <FilterPanel groups={groups} />;
   const chips = <ActiveFilterChips chips={active} clearHref={hrefWith(path, {}, { q: valuesOf(sp, "q") })} clearLabel={t("list.clearFilters")} removeLabel={t("cart.remove")} />;
   const mode = theme.listingFilters;
-  const layout: GridLayout = mode === "sidebar" ? "sidebar" : "full";
+  const layout: GridLayout = mode === "sidebar" && groups.length > 0 ? "sidebar" : "full";
   const view = listingViewOf(sp, theme);
   const paging = theme.listingPaging;
   const page = currentPage(sp);
@@ -245,8 +247,8 @@ async function Listing({
           </div>
         </div>
       )}
-      <div className={cn(mode === "sidebar" && "lg:grid lg:grid-cols-[240px_1fr] lg:gap-10")}>
-        {mode === "sidebar" && (
+      <div className={cn(mode === "sidebar" && groups.length > 0 && "lg:grid lg:grid-cols-[240px_1fr] lg:gap-10")}>
+        {mode === "sidebar" && groups.length > 0 && (
           <aside className="hidden lg:block" aria-label={t("list.filters")}>
             {/* Sticky, scrolling on its own when taller than the window, with a visible (thin) scrollbar so lower groups
                 are discoverable; groups collapse (see FilterPanel). */}
@@ -262,7 +264,7 @@ async function Listing({
             </p>
             {/* Wraps on phones (Tamil "Filters" + sort labels are long): the sort grows to fill or drops to its own row. */}
             <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full">
-              {mode !== "top-bar" && (
+              {mode !== "top-bar" && groups.length > 0 && (
                 <FilterSheet activeCount={active.length} resultsLabel={t("list.showResults", { count: result.total })} chips={active.length > 0 ? chips : undefined} always={mode === "drawer"}>
                   {filters}
                 </FilterSheet>
@@ -285,7 +287,7 @@ async function Listing({
                   );
                 })}
               </div>
-              <SortSelect value={sort} options={sorts} />
+              {!site && <SortSelect value={sort} options={sorts} />}
             </div>
           </div>
           {active.length > 0 && <div className="mb-5">{chips}</div>}
@@ -399,13 +401,21 @@ export interface FilterGroupData {
   body: React.ReactNode;
 }
 
-/** The filter groups (category, options, attributes, price, in stock), each as server-rendered links. */
-function filterGroups(path: string, sp: Params, facets: Facets, t: Translator, hideCategories: boolean): FilterGroupData[] {
+/** Longest value a filter group may have; longer ones are descriptions typed into an attribute, not filter values. */
+const FILTER_VALUE_MAX = 40;
+
+/**
+ * The filter groups (category, options, attributes, price, in stock), each as server-rendered links.
+ * `site`: a website-only trade (school programmes): no price or stock filters (nothing is priced or stocked).
+ * Any trade: a group is left out when it can't narrow the list (one value, nothing picked) or its values are sentences
+ * (descriptions typed into an attribute) rather than filter values.
+ */
+function filterGroups(path: string, sp: Params, facets: Facets, t: Translator, hideCategories: boolean, site = false): FilterGroupData[] {
   const cat = valuesOf(sp, "cat")[0];
   const groups: { title: string; key: string; values: { value: string; count: number }[] }[] = [
     ...Object.entries(facets.options ?? {}).map(([name, values]) => ({ title: name, key: `opt.${name}`, values })),
     ...Object.entries(facets.attributes ?? {}).map(([name, values]) => ({ title: name, key: `attr.${name}`, values })),
-  ].filter((g) => g.values.length > 0);
+  ].filter((g) => g.values.length > 0 && (g.values.length > 1 || valuesOf(sp, g.key).length > 0) && g.values.every((v) => v.value.length <= FILTER_VALUE_MAX));
   const keep: Params = Object.fromEntries(Object.entries(sp).filter(([k]) => k !== "min" && k !== "max" && k !== "page"));
   const out: FilterGroupData[] = [];
 
@@ -456,9 +466,9 @@ function filterGroups(path: string, sp: Params, facets: Facets, t: Translator, h
                   }
                 >
                   {!chips && (
-                    <span className={cn("flex size-4 items-center justify-center rounded border transition-colors", on && "border-primary bg-primary text-primary-foreground")}>{on && <CheckIcon className="size-3 animate-in zoom-in-50" />}</span>
+                    <span className={cn("flex size-4 shrink-0 items-center justify-center rounded border transition-colors", on && "border-primary bg-primary text-primary-foreground")}>{on && <CheckIcon className="size-3 animate-in zoom-in-50" />}</span>
                   )}
-                  <span className="truncate">{v.value}</span>
+                  <span className={chips ? "truncate" : "min-w-0 leading-snug break-words"}>{v.value}</span>
                   {!chips && <span className="ms-auto text-xs text-muted-foreground tabular-nums">{v.count}</span>}
                 </Link>
               </li>
@@ -468,6 +478,8 @@ function filterGroups(path: string, sp: Params, facets: Facets, t: Translator, h
       ),
     });
   }
+
+  if (site) return out;
 
   if (facets.price.max > facets.price.min) {
     out.push({

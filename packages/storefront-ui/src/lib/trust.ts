@@ -68,6 +68,8 @@ export function trustItems(config: Config, t: Translator, locale: string): Trust
   const ret = returnsMode(config);
   const out: TrustItem[] = [];
   if (pack.promise) out.push({ key: "promise", icon: pack.promise.icon, title: pack.promise.title[l], text: pack.promise.text[l] });
+  // A website-only trade (school) sells nothing online: no payment, COD or returns badges, just its own promise if any.
+  if (packFor(config.shop.businessType)?.site) return out;
   out.push(pay === "online" ? { key: "pay", icon: "shield", title: t("trust.secure"), text: t("trust.secureText") } : { key: "pay", icon: pay === "confirm" ? "check" : "cash", title: t(`trust.pay.${pay}`), text: t(`trust.pay.${pay}Text`) });
   if (config.codEnabled && pay !== "visit") out.push({ key: "cod", icon: "cash", title: t("trust.cod"), text: t("trust.codText") });
   if (ret !== "none") out.push({ key: "returns", icon: "return", title: t(ret === "easy" ? "trust.returns" : `trust.returns.${ret}`), text: t(ret === "easy" ? "trust.returnsText" : `trust.returns.${ret}Text`), href: "/policies/returns" });
@@ -85,6 +87,7 @@ export function trustAnnouncements(config: Config, t: Translator, locale: string
   const ret = returnsMode(config);
   const out: { text: string; href?: string }[] = [];
   if (pack.promise) out.push({ text: `${pack.promise.title[l]} · ${pack.promise.text[l]}` });
+  if (packFor(config.shop.businessType)?.site) return out;
   if (pay !== "online") out.push({ text: t(`announce.pay.${pay}`) });
   if (config.codEnabled && pay !== "visit") out.push({ text: t("announce.cod") });
   if (ret !== "none") out.push({ text: t(ret === "easy" ? "announce.returns" : `announce.returns.${ret}`), href: "/policies/returns" });

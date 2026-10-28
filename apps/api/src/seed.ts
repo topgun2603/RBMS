@@ -217,6 +217,7 @@ const APP_URLS = {
   PH: (slug: string) => `http://${slug}.localhost:3006`,
   RS: (slug: string) => `http://${slug}.localhost:3007`,
   SV: (slug: string) => `http://${slug}.localhost:3008`,
+  SC: (slug: string) => `http://${slug}.localhost:3009`,
 };
 
 async function seedDemoShops(kit: Kit, ownerUserId: string) {

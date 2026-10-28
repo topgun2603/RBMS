@@ -33,6 +33,7 @@ export const DEMO_STORES: readonly DemoStore[] = [
   { slug: "sellam", name: "Sellam Pet Store", trade: "pet_shop" },
   { slug: "sukham", name: "Sukham Ayur Spa", trade: "spa" },
   { slug: "thaiyal", name: "Thaiyal Tailors & Boutique", trade: "tailoring" },
+  { slug: "thamarai", name: "Thamarai Vidyalaya", trade: "school" },
 ];
 
 /** Shops with a 90-day trading history, opened read-only in their business app (API: DEMO_SHOPS, POST /v1/auth/demo). */

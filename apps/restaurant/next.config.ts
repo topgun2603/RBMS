@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/payroll-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/restaurant-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/pricelists", "@srirealtime/receipt-print", "@srirealtime/tenancy", "@srirealtime/site-ui", "@srirealtime/branding", "@srirealtime/verticals"],
+    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/payroll-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/restaurant-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/pricelists", "@srirealtime/receipt-print", "@srirealtime/tenancy", "@srirealtime/enquiries-ui", "@srirealtime/site-ui", "@srirealtime/branding", "@srirealtime/verticals"],
     poweredByHeader: false,
     // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
     async headers() {

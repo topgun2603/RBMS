@@ -18,9 +18,10 @@ const APPS = [
   { id: "PH", label: "Pharmacy" },
   { id: "RS", label: "Restaurant" },
   { id: "SV", label: "Services" },
+  { id: "SC", label: "School" },
 ] as const;
 const TRADES = [
-  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa",
+  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa", "school",
 ];
 
 interface Item {

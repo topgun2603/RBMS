@@ -123,6 +123,7 @@ export const PACK_CATEGORIES: Record<BusinessType, string[]> = {
   sports: ["shopping", "sports", "fitness"],
   tea_stall: ["food"],
   spa: ["lifestyle", "health"],
+  school: ["education"],
 };
 
 export function manifestCategories(businessType: string | null | undefined): string[] {

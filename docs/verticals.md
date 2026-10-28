@@ -67,16 +67,19 @@ invoice `issued` / `cancelled` events and the store order `statusChanged` event.
 
 ## Business packs and store themes (`@srirealtime/verticals`, `@srirealtime/branding` theme)
 
-Twenty-nine trades ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
+Thirty trades ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
 cloud_kitchen, grocery, bakery, fresh, electronics, repair, salon, gym, jewellery, hardware, optical, tailoring, organic,
 footwear, stationery, toys, cosmetics, and (EC) crackers (Sivakasi fireworks, made-locally badge), florist_pooja (flowers
 and garlands on the scales: loose flowers by weight, strings by the muzham), mobile_accessories (no serials: phones with
 IMEI stay on electronics), furniture, home_decor, pet_shop, sports (size guide: clothing chart, shoe chart for sports
 shoes), (RS) tea_stall (counter-first: QR table ordering off, like cloud_kitchen) and (SV) spa (books through `/book`,
-no job cards, like salon; `spa` is no longer a salon alias). A pack
+no job cards, like salon; `spa` is no longer a salon alias) and school (a school's website: admissions, programmes, campus,
+news; preset `campus-navy`, `ctaHref` `/admissions`). A pack
 holds the app it runs on, its theme preset, the storefront's words in English and Tamil (search box, "new arrivals",
 hero, call to action, newsletter, categories title), whether the clothing size guide and the "made locally" badge apply,
-starter categories, a starter home page (CMS sections) and product-editor hints.
+starter categories, a starter home page (CMS sections) and product-editor hints. `site: true` (only `school`) marks a
+website, not a shop: the store hides the cart, wishlist, shopper account and product search, and the main button goes to
+`ctaHref`; its `off` list also switches off job cards, memberships, serials, coupons, delivery, loyalty, wishlist and returns.
 
 - **Where the trade lives:** `store` settings `businessType` (public). Empty = the app's default pack
   (`DEFAULT_PACK_FOR_APP`). Changed in Settings → Appearance.

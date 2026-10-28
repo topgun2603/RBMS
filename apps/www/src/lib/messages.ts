@@ -58,7 +58,7 @@ export const en: Messages = {
   "strip.upi": "UPI, card and cash",
   "strip.phone": "Works on any phone",
   "strip.print": "Thermal and A4 printing",
-  "strip.trades": "29 trade setups",
+  "strip.trades": "30 trade setups",
   "strip.counters": "Multiple counters and weighing",
 
   "products.eyebrow": "Two products, one account",
@@ -75,6 +75,8 @@ export const en: Messages = {
   "products.restaurant.body": "Tables, kitchen order tickets, a kitchen screen, split bills and QR menu ordering.",
   "products.services.title": "Services",
   "products.services.body": "Appointments, job cards and memberships for salons, gyms, repair shops, tailors and opticals.",
+  "products.school.title": "School",
+  "products.school.body": "A school website with admission enquiries, campus-visit booking, programmes, news and parent chat.",
   "products.store.points": "Your shop at your own web address|UPI, card and cash-on-delivery|Orders straight to WhatsApp|Coupons, reviews and loyalty points",
   "products.learnMore": "Learn more",
 
@@ -139,7 +141,7 @@ export const en: Messages = {
   "faq.home.10.q": "Does it help with pharmacy records?",
   "faq.home.10.a": "Pharmacy has medicine batches with expiry (the batch that expires first is sold first, and expired stock is never sold), substitutes by salt, prescriptions and the Schedule H1 register for every H1 sale. It keeps the records; following your licence and the rules stays with you.",
   "faq.home.11.q": "Is my kind of shop supported?",
-  "faq.home.11.a": "Srirealtime has setups for 29 trades, from kirana and textiles to pharmacy, jewellery, salons and repair shops. If yours is not listed, a general setup works, and you can tell us your trade.",
+  "faq.home.11.a": "Srirealtime has setups for 30 trades, from kirana and textiles to pharmacy, jewellery, salons and repair shops. If yours is not listed, a general setup works, and you can tell us your trade.",
   "faq.home.12.q": "Does it work without internet?",
   "faq.home.12.a": "Yes. If the internet drops, the counter keeps billing: search and scanning work from the item list on the device, and each bill gets its final GST number from a block the counter reserved while online. The bills are sent automatically when you're back online. The credit book, loyalty points and returns need the connection.",
   "faq.home.13.q": "I use Vyapar, Tally, Busy or Marg. Can I move my data?",
@@ -534,7 +536,7 @@ export const ta: Messages = {
   "strip.upi": "UPI, கார்டு, ரொக்கம்",
   "strip.phone": "எந்த போனிலும் இயங்கும்",
   "strip.print": "தெர்மல், A4 பிரிண்ட்",
-  "strip.trades": "29 தொழில் அமைப்புகள்",
+  "strip.trades": "30 தொழில் அமைப்புகள்",
   "strip.counters": "பல கவுண்டர்கள், எடை நிலையம்",
 
   "products.eyebrow": "இரண்டு தயாரிப்புகள், ஒரே கணக்கு",
@@ -551,6 +553,8 @@ export const ta: Messages = {
   "products.restaurant.body": "மேசைகள், சமையலறை ஆர்டர் சீட்டுகள், சமையலறைத் திரை, பில் பிரிப்பு, QR மெனு ஆர்டர்.",
   "products.services.title": "சேவைகள்",
   "products.services.body": "சலூன், ஜிம், ரிப்பேர் கடை, தையல், கண்ணாடிக் கடைகளுக்கு அப்பாயின்ட்மென்ட், வேலைச் சீட்டு, உறுப்பினர்.",
+  "products.school.title": "பள்ளி",
+  "products.school.body": "சேர்க்கை விசாரணைகள், வளாகப் பார்வை முன்பதிவு, பாடத்திட்டங்கள், செய்திகள், பெற்றோர் உரையாடலுடன் பள்ளி இணையதளம்.",
   "products.store.points": "உங்கள் சொந்த இணைய முகவரியில் கடை|UPI, கார்டு, டெலிவரியில் பணம்|ஆர்டர்கள் நேராக WhatsApp-க்கு|கூப்பன், மதிப்புரை, லாயல்டி புள்ளிகள்",
   "products.learnMore": "மேலும் அறிய",
 
@@ -615,7 +619,7 @@ export const ta: Messages = {
   "faq.home.10.q": "மருந்தகப் பதிவுகளுக்கு உதவுமா?",
   "faq.home.10.a": "மருந்தகத்தில் காலாவதியுடன் மருந்து பேட்ச்கள் (முதலில் காலாவதியாகும் பேட்ச் முதலில் விற்கப்படும்; காலாவதியானது விற்கப்படாது), உப்பு வாரியாக மாற்று மருந்துகள், மருந்துச் சீட்டு, ஒவ்வொரு H1 விற்பனைக்கும் அட்டவணை H1 பதிவேடு உண்டு. பதிவுகளை இது வைத்திருக்கும்; உங்கள் உரிமம், விதிகளைப் பின்பற்றுவது உங்கள் பொறுப்பு.",
   "faq.home.11.q": "என் கடை வகை ஆதரிக்கப்படுகிறதா?",
-  "faq.home.11.a": "மளிகை, ஜவுளி முதல் மருந்தகம், நகை, சலூன், ரிப்பேர் கடை வரை 29 தொழில்களுக்கு அமைப்புகள் உள்ளன. உங்களுடையது பட்டியலில் இல்லையென்றால் பொதுவான அமைப்பைப் பயன்படுத்தலாம்; உங்கள் தொழிலை எங்களுக்குச் சொல்லுங்கள்.",
+  "faq.home.11.a": "மளிகை, ஜவுளி முதல் மருந்தகம், நகை, சலூன், ரிப்பேர் கடை வரை 30 தொழில்களுக்கு அமைப்புகள் உள்ளன. உங்களுடையது பட்டியலில் இல்லையென்றால் பொதுவான அமைப்பைப் பயன்படுத்தலாம்; உங்கள் தொழிலை எங்களுக்குச் சொல்லுங்கள்.",
   "faq.home.12.q": "இணையம் இல்லாமல் இயங்குமா?",
   "faq.home.12.a": "ஆம். இணையம் துண்டிக்கப்பட்டாலும் கவுண்டரில் பில் போடலாம்: சாதனத்தில் உள்ள பொருள் பட்டியலில் தேடலும் ஸ்கேனும் இயங்கும்; ஒவ்வொரு பில்லுக்கும், இணையம் இருந்தபோதே கவுண்டர் ஒதுக்கி வைத்த எண்களிலிருந்து இறுதி GST எண் கிடைக்கும். இணையம் திரும்பியதும் பில்கள் தானாக அனுப்பப்படும். கடன் கணக்கு, லாயல்டி புள்ளிகள், திருப்பம் ஆகியவற்றுக்கு இணையம் தேவை.",
   "faq.home.13.q": "நான் Vyapar, Tally, Busy அல்லது Marg பயன்படுத்துகிறேன். என் தரவை மாற்ற முடியுமா?",

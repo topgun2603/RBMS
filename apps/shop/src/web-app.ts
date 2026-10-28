@@ -1,3 +1,4 @@
+import { enquiriesModule } from "@srirealtime/enquiries-ui";
 import { growthModule } from "@srirealtime/growth-ui";
 import { jewelleryModule } from "@srirealtime/jewellery-ui";
 import { marketplaceModule } from "@srirealtime/marketplace-ui";
@@ -29,6 +30,7 @@ export const webApp = createWebApp({
     ordersModule(),
     commerceModule(),
     siteModule(),
+    enquiriesModule(),
     billingModule({ basePath: "/billing" }),
     posModule(),
     scalesModule(),

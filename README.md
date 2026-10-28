@@ -31,6 +31,8 @@ apps/
                   (arusuvai.localhost:3007)
   services/       Services app (:3008, app profile "SV"): appointments, job cards, memberships for salons, gyms,
                   repair shops, tailors and opticals (glow.localhost:3008)
+  school/         School app (:3009, app profile "SC"): website, admission enquiries, campus visits, programmes
+                  (thamarai.localhost:3009)
 packages/
   core/           Shared contracts: errors, request context, env loading, module definition, permissions
   db/             Drizzle client and column helpers

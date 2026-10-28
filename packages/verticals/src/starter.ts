@@ -61,6 +61,7 @@ const LAYOUT: Record<BusinessType, Part[]> = {
   sports: ["hero", "category-mosaic", "usp", "testimonials", "faq", "location", "newsletter"],
   tea_stall: ["hero-split", "menu-board", "usp", "location", "faq"],
   spa: ["hero", "appointment", "categories", "usp", "testimonials", "faq", "location"],
+  school: ["hero-split", "usp", "categories", "appointment", "testimonials", "faq", "location", "newsletter"],
 };
 
 /** Packs without stock artwork of their own borrow a near trade's (drawn in that trade's look, which the pack starts on). */
@@ -74,6 +75,7 @@ const STOCK_ART: Partial<Record<BusinessType, string>> = { organic: "fresh", foo
   sports: "gym",
   tea_stall: "restaurant",
   spa: "salon",
+  school: "optical",
 };
 
 // ------------------------------------------------------------------ trade words
@@ -110,6 +112,11 @@ const SERVICES: Partial<Record<BusinessType, { name: L; duration?: L }[]>> = {
     { name: l("Abhyanga (ayurvedic oil massage)", "அப்யங்கம் (ஆயுர்வேத எண்ணெய் மசாஜ்)"), duration: l("75 min", "75 நிமி") },
     { name: l("Foot reflexology", "பாத ரிஃப்ளெக்ஸாலஜி"), duration: l("30 min", "30 நிமி") },
   ],
+  school: [
+    { name: l("Campus visit and tour", "வளாகச் சுற்றுலா"), duration: l("45 min", "45 நிமி") },
+    { name: l("Meet the principal", "முதல்வரைச் சந்திக்க"), duration: l("20 min", "20 நிமி") },
+    { name: l("Admission counselling", "சேர்க்கை ஆலோசனை"), duration: l("30 min", "30 நிமி") },
+  ],
 };
 
 const APPOINTMENT: Partial<Record<BusinessType, { heading: L; text: L }>> = {
@@ -119,6 +126,7 @@ const APPOINTMENT: Partial<Record<BusinessType, { heading: L; text: L }>> = {
   optical: { heading: l("Book an eye test", "கண் பரிசோதனைக்கு முன்பதிவு"), text: l("Get your eyes checked and try frames, at a time that suits you.", "உங்களுக்கு ஏற்ற நேரத்தில் கண் பரிசோதனை செய்து ஃப்ரேம்களை அணிந்து பாருங்கள்.") },
   tailoring: { heading: l("Book a fitting", "அளவெடுக்க முன்பதிவு"), text: l("Come in for measurements, or book a pick-up of your fabric.", "அளவெடுக்க வாருங்கள், அல்லது உங்கள் துணியை எடுத்துச் செல்ல முன்பதிவு செய்யுங்கள்.") },
   spa: { heading: l("Book your session", "உங்கள் அமர்வை புக் செய்யுங்கள்"), text: l("Choose a therapy and a time, and come ten minutes early to settle in.", "சிகிச்சையையும் நேரத்தையும் தேர்ந்தெடுங்கள்; நிதானமாகத் தயாராகப் பத்து நிமிடம் முன்னதாக வாருங்கள்.") },
+  school: { heading: l("Book a campus visit", "வளாகத்தைப் பார்வையிட முன்பதிவு செய்யுங்கள்"), text: l("Walk through the classrooms, meet our teachers and ask about admissions. Pick a day that suits you.", "வகுப்பறைகளைச் சுற்றிப் பாருங்கள், ஆசிரியர்களைச் சந்தியுங்கள், சேர்க்கை பற்றிக் கேளுங்கள். உங்களுக்கு ஏற்ற நாளைத் தேர்ந்தெடுங்கள்.") },
 };
 
 type Dish = { name: L; price: number; diet?: "veg" | "nonveg" | "egg" };
@@ -309,6 +317,13 @@ const FAQ: Partial<Record<BusinessType, { q: L; a: L }[]>> = {
     { q: l("Can I ask for a woman therapist?", "பெண் சிகிச்சையாளரைக் கேட்கலாமா?"), a: l("Yes, tell us your preference when you book.", "ஆம், முன்பதிவின்போதே உங்கள் விருப்பத்தைச் சொல்லுங்கள்.") },
     { q: l("Is it safe in pregnancy or with a health condition?", "கர்ப்ப காலத்திலோ உடல்நலப் பிரச்சினையுடனோ பாதுகாப்பானதா?"), a: l("Tell us when you book. Some therapies aren't suitable; we'll suggest a gentle one or ask you to check with your doctor.", "முன்பதிவின்போதே சொல்லுங்கள். சில சிகிச்சைகள் ஏற்றவை அல்ல; மென்மையான ஒன்றைப் பரிந்துரைப்போம், அல்லது மருத்துவரிடம் கேட்கச் சொல்வோம்.") },
   ],
+  school: [
+    { q: l("What is the age criterion for admission?", "சேர்க்கைக்கு வயது வரம்பு என்ன?"), a: l("Age criteria depend on the class; ask the office for this year's cut-off dates for each class.", "வயது வரம்பு வகுப்பைப் பொறுத்தது; ஒவ்வொரு வகுப்புக்கும் இந்த ஆண்டுக்கான தேதிகளை அலுவலகத்தில் கேளுங்கள்.") },
+    { q: l("Which documents are needed?", "என்னென்ன ஆவணங்கள் தேவை?"), a: l("Usually the birth certificate, previous school's transfer certificate and report card, passport photos and address proof. The office will confirm the list.", "பொதுவாகப் பிறப்புச் சான்றிதழ், முந்தைய பள்ளியின் மாற்றுச் சான்றிதழ், மதிப்பெண் அட்டை, புகைப்படங்கள், முகவரிச் சான்று. முழுப் பட்டியலை அலுவலகம் உறுதி செய்யும்.") },
+    { q: l("Is school transport available?", "பள்ளி வாகன வசதி உண்டா?"), a: l("Yes, on selected routes; ask the office whether your area is covered.", "ஆம், குறிப்பிட்ட வழித்தடங்களில்; உங்கள் பகுதி உள்ளதா என அலுவலகத்தில் கேளுங்கள்.") },
+    { q: l("How do I know about the fees?", "கட்டண விவரங்களை எப்படி அறிவது?"), a: l("Fees differ by class. Send an enquiry or visit the office and we will share the fee structure.", "கட்டணம் வகுப்புக்கு ஏற்ப மாறும். விசாரணை அனுப்புங்கள் அல்லது அலுவலகத்துக்கு வாருங்கள்; கட்டண விவரத்தைப் பகிர்வோம்.") },
+    { q: l("Which board and syllabus do you follow?", "எந்த வாரியம், பாடத்திட்டத்தைப் பின்பற்றுகிறீர்கள்?"), a: l("Ask the office about the board, syllabus and medium of instruction for each class.", "ஒவ்வொரு வகுப்புக்குமான வாரியம், பாடத்திட்டம், பயிற்றுமொழி பற்றி அலுவலகத்தில் கேளுங்கள்.") },
+  ],
 };
 
 /** Draft customer words (hidden until the owner replaces them with real ones). */
@@ -326,6 +341,7 @@ const HOURS: Partial<Record<BusinessType, { label: L; value: L }[]>> = {
   ],
   tea_stall: [{ label: l("Every day", "தினமும்"), value: l("5:30 am – 10:30 pm", "காலை 5:30 – இரவு 10:30") }],
   spa: [{ label: l("Every day", "தினமும்"), value: l("10:00 am – 9:00 pm", "காலை 10:00 – இரவு 9:00") }],
+  school: [{ label: l("Office: Mon – Sat", "அலுவலகம்: திங்கள் – சனி"), value: l("9:00 am – 4:30 pm", "காலை 9:00 – மாலை 4:30") }],
 };
 const DEFAULT_HOURS = [
   { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("9:30 am – 9:00 pm", "காலை 9:30 – இரவு 9:00") },

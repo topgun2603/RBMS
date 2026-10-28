@@ -393,6 +393,13 @@
       "when": 1793110650697,
       "tag": "0055_expenses_debit_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793153267065,
+      "tag": "0056_enquiries",
+      "breakpoints": true
     }
   ]
 }

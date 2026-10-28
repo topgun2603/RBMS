@@ -66,6 +66,7 @@ export const PACK_TRUST: Partial<Record<BusinessType, PackTrust>> = {
   gym: { returns: "none", payment: "visit" },
   repair: { returns: "none", payment: "visit", promise: promise("check", ["Repair warranty", "Parts and work guaranteed"], ["பழுது நீக்க உத்தரவாதம்", "உதிரிபாகங்களுக்கும் வேலைக்கும் உத்தரவாதம்"]) },
   tailoring: { returns: "none", payment: "visit" },
+  school: { returns: "none", payment: "visit" },
 };
 
 /** The trade's trust defaults (empty for unknown trades). */

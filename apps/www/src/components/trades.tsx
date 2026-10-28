@@ -2,7 +2,7 @@ import * as React from "react";
 import {
   ArmchairIcon, CakeIcon, CoffeeIcon, CookingPotIcon, DumbbellIcon, FishIcon, FlameIcon, FlowerIcon, FootprintsIcon, GemIcon, GiftIcon, GlassesIcon,
   HammerIcon, HeadphonesIcon, LeafIcon, PawPrintIcon, PillIcon, PuzzleIcon, ScissorsIcon, ShirtIcon, ShoppingBasketIcon, SmartphoneIcon, SparklesIcon,
-  TrophyIcon, UtensilsCrossedIcon, WrenchIcon, BookOpenIcon, CpuIcon, FlaskConicalIcon,
+  TrophyIcon, UtensilsCrossedIcon, WrenchIcon, BookOpenIcon, CpuIcon, FlaskConicalIcon, GraduationCapIcon,
 } from "lucide-react";
 import type { Translator } from "@srirealtime/i18n/client";
 import { Card } from "@srirealtime/ui/components/card";
@@ -16,7 +16,7 @@ const ICONS: Record<BusinessType, React.ComponentType<{ className?: string }>> =
   grocery: ShoppingBasketIcon, bakery: CakeIcon, fresh: FishIcon, organic: LeafIcon, restaurant: UtensilsCrossedIcon, cloud_kitchen: CookingPotIcon, tea_stall: CoffeeIcon,
   fashion: ShirtIcon, footwear: FootprintsIcon, jewellery: GemIcon, cosmetics: SparklesIcon, home_decor: GiftIcon, furniture: ArmchairIcon, florist_pooja: FlowerIcon, crackers: FlameIcon,
   pharmacy: PillIcon, optical: GlassesIcon, salon: ScissorsIcon, spa: FlaskConicalIcon, gym: DumbbellIcon,
-  hardware: HammerIcon, electronics: CpuIcon, mobile_accessories: HeadphonesIcon, repair: WrenchIcon, stationery: BookOpenIcon, toys: PuzzleIcon, sports: TrophyIcon, pet_shop: PawPrintIcon, tailoring: SmartphoneIcon,
+  hardware: HammerIcon, electronics: CpuIcon, mobile_accessories: HeadphonesIcon, repair: WrenchIcon, stationery: BookOpenIcon, toys: PuzzleIcon, sports: TrophyIcon, pet_shop: PawPrintIcon, tailoring: SmartphoneIcon, school: GraduationCapIcon,
 };
 const TONES = ["bg-primary/10 text-primary", "bg-marigold/20 text-marigold-ink", "bg-leaf/15 text-leaf"];
 

@@ -4,6 +4,7 @@ import { moreEn, moreTa } from "./messages-more";
 import { reviewsEn, reviewsTa } from "./messages-reviews";
 import { reviewsAiEn, reviewsAiTa } from "./messages-reviews-ai";
 import { layoutsEn, layoutsTa } from "./messages-layouts";
+import { enquiryEn, enquiryTa } from "./messages-enquiry";
 import { trustEn, trustTa } from "./messages-trust";
 
 /** site.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
@@ -13,6 +14,7 @@ const en: Messages = {
   ...reviewsEn,
   ...reviewsAiEn,
   ...layoutsEn,
+  ...enquiryEn,
   ...trustEn,
   // nav
   "site.nav.section": "Online store",
@@ -1050,6 +1052,7 @@ const ta: Messages = {
   ...reviewsTa,
   ...reviewsAiTa,
   ...layoutsTa,
+  ...enquiryTa,
   ...trustTa,
   // nav
   "site.nav.section": "இணையக் கடை",

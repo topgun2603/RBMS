@@ -69,6 +69,7 @@
     "@srirealtime/loyalty": "workspace:*",
     "@srirealtime/marketplace": "workspace:*",
     "@srirealtime/medicines": "workspace:*",
+    "@srirealtime/enquiries": "workspace:*",
     "@srirealtime/memberships": "workspace:*",
     "@srirealtime/monitoring": "workspace:*",
     "@srirealtime/notify": "workspace:*",

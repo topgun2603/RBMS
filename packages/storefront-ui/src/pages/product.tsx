@@ -17,7 +17,7 @@ import { storeMetadata } from "../server/meta";
 import { percentOff } from "../lib/format";
 import { freshIds } from "../lib/cards";
 import { Markdown, stripLeadingHeading } from "../lib/markdown";
-import type { Translator } from "../lib/messages";
+import { translatorFor, type Translator } from "../lib/messages";
 import type { Availability, CmsPage, List, Product, ProductSummary, Promotions, Recommendations, ReviewList, SearchResult, SellerCard, SellerLookup, StoreThemeView } from "../types";
 import { Breadcrumbs, Container, FoodMark, JsonLd, SectionTitle, Stars } from "../components/bits";
 import { ProductCard, ProductGrid, ProductGridSkeleton } from "../components/product-card";
@@ -56,7 +56,9 @@ export async function ProductPage({ slug }: { slug: string }) {
   const [info, config] = await Promise.all([getRequestInfo(), requireStore()]);
   const product = await getProduct(slug);
   if (!product) notFound();
-  const { t, baseUrl } = info;
+  const { baseUrl } = info;
+  // With the trade's words ("Fee on enquiry" for a school).
+  const t = translatorFor(info.locale, config.shop.businessType);
   // Services (a haircut, a repair) are booked or enquired about: no cart, stock, delivery check or shipping policy.
   const service = isService(product);
   const ids = service ? [] : product.variants.map((v) => v.id);

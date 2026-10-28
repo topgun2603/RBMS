@@ -1,10 +1,10 @@
 import { THEME_PRESETS } from "@srirealtime/branding";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_TYPES, copyFor, packFor, packOrDefault, PACKS, starterHome } from "./index";
+import { BUSINESS_TYPES, copyFor, DEFAULT_PACK_FOR_APP, packFor, packOrDefault, PACKS, starterHome } from "./index";
 
 describe("business packs", () => {
   it("ships its solutions (15 trades + organic, footwear, stationery, toys, cosmetics + nine retail, food and wellness packs), each with a real theme preset and full copy in both languages", () => {
-    expect(BUSINESS_TYPES).toHaveLength(29);
+    expect(BUSINESS_TYPES).toHaveLength(30);
     expect(new Set(BUSINESS_TYPES).size).toBe(BUSINESS_TYPES.length);
     const presets = new Set(THEME_PRESETS.map((p) => p.id));
     for (const t of BUSINESS_TYPES) {
@@ -114,5 +114,16 @@ describe("business packs", () => {
       const faq = starterHome(PACKS[id], "Shop", "ta").find((s) => s.type === "faq");
       expect(faq && "items" in faq ? faq.items.length : 0, id).toBe(3);
     }
+  });
+
+  it("school: a website on its own School app (SC), not a shop", () => {
+    expect(PACKS.school).toMatchObject({ appId: "SC", site: true, ctaHref: "/admissions", preset: "campus-navy" });
+    expect(PACKS.school.off).not.toContain("bookings");
+    expect(DEFAULT_PACK_FOR_APP.SC).toBe("school");
+    expect(Object.values(PACKS).filter((p) => p.site).map((p) => p.id)).toEqual(["school"]);
+    for (const a of ["School", "matric school", "CBSE school", "play school", "Montessori", "hr-sec-school"]) expect(packFor(a)?.id, a).toBe("school");
+    const home = starterHome(PACKS.school, "Thamarai School");
+    expect(home.map((x) => x.type)).toContain("appointment");
+    expect(home.map((x) => x.type)).toContain("faq");
   });
 });

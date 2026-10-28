@@ -11,6 +11,7 @@ import {
   type SubjectHandler,
   type SubjectQuery,
 } from "@srirealtime/consent";
+import { enquiries } from "@srirealtime/enquiries";
 import { billingCustomers, invoices } from "@srirealtime/invoices";
 import { kycDocuments } from "@srirealtime/kyc";
 import { loyaltyLedger, loyaltyMembers } from "@srirealtime/loyalty";
@@ -61,8 +62,8 @@ export function createPrivacyHost(deps: PrivacyKitDeps): PrivacyHostPort {
       const [b, aiSettings] = await Promise.all([deps.settings.handle("billing").get({ tenantId }) as Promise<Record<string, string>>, deps.settings.handle("ai").get({ tenantId }) as Promise<{ enabled?: boolean }>]);
       const f = deps.features();
       const on = (key: string) => f.isEnabled(tenantId, key).catch(() => false);
-      const [storefront, loyalty, memberships, pharmacy, payroll, aiOn, whatsapp, delivery, bookings, jobcards] = await Promise.all(
-        ["storefront", "loyalty", "memberships", "medicines", "payroll", "ai", "whatsapp", "delivery", "bookings", "jobcards"].map(on),
+      const [storefront, loyalty, memberships, pharmacy, payroll, aiOn, whatsapp, delivery, bookings, jobcards, enquiriesOn] = await Promise.all(
+        ["storefront", "loyalty", "memberships", "medicines", "payroll", "ai", "whatsapp", "delivery", "bookings", "jobcards", "enquiries"].map(on),
       );
       return {
         shopName: t?.name ?? "",
@@ -78,6 +79,7 @@ export function createPrivacyHost(deps: PrivacyKitDeps): PrivacyHostPort {
           messaging: !!whatsapp,
           delivery: !!delivery,
           services: !!bookings || !!jobcards,
+          enquiries: !!enquiriesOn,
         },
       };
     },
@@ -312,7 +314,31 @@ export function createSubjectHandlers(deps: { db: Db; uploads: () => UploadsServ
     },
   };
 
-  return [storeCustomersHandler, billingHandler, loyaltyHandler, membershipHandler, whatsappHandler, supportHandler];
+  const enquiriesHandler: SubjectHandler = {
+    id: "enquiries",
+    label: "Website enquiry",
+    async locate(tenantId, q) {
+      const or_ = [...phoneOr(enquiries.phone, q), ...emailEq(enquiries.email, q)];
+      if (!or_.length) return [];
+      const rows = await db.select({ id: enquiries.id, number: enquiries.number, name: enquiries.name }).from(enquiries).where(and(eq(enquiries.tenantId, tenantId), or(...or_)));
+      return rows.map((r) => ({ id: r.id, label: `${r.number} ${r.name}` }));
+    },
+    async export(tenantId, id) {
+      const [e] = await db.select().from(enquiries).where(and(eq(enquiries.tenantId, tenantId), eq(enquiries.id, id))).limit(1);
+      return {
+        enquiry: e
+          ? { number: e.number, name: e.name, phone: e.phone, email: e.email, topic: e.topic, studentName: e.studentName, option: e.option, message: e.message, status: e.status, createdAt: e.createdAt }
+          : null,
+      };
+    },
+    async anonymise(tenantId, id) {
+      await db.delete(enquiries).where(and(eq(enquiries.tenantId, tenantId), eq(enquiries.id, id)));
+      return { anonymised: true, kept: [] };
+    },
+    correctionHint: "Website enquiry: correct it under Enquiries (staff note), or delete it.",
+  };
+
+  return [storeCustomersHandler, billingHandler, loyaltyHandler, membershipHandler, whatsappHandler, supportHandler, enquiriesHandler];
 }
 
 // ---------------------------------------------------------------------------------------------------- retention catalogue
@@ -525,6 +551,22 @@ export function createRetentionCategories(deps: { db: Db; uploads: () => Uploads
         const t = tid(s);
         const rows = await db.delete(kycDocuments).where(and(eq(kycDocuments.tenantId, t), lt(kycDocuments.createdAt, cutoff))).returning({ url: kycDocuments.fileUrl });
         await removeUploads(db, deps.uploads, t, rows.map((r) => r.url));
+        return rows.length;
+      },
+    },
+    {
+      key: "website_enquiries",
+      scope: "shop",
+      defaultDays: 730,
+      minDays: 30,
+      action: "delete",
+      touches: ["enquiries"],
+      async count(s, cutoff) {
+        const [r] = await db.select({ n: count() }).from(enquiries).where(and(eq(enquiries.tenantId, tid(s)), lt(enquiries.createdAt, cutoff)));
+        return Number(r?.n ?? 0);
+      },
+      async purge(s, cutoff) {
+        const rows = await db.delete(enquiries).where(and(eq(enquiries.tenantId, tid(s)), lt(enquiries.createdAt, cutoff))).returning({ id: enquiries.id });
         return rows.length;
       },
     },

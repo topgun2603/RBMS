@@ -102,6 +102,17 @@ export async function seedDemoStore(kit: Kit, store: DemoStore, ownerUserId: str
     log.info({ slug, page: page.slug }, "demo store: page published");
   }
 
+  for (const post of store.posts ?? []) {
+    const found = (await kit.cms.service.listPosts(tenantId, { q: post.title, limit: 100 })).items.some((p) => p.slug === post.slug);
+    if (found) continue;
+    const wanted = [...collectPhotos((c) => post.blocks(c)), { id: post.cover, size: "wide" as PhotoSize }];
+    const urls = await photos.preload(wanted);
+    if (urls.size < new Set(wanted.map((w) => `${w.id}-${w.size}`)).size) continue;
+    const made = await kit.cms.service.createPost(tenantId, { title: post.title, slug: post.slug, excerpt: post.excerpt, coverUrl: ctx(urls).photo(post.cover, "wide"), tags: post.tags, authorName: post.authorName, blocks: post.blocks(ctx(urls)) });
+    await kit.cms.service.setPostStatus(tenantId, made.id, "published");
+    log.info({ slug, post: post.slug }, "demo store: post published");
+  }
+
   for (const key of ["header", "footer"] as const) {
     if ((await kit.cms.service.getMenu(tenantId, key)).items.length > 0) continue;
     await kit.cms.service.saveMenu(tenantId, key, store.menus[key]);

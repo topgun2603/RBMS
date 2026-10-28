@@ -613,6 +613,24 @@ function PreviewSection({ s }: { s: ResolvedHomeSection }) {
           </div>
         </div>
       );
+    case "enquiry-form":
+      return (
+        <div className="mx-4 grid gap-3 rounded-xl border bg-card p-4 text-card-foreground @lg:grid-cols-2">
+          <div className="grid content-start gap-2">
+            <p className="font-heading text-lg leading-tight font-bold">{s.heading}</p>
+            {s.text && <p className="text-sm opacity-80">{s.text}</p>}
+            {s.imageUrl && <Img src={s.imageUrl} alt={s.imageAlt ?? ""} className="aspect-[4/3] w-full rounded-lg" />}
+          </div>
+          <div className="grid content-start gap-2">
+            {[t("site.enquiry.previewName"), t("site.enquiry.previewPhone"), ...(s.askStudent ? [s.studentLabel || t("site.enquiry.previewStudent")] : []), ...(s.options.length ? [s.optionLabel || t("site.enquiry.previewOption")] : []), ...(s.askEmail ? [t("site.enquiry.previewEmail")] : []), ...(s.askMessage ? [t("site.enquiry.previewMessage")] : [])].map((l, i) => (
+              <span key={i} className="flex h-9 items-center rounded-lg border bg-background px-3 text-xs text-muted-foreground">
+                {l}
+              </span>
+            ))}
+            <span className="inline-flex h-9 w-fit items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground">{s.submitLabel || t("site.enquiry.submitPlaceholder")}</span>
+          </div>
+        </div>
+      );
     case "appointment":
       return (
         <div className={cn("mx-4 grid gap-3 rounded-xl p-4 @lg:grid-cols-2", !s.style?.background && "bg-primary/8")}>

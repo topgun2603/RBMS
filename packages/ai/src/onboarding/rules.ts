@@ -141,6 +141,11 @@ export const TRADE_WORDS: Record<BusinessType, Kw[]> = {
     ...k(2, "tea", "coffee", "bajji", "காபி"),
   ],
   spa: [...k(4, "spa", "ஸ்பா"), ...k(3, "massage", "wellness", "aromatherapy", "reflexology", "மசாஜ்"), ...k(2, "ayurvedic", "ayurveda", "therapy")],
+  school: [
+    ...k(4, "school", "matriculation", "cbse", "icse", "play school", "playschool", "preschool", "kindergarten", "பள்ளி", "மெட்ரிக்"),
+    ...k(3, "admission", "admissions", "students", "classes", "மாணவர்", "மாணவர்கள்", "சேர்க்கை"),
+    ...k(2, "montessori", "nursery", "campus", "பாலர் பள்ளி"),
+  ],
 };
 
 const ORDERED_WORDS: { trade: BusinessType; word: string; weight: number; rx: RegExp }[] = BUSINESS_TYPES.flatMap((trade) => TRADE_WORDS[trade].map(([word, weight]) => ({ trade, word: fold(word), weight, rx: rxFor(fold(word)) }))).sort(
@@ -281,6 +286,8 @@ export function moodsFrom(text: string): Mood[] {
 /** A ready-made look for the trade and the mood words (the trade's own preset when nothing was said). */
 export function presetFor(trade: BusinessType, text: string): string {
   const pack = PACKS[trade];
+  // A school's site keeps its own look whatever the mood words (a fun or dark school site is the owner's call later).
+  if (trade === "school") return pack.preset;
   const m = new Set(moodsFrom(text));
   const pick = (byTrade: Partial<Record<BusinessType, string>>, other: string) => byTrade[trade] ?? other;
   if (m.has("traditional")) return pick({ fashion: "kanchi-silk", jewellery: "temple-gold", bakery: "mithai", restaurant: "madras-cafe", tea_stall: "signboard", florist_pooja: "kumkum-manjal", home_decor: "polished-brass", tailoring: "madder-thread" }, "heritage");

@@ -36,6 +36,7 @@ import { useWishlist } from "./wishlist";
 import { track } from "./analytics";
 import { helpCentreOn } from "../lib/features";
 import { navFitCount, navLeadFolds, overflowLinks } from "../lib/nav-fit";
+import { siteCta, siteOnly } from "../lib/site";
 
 export interface NavCategory {
   id: string;
@@ -259,6 +260,8 @@ function HeaderSearch({ className, expandable }: { className?: string; expandabl
 }
 
 function SuspendedSearch({ className, expandable }: { className?: string; expandable?: boolean }) {
+  const { shell } = useStore();
+  if (siteOnly(shell.businessType)) return null;
   return (
     <React.Suspense fallback={<div className={cn("h-11 rounded-full border bg-card", className)} />}>
       <HeaderSearch className={className} expandable={expandable} />
@@ -311,8 +314,10 @@ export function StoreHeader({
   featured?: NavCollection | null;
   overlayHero?: boolean;
 }) {
-  const { t, auth, shell } = useStore();
+  const { t, auth, shell, locale } = useStore();
   const { header: variant, headerStyle, sticky, megaMenu } = shell.theme;
+  const site = siteOnly(shell.businessType);
+  const cta = siteCta(shell.businessType, locale);
   const navInBar = variant === "classic" || variant === "bold";
   const [navOpen, setNavOpen] = React.useState(false);
   const pathname = usePathname();
@@ -337,8 +342,23 @@ export function StoreHeader({
   const hidden = away && !navOpen;
 
   const activeIndex = menu.findIndex((item) => !!item.href && item.href !== "/" && pathname.startsWith(item.href.split("?")[0]!));
-  const shop = categories.length > 0 && megaMenu !== "off" ? <MegaMenu categories={categories} featured={featured} layout={megaMenu} /> : null;
-  const icons = (
+  const shop = !site && categories.length > 0 && megaMenu !== "off" ?<MegaMenu categories={categories} featured={featured} layout={megaMenu} /> : null;
+  const icons = site ? (
+    <>
+      <LocaleSwitch className="hidden sm:inline-flex" />
+      <ThemeToggle className="hidden sm:flex" />
+      {cta && (
+        <Link
+          href={cta.href}
+          // Phones: the name keeps the bar (the hero and the menu carry the same link).
+          className="sf-btn ms-1 hidden h-10 max-w-[44vw] items-center justify-center bg-primary px-4 sm:inline-flex text-sm font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 focus-ring"
+          data-testid="site-cta"
+        >
+          <span className="truncate">{cta.label}</span>
+        </Link>
+      )}
+    </>
+  ) : (
     <>
       {overlay && (
         <Link href={STORE_PATHS.search} className="flex size-10 items-center justify-center rounded-full hover:bg-accent focus-ring md:hidden" aria-label={t("nav.search")}>
@@ -426,7 +446,7 @@ export function StoreHeader({
           </div>
         )}
         {/* Phones: a search row under the bar (over the banner the search icon is used instead, so the bar keeps one height). */}
-        {!overlay && (
+        {!overlay && !site && (
           <div className="relative px-4 pb-3 md:hidden">
             <SuspendedSearch />
           </div>
@@ -435,7 +455,7 @@ export function StoreHeader({
 
       <MobileNav open={navOpen} onOpenChange={setNavOpen} menu={menu} categories={categories} featured={featured} />
       <NavProgress />
-      <MiniCart />
+      {!site && <MiniCart />}
     </>
   );
 }
@@ -907,11 +927,16 @@ function MobileNav({ open, onOpenChange, menu, categories, featured }: { open: b
               ) : null,
             )}
             {[
-              { href: STORE_PATHS.products, label: t("nav.shopAll") },
-              ...(featured ? [{ href: STORE_PATHS.collection(featured.slug), label: featured.name }] : []),
-              { href: "/account", label: t("nav.account") },
-              { href: "/account?tab=wishlist", label: t("nav.wishlist") },
-              { href: "/track", label: t("nav.track") },
+              // A website-only shop (school) keeps just the help centre: no shop, account or order links.
+              ...(siteOnly(shell.businessType)
+                ? []
+                : [
+                    { href: STORE_PATHS.products, label: t("nav.shopAll") },
+                    ...(featured ? [{ href: STORE_PATHS.collection(featured.slug), label: featured.name }] : []),
+                    { href: "/account", label: t("nav.account") },
+                    { href: "/account?tab=wishlist", label: t("nav.wishlist") },
+                    { href: "/track", label: t("nav.track") },
+                  ]),
               ...(helpCentreOn(shell.features) ? [{ href: "/help", label: t("help.title") }] : []),
             ]
               // Skip links the shop's own menu already has (same target or same name).

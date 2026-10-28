@@ -12,6 +12,7 @@
 @source "../../../../packages/restaurant-ui/src";
 @source "../../../../packages/workspace-ui/src";
 @source "../../../../packages/site-ui/src";
+@source "../../../../packages/enquiries-ui/src";
 
 /* Number inputs without spinners (qty / rate fields are typed, not clicked). */
 input[type="number"]::-webkit-outer-spin-button,

@@ -53,7 +53,7 @@ export interface Batch5Deps {
 
 /** Sign-up details passed to the on-tenant-created hooks (`details.signup`). */
 export interface SignupDetails {
-  appId: "BL" | "EC" | "PH" | "RS" | "SV";
+  appId: "BL" | "EC" | "PH" | "RS" | "SV" | "SC";
   planId: string;
   interval: "monthly" | "yearly";
   state: string;
@@ -84,7 +84,7 @@ const DEFAULT_COLOUR = "#0f766e";
 const signupBody = z.object({
   shopName: z.string().trim().min(2).max(120),
   slug: z.string().trim().toLowerCase().min(1).max(60),
-  appId: z.enum(["BL", "EC", "PH", "RS", "SV"]),
+  appId: z.enum(["BL", "EC", "PH", "RS", "SV", "SC"]),
   planId: z.string().trim().min(1).max(40),
   interval: z.enum(["monthly", "yearly"]).default("monthly"),
   businessType: z.string().trim().max(60).optional().nullable(),

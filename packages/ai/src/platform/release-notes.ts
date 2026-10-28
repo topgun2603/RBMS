@@ -18,11 +18,11 @@ import { INTERNAL_WORDS } from "./triage";
  */
 
 /** App ids (same list as packages/verticals APP_IDS) with owner-facing names. */
-export const NOTE_APPS = { BL: "Billing", EC: "Online shop", PH: "Pharmacy", RS: "Restaurant", SV: "Services" } as const;
+export const NOTE_APPS = { BL: "Billing", EC: "Online shop", PH: "Pharmacy", RS: "Restaurant", SV: "Services", SC: "School" } as const;
 export type NoteApp = keyof typeof NOTE_APPS;
 /** Trades (packages/verticals BUSINESS_TYPES). Kept here so the AI package does not need the verticals data. */
 export const NOTE_TRADES = [
-  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa",
+  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa", "school",
 ] as const;
 
 // ------------------------------------------------------------------ commits

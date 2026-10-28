@@ -24,6 +24,7 @@ import { WindowGate } from "../client/home-layouts";
 import { CategoryShelfSection, ComparisonSection, FinderSection, FlashSaleSection, flashSaleOutside, SizeFinderSection, StickyStorySection, StoriesSection, SwatchesSection, TilesSection } from "./home-layouts";
 import {
   AppointmentSection,
+  EnquiryFormSection,
   BeforeAfterSection,
   CategoryMosaicSection,
   FaqSection,
@@ -440,6 +441,8 @@ export function HomeSectionView({
       return <MenuBoardSection s={s} t={t} />;
     case "appointment":
       return <AppointmentSection s={s} t={t} />;
+    case "enquiry-form":
+      return <EnquiryFormSection s={s} />;
     case "before-after":
       return <BeforeAfterSection s={s} />;
     case "gold-rates":

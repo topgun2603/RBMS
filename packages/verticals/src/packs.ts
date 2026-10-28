@@ -4,7 +4,7 @@
  * hints for the product editor. Nothing here knows about the database; the API seeds from it and the UIs read it.
  */
 
-export const APP_IDS = ["BL", "EC", "PH", "RS", "SV"] as const;
+export const APP_IDS = ["BL", "EC", "PH", "RS", "SV", "SC"] as const;
 export type AppId = (typeof APP_IDS)[number];
 
 export type UspIcon = "truck" | "cash" | "return" | "shield" | "star" | "gift" | "phone" | "leaf" | "clock" | "tag" | "heart" | "check";
@@ -53,6 +53,11 @@ export interface BusinessPack {
    * though the app turns them on for other trades: e.g. job cards for a gym.
    */
   off?: string[];
+  /**
+   * A website, not a shop (schools): the store hides the cart, wishlist, shopper account and product search, and the
+   * main button goes to `ctaHref`.
+   */
+  site?: boolean;
   /** Where the home page's main button goes: "/search" (shop) by default, "/book" for appointment trades. */
   ctaHref?: string;
   /** Show the clothing size guide next to a "Size" option. */
@@ -103,6 +108,7 @@ export const BUSINESS_TYPES = [
   "sports",
   "tea_stall",
   "spa",
+  "school",
 ] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
 
@@ -1328,6 +1334,53 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
       categoryExample: "Massages › Aromatherapy",
     },
   },
+  school: {
+    id: "school",
+    name: "School",
+    nameTa: "பள்ளி",
+    tagline: "A school website: admissions, programmes, campus, events and parent enquiries",
+    appId: "SC",
+    preset: "campus-navy",
+    ctaHref: "/admissions",
+    site: true,
+    // The School app (SC) leaves out billing, stock, orders and the shop engines; of what it offers, no wishlist.
+    off: ["storefront.wishlist"],
+    sizeGuide: false,
+    localMade: false,
+    copy: {
+      en: {
+        search: "Search programmes, news, events…",
+        newItems: "Latest news",
+        heroHeading: "Admissions open for the new academic year",
+        heroSubheading: "A caring campus where every child learns, grows and shines. Meet our teachers, see our classrooms and apply online.",
+        cta: "Apply for admission",
+        newsletter: "School news, events and important notices for parents.",
+        categoriesTitle: "Our programmes",
+      },
+      ta: {
+        search: "கல்வித் திட்டங்கள், செய்திகள், நிகழ்வுகள் தேடு…",
+        newItems: "சமீபத்திய செய்திகள்",
+        heroHeading: "புதிய கல்வியாண்டுக்கான சேர்க்கை தொடங்கியுள்ளது",
+        heroSubheading: "ஒவ்வொரு குழந்தையும் கற்று, வளர்ந்து, ஒளிரும் அன்பான வளாகம். எங்கள் ஆசிரியர்களைச் சந்தியுங்கள், வகுப்பறைகளைப் பாருங்கள், ஆன்லைனில் விண்ணப்பியுங்கள்.",
+        cta: "சேர்க்கைக்கு விண்ணப்பிக்க",
+        newsletter: "பள்ளிச் செய்திகள், நிகழ்வுகள், பெற்றோருக்கான முக்கிய அறிவிப்புகள்.",
+        categoriesTitle: "எங்கள் கல்வித் திட்டங்கள்",
+      },
+    },
+    usps: [
+      usp("star", ["Strong academics", "Experienced teachers and results parents can see"], ["சிறந்த கல்வித்தரம்", "அனுபவமிக்க ஆசிரியர்கள், பெற்றோர் காணும் தேர்ச்சி"]),
+      usp("shield", ["Safe, caring campus", "CCTV, trained staff and safe school transport"], ["பாதுகாப்பான, அன்பான வளாகம்", "கண்காணிப்பு கேமரா, பயிற்சி பெற்ற பணியாளர்கள், பாதுகாப்பான பள்ளி வாகனம்"]),
+      usp("heart", ["Beyond the classroom", "Sports, music, arts and clubs for every child"], ["வகுப்பறைக்கு அப்பாலும்", "ஒவ்வொரு குழந்தைக்கும் விளையாட்டு, இசை, கலை, மன்றங்கள்"]),
+    ],
+    categories: ["Pre-primary", "Primary", "Middle school", "High school", "Higher secondary", "Co-curricular"],
+    editor: {
+      namePlaceholder: "e.g. Primary school (classes 1 to 5)",
+      descriptionPlaceholder: "Classes covered, syllabus, medium of instruction, timings, what children learn…",
+      attributes: ["Classes", "Board / syllabus", "Medium", "Age criteria", "Timings"],
+      options: ["Class", "Medium"],
+      categoryExample: "Primary › Classes 1 to 5",
+    },
+  },
 };
 
 /** Old free-text signup values and aliases → a pack. Unknown or empty → null. */
@@ -1502,6 +1555,25 @@ const ALIASES: Record<string, BusinessType> = {
   ayurvedic_spa: "spa",
   day_spa: "spa",
   spa_and_wellness: "spa",
+  school: "school",
+  schools: "school",
+  matric_school: "school",
+  matriculation: "school",
+  cbse_school: "school",
+  icse_school: "school",
+  state_board_school: "school",
+  play_school: "school",
+  playschool: "school",
+  preschool: "school",
+  pre_school: "school",
+  kindergarten: "school",
+  nursery_school: "school",
+  montessori: "school",
+  international_school: "school",
+  public_school: "school",
+  higher_secondary_school: "school",
+  hr_sec_school: "school",
+  primary_school: "school",
 };
 
 export function packFor(type: string | null | undefined): BusinessPack | null {
@@ -1513,7 +1585,7 @@ export function packFor(type: string | null | undefined): BusinessPack | null {
 }
 
 /** The pack a shop of this app gets when it never chose a business type. */
-export const DEFAULT_PACK_FOR_APP: Record<AppId, BusinessType> = { BL: "grocery", EC: "fashion", PH: "pharmacy", RS: "restaurant", SV: "salon" };
+export const DEFAULT_PACK_FOR_APP: Record<AppId, BusinessType> = { BL: "grocery", EC: "fashion", PH: "pharmacy", RS: "restaurant", SV: "salon", SC: "school" };
 
 export function packOrDefault(type: string | null | undefined, appId: string | null | undefined): BusinessPack {
   return packFor(type) ?? PACKS[DEFAULT_PACK_FOR_APP[(appId as AppId) ?? "EC"] ?? "fashion"];

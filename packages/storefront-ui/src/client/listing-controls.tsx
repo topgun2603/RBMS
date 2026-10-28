@@ -192,7 +192,7 @@ export function FilterDropdown({ label, active = 0, children, wide }: { label: s
           <ChevronDownIcon className={cn("size-4 opacity-60 transition-transform", open && "rotate-180")} aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className={cn("max-h-[60vh] overflow-y-auto rounded-2xl p-3", wide ? "w-80" : "w-64")} onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
+      <PopoverContent align="start" className={cn("max-h-[60vh] overflow-x-hidden overflow-y-auto rounded-2xl p-3", wide ? "w-80" : "w-64")} onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
         {children}
       </PopoverContent>
     </Popover>

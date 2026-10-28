@@ -1,3 +1,4 @@
+import { siteOnly } from "../lib/site";
 import * as React from "react";
 import Link from "next/link";
 import { ArrowUpIcon, ChevronDownIcon, FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
@@ -128,7 +129,8 @@ const hasHref = (links: FooterLink[], href: string) => links.some((l) => l.href 
  *   group that links /track or /help); otherwise we add a Help column.
  * - **Policies** — the shop's policies (those with text) join a "Policies"/"Legal" group, or get our column.
  */
-export function footerColumns(menu: MenuItem[], help: boolean, t: Translator, policyLinks: readonly FooterLink[] = []): FooterColumn[] {
+/** `site`: a website-only shop (school), so no order tracking or account link. */
+export function footerColumns(menu: MenuItem[], help: boolean, t: Translator, policyLinks: readonly FooterLink[] = [], site = false): FooterColumn[] {
   const groups = menu.filter((m) => m.children?.length);
   const loose = menu.filter((m) => !m.children?.length && m.href);
   const titleIs = (g: MenuItem, list: string[]) => list.includes(norm(g.label));
@@ -178,12 +180,12 @@ export function footerColumns(menu: MenuItem[], help: boolean, t: Translator, po
   // Help: the help centre (when on) and tracking join the shop's help group, else our Help column.
   const helpLinks: FooterLink[] = [
     ...(help && !linksTo(menu, "/help") ? [{ label: t("help.title"), href: "/help" }] : []),
-    ...(!linksTo(menu, "/track") ? [{ label: t("nav.track"), href: "/track" }] : []),
+    ...(!site && !linksTo(menu, "/track") ? [{ label: t("nav.track"), href: "/track" }] : []),
   ];
   if (helpCol) helpCol.links.push(...helpLinks);
   else if (helpLinks.length) {
     // A shop with no menu groups at all also gets "My account" here (as before).
-    cols.push({ kind: "help", label: t("footer.help"), links: [...helpLinks, ...(groups.length === 0 ? [{ label: t("nav.account"), href: "/account" }] : [])] });
+    cols.push({ kind: "help", label: t("footer.help"), links: [...helpLinks, ...(!site && groups.length === 0 ? [{ label: t("nav.account"), href: "/account" }] : [])] });
   }
 
   // Policies (those with text): into the shop's policies group, else our column.
@@ -257,6 +259,8 @@ export function StoreFooter({
   locale?: string;
 }) {
   const { shop, policies } = config;
+  // Website-only shops (schools): no shop links (cart, wishlist, account, order tracking) and no payment badges.
+  const site = siteOnly(shop.businessType);
   const social = [
     shop.social.instagram && { href: shop.social.instagram, label: "Instagram", icon: InstagramIcon },
     shop.social.facebook && { href: shop.social.facebook, label: "Facebook", icon: FacebookIcon },
@@ -271,6 +275,7 @@ export function StoreFooter({
     help,
     t,
     policyLinks.map((k) => ({ label: t(`policy.${k}`), href: `/policies/${k}` })),
+    site,
   );
   const rights = t("footer.rights", { year: new Date().getFullYear(), name: shop.name });
 
@@ -288,7 +293,7 @@ export function StoreFooter({
             ))}
           </nav>
           <SocialLinks social={social} t={t} className="[&_a]:size-8" />
-          <PaymentIcons t={t} cod={config.codEnabled} config={config} className="justify-center" />
+          {!site && <PaymentIcons t={t} cod={config.codEnabled} config={config} className="justify-center" />}
           <BackToTop t={t} />
         </div>
       </footer>
@@ -325,7 +330,7 @@ export function StoreFooter({
               )}
             </div>
           )}
-          <PaymentIcons t={t} cod={config.codEnabled} config={config} className="justify-center" />
+          {!site && <PaymentIcons t={t} cod={config.codEnabled} config={config} className="justify-center" />}
         </div>
         <div className="border-t">
           <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
@@ -338,7 +343,11 @@ export function StoreFooter({
     );
   }
 
-  const quick = [
+  const quick = site
+    ? help
+      ? [{ href: "/help", label: t("nav.help"), icon: LifeBuoyIcon }]
+      : []
+    : [
     { href: "/track", label: t("nav.track"), icon: PackageSearchIcon },
     ...(help ? [{ href: "/help", label: t("nav.help"), icon: LifeBuoyIcon }] : []),
     { href: "/account", label: t("nav.account"), icon: UserRoundIcon },
@@ -452,7 +461,7 @@ export function StoreFooter({
       <div className="border-t">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
           <p>{rights}</p>
-          <PaymentIcons t={t} cod={config.codEnabled} config={config} />
+          {!site && <PaymentIcons t={t} cod={config.codEnabled} config={config} />}
           <div className="flex items-center gap-4">
             <p>{t("footer.poweredBy")}</p>
             <BackToTop t={t} />

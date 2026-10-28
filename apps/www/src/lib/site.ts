@@ -13,10 +13,10 @@ export const SHOP_DOMAIN = (process.env.NEXT_PUBLIC_SHOP_DOMAIN || process.env.N
  * Where each product's app opens for a shop, when the API doesn't hand us a URL: "BL=…,EC=…" with `{slug}`
  * (same format as the API's BILLING_PUBLIC_URL).
  */
-const APP_URLS = process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008";
+const APP_URLS = process.env.NEXT_PUBLIC_APP_URLS || "BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008,SC=http://{slug}.localhost:3009";
 
-export type AppId = "BL" | "EC" | "PH" | "RS" | "SV";
-export const APP_IDS: readonly AppId[] = ["BL", "EC", "PH", "RS", "SV"];
+export type AppId = "BL" | "EC" | "PH" | "RS" | "SV" | "SC";
+export const APP_IDS: readonly AppId[] = ["BL", "EC", "PH", "RS", "SV", "SC"];
 
 export function appUrlFor(appId: string | null | undefined, slug: string): string {
   const map = new Map(
@@ -37,9 +37,10 @@ export function parseApp(v: string | null | undefined): AppId | null {
   if (s === "pharmacy" || s === "medical" || s === "ph") return "PH";
   if (s === "restaurant" || s === "rs") return "RS";
   if (s === "services" || s === "salon" || s === "gym" || s === "sv") return "SV";
+  if (s === "school" || s === "sc") return "SC";
   return null;
 }
-const APP_PARAMS: Record<AppId, string> = { BL: "billing", EC: "store", PH: "pharmacy", RS: "restaurant", SV: "services" };
+const APP_PARAMS: Record<AppId, string> = { BL: "billing", EC: "store", PH: "pharmacy", RS: "restaurant", SV: "services", SC: "school" };
 export const appParam = (a: AppId) => APP_PARAMS[a];
 
 /**

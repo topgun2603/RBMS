@@ -1,0 +1,48 @@
+import type { Messages } from "@srirealtime/i18n/client";
+
+/** The enquiry form (contact / admission enquiry on the home page or any page). Merged into lib/messages. */
+export const enquiryEn: Messages = {
+  "enquiry.name": "Your name",
+  "enquiry.phone": "Mobile number",
+  "enquiry.student": "Student's name",
+  "enquiry.option": "Choose one",
+  "enquiry.select": "Select",
+  "enquiry.email": "Email",
+  "enquiry.message": "Message",
+  "enquiry.optional": "(optional)",
+  "enquiry.submit": "Send enquiry",
+  "enquiry.sending": "Sending…",
+  "enquiry.privacyBefore": "By sending this you accept our",
+  "enquiry.success": "Thank you! We have received your enquiry and will call you soon.",
+  "enquiry.number": "Your enquiry number is {number}",
+  "enquiry.another": "Send another enquiry",
+  "enquiry.errName": "Enter your name (at least 2 letters)",
+  "enquiry.errPhone": "Enter a 10-digit mobile number",
+  "enquiry.errEmail": "Enter a valid email address",
+  "enquiry.errStudent": "Enter the student's name",
+  "enquiry.fixErrors": "Please check the fields marked below.",
+  "enquiry.tooMany": "Too many tries. Please wait a few minutes and try again.",
+};
+
+export const enquiryTa: Messages = {
+  "enquiry.name": "உங்கள் பெயர்",
+  "enquiry.phone": "கைபேசி எண்",
+  "enquiry.student": "மாணவரின் பெயர்",
+  "enquiry.option": "ஒன்றைத் தேர்ந்தெடுங்கள்",
+  "enquiry.select": "தேர்ந்தெடுக்கவும்",
+  "enquiry.email": "மின்னஞ்சல்",
+  "enquiry.message": "செய்தி",
+  "enquiry.optional": "(விருப்பம்)",
+  "enquiry.submit": "விசாரணையை அனுப்புங்கள்",
+  "enquiry.sending": "அனுப்புகிறது…",
+  "enquiry.privacyBefore": "இதை அனுப்புவதன் மூலம் எங்கள்",
+  "enquiry.success": "நன்றி! உங்கள் விசாரணை கிடைத்தது, விரைவில் உங்களை அழைப்போம்.",
+  "enquiry.number": "உங்கள் விசாரணை எண் {number}",
+  "enquiry.another": "மற்றொரு விசாரணையை அனுப்புங்கள்",
+  "enquiry.errName": "உங்கள் பெயரை உள்ளிடுங்கள் (குறைந்தது 2 எழுத்துகள்)",
+  "enquiry.errPhone": "10 இலக்க கைபேசி எண்ணை உள்ளிடுங்கள்",
+  "enquiry.errEmail": "சரியான மின்னஞ்சல் முகவரியை உள்ளிடுங்கள்",
+  "enquiry.errStudent": "மாணவரின் பெயரை உள்ளிடுங்கள்",
+  "enquiry.fixErrors": "கீழே குறிக்கப்பட்ட புலங்களைச் சரிபாருங்கள்.",
+  "enquiry.tooMany": "அதிக முயற்சிகள். சில நிமிடங்கள் காத்திருந்து மீண்டும் முயலுங்கள்.",
+};

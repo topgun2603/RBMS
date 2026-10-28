@@ -101,6 +101,7 @@ import {
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
+import { createEnquiriesKit } from "./kit-enquiries";
 import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
 import { createMobile, parseVersionList } from "./kit-mobile";
 import { createKitOps } from "./kit-ops";
@@ -1298,6 +1299,17 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     now: clock,
     log,
   });
+  // Website enquiries (admission / call-back forms on the store): owners get a push or WhatsApp per new enquiry.
+  const enquiries = createEnquiriesKit({
+    db,
+    appPublicUrl: env.APP_PUBLIC_URL,
+    shopName: (tenantId) => shopName(tenantId),
+    tenant: (tenantId) => tenancy.service.getById(tenantId),
+    members: (tenantId) => tenancy.service.listMembers(tenantId),
+    sendToUser: (input) => notify.service.sendToUser(input),
+    now: clock,
+    log,
+  });
 
   // Setup checklist: each step's check reads the module that owns it.
   const onboarding = createOnboarding({ db, featureGate: features.gate, log });
@@ -1305,6 +1317,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   onboarding.registerStep({
     key: "business-profile",
     module: "settings",
+    // Legal name and GST state are for bills: a shop without billing (the School app) has no such step.
+    feature: "invoices",
     label: "Add your business details",
     description: "Legal name and state for GST bills and orders.",
     href: "settings/business",
@@ -1339,6 +1353,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   onboarding.registerStep({
     key: "first-sale",
     module: "invoices",
+    feature: "invoices",
     label: "Make your first bill or order",
     description: "Create a GST bill or take an order.",
     href: "invoices/new",
@@ -1943,6 +1958,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     offByDefault(scales.module),
     offByDefault(jewellery.module),
     ownerCanSwitch(memberships.module),
+    enquiries.module,
     pos.module,
     solutions,
     idempotency.module,
@@ -2002,6 +2018,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     jobcards,
     bookings,
     memberships,
+    enquiries,
     starter,
     ...batch3Parts(batch3),
     subscriptions: batch5.subscriptions,

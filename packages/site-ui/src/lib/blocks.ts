@@ -3,7 +3,7 @@
  * `blockSchema` accepts. Pure — no React.
  */
 import { BLOCK_TYPES, blockSchema, CMS_LIMITS, extractYoutubeId, type Block, type BlockInput, type BlockType } from "./content";
-import { formPath, issueCode, type FieldErrors } from "./sections";
+import { enquiryFromFields, enquiryToFields, formPath, issueCode, type EnquiryFields, type FieldErrors } from "./sections";
 
 export { BLOCK_TYPES, type BlockType };
 
@@ -21,7 +21,8 @@ export type BlockForm =
   | { type: "button"; key: string; id?: string; label: string; href: string; style: "primary" | "secondary" }
   | { type: "faq"; key: string; id?: string; items: { q: string; a: string }[] }
   | { type: "video"; key: string; id?: string; video: string; title: string }
-  | { type: "divider"; key: string; id?: string };
+  | { type: "divider"; key: string; id?: string }
+  | ({ type: "enquiry-form"; key: string; id?: string } & EnquiryFields);
 
 let seq = 0;
 export const newBlockKey = () => `b${Date.now().toString(36).slice(-4)}${(seq++).toString(36)}`;
@@ -50,6 +51,8 @@ export function toBlockForm(b: Block | BlockInput, key: string = newBlockKey()):
       return { type: "video", key, ...idOf(x.id), video: s(x.youtubeId), title: s(x.title) };
     case "divider":
       return { type: "divider", key, ...idOf(x.id) };
+    case "enquiry-form":
+      return { type: "enquiry-form", key, ...idOf(x.id), ...enquiryToFields(x) };
   }
 }
 
@@ -71,6 +74,8 @@ export function fromBlockForm(f: BlockForm): BlockInput {
       return { type: "video", ...idOf(f.id), youtubeId: extractYoutubeId(f.video) ?? f.video.trim(), ...(f.title.trim() ? { title: f.title.trim() } : {}) };
     case "divider":
       return { type: "divider", ...idOf(f.id) };
+    case "enquiry-form":
+      return { type: "enquiry-form", ...idOf(f.id), ...enquiryFromFields(f) };
   }
 }
 
@@ -92,6 +97,8 @@ export function newBlockForm(type: BlockType, key: string = newBlockKey()): Bloc
       return { type, key, video: "", title: "" };
     case "divider":
       return { type, key };
+    case "enquiry-form":
+      return { type, key, ...enquiryToFields({}) };
   }
 }
 

@@ -58,6 +58,14 @@ describe("trade-aware trust badges", () => {
     expect(html).not.toContain("COD");
   });
 
+  it("website-only trades (school): no payment, COD or returns badges, so no row; the owner's own badges still show", () => {
+    expect(trustItems(cfg("school"), en, "en")).toEqual([]);
+    expect(trustAnnouncements(cfg("school"), en, "en")).toEqual([]);
+    expect(renderToStaticMarkup(<TrustBadges t={en} config={cfg("school")} locale="en" />)).toBe("");
+    const own = cfg("school", "x", { trust: { badges: [{ title: "CBSE affiliated", text: "", titleTa: "", textTa: "" }] } });
+    expect(trustItems(own, en, "en").map((i) => i.title)).toEqual(["CBSE affiliated"]);
+  });
+
   it("the owner overrides: modes, or their own badges (Tamil when given)", () => {
     const own = cfg("crackers", "x", { trust: { returns: "easy", payment: "online" } });
     expect(trustItems(own, en, "en").map((i) => i.title)).toContain("Easy returns");

@@ -216,6 +216,7 @@ describe("store proxy allow-list", () => {
       "/v1/bookings/public/slots",
       "/v1/bookings/public/appointments",
       "/v1/jobcards/public/track/abc123def456ghi7",
+      "/v1/enquiries/public",
     ]) {
       expect(isProxyAllowed(p, p.includes("quote") || p.includes("verify") || p.includes("token") ? "POST" : "GET"), p).toBe(true);
     }
@@ -239,6 +240,9 @@ describe("store proxy allow-list", () => {
       "/v1/dining/publicity",
       "/v1/bookings/appointments",
       "/v1/jobcards",
+      "/v1/enquiries/enquiries",
+      "/v1/enquiries/summary",
+      "/v1/enquiries/publicity",
     ]) {
       expect(isProxyAllowed(p, "GET"), p).toBe(false);
     }

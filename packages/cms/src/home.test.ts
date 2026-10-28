@@ -74,6 +74,7 @@ const sample: Record<(typeof HOME_SECTION_TYPES)[number], Record<string, unknown
   tiles: { type: "tiles", items: [{ label: "Acne", collectionSlug: "acne" }] },
   "size-finder": { type: "size-finder", groups: [{ label: "Men", sizes: ["UK 6", "UK 7"] }] },
   swatches: { type: "swatches", productIds: [P1], shades: [{ value: "Ruby", hex: "#9b111e", depth: "dusky" }] },
+  "enquiry-form": { type: "enquiry-form", heading: "Admission enquiry", topic: "Admission 2027-28", options: ["LKG", "Class 1"] },
 };
 
 describe("new section types", () => {
@@ -286,5 +287,17 @@ describe("hidden sections: draft round-trip", () => {
     expect(published.hasUnpublishedChanges).toBe(false);
     const pub = await service.publicHome(T);
     expect(pub.sections.map((s) => s.type)).toEqual(["newsletter", "hero"]);
+  });
+});
+
+describe("enquiry-form section", () => {
+  it("applies defaults", () => {
+    expect(homeSectionSchema.parse({ type: "enquiry-form", heading: "Contact us" })).toMatchObject({ askStudent: false, askEmail: true, askMessage: true, options: [] });
+  });
+  it("rejects too many or too long options and a missing heading", () => {
+    expect(homeSectionSchema.safeParse({ type: "enquiry-form", heading: "x", options: Array.from({ length: 21 }, (_, i) => `C${i}`) }).success).toBe(false);
+    expect(homeSectionSchema.safeParse({ type: "enquiry-form", heading: "x", options: ["y".repeat(61)] }).success).toBe(false);
+    expect(homeSectionSchema.safeParse({ type: "enquiry-form" }).success).toBe(false);
+    expect(homeSectionSchema.safeParse({ type: "enquiry-form", heading: "x", imageUrl: "javascript:x()" }).success).toBe(false);
   });
 });

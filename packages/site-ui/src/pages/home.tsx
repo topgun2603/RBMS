@@ -124,6 +124,8 @@ const samplesFrom = (t: Translator, shop: string): SectionSamples => ({
   menuDish: t("site.samples.menuDish"),
   appointmentHeading: t("site.samples.appointmentHeading"),
   appointmentText: t("site.samples.appointmentText"),
+  enquiryHeading: t("site.samples.enquiryHeading"),
+  enquiryText: t("site.samples.enquiryText"),
   serviceName: t("site.samples.serviceName"),
   book: t("site.samples.book"),
   beforeAfterTitle: t("site.samples.beforeAfterTitle"),

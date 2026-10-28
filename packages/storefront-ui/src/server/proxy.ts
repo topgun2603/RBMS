@@ -17,10 +17,10 @@ const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-
  * the shopper's own loyalty (`/loyalty/me`, `/loyalty/quote`), public seller pages and cards, guest OTP verification,
  * the read-only feature list (`GET /features` itself — never the toggles or registry), and the restaurant QR table menu
  * (`/dining/public/*`: a table by its QR code, the menu, guests' orders), online booking (`/bookings/public/*`) and job
- * tracking (`/jobcards/public/*`).
+ * tracking (`/jobcards/public/*`), and website enquiry forms (`POST /enquiries/public`).
  */
 const ALLOWED =
-  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest|config|handoff\/redeem)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|serials\/public|features(?=$))(\/|$|\?)/;
+  /^\/v1\/(store|catalog\/public|cms\/public|reviews\/public|delivery\/public|inventory\/public|analytics\/public|payments\/(checkout|verify|mock\/complete)|auth\/(otp|me|logout|guest|config|handoff\/redeem)|branding|chat|support\/public|loyalty\/(me|quote)|marketplace\/public\/(vendors\/(?!apply(\/|$))[^/]+|sellers)|dining\/public|bookings\/public|jobcards\/public|serials\/public|enquiries\/public|features(?=$))(\/|$|\?)/;
 
 /**
  * "Try it on" (docs/ai.md "Phase 4 part C"), read-only: the product's try-on setup, and the shop's own public image files so the

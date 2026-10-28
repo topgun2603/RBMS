@@ -33,7 +33,7 @@ interface RightsRequest {
 
 const TYPES = ["access", "correction", "erasure", "withdraw_consent", "nominate", "grievance"] as const;
 const noticeKey = ["privacy", "notice"] as const;
-const useNotice = (enabled = true) => useQuery({ queryKey: noticeKey, queryFn: () => call<NoticeInfo>("/consent/notice", { auth: false }), enabled, staleTime: 5 * 60_000 });
+export const useNotice = (enabled = true) => useQuery({ queryKey: noticeKey, queryFn: () => call<NoticeInfo>("/consent/notice", { auth: false }), enabled, staleTime: 5 * 60_000 });
 
 /**
  * Records that the signed-in shopper accepted the shop's privacy notice (and, optionally, other purposes such as
@@ -54,11 +54,11 @@ export async function recordNoticeAcceptance(purposes: Record<string, boolean> =
 }
 
 /** "By continuing you accept our privacy notice." for sign-in, checkout and loyalty. */
-export function NoticeLine({ className }: { className?: string }) {
+export function NoticeLine({ className, before }: { className?: string; /** The words before the link (default "By continuing you accept our"). */ before?: string }) {
   const { t } = useStore();
   return (
     <p className={className ?? "text-center text-xs text-muted-foreground"} data-testid="privacy-notice-line">
-      {t("privacy.noticeBefore")}{" "}
+      {before ?? t("privacy.noticeBefore")}{" "}
       <Link href="/policies/privacy" className="font-medium text-primary underline-offset-2 hover:underline">
         {t("privacy.noticeLink")}
       </Link>
