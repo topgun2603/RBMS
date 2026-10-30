@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { FeatureDef } from "@rbms/core";
-import { PACKS } from "@rbms/verticals";
+import { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
 import { toLookup, type ProductRow, type VariantRow } from "@rbms/catalogue";
 import { emptyContext, type RequestContext } from "@rbms/core";
 import Fastify from "fastify";
 import type { Logger } from "pino";
-import { counterResolveSchema, createCounter, createSolutionPresets, defaultPreset, effectivePreset, includedFor, switchableFor } from "./kit-verticals";
+import { counterResolveSchema, createCounter, createSolutionPresets, createStarter, defaultPreset, demandOf, effectivePreset, includedFor, normalizeTradeLabel, switchableFor, type StarterDeps } from "./kit-verticals";
 
 const def = (key: string, extra: Partial<FeatureDef> = {}): FeatureDef => ({
   key,
@@ -78,6 +78,111 @@ describe("solution presets", () => {
     expect(reset.switchable.find((d) => d.key === "jobcards")).toMatchObject({ on: false, byDefault: false });
     const summary = await presets.summary();
     expect(summary.gym).toEqual({ on: 3, switchable: 7, customised: false });
+  });
+});
+
+describe("solution presets for the batch 9 packs", () => {
+  const sw = switchableFor(REGISTRY, SV);
+  it("classes and event trades don't see job cards; classes keep memberships and bookings", () => {
+    for (const id of ["tuition", "dance_music", "yoga", "driving_school"] as const) {
+      const on = defaultPreset(PACKS[id], sw);
+      expect(on, id).not.toContain("jobcards");
+      expect(on, id).toEqual(expect.arrayContaining(["memberships", "bookings"]));
+    }
+    expect(defaultPreset(PACKS.catering, sw)).not.toContain("jobcards");
+    expect(defaultPreset(PACKS.event_decor, sw)).not.toContain("memberships");
+  });
+  it("laundry and AC service start on today's job cards and bookings; electricals bring serials and warranty", () => {
+    for (const id of ["laundry", "ac_service"] as const) expect(defaultPreset(PACKS[id], sw), id).toEqual(expect.arrayContaining(["jobcards", "bookings"]));
+    expect(defaultPreset(PACKS.electricals, sw)).toEqual(expect.arrayContaining(["serials", "serials.warranty"]));
+    // The general packs add and remove nothing: every on-by-default feature of the app, no trade engines.
+    expect(defaultPreset(PACKS.general_services, sw)).toEqual(["invoices.credit-book", "jobcards", "jobcards.tracking", "memberships", "bookings"]);
+  });
+  it("lists a preset summary for every solution", async () => {
+    const presets = createSolutionPresets({
+      registry: () => REGISTRY,
+      profile: async () => ({ features: SV }),
+      settings: { get: async () => ({ presets: {} }), setApp: async () => undefined },
+    });
+    expect(Object.keys(await presets.summary()).sort()).toEqual([...BUSINESS_TYPES].sort());
+  });
+});
+
+describe("starter: the trade the owner typed", () => {
+  const tenant = (appId: string) => ({ id: "t1", name: "Test Shop", appId });
+  function setup() {
+    const patches: Record<string, unknown>[] = [];
+    const deps = {
+      storeSettings: { get: async () => ({}), setTenant: async (_id: string, patch: Record<string, unknown>) => void patches.push(patch) },
+      branding: { update: async () => undefined },
+      catalogue: { listCategories: async () => ({ items: [{}] }), createCategory: async () => undefined },
+      cms: { getHome: async () => ({ published: {} }), saveHomeDraft: async () => undefined, publishHome: async () => undefined },
+      log: { info: () => undefined, warn: () => undefined },
+    } as unknown as StarterDeps;
+    return { starter: createStarter(deps), patches };
+  }
+  it("keeps the typed label even when it maps to a pack", async () => {
+    const { starter, patches } = setup();
+    const pack = await starter.apply(tenant("SV"), null, { label: "  Tuition   Centre " });
+    expect(pack.id).toBe("tuition");
+    expect(patches[0]).toEqual({ businessType: "tuition", businessLabel: "Tuition Centre" });
+  });
+  it("a chosen pack wins over the label, and the label is still saved", async () => {
+    const { starter, patches } = setup();
+    expect((await starter.apply(tenant("EC"), "footwear", { label: "chappal kadai" })).id).toBe("footwear");
+    expect(patches[0]).toEqual({ businessType: "footwear", businessLabel: "chappal kadai" });
+  });
+  it("an unknown trade lands on the general pack of its app and its text is kept", async () => {
+    const { starter, patches } = setup();
+    expect((await starter.apply(tenant("EC"), null, { label: "Space rockets" })).id).toBe("general_shop");
+    expect((await starter.apply(tenant("BL"), "", { label: "Space rockets" })).id).toBe("general_counter");
+    expect((await starter.apply(tenant("SV"), "other", { label: "Lodge" })).id).toBe("general_services");
+    expect(patches.map((p) => p.businessLabel)).toEqual(["Space rockets", "Space rockets", "Lodge"]);
+  });
+  it("without a label it writes only the pack (an earlier label is not cleared); PH and RS keep their trade", async () => {
+    const { starter, patches } = setup();
+    expect((await starter.apply(tenant("PH"), "whatever")).id).toBe("pharmacy");
+    expect((await starter.apply(tenant("RS"), null, { label: "dhaba" })).id).toBe("restaurant");
+    expect(patches[0]).toEqual({ businessType: "pharmacy" });
+    expect(patches[1]).toEqual({ businessType: "restaurant", businessLabel: "dhaba" });
+  });
+  it("caps the label at 60 characters", async () => {
+    const { starter, patches } = setup();
+    await starter.apply(tenant("EC"), null, { label: "x".repeat(200) });
+    expect((patches[0]!.businessLabel as string).length).toBe(60);
+  });
+});
+
+describe("demand list (Not covered)", () => {
+  const row = (label: string | null, type: string | null, appId: string | null, createdAt?: string) => ({ label, type, appId, createdAt });
+  it("normalizes typed trades: lower-cased, trimmed, single-spaced", () => {
+    expect(normalizeTradeLabel("  Lodge   Rooms ")).toBe("lodge rooms");
+    expect(normalizeTradeLabel(null)).toBe("");
+  });
+  it("counts shops on general packs by the typed text, most asked first", () => {
+    const items = demandOf([
+      row("Lodge", "general_services", "SV", "2026-10-01T00:00:00Z"),
+      row("  lodge ", "general_services", "SV", "2026-10-05T00:00:00Z"),
+      row("LODGE", "", "EC", "2026-10-03T00:00:00Z"),
+      row("Space rockets", "general_shop", "EC", "2026-10-02T00:00:00Z"),
+      row("Boat rentals", "general_services", "SV"),
+    ]);
+    expect(items.map((i) => [i.label, i.shops])).toEqual([["lodge", 3], ["boat rentals", 1], ["space rockets", 1]]);
+    expect(items[0]).toMatchObject({ appIds: ["SV", "EC"], lastAt: "2026-10-05T00:00:00.000Z" });
+    expect(items[1]!.lastAt).toBeNull();
+  });
+  it("leaves out shops on a real pack, shops without a label, and keeps PH / RS shops out", () => {
+    expect(
+      demandOf([
+        row("tailor", "tailoring", "SV"),
+        row("", "general_shop", "EC"),
+        row(null, "general_shop", "EC"),
+        row("   ", "general_shop", "EC"),
+        row("dhaba", "restaurant", "RS"),
+        row("anything", null, "PH"),
+        row("kirana", "grocery", "EC"),
+      ]),
+    ).toEqual([]);
   });
 });
 

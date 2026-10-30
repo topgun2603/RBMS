@@ -182,6 +182,8 @@ export function defineAppSettings(settings: SettingsService) {
       }),
       /** The shop's trade (@rbms/verticals pack id): storefront wording, size guide, starter content. "" = the app's default. */
       businessType: z.string().max(40),
+      /** The trade as the owner typed it at sign-up or in Settings → Appearance. Private (not a public key); counted in Platform → Solutions → Not covered when the shop is on a general pack. */
+      businessLabel: z.string().max(60),
       /** Show shoppers the "Install <shop> app" banner (installable storefront / PWA). */
       installBanner: z.boolean(),
       /**
@@ -210,6 +212,7 @@ export function defineAppSettings(settings: SettingsService) {
       social: { instagram: "", facebook: "", youtube: "", whatsapp: "" },
       policies: { shipping: "", returns: "", privacy: "", terms: "" },
       businessType: "",
+      businessLabel: "",
       installBanner: true,
       trust: { returns: "auto", payment: "auto", badges: [] },
     },

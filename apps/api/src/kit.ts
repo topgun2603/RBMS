@@ -1664,7 +1664,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
 
   // Business packs (kit-verticals.ts): a new shop gets its trade, the trade's theme preset, starter categories and a
   // starter home page. Runs after batch 5's "defaults" hook, so the preset replaces the sign-up colour.
-  // Solution presets: which optional features a shop of each of the 15 solutions starts with (Platform → Apps & features).
+  // Solution presets: which optional features a shop of each solution starts with (Platform → Apps & features).
   const solutionSettings = settings.service.handle("solutions");
   const presets = createSolutionPresets({
     registry: () => features.service.registry(),
@@ -1841,8 +1841,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   tenancy.service.onTenantCreated({
     name: "starter",
     run: async ({ tenant, details }) => {
-      const signup = (details.signup ?? null) as { businessType?: string | null } | null;
-      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null);
+      const signup = (details.signup ?? null) as { businessType?: string | null; businessLabel?: string | null } | null;
+      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null, { label: signup?.businessLabel ?? null });
     },
   });
 
