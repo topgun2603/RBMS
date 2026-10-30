@@ -326,6 +326,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     db,
     config: { storage: storageFor(env), publicBaseUrl: env.PUBLIC_UPLOAD_BASE_URL },
     log,
+    // Marketplace sellers upload product images and their logo to the shop without being its members.
+    access: { isUploader: async (tenantId, userId) => ((await b3?.marketplace.service.memberships(tenantId, userId)) ?? []).length > 0 },
   });
 
   const consent = createConsent({
