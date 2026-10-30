@@ -18,6 +18,11 @@ const OWNER2 = `e2e-su2-${run}@example.com`;
 const MOCK_WEBHOOK_SECRET = "mock_webhook_secret";
 const GSTIN_TN = "33AABFR1234K1ZI";
 
+// Plans are per app (docs/verticals.md "Plans per app"): ids are `<app>-<tier>`; the shared `starter` / `pro` tiers are
+// templates and not offered to shops. Prices are the seeded placeholders of the BL and EC apps (seed-fixtures.ts).
+const planIds = (app) => ({ free: `${app}-free`, starter: `${app}-starter`, pro: `${app}-pro`, enterprise: `${app}-enterprise` });
+const PLAN = { bl: planIds("bl"), ec: planIds("ec") };
+const EC_PRO_MONTHLY = 199_900;
 const PRO_MONTHLY = 149_900;
 const STARTER_MONTHLY = 49_900;
 const charge = (p) => p + Math.round((p * 18) / 100);
@@ -59,7 +64,7 @@ const signupBody = (over = {}) => ({
   shopName: `E2E Signup ${RUN}`,
   slug: SHOP1,
   appId: "BL",
-  planId: "starter",
+  planId: PLAN.bl.starter,
   interval: "monthly",
   businessType: "textiles",
   state: "33",
@@ -73,14 +78,14 @@ await step("sign-up refuses anonymous callers, a GSTIN of another state and a re
   const gst = fails(await call("POST", "/v1/signup", signupBody({ state: "29" }), { as: "su1", tenant: null }), 400, null, "gstin state");
   eq(gst.error.details?.field, "gstin", "gstin field");
   fails(await call("POST", "/v1/signup", signupBody({ slug: "admin" }), { as: "su1", tenant: null }), 400, "invalid_slug", "reserved");
-  fails(await call("POST", "/v1/signup", signupBody({ planId: "enterprise" }), { as: "su1", tenant: null }), 400, null, "private plan");
+  fails(await call("POST", "/v1/signup", signupBody({ planId: PLAN.bl.enterprise }), { as: "su1", tenant: null }), 400, null, "private plan");
 });
 
 await step("sign-up (BL, starter, Tamil Nadu) creates the shop, a 14-day trial, defaults and a handoff", async () => {
   const r = ok(await call("POST", "/v1/signup", signupBody(), { as: "su1", tenant: null }), "signup");
   eq(r.tenant.slug, SHOP1, "slug");
   eq(r.tenant.appId, "BL", "app");
-  eq(r.tenant.planId, "starter", "tenant plan");
+  eq(r.tenant.planId, PLAN.bl.starter, "tenant plan");
   eq(r.trial, true, "trial");
   expect(r.appUrl.includes(SHOP1), `appUrl ${r.appUrl}`);
   expect(typeof r.handoff?.code === "string" && r.handoff.code.length >= 16, "handoff code");
@@ -118,7 +123,7 @@ await step("new shop works at once: business profile, branding, features (Plan &
   eq(brand.appName, `E2E Signup ${RUN}`, "brand name");
   const f = ok(await call("GET", "/v1/features", undefined, as1(SHOP1)), "features");
   expect(f.enabled.includes("subscriptions"), "subscriptions feature on");
-  eq(f.planId, "starter", "features plan");
+  eq(f.planId, PLAN.bl.starter, "features plan");
   const onb = ok(await call("GET", "/v1/onboarding", undefined, as1(SHOP1)), "onboarding");
   const profile = (onb.steps ?? onb.items ?? []).find((s) => s.key === "business-profile");
   expect(!profile || profile.done === true, `business-profile step ${JSON.stringify(profile)}`);
@@ -128,8 +133,8 @@ await step("new shop works at once: business profile, branding, features (Plan &
 await step("trial state: GET /current", async () => {
   const c = ok(await call("GET", sub("/current"), undefined, as1(SHOP1)), "current");
   eq(c.subscription.status, "trialing", "status");
-  eq(c.subscription.planId, "starter", "plan");
-  eq(c.plan.id, "starter", "plan object");
+  eq(c.subscription.planId, PLAN.bl.starter, "plan");
+  eq(c.plan.id, PLAN.bl.starter, "plan object");
   eq(c.trialDaysLeft, 14, "trial days");
   eq(c.canTrial, false, "no second trial");
   expect(Array.isArray(c.usage) && c.usage.some((u) => u.key === "invoices_per_month"), "usage");
@@ -138,17 +143,17 @@ await step("trial state: GET /current", async () => {
 });
 
 await step("change plan in the trial: starter → pro (no payment)", async () => {
-  const r = ok(await call("POST", sub("/change"), { planId: "pro", interval: "monthly" }, as1(SHOP1)), "change");
+  const r = ok(await call("POST", sub("/change"), { planId: PLAN.bl.pro, interval: "monthly" }, as1(SHOP1)), "change");
   eq(r.applied, "now", "applied");
   eq(r.subscription.status, "trialing", "still trialing");
-  eq(r.subscription.planId, "pro", "plan");
+  eq(r.subscription.planId, PLAN.bl.pro, "plan");
   const f = ok(await call("GET", "/v1/features", undefined, as1(SHOP1)), "features");
-  eq(f.planId, "pro", "tenant plan follows");
+  eq(f.planId, PLAN.bl.pro, "tenant plan follows");
   ok(await call("GET", "/v1/staff/members", undefined, as1(SHOP1)), "staff page on pro");
 });
 
 await step("checkout during the trial → mock mandate URL → authorise → active from the trial end", async () => {
-  const r = ok(await call("POST", sub("/checkout"), { planId: "pro", interval: "monthly" }, as1(SHOP1)), "checkout");
+  const r = ok(await call("POST", sub("/checkout"), { planId: PLAN.bl.pro, interval: "monthly" }, as1(SHOP1)), "checkout");
   expect(r.authUrl.includes(`mockAuth=${r.providerSubscriptionId}`) && r.authUrl.includes(SHOP1), `authUrl ${r.authUrl}`);
   eq(r.provider, "mock", "provider");
   ctx.sub1 = r.providerSubscriptionId;
@@ -158,7 +163,7 @@ await step("checkout during the trial → mock mandate URL → authorise → act
   eq(a.subscription.currentPeriodStart, ctx.trialEndsAt, "period starts at the trial end");
   const again = ok(await call("POST", sub("/mock/authorize"), { subscriptionId: ctx.sub1 }, { as: null, tenant: null }), "authorize again");
   eq(again.outcome, "ignored: already active", "idempotent");
-  fails(await call("POST", sub("/checkout"), { planId: "pro", interval: "monthly" }, as1(SHOP1)), 409, "conflict", "already paid");
+  fails(await call("POST", sub("/checkout"), { planId: PLAN.bl.pro, interval: "monthly" }, as1(SHOP1)), 409, "conflict", "already paid");
 });
 
 await step("mock charge → paid platform invoice, intra-state GST (CGST + SGST), PDF", async () => {
@@ -215,7 +220,7 @@ await step("payment failure → past_due with 7 days' grace; the job expires it 
   const after = ok(await call("GET", sub("/current"), undefined, as1(SHOP1)), "current after");
   eq(after.subscription.status, "expired", "expired");
   const feats = ok(await call("GET", "/v1/features", undefined, as1(SHOP1)), "features");
-  eq(feats.planId, "free", "tenant on the free plan");
+  eq(feats.planId, PLAN.bl.free, "tenant on the free plan");
   expect(feats.enabled.includes("subscriptions"), "Plan & billing still on (free plan)");
 });
 
@@ -228,13 +233,13 @@ await step("after expiry the free plan's limits apply: 402 plan_limit, data kept
 
 await step("one trial per owner: the owner's second shop starts on the free plan", async () => {
   const r = ok(
-    await call("POST", "/v1/signup", signupBody({ slug: SHOP3, shopName: `E2E Signup Three ${RUN}`, planId: "pro" }), { as: "su1", tenant: null }),
+    await call("POST", "/v1/signup", signupBody({ slug: SHOP3, shopName: `E2E Signup Three ${RUN}`, planId: PLAN.bl.pro }), { as: "su1", tenant: null }),
     "second shop",
   );
   eq(r.trial, false, "no trial");
-  eq(r.tenant.planId, "free", "free plan");
+  eq(r.tenant.planId, PLAN.bl.free, "free plan");
   ctx.shop3 = r.tenant;
-  const ch = ok(await call("POST", sub("/change"), { planId: "starter", interval: "monthly" }, as1(SHOP3)), "change on free");
+  const ch = ok(await call("POST", sub("/change"), { planId: PLAN.bl.starter, interval: "monthly" }, as1(SHOP3)), "change on free");
   eq(ch.requiresCheckout, true, "payment needed");
   eq(ch.applied, "none", "not applied");
 });
@@ -244,18 +249,18 @@ await step("sign-up in Karnataka (EC, pro) → pay → inter-state invoice with 
     await call(
       "POST",
       "/v1/signup",
-      { shopName: `E2E Signup Two ${RUN}`, slug: SHOP2, appId: "EC", planId: "pro", interval: "monthly", state: "29", phone: testPhone(5) },
+      { shopName: `E2E Signup Two ${RUN}`, slug: SHOP2, appId: "EC", planId: PLAN.ec.pro, interval: "monthly", state: "29", phone: testPhone(5) },
       { as: "su2", tenant: null },
     ),
     "signup 2",
   );
   eq(r.trial, true, "trial");
   ctx.shop2 = r.tenant;
-  const co = ok(await call("POST", sub("/checkout"), { planId: "pro", interval: "monthly" }, as2(SHOP2)), "checkout");
+  const co = ok(await call("POST", sub("/checkout"), { planId: PLAN.ec.pro, interval: "monthly" }, as2(SHOP2)), "checkout");
   ctx.sub2 = co.providerSubscriptionId;
   ok(await call("POST", sub("/mock/authorize"), { subscriptionId: ctx.sub2 }, { as: null, tenant: null }), "authorize");
   const c = ok(await call("POST", sub("/mock/charge"), { subscriptionId: ctx.sub2 }, { as: null, tenant: null }), "charge");
-  eq(c.invoice.igstPaise, charge(PRO_MONTHLY) - PRO_MONTHLY, "IGST");
+  eq(c.invoice.igstPaise, charge(EC_PRO_MONTHLY) - EC_PRO_MONTHLY, "IGST");
   eq(c.invoice.cgstPaise + c.invoice.sgstPaise, 0, "no CGST/SGST");
   eq(c.invoice.placeOfSupply, "29", "place of supply");
   eq(c.subscription.status, "active", "active");
@@ -267,20 +272,20 @@ await step("sign-up in Karnataka (EC, pro) → pay → inter-state invoice with 
 });
 
 await step("downgrade pro → starter is pending until the period end, then applied by the job", async () => {
-  const r = ok(await call("POST", sub("/change"), { planId: "starter", interval: "monthly" }, as2(SHOP2)), "downgrade");
+  const r = ok(await call("POST", sub("/change"), { planId: PLAN.ec.starter, interval: "monthly" }, as2(SHOP2)), "downgrade");
   eq(r.applied, "period_end", "at period end");
-  eq(r.subscription.pendingPlanId, "starter", "pending");
-  eq(r.subscription.planId, "pro", "still pro");
+  eq(r.subscription.pendingPlanId, PLAN.ec.starter, "pending");
+  eq(r.subscription.planId, PLAN.ec.pro, "still pro");
   const early = ok(await call("POST", sub("/mock/lifecycle"), { tenantId: ctx.shop2.id, now: later(ctx.periodEnd2, -HOUR) }, { as: "owner", tenant: null }), "early");
   expect(!early.apply_pending, "not yet");
   const j = ok(await call("POST", sub("/mock/lifecycle"), { tenantId: ctx.shop2.id, now: later(ctx.periodEnd2, HOUR) }, { as: "owner", tenant: null }), "job");
   eq(j.apply_pending, 1, "applied");
   const c = ok(await call("GET", sub("/current"), undefined, as2(SHOP2)), "current");
-  eq(c.subscription.planId, "starter", "starter now");
+  eq(c.subscription.planId, PLAN.ec.starter, "starter now");
   eq(c.subscription.pendingPlanId, null, "pending cleared");
   eq(c.subscription.status, "active", "active");
   const f = ok(await call("GET", "/v1/features", undefined, as2(SHOP2)), "features");
-  eq(f.planId, "starter", "tenant plan");
+  eq(f.planId, PLAN.ec.starter, "tenant plan");
   ctx.periodEnd2b = c.subscription.currentPeriodEnd;
   expect(Date.parse(ctx.periodEnd2b) > Date.parse(ctx.periodEnd2), "next period");
 });
@@ -299,13 +304,13 @@ await step("cancel → resume (new mandate) → cancel → cancelled at the peri
   const c = ok(await call("GET", sub("/current"), undefined, as2(SHOP2)), "current");
   eq(c.subscription.status, "cancelled", "cancelled");
   const f = ok(await call("GET", "/v1/features", undefined, as2(SHOP2)), "features");
-  eq(f.planId, "free", "free plan");
+  eq(f.planId, PLAN.ec.free, "free plan");
   fails(await call("POST", sub("/cancel"), {}, as2(SHOP2)), 400, "bad_request", "nothing to cancel");
 });
 
 await step("trial reminders (3 days, 1 day) and trial end without a mandate → expired", async () => {
   // Owner 2's second shop has no trial; use a comp-free path instead: re-open a trial on shop 3 by super-admin.
-  ok(await call("POST", sub(`/admin/${ctx.shop3.id}/comp`), { planId: "starter", until: null }, { as: "owner", tenant: null }), "comp starter");
+  ok(await call("POST", sub(`/admin/${ctx.shop3.id}/comp`), { planId: PLAN.bl.starter, until: null }, { as: "owner", tenant: null }), "comp starter");
   const ext = ok(await call("POST", sub(`/admin/${ctx.shop3.id}/extend-trial`), { days: 5 }, { as: "owner", tenant: null }), "trial re-opened");
   eq(ext.subscription.status, "trialing", "trialing");
   const end = ext.subscription.trialEndsAt;
@@ -324,24 +329,24 @@ await step("trial reminders (3 days, 1 day) and trial end without a mandate → 
 // ---------------------------------------------------------------- upgrades wait for payment; proration credit
 await step("paid starter (no trial left) → upgrade preview: credit for the unused days, GST on the net, applies after payment", async () => {
   const r = ok(
-    await call("POST", "/v1/signup", { shopName: `E2E Signup Four ${RUN}`, slug: SHOP4, appId: "BL", planId: "starter", interval: "monthly", state: "33", phone: testPhone(5) }, { as: "su2", tenant: null }),
+    await call("POST", "/v1/signup", { shopName: `E2E Signup Four ${RUN}`, slug: SHOP4, appId: "BL", planId: PLAN.bl.starter, interval: "monthly", state: "33", phone: testPhone(5) }, { as: "su2", tenant: null }),
     "signup 4",
   );
   eq(r.trial, false, "no second trial");
   ctx.shop4 = r.tenant;
-  const ch = ok(await call("POST", sub("/change"), { planId: "starter", interval: "monthly" }, as2(SHOP4)), "change on free");
+  const ch = ok(await call("POST", sub("/change"), { planId: PLAN.bl.starter, interval: "monthly" }, as2(SHOP4)), "change on free");
   eq(ch.requiresCheckout, true, "free → paid still needs checkout");
-  const pv0 = ok(await call("POST", sub("/change/preview"), { planId: "starter", interval: "monthly" }, as2(SHOP4)), "preview from free");
+  const pv0 = ok(await call("POST", sub("/change/preview"), { planId: PLAN.bl.starter, interval: "monthly" }, as2(SHOP4)), "preview from free");
   eq(pv0.applies, "after_payment", "free → paid: after payment");
   eq(pv0.chargeTodayPaise, charge(STARTER_MONTHLY), "full price due");
-  const co = ok(await call("POST", sub("/checkout"), { planId: "starter", interval: "monthly" }, as2(SHOP4)), "checkout");
+  const co = ok(await call("POST", sub("/checkout"), { planId: PLAN.bl.starter, interval: "monthly" }, as2(SHOP4)), "checkout");
   ok(await call("POST", sub("/mock/authorize"), { subscriptionId: co.providerSubscriptionId }, { as: null, tenant: null }), "authorize");
   const c = ok(await call("POST", sub("/mock/charge"), { subscriptionId: co.providerSubscriptionId }, { as: null, tenant: null }), "charge");
   eq(c.invoice.subtotalPaise, STARTER_MONTHLY, "starter paid");
   ctx.sub4 = co.providerSubscriptionId;
 
   // Same IST day as the period start: every day of it is unused, so the whole taxable value paid is credited.
-  const pv = ok(await call("POST", sub("/change/preview"), { planId: "pro", interval: "monthly" }, as2(SHOP4)), "preview");
+  const pv = ok(await call("POST", sub("/change/preview"), { planId: PLAN.bl.pro, interval: "monthly" }, as2(SHOP4)), "preview");
   eq(pv.kind, "upgrade", "kind");
   eq(pv.applies, "after_payment", "applies after payment");
   eq(pv.creditPaise, STARTER_MONTHLY, "credit = unused days / period days × paid");
@@ -351,7 +356,7 @@ await step("paid starter (no trial left) → upgrade preview: credit for the unu
   eq(pv.gst.igstPaise, 0, "intra-state");
   eq(pv.gst.cgstPaise + pv.gst.sgstPaise, pv.chargeTodayPaise - pv.taxablePaise, "CGST + SGST");
   expect(Date.parse(pv.nextChargeAt) > Date.now() + 27 * DAY, `next charge ${pv.nextChargeAt}`);
-  const dn = ok(await call("POST", sub("/change/preview"), { planId: "free", interval: "monthly" }, as2(SHOP4)), "preview downgrade");
+  const dn = ok(await call("POST", sub("/change/preview"), { planId: PLAN.bl.free, interval: "monthly" }, as2(SHOP4)), "preview downgrade");
   eq(dn.applies, "period_end", "downgrade at the period end");
   eq(dn.chargeTodayPaise, 0, "nothing due");
   ctx.preview4 = pv;
@@ -359,23 +364,23 @@ await step("paid starter (no trial left) → upgrade preview: credit for the unu
 });
 
 await step("upgrade starter → pro is pending until paid: the plan stays starter; authorise applies it with a credit line", async () => {
-  const r = ok(await call("POST", sub("/change"), { planId: "pro", interval: "monthly" }, as2(SHOP4)), "upgrade");
+  const r = ok(await call("POST", sub("/change"), { planId: PLAN.bl.pro, interval: "monthly" }, as2(SHOP4)), "upgrade");
   eq(r.applied, "after_payment", "applied after payment");
   expect(r.authUrl?.includes("mockAuth="), `authUrl ${r.authUrl}`);
-  eq(r.subscription.planId, "starter", "still starter");
-  eq(r.subscription.pendingPlanId, "pro", "pending plan");
+  eq(r.subscription.planId, PLAN.bl.starter, "still starter");
+  eq(r.subscription.pendingPlanId, PLAN.bl.pro, "pending plan");
   eq(r.subscription.pendingReason, "awaiting_payment", "awaiting payment");
   eq(r.subscription.pendingChargePaise, ctx.preview4.chargeTodayPaise, "due now matches the preview");
   eq(r.subscription.providerSubscriptionId, ctx.sub4, "old mandate kept");
   const exp = Date.parse(r.subscription.pendingExpiresAt) - Date.parse(r.subscription.pendingSince);
   eq(exp, 48 * HOUR, "expires after 48 h");
   const f = ok(await call("GET", "/v1/features", undefined, as2(SHOP4)), "features");
-  eq(f.planId, "starter", "tenant plan unchanged before payment");
+  eq(f.planId, PLAN.bl.starter, "tenant plan unchanged before payment");
   const cur = ok(await call("GET", sub("/current"), undefined, as2(SHOP4)), "current");
-  eq(cur.pendingPlan?.id, "pro", "pendingPlan");
+  eq(cur.pendingPlan?.id, PLAN.bl.pro, "pendingPlan");
 
   const a = ok(await call("POST", sub("/mock/authorize"), { subscriptionId: r.subscription.pendingProviderSubscriptionId }, { as: null, tenant: null }), "authorize upgrade");
-  eq(a.subscription.planId, "pro", "pro now");
+  eq(a.subscription.planId, PLAN.bl.pro, "pro now");
   eq(a.subscription.pendingPlanId, null, "pending cleared");
   eq(a.subscription.providerSubscriptionId, r.subscription.pendingProviderSubscriptionId, "new mandate current");
   const inv = a.invoice;
@@ -390,7 +395,7 @@ await step("upgrade starter → pro is pending until paid: the plan stays starte
   eq(inv.lines[0].totalPaise + inv.lines[1].totalPaise, inv.totalPaise, "lines add up");
   eq(inv.cgstPaise + inv.sgstPaise + inv.subtotalPaise, inv.totalPaise, "CGST + SGST on the net");
   const f2 = ok(await call("GET", "/v1/features", undefined, as2(SHOP4)), "features after");
-  eq(f2.planId, "pro", "tenant plan follows once paid");
+  eq(f2.planId, PLAN.bl.pro, "tenant plan follows once paid");
   const pdf = await call("GET", sub(`/invoices/${inv.id}.pdf`), undefined, { ...as2(SHOP4), binary: true });
   eq(pdf.status, 200, "pdf with the credit line");
   const again = ok(await call("POST", sub("/mock/authorize"), { subscriptionId: r.subscription.pendingProviderSubscriptionId }, { as: null, tenant: null }), "authorize again");
@@ -400,7 +405,7 @@ await step("upgrade starter → pro is pending until paid: the plan stays starte
 });
 
 await step("an unpaid upgrade lapses after 48 h (job) and its mandate is cancelled; cancel upgrade drops one at once", async () => {
-  const r = ok(await call("POST", sub("/change"), { planId: "pro", interval: "yearly" }, as2(SHOP4)), "upgrade to yearly");
+  const r = ok(await call("POST", sub("/change"), { planId: PLAN.bl.pro, interval: "yearly" }, as2(SHOP4)), "upgrade to yearly");
   eq(r.applied, "after_payment", "pending");
   const since = r.subscription.pendingSince;
   const early = ok(await call("POST", sub("/mock/lifecycle"), { tenantId: ctx.shop4.id, now: later(since, 47 * HOUR) }, { as: "owner", tenant: null }), "job early");
@@ -408,21 +413,21 @@ await step("an unpaid upgrade lapses after 48 h (job) and its mandate is cancell
   const j = ok(await call("POST", sub("/mock/lifecycle"), { tenantId: ctx.shop4.id, now: later(since, 49 * HOUR) }, { as: "owner", tenant: null }), "job");
   eq(j.pending_expired, 1, "lapsed");
   const c = ok(await call("GET", sub("/current"), undefined, as2(SHOP4)), "current");
-  eq(c.subscription.planId, "pro", "plan unchanged");
+  eq(c.subscription.planId, PLAN.bl.pro, "plan unchanged");
   eq(c.subscription.interval, "monthly", "interval unchanged");
   eq(c.subscription.pendingPlanId, null, "pending cleared");
   // Its mandate is gone: a late authorisation finds nothing.
   fails(await call("POST", sub("/mock/authorize"), { subscriptionId: r.subscription.pendingProviderSubscriptionId }, { as: null, tenant: null }), 404, "not_found", "late authorise");
 
-  ok(await call("POST", sub("/change"), { planId: "pro", interval: "yearly" }, as2(SHOP4)), "upgrade again");
+  ok(await call("POST", sub("/change"), { planId: PLAN.bl.pro, interval: "yearly" }, as2(SHOP4)), "upgrade again");
   const cx = ok(await call("POST", sub("/change/cancel"), {}, as2(SHOP4)), "cancel upgrade");
   eq(cx.subscription.pendingPlanId, null, "dropped");
-  eq(cx.subscription.planId, "pro", "still pro monthly");
+  eq(cx.subscription.planId, PLAN.bl.pro, "still pro monthly");
   fails(await call("POST", sub("/change/cancel"), {}, as2(SHOP4)), 400, "bad_request", "nothing to cancel");
 });
 
 await step("webhook ordering: charged before activated applies the upgrade once; the late activation is ignored", async () => {
-  const r = ok(await call("POST", sub("/change"), { planId: "pro", interval: "yearly" }, as2(SHOP4)), "upgrade to yearly");
+  const r = ok(await call("POST", sub("/change"), { planId: PLAN.bl.pro, interval: "yearly" }, as2(SHOP4)), "upgrade to yearly");
   const id = r.subscription.pendingProviderSubscriptionId;
   expect(r.subscription.pendingCreditPaise > 0, `credit ${r.subscription.pendingCreditPaise}`);
   const ch = ok(await call("POST", sub("/mock/charge"), { subscriptionId: id }, { as: null, tenant: null }), "charged first");
@@ -446,12 +451,12 @@ await step("trial plan switches stay instant (no payment)", async () => {
   // Shop 3's trial ended above; re-open one (super-admin) and switch its plan.
   const ext = ok(await call("POST", sub(`/admin/${ctx.shop3.id}/extend-trial`), { days: 3 }, { as: "owner", tenant: null }), "trial re-opened");
   eq(ext.subscription.status, "trialing", "trialing");
-  const tp = ok(await call("POST", sub("/change/preview"), { planId: "pro", interval: "monthly" }, as1(SHOP3)), "preview in trial");
+  const tp = ok(await call("POST", sub("/change/preview"), { planId: PLAN.bl.pro, interval: "monthly" }, as1(SHOP3)), "preview in trial");
   eq(tp.applies, "now", "now");
   eq(tp.chargeTodayPaise, 0, "no charge");
-  const ch = ok(await call("POST", sub("/change"), { planId: "pro", interval: "monthly" }, as1(SHOP3)), "switch");
+  const ch = ok(await call("POST", sub("/change"), { planId: PLAN.bl.pro, interval: "monthly" }, as1(SHOP3)), "switch");
   eq(ch.applied, "now", "instant");
-  eq(ch.subscription.planId, "pro", "pro trial");
+  eq(ch.subscription.planId, PLAN.bl.pro, "pro trial");
   eq(ch.subscription.pendingPlanId, null, "nothing pending");
 });
 
@@ -466,13 +471,13 @@ await step("super-admin: stats, list with search, comp, invoices, void; shop own
   const expired = ok(await call("GET", sub("/admin/subscriptions?status=expired&limit=200"), undefined, { as: "owner", tenant: null }), "status filter");
   expect(expired.items.every((i) => i.status === "expired"), "filtered");
   const comp = ok(
-    await call("POST", sub(`/admin/${ctx.shop3.id}/comp`), { planId: "pro", until: new Date(Date.now() + 30 * DAY).toISOString() }, { as: "owner", tenant: null }),
+    await call("POST", sub(`/admin/${ctx.shop3.id}/comp`), { planId: PLAN.bl.pro, until: new Date(Date.now() + 30 * DAY).toISOString() }, { as: "owner", tenant: null }),
     "comp",
   );
   eq(comp.subscription.provider, "manual", "manual");
-  eq(comp.subscription.planId, "pro", "comp plan");
+  eq(comp.subscription.planId, PLAN.bl.pro, "comp plan");
   const f = ok(await call("GET", "/v1/features", undefined, as1(SHOP3)), "features");
-  eq(f.planId, "pro", "comped plan applies");
+  eq(f.planId, PLAN.bl.pro, "comped plan applies");
   const invs = ok(await call("GET", sub(`/admin/invoices?tenantId=${ctx.shop1.id}`), undefined, { as: "owner", tenant: null }), "invoices");
   expect(invs.items.some((i) => i.id === ctx.invoice1.id && i.tenant?.slug === SHOP1), "admin invoice list");
   const pdf = await call("GET", sub(`/admin/invoices/${ctx.invoice1.id}.pdf`), undefined, { as: "owner", tenant: null, binary: true });
