@@ -1,15 +1,18 @@
-import { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
+import { BUSINESS_TYPES, isGeneralPack, PACKS } from "@rbms/verticals";
 import type { BusinessType } from "@rbms/verticals";
 
 export type { BusinessType };
-export const ALL_TRADES: readonly BusinessType[] = BUSINESS_TYPES;
+/** Every trade with a pack of its own (the general catch-all packs are not a trade). */
+export const ALL_TRADES: readonly BusinessType[] = BUSINESS_TYPES.filter((id) => !isGeneralPack(id));
 
-/** The four groups used on /industries (same grouping as the product guide). */
+/** The groups used on /industries (same grouping as the product guide). */
 export const TRADE_GROUPS: { key: string; ids: BusinessType[] }[] = [
-  { key: "food", ids: ["grocery", "bakery", "fresh", "organic", "restaurant", "cloud_kitchen", "tea_stall"] },
-  { key: "fashion", ids: ["fashion", "footwear", "jewellery", "cosmetics", "home_decor", "furniture", "florist_pooja", "crackers"] },
+  { key: "food", ids: ["grocery", "bakery", "fresh", "organic", "restaurant", "cloud_kitchen", "tea_stall", "catering"] },
+  { key: "fashion", ids: ["fashion", "footwear", "jewellery", "cosmetics", "home_decor", "furniture", "florist_pooja", "crackers", "textiles_wholesale"] },
   { key: "health", ids: ["pharmacy", "optical", "salon", "spa", "gym"] },
-  { key: "tools", ids: ["hardware", "electronics", "mobile_accessories", "repair", "stationery", "toys", "sports", "pet_shop", "tailoring", "school"] },
+  { key: "tools", ids: ["hardware", "electronics", "mobile_accessories", "repair", "stationery", "toys", "sports", "pet_shop", "tailoring", "paints", "electricals", "tiles_sanitary", "print_shop"] },
+  { key: "services", ids: ["pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service"] },
+  { key: "classes", ids: ["school", "tuition", "dance_music", "yoga", "driving_school"] },
 ];
 
 /** Featured on the home page as full cards; the rest become name chips. */

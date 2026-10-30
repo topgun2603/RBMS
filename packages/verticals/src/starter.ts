@@ -62,6 +62,24 @@ const LAYOUT: Record<BusinessType, Part[]> = {
   tea_stall: ["hero-split", "menu-board", "usp", "location", "faq"],
   spa: ["hero", "appointment", "categories", "usp", "testimonials", "faq", "location"],
   school: ["hero-split", "usp", "categories", "appointment", "testimonials", "faq", "location", "newsletter"],
+  general_shop: ["hero-split", "categories", "usp", "faq", "newsletter"],
+  general_counter: ["hero", "categories", "usp", "faq", "location"],
+  general_services: ["hero-split", "appointment", "categories", "usp", "faq", "location"],
+  textiles_wholesale: ["hero", "category-mosaic", "usp", "faq", "location", "newsletter"],
+  catering: ["hero-split", "appointment", "categories", "usp", "testimonials", "faq"],
+  pet_grooming: ["hero", "appointment", "usp", "categories", "testimonials", "faq", "location"],
+  photo_studio: ["hero-split", "category-mosaic", "appointment", "testimonials", "faq", "location"],
+  laundry: ["hero", "appointment", "categories", "usp", "faq", "location"],
+  event_decor: ["hero-split", "category-mosaic", "usp", "appointment", "testimonials", "faq"],
+  ac_service: ["hero", "appointment", "categories", "usp", "testimonials", "faq", "location"],
+  print_shop: ["hero-split", "categories", "usp", "location", "faq"],
+  tuition: ["hero-split", "appointment", "categories", "usp", "testimonials", "faq", "location"],
+  dance_music: ["hero", "category-mosaic", "appointment", "testimonials", "faq", "location"],
+  yoga: ["hero-split", "appointment", "usp", "categories", "testimonials", "faq"],
+  driving_school: ["hero", "usp", "appointment", "categories", "faq", "location"],
+  paints: ["hero-split", "category-mosaic", "usp", "faq", "location", "newsletter"],
+  electricals: ["hero-split", "categories", "usp", "faq", "location"],
+  tiles_sanitary: ["hero", "category-mosaic", "usp", "faq", "location"],
 };
 
 /** Packs without stock artwork of their own borrow a near trade's (drawn in that trade's look, which the pack starts on). */
@@ -76,6 +94,24 @@ const STOCK_ART: Partial<Record<BusinessType, string>> = { organic: "fresh", foo
   tea_stall: "restaurant",
   spa: "salon",
   school: "optical",
+  general_shop: "grocery",
+  general_counter: "grocery",
+  general_services: "repair",
+  textiles_wholesale: "tailoring",
+  catering: "restaurant",
+  pet_grooming: "salon",
+  photo_studio: "electronics",
+  laundry: "tailoring",
+  event_decor: "jewellery",
+  ac_service: "repair",
+  print_shop: "electronics",
+  tuition: "optical",
+  dance_music: "jewellery",
+  yoga: "gym",
+  driving_school: "gym",
+  paints: "hardware",
+  electricals: "electronics",
+  tiles_sanitary: "hardware",
 };
 
 // ------------------------------------------------------------------ trade words
@@ -117,6 +153,61 @@ const SERVICES: Partial<Record<BusinessType, { name: L; duration?: L }[]>> = {
     { name: l("Meet the principal", "முதல்வரைச் சந்திக்க"), duration: l("20 min", "20 நிமி") },
     { name: l("Admission counselling", "சேர்க்கை ஆலோசனை"), duration: l("30 min", "30 நிமி") },
   ],
+  general_services: [
+    { name: l("Consultation", "ஆலோசனை"), duration: l("30 min", "30 நிமி") },
+    { name: l("Standard service", "வழக்கமான சேவை"), duration: l("60 min", "60 நிமி") },
+    { name: l("Site visit", "இடத்துக்கு வருகை"), duration: l("On request", "கோரிக்கைப்படி") },
+  ],
+  catering: [
+    { name: l("Menu tasting", "மெனு சுவைபார்த்தல்"), duration: l("45 min", "45 நிமி") },
+    { name: l("Event quote", "நிகழ்வுக்கான விலைப்பட்டியல்"), duration: l("Within a day", "ஒரு நாளுக்குள்") },
+    { name: l("Daily tiffin trial", "தினசரி டிஃபன் சோதனை"), duration: l("3 days", "3 நாள்") },
+  ],
+  pet_grooming: [
+    { name: l("Bath & dry", "குளிப்பாட்டி உலர்த்துதல்"), duration: l("60 min", "60 நிமி") },
+    { name: l("Full grooming", "முழு அழகுபடுத்தல்"), duration: l("2 hours", "2 மணி நேரம்") },
+    { name: l("Nail & ear care", "நகம் & காது பராமரிப்பு"), duration: l("20 min", "20 நிமி") },
+  ],
+  photo_studio: [
+    { name: l("Studio portrait session", "ஸ்டுடியோ போர்ட்ரெய்ட்"), duration: l("45 min", "45 நிமி") },
+    { name: l("Passport & ID photos", "பாஸ்போர்ட் & அடையாள அட்டைப் படங்கள்"), duration: l("10 min", "10 நிமி") },
+    { name: l("Wedding package discussion", "திருமணப் பேக்கேஜ் ஆலோசனை"), duration: l("30 min", "30 நிமி") },
+  ],
+  laundry: [
+    { name: l("Pickup from home", "வீட்டிலிருந்து பிக்அப்"), duration: l("Your slot", "உங்கள் நேரம்") },
+    { name: l("Wash & iron", "துவைத்து அயர்ன்"), duration: l("2 days", "2 நாள்") },
+    { name: l("Dry cleaning", "டிரை கிளீனிங்"), duration: l("3 days", "3 நாள்") },
+  ],
+  event_decor: [
+    { name: l("Venue visit & quote", "இடம் பார்வையிட்டு விலைப்பட்டியல்"), duration: l("45 min", "45 நிமி") },
+    { name: l("Theme and design discussion", "தீம், வடிவமைப்பு ஆலோசனை"), duration: l("30 min", "30 நிமி") },
+    { name: l("Rentals check", "வாடகைப் பொருட்கள் பார்வை"), duration: l("20 min", "20 நிமி") },
+  ],
+  ac_service: [
+    { name: l("AC general service", "ஏசி பொது சர்வீஸ்"), duration: l("1 hour", "1 மணி நேரம்") },
+    { name: l("Gas refill & leak check", "கேஸ் நிரப்பல் & கசிவு சோதனை"), duration: l("90 min", "90 நிமி") },
+    { name: l("Fridge / washing machine check", "ஃப்ரிட்ஜ் / வாஷிங் மெஷின் சோதனை"), duration: l("Same day", "அதே நாள்") },
+  ],
+  tuition: [
+    { name: l("Free demo class", "இலவச டெமோ வகுப்பு"), duration: l("60 min", "60 நிமி") },
+    { name: l("Meet the teacher", "ஆசிரியரைச் சந்திக்க"), duration: l("20 min", "20 நிமி") },
+    { name: l("Level assessment test", "நிலை மதிப்பீட்டுத் தேர்வு"), duration: l("45 min", "45 நிமி") },
+  ],
+  dance_music: [
+    { name: l("Trial class", "சோதனை வகுப்பு"), duration: l("45 min", "45 நிமி") },
+    { name: l("Level assessment", "நிலை மதிப்பீடு"), duration: l("30 min", "30 நிமி") },
+    { name: l("Meet the teacher", "ஆசிரியரைச் சந்திக்க"), duration: l("20 min", "20 நிமி") },
+  ],
+  yoga: [
+    { name: l("Free trial class", "இலவச சோதனை வகுப்பு"), duration: l("60 min", "60 நிமி") },
+    { name: l("Personal yoga session", "தனிப்பட்ட யோகா அமர்வு"), duration: l("60 min", "60 நிமி") },
+    { name: l("Posture and health check", "உடல்நிலை, தோரணை பரிசோதனை"), duration: l("20 min", "20 நிமி") },
+  ],
+  driving_school: [
+    { name: l("Trial lesson", "சோதனைப் பாடம்"), duration: l("30 min", "30 நிமி") },
+    { name: l("Learner's licence help", "எல்.எல்.ஆர். உதவி"), duration: l("20 min", "20 நிமி") },
+    { name: l("Course counselling", "பயிற்சித் திட்ட ஆலோசனை"), duration: l("15 min", "15 நிமி") },
+  ],
 };
 
 const APPOINTMENT: Partial<Record<BusinessType, { heading: L; text: L }>> = {
@@ -127,6 +218,17 @@ const APPOINTMENT: Partial<Record<BusinessType, { heading: L; text: L }>> = {
   tailoring: { heading: l("Book a fitting", "அளவெடுக்க முன்பதிவு"), text: l("Come in for measurements, or book a pick-up of your fabric.", "அளவெடுக்க வாருங்கள், அல்லது உங்கள் துணியை எடுத்துச் செல்ல முன்பதிவு செய்யுங்கள்.") },
   spa: { heading: l("Book your session", "உங்கள் அமர்வை புக் செய்யுங்கள்"), text: l("Choose a therapy and a time, and come ten minutes early to settle in.", "சிகிச்சையையும் நேரத்தையும் தேர்ந்தெடுங்கள்; நிதானமாகத் தயாராகப் பத்து நிமிடம் முன்னதாக வாருங்கள்.") },
   school: { heading: l("Book a campus visit", "வளாகத்தைப் பார்வையிட முன்பதிவு செய்யுங்கள்"), text: l("Walk through the classrooms, meet our teachers and ask about admissions. Pick a day that suits you.", "வகுப்பறைகளைச் சுற்றிப் பாருங்கள், ஆசிரியர்களைச் சந்தியுங்கள், சேர்க்கை பற்றிக் கேளுங்கள். உங்களுக்கு ஏற்ற நாளைத் தேர்ந்தெடுங்கள்.") },
+  general_services: { heading: l("Book a service", "சேவையை புக் செய்யுங்கள்"), text: l("Pick a service and a time that suits you. We confirm it quickly.", "சேவையையும் உங்களுக்கு ஏற்ற நேரத்தையும் தேர்ந்தெடுங்கள். விரைவில் உறுதி செய்வோம்.") },
+  catering: { heading: l("Plan your event", "உங்கள் நிகழ்வைத் திட்டமிடுங்கள்"), text: l("Tell us the date, the number of guests and the menu you like; we send a quote within a day.", "தேதி, விருந்தினர் எண்ணிக்கை, விரும்பும் மெனுவைச் சொல்லுங்கள்; ஒரு நாளுக்குள் விலைப்பட்டியல் அனுப்புவோம்.") },
+  pet_grooming: { heading: l("Book a grooming slot", "அழகுபடுத்தும் நேரத்தை புக் செய்யுங்கள்"), text: l("Choose the service and a time; tell us your pet's size and any health notes.", "சேவையையும் நேரத்தையும் தேர்ந்தெடுங்கள்; செல்லத்தின் அளவு, உடல்நலக் குறிப்புகளைச் சொல்லுங்கள்.") },
+  photo_studio: { heading: l("Book your shoot", "படப்பிடிப்பை புக் செய்யுங்கள்"), text: l("Pick a session or ask about a package for your function; we confirm the date.", "ஒரு அமர்வைத் தேர்ந்தெடுங்கள், அல்லது உங்கள் விசேஷத்துக்கான பேக்கேஜ் பற்றிக் கேளுங்கள்; தேதியை உறுதி செய்வோம்.") },
+  laundry: { heading: l("Schedule a pickup", "பிக்அப் நேரத்தை புக் செய்யுங்கள்"), text: l("Choose a pickup slot; we bring your clothes back on the ready date.", "பிக்அப் நேரத்தைத் தேர்ந்தெடுங்கள்; தயாராகும் நாளில் துணிகளைத் திருப்பிக் கொண்டு வருவோம்.") },
+  event_decor: { heading: l("Get a quote for your event", "உங்கள் நிகழ்வுக்கு விலைப்பட்டியல் பெறுங்கள்"), text: l("Tell us the date, the venue and the theme you like; we visit and send an itemised quote.", "தேதி, இடம், விரும்பும் தீமைச் சொல்லுங்கள்; நேரில் வந்து விவரமான விலைப்பட்டியல் அனுப்புவோம்.") },
+  ac_service: { heading: l("Book a service visit", "சர்வீஸ் வருகையை புக் செய்யுங்கள்"), text: l("Tell us the appliance and the problem, pick a time, and track your job online.", "உபகரணத்தையும் பிரச்சினையையும் சொல்லி, நேரத்தைத் தேர்ந்தெடுங்கள்; உங்கள் வேலையை ஆன்லைனில் பாருங்கள்.") },
+  tuition: { heading: l("Try a free demo class", "இலவச டெமோ வகுப்பை முயற்சியுங்கள்"), text: l("Pick the class and a time; meet the teacher and see how a batch runs before you join.", "வகுப்பையும் நேரத்தையும் தேர்ந்தெடுங்கள்; சேரும் முன் ஆசிரியரைச் சந்தித்து பேட்ச் எப்படி நடக்கிறதெனப் பாருங்கள்.") },
+  dance_music: { heading: l("Book a trial class", "சோதனை வகுப்பை புக் செய்யுங்கள்"), text: l("Try a class first. Tell us the age and level and we suggest the right batch.", "முதலில் ஒரு வகுப்பில் கலந்து பாருங்கள். வயதையும் நிலையையும் சொல்லுங்கள், பொருத்தமான பேட்சைச் சொல்வோம்.") },
+  yoga: { heading: l("Join a free trial class", "இலவச சோதனை வகுப்பில் சேருங்கள்"), text: l("Pick a batch that suits you; wear comfortable clothes and come on an empty stomach.", "உங்களுக்கு ஏற்ற பேட்சைத் தேர்ந்தெடுங்கள்; வசதியான ஆடை அணிந்து, வெறும் வயிற்றில் வாருங்கள்.") },
+  driving_school: { heading: l("Book your first lesson", "முதல் பாடத்தை புக் செய்யுங்கள்"), text: l("Choose car or two-wheeler and a time; bring your learner's licence if you have one.", "கார் அல்லது இருசக்கர வாகனத்தையும் நேரத்தையும் தேர்ந்தெடுங்கள்; எல்.எல்.ஆர். இருந்தால் கொண்டு வாருங்கள்.") },
 };
 
 type Dish = { name: L; price: number; diet?: "veg" | "nonveg" | "egg" };
@@ -324,6 +426,96 @@ const FAQ: Partial<Record<BusinessType, { q: L; a: L }[]>> = {
     { q: l("How do I know about the fees?", "கட்டண விவரங்களை எப்படி அறிவது?"), a: l("Fees differ by class. Send an enquiry or visit the office and we will share the fee structure.", "கட்டணம் வகுப்புக்கு ஏற்ப மாறும். விசாரணை அனுப்புங்கள் அல்லது அலுவலகத்துக்கு வாருங்கள்; கட்டண விவரத்தைப் பகிர்வோம்.") },
     { q: l("Which board and syllabus do you follow?", "எந்த வாரியம், பாடத்திட்டத்தைப் பின்பற்றுகிறீர்கள்?"), a: l("Ask the office about the board, syllabus and medium of instruction for each class.", "ஒவ்வொரு வகுப்புக்குமான வாரியம், பாடத்திட்டம், பயிற்றுமொழி பற்றி அலுவலகத்தில் கேளுங்கள்.") },
   ],
+  general_shop: [
+    { q: l("Do you deliver?", "டெலிவரி உண்டா?"), a: l("Yes, enter your pincode at checkout to see delivery options and charges.", "ஆம், செக்அவுட்டில் பின்கோடை உள்ளிட்டு டெலிவரி வசதிகளையும் கட்டணத்தையும் பாருங்கள்.") },
+    { q: l("Can I pick up from the shop?", "கடையில் நேரில் எடுத்துக் கொள்ளலாமா?"), a: l("Yes, choose pickup at checkout and we call you when the order is packed.", "ஆம், செக்அவுட்டில் நேரில் பெறுதலைத் தேர்ந்தெடுங்கள்; ஆர்டர் தயாரானதும் அழைப்போம்.") },
+    { q: l("Can I return or exchange?", "திருப்பி அல்லது மாற்றிக் கொள்ளலாமா?"), a: l("Unused items with the bill can be returned or exchanged; see our returns policy.", "பில்லுடன் பயன்படுத்தாத பொருட்களைத் திருப்பலாம் அல்லது மாற்றலாம்; எங்கள் திருப்பக் கொள்கையைப் பாருங்கள்.") },
+  ],
+  general_counter: [
+    { q: l("Do I get a GST bill?", "GST பில் கிடைக்குமா?"), a: l("Yes, every sale has a GST bill; add your GSTIN when you order.", "ஆம், ஒவ்வொரு விற்பனைக்கும் GST பில் உண்டு; ஆர்டர் செய்யும்போது உங்கள் GSTIN-ஐச் சேர்க்கவும்.") },
+    { q: l("Can I order and collect later?", "ஆர்டர் செய்து பிறகு எடுத்துக் கொள்ளலாமா?"), a: l("Yes, order online and collect at the counter when it is ready.", "ஆம், ஆன்லைனில் ஆர்டர் செய்து தயாரானதும் கவுண்டரில் பெற்றுக் கொள்ளுங்கள்.") },
+    { q: l("Do you give bulk rates?", "மொத்த விலை உண்டா?"), a: l("Yes, ask us for a quote on large orders.", "ஆம், பெரிய ஆர்டர்களுக்கு விலைப்பட்டியல் கேளுங்கள்.") },
+  ],
+  general_services: [
+    { q: l("How do I book?", "எப்படி புக் செய்வது?"), a: l("Pick a service and a time on this page; we confirm by call or message.", "இந்தப் பக்கத்தில் சேவையையும் நேரத்தையும் தேர்ந்தெடுங்கள்; அழைப்பு அல்லது செய்தி மூலம் உறுதி செய்வோம்.") },
+    { q: l("Will I get a quote first?", "முதலில் விலைப்பட்டியல் கிடைக்குமா?"), a: l("Yes, we tell you the price before we start.", "ஆம், தொடங்கும் முன் விலையைச் சொல்வோம்.") },
+    { q: l("Can I reschedule?", "நேரத்தை மாற்றலாமா?"), a: l("Yes, call or message us at least a few hours before your slot.", "ஆம், உங்கள் நேரத்துக்குச் சில மணி நேரம் முன்பாவது அழையுங்கள் அல்லது செய்தி அனுப்புங்கள்.") },
+  ],
+  textiles_wholesale: [
+    { q: l("Do you sell by the metre?", "மீட்டர் கணக்கில் விற்பீர்களா?"), a: l("Yes, any length from the roll; wholesale rates apply from a bale or a set minimum.", "ஆம், ரோலிலிருந்து தேவையான நீளம்; பேல் அல்லது குறிப்பிட்ட குறைந்தபட்சத்திலிருந்து மொத்த விலை.") },
+    { q: l("What is the minimum order?", "குறைந்தபட்ச ஆர்டர் என்ன?"), a: l("It depends on the fabric; each product lists its minimum quantity.", "துணியைப் பொறுத்தது; ஒவ்வொரு பொருளிலும் குறைந்தபட்ச அளவு குறிப்பிடப்பட்டுள்ளது.") },
+    { q: l("Can you send samples?", "மாதிரிகள் அனுப்புவீர்களா?"), a: l("Yes, ask for swatches of the fabrics you are interested in.", "ஆம், உங்களுக்குப் பிடித்த துணிகளின் மாதிரிகளைக் கேளுங்கள்.") },
+  ],
+  catering: [
+    { q: l("How early should I book?", "எவ்வளவு முன்பே புக் செய்ய வேண்டும்?"), a: l("For weddings book a month ahead; for parties and office meals a few days before.", "திருமணங்களுக்கு ஒரு மாதம் முன்பே; விழாக்கள், அலுவலக உணவுக்குச் சில நாள் முன்பு.") },
+    { q: l("Do you take an advance?", "முன்பணம் பெறுவீர்களா?"), a: l("Yes, a part advance confirms your date; the balance is paid after the event.", "ஆம், ஒரு பகுதி முன்பணம் தேதியை உறுதி செய்யும்; மீதியை நிகழ்வுக்குப் பிறகு செலுத்தலாம்.") },
+    { q: l("Can you serve at our venue?", "எங்கள் இடத்தில் பரிமாறுவீர்களா?"), a: l("Yes, we cook fresh, deliver and can send serving staff; ask in your quote request.", "ஆம், புதிதாகச் சமைத்து கொண்டு வருகிறோம், பரிமாறும் பணியாளர்களையும் அனுப்புவோம்; விலைப்பட்டியல் கேட்கும்போது சொல்லுங்கள்.") },
+  ],
+  pet_grooming: [
+    { q: l("Which pets do you groom?", "எந்தச் செல்லப்பிராணிகளுக்கு அழகுபடுத்துவீர்கள்?"), a: l("Dogs and cats of all sizes; tell us the breed and size when you book.", "எல்லா அளவு நாய், பூனைகள்; புக் செய்யும்போது இனத்தையும் அளவையும் சொல்லுங்கள்.") },
+    { q: l("Does my pet need vaccinations?", "என் செல்லத்துக்குத் தடுப்பூசி தேவையா?"), a: l("Yes, please bring the vaccination card; we groom only vaccinated pets.", "ஆம், தடுப்பூசி அட்டையைக் கொண்டு வாருங்கள்; தடுப்பூசி போட்ட செல்லங்களை மட்டுமே அழகுபடுத்துகிறோம்.") },
+    { q: l("How long does grooming take?", "அழகுபடுத்த எவ்வளவு நேரம்?"), a: l("A bath takes about an hour and full grooming about two; we call you when your pet is ready.", "குளிப்பாட்ட சுமார் ஒரு மணி நேரம், முழு அழகுபடுத்தலுக்கு இரண்டு; தயாரானதும் அழைப்போம்.") },
+  ],
+  photo_studio: [
+    { q: l("How do I book a wedding shoot?", "திருமணப் படப்பிடிப்பை எப்படி புக் செய்வது?"), a: l("Send us the date, venue and what you need; we send a package quote and hold your date with an advance.", "தேதி, இடம், தேவையைச் சொல்லுங்கள்; பேக்கேஜ் விலைப்பட்டியல் அனுப்பி, முன்பணத்துடன் தேதியை ஒதுக்குவோம்.") },
+    { q: l("When do I get the photos?", "படங்கள் எப்போது கிடைக்கும்?"), a: l("Edited photos in about two weeks and albums in three to four weeks after the event.", "நிகழ்வுக்குப் பிறகு திருத்திய படங்கள் சுமார் இரண்டு வாரத்தில், ஆல்பம் மூன்று முதல் நான்கு வாரத்தில்.") },
+    { q: l("Do you do passport photos?", "பாஸ்போர்ட் படங்கள் எடுப்பீர்களா?"), a: l("Yes, in the studio in a few minutes; prints are ready on the spot.", "ஆம், ஸ்டுடியோவில் சில நிமிடங்களில்; அச்சுப் படங்கள் உடனே தயார்.") },
+  ],
+  laundry: [
+    { q: l("How do you charge?", "கட்டணம் எப்படி?"), a: l("By the piece for ironing and dry cleaning, and by the kilo for wash and fold.", "அயர்னிங், டிரை கிளீனிங் எண்ணிக்கைக்கு; துவைத்து மடிக்க கிலோ கணக்கில்.") },
+    { q: l("How will I know it is ready?", "தயாரானது எனத் தெரிந்து கொள்வது எப்படி?"), a: l("The slip has the ready date and we message you when your clothes are ready.", "சீட்டில் தயாராகும் தேதி இருக்கும்; துணிகள் தயாரானதும் செய்தி அனுப்புவோம்.") },
+    { q: l("What if a garment is damaged?", "துணி சேதமானால்?"), a: l("Tell us at delivery and we will make it right; delicate items are handled with care and noted on the slip.", "டெலிவரியின்போதே சொல்லுங்கள், சரி செய்வோம்; நுட்பமான துணிகள் கவனமாகக் கையாளப்பட்டு சீட்டில் குறிக்கப்படும்.") },
+  ],
+  event_decor: [
+    { q: l("Can you decorate at my venue?", "எங்கள் இடத்தில் அலங்கரிப்பீர்களா?"), a: l("Yes, we visit the venue first, then set up on the day and clear after.", "ஆம், முதலில் இடத்தைப் பார்வையிடுவோம்; நாளன்று அமைத்து, முடிந்ததும் அகற்றுவோம்.") },
+    { q: l("How much advance do I pay?", "எவ்வளவு முன்பணம்?"), a: l("Usually half of the quote confirms your date; the rest is due before the event.", "பொதுவாக விலைப்பட்டியலில் பாதி தேதியை உறுதி செய்யும்; மீதி நிகழ்வுக்கு முன்.") },
+    { q: l("Do you rent chairs, utensils and lights?", "நாற்காலி, பாத்திரம், விளக்குகள் வாடகைக்கு உண்டா?"), a: l("Yes, rentals are listed with the price per day; ask us for a combined quote.", "ஆம், வாடகைப் பொருட்கள் நாளுக்கான விலையுடன் பட்டியலிடப்பட்டுள்ளன; ஒட்டுமொத்த விலைப்பட்டியல் கேளுங்கள்.") },
+  ],
+  ac_service: [
+    { q: l("How often should I service my AC?", "ஏசியை எவ்வளவு முறை சர்வீஸ் செய்ய வேண்டும்?"), a: l("Twice a year, before summer and after the rains, keeps cooling strong and bills low.", "ஆண்டுக்கு இருமுறை, கோடைக்கு முன்பும் மழைக்குப் பிறகும்; குளிர்ச்சி நன்றாக இருக்கும், மின்கட்டணம் குறையும்.") },
+    { q: l("Do you charge for the visit?", "வருகைக்குக் கட்டணம் உண்டா?"), a: l("We tell you the visit and repair charges before we start; nothing is done without your approval.", "தொடங்கும் முன் வருகை, பழுது கட்டணத்தைச் சொல்வோம்; உங்கள் அனுமதியின்றி எதுவும் செய்யப்படாது.") },
+    { q: l("What is a yearly care plan?", "ஆண்டுப் பராமரிப்புத் திட்டம் என்றால் என்ன?"), a: l("An annual maintenance contract (AMC) with scheduled services and priority visits.", "திட்டமிட்ட சர்வீஸ்களும் முன்னுரிமை வருகைகளும் கொண்ட ஆண்டுப் பராமரிப்பு ஒப்பந்தம் (AMC).") },
+  ],
+  print_shop: [
+    { q: l("Can I send my file online?", "கோப்பை ஆன்லைனில் அனுப்பலாமா?"), a: l("Yes, send it by WhatsApp or email with the size and number of copies, and collect it when ready.", "ஆம், அளவு, பிரதிகள் எண்ணிக்கையுடன் வாட்ஸ்அப் அல்லது மின்னஞ்சலில் அனுப்புங்கள்; தயாரானதும் பெற்றுக் கொள்ளுங்கள்.") },
+    { q: l("How long does a flex or visiting card take?", "ஃபிளெக்ஸ், விசிட்டிங் கார்டு எவ்வளவு நேரம்?"), a: l("Visiting cards in one to two days and flex banners usually the same day.", "விசிட்டிங் கார்டு ஒன்று முதல் இரண்டு நாளில், ஃபிளெக்ஸ் பொதுவாக அதே நாளில்.") },
+    { q: l("Do you give bulk rates?", "மொத்த விலை உண்டா?"), a: l("Yes, the price per page or piece comes down on large orders; ask for a quote.", "ஆம், பெரிய ஆர்டர்களுக்குப் பக்கம் அல்லது எண்ணிக்கை விலை குறையும்; விலைப்பட்டியல் கேளுங்கள்.") },
+  ],
+  tuition: [
+    { q: l("Can my child attend a demo class?", "என் குழந்தை டெமோ வகுப்பில் கலந்து கொள்ளலாமா?"), a: l("Yes, book a free demo class and meet the teacher before joining.", "ஆம், இலவச டெமோ வகுப்பை புக் செய்து சேரும் முன் ஆசிரியரைச் சந்தியுங்கள்.") },
+    { q: l("How are the fees paid?", "கட்டணம் எப்படிச் செலுத்துவது?"), a: l("Monthly, in advance, by UPI or cash; you get a receipt each time.", "மாதந்தோறும் முன்கூட்டியே, UPI அல்லது பணமாக; ஒவ்வொரு முறையும் ரசீது கிடைக்கும்.") },
+    { q: l("How will I know my child's progress?", "என் குழந்தையின் முன்னேற்றத்தை எப்படி அறிவது?"), a: l("Regular tests and a monthly progress report are shared with parents.", "தொடர் தேர்வுகள், மாதாந்திர முன்னேற்ற அறிக்கை பெற்றோருடன் பகிரப்படும்.") },
+  ],
+  dance_music: [
+    { q: l("What age can my child start?", "என் குழந்தை எந்த வயதில் தொடங்கலாம்?"), a: l("Most children start from 5 or 6 years; adults can join at any age.", "பெரும்பாலான குழந்தைகள் 5 அல்லது 6 வயதிலிருந்து; பெரியவர்கள் எந்த வயதிலும் சேரலாம்.") },
+    { q: l("Do I need my own instrument?", "எனக்கென்று இசைக்கருவி வேண்டுமா?"), a: l("You can start with the practice instruments in class; we advise on buying one later.", "வகுப்பிலுள்ள பயிற்சிக் கருவிகளுடன் தொடங்கலாம்; பிறகு வாங்க ஆலோசனை தருவோம்.") },
+    { q: l("What if I miss a class?", "ஒரு வகுப்பைத் தவறவிட்டால்?"), a: l("Tell us in advance and we move you to a make-up class in another batch.", "முன்பே சொல்லுங்கள்; மற்றொரு பேட்சில் ஈடுசெய் வகுப்புக்கு மாற்றுவோம்.") },
+  ],
+  yoga: [
+    { q: l("I am a beginner, can I join?", "நான் தொடக்கநிலை, சேரலாமா?"), a: l("Yes, our beginner batches go slowly and the teacher adjusts each posture for you.", "ஆம், தொடக்கநிலை பேட்ச்கள் மெதுவாக நடக்கும்; ஒவ்வொரு ஆசனத்தையும் ஆசிரியர் உங்களுக்கு ஏற்ப மாற்றுவார்.") },
+    { q: l("Is yoga safe with a health condition?", "உடல்நலப் பிரச்சினை இருந்தால் யோகா பாதுகாப்பானதா?"), a: l("Tell the teacher about any condition or injury; for serious conditions please check with your doctor first.", "ஏதேனும் பிரச்சினை, காயம் இருந்தால் ஆசிரியரிடம் சொல்லுங்கள்; தீவிர நிலைகளில் முதலில் மருத்துவரிடம் கேளுங்கள்.") },
+    { q: l("What are the membership plans?", "உறுப்பினர் திட்டங்கள் என்ன?"), a: l("Monthly and quarterly memberships with a fixed number of classes; see the plans below.", "நிலையான வகுப்புகள் கொண்ட மாதம், காலாண்டு உறுப்பினர் திட்டங்கள்; கீழே பாருங்கள்.") },
+  ],
+  driving_school: [
+    { q: l("How many days is the course?", "பயிற்சி எத்தனை நாட்கள்?"), a: l("Most courses run 21 to 30 days with a fixed daily slot; refresher lessons are shorter.", "பெரும்பாலான பயிற்சிகள் ஒரு நிலையான தினசரி நேரத்துடன் 21 முதல் 30 நாட்கள்; புத்தாக்கப் பாடங்கள் குறைவு.") },
+    { q: l("Do you help with the licence?", "உரிமம் பெற உதவுவீர்களா?"), a: l("Yes, we help with the learner's licence, the test slot booking and the paperwork.", "ஆம், எல்.எல்.ஆர்., தேர்வு நேரப் பதிவு, ஆவணப் பணிகளில் உதவுவோம்.") },
+    { q: l("Which cars do you train on?", "எந்தக் கார்களில் பயிற்சி?"), a: l("Manual and automatic dual-control cars; tell us which one you want.", "கையால் மாற்றும் மற்றும் தானியங்கி இரட்டைக் கட்டுப்பாட்டுக் கார்கள்; எது வேண்டும் என்று சொல்லுங்கள்.") },
+  ],
+  paints: [
+    { q: l("How much paint do I need?", "எவ்வளவு பெயின்ட் தேவை?"), a: l("Tell us the wall area and the number of coats; as a guide one litre covers 100 to 140 sq ft per coat.", "சுவரின் பரப்பையும் கோட் எண்ணிக்கையையும் சொல்லுங்கள்; ஒரு லிட்டர் ஒரு கோட்டுக்குச் சுமார் 100 முதல் 140 சதுர அடி.") },
+    { q: l("Can you match a shade?", "நிறத்தைப் பொருத்தித் தருவீர்களா?"), a: l("Bring a small sample or a shade card number and we mix it on the machine.", "சிறிய மாதிரி அல்லது ஷேட் கார்டு எண்ணைக் கொண்டு வாருங்கள்; இயந்திரத்தில் கலந்து தருவோம்.") },
+    { q: l("Do you give contractor rates?", "ஒப்பந்ததாரர் விலை உண்டா?"), a: l("Yes, ask us for a quote on bulk and repeat orders; we give a GST bill.", "ஆம், மொத்த, தொடர் ஆர்டர்களுக்கு விலைப்பட்டியல் கேளுங்கள்; GST பில் தருவோம்.") },
+  ],
+  electricals: [
+    { q: l("Is there a warranty?", "வாரண்டி உண்டா?"), a: l("Fans, lights and appliances carry the brand warranty; the serial number is on your bill.", "ஃபேன், விளக்கு, உபகரணங்களுக்கு நிறுவன வாரண்டி உண்டு; வரிசை எண் உங்கள் பில்லில் இருக்கும்.") },
+    { q: l("Are the wires ISI marked?", "வயர்கள் ISI முத்திரை உள்ளவையா?"), a: l("Yes, we sell ISI-marked wires and cables from known brands only.", "ஆம், அறியப்பட்ட பிராண்டுகளின் ISI முத்திரை வயர்கள், கேபிள்களை மட்டுமே விற்கிறோம்.") },
+    { q: l("Do you give electrician rates?", "எலக்ட்ரீஷியன் விலை உண்டா?"), a: l("Yes, ask us for a quote on bulk and repeat orders; we give a GST bill.", "ஆம், மொத்த, தொடர் ஆர்டர்களுக்கு விலைப்பட்டியல் கேளுங்கள்; GST பில் தருவோம்.") },
+  ],
+  tiles_sanitary: [
+    { q: l("How many boxes do I need?", "எத்தனை பெட்டிகள் தேவை?"), a: l("Tell us the floor or wall area in sq ft; add about 10% extra for cutting and breakage.", "தரை அல்லது சுவரின் பரப்பைச் சதுர அடியில் சொல்லுங்கள்; வெட்டுதல், உடைவுக்கு சுமார் 10% கூடுதல் சேர்க்கவும்.") },
+    { q: l("Do you deliver to site?", "கட்டுமான இடத்துக்கு டெலிவரி உண்டா?"), a: l("Yes, with careful handling; we tell you the charge for your area before you order.", "ஆம், கவனமாகக் கையாண்டு; ஆர்டருக்கு முன் உங்கள் பகுதிக்கான கட்டணத்தைச் சொல்வோம்.") },
+    { q: l("Can I return unopened boxes?", "திறக்காத பெட்டிகளைத் திருப்பலாமா?"), a: l("Unopened boxes of the same batch can be returned within a few days; ask us for the terms.", "அதே பேட்சின் திறக்காத பெட்டிகளைச் சில நாட்களுக்குள் திருப்பலாம்; விதிமுறைகளைக் கேளுங்கள்.") },
+  ],
 };
 
 /** Draft customer words (hidden until the owner replaces them with real ones). */
@@ -342,6 +534,34 @@ const HOURS: Partial<Record<BusinessType, { label: L; value: L }[]>> = {
   tea_stall: [{ label: l("Every day", "தினமும்"), value: l("5:30 am – 10:30 pm", "காலை 5:30 – இரவு 10:30") }],
   spa: [{ label: l("Every day", "தினமும்"), value: l("10:00 am – 9:00 pm", "காலை 10:00 – இரவு 9:00") }],
   school: [{ label: l("Office: Mon – Sat", "அலுவலகம்: திங்கள் – சனி"), value: l("9:00 am – 4:30 pm", "காலை 9:00 – மாலை 4:30") }],
+  tuition: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("4:00 pm – 8:30 pm", "மாலை 4:00 – இரவு 8:30") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("9:00 am – 1:00 pm", "காலை 9:00 – மதியம் 1:00") },
+  ],
+  dance_music: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("4:30 pm – 8:30 pm", "மாலை 4:30 – இரவு 8:30") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("9:00 am – 12:30 pm", "காலை 9:00 – மதியம் 12:30") },
+  ],
+  yoga: [
+    { label: l("Every day", "தினமும்"), value: l("5:30 am – 8:30 am, 5:30 pm – 7:30 pm", "காலை 5:30 – 8:30, மாலை 5:30 – 7:30") },
+  ],
+  driving_school: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("6:00 am – 6:00 pm", "காலை 6:00 – மாலை 6:00") },
+  ],
+  laundry: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("8:00 am – 8:00 pm", "காலை 8:00 – இரவு 8:00") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("8:00 am – 1:00 pm", "காலை 8:00 – மதியம் 1:00") },
+  ],
+  photo_studio: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("10:00 am – 8:00 pm", "காலை 10:00 – இரவு 8:00") },
+  ],
+  print_shop: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("8:30 am – 9:00 pm", "காலை 8:30 – இரவு 9:00") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("9:00 am – 1:00 pm", "காலை 9:00 – மதியம் 1:00") },
+  ],
+  ac_service: [
+    { label: l("Every day", "தினமும்"), value: l("8:00 am – 8:00 pm", "காலை 8:00 – இரவு 8:00") },
+  ],
 };
 const DEFAULT_HOURS = [
   { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("9:30 am – 9:00 pm", "காலை 9:30 – இரவு 9:00") },

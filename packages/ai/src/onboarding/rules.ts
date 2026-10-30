@@ -145,6 +145,60 @@ export const TRADE_WORDS: Record<BusinessType, Kw[]> = {
     ...k(4, "school", "matriculation", "cbse", "icse", "play school", "playschool", "preschool", "kindergarten", "பள்ளி", "மெட்ரிக்"),
     ...k(3, "admission", "admissions", "students", "classes", "மாணவர்", "மாணவர்கள்", "சேர்க்கை"),
     ...k(2, "montessori", "nursery", "campus", "பாலர் பள்ளி"),
+  ],  // Batch 8/9. The general packs have no words: they are what an unmatched trade falls back to.
+  general_shop: [],
+  general_counter: [],
+  general_services: [],
+  textiles_wholesale: [
+    ...k(4, "wholesale cloth", "cloth wholesale", "textile wholesale", "wholesale textile", "wholesale fabric", "fabric shop", "cloth merchant", "bale", "மொத்த துணி", "துணிக்கடை மொத்த"),
+    ...k(3, "fabrics", "fabric", "by the metre", "by the meter", "per metre", "suiting", "shirting", "lining cloth", "handloom"),
+  ],
+  catering: [
+    ...k(4, "catering", "caterer", "caterers", "tiffin service", "event food", "bulk food", "கேட்டரிங்", "சமையல் ஒப்பந்தம்"),
+    ...k(3, "wedding food", "party food", "lunch box service", "canteen", "samayal"),
+  ],
+  pet_grooming: [...k(4, "pet grooming", "dog grooming", "pet spa", "pet boarding", "dog training", "வளர்ப்புப் பிராணி அழகுபடுத்தல்"), ...k(3, "grooming", "vet clinic", "veterinary")],
+  photo_studio: [
+    ...k(4, "photo studio", "photography", "videography", "wedding photography", "photographer", "ஸ்டுடியோ", "புகைப்படம்", "போட்டோ ஸ்டுடியோ"),
+    ...k(3, "photo frames", "album", "albums", "passport photo", "drone shoot"),
+  ],
+  laundry: [
+    ...k(4, "laundry", "dry cleaning", "dry clean", "dry cleaners", "dhobi", "laundromat", "சலவை", "வண்ணார்", "டிரை கிளீனிங்"),
+    ...k(3, "ironing shop", "iron shop", "washing service", "steam ironing", "அயர்ன்"),
+  ],
+  event_decor: [
+    ...k(4, "event decoration", "event decor", "event management", "event planner", "wedding decoration", "stage decoration", "decorators", "tent house", "mandap", "marriage hall", "function hall", "அலங்காரம்", "மேடை அலங்காரம்", "பந்தல்"),
+    ...k(3, "decorator", "balloon decoration", "shamiyana", "party rentals", "sound and light"),
+  ],
+  ac_service: [
+    ...k(4, "ac service", "ac repair", "ac mechanic", "air conditioner service", "fridge repair", "refrigerator repair", "washing machine repair", "appliance repair", "appliance service", "water purifier service", "ro service", "ஏசி சர்வீஸ்", "ஏசி பழுது"),
+    ...k(3, "ac installation", "split ac", "gas refill", "amc"),
+  ],
+  print_shop: [
+    ...k(4, "xerox", "photocopy", "photocopier", "printing press", "digital printing", "flex printing", "flex banner", "visiting cards", "offset printing", "cyber cafe", "internet cafe", "ஜெராக்ஸ்", "ஃபிளெக்ஸ்", "பிரிண்டிங்", "அச்சகம்"),
+    ...k(3, "printing", "flex", "lamination", "binding", "banner", "dtp", "jerox", "zerox"),
+  ],
+  tuition: [
+    ...k(4, "tuition", "tuitions", "tuition centre", "tuition center", "coaching centre", "coaching center", "coaching classes", "neet coaching", "jee coaching", "spoken english", "abacus", "டியூஷன்", "டியூசன்", "பயிற்சி மையம்"),
+    ...k(3, "coaching", "home tuition", "computer classes", "computer training", "training institute", "வகுப்பு"),
+  ],
+  dance_music: [
+    ...k(4, "dance classes", "dance school", "dance academy", "music classes", "music school", "music academy", "bharatanatyam", "carnatic", "vocal classes", "guitar classes", "keyboard classes", "நடன வகுப்பு", "இசை வகுப்பு", "பரதநாட்டியம்", "நடனம்"),
+    ...k(3, "dance", "singing classes", "veena", "violin", "drums class", "இசை"),
+  ],
+  yoga: [...k(5, "yoga centre", "yoga center", "yoga classes", "yoga studio", "yoga school", "meditation centre", "யோகா மையம்", "யோகா வகுப்பு"), ...k(3, "yoga", "pranayama", "meditation", "யோகா", "தியானம்")],
+  driving_school: [...k(5, "driving school", "driving classes", "driving institute", "car driving", "two wheeler driving", "ஓட்டுநர் பயிற்சி", "டிரைவிங் ஸ்கூல்"), ...k(3, "learner licence", "learners licence", "licence classes", "driving")],
+  paints: [
+    ...k(5, "paint shop", "paints shop", "paint store", "paints and hardware", "wall paint", "asian paints", "பெயிண்ட் கடை"),
+    ...k(3, "paints", "emulsion", "distemper", "wall putty", "primer", "enamel", "varnish", "waterproofing", "பெயிண்ட்"),
+  ],
+  electricals: [
+    ...k(5, "electrical shop", "electricals shop", "electrical store", "electrical goods", "electrical hardware", "lighting shop", "electricals and lighting", "எலக்ட்ரிக்கல்"),
+    ...k(3, "electricals", "led lights", "fans and lights", "switches and sockets", "wires and cables", "mcb", "pump shop", "ஃபேன்"),
+  ],
+  tiles_sanitary: [
+    ...k(5, "tiles and sanitary", "tiles shop", "tile shop", "tiles store", "sanitaryware shop", "bathroom fittings", "bath fittings", "granite and marble", "டைல்ஸ்"),
+    ...k(3, "tiles", "tile", "sanitary ware", "vitrified", "floor tiles", "wall tiles", "granite", "marble", "closet", "washbasin"),
   ],
 };
 
