@@ -40,6 +40,15 @@ EC gets a clothing store. Fix that and capture demand:
 
 **Done when:** a sign-up with any trade text lands on a sensible pack, and the admin sees the demand list.
 
+**Status (2026-10-30): built** on branch `feat/packs-batch8-9`.
+- Packs: `general_shop` (EC), `general_counter` (BL), `general_services` (SV); `DEFAULT_PACK_FOR_APP` points EC / BL / SV at them (PH, RS, SC unchanged). `packFor()` still returns `null` for an unknown trade; `packOrDefault()` and the new `resolvePack(type, label, appId)` (chosen pack, then the typed words through `ALIASES`, then the app's default) never do.
+- `BusinessPack.group` (food, retail, health, services, education, auto, building, general), `packsByGroup()` and `packPickerGroups(locale, appId)`; the `auto` group is empty until batch 10's vehicle packs.
+- Typed trade: `store` setting `businessLabel` (private, max 60). Sign-up sends `businessLabel` for "Not listed: tell us" (`POST /v1/signup` body and `signup` metadata); the starter keeps the label even when it maps to a pack; Settings → Appearance saves `{ businessType, businessLabel }` (a listed trade clears the label).
+- Picker: one `TradePicker` in `@rbms/ui` (search, grouped, last option "Not listed: tell us"), used by sign-up (`apps/www`) and Settings → Appearance (`site-ui`).
+- Demand list: `GET /v1/solutions/demand` (super-admin) → `{ items: [{ label, shops, appIds, lastAt }], total }`, counting shops on a general pack by lower-cased, trimmed text; admin Platform → Solutions has a "Not covered" tab.
+- Aliases: about 550 more entries in `ALIASES` (lodge → `general_services`, milk / dairy → `grocery`, xerox → `print_shop`, driving school, tuition, florist, footwear, stationery…).
+- Tests: `packs.test.ts` no longer fixes a count; it checks groups, general packs, aliases and unknown → general. `kit-verticals.test.ts` covers the starter label and the demand aggregation. Not browser-tested.
+
 ### Batch 9: 30 new packs (2 weeks, three sets of 10)
 
 Pure data in `packs.ts` + `starter.ts` (layout, services, FAQ, hours), English + Tamil, using engines we already have.
@@ -58,6 +67,8 @@ features in batch 10.
 
 **Done when:** all 45+ packs pass the pack and starter tests, and each one has a demo shop render checked on the
 storefront.
+
+**Status (2026-10-30): data built, demo shops not.** The 14 packs already in `packs.ts` (`organic`, `footwear`, `stationery`, `toys`, `cosmetics`, `crackers`, `florist_pooja`, `furniture`, `home_decor`, `pet_shop`, `sports`, `tea_stall`, `spa`, `mobile_accessories`) were left as they were. Added now, with the app from the table, group, theme preset, solution preset (`off` list), starter layout, services, FAQ, hours, aliases, English + Tamil: `textiles_wholesale`, `catering`, `pet_grooming`, `photo_studio`, `laundry`, `event_decor`, `ac_service`, `print_shop` (BL), `tuition`, `dance_music`, `yoga`, `driving_school`, `paints`, `electricals`, `tiles_sanitary`. That is 45 trade packs plus the 3 general ones: 48. The pack and starter tests pass. Still to do: a seeded demo shop per new pack and a storefront render check (`DEMO_SLUG` in `apps/www/src/lib/trades.ts` has none for them); `gifts_toys` in the table above is the existing `toys` pack. Batch 10 engines (vehicle / laundry job-card templates, area units) are not part of this.
 
 ## Track B: small engine changes
 

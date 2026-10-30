@@ -67,14 +67,19 @@ invoice `issued` / `cancelled` events and the store order `statusChanged` event.
 
 ## Business packs and store themes (`@rbms/verticals`, `@rbms/branding` theme)
 
-Thirty trades ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
+Forty-five trades and three general packs ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
 cloud_kitchen, grocery, bakery, fresh, electronics, repair, salon, gym, jewellery, hardware, optical, tailoring, organic,
 footwear, stationery, toys, cosmetics, and (EC) crackers (Sivakasi fireworks, made-locally badge), florist_pooja (flowers
 and garlands on the scales: loose flowers by weight, strings by the muzham), mobile_accessories (no serials: phones with
 IMEI stay on electronics), furniture, home_decor, pet_shop, sports (size guide: clothing chart, shoe chart for sports
 shoes), (RS) tea_stall (counter-first: QR table ordering off, like cloud_kitchen) and (SV) spa (books through `/book`,
 no job cards, like salon; `spa` is no longer a salon alias) and school (a school's website: admissions, programmes, campus,
-news; preset `campus-navy`, `ctaHref` `/admissions`). A pack
+news; preset `campus-navy`, `ctaHref` `/admissions`). Batch 9 (docs/market-plan.md) adds (EC) textiles_wholesale, (SV)
+catering, pet_grooming, photo_studio, laundry, event_decor, ac_service, tuition, dance_music, yoga, driving_school, and
+(BL) print_shop, paints, electricals, tiles_sanitary, each with a solution preset (`off` list), a starter home, services,
+FAQ and hours. Batch 8 adds three **general packs** for a trade nobody has a pack for: `general_shop` (EC),
+`general_counter` (BL) and `general_services` (SV), with neutral words and no trade engines. Every pack has a `group`
+(food, retail, health, services, education, auto, building, general) for the picker. A pack
 holds the app it runs on, its theme preset, the storefront's words in English and Tamil (search box, "new arrivals",
 hero, call to action, newsletter, categories title), whether the clothing size guide and the "made locally" badge apply,
 starter categories, a starter home page (CMS sections) and product-editor hints. `site: true` (only `school`) marks a
@@ -82,13 +87,16 @@ website, not a shop: the store hides the cart, wishlist, shopper account and pro
 `ctaHref`; its `off` list also switches off job cards, memberships, serials, coupons, delivery, loyalty, wishlist and returns.
 
 - **Where the trade lives:** `store` settings `businessType` (public). Empty = the app's default pack
-  (`DEFAULT_PACK_FOR_APP`). Changed in Settings → Appearance.
+  (`DEFAULT_PACK_FOR_APP`: general_shop / general_counter / general_services for EC / BL / SV, pharmacy for PH, restaurant
+  for RS, school for SC). Changed in Settings → Appearance. `businessLabel` (private) keeps what the owner typed under
+  "Not listed: tell us", even when it maps to a pack through `ALIASES`. `packFor()` returns `null` for an unknown trade;
+  `resolvePack(type, label, appId)` never does: chosen pack, then the typed words, then the app's default.
 - **Storefront:** `StoreConfig.shop.businessType | theme | fonts`. The translator overlays the pack's words
   (`translatorFor(locale, businessType)`); the size guide shows only for `sizeGuide` packs; the "Made in Tamil Nadu"
   badge only for `localMade` packs. The CMS default home (no published home) uses the pack's words too.
 - **New shops:** the on-tenant-created `starter` hook (`apps/api/src/kit-verticals.ts`) saves the trade from sign-up,
   applies the pack's preset, creates the starter categories and publishes the starter home (each step skipped when the
-  shop already has its own). www sign-up offers every pack (`BUSINESS_TYPES`), the chosen app's first.
+  shop already has its own). www sign-up and Settings → Appearance share one grouped, searchable `TradePicker` (`@rbms/ui`) over `packPickerGroups()`, the chosen app's trades first, with a last option "Not listed: tell us" (a general pack plus the typed label).
 - **Product editor** (commerce-ui `usePack()`): name / description placeholders, attribute and option suggestions and
   the category example come from the pack.
 
@@ -232,8 +240,9 @@ resolvers when a code isn't a catalogue barcode or SKU. Permissions: managers ge
 
 ## Admin: Solutions
 
-Platform → **Solutions** lists the 15 solutions by app with their look, starter categories and shop counts
-(`GET /v1/solutions`, super-admin). Platform → Shops shows each shop's solution and **Change solution** applies another
+Platform → **Solutions** lists the solutions by app with their look, starter categories and shop counts
+(`GET /v1/solutions`, super-admin). Its **Not covered** tab (`GET /v1/solutions/demand`) counts the trades owners typed
+on shops running a general pack, grouped by the lower-cased, trimmed text, most asked first: the next packs to build. Platform → Shops shows each shop's solution and **Change solution** applies another
 one (look, starter content, optionally moving the shop to that solution's app: `PUT /v1/solutions/tenants/:id`).
 
 ## Solution presets

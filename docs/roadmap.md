@@ -18,7 +18,9 @@ larger UI module) that any app mounts. Nothing app-specific.
 | 5 | sign-up + onboarding, plan subscriptions (Razorpay Subscriptions / UPI Autopay), landing + pricing — contract docs/batch5.md | done (e2e `batch5.mjs`, `apps/www/test/e2e.cjs`) |
 | 6 | safety net: e2e tests in repo + CI, backups + restore drill, monitoring — docs/ops.md | done (GitHub Actions CI green on main) |
 | 7 | AWS: RDS, ElastiCache, S3, ECS/App Runner, wildcard domain + SSL, CI/CD | prepared, not applied: Dockerfiles, Terraform (staging), deploy workflow — docs/deploy-aws.md |
-| 8–14, M0–M4 | Every trade (general packs, 30+ new packs, engines, new verticals) and the Flutter apps (srikit Business, srikit Shops) — plan docs/market-plan.md | planned (drafted 2026-10-20) |
+| 8 | general packs, typed trade (`businessLabel`), grouped searchable picker, aliases, "Not covered" demand list — docs/market-plan.md | built 2026-10-30 (branch `feat/packs-batch8-9`; unit tests only, not browser-tested) |
+| 9 | 15 more packs on top of the 30 already in `packs.ts`, 48 in all with the general ones — docs/market-plan.md | data and tests built 2026-10-30; demo shops and storefront render checks to do |
+| 10–14, M0–M4 | Engines for more trades (job-card templates, area units, batches), new verticals and the Flutter apps (srikit Business, srikit Shops) — plan docs/market-plan.md | planned (drafted 2026-10-20) |
 
 ## Batch 2a + 2b status (2026-10-15)
 
