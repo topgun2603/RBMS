@@ -35,24 +35,40 @@ export function batchSpill(line: Pick<CartLine, "qty" | "batch">): number {
   return Math.round((line.qty - Math.max(0, left)) * 1000) / 1000;
 }
 
-/** Which of these items use batches (the shop switched batch tracking on for them). */
-export function useBatchTracking(itemIds: string[], enabled: boolean) {
+type Tracking = { items: { itemId: string; tracked: boolean }[] };
+
+/**
+ * Which of these items use batches: the shop switched batch tracking on for them, or (pharmacy shops, `medicines` on)
+ * they have medicine batches. The two never overlap: Pharmacy-managed items stay out of the generic batches.
+ */
+export function useBatchTracking(itemIds: string[], enabled: boolean, medicines = false) {
   const ids = [...new Set(itemIds)].sort().join(",");
   return useQuery({
-    queryKey: ["pos", "batch-tracking", ids],
-    queryFn: () => posApi.get<{ items: { itemId: string; tracked: boolean }[] }>("/inventory/batches/tracking", { ids }).then((r) => new Set(r.items.filter((i) => i.tracked).map((i) => i.itemId))),
+    queryKey: ["pos", "batch-tracking", ids, medicines],
+    queryFn: async () => {
+      const [generic, pharmacy] = await Promise.all([
+        posApi.get<Tracking>("/inventory/batches/tracking", { ids }),
+        medicines ? posApi.get<Tracking>("/medicines/batches/tracking", { ids }).catch(() => ({ items: [] }) as Tracking) : Promise.resolve({ items: [] } as Tracking),
+      ]);
+      return new Set([...generic.items, ...pharmacy.items].filter((i) => i.tracked).map((i) => i.itemId));
+    },
     enabled: enabled && ids.length > 0,
     staleTime: 60_000,
     retry: 0,
   });
 }
 
-export const fetchBatchPick = (itemId: string, qty: number) => posApi.get<BatchPick>("/inventory/batches/pick", { itemId, qty });
+/** The item's batches for the counter: from inventory, or (an item Pharmacy manages, `medicines` on) from the medicine batches. */
+export async function fetchBatchPick(itemId: string, qty: number, medicines = false): Promise<BatchPick> {
+  const generic = await posApi.get<BatchPick>("/inventory/batches/pick", { itemId, qty });
+  if (!medicines || generic.tracked) return generic;
+  return posApi.get<BatchPick>("/medicines/batches/pick", { itemId, qty }).catch(() => generic);
+}
 
-export function useBatchPick(itemId: string | null, qty: number) {
+export function useBatchPick(itemId: string | null, qty: number, medicines = false) {
   return useQuery({
-    queryKey: ["pos", "batch-pick", itemId, qty],
-    queryFn: () => fetchBatchPick(itemId!, qty),
+    queryKey: ["pos", "batch-pick", itemId, qty, medicines],
+    queryFn: () => fetchBatchPick(itemId!, qty, medicines),
     enabled: !!itemId,
     staleTime: 10_000,
     retry: 0,
@@ -64,9 +80,9 @@ export function useBatchPick(itemId: string | null, qty: number) {
  * first"); the cashier can change it. Returns the set of tracked item ids. Offline or on any error nothing happens: the
  * server then takes the stock oldest-expiry first when the bill is sent.
  */
-export function useAutoBatches(lines: readonly CartLine[], setLines: (fn: (l: CartLine[]) => CartLine[]) => void, enabled: boolean) {
+export function useAutoBatches(lines: readonly CartLine[], setLines: (fn: (l: CartLine[]) => CartLine[]) => void, enabled: boolean, medicines = false) {
   const ids = lines.filter((l) => !l.itemId.startsWith("open:")).map((l) => l.itemId);
-  const tracking = useBatchTracking(ids, enabled);
+  const tracking = useBatchTracking(ids, enabled, medicines);
   const tried = React.useRef(new Set<string>());
   const tracked = tracking.data ?? EMPTY;
 
@@ -75,7 +91,7 @@ export function useAutoBatches(lines: readonly CartLine[], setLines: (fn: (l: Ca
     for (const l of lines) {
       if (l.batch || !tracked.has(l.itemId) || tried.current.has(l.key)) continue;
       tried.current.add(l.key);
-      void fetchBatchPick(l.itemId, l.qty)
+      void fetchBatchPick(l.itemId, l.qty, medicines)
         .then((pick) => {
           if (pick.rule !== "fefo") return;
           const first = pick.suggestion[0] && pick.batches.find((b) => b.batchId === pick.suggestion[0]!.batchId);
@@ -84,7 +100,7 @@ export function useAutoBatches(lines: readonly CartLine[], setLines: (fn: (l: Ca
         })
         .catch(() => undefined);
     }
-  }, [lines, tracked, enabled, setLines]);
+  }, [lines, tracked, enabled, medicines, setLines]);
 
   return tracked;
 }

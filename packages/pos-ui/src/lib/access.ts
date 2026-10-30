@@ -11,6 +11,8 @@ export const POS_FEATURES = {
   catalogue: "catalogue",
   /** Stock badges on lines. */
   inventory: "inventory",
+  /** Pharmacy: the counter offers the medicine batches (packages/medicines) for batch choice. */
+  medicines: "medicines",
   loyalty: "loyalty",
   branches: "multi-branch",
   /** Paired terminals + PIN unlock (docs/pos-terminals.md). */

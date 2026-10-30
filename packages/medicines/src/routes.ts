@@ -25,6 +25,7 @@ const dispense = { config: { feature: MEDICINES_RX_FEATURE, permission: [MEDICIN
 /**
  * Routes under /v1/medicines (shop staff; feature `medicines`):
  * - `GET /items?ids=` details for items, `GET /items` (paged), `GET|PUT /items/:itemId`, `GET /items/:itemId/substitutes`
+ * - `GET /batches/tracking?ids=`, `GET /batches/pick?itemId=&qty=` (the POS batch choice)
  * - `GET /batches` (paged; status, itemId, within), `POST /batches` (receive), `GET|PATCH /batches/:id`,
  *   `POST /batches/:id/adjust`, `GET /batches/:id/movements`, `GET /sales/:id/allocations`
  * - `GET|POST /prescriptions`, `GET|PATCH|DELETE /prescriptions/:id` (feature `medicines.prescriptions`)
@@ -59,6 +60,12 @@ export function medicinesRoutes(service: MedicinesService) {
     });
 
     // ---- batches
+    // The counter's batch choice (POS): which items have batches, and one item's batches with the FEFO suggestion.
+    app.get("/batches/tracking", view(), async (req) => ({ items: await service.trackingFor(tenantOf(req), idsQuery.parse(req.query ?? {}).ids) }));
+    app.get("/batches/pick", view(), async (req) => {
+      const q = z.object({ itemId: z.string().uuid(), qty: z.coerce.number().positive().max(100000).optional() }).parse(req.query ?? {});
+      return service.pick(tenantOf(req), q.itemId, q.qty);
+    });
     app.get("/batches", view(), async (req) => service.listBatches(tenantOf(req), (req.query ?? {}) as BatchListQuery));
     app.post("/batches", manage, async (req) => service.receive(tenantOf(req), req.body ?? {}, userOf(req)));
     app.get(`/batches${ID}`, view(), async (req) => service.getBatch(tenantOf(req), idParam.parse(req.params).id));
