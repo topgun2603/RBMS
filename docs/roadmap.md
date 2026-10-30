@@ -20,6 +20,9 @@ larger UI module) that any app mounts. Nothing app-specific.
 | 7 | AWS: RDS, ElastiCache, S3, ECS/App Runner, wildcard domain + SSL, CI/CD | prepared, not applied: Dockerfiles, Terraform (staging), deploy workflow — docs/deploy-aws.md |
 | 8–14, M0–M4 | Every trade (general packs, 30+ new packs, engines, new verticals) and the Flutter apps (srikit Business, srikit Shops) — plan docs/market-plan.md | planned (drafted 2026-10-20) |
 
+Competitor gap work is tracked row by row in docs/gap-analysis.md (latest: per-branch books in accounting, 2026-10-30,
+docs/accounting.md "Branch books").
+
 ## Batch 2a + 2b status (2026-10-15)
 
 **2a (server)** done: storefront, delivery, search + collections, reviews, cms + seo, onboarding, analytics, expenses
