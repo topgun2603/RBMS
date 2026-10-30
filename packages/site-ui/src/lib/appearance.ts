@@ -107,10 +107,11 @@ export function useSaveAppearance() {
   });
 }
 
+/** Saves the shop's trade: the pack id, and the owner's own words for it ("" when they picked a listed trade). */
 export function useSaveBusinessType() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (businessType: string) => api.put("/settings/store/tenant", { businessType }),
+    mutationFn: (v: { businessType: string; businessLabel: string }) => api.put("/settings/store/tenant", v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ak.store }),
   });
 }

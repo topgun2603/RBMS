@@ -59,8 +59,8 @@ export const PHONE_RETURN_ORIGINS = (
 export const CONTACT_WHATSAPP = process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "";
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@srirealtime.com";
 
-/** The trades a shop can pick at sign-up: the 15 business packs (@rbms/verticals). */
-export { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
+/** The trades a shop can pick at sign-up: the business packs (@rbms/verticals), grouped for the picker. */
+export { BUSINESS_TYPES, PACKS, packPickerGroups } from "@rbms/verticals";
 
 /**
  * Demo storefronts, e.g. "https://{slug}.srikit.in". Unset = no demo links are shown (never defaulted to localhost).

@@ -284,6 +284,8 @@ export interface StoreSettings {
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
   /** The shop's trade (@rbms/verticals pack id); "" = the app's default. Edited on Settings → Appearance. */
   businessType?: string;
+  /** The trade as the owner typed it ("Not listed: tell us"); private, counted in the platform's "Not covered" list. */
+  businessLabel?: string;
   /** Show shoppers the "Install <shop> app" banner (installable storefront; default on). */
   installBanner?: boolean;
   /** Trust badges / offers ribbon: "auto" = from the returns policy and the trade; own badges replace the automatic ones. */
