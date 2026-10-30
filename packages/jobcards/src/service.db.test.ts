@@ -15,6 +15,8 @@ import type { BillingPort, JobSummary } from "./ports";
 import { jobcardsRoutes, PublicLimiter } from "./routes";
 import { JobcardsService } from "./service";
 import type { JobApproval } from "./logic";
+import { nextServiceDue } from "./templates";
+import { todayIST } from "@rbms/gst";
 
 const URL_ = process.env.JOBCARDS_TEST_DATABASE_URL;
 const SCHEMA = `jobcards_it_${Math.random().toString(36).slice(2, 10)}`;
@@ -160,6 +162,22 @@ describe.skipIf(!URL_)("job cards against Postgres", () => {
     shelf.delete("SSD-001");
     await expect(service.bill(tenant, other.id)).rejects.toMatchObject({ code: "serial_unavailable" });
     shelf.add("SSD-001");
+  });
+
+  it("lists delivered vehicles whose service falls due on a day, only those that asked for months", async () => {
+    const vehicle = (regNo: string, extra: Record<string, unknown>) =>
+      service.create(tenant.id, { template: "vehicle", customerName: "Murugan", customerPhone: "+91 98765 00044", fields: { regNo, km: 12450, serviceType: "general_service", ...extra } }, STAFF);
+    const a = await vehicle("TN09AB1234", { remindAfterMonths: 6, remindAfterKm: 3000 });
+    const b = await vehicle("TN09CD5678", { remindAfterKm: 3000 });
+    const c = await vehicle("TN09EF9012", { remindAfterMonths: 6 });
+    for (const j of [a, b]) await service.moveStatus(tenant.id, j.id, { status: "delivered" });
+    // c is still in the workshop: not delivered, so nothing to remind.
+    const day = nextServiceDue({ km: 12450, remindAfterMonths: 6 }, todayIST(new Date())).date!;
+    const due = await service.serviceDueOn(day);
+    expect(due.filter((d) => d.tenantId === tenant.id).map((d) => d.regNo)).toEqual(["TN09AB1234"]);
+    expect(due.find((d) => d.jobId === a.id)).toMatchObject({ dueDate: day, dueKm: 15450, customerPhone: expect.stringContaining("98765"), label: expect.stringMatching(/^JC-/) });
+    expect(await service.serviceDueOn(todayIST(new Date()))).toEqual([]);
+    expect(c.status).toBe("received");
   });
 
   it("finds the tracking link by job number and the phone's last 4 digits, saying nothing on a mismatch", async () => {

@@ -275,7 +275,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     defineJob,
     schedule: (name, cron) => jobs.service.schedule(name, cron),
-    engines: () => ({ bookings: bookings.service, memberships: memberships.service }),
+    engines: () => ({ bookings: bookings.service, memberships: memberships.service, jobcards: jobcards.service }),
   });
 
   // Fixed OTP for test identities (e2e scripts); never in production (testOtpConfig drops it there).

@@ -80,6 +80,22 @@ export interface NotifyPort {
   approvalDecided?(tenantId: string, job: JobSummary, approval: JobApproval): void | Promise<void>;
 }
 
+/** A delivered vehicle whose next service falls due on a day (the daily reminder job). */
+export interface ServiceDue {
+  tenantId: string;
+  jobId: string;
+  /** "JC-0012" */
+  label: string;
+  customerName: string;
+  customerPhone: string | null;
+  trackToken: string;
+  regNo: string;
+  /** YYYY-MM-DD the service is due by months. */
+  dueDate: string;
+  /** Odometer reading the service is due at (km after the card's reading), if the card asked for one. */
+  dueKm: number | null;
+}
+
 /** Statuses the notify port hears about. */
 export const NOTIFY_STATUSES: readonly JobStatus[] = ["received", "awaiting_approval", "ready", "delivered"];
 

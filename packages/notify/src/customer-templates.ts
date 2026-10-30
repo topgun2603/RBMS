@@ -13,6 +13,7 @@ import type { Channel } from "./types";
  *   job.approval: shop, customer, number, amount (estimate), link
  *   job.ready: shop, customer, number, amount (balance due), link
  *   job.delivered: shop, customer, number, link
+ *   job.service_due: shop, customer, number, vehicle (registration no.), dueDate, dueKm (" or at 15450 km" / ""), link
  *   membership.welcome: shop, customer, plan, code, startDate, endDate
  *   membership.renewed: shop, customer, plan, code, endDate
  *   membership.renewal_due: shop, customer, plan, code, endDate, days
@@ -101,6 +102,16 @@ export const CUSTOMER_TEMPLATES: Record<string, { en: Copy; ta: Copy }> = {
     ta: {
       body: "{{shop}}: வணக்கம் {{customer}}, வேலை {{number}} ஒப்படைக்கப்பட்டது. நன்றி! விவரம்: {{link}}",
       subject: "வேலை {{number}} ஒப்படைக்கப்பட்டது - {{shop}}",
+    },
+  },
+  "job.service_due": {
+    en: {
+      body: "{{shop}}: Dear {{customer}}, your vehicle {{vehicle}} is due for its next service on {{dueDate}}{{dueKm}}. Call us or book a slot: {{link}}",
+      subject: "Service due for {{vehicle}} - {{shop}}",
+    },
+    ta: {
+      body: "{{shop}}: வணக்கம் {{customer}}, உங்கள் வாகனம் {{vehicle}} அடுத்த சர்வீஸ் {{dueDate}}{{dueKm}} அன்று வர வேண்டும். அழையுங்கள் அல்லது நேரம் பதிவு செய்யுங்கள்: {{link}}",
+      subject: "{{vehicle}} சர்வீஸ் நேரம் - {{shop}}",
     },
   },
   "membership.welcome": {
