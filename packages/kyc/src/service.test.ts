@@ -258,6 +258,12 @@ describe("assertAccess", () => {
     await expect(service.assertAccess({ ...emptyContext(), tenant }, "shop", TENANT)).rejects.toMatchObject({ status: 401 });
   });
 
+  it("user subjects need shop membership, even for your own KYC", async () => {
+    const { service } = setup({ vendors });
+    await expect(service.assertAccess(ctx([]), "user", USER)).rejects.toMatchObject({ status: 403 });
+    await expect(service.assertAccess(ctx(["staff"]), "user", USER)).resolves.toBe(TENANT);
+  });
+
   it("unknown vendors are 404 when the port can tell", async () => {
     const { service } = setup({ vendors: { ...vendors, vendorExists: async () => false } });
     await expect(service.assertAccess(ctx(["owner"]), "vendor", VENDOR)).rejects.toMatchObject({ status: 404 });
