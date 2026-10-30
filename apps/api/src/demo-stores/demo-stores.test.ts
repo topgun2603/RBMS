@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { themePreset } from "@srirealtime/branding";
-import { blocksSchema, homeDocSchema, localizeSections, menuItemsSchema, postInputSchema } from "@srirealtime/cms";
-import { GST_RATES } from "@srirealtime/gst";
-import { PACKS, type BusinessType } from "@srirealtime/verticals";
+import { themePreset } from "@rbms/branding";
+import { blocksSchema, homeDocSchema, localizeSections, menuItemsSchema, postInputSchema } from "@rbms/cms";
+import { GST_RATES } from "@rbms/gst";
+import { PACKS, type BusinessType } from "@rbms/verticals";
 import { DEMO_STORES } from "./index";
 import { imageType, pexelsUrl, variantInputs } from "./seed-demo-store";
 import type { DemoStore, HomeContext, PhotoSize } from "./types";

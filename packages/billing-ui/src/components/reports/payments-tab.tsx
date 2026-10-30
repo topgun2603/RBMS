@@ -15,12 +15,12 @@ import {
   WalletIcon,
   WalletMinimalIcon,
 } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
+import { StatusPill, type StatusTone } from "@rbms/ui";
 import { BarList } from "../charts/bar-list";
 import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";
 import { compactINR, money } from "../../lib/format";
-import { tOr, useI18n } from "@srirealtime/web";
+import { tOr, useI18n } from "@rbms/web";
 import { REPORT_PATHS, usePaymentsReport } from "../../lib/queries-v2";
 import type { PaymentSource, PaymentsReportResponse } from "../../lib/types";
 import {

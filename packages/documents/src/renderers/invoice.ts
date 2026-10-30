@@ -1,4 +1,4 @@
-import { amountInWordsINR, countryName, formatForeign, formatRate, upiLink } from "@srirealtime/gst";
+import { amountInWordsINR, countryName, formatForeign, formatRate, upiLink } from "@rbms/gst";
 import { exportLabels, supplyDeclaration } from "../export-labels";
 import { esc, escLines, fmtDate, fmtDateTime, money, page, pct, qrSvg, qty, safeImageUrl, stateLabel } from "../html";
 import { labels, type Labels } from "../labels";

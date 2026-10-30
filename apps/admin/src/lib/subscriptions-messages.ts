@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { createTranslator, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
+import { createTranslator, type Locale, type Messages, type Translator } from "@rbms/i18n/client";
 import { useI18n } from "./i18n";
 
 /**

@@ -20,8 +20,8 @@ import {
   Input,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { BarcodeDigits, InlineError } from "../components/bits";
 import { buildScaleBarcode, isValidEan13, parseScaleBarcode, scaleFormatProblem, type ScaleBarcodeFormat } from "../lib/barcode";
 import { barcodeParts, money, qty } from "../lib/format";

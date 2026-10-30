@@ -1,4 +1,4 @@
-import { documented, forbidden, isSuperAdmin, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { documented, forbidden, isSuperAdmin, requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { CollectionInput, CollectionListQuery, CollectionPatch, CollectionProductsQuery } from "./collections";
@@ -34,7 +34,7 @@ import type { ProductScope } from "./types";
 const idParam = z.object({ id: z.string().uuid() });
 const slugParam = z.object({ slug: z.string().trim().min(1).max(120) });
 const formatQuery = z.object({ format: z.enum(["json", "csv"]).default("json") });
-/** A price-band GST rule (`@srirealtime/gst` rate-rule.ts). */
+/** A price-band GST rule (`@rbms/gst` rate-rule.ts). */
 export const gstRuleSchema = z.object({ kind: z.literal("price-band"), threshold: z.number().int(), below: z.number(), above: z.number() });
 const body = (req: { body: unknown }) => (req.body ?? {}) as Record<string, unknown>;
 const query = (req: { query: unknown }) => (req.query ?? {}) as Record<string, string | undefined>;

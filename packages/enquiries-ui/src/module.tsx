@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { InboxIcon } from "lucide-react";
-import type { NavSection, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, RouteDef, WebModule, WidgetDef } from "@rbms/web";
 import { ENQUIRIES_FEATURES, ENQUIRIES_PERMISSIONS } from "./lib/access";
 import { enquiriesMessages } from "./lib/messages";
 

@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { CMS_FEATURES, CMS_PERMISSIONS } from "./features";
 import { cmsRoutes } from "./routes";
 import { CmsPreview } from "./preview";
@@ -23,7 +23,7 @@ export { cmsPreviewRoutes, withPreviewRoutes } from "./preview-routes";
 
 /**
  * Store content and SEO (`/v1/cms`): home sections (draft → publish), pages, blog posts, header/footer menus,
- * public reads for the storefront, sitemap.xml and robots.txt. Pure SEO helpers: `@srirealtime/cms/seo`.
+ * public reads for the storefront, sitemap.xml and robots.txt. Pure SEO helpers: `@rbms/cms/seo`.
  */
 export function createCms(deps: CmsDeps) {
   const service = new CmsService(deps);

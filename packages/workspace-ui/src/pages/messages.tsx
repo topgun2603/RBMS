@@ -32,8 +32,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useMessagesSettings, useSaveMessagesSettings, useSendTestMessage, useSentMessages } from "../lib/queries";
 import type { MessageChannelMode, MessageEventInfo, MessageGroup, MessagesSettings, SentMessage } from "../lib/types";
 

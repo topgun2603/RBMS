@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { motion, useReducedMotionSafe } from "@rbms/ui/motion";
 
 let hydrated = false;
 

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ChevronLeftIcon, ChevronRightIcon, ExpandIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { imageUrl } from "../lib/format";
 import { StoreImage } from "../components/bits";
 import { useStore } from "./store-context";

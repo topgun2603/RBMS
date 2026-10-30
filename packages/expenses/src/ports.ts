@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef } from "@rbms/core";
 import type { GstTotals } from "./logic";
 
 /** Sales GST totals for a period (invoices gst-summary). Dates are IST "YYYY-MM-DD", inclusive. */

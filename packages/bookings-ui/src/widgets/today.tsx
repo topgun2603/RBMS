@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, CalendarCheckIcon, CalendarClockIcon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Skeleton } from "@srirealtime/ui";
-import { KpiTile, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Skeleton } from "@rbms/ui";
+import { KpiTile, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AppointmentStatusPill, StaffDot } from "../components/bits";
 import { istMinute, time12, todayIST } from "../lib/format";
 import { useSummary } from "../lib/queries";

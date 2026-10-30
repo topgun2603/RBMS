@@ -1,5 +1,5 @@
-import { badRequest, conflict, facetCounts, forbidden, notFound, runList, type ListPage, type TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, conflict, facetCounts, forbidden, notFound, runList, type ListPage, type TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, arrayContains, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   tenantDomains,

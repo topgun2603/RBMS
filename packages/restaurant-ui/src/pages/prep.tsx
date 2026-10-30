@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, PrinterIcon, SparklesIcon } from "lucide-react";
-import { Button, Input } from "@srirealtime/ui";
-import { AiDraftBanner, Page, PageHeading, api, describeError, useI18n } from "@srirealtime/web";
+import { Button, Input } from "@rbms/ui";
+import { AiDraftBanner, Page, PageHeading, api, describeError, useI18n } from "@rbms/web";
 import type { PrepResult } from "../lib/ai";
 
 const isoPlus = (n: number) => new Date(Date.now() + 330 * 60_000 + n * 86_400_000).toISOString().slice(0, 10);

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BarChart3Icon, Loader2Icon, SparklesIcon } from "lucide-react";
-import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Textarea, toast } from "@srirealtime/ui";
-import { AiDraftBanner, api, describeError, useI18n } from "@srirealtime/web";
+import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Textarea, toast } from "@rbms/ui";
+import { AiDraftBanner, api, describeError, useI18n } from "@rbms/web";
 import { useMutation } from "@tanstack/react-query";
 import { useCan } from "../lib/access";
 

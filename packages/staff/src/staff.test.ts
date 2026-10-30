@@ -1,5 +1,5 @@
-import { AppError, emptyContext, hasPermission, type RequestContext, type UserRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, emptyContext, hasPermission, type RequestContext, type UserRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { createStaff, permissionPreHandler } from "./index";

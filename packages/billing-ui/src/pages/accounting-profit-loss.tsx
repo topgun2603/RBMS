@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { TrendingUpIcon } from "lucide-react";
-import { Card, CardContent, ChipGroup, EmptyState, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+import { Card, CardContent, ChipGroup, EmptyState, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useProfitLoss, type ProfitLoss } from "../lib/accounting";
 import { money, rangeFor, todayIST } from "../lib/format";

@@ -1,5 +1,5 @@
-import { formatINR } from "@srirealtime/gst";
-import { documented, FULL_ACCESS_ROLES, requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { formatINR } from "@rbms/gst";
+import { documented, FULL_ACCESS_ROLES, requireRole, requireTenant, requireUser } from "@rbms/core";
 import type { CreditNoteInput, CreditNoteListQuery } from "./credit-notes";
 import type { DebitNoteInput, DebitNoteListQuery } from "./debit-notes";
 import {

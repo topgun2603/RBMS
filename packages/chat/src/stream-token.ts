@@ -1,5 +1,5 @@
 import { createHmac, randomBytes } from "node:crypto";
-import { randomToken, safeEqual, type TenantRef } from "@srirealtime/core";
+import { randomToken, safeEqual, type TenantRef } from "@rbms/core";
 import type { Viewer } from "./logic";
 
 /**

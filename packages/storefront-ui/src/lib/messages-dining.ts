@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Restaurant QR table menu (`/table/<code>`). Merged into lib/messages. */
 export const diningEn: Messages = {

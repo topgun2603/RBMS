@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CameraIcon, Loader2Icon } from "lucide-react";
-import { Button } from "@srirealtime/ui";
+import { Button } from "@rbms/ui";
 import { ApiError, api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { useAiAssistAllowed, useAiAssistStatus } from "../ai-assist/use-assist";

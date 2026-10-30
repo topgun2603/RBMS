@@ -8,7 +8,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, useI18n, type Locale } from "../lib/i18n";
 
 export function LocaleSwitcher() {

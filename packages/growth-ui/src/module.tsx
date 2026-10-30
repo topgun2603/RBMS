@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { BadgeCheckIcon, BarChart3Icon, CodeXmlIcon, GiftIcon, NetworkIcon, ReceiptTextIcon } from "lucide-react";
-import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { growthMessages } from "./lib/messages";
 
-/** Feature keys the growth UI uses (declared by @srirealtime/loyalty, kyc, einvoice, branches, developer, reports). */
+/** Feature keys the growth UI uses (declared by @rbms/loyalty, kyc, einvoice, branches, developer, reports). */
 export const GROWTH_FEATURES = {
   loyalty: "loyalty",
   kyc: "kyc",

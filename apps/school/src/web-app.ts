@@ -1,10 +1,10 @@
-import { bookingsModule } from "@srirealtime/bookings-ui";
-import { commerceModule } from "@srirealtime/commerce-ui";
-import { enquiriesModule } from "@srirealtime/enquiries-ui";
-import { inboxModule } from "@srirealtime/inbox-ui";
-import { siteModule } from "@srirealtime/site-ui";
-import { createWebApp } from "@srirealtime/web";
-import { workspaceModule } from "@srirealtime/workspace-ui";
+import { bookingsModule } from "@rbms/bookings-ui";
+import { commerceModule } from "@rbms/commerce-ui";
+import { enquiriesModule } from "@rbms/enquiries-ui";
+import { inboxModule } from "@rbms/inbox-ui";
+import { siteModule } from "@rbms/site-ui";
+import { createWebApp } from "@rbms/web";
+import { workspaceModule } from "@rbms/workspace-ui";
 
 /**
  * The school app (app profile "SC"): admission enquiries first, campus visits / counselling appointments, programmes

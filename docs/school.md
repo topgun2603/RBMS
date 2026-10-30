@@ -28,14 +28,14 @@ Home in English and Tamil, pages (admissions, about, academics, facilities, tran
 photo credits) and four news posts. Fees are never quoted: the fees page says they are given at the counselling visit.
 
 ```
-pnpm --filter @srirealtime/api seed:stores thamarai            # first time
-pnpm --filter @srirealtime/api seed:stores thamarai --refresh-home
+pnpm --filter @rbms/api seed:stores thamarai            # first time
+pnpm --filter @rbms/api seed:stores thamarai --refresh-home
 ```
 
 A `DemoStore` may carry `posts` (published by the seed, matched by slug) and, for a website-only trade, a catalogue of
 10+ priced-at-zero programmes (`demo-stores.test.ts` allows it for packs with `site: true`).
 
-## Enquiries module (`@srirealtime/enquiries`, `/v1/enquiries`, migration `0056_enquiries`)
+## Enquiries module (`@rbms/enquiries`, `/v1/enquiries`, migration `0056_enquiries`)
 
 Feature `enquiries` (in the EC, PH, RS and SV profiles, every plan; shop switch), permission `enquiries.manage`.
 

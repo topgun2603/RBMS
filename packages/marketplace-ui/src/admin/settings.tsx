@@ -25,8 +25,8 @@ import {
   Skeleton,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@rbms/web";
 import { SubmitButton } from "../components/account";
 import { bpsToPercent, bpsToPercentInput, commissionExample, money, paiseToInput, percentToBps, rupeesToPaise } from "../lib/logic";
 import { useMarketplaceSettings, useSaveMarketplaceSettings } from "../lib/queries";

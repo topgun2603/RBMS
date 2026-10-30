@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /** Client for /v1/ai/counter (AI Phase 5 part A): unusual-activity alerts, staff coaching notes, shift planning. Owners and managers only. */
 

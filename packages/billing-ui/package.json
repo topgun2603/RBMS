@@ -1,9 +1,9 @@
 {
-  "name": "@srirealtime/billing-ui",
+  "name": "@rbms/billing-ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The billing UI module: bills, customers, credit book, items, stock, purchases, suppliers, reports, billing settings and public bill/statement pages. Mount it with billingModule() from any @srirealtime/web app.",
+  "description": "The billing UI module: bills, customers, credit book, items, stock, purchases, suppliers, reports, billing settings and public bill/statement pages. Mount it with billingModule() from any @rbms/web app.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.0",
-    "@srirealtime/gst": "workspace:*",
-    "@srirealtime/i18n": "workspace:*",
-    "@srirealtime/receipt-print": "workspace:*",
-    "@srirealtime/ui": "workspace:*",
-    "@srirealtime/web": "workspace:*",
+    "@rbms/gst": "workspace:*",
+    "@rbms/i18n": "workspace:*",
+    "@rbms/receipt-print": "workspace:*",
+    "@rbms/ui": "workspace:*",
+    "@rbms/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "lucide-react": "^0.525.0",
     "qrcode": "^1.5.4",

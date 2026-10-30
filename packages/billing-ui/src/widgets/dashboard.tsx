@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AttentionItem, describeError, KpiTile, ModuleLink, QueryError, tOr, useFeature, useI18n } from "@srirealtime/web";
+import { AttentionItem, describeError, KpiTile, ModuleLink, QueryError, tOr, useFeature, useI18n } from "@rbms/web";
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
@@ -36,7 +36,7 @@ import {
   StaggerItem,
   StatusPill,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BarList } from "../components/charts/bar-list";
 import { ChartCard } from "../components/charts/chart-card";
 import { TrendChart } from "../components/charts/trend-chart";

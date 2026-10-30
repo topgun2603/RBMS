@@ -4,7 +4,7 @@ import { isTestPhone, testPhone, uniqueNames } from "./names";
 import { planDay, planWindow, sampleBillTimes, topShare } from "./planner";
 import { PROFILE_IDS, PROFILES, getProfile, profileForBusinessType } from "./profiles";
 import { createRng, hashSeed } from "./rng";
-import { isValidGstin } from "@srirealtime/gst";
+import { isValidGstin } from "@rbms/gst";
 import { creditBalanceAfter, planCustomers } from "./customers";
 
 describe("rng", () => {
@@ -275,7 +275,7 @@ describe("tailoring profile (Thaiyal)", () => {
       expect(GARMENT_STAFF.some((s) => s.name === r.tailor), r.id).toBe(true);
     }
     // Measurements are keyed like the garment template and stay inside its limits.
-    const { GARMENT_MEASUREMENTS } = await import("@srirealtime/jobcards");
+    const { GARMENT_MEASUREMENTS } = await import("@rbms/jobcards");
     const rng = createRng("m");
     for (const type of ["blouse", "salwar", "shirt", "pant"] as const) {
       const m = measurementsFor(type, rng);

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScanLineIcon, TicketIcon, TrendingDownIcon, UserPlusIcon, UsersIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { DESK_ACCESS, MEMBERS_VIEW, MEMBERSHIPS_FEATURES, MEMBERSHIPS_PERMISSIONS } from "./lib/access";
 import { setMembershipsConfig } from "./lib/config";
 import { membershipsMessages } from "./lib/messages";

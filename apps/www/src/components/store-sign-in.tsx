@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { Loader2Icon, ShieldAlertIcon } from "lucide-react";
-import { Card } from "@srirealtime/ui/components/card";
-import { Skeleton } from "@srirealtime/ui/components/skeleton";
-import { firebasePhoneMessage, firebaseWebConfig, isFirebaseError, loadAuthConfig, signInWithGoogle } from "@srirealtime/web/firebase-phone";
+import { Card } from "@rbms/ui/components/card";
+import { Skeleton } from "@rbms/ui/components/skeleton";
+import { firebasePhoneMessage, firebaseWebConfig, isFirebaseError, loadAuthConfig, signInWithGoogle } from "@rbms/web/firebase-phone";
 import { api, errorMessage, normalizeTarget, setSignInContext } from "@/lib/api";
 import { useSite } from "./site-context";
 import { SignInMethods } from "./method-sign-in";

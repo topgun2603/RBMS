@@ -1,5 +1,5 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
-import type { ScheduleFrequency } from "@srirealtime/core";
+import { pk, tenantId, timestamps } from "@rbms/db";
+import type { ScheduleFrequency } from "@rbms/core";
 import { boolean, date, index, integer, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 /**

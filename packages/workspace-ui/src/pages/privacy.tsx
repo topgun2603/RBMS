@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { EyeIcon, Loader2Icon, PlayIcon, ShieldCheckIcon, TriangleAlertIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Card, CardContent, ChipGroup, EmptyState, Field, FieldControl, FieldHint, FieldLabel, Input, Skeleton, StatusPill, Switch, Textarea, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, SettingsNav, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, Button, Card, CardContent, ChipGroup, EmptyState, Field, FieldControl, FieldHint, FieldLabel, Input, Skeleton, StatusPill, Switch, Textarea, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, SettingsNav, useI18n } from "@rbms/web";
 import { NoPermission } from "../components/bits";
 import { BreachesTab } from "../components/privacy/breaches";
 import { RequestsTab } from "../components/privacy/requests";

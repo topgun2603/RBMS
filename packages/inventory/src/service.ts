@@ -14,8 +14,8 @@ import {
   splitList,
   type ListPage,
   type ResolvedSort,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import {
   computeInvoice,
   GST_RATES,
@@ -33,7 +33,7 @@ import {
   type InvoiceTotals,
   type LineInput,
   type TaxBreakupRow,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";

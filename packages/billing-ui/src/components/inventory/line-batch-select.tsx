@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CalendarClockIcon } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { fmtDay } from "./batch-bits";
 import { formatQty } from "../../lib/format";
 import { usePickBatches } from "../../lib/queries-stock";

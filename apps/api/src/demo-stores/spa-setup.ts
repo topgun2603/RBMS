@@ -1,4 +1,4 @@
-import { itemName } from "@srirealtime/catalogue";
+import { itemName } from "@rbms/catalogue";
 import type { Logger } from "pino";
 import type { Kit } from "../kit";
 import { PLANS, THERAPIES, minLabel } from "./spa-products";

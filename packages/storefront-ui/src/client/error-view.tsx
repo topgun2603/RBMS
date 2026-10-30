@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { RotateCcwIcon } from "lucide-react";
 import { OfflineArt } from "../components/illustrations";
-import { Button } from "@srirealtime/ui/components/button";
+import { Button } from "@rbms/ui/components/button";
 import { useStore } from "./store-context";
 
 /** For app/error.tsx (rendered inside the store layout, so branding + strings are available). */

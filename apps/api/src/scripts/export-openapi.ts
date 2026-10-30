@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { buildOpenApi } from "@srirealtime/developer";
+import { buildOpenApi } from "@rbms/developer";
 import { pino } from "pino";
 import { env } from "../env";
 import { createKit } from "../kit";
@@ -11,8 +11,8 @@ import { buildServer } from "../server";
  * are registered, collected and turned into JSON. `--typed` keeps only operations that declare `config.schema`
  * (`documented(...)`): the input for the generated mobile client (docs/market-plan.md, M0).
  *
- *   pnpm --filter @srirealtime/api openapi                      → apps/api/openapi.json
- *   pnpm --filter @srirealtime/api openapi -- --typed out.json
+ *   pnpm --filter @rbms/api openapi                      → apps/api/openapi.json
+ *   pnpm --filter @rbms/api openapi -- --typed out.json
  */
 const args = process.argv.slice(2);
 const typedOnly = args.includes("--typed");

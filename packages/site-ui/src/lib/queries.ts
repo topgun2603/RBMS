@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { absoluteUrl, api, ApiError } from "@srirealtime/web";
+import { absoluteUrl, api, ApiError } from "@rbms/web";
 import { patchReviewList } from "./review-cache";
 import type { HomeDocInput, MenuItemInput, MenuKey, PageInput, PagePatch, PostInput, PostPatch } from "./content";
 import type {

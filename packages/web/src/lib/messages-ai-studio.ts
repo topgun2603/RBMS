@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiStudio.* strings: the Studio assistant (Phase 4 part A). Keep en and ta key sets identical. */
 export const enAiStudio: Messages = {

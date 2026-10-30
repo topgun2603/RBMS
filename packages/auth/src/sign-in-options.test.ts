@@ -3,8 +3,8 @@
  * small fake, Firebase tokens are signed with a throw-away key like firebase-route.test.ts).
  */
 import { generateKeyPairSync } from "node:crypto";
-import { AppError, type AuditEvent } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, type AuditEvent } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import Fastify from "fastify";
 import { SignJWT } from "jose";
 import { describe, expect, it, vi } from "vitest";

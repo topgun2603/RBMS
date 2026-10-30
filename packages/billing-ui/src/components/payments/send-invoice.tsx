@@ -30,9 +30,9 @@ import {
   Stagger,
   StaggerItem,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { normalizeTarget } from "../../lib/format";
-import { describeError, useFeature, useI18n } from "@srirealtime/web";
+import { describeError, useFeature, useI18n } from "@rbms/web";
 import { useSendInvoice } from "../../lib/queries-v2";
 import type { Invoice, InvoiceMessage, Payment } from "../../lib/types";
 

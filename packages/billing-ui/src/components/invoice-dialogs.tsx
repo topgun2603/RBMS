@@ -16,11 +16,11 @@ import {
   Textarea,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { MoneyInput } from "./money-input";
 import { QrImage } from "./upi-qr";
 import { money, paiseToInput, rupeesToPaise, todayIST, whatsappNumber } from "../lib/format";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, useI18n } from "@rbms/web";
 import { usePublicUrl } from "../lib/links";
 import { useInvoiceAction, useShareInvoice } from "../lib/queries";
 import { PAYMENT_METHODS, type Invoice, type PaymentMethod } from "../lib/types";

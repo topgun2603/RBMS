@@ -37,8 +37,8 @@ import {
   Input,
   StatusPill,
   type StatusTone,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import type { JobStatus, JobTemplate } from "../lib/types";
 
 export function InlineError({ title }: { title: React.ReactNode }) {

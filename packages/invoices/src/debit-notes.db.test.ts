@@ -5,9 +5,9 @@
  * `INVOICES_TEST_DATABASE_URL` set; it copies the tables into a throw-away schema and drops it afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { AppError } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
-import { gstinCheckChar } from "@srirealtime/gst";
+import { AppError } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
+import { gstinCheckChar } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { InvoicesService } from "./service";

@@ -1,8 +1,8 @@
-import { AI_PERMISSION_KEYS, RateLimiter, tradesC, type AiService } from "@srirealtime/ai";
-import { AppError, badRequest, hasPermission, permissionDenied, requireRole, requireTenant, requireUser, type RequestContext, type SrModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
-import { warrantyDaysLeft, warrantyEnd } from "@srirealtime/serials";
+import { AI_PERMISSION_KEYS, RateLimiter, tradesC, type AiService } from "@rbms/ai";
+import { AppError, badRequest, hasPermission, permissionDenied, requireRole, requireTenant, requireUser, type RequestContext, type SrModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
+import { warrantyDaysLeft, warrantyEnd } from "@rbms/serials";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { peopleHistories, phoneKey, recentlyMessaged, soldUnits } from "./ai-trades-c/data";

@@ -1,5 +1,5 @@
 // Downloads the image-cleanup weights into the git-ignored models folder and verifies their SHA-256.
-//   pnpm --filter @srirealtime/ai models:download [u2netp|u2net ...]   (default: the configured model only)
+//   pnpm --filter @rbms/ai models:download [u2netp|u2net ...]   (default: the configured model only)
 // Folder: AI_MODELS_DIR, else <repo>/.models. Licence: Apache-2.0 (U2-Net), see docs/ai.md "Phase 4 part C".
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";

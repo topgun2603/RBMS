@@ -1,5 +1,5 @@
-import { defineModule, type FeatureDef, type FeatureGatePort, type SrModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { defineModule, type FeatureDef, type FeatureGatePort, type SrModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { ImportExportRegistry } from "./registry";
 import { IMPORTEXPORT_FEATURE, IMPORTEXPORT_PERMISSION, exportRoutes, importRoutes } from "./routes";
 import { exportJobs, importJobs, importRecords } from "./schema";

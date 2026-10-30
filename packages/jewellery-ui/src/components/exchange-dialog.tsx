@@ -22,8 +22,8 @@ import {
   SelectValue,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { decimalInput, grams, money, parseDecimal } from "../lib/format";
 import { buybackRate, METAL_PURITIES, oldGoldValue, rateOf, type Metal, type Purity } from "../lib/pricing";
 import { useCreateExchange, useJewellerySettings, useRates } from "../lib/queries";

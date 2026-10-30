@@ -1,4 +1,4 @@
-import { itemName } from "@srirealtime/catalogue";
+import { itemName } from "@rbms/catalogue";
 import { THERAPIES, minLabel } from "../demo-stores/spa-products";
 import type { CatalogueEntry, Profile } from "./profiles";
 

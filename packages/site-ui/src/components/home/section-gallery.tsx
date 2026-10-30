@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { HOME_SECTION_TYPES, type HomeSectionType } from "../../lib/content";
 import { SECTION_ICONS, SectionThumb } from "./section-meta";
 

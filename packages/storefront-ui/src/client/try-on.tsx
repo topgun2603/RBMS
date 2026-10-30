@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, ScanFaceIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui/components/dialog";
+import { Button } from "@rbms/ui/components/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui/components/dialog";
 import { fillText, tryonText } from "../lib/tryon/messages";
 import { isTryonSpec, type TryonAnchors, type TryonKind } from "../lib/tryon/transform";
 import { call } from "./api";

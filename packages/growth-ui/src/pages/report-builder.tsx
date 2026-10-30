@@ -28,7 +28,7 @@ import {
   Skeleton,
   StatusPill,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   describeError,
   ModuleLink,
@@ -41,7 +41,7 @@ import {
   usePermission,
   useQueryParams,
   useRouteParams,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { SectionCard } from "../components/bits";
 import { ColumnsPicker } from "../components/reports/columns-picker";
 import { DatasetPicker } from "../components/reports/dataset-picker";

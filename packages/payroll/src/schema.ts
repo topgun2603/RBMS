@@ -1,4 +1,4 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { boolean, check, date, index, integer, jsonb, pgTable, real, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { AttendanceStatus, DayCounts, DueKind, LineAdjustments, LineWarning, Money, PayMethod, PayrollConfig, PayType, RunTotals, SalaryStructure } from "./logic";

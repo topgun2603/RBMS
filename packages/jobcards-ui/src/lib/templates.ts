@@ -1,7 +1,7 @@
 import type { JobTemplate } from "./types";
 
 /*
- * The forms behind each job template, mirroring @srirealtime/jobcards' templates.ts. A draft keeps what the inputs
+ * The forms behind each job template, mirroring @rbms/jobcards' templates.ts. A draft keeps what the inputs
  * hold (strings); `draftToFields` turns it into the API's `fields` (numbers, nulls) or names the first problem.
  */
 

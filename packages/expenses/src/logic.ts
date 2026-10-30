@@ -1,5 +1,5 @@
 /** Pure expense math: GST inside an amount, ITC eligibility, summaries and the profit report (no database). */
-import { isValidGstin } from "@srirealtime/gst";
+import { isValidGstin } from "@rbms/gst";
 
 /** GST contained in a GST-inclusive amount: amount × rate / (100 + rate), rounded to the paisa. */
 export function gstFromInclusive(amount: number, rate: number): number {

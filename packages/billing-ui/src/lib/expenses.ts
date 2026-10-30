@@ -5,8 +5,8 @@
  * receipt upload. Money is integer paise; `amount` includes GST.
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { absoluteUrl, api, ApiError, apiDownload } from "@srirealtime/web";
-import { isValidGstin } from "@srirealtime/gst";
+import { absoluteUrl, api, ApiError, apiDownload } from "@rbms/web";
+import { isValidGstin } from "@rbms/gst";
 
 /** "credit" = not paid yet: a bill in the supplier's Payables (needs a supplier). */
 export const EXPENSE_PAYMENT_METHODS = ["cash", "upi", "card", "bank", "cheque", "other", "credit"] as const;

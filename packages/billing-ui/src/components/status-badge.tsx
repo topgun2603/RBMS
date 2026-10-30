@@ -1,8 +1,8 @@
 "use client";
 
 import { AlertTriangleIcon, BanIcon, CheckCircle2Icon, ClockIcon, PencilLineIcon, PieChartIcon } from "lucide-react";
-import { cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { InvoiceStatus } from "../lib/types";
 
 const STYLE: Record<InvoiceStatus | "overdue", { tone: StatusTone; icon: React.ComponentType<{ className?: string }> }> = {

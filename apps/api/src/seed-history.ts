@@ -6,7 +6,7 @@ import { runHistory } from "./demo-history/engine";
 import { getProfile, profileForBusinessType, PROFILE_IDS } from "./demo-history/profiles";
 
 /**
- * `pnpm --filter @srirealtime/api seed:history <slug> [--days 90] [--profile tailoring|tea_stall|kirana|pharmacy|restaurant|jewellery|textiles|hardware|services|spa] [--dry-run]`
+ * `pnpm --filter @rbms/api seed:history <slug> [--days 90] [--profile tailoring|tea_stall|kirana|pharmacy|restaurant|jewellery|textiles|hardware|services|spa] [--dry-run]`
  *
  * Generates realistic past trading for one demo shop through the real kit services (bills, payments, receipts, credit
  * notes, till sessions, purchases, expenses, customers), dated within the last N days (IST) and never in the future.

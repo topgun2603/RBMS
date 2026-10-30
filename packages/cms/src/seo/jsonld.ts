@@ -1,5 +1,5 @@
 /**
- * `@srirealtime/cms/seo` — pure SEO helpers for the API and the storefront app (SSR). NO server imports: only
+ * `@rbms/cms/seo` — pure SEO helpers for the API and the storefront app (SSR). NO server imports: only
  * standard JS here and in `./paths`.
  *
  * Money in inputs is integer paise (as everywhere in the kit); JSON-LD prices are rupee strings ("499.00", INR).

@@ -4,8 +4,8 @@
  * messages (no invented offers, opt-out respected) and hardware quotations (only catalogue items, sane quantities, assumptions,
  * "not in your catalogue"). They run the REAL code paths and score what the person would see. Safety checks must be 100%.
  *
- *   pnpm --filter @srirealtime/ai eval:trades-c                 mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:trades-c --live          REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:trades-c                 mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:trades-c --live          REAL API calls (costs money)
  *   options: --group=fault|device|measure|design|winback|quote   --max-cost=USD (default 1)   --out=DIR
  *
  * Synthetic images come from evals/trades-c/generate.mjs (every one says SYNTHETIC).
@@ -13,7 +13,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { costMicroUsd } from "../src/pricing";

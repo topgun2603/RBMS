@@ -34,8 +34,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { RowsSkeleton } from "../components/lists";
 import { usePayoutColumns } from "../components/table-columns";
 import { money, previewPayouts, type PreviewRow } from "../lib/logic";

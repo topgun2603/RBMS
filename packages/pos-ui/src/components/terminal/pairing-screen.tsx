@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CameraIcon, Link2Icon, Loader2Icon, MonitorSmartphoneIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, Field, FieldHint, FieldLabel, Input } from "@srirealtime/ui";
-import { API_URL, LocaleSwitcher, ThemeToggle, useI18n, useOptionalShop } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, Field, FieldHint, FieldLabel, Input } from "@rbms/ui";
+import { API_URL, LocaleSwitcher, ThemeToggle, useI18n, useOptionalShop } from "@rbms/web";
 import { initialPairing, pairErrorOf, pairingReducer, parsePairingQr } from "../../lib/pairing";
 import { pairDevice } from "../../lib/terminal-api";
 import type { PairResponse } from "../../lib/terminal-types";

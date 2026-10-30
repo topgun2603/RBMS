@@ -1,4 +1,4 @@
-import { formatINR, stateName } from "@srirealtime/gst";
+import { formatINR, stateName } from "@rbms/gst";
 import QRCode from "qrcode";
 import { FONT_STACK, fontFaceCss } from "./fonts";
 import type { Branding, DocLocale, Paper } from "./types";

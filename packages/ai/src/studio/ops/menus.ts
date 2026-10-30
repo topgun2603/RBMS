@@ -1,4 +1,4 @@
-import { CMS_LIMITS, isReservedSlug, menuItemsSchema, slugProblem, slugify, uniqueSlug, blockSchema, type MenuItem } from "@srirealtime/cms";
+import { CMS_LIMITS, isReservedSlug, menuItemsSchema, slugProblem, slugify, uniqueSlug, blockSchema, type MenuItem } from "@rbms/cms";
 import { z } from "zod";
 import { AREA, fail, type MenuArea, type PageArea } from "../areas";
 import type { StudioEnv, StudioState } from "../types";

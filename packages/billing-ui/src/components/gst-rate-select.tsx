@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@srirealtime/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@rbms/ui";
 import { GST_RATES } from "../lib/format";
 
 /** GST rate picker. Value is the rate as a string ("18"). */

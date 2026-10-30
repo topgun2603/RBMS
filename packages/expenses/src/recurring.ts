@@ -4,7 +4,7 @@
  * draft to check; with "ask each time" (no amount) always a draft whose amount the owner fills in.
  *
  * Same approach as recurring invoices (packages/invoices/src/recurring.ts): the schedule maths is shared
- * (`@srirealtime/core` schedule.ts); every date is a run row unique per (recurring, date), and the run row and its
+ * (`@rbms/core` schedule.ts); every date is a run row unique per (recurring, date), and the run row and its
  * expense are written in one transaction, so a job that runs twice — or two at once — never makes a second expense.
  * The latest `CATCH_UP_LIMIT` missed dates are made, older ones recorded as skipped; dates in a locked accounting
  * period are recorded as locked and make nothing.
@@ -27,9 +27,9 @@ import {
   SCHEDULE_FREQUENCIES,
   type ListPage,
   type Schedule,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { GST_RATES, isValidDate, normalizeGstin, todayIST } from "@srirealtime/gst";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { GST_RATES, isValidDate, normalizeGstin, todayIST } from "@rbms/gst";
 import { and, asc, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { LoggerPort } from "./ports";

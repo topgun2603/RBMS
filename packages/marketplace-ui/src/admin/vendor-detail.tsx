@@ -60,7 +60,7 @@ import {
   toast,
   ToggleGroup,
   ToggleGroupItem,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ConfirmDialog,
   DetailRow,
@@ -73,7 +73,7 @@ import {
   useI18n,
   useModuleNavigate,
   useRouteParams,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { AccountPill, KycPill, ReviewPill, Thumb, VendorLogo, VendorStatusPill } from "../components/bits";
 import { AccountFields, accountErrors, emptyAccount, KycTimeline, SubmitButton, toAccountInput, type AccountDraft } from "../components/account";
 import { LedgerList, PayoutsList, Pager, RowsSkeleton, VendorOrdersList } from "../components/lists";

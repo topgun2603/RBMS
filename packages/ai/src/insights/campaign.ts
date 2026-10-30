@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppError, badRequest } from "@srirealtime/core";
+import { AppError, badRequest } from "@rbms/core";
 import type { AiRunner } from "../assist/hsn";
 import { DATA_RULES, dataBlock, filterClaims, neutralise, outputLooksInjected, sentences } from "../assist/safety";
 import { indianPhone } from "./daily-settings";

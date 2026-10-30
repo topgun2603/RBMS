@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, LayoutTemplateIcon, StarIcon, StoreIcon, UsersIcon } from "lucide-react";
-import { cn, Skeleton, StatusPill } from "@srirealtime/ui";
-import { AttentionItem, InsightCard, KpiTile, QueryError, useI18n, useOptionalShop } from "@srirealtime/web";
+import { cn, Skeleton, StatusPill } from "@rbms/ui";
+import { AttentionItem, InsightCard, KpiTile, QueryError, useI18n, useOptionalShop } from "@rbms/web";
 import { PERMS, useCan } from "../lib/access";
 import { pointsDelta, rangeFor, previousRange, sparkValues, todayIST } from "../lib/analytics";
 import { pct } from "../lib/format";

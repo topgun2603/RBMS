@@ -1,5 +1,5 @@
-import { AppError, badRequest, conflict, defineSort, facetCounts, forbidden, listFilter, listQuerySchema, notFound, randomToken, runList, searchAny } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, conflict, defineSort, facetCounts, forbidden, listFilter, listQuerySchema, notFound, randomToken, runList, searchAny } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, arrayContains, arrayOverlaps, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { audienceSpecSchema, EXTERNAL_AUDIENCE_KINDS, isExternalSource, type AudienceSpec, type ExternalAudienceKind } from "./audience";

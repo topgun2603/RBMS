@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { DownloadIcon, FileUpIcon } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
-import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
+import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { NoPermission } from "../components/bits";
 import { ExportTab } from "../components/import/export-tab";
 import { ImportHistory } from "../components/import/history";

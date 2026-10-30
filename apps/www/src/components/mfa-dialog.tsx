@@ -3,10 +3,10 @@
 import * as React from "react";
 import QRCode from "qrcode";
 import { Loader2Icon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui/components/dialog";
-import { Input } from "@srirealtime/ui/components/input";
-import { OtpInput } from "@srirealtime/ui/components/otp-input";
+import { Button } from "@rbms/ui/components/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui/components/dialog";
+import { Input } from "@rbms/ui/components/input";
+import { OtpInput } from "@rbms/ui/components/otp-input";
 import { api, ApiError, setMfaPrompt, type MfaEnrolStart, type MfaRequired, type SignInResult } from "@/lib/api";
 import { useSite } from "./site-context";
 

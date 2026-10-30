@@ -28,7 +28,7 @@ import {
   type AppShellLinkComponent,
   type AppShellNavItem,
   type AppShellNavSection,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BrandMark } from "../components/brand-mark";
 import { BranchSwitcher } from "../components/branch-switcher";
 import { LocaleSwitcher } from "../components/locale-switcher";

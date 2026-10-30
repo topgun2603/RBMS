@@ -3,8 +3,8 @@
  * (synthetic menus incl. Tamil), recipe drafts, prep note. They run the REAL code paths and score what the owner would see;
  * raw model slips that our checks caught are counted separately ("raw issues").
  *
- *   pnpm --filter @srirealtime/ai eval:trades-a                       mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:trades-a -- --live             REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:trades-a                       mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:trades-a -- --live             REAL API calls (costs money)
  *   options: --group=rx|interactions|expiry|menu|recipe|prep   --max-cost=USD (default 2)   --out=DIR
  *
  * Safety groups (schedule X never filled, injections, number faithfulness, no advice in interaction text) must be 100%.
@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { allowedNumbers, checkNumbers } from "../src/insights/numbers";

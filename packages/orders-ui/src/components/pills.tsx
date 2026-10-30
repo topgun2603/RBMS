@@ -16,8 +16,8 @@ import {
   PackageIcon,
   type LucideIcon,
 } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { paymentPillKind, type PaymentPillKind } from "../lib/status";
 import type { OrderStatus, PaymentStatus, ShipmentStatus } from "../lib/types";
 

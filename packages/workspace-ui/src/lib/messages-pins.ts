@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** workspace.pins.*: POS PINs in Team & roles (docs/pos-terminals.md). Merged into workspaceMessages. */
 export const pinsEn: Messages = {

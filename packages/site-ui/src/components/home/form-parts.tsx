@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Button } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { FieldErrors } from "../../lib/sections";
 import { TextField } from "../bits";
 

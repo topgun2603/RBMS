@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CatalogItem, CatalogueService } from "@srirealtime/catalogue";
-import type { PriceListsService } from "@srirealtime/pricelists";
+import type { CatalogItem, CatalogueService } from "@rbms/catalogue";
+import type { PriceListsService } from "@rbms/pricelists";
 import { lineUnitsAndPrices, PRICED_LINE_ROUTES, UNIT_LINE_ROUTES, withLinePricing } from "./kit-pricing";
 
 const ID = "11111111-1111-4111-8111-111111111111";

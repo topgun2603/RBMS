@@ -3,12 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, Loader2Icon, LogOutIcon, MonitorSmartphoneIcon, PlusIcon, ReceiptIndianRupeeIcon, StoreIcon } from "lucide-react";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { Skeleton } from "@srirealtime/ui/components/skeleton";
-import { AnimatePresence, motion, Stagger, StaggerItem } from "@srirealtime/ui/motion";
-import { firebasePhoneMessage, isFirebaseError, safeReturnUrl, signInWithGoogle } from "@srirealtime/web/firebase-phone";
+import { Badge } from "@rbms/ui/components/badge";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { Skeleton } from "@rbms/ui/components/skeleton";
+import { AnimatePresence, motion, Stagger, StaggerItem } from "@rbms/ui/motion";
+import { firebasePhoneMessage, isFirebaseError, safeReturnUrl, signInWithGoogle } from "@rbms/web/firebase-phone";
 import { api, errorMessage, getToken, handoffUrl, normalizeTarget, setSignInContext, type Shop, type User } from "@/lib/api";
 import { appUrlFor, PHONE_RETURN_ORIGINS } from "@/lib/site";
 import { useSite } from "./site-context";

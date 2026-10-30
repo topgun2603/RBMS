@@ -1,5 +1,5 @@
-import { badRequest, conflict, facetCounts, notFound, runList, type FeatureGatePort, type ListPage } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, conflict, facetCounts, notFound, runList, type FeatureGatePort, type ListPage } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, arrayContains, count, desc, eq, ilike, inArray, ne, or, type SQL } from "drizzle-orm";
 import {
   homeDocSchema,

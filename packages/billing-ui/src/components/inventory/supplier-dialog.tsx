@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle2Icon, Loader2Icon } from "lucide-react";
-import { isValidGstin, stateFromGstin } from "@srirealtime/gst";
+import { isValidGstin, stateFromGstin } from "@rbms/gst";
 import {
   Button,
   Dialog,
@@ -17,10 +17,10 @@ import {
   Input,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { StateSelect } from "../state-select";
 import { GstinAssist } from "../gstin/gstin-assist";
-import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@srirealtime/web";
+import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
 import { paiseToInput, rupeesToPaise, stateLabel } from "../../lib/format";
 import type { SupplierPayables } from "../../lib/types-payables";

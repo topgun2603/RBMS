@@ -1,6 +1,6 @@
-import type { Db } from "@srirealtime/db";
-import { datasetFromSql, type DatasetDefinition, type ReportsService } from "@srirealtime/reports";
-import { sql, type SQL } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
+import { datasetFromSql, type DatasetDefinition, type ReportsService } from "@rbms/reports";
+import { sql, type SQL } from "@rbms/db";
 
 /**
  * Report-builder datasets (docs/batch3.md §B5) over the modules' tables, registered with `reports.service`. Each one is

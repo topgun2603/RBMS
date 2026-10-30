@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from "recharts";
-import { useReducedMotionSafe } from "@srirealtime/ui";
+import { useReducedMotionSafe } from "@rbms/ui";
 import { ChartTooltipBox } from "./chart-card";
 import { money, tickINR } from "../../lib/format";
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 
 export interface TrendPoint {
   date: string;

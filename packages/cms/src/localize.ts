@@ -5,7 +5,7 @@
  * layouts and every other non-word key always come from the section itself, so a translation can never change what a
  * section shows or where it links. Sections without an id, or without a translation, stay as they are.
  *
- * Pure and dependency-free: the storefront imports it as `@srirealtime/cms/localize`.
+ * Pure and dependency-free: the storefront imports it as `@rbms/cms/localize`.
  */
 
 /** Languages a home page can carry translations for (English is the page itself). */

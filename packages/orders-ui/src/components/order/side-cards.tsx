@@ -16,8 +16,8 @@ import {
   TagIcon,
   UserIcon,
 } from "lucide-react";
-import { Button, toast } from "@srirealtime/ui";
-import { describeError, joinPath, ModuleLink, useFeature, useI18n, useOptionalWebApp } from "@srirealtime/web";
+import { Button, toast } from "@rbms/ui";
+import { describeError, joinPath, ModuleLink, useFeature, useI18n, useOptionalWebApp } from "@rbms/web";
 import { PERMS, usePermissions } from "../../lib/access";
 import { docPath, openPdf } from "../../lib/documents";
 import { addressLines, formatPhone, initials, telHref, whatsappHref } from "../../lib/format";

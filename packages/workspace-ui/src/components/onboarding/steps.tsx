@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, CheckIcon, CircleDashedIcon, RedoIcon, SkipForwardIcon } from "lucide-react";
-import { Button, cn, toast } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n, useOptionalWebApp, type Translator } from "@srirealtime/web";
+import { Button, cn, toast } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n, useOptionalWebApp, type Translator } from "@rbms/web";
 import { useOnboardingAction } from "../../lib/queries";
 import { resolveStepHref } from "../../lib/step-href";
 import type { OnboardingStep } from "../../lib/types";

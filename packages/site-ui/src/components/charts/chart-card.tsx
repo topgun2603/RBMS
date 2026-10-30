@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BarChart3Icon, TableIcon } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, cn, Skeleton } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, cn, Skeleton } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 export interface ChartTable {
   columns: { label: string; numeric?: boolean }[];

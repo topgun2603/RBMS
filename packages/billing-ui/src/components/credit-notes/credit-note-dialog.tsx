@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon, Loader2Icon, MinusIcon, PackageCheckIcon, PlusIcon, Undo2Icon } from "lucide-react";
-import { computeCreditNote, CreditNoteError, type CreditLineRequest, type CreditNoteCalc, type LineTotals } from "@srirealtime/gst";
+import { computeCreditNote, CreditNoteError, type CreditLineRequest, type CreditNoteCalc, type LineTotals } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -33,8 +33,8 @@ import {
   ToggleGroupItem,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
 import { money, rupeesToPaise } from "../../lib/format";
 import { useCreateCreditNote, useReturnable } from "../../lib/queries-credit-notes";
@@ -68,7 +68,7 @@ function effectOf(r: Returnable, total: number, mode: RefundMode) {
 /**
  * "Create credit note" on a bill: pick lines (checkbox + quantity stepper, or an amount for price corrections), the
  * reason, how the money goes back and whether returned goods go back in stock. GST totals update live with the same
- * maths as the server (@srirealtime/gst computeCreditNote).
+ * maths as the server (@rbms/gst computeCreditNote).
  */
 export function CreditNoteDialog({ invoice, open, onOpenChange, onIssued }: { invoice: Invoice; open: boolean; onOpenChange: (o: boolean) => void; onIssued?: (id: string) => void }) {
   const { t } = useI18n();

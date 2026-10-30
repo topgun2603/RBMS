@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { absoluteUrl, api, ApiError, BrandingStyle, BrandMark, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useFeature, useI18n, useRouteParams, useWebFonts } from "@srirealtime/web";
+import { absoluteUrl, api, ApiError, BrandingStyle, BrandMark, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useFeature, useI18n, useRouteParams, useWebFonts } from "@rbms/web";
 import { useQuery } from "@tanstack/react-query";
 import { BanIcon, CheckCircle2Icon, CreditCardIcon, FileXIcon, Loader2Icon, PrinterIcon, ShieldCheckIcon, SmartphoneIcon } from "lucide-react";
-import { upiLink } from "@srirealtime/gst";
-import { AnimatedNumber, AnimatePresence, Button, EmptyState, FadeIn, motion, Skeleton, SuccessCheck, useReducedMotionSafe } from "@srirealtime/ui";
+import { upiLink } from "@rbms/gst";
+import { AnimatedNumber, AnimatePresence, Button, EmptyState, FadeIn, motion, Skeleton, SuccessCheck, useReducedMotionSafe } from "@rbms/ui";
 import { InvoiceDocument } from "../components/invoice-document";
 import { MockPaymentSheet, useOnlineCheckout } from "../components/payments/online-checkout";
 import { QrImage } from "../components/upi-qr";

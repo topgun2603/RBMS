@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlarmClockIcon, PackageCheckIcon } from "lucide-react";
-import { AttentionItem, useI18n } from "@srirealtime/web";
+import { AttentionItem, useI18n } from "@rbms/web";
 import { useJobsSummary } from "../lib/queries";
 
 /** Needs-attention rows: jobs ready for pickup and jobs past their due date. */

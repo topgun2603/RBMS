@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { aggregatorsRoutes } from "./routes";
 import { aggregatorConnections, aggregatorItemMaps, aggregatorOrders } from "./schema";
 import { AggregatorsService, type AggregatorsDeps } from "./service";

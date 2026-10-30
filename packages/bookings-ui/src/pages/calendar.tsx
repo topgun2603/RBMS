@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ListIcon, PlusIcon, SettingsIcon } from "lucide-react";
-import { Button, ChipGroup, EmptyState, Input, Skeleton, Switch } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useQueryParams, useSettingsHref } from "@srirealtime/web";
+import { Button, ChipGroup, EmptyState, Input, Skeleton, Switch } from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useQueryParams, useSettingsHref } from "@rbms/web";
 import { AppointmentList } from "../components/appointment-list";
 import { AppointmentSheet } from "../components/appointment-sheet";
 import { InlineError } from "../components/bits";

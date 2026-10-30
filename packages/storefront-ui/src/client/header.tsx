@@ -4,10 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRightIcon, ChevronDownIcon, HeartIcon, LayoutGridIcon, MenuIcon, MoonIcon, PackageSearchIcon, SearchIcon, ShoppingBagIcon, SparklesIcon, SunIcon, UserRoundIcon } from "lucide-react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@srirealtime/ui/components/sheet";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@srirealtime/ui/components/accordion";
-import { Button } from "@srirealtime/ui/components/button";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@rbms/ui/components/sheet";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@rbms/ui/components/accordion";
+import { Button } from "@rbms/ui/components/button";
+import { cn } from "@rbms/ui/lib/utils";
 import {
   AnimatedNumber,
   AnimatePresence,
@@ -17,8 +17,8 @@ import {
   useReducedMotionSafe,
   useScroll,
   type Variants,
-} from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+} from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { imageUrl, money } from "../lib/format";
 import type { Locale } from "../lib/messages";
 import type { MenuItem } from "../types";

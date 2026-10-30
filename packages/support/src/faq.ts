@@ -1,8 +1,8 @@
-import { listFilter, listQuerySchema, splitList } from "@srirealtime/core";
+import { listFilter, listQuerySchema, splitList } from "@rbms/core";
 import { z } from "zod";
 import { FAQ_STATUSES, type FaqArticleRow, type FaqCategoryRow, type FaqSeo, type FaqStatus } from "./schema";
 
-// ------------------------------------------------------------------ markdown + slugs (same rules as @srirealtime/cms)
+// ------------------------------------------------------------------ markdown + slugs (same rules as @rbms/cms)
 
 /** Removes HTML tags and comments: content is markdown, rendered client-side by a safe renderer; no raw HTML is stored. */
 export function stripHtml(value: string): string {

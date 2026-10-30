@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { GlobeIcon, Loader2Icon } from "lucide-react";
-import { countryName, currencyDigits, foreignToPaise, formatForeign, normalizeRate } from "@srirealtime/gst";
+import { countryName, currencyDigits, foreignToPaise, formatForeign, normalizeRate } from "@rbms/gst";
 import {
   Button,
   Card,
@@ -30,8 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { money, todayIST } from "../../lib/format";
 import { useForeignPayment } from "../../lib/queries-export";
 import type { Invoice } from "../../lib/types";

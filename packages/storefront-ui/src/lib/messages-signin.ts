@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Shopper sign-in options chosen by the shop (email + password, WhatsApp). Merged into lib/messages. */
 export const signInEn: Messages = {

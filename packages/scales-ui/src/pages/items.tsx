@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BarcodeIcon, DownloadIcon, Loader2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { Button, cn, DataTable, DataTableToolbar, InputGroup, InputGroupAddon, InputGroupInput, StatusPill, toast, type DataTableColumn } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, cn, DataTable, DataTableToolbar, InputGroup, InputGroupAddon, InputGroupInput, StatusPill, toast, type DataTableColumn } from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ItemDialog } from "../components/item-dialog";
 import { LabelDialog } from "../components/label-dialog";
 import { paiseToInput, rupeesToPaise } from "../lib/format";

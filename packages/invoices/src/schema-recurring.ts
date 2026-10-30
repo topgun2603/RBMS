@@ -2,8 +2,8 @@
  * Recurring invoices (a profile per customer that makes bills on a schedule) and the GSTIN lookup cache
  * (docs/recurring-export-gstin.md). Re-exported by schema.ts, which drizzle-kit reads.
  */
-import { pk, tenantId, timestamps } from "@srirealtime/db";
-import type { LineInput } from "@srirealtime/gst";
+import { pk, tenantId, timestamps } from "@rbms/db";
+import type { LineInput } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 

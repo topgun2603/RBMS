@@ -1,4 +1,4 @@
-import type { FeatureGatePort } from "@srirealtime/core";
+import type { FeatureGatePort } from "@rbms/core";
 import type { LoyaltySettings } from "./logic";
 
 export type { FeatureGatePort };

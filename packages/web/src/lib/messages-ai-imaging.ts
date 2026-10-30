@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiImg.* strings: Phase 4 part C (product photo cleanup, try-on setup). Keep en and ta key sets identical. */
 export const enAiImaging: Messages = {

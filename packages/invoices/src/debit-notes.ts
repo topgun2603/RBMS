@@ -5,9 +5,9 @@
  * customer receipts settle it after the open bills), books Dr Debtors / Cr Sales + output GST, GSTR-1 CDNR / CDNUR
  * with note type "D", GSTR-3B 3.1(a). Not the supplier debit notes of purchase returns (packages/inventory).
  */
-import { AppError, badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, newId, notFound, rangeOrder, searchAny, type ListPage } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { amountInWordsINR, financialYear, formatInvoiceNumber, isValidDate, todayIST } from "@srirealtime/gst";
+import { AppError, badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, newId, notFound, rangeOrder, searchAny, type ListPage } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { amountInWordsINR, financialYear, formatInvoiceNumber, isValidDate, todayIST } from "@rbms/gst";
 import { and, asc, count, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { allocateToDebitNotes, computeDebitNote, debitCancelProblem, DebitNoteError, debitNotePrefix, type DebitLineRequest } from "./debit-notes-calc";

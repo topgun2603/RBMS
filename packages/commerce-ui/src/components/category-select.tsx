@@ -22,8 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { buildTree, flattenTree, subtreeIds, type FlatCategory } from "../lib/categories";
 import { useCategories, useSaveCategory } from "../lib/queries";
 import type { Category } from "../lib/types";

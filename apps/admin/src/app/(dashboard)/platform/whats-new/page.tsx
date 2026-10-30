@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArchiveIcon, ArrowLeftIcon, Loader2Icon, MegaphoneIcon, PlusIcon, SaveIcon, SendIcon, SparklesIcon, Trash2Icon, UploadIcon } from "lucide-react";
-import { Button, EmptyState, Input, PageHeader, Skeleton, StatusPill, Textarea, toast } from "@srirealtime/ui";
+import { Button, EmptyState, Input, PageHeader, Skeleton, StatusPill, Textarea, toast } from "@rbms/ui";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";

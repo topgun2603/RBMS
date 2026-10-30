@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowRightIcon, ChevronRightIcon, CircleAlertIcon } from "lucide-react";
-import { AnimatedNumber, Button, Card, CardAction, CardContent, CardHeader, CardTitle, cn, Skeleton } from "@srirealtime/ui";
+import { AnimatedNumber, Button, Card, CardAction, CardContent, CardHeader, CardTitle, cn, Skeleton } from "@rbms/ui";
 import { useI18n } from "../lib/i18n";
 import { ModuleLink } from "./navigation";
 import type { IconType } from "./types";

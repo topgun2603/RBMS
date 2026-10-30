@@ -1,6 +1,6 @@
 // Batch 1 end-to-end against the running API (http://localhost:4000) and the real database.
-//   node test/e2e/batch1.mjs      (pnpm --filter @srirealtime/api test:e2e; test:e2e:all seeds and runs every script)
-// Runs only in the dedicated e2e shops from `pnpm --filter @srirealtime/api seed:e2e`: e2e-store (EC, pro) for
+//   node test/e2e/batch1.mjs      (pnpm --filter @rbms/api test:e2e; test:e2e:all seeds and runs every script)
+// Runs only in the dedicated e2e shops from `pnpm --filter @rbms/api seed:e2e`: e2e-store (EC, pro) for
 // commerce, staff and documents; e2e-lite (BL, starter) for plan checks. Test identities sign in with the dev test OTP
 // (API env TEST_OTP_CODE / TEST_OTP_TARGETS): owner e2e-owner@example.com, staff +91 9999 00xxxx. Safe to re-run.
 
@@ -162,7 +162,7 @@ const welcome = { id: null };
 let orderA, orderB, orderC;
 await step("orders: manual order with WELCOME10 → stock reserved, coupon redeemed", async () => {
   const c = ok(await call("GET", "/v1/coupons?q=WELCOME10"), "coupons").items.find((x) => x.code === "WELCOME10");
-  expect(c, "WELCOME10 missing (run pnpm --filter @srirealtime/api seed:e2e)");
+  expect(c, "WELCOME10 missing (run pnpm --filter @rbms/api seed:e2e)");
   welcome.id = c.id;
   orderA = ok(
     await call("POST", "/v1/orders", {

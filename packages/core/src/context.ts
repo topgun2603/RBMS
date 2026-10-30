@@ -24,7 +24,7 @@ export interface UserRef {
 }
 
 /**
- * The shop branch a request works in (multi-branch shops, `@srirealtime/branches`). `locationId` is the branch's
+ * The shop branch a request works in (multi-branch shops, `@rbms/branches`). `locationId` is the branch's
  * inventory stock location, null when none is linked.
  */
 export interface BranchRef {
@@ -34,7 +34,7 @@ export interface BranchRef {
 }
 
 /**
- * The paired POS terminal a request comes from (`x-device-token`, `@srirealtime/pos`). `branchId` / `locationId` are
+ * The paired POS terminal a request comes from (`x-device-token`, `@rbms/pos`). `branchId` / `locationId` are
  * the terminal's branch and its stock location (null when none).
  */
 export interface DeviceRef {

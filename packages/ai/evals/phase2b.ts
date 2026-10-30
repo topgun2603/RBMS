@@ -4,14 +4,14 @@
  * code paths (writeSummary, explainGroups, draftCampaign, draftReviewReply), so the final output the owner sees is what is
  * scored. Raw model behaviour (before our checks) is counted too, to see how much the checks catch.
  *
- *   pnpm --filter @srirealtime/ai eval:phase2b                      mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:phase2b --live               REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:phase2b                      mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:phase2b --live               REAL API calls (costs money)
  *   options: --group=summary|reorder|campaign|review   --max-cost=USD (default 1)   --out=DIR
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { cleanReply } from "../src/insights/reviews";

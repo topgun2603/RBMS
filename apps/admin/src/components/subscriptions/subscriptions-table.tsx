@@ -29,7 +29,7 @@ import {
   StatusPill,
   type DataTableColumn,
   type StatusTone,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { useSwitchTenant } from "@/lib/auth";
 import { shopAppUrl } from "@/lib/format";
 import { tOr, useI18n } from "@/lib/i18n";

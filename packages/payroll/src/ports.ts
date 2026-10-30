@@ -1,4 +1,4 @@
-import type { AuditPort, FeatureDef, FeatureGatePort, PermissionDef } from "@srirealtime/core";
+import type { AuditPort, FeatureDef, FeatureGatePort, PermissionDef } from "@rbms/core";
 
 export type { AuditPort, FeatureGatePort };
 

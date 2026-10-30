@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { MEMBERSHIPS_CHECKIN, MEMBERSHIPS_CHECKIN_FEATURE, MEMBERSHIPS_FEATURE, MEMBERSHIPS_MANAGE, MEMBERSHIPS_VIEW } from "./ports";

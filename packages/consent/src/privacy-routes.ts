@@ -1,4 +1,4 @@
-import { badRequest, isSuperAdmin, requirePermission, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { badRequest, isSuperAdmin, requirePermission, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { BREACH_CHECKLIST, breachDrafts, breachInputSchema, breachPatchSchema, type BreachService } from "./privacy-breach";

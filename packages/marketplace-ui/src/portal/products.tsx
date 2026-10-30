@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BoxesIcon, PackageIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
-import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
+import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { Thumb } from "../components/bits";
 import { ListingPill } from "./product-bits";
 import { availableByProduct, listingState, money } from "../lib/logic";

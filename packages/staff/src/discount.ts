@@ -1,5 +1,5 @@
-import { badRequest, FULL_ACCESS_ROLES, type AuditPort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, FULL_ACCESS_ROLES, type AuditPort } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { discountLimits, type DiscountLimitRow } from "./schema";

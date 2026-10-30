@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { ClipboardListIcon, FileBadgeIcon, TruckIcon } from "lucide-react";
-import type { NavSection, RouteDef, WebModule } from "@srirealtime/web";
+import type { NavSection, RouteDef, WebModule } from "@rbms/web";
 import * as sd from "./lib/messages/sales-docs";
 
 export const SALES_DOCS_FEATURE = "invoices.sales-docs";

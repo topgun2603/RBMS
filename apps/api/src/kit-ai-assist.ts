@@ -1,6 +1,6 @@
-import { createAiAssist, TRANSLATE_JOB, type AiService, type AssistPorts, type ProductFacts, type TranslateJobPayload } from "@srirealtime/ai";
-import type { Db } from "@srirealtime/db";
-import type { JobsService } from "@srirealtime/jobs";
+import { createAiAssist, TRANSLATE_JOB, type AiService, type AssistPorts, type ProductFacts, type TranslateJobPayload } from "@rbms/ai";
+import type { Db } from "@rbms/db";
+import type { JobsService } from "@rbms/jobs";
 
 /** The slice of the catalogue service the helpers read. */
 export interface AssistCatalogue {

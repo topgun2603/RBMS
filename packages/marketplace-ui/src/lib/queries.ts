@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { absoluteUrl, api, apiDownload, ApiError, type QueryParams } from "@srirealtime/web";
+import { absoluteUrl, api, apiDownload, ApiError, type QueryParams } from "@rbms/web";
 import { istEndOfDay, istDateOf, resolveSettings } from "./logic";
 import type {
   CatalogProduct,

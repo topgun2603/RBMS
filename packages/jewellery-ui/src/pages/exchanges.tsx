@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PlusIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, type DataTableColumn } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, DataTable, DataTableToolbar, type DataTableColumn } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ExchangeStatusPill } from "../components/bits";
 import { ExchangeDialog } from "../components/exchange-dialog";
 import { money } from "../lib/format";

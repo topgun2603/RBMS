@@ -1,5 +1,5 @@
-import type { FeatureGatePort, TenantRef } from "@srirealtime/core";
-import type { GstRateRule } from "@srirealtime/gst";
+import type { FeatureGatePort, TenantRef } from "@rbms/core";
+import type { GstRateRule } from "@rbms/gst";
 
 export type { FeatureGatePort };
 
@@ -320,7 +320,7 @@ export interface StoreSettings {
   contactEmail: string;
   social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
-  /** @srirealtime/verticals pack id; "" = the app's default. */
+  /** @rbms/verticals pack id; "" = the app's default. */
   businessType?: string;
   /** Show the storefront's "Install <shop> app" banner (default on). */
   installBanner?: boolean;

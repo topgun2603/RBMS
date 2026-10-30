@@ -30,8 +30,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { apiDownload, describeError, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { apiDownload, describeError, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
 import { money, rupeesToPaise } from "../../lib/format";
 import {

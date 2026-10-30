@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, PercentIcon, PiggyBankIcon, ReceiptIndianRupeeIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
-import { ChipGroup, cn, StatusPill } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { ChipGroup, cn, StatusPill } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { StatTile } from "../charts/stat-tile";
 import { formatQty, money } from "../../lib/format";
 import { profitPdfPath, PROFIT_GROUPS, useItemProfit, VAL, type ProfitGroup, type ProfitRow } from "../../lib/valuation";

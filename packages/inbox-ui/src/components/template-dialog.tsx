@@ -19,8 +19,8 @@ import {
   Input,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, QueryError, SearchField, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, QueryError, SearchField, useI18n } from "@rbms/web";
 import { previewTemplate, slotLabel } from "../lib/templates";
 import { useSyncTemplates, useWaSend, useWaTemplates } from "../lib/queries";
 import { uploadFile } from "../lib/uploads";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn } from "@srirealtime/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn } from "@rbms/ui";
 
 /** Card with an icon chip, title, description and an optional action on the right (stacks on phones). */
 export function SectionCard({

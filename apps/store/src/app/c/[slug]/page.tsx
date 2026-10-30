@@ -1,4 +1,4 @@
-import { CategoryPage, categoryMetadata } from "@srirealtime/storefront-ui";
+import { CategoryPage, categoryMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 

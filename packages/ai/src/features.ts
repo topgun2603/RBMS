@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef } from "@rbms/core";
 import { z } from "zod";
 import { DAILY_SUMMARY_SCHEMA } from "./insights/daily-settings";
 import { MONEY_REGISTRY } from "./money/registry";

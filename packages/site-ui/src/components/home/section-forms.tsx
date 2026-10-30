@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Switch, Textarea } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Switch, Textarea } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { emptySlide, SECTION_LIST_LIMITS, USP_ICON_KEYS, uspIconKey, type FieldErrors, type FormOf, type SectionForm, type SlideForm } from "../../lib/sections";
 import { FieldError, Optional, TextField } from "../bits";
 import { ImageField } from "../image-field";

@@ -1,4 +1,4 @@
-import { emptyContext, type RequestContext, type UserRef } from "@srirealtime/core";
+import { emptyContext, type RequestContext, type UserRef } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import {
   accessTo,

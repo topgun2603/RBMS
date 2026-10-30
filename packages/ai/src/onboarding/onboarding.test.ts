@@ -1,6 +1,6 @@
-import { homeDocSchema } from "@srirealtime/cms";
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
-import { PACKS } from "@srirealtime/verticals";
+import { homeDocSchema } from "@rbms/cms";
+import { AppError, emptyContext, type RequestContext } from "@rbms/core";
+import { PACKS } from "@rbms/verticals";
 import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 import { kit, T, userText } from "../assist/test-kit";

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /**
  * site.* strings for the enquiry form (a contact / admission enquiry form on the home page or any page). Merged into

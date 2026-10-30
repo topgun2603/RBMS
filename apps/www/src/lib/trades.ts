@@ -1,5 +1,5 @@
-import { BUSINESS_TYPES, PACKS } from "@srirealtime/verticals";
-import type { BusinessType } from "@srirealtime/verticals";
+import { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
+import type { BusinessType } from "@rbms/verticals";
 
 export type { BusinessType };
 export const ALL_TRADES: readonly BusinessType[] = BUSINESS_TYPES;

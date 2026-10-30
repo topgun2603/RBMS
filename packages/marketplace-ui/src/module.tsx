@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { ClipboardCheckIcon, SettingsIcon, StoreIcon, WalletIcon } from "lucide-react";
-import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { marketplaceMessages } from "./lib/messages";
 
-/** Feature keys and permission the marketplace UI uses (declared by @srirealtime/marketplace and kyc). */
+/** Feature keys and permission the marketplace UI uses (declared by @rbms/marketplace and kyc). */
 export const MARKETPLACE_FEATURES = {
   marketplace: "marketplace",
   payouts: "marketplace.payouts",

@@ -1,8 +1,8 @@
 "use client";
 
-import { ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { LockIcon, PencilLineIcon } from "lucide-react";
-import { Button, EmptyState, Skeleton } from "@srirealtime/ui";
+import { Button, EmptyState, Skeleton } from "@rbms/ui";
 import { QuotationForm } from "../components/quotations/quotation-form";
 import { useQuotation } from "../lib/queries-quotations";
 

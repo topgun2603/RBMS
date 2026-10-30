@@ -8,8 +8,8 @@ import {
   type AuditEvent,
   type AuditPort,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, eq, gte, inArray, like, lt, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { istDayEnd, istDayStart, MAX_SUMMARY, MAX_USER_AGENT } from "./derive";

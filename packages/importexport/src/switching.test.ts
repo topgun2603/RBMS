@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import {
   billImporter,
   buildBill,

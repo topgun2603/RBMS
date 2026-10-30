@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** workspace.discounts.*: discount limits with manager approval, in Team & roles. Merged into workspaceMessages. */
 export const discountsEn: Messages = {

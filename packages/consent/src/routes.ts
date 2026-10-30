@@ -1,4 +1,4 @@
-import { badRequest, requireSuperAdmin, requireUser } from "@srirealtime/core";
+import { badRequest, requireSuperAdmin, requireUser } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { DataRequestListQuery } from "./list";

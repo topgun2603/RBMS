@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { XIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /**
  * Chips input: type and press Enter or comma to add, Backspace on an empty field removes the last chip.

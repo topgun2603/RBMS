@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useI18n, useModuleNavigate, usePermission, useQueryParams, useRouteParams, useShop } from "@srirealtime/web";
+import { ModuleLink, useI18n, useModuleNavigate, usePermission, useQueryParams, useRouteParams, useShop } from "@rbms/web";
 import { BanIcon, ClipboardListIcon, FileTextIcon, HandCoinsIcon, PackageCheckIcon, PencilIcon, ReceiptIcon, SendIcon, TruckIcon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, cn, DropdownMenuItem, DropdownMenuSeparator, Progress } from "@srirealtime/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, cn, DropdownMenuItem, DropdownMenuSeparator, Progress } from "@rbms/ui";
 import { AdvanceDialog, CancelSalesDocDialog, DeliverDialog, OrderInvoiceDialog, SendSalesDocDialog } from "../components/sales-docs/sd-dialogs";
 import { DetailFrame, DetailLayout } from "../components/sales-docs/sd-detail";
 import { qtyText, SalesDocStatusPill, SalesDocTimeline, SideRow } from "../components/sales-docs/sd-ui";

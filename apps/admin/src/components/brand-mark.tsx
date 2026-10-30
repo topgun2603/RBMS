@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 import { useBranding } from "@/lib/branding";
 
 /** Tenant logo (dark variant in dark mode) or a primary-coloured monogram, plus the app name. */

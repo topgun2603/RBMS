@@ -1,4 +1,4 @@
-import { sql } from "@srirealtime/db";
+import { sql } from "@rbms/db";
 import { pino } from "pino";
 import { env } from "../env";
 import { createKit } from "../kit";
@@ -7,7 +7,7 @@ import { createKit } from "../kit";
  * Builds a shop's FIFO cost layers (if not yet) and reconciles the valuation and item-wise profit with the books
  * (docs/valuation-reports.md):
  *
- *   pnpm --filter @srirealtime/api exec tsx --env-file-if-exists=.env src/scripts/valuation-check.ts <tenant-slug> [from] [to]
+ *   pnpm --filter @rbms/api exec tsx --env-file-if-exists=.env src/scripts/valuation-check.ts <tenant-slug> [from] [to]
  *
  * Checks: FIFO layers left = stock on hand per item and location; the valuation report's weighted-average total = the
  * books' stock value; item-profit net sales = the P&L's net sales; and how the cost of goods sold on the bills compares

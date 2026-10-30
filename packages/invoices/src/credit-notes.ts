@@ -11,8 +11,8 @@ import {
   rangeOrder,
   searchAny,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import {
   amountInWordsINR,
   baseQtyOf,
@@ -25,7 +25,7 @@ import {
   todayIST,
   type CreditLineRequest,
   type LineCreditState,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import { and, asc, count, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { cancelProblem, creditNotePrefix, settleCreditNote } from "./credit-notes-calc";

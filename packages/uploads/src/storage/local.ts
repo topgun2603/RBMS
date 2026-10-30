@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
-import { safeEqual } from "@srirealtime/core";
+import { safeEqual } from "@rbms/core";
 import { contentDisposition } from "./s3";
 import type { StorageAdapter } from "./types";
 

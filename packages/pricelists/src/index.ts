@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { PRICE_LISTS_FEATURES } from "./features";
 import { priceListsRoutes } from "./routes";
 import { customerGroups, customerPricing, priceListItems, priceLists } from "./schema";

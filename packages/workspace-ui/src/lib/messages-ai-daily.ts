@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** workspace.ai.daily.* strings: Settings > AI > Daily summary. Keep the en and ta key sets identical. */
 export const dailyEn: Messages = {

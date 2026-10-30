@@ -1,6 +1,6 @@
 "use client";
 
-import { humanizeKey, useI18n, type Translator } from "@srirealtime/web";
+import { humanizeKey, useI18n, type Translator } from "@rbms/web";
 import { describeAction } from "../../lib/audit-actions";
 
 export const auditModuleLabel = (t: Translator, module: string) =>

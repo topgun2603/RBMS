@@ -46,8 +46,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@rbms/web";
 import { ProductThumb } from "../components/bits";
 import { CategorySelect } from "../components/category-select";
 import { FoldersIllustration } from "../components/illustrations";

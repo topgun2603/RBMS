@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon, PencilIcon, SparklesIcon, XIcon } from "lucide-react";
-import { Button, cn } from "@srirealtime/ui";
+import { Button, cn } from "@rbms/ui";
 import { api } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 

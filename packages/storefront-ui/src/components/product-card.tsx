@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import type { ProductSummary, Rating } from "../types";
 import { gridClass, gridCols, type GridColumns, type GridLayout } from "../lib/grid";
 import { LiveProductGrid, ProductCardView, RevealProductGrid, type CardRating } from "../client/product-card";

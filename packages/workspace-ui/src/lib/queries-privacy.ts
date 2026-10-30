@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /** Client for /v1/consent (DPDP): notice, customers' rights requests, retention and the breach register. docs/privacy-dpdp.md. */
 

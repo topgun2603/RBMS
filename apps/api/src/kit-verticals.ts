@@ -1,14 +1,14 @@
-import { themePreset } from "@srirealtime/branding";
-import { variantLookupSchema } from "@srirealtime/catalogue";
-import { weighTicketSchema } from "@srirealtime/pos";
-import { badRequest, defineModule, documented, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@srirealtime/core";
-import { grants } from "@srirealtime/features";
-import { and, eq, inArray, isNull, sql, type Db } from "@srirealtime/db";
-import { settingsValues } from "@srirealtime/settings";
-import { tenants } from "@srirealtime/tenancy";
+import { themePreset } from "@rbms/branding";
+import { variantLookupSchema } from "@rbms/catalogue";
+import { weighTicketSchema } from "@rbms/pos";
+import { badRequest, defineModule, documented, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@rbms/core";
+import { grants } from "@rbms/features";
+import { and, eq, inArray, isNull, sql, type Db } from "@rbms/db";
+import { settingsValues } from "@rbms/settings";
+import { tenants } from "@rbms/tenancy";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { BUSINESS_TYPES, PACKS, packFor, packOrDefault, starterHome, type BusinessPack, type BusinessType } from "@srirealtime/verticals";
+import { BUSINESS_TYPES, PACKS, packFor, packOrDefault, starterHome, type BusinessPack, type BusinessType } from "@rbms/verticals";
 import type { Logger } from "pino";
 
 /**

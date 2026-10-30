@@ -1,7 +1,7 @@
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
+import { AppError, emptyContext, type RequestContext } from "@rbms/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../config";
 import { AI_SETTINGS_DEFAULTS } from "../features";
 import { MockProvider } from "../mock-provider";

@@ -1,4 +1,4 @@
-﻿import { defineModule, type FeatureDef, type PermissionDef } from "@srirealtime/core";
+﻿import { defineModule, type FeatureDef, type PermissionDef } from "@rbms/core";
 import { subscriptionsRoutes, SUBSCRIPTIONS_PERMISSION } from "./routes";
 import { addonPayments, platformInvoices, platformInvoiceSeries, providerPlans, subscriptionAddons, subscriptionEvents, subscriptions } from "./schema";
 import { SubscriptionsService, type SubscriptionsDeps } from "./service";

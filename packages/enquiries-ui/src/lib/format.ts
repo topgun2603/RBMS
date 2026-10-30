@@ -1,4 +1,4 @@
-import type { StatusTone } from "@srirealtime/ui";
+import type { StatusTone } from "@rbms/ui";
 import type { EnquiryStatus } from "./types";
 
 export const STATUS_TONE: Record<EnquiryStatus, StatusTone> = { new: "brand", contacted: "info", follow_up: "warning", converted: "success", closed: "neutral" };

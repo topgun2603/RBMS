@@ -21,9 +21,9 @@ import {
   TruckIcon,
   Undo2Icon,
 } from "lucide-react";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { Reveal, RevealGroup, RevealItem } from "@srirealtime/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
+import { cn } from "@rbms/ui/lib/utils";
+import { Reveal, RevealGroup, RevealItem } from "@rbms/ui/motion";
 import { Carousel, NewsletterForm } from "../client/carousel";
 import { CountUp, DealAdd, DealCountdown, LookHotspots, ProductTabs } from "../client/home-shelves";
 import { RecentlyViewedStrip } from "../client/recently-viewed";

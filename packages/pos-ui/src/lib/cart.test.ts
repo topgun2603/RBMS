@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInvoice, lineAmount, taxableOfInclusive } from "@srirealtime/gst";
+import { computeInvoice, lineAmount, taxableOfInclusive } from "@rbms/gst";
 import {
   addProduct,
   cartTotals,

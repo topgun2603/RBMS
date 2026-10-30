@@ -3,9 +3,9 @@
  * variant's billing item is banded at its own price (5% at or below ₹2,625 incl. GST, 18% above), the store / POS
  * lookups carry the rule, and clearing it brings the flat rate back. Runs only with `CATALOGUE_TEST_DATABASE_URL`.
  */
-import { emptyContext, type RequestContext } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
-import { APPAREL_FOOTWEAR_GST_RULE as RULE, exclusiveOf } from "@srirealtime/gst";
+import { emptyContext, type RequestContext } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
+import { APPAREL_FOOTWEAR_GST_RULE as RULE, exclusiveOf } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

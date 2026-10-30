@@ -1,5 +1,5 @@
-import { conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny, tooMany, type ListPage } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny, tooMany, type ListPage } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { formatEnquiryNumber, RateLimiter, REPEAT_WINDOW_MS, SHOP_RATE, toIndianE164, VISITOR_RATE } from "./logic";

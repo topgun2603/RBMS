@@ -8,7 +8,7 @@
  * - `downgrade`: stored as pending, applies at the period end (POST /change).
  * - `current`: the plan and interval the shop already has.
  */
-import { changeKind, isAwaitingPayment, isPaidPlan, type BillingInterval, type PlanInfo, type Subscription, type SubscriptionCurrent } from "@srirealtime/web";
+import { changeKind, isAwaitingPayment, isPaidPlan, type BillingInterval, type PlanInfo, type Subscription, type SubscriptionCurrent } from "@rbms/web";
 
 export type PlanMode = "current" | "trial" | "start" | "upgrade" | "downgrade" | "awaiting";
 

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { MailIcon } from "lucide-react";
-import { ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { EnquiryStatusPill, useAgo, useStatusLabel } from "../components/bits";
 import { aboutLine, phoneLabel } from "../lib/format";
 import { ek } from "../lib/queries";

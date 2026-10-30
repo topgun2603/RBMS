@@ -21,7 +21,7 @@ Tables (platform-owned, keyed by `tenant_id`, but NOT behind tenant row filterin
 - `platform_invoices`: `number` (series `SR/2026-27/00001`, financial-year reset), `tenantId`, `subscriptionId`,
   `planId`, `interval`, `periodStart`/`periodEnd`, `subtotalPaise`, GST split (`cgst`/`sgst` when the shop's state =
   the platform's state, else `igst`), `totalPaise`, `status` (`paid`|`void`), `providerPaymentId`, buyer details
-  snapshot (shop legal name, GSTIN, state, address). GST maths with `@srirealtime/gst`.
+  snapshot (shop legal name, GSTIN, state, address). GST maths with `@rbms/gst`.
 - `provider_plans`: cache of Razorpay plan ids per (`planId`, `interval`, `amountPaise`) so a price change makes a new
   Razorpay plan.
 
@@ -225,7 +225,7 @@ Sign-up and tenancy:
   belongs to, else 404) the response also has `appUrl` and `url` (`<appUrl>/login?handoff=<code>`).
 - `POST /v1/auth/handoff/redeem { code }` → `{ token, expiresAt, user, isNewUser }`, or 400 `invalid_handoff`.
 - Reserved slugs: `RESERVED_SLUGS` / `validateSlug` / `slugify` / `slugCandidates` live in
-  `@srirealtime/tenancy/slug`, which is browser-safe. The web kit re-exports `RESERVED_SLUGS` and `validateSlug`.
+  `@rbms/tenancy/slug`, which is browser-safe. The web kit re-exports `RESERVED_SLUGS` and `validateSlug`.
   The list grew to include `signup`, `login`, `pricing`, `billing`, `store`, `shop` and more.
 
 Env (apps/api):

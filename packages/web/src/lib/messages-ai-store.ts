@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiStore.* strings: AI Phase 4 part B owner screens (search words, social posts, pricing hints, shopper chat settings). Keep en and ta key sets identical. */
 export const enAiStore: Messages = {

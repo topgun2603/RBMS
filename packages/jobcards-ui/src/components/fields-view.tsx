@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { DetailRow, tOr, useI18n } from "@srirealtime/web";
+import { DetailRow, tOr, useI18n } from "@rbms/web";
 import { power } from "../lib/format";
 import { EYES, RX_FIELDS } from "../lib/templates";
 import type { JobTemplate } from "../lib/types";

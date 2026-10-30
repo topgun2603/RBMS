@@ -1,4 +1,4 @@
-import { newId } from "@srirealtime/core";
+import { newId } from "@rbms/core";
 import type { OutboundStatus } from "../logic";
 import type { InboundMessage, StatusUpdate } from "../webhook";
 import { WhatsAppProviderError, type MockSink, type OutboundPayload, type RemoteTemplate, type WhatsAppDriver } from "./types";

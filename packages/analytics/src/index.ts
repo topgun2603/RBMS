@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { ANALYTICS_FEATURES } from "./ports";
 import { analyticsRoutes } from "./routes";
 import { analyticsDaily, analyticsEvents } from "./schema";

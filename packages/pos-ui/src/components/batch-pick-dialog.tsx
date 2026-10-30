@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CheckIcon } from "lucide-react";
-import { Badge, cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Badge, cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { CartLine } from "../lib/cart";
 import { useBatchPick } from "../lib/batches";
 import { fmtExpiry, formatQty } from "../lib/format";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { XIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /** Lowercase tags as chips; Enter or comma adds, Backspace on an empty input removes the last one. */
 export function TagInput({

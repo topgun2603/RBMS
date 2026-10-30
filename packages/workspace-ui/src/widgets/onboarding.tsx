@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, XIcon } from "lucide-react";
-import { AnimatePresence, Button, Card, motion, toast, useReducedMotionSafe } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n, useSettingsHref } from "@srirealtime/web";
+import { AnimatePresence, Button, Card, motion, toast, useReducedMotionSafe } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n, useSettingsHref } from "@rbms/web";
 import { ProgressRing } from "../components/bits";
 import { stepDescription, stepLabel, useStepHref } from "../components/onboarding/steps";
 import { WORKSPACE_SETTINGS_PATHS } from "../module";

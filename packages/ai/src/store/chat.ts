@@ -1,7 +1,7 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { DATA_RULES, dataBlock, claimKinds, filterClaims, injectionPayloads, neutralise, outputLooksInjected, sentences } from "../assist/safety";
 import { allowedNumbers, checkNumbers } from "../insights/numbers";
 import type { AiService } from "../service";

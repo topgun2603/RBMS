@@ -1,5 +1,5 @@
-import { DEFAULT_BRAND_TOKENS } from "@srirealtime/branding/tokens";
-import { homeDocSchema } from "@srirealtime/cms";
+import { DEFAULT_BRAND_TOKENS } from "@rbms/branding/tokens";
+import { homeDocSchema } from "@rbms/cms";
 import type { FeatureStatus } from "./check";
 import type { CatalogueGlance, FeatureRow, StudioPorts } from "./ports";
 import type { AreaId, StudioActor, StudioEnv } from "./types";

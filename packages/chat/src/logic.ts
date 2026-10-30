@@ -1,4 +1,4 @@
-import { badRequest, forbidden, hasPermission, isSuperAdmin, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { badRequest, forbidden, hasPermission, isSuperAdmin, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import { z } from "zod";
 import { CHAT_PERMISSION_KEYS } from "./features";
 import type { ChatAttachment, ConversationRow, ConversationType, MessageRow, ParticipantKind } from "./schema";

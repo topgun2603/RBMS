@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { AppError, defineModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, defineModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, eq, isNull, lt } from "drizzle-orm";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { idempotencyKeys } from "./schema";

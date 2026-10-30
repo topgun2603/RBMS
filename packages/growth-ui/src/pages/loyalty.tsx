@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { GiftIcon } from "lucide-react";
-import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
-import { Page, PageHeading, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
+import { Page, PageHeading, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { MembersTab } from "../components/loyalty/members-tab";
 import { ProgramTab } from "../components/loyalty/program-tab";
 

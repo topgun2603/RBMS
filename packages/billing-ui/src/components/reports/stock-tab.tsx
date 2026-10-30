@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { AlertTriangleIcon, CheckCircle2Icon, EyeOffIcon, PackageIcon, PackageXIcon, TriangleAlertIcon, WarehouseIcon, XCircleIcon } from "lucide-react";
-import { Button, EmptyState, StatusPill, type StatusTone } from "@srirealtime/ui";
+import { Button, EmptyState, StatusPill, type StatusTone } from "@rbms/ui";
 import { BarList } from "../charts/bar-list";
 import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";

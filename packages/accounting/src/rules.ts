@@ -7,7 +7,7 @@
  * version and posts the new one.
  */
 import { createHash } from "node:crypto";
-import { isValidGstin } from "@srirealtime/gst";
+import { isValidGstin } from "@rbms/gst";
 import { SYS } from "./chart";
 import type {
   CreditNoteSrc,

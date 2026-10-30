@@ -1,4 +1,4 @@
-import { defineSort, listFilter, listQuerySchema, searchAny, splitList } from "@srirealtime/core";
+import { defineSort, listFilter, listQuerySchema, searchAny, splitList } from "@rbms/core";
 import { and, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { TENANT_STATUSES, tenants } from "./schema";

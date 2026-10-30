@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { MEDICINES_DISPENSE, MEDICINES_FEATURE, MEDICINES_MANAGE, MEDICINES_REGISTER_FEATURE, MEDICINES_RX_FEATURE } from "./ports";

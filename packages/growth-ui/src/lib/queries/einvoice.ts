@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { retry4xx } from "../http";
 import type { EInvoiceAccount, EInvoiceAccountInput } from "../types";
 

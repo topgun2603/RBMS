@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import type { CancelReasonCode, EInvoicePreview, EInvoiceRecord, GenerateIrnResult, Gstr1Summary, InvoiceEInvoiceStatus, ewbRequestBody } from "./einvoice";
 import type { LoyaltyQuote } from "./loyalty";
 

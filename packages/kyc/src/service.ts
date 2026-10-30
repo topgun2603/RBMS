@@ -10,9 +10,9 @@ import {
   type AuditPort,
   type ListPage,
   type RequestContext,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import { REVIEW_SORT, reviewFilter, reviewListQuerySchema, type ReviewListQuery } from "./list";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { aggregateSubject, referenceName, type CheckFacts, type SubjectSummary } from "./aggregate";

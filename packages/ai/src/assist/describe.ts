@@ -1,4 +1,4 @@
-import { AppError, badRequest } from "@srirealtime/core";
+import { AppError, badRequest } from "@rbms/core";
 import { z } from "zod";
 import type { AiRunner } from "./hsn";
 import { DATA_RULES, dataBlock, filterClaims, neutralise, outputLooksInjected, sentences, type ClaimsResult } from "./safety";

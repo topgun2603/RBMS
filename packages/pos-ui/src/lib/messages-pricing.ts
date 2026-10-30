@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Price lists and alternate units at the counter (docs/price-lists-units.md). Merged into posMessages. */
 export const pricingEn: Messages = {

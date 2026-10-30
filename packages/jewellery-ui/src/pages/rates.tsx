@@ -20,8 +20,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, Page, PageHeading, Sparkline, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, Page, PageHeading, Sparkline, useI18n, usePermission } from "@rbms/web";
 import { InlineError, useMetalLabel } from "../components/bits";
 import { JEWELLERY_PERMISSIONS } from "../lib/access";
 import { money, paiseToInput, rupeesToPaise } from "../lib/format";

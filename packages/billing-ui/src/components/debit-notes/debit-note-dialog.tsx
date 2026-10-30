@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon, FilePlus2Icon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
-import { computeInvoice, isGstRate, type GstRate, type InvoiceTotals, type LineInput } from "@srirealtime/gst";
+import { computeInvoice, isGstRate, type GstRate, type InvoiceTotals, type LineInput } from "@rbms/gst";
 import {
   AnimatedNumber,
   Button,
@@ -26,8 +26,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { GstRateSelect } from "../gst-rate-select";
 import { MoneyInput } from "../money-input";
 import { formatQty, money, parseQty, rupeesToPaise, todayIST } from "../../lib/format";

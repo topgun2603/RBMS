@@ -1,4 +1,4 @@
-import type { FeatureGatePort } from "@srirealtime/core";
+import type { FeatureGatePort } from "@rbms/core";
 
 export type { FeatureGatePort };
 

@@ -1,5 +1,5 @@
-import { badRequest, tooMany } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, tooMany } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 import {
   addDaysISO,

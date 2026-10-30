@@ -23,8 +23,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n, useModuleNavigate } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n, useModuleNavigate } from "@rbms/web";
 import { rupeesToPaise } from "../lib/format";
 import { useCreateJob } from "../lib/queries";
 import { draftToFields, emptyDraft, type FieldError as FieldProblem, type FieldsDraft } from "../lib/templates";

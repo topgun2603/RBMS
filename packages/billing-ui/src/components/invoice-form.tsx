@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ApprovalCancelled, describeError, isPlanLimit, ModuleLink, useDebounced, useDiscountApproval, useI18n, useModuleNavigate, useSettingsHref } from "@srirealtime/web";
+import { ApprovalCancelled, describeError, isPlanLimit, ModuleLink, useDebounced, useDiscountApproval, useI18n, useModuleNavigate, useSettingsHref } from "@rbms/web";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -12,7 +12,7 @@ import {
   StickyNoteIcon,
   Trash2Icon,
 } from "lucide-react";
-import { amountInWordsINR, computeInvoice, isValidGstin, lineGstRate, type GstRateRule, type LineInput } from "@srirealtime/gst";
+import { amountInWordsINR, computeInvoice, isValidGstin, lineGstRate, type GstRateRule, type LineInput } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -34,7 +34,7 @@ import {
   motion,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CustomerPicker, type Party } from "./customer-picker";
 import { PriceListPicker, UnitPicker, useLinePricing, type PriceListChoice } from "./pricing/line-pricing";
 import { RiskHint } from "./money/risk";

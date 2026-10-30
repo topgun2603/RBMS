@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, FileTextIcon, NewspaperIcon, PencilLineIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { PERMS, useCan } from "../lib/access";
 import { sk } from "../lib/queries";
 import { CONTENT_STATUSES } from "../lib/content";

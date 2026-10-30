@@ -1,4 +1,4 @@
-import { emptyContext } from "@srirealtime/core";
+import { emptyContext } from "@rbms/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { authContextHook, defaultPermissionsFor } from "./hook";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { AlertTriangleIcon, InfoIcon, Loader2Icon, TruckIcon } from "lucide-react";
 import {
   Alert,
@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { todayIST } from "../../lib/format";
 import {
   emptyEwbForm,

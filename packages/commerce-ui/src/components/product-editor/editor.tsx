@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { APPAREL_FOOTWEAR_GST_RULE, exclusiveOf, gstRateAtPrice } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE, exclusiveOf, gstRateAtPrice } from "@rbms/gst";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArchiveIcon,
@@ -41,7 +41,7 @@ import {
   Label,
   motion,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   api,
   ApiError,
@@ -55,7 +55,7 @@ import {
   useI18n,
   useModuleHref,
   type Translator,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { ProductStatusPill, ProductThumb } from "../bits";
 import { useUnsavedGuard } from "../unsaved-guard";
 import { useCanManageCatalogue } from "../../lib/access";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Translator } from "@srirealtime/i18n/client";
+import type { Translator } from "@rbms/i18n/client";
 import { api } from "./api";
 import { humanizeKey } from "./format";
 import { tOr } from "./i18n";

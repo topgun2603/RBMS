@@ -5,7 +5,7 @@ All money is **integer paise**. Quantities are decimals with up to 3 places (e.g
 Dates are `YYYY-MM-DD` strings in IST. Tenant comes from the `x-tenant` header; staff routes need a signed-in
 member of the tenant with role owner, admin or staff (super-admins always pass).
 
-## Shared calc (`@srirealtime/invoices/calc`, pure and browser-safe)
+## Shared calc (`@rbms/invoices/calc`, pure and browser-safe)
 
 ```ts
 type GstRate = 0 | 0.25 | 3 | 5 | 12 | 18 | 28;

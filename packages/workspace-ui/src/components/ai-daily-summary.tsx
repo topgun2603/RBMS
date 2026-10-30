@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarClockIcon, Loader2Icon, SendIcon } from "lucide-react";
-import { Button, Field, FieldControl, FieldHint, FieldLabel, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, Switch, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, Field, FieldControl, FieldHint, FieldLabel, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, Switch, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { DAILY_DEFAULTS, usePreviewDailySummary, useSendDailySummary, type DailySummarySettings, type DailySummaryView } from "../lib/queries-ai-daily";
 import type { AiSettingsValues } from "../lib/queries-ai";
 import { SectionCard } from "./plan/section-card";

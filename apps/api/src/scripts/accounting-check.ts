@@ -6,7 +6,7 @@ import { createKit } from "../kit";
  * Posts a shop's history into the books, runs the reconciliation and prints the checks (docs/accounting.md). Meant for
  * development and for checking a shop before switching its books on:
  *
- *   pnpm --filter @srirealtime/api exec tsx --env-file-if-exists=.env src/scripts/accounting-check.ts <tenant-slug> [--wipe] [--keep]
+ *   pnpm --filter @rbms/api exec tsx --env-file-if-exists=.env src/scripts/accounting-check.ts <tenant-slug> [--wipe] [--keep]
  *
  * By default the shop's accounting rows are removed again afterwards (--keep leaves them; --wipe only removes them).
  */

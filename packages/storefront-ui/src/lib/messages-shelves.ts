@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Compare, recommendations, listing layouts and the shelf / story / proof home sections (product tabs, deal of the

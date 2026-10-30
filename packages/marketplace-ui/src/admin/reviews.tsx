@@ -31,8 +31,8 @@ import {
   Textarea,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
-import { absoluteUrl, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { absoluteUrl, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ReviewPill, Thumb } from "../components/bits";
 import { SubmitButton } from "../components/account";
 import { money } from "../lib/logic";

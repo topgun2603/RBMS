@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, CopyIcon, ExternalLinkIcon, Loader2Icon, MailIcon, MessageCircleIcon, MessageSquareTextIcon, Share2Icon, TruckIcon } from "lucide-react";
-import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label, Textarea, toast } from "@srirealtime/ui";
-import { describeError, useFeature, useI18n } from "@srirealtime/web";
+import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label, Textarea, toast } from "@rbms/ui";
+import { describeError, useFeature, useI18n } from "@rbms/web";
 import { QrImage } from "../upi-qr";
 import { money, todayIST, whatsappNumber } from "../../lib/format";
 import { usePublicUrl } from "../../lib/links";

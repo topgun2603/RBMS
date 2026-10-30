@@ -23,8 +23,8 @@ import {
   RadioGroupItem,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, QueryError, useI18n } from "@rbms/web";
 import { InlineError } from "../bits";
 import { useAssignments, useSetUserBranches, useStaff } from "../../lib/queries/branches";
 import type { Branch, StaffMember } from "../../lib/types";

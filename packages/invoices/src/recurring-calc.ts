@@ -1,6 +1,6 @@
 /**
  * Recurring invoices: the schedule maths (docs/recurring-export-gstin.md). The pure date maths lives in
- * `@srirealtime/core` (schedule.ts), shared with recurring expenses; re-exported here under the names this package used.
+ * `@rbms/core` (schedule.ts), shared with recurring expenses; re-exported here under the names this package used.
  */
 export {
   addDaysIso as addDays,
@@ -15,4 +15,4 @@ export {
   scheduleProblem,
   type DuePlan,
   type Schedule,
-} from "@srirealtime/core";
+} from "@rbms/core";

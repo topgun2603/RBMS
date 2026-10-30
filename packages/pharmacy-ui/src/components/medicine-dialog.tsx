@@ -23,8 +23,8 @@ import {
   SelectValue,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useSaveMedicine } from "../lib/queries";
 import { MEDICINE_SCHEDULES, type Medicine, type MedicineSchedule, type ShopItem } from "../lib/types";
 import { InlineError } from "./bits";

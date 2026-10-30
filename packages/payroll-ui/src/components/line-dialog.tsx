@@ -19,8 +19,8 @@ import {
   Label,
   Separator,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { hours, money, paiseToRupees, parseHalfDays, rupeesToPaise } from "../lib/format";
 import { useAdvances, useRunActions } from "../lib/queries";
 import type { Money, RunLine } from "../lib/types";

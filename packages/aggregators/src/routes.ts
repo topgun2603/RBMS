@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { AGGREGATORS_FEATURE, type AggregatorsService } from "./service";
@@ -9,7 +9,7 @@ const providerParam = z.object({ provider: z.string().min(1).max(30) });
 const hookParams = z.object({ provider: z.string().min(1).max(30), key: z.string().min(1).max(100) });
 const WEBHOOK_BODY_LIMIT = 1024 * 1024;
 
-// Permissions of @srirealtime/dining (this module works on its orders).
+// Permissions of @rbms/dining (this module works on its orders).
 const SERVE = "dining.serve";
 const KITCHEN = "dining.kitchen";
 const BILL = "dining.bill";

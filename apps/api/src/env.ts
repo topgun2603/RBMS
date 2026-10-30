@@ -1,5 +1,5 @@
-import { aiEnvShape } from "@srirealtime/ai";
-import { loadEnv, optionalString } from "@srirealtime/core";
+import { aiEnvShape } from "@rbms/ai";
+import { loadEnv, optionalString } from "@rbms/core";
 import { z } from "zod";
 
 export const envSchema = z.object({

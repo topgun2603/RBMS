@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { DINING_FEATURES, DINING_PERMISSIONS } from "./ports";
 import { diningRoutes } from "./routes";
 import { diningAreas, diningIngredients, diningKots, diningMenuItems, diningOrderItems, diningOrders, diningRecipeLines, diningRecipes, diningTables } from "./schema";

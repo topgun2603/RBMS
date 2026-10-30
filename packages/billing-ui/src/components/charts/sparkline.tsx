@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 
 /**
  * Tiny trend line (decorative: the tile it sits in carries the numbers as text). 2px stroke with round

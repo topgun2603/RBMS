@@ -39,7 +39,7 @@ import {
   SelectValue,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { StatusBadge } from "@/components/badges";
 import { TenantFeaturesSheet } from "@/components/features/tenant-features-sheet";
 import { SolutionDialog } from "@/components/solution-dialog";

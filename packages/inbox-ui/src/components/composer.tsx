@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FileIcon, Loader2Icon, RotateCcwIcon, XIcon } from "lucide-react";
-import { cn, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { cn, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { fileSize } from "../lib/format";
 import { FILE_MAX_BYTES, IMAGE_MAX_BYTES, uploadFile } from "../lib/uploads";
 import type { UploadedFile } from "../lib/types";

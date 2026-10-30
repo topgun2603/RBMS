@@ -1,6 +1,6 @@
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { exclusiveOf, gstRateAtPrice, type GstRateRule } from "@rbms/gst";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { catalogItemUnits, catalogProducts, catalogVariants, type ItemUnitRow } from "./schema";

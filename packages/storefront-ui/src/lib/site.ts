@@ -3,7 +3,7 @@
  * The header, phone tab bar, drawer and footer leave out the cart, wishlist, shopper account, order tracking and
  * product search, and the header shows the pack's main button instead (school: "Apply for admission").
  */
-import { packFor } from "@srirealtime/verticals";
+import { packFor } from "@rbms/verticals";
 
 export const siteOnly = (businessType: string | null | undefined): boolean => !!packFor(businessType)?.site;
 

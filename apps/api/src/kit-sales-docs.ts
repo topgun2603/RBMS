@@ -1,7 +1,7 @@
-import type { FeatureGatePort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { createSalesDocs, type InvoicesService, type SalesDocsDeps } from "@srirealtime/invoices";
-import type { ChallanStockInput, InventoryService, ReserveInput } from "@srirealtime/inventory";
+import type { FeatureGatePort } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { createSalesDocs, type InvoicesService, type SalesDocsDeps } from "@rbms/invoices";
+import type { ChallanStockInput, InventoryService, ReserveInput } from "@rbms/inventory";
 
 /** What the sales documents wiring needs from the host's services (structural, so kit.ts passes its own objects). */
 export interface SalesDocsWiring {

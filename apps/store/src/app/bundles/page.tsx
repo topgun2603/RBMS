@@ -1,4 +1,4 @@
-import { BundlesPage, bundlesMetadata } from "@srirealtime/storefront-ui";
+import { BundlesPage, bundlesMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = bundlesMetadata;
 

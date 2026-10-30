@@ -15,9 +15,9 @@ import {
   tooMany,
   type AuditPort,
   type ListPage,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import { roleCondition, USER_SORT, userListConditions, userListQuerySchema, type UserListQuery } from "./list";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { matchStoreOrigin, matchStoreReturn, type StoreOriginsPort } from "./store-origin";
@@ -817,7 +817,7 @@ export class AuthService {
   }
 
   /**
-   * A POS PIN session (`@srirealtime/pos`): bound to one paired terminal, `client = "srikit-pos"`, a fixed lifetime
+   * A POS PIN session (`@rbms/pos`): bound to one paired terminal, `client = "srikit-pos"`, a fixed lifetime
    * (default 12 h) that never slides. `authenticate` accepts it only with that terminal's id.
    */
   async createTerminalSession(

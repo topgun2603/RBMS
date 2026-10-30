@@ -1,6 +1,6 @@
 "use client";
 
-import type { StudioPreviewProps } from "@srirealtime/web";
+import type { StudioPreviewProps } from "@rbms/web";
 import { LivePreview } from "./live-preview";
 
 /**

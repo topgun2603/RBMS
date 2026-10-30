@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, ModuleLink, Page, PageHeading, tOr, useI18n, useModuleNavigate, useOptionalSession, useRouteParams } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, tOr, useI18n, useModuleNavigate, useOptionalSession, useRouteParams } from "@rbms/web";
 import { ArrowLeftIcon, CameraIcon, CheckIcon, ClipboardCheckIcon, DownloadIcon, Loader2Icon, MinusIcon, PlayIcon, PlusIcon, ScanBarcodeIcon, SendIcon, Undo2Icon, XIcon } from "lucide-react";
 import {
   AlertDialog,
@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { StatTile } from "../components/charts/stat-tile";
 import { AuditStatusPill } from "../components/inventory/audit-bits";
 import { fmtDay, fmtStamp } from "../components/inventory/batch-bits";

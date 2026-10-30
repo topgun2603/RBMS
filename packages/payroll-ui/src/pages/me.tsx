@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarPlusIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, FileDownIcon, Loader2Icon, LogInIcon, LogOutIcon, UserRoundIcon } from "lucide-react";
-import { Button, Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle, cn, EmptyState, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useFeature, useI18n } from "@srirealtime/web";
+import { Button, Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle, cn, EmptyState, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@rbms/ui";
+import { describeError, Page, PageHeading, useFeature, useI18n } from "@rbms/web";
 import { DayPill, InlineError } from "../components/bits";
 import { LeaveDialog } from "../components/leave-dialog";
 import { PAYROLL_FEATURES } from "../lib/access";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { ArrowLeftIcon, ArrowLeftRightIcon, FileDownIcon, Loader2Icon, PackageCheckIcon, PrinterIcon, SendIcon, Trash2Icon, XIcon } from "lucide-react";
 import {
   AlertDialog,
@@ -24,7 +24,7 @@ import {
   Label,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { TransferStatusPill } from "../components/inventory/audit-bits";
 import { fmtDay, fmtStamp } from "../components/inventory/batch-bits";
 import { cleanQty } from "../components/inventory/stock-meta";

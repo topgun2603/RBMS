@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, apiUrl } from "@srirealtime/web";
+import { api, apiUrl } from "@rbms/web";
 import { createSseParser, displayChannelName, readDisplayState, sameDisplay, type DisplayState } from "./display";
 import { readJson, storageKey, writeJson } from "./storage";
 

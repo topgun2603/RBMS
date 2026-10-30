@@ -1,4 +1,4 @@
-import { MyTicketsPage, helpPrivateMetadata } from "@srirealtime/storefront-ui";
+import { MyTicketsPage, helpPrivateMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = helpPrivateMetadata;
 

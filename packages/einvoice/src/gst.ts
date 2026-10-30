@@ -1,4 +1,4 @@
-// Small GST helpers copied from @srirealtime/gst (packages never import each other).
+// Small GST helpers copied from @rbms/gst (packages never import each other).
 
 const CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 /** 2-digit state, 10-char PAN, entity number, "Z" by default, check character. */

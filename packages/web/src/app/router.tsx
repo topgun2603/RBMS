@@ -3,7 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LockIcon, LogOutIcon } from "lucide-react";
-import { AuthLayout, Button, FadeIn, Skeleton } from "@srirealtime/ui";
+import { AuthLayout, Button, FadeIn, Skeleton } from "@rbms/ui";
 import { BrandMark } from "../components/brand-mark";
 import { Page } from "../components/page";
 import { WebProviders } from "../components/providers";

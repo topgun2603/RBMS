@@ -1,4 +1,4 @@
-import { pk, timestamps } from "@srirealtime/db";
+import { pk, timestamps } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
@@ -52,7 +52,7 @@ export const authSessions = pgTable(
     /** The app that signed in, from the `x-client` header (e.g. "srikit-business/1.0.0 (android)"); null = web. */
     client: text("client"),
     /**
-     * A POS PIN session (`@srirealtime/pos`): the paired terminal it is bound to. Such a session is valid only on a
+     * A POS PIN session (`@rbms/pos`): the paired terminal it is bound to. Such a session is valid only on a
      * request that carries that terminal's device token; it never slides. Null for every other session.
      */
     terminalId: uuid("terminal_id"),

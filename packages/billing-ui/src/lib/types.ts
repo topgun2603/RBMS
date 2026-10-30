@@ -5,7 +5,7 @@ import type {
   LineInput as GstLineInput,
   LineTotals as GstLineTotals,
   TaxBreakupRow,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 
 /** v2: lines may carry the saved item they came from (stock is keyed by itemId). */
 export type LineInput = GstLineInput & { itemId?: string };
@@ -15,7 +15,7 @@ export type { GstRate, InvoiceTotals, TaxBreakupRow };
 export type ISODate = string;
 
 /** Auth, tenancy and branding shapes live in the kit. */
-export type { Branding, BrandTokens, MeResponse, OtpRequestResponse, SignInResponse, Tenant, User } from "@srirealtime/web";
+export type { Branding, BrandTokens, MeResponse, OtpRequestResponse, SignInResponse, Tenant, User } from "@rbms/web";
 
 export interface Paged<T> {
   items: T[];
@@ -105,7 +105,7 @@ export interface Item {
   rate: number;
   gstRate: GstRate;
   /** Catalogue items: price-band GST (apparel / footwear); `gstRate`/`rate` are the band at the item's price. */
-  gstRule?: import("@srirealtime/gst").GstRateRule | null;
+  gstRule?: import("@rbms/gst").GstRateRule | null;
   createdAt: ISODate;
   /** Catalogue items: the product's category. */
   categoryId?: string | null;

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useI18n } from "@srirealtime/web";
-import { AnimatedNumber, cn, Skeleton } from "@srirealtime/ui";
+import { ModuleLink, useI18n } from "@rbms/web";
+import { AnimatedNumber, cn, Skeleton } from "@rbms/ui";
 import { Sparkline } from "./sparkline";
 import { compactINR, money, pctChange } from "../../lib/format";
 

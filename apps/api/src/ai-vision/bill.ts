@@ -1,5 +1,5 @@
-import type { Confidence, PurchaseBillRaw } from "@srirealtime/ai";
-import { GST_STATES, computeLine, normalizeStateCode, stateFromGstin, type GstRate } from "@srirealtime/gst";
+import type { Confidence, PurchaseBillRaw } from "@rbms/ai";
+import { GST_STATES, computeLine, normalizeStateCode, stateFromGstin, type GstRate } from "@rbms/gst";
 import {
   Flags,
   MAX_QTY,

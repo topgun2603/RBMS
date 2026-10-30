@@ -23,8 +23,8 @@ import {
   InputGroupInput,
   motion,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useDebounced, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useDebounced, useI18n } from "@rbms/web";
 import { createCustomer, isNetworkError, useCustomerSearch } from "../lib/api";
 import { mobileDigits, money } from "../lib/format";
 import { reportNetwork } from "../lib/online";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { OnboardingStep } from "@srirealtime/onboarding";
+import type { OnboardingStep } from "@rbms/onboarding";
 import { createStudioPorts } from "./kit-ai-studio";
 import { createAiOnboardingKit } from "./kit-ai-onboarding";
 

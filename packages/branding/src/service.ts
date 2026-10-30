@@ -1,5 +1,5 @@
-import { badRequest } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { tenantBranding } from "./schema";

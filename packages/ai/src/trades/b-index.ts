@@ -1,5 +1,5 @@
-import { defineModule, type SrModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { defineModule, type SrModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import type { AiService } from "../service";
 import { aiPhotoBatches, aiProductTags } from "../schema";
 import { tradesBRoutes, type TradesBPorts } from "./b-routes";

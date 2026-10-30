@@ -28,7 +28,7 @@ import {
   PageHeader,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AppEditorSheet, type AppEditing } from "@/components/features/app-editor-sheet";
 import { SolutionPresetSheet, Swatch } from "@/components/features/solution-preset-sheet";

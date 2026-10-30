@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, BadgeCheckIcon, PaletteIcon, TypeIcon } from "lucide-react";
-import { Button, Label, Skeleton, toast } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
+import { Button, Label, Skeleton, toast } from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, useI18n, useSettingsHref, useShop, useWebFonts } from "@rbms/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice, ColorField, FontField } from "../components/brand-fields";
 import { ImageField } from "../components/image-field";

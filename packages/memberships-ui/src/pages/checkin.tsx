@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, CheckCircle2Icon, Loader2Icon, ScanLineIcon, SearchIcon, XCircleIcon } from "lucide-react";
-import { Button, cn, InitialsAvatar, Input, Skeleton } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n } from "@srirealtime/web";
+import { Button, cn, InitialsAvatar, Input, Skeleton } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n } from "@rbms/web";
 import { phoneLabel } from "../lib/format";
 import { useCheckIn, useTodayCheckins } from "../lib/queries";
 import type { CheckinResult } from "../lib/types";

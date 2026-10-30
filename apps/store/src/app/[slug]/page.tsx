@@ -1,5 +1,5 @@
 /* CMS pages live at /:pageSlug (STORE_PATHS.page); anything else 404s. */
-import { CmsPageView, cmsPageMetadata } from "@srirealtime/storefront-ui";
+import { CmsPageView, cmsPageMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ slug: string }> };
 

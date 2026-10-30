@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeftIcon } from "lucide-react";
-import { cn, controlHeight, type ControlSize } from "@srirealtime/ui";
+import { cn, controlHeight, type ControlSize } from "@rbms/ui";
 import { ModuleLink } from "../app/navigation";
 import { useInSettingsFrame } from "./settings-nav";
 

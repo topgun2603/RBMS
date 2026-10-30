@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { apiFile, retry4xx } from "../http";
 import { fileSlug } from "../report-spec";
 import type { DatasetInfo, ReportFormat, ReportSchedule, ReportSpec, RunResult, SavedReport, ScheduleInput } from "../types";

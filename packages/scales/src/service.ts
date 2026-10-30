@@ -1,5 +1,5 @@
-import { AppError, badRequest, defineSort, facetCounts, listFilter, listQuerySchema, notFound, searchAny, type ListPage } from "@srirealtime/core";
-import type { Db, Tx } from "@srirealtime/db";
+import { AppError, badRequest, defineSort, facetCounts, listFilter, listQuerySchema, notFound, searchAny, type ListPage } from "@rbms/core";
+import type { Db, Tx } from "@rbms/db";
 import { and, asc, count, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { buildScaleBarcode, maxPlu, parseScaleBarcode, scaleFormatProblem } from "./barcode";

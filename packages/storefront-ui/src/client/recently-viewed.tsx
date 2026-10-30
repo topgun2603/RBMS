@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { HistoryIcon } from "lucide-react";
-import { Reveal } from "@srirealtime/ui/motion";
+import { Reveal } from "@rbms/ui/motion";
 import type { ProductSummary } from "../types";
 import { SectionTitle } from "../components/bits";
 import { Carousel } from "./carousel";

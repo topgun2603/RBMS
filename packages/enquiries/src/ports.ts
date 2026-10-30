@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef } from "@rbms/core";
 
 export const ENQUIRIES_MODULE = "enquiries";
 export const ENQUIRIES_FEATURE = "enquiries";

@@ -1,8 +1,8 @@
 "use client";
 
 import { ShoppingCartIcon, TicketPercentIcon } from "lucide-react";
-import { Separator } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Separator } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { formatQty, money } from "../../lib/format";
 import type { Order } from "../../lib/types";
 import { Section, Thumb, TotalRow } from "../bits";

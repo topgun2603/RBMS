@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { describeError, useI18n } from "@/lib/i18n";
 import { useApplySolution, useSolutions } from "@/lib/solutions";
 

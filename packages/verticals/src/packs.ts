@@ -40,7 +40,7 @@ export interface BusinessPack {
   tagline: string;
   /** The app the shop runs on. */
   appId: AppId;
-  /** Theme preset id (@srirealtime/branding THEME_PRESETS). */
+  /** Theme preset id (@rbms/branding THEME_PRESETS). */
   preset: string;
   copy: { en: Copy; ta: Copy };
   /**

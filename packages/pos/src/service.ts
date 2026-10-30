@@ -10,8 +10,8 @@ import {
   type AuditEvent,
   type DeviceRef,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { DisplayHostPorts } from "./display";

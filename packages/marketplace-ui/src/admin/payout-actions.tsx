@@ -21,8 +21,8 @@ import {
   FieldLabel,
   Input,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, useI18n } from "@rbms/web";
 import { SubmitButton } from "../components/account";
 import { canCancelPayout, canMarkPaid, canRefreshPayout, canRetryPayout, money } from "../lib/logic";
 import { usePayoutAction } from "../lib/queries";

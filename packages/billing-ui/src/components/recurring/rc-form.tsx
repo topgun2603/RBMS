@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { describeError, useI18n, useModuleNavigate } from "@srirealtime/web";
+import { describeError, useI18n, useModuleNavigate } from "@rbms/web";
 import { CalendarClockIcon, Loader2Icon, PlusIcon, SaveIcon, StickyNoteIcon } from "lucide-react";
-import { computeInvoice } from "@srirealtime/gst";
+import { computeInvoice } from "@rbms/gst";
 import {
   AnimatedNumber,
   AnimatePresence,
@@ -22,7 +22,7 @@ import {
   motion,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CustomerPicker, type Party } from "../customer-picker";
 import { PriceListPicker, useLinePricing, type PriceListChoice } from "../pricing/line-pricing";
 import { blankLine, isBlank, LineRow, linesFromInvoice, parseLine, partyFromInvoice, partyState, Row, type LineDraft } from "../invoice-form";

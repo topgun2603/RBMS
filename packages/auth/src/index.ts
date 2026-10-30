@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { authContextHook } from "./hook";
 import { authRoutes } from "./routes";
 import * as schema from "./schema";

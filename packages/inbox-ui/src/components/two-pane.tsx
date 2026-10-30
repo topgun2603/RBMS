@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 
 /**
  * List + thread layout. From `md` up both panes sit side by side at the viewport height under the top bar (3.5rem).

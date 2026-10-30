@@ -1,4 +1,4 @@
-import { isValidStateCode, normalizeStateCode } from "@srirealtime/gst";
+import { isValidStateCode, normalizeStateCode } from "@rbms/gst";
 import { z } from "zod";
 
 export const PINCODE_RE = /^[1-9][0-9]{5}$/;

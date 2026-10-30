@@ -1,9 +1,9 @@
 // Batch 3 end-to-end (docs/batch3.md) against the running API (http://localhost:4000) and the real database.
-//   node test/e2e/batch3.mjs        (pnpm --filter @srirealtime/api test:e2e:3; test:e2e:all seeds and runs every script)
+//   node test/e2e/batch3.mjs        (pnpm --filter @rbms/api test:e2e:3; test:e2e:all seeds and runs every script)
 //   node test/e2e/batch3.mjs chat   (only the sections whose file name contains "chat")
 // The API must run in development: test OTP (TEST_OTP_CODE / TEST_OTP_TARGETS), mock payments, mock payout/KYC/
 // WhatsApp/e-invoice providers and the console email driver. Shops: e2e-bill (BL, pro) and e2e-store (EC, pro) from
-// `pnpm --filter @srirealtime/api seed:e2e`; owner e2e-owner@example.com. Every run uses fresh "E2E <run>" names and
+// `pnpm --filter @rbms/api seed:e2e`; owner e2e-owner@example.com. Every run uses fresh "E2E <run>" names and
 // new +91 99990 0xxxxx test phones, so it is safe to re-run. Sections live in ./b3 and share ./b3/lib.mjs.
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";

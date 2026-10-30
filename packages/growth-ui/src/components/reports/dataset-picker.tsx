@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, BoxesIcon, DatabaseIcon, GiftIcon, ReceiptIcon, UsersIcon, WalletIcon } from "lucide-react";
-import { cn, EmptyState, motion, Skeleton, useReducedMotionSafe } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { cn, EmptyState, motion, Skeleton, useReducedMotionSafe } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import type { DatasetInfo } from "../../lib/types";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {

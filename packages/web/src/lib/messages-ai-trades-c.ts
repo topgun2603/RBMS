@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiTrades.* strings: Phase 3 part C helpers (repair & electronics, tailoring, salon / spa / gym win-back, hardware quotes). Keep en and ta key sets identical. */
 export const enAiTradesC: Messages = {

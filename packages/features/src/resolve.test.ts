@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { grants, normalizeGrants, resolveFeatures, shopAllows, type ResolveInput } from "./resolve";
 

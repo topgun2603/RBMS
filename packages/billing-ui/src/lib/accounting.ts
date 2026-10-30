@@ -5,7 +5,7 @@
  * "net" values are debit minus credit (a credit balance is negative).
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type QueryParams } from "@srirealtime/web";
+import { api, type QueryParams } from "@rbms/web";
 
 export const ACC = "/accounting";
 export const ACCOUNTING_FEATURE = "accounting";

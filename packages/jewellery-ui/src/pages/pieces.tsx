@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { GemIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
-import { Page, PageHeading, useI18n, usePermission, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
+import { Page, PageHeading, useI18n, usePermission, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { PieceStatusPill, useMetalLabel } from "../components/bits";
 import { PieceDialog } from "../components/piece-dialog";
 import { PieceSheet } from "../components/piece-sheet";

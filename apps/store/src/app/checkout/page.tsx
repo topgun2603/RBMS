@@ -1,4 +1,4 @@
-import { CheckoutPage, checkoutMetadata } from "@srirealtime/storefront-ui";
+import { CheckoutPage, checkoutMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = checkoutMetadata;
 

@@ -1,4 +1,4 @@
-import { notFound } from "@srirealtime/core";
+import { notFound } from "@rbms/core";
 import type { PdfDriver } from "./driver";
 import { invoiceFilename, quotationFilename, salesDocFilename } from "./builtins";
 import { normalizeLocale } from "./labels";

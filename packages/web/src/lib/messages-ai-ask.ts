@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiAsk.* strings: "Ask your shop" (Phase 2). Keep en and ta key sets identical. */
 export const enAiAsk: Messages = {

@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { INVENTORY_FEATURES } from "./features";
 import { inventoryRoutes } from "./routes";
 import {

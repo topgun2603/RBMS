@@ -1,5 +1,5 @@
-import { defineModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { defineModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { uploadsRoutes } from "./routes";
 import { files } from "./schema";
 import { UploadsService, type LoggerPort, type UploadsConfig } from "./service";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { stateName } from "@srirealtime/gst";
+import { stateName } from "@rbms/gst";
 import { ArchiveRestoreIcon, BanIcon, CrownIcon, MapPinIcon, MoreHorizontalIcon, NetworkIcon, PackageIcon, PencilIcon, PlusIcon, ReceiptTextIcon } from "lucide-react";
 import {
   AnimatePresence,
@@ -22,8 +22,8 @@ import {
   TabsTrigger,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { NoAccess, useCan } from "../components/bits";
 import { BranchSheet } from "../components/branches/branch-dialog";
 import { StaffTab } from "../components/branches/staff-tab";

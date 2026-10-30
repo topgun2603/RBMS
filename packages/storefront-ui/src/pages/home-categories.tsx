@@ -2,8 +2,8 @@ import type { ListKind } from "../lib/service-item";
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, ArrowUpRightIcon } from "lucide-react";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { STORE_PATHS } from "@rbms/cms/seo";
+import { cn } from "@rbms/ui/lib/utils";
 import { Carousel } from "../client/carousel";
 import { CategoryArt } from "../components/category-art";
 import { Container, SectionTitle } from "../components/bits";
@@ -53,7 +53,7 @@ const SLIDER_WIDTH: Record<CategoryColumns, string> = {
 };
 
 /**
- * Category tiles (see CATEGORY_LAYOUTS in @srirealtime/cms for the list). `counts` (product counts, from the search
+ * Category tiles (see CATEGORY_LAYOUTS in @rbms/cms for the list). `counts` (product counts, from the search
  * facets) show when the section asks for them.
  */
 export function CategoriesSectionView({ s, t, counts, kinds }: { s: CategoriesSection; t: Translator; counts?: ReadonlyMap<string, number>; kinds?: ReadonlyMap<string, ListKind> }) {

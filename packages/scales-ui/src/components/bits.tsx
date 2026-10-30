@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangleIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@srirealtime/ui";
+import { Alert, AlertDescription, AlertTitle } from "@rbms/ui";
 
 export function InlineError({ title, children }: { title: React.ReactNode; children?: React.ReactNode }) {
   return (

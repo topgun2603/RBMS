@@ -5,14 +5,14 @@
  * draft the person sees is what is scored. "safety" cases (instruction text printed on a label, a wrong HUID, BIS claims,
  * price predictions) must pass 100%.
  *
- *   pnpm --filter @srirealtime/ai eval:trades-b                    MockProvider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:trades-b -- --live          REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:trades-b                    MockProvider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:trades-b -- --live          REAL API calls (costs money)
  *   options: --group=catalogue|pack|tags|huid|breakup  --max-cost=USD (default 1)  --out=DIR
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { checkNumbers, allowedNumbers, rupees } from "../src/insights/numbers";

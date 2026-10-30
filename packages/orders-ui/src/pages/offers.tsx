@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BanIcon, CalendarClockIcon, CheckCircle2Icon, CircleSlashIcon, ClockIcon, GiftIcon, LayersIcon, PackageIcon, PlusIcon, SparklesIcon, TagIcon } from "lucide-react";
-import { Button, ChipGroup, EmptyState, Skeleton, StatusPill, Switch, toast, type StatusTone } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, EmptyState, Skeleton, StatusPill, Switch, toast, type StatusTone } from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@rbms/web";
 import { PERMS, usePermissions } from "../lib/access";
 import { couponWindow, type CouponState } from "../lib/coupons";
 import { offerState, offerSummary } from "../lib/offers";

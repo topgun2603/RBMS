@@ -19,8 +19,8 @@ import {
   XIcon,
   YoutubeIcon,
 } from "lucide-react";
-import { AnimatePresence, Button, ChipGroup, cn, Label, motion } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, ChipGroup, cn, Label, motion } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { extractYoutubeId } from "../lib/content";
 import { BLOCK_LIMITS, BLOCK_TYPES, duplicateBlockForm, newBlockForm, youtubeThumb, type BlockForm, type BlockType } from "../lib/blocks";
 import type { FieldErrors } from "../lib/sections";

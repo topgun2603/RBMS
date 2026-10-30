@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { REVIEW_FEATURES, REVIEW_PERMISSIONS } from "./features";
 import { reviewsRoutes } from "./routes";
 import { productReviews, reviewVotes } from "./schema";

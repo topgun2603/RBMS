@@ -1,4 +1,4 @@
-import { AppError, tooMany, type SrModule } from "@srirealtime/core";
+import { AppError, tooMany, type SrModule } from "@rbms/core";
 import { z } from "zod";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
@@ -14,7 +14,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 
 /** Platform role on the dedicated demo users; the one marker the guard and the apps look at (`/v1/auth/me` → user.platformRoles). */
 export const DEMO_PLATFORM_ROLE = "demo";
-/** Tenant role key (`role:demo`), a built-in role template in @srirealtime/staff. */
+/** Tenant role key (`role:demo`), a built-in role template in @rbms/staff. */
 export const DEMO_ROLE = "role:demo";
 export const DEMO_SESSION_MS = 2 * 60 * 60_000;
 export const DEMO_DEFAULT_LIMITS = { perWindow: 12, windowMs: 10 * 60_000 };

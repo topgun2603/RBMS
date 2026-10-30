@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { AppError } from "@srirealtime/core";
-import type { createCatalogue } from "@srirealtime/catalogue";
-import { and, eq, gt, inArray, isNull, sql, type Db } from "@srirealtime/db";
-import { expenseCategories, expenses } from "@srirealtime/expenses";
+import { AppError } from "@rbms/core";
+import type { createCatalogue } from "@rbms/catalogue";
+import { and, eq, gt, inArray, isNull, sql, type Db } from "@rbms/db";
+import { expenseCategories, expenses } from "@rbms/expenses";
 import {
   billImporter,
   migratePartiesImporter,
@@ -20,10 +20,10 @@ import {
   type PartyTarget,
   type RollbackResult,
   type TallyVoucher,
-} from "@srirealtime/importexport";
-import { debitNotes, purchasePayments, purchases, stockMovements, suppliers, type createInventory } from "@srirealtime/inventory";
-import { billingCustomers, customerReceipts, invoicePayments, invoices, type createInvoices } from "@srirealtime/invoices";
-import type { StorageAdapter } from "@srirealtime/uploads";
+} from "@rbms/importexport";
+import { debitNotes, purchasePayments, purchases, stockMovements, suppliers, type createInventory } from "@rbms/inventory";
+import { billingCustomers, customerReceipts, invoicePayments, invoices, type createInvoices } from "@rbms/invoices";
+import type { StorageAdapter } from "@rbms/uploads";
 
 /**
  * Switching to us (docs/importing.md): the party and historical-bill importers, their undo, and "Export all my data".

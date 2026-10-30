@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SparklesIcon } from "lucide-react";
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 import { posApi } from "../lib/api";
 import type { CartLine, CartProduct } from "../lib/cart";
 import { money } from "../lib/format";

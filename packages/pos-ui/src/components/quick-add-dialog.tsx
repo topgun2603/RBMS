@@ -23,8 +23,8 @@ import {
   SelectValue,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, HsnSuggestPanel, PackPhotoButton, useHsnSuggest, useI18n, type PackResult } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, HsnSuggestPanel, PackPhotoButton, useHsnSuggest, useI18n, type PackResult } from "@rbms/web";
 import type { CartProduct } from "../lib/cart";
 import { adjustItemStock, createCatalogProduct, lookupCode } from "../lib/api";
 import { rupeesToPaise } from "../lib/format";

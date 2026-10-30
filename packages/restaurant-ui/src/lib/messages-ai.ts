@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Strings of the restaurant AI helpers (docs/ai.md "Phase 3 part A"): menu from a photo, recipes and food cost, prep forecast. */
 export const aiEn: Messages = {

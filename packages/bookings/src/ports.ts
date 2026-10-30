@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef, TenantRef } from "@rbms/core";
 import type { AppointmentSource, AppointmentStatus } from "./schema";
 
 export interface BillLine {

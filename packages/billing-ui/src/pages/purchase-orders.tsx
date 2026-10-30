@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ClipboardListIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@rbms/ui";
 import { PoStatusPill } from "../components/inventory/po-status";
 import { money } from "../lib/format";
 import { PO_STATUSES, type PurchaseOrder } from "../lib/types-payables";

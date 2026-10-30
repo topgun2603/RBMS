@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { emptyContext, type RequestContext } from "@srirealtime/core";
+import { emptyContext, type RequestContext } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { byteRange, uploadsRoutes } from "./routes";
 import { DEFAULT_MAX_BYTES, DEFAULT_VIDEO_MAX_BYTES, UploadsService, decodeCursor, encodeCursor, likeEscape } from "./service";

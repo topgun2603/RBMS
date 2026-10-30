@@ -1,6 +1,6 @@
 import type { Invoice, InvoiceInput, InvoiceParty, ISODate, LineTotals, Paged } from "./types";
 
-/** Quotation types: mirror @srirealtime/invoices quotations.ts (docs/quotations.md). Money is in paise. */
+/** Quotation types: mirror @rbms/invoices quotations.ts (docs/quotations.md). Money is in paise. */
 
 export const QUOTATION_STATUSES = ["draft", "sent", "accepted", "declined", "cancelled", "converted"] as const;
 export type QuotationStatus = (typeof QUOTATION_STATUSES)[number];

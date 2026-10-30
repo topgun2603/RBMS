@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarDaysIcon } from "lucide-react";
-import { ChipGroup, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+import { ChipGroup, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { EntryDialog, useKindLabel } from "../components/accounting/entry-dialog";
 import { AccountingPage, Amt, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useEntries, type Entry } from "../lib/accounting";

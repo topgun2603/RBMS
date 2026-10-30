@@ -1,5 +1,5 @@
-import type { ReceiptRaw } from "@srirealtime/ai";
-import { gstinCheckChar } from "@srirealtime/gst";
+import type { ReceiptRaw } from "@rbms/ai";
+import { gstinCheckChar } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { matchCategory, processReceipt } from "./receipt";
 

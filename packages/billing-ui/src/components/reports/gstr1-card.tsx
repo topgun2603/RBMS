@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { api, apiDownload, describeError, FiguresTables, useAiAssistAllowed, useFeature, useI18n, type AskTable } from "@srirealtime/web";
+import { api, apiDownload, describeError, FiguresTables, useAiAssistAllowed, useFeature, useI18n, type AskTable } from "@rbms/web";
 import { AlertTriangleIcon, ChevronDownIcon, FileJson2Icon, Loader2Icon, SparklesIcon } from "lucide-react";
 import {
   AnimatePresence,
@@ -18,7 +18,7 @@ import {
   SelectValue,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { useHasPermission } from "../../lib/access";
 import { defaultGstr1Period, gstr1Periods } from "../../lib/einvoice";
 import { useGstr1Summary } from "../../lib/queries-growth";

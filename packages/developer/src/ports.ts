@@ -1,6 +1,6 @@
-import type { TenantRef } from "@srirealtime/core";
+import type { TenantRef } from "@rbms/core";
 
-export type { FeatureGatePort } from "@srirealtime/core";
+export type { FeatureGatePort } from "@rbms/core";
 
 /** Implemented with tenancy (`toTenantRef` of an active tenant). Null for unknown or suspended tenants. */
 export interface TenantLookupPort {
@@ -15,7 +15,7 @@ export interface EventsPort {
   emit(tenantId: string, type: string, data: unknown): Promise<void>;
 }
 
-/** Subset of the jobs service (same shape as @srirealtime/jobs `QueuePort`). */
+/** Subset of the jobs service (same shape as @rbms/jobs `QueuePort`). */
 export interface QueuePort {
   define<T>(name: string, handler: (data: T, meta: { attempt: number; jobId: string }) => Promise<void>, opts?: { attempts?: number; backoffMs?: number; concurrency?: number }): void;
   enqueue<T>(name: string, data: T, opts?: { delayMs?: number; jobId?: string }): Promise<void>;

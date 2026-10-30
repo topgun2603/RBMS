@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BookOpenIcon } from "lucide-react";
-import { Button, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Button, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountSelect, AccountingPage, Amt, Balance, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useAccounts, useLedger } from "../lib/accounting";
 import { rangeFor, todayIST } from "../lib/format";

@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { parseBearer, parseCookies } from "./helpers";
-import { FULL_ACCESS_ROLES } from "@srirealtime/core";
+import { FULL_ACCESS_ROLES } from "@rbms/core";
 import type { LoggerPort, MembershipLookup, PermissionResolverPort } from "./ports";
 import type { AuthService } from "./service";
 

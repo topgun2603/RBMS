@@ -1,5 +1,5 @@
-import { homeDocSchema } from "@srirealtime/cms";
-import { PACKS, starterHome, type BusinessType } from "@srirealtime/verticals";
+import { homeDocSchema } from "@rbms/cms";
+import { PACKS, starterHome, type BusinessType } from "@rbms/verticals";
 import { randomUUID } from "node:crypto";
 import { MemoryStudioStore } from "../studio/store";
 import { StudioService } from "../studio/engine";

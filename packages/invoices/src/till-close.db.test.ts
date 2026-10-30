@@ -4,8 +4,8 @@
  * afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { createDb, type Db } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { createDb, type Db } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { InvoicesService } from "./service";

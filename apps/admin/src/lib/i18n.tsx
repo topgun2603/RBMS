@@ -11,7 +11,7 @@ import {
   type Locale,
   type Messages,
   type Translator,
-} from "@srirealtime/i18n/client";
+} from "@rbms/i18n/client";
 import { api, ApiError } from "./api";
 import { getToken, LOCALE_KEY, readStored, useStored, useTenantSlug, writeStored } from "./session";
 import { adminMessages } from "./admin-messages";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /** `GET /v1/staff/discount-limits`: a max discount percent and / or a max discount per bill, per role or per member. */
 export interface DiscountLimit {

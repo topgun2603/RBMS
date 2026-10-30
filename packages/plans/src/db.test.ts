@@ -3,7 +3,7 @@
  * `PLANS_TEST_DATABASE_URL` set (a development Postgres); it works in a throw-away schema and drops it afterwards.
  *   PowerShell: $env:PLANS_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5432/srikit"; pnpm test
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PlansService, type UsageSource } from "./service";

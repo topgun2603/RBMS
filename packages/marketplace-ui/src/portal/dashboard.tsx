@@ -15,8 +15,8 @@ import {
   TruckIcon,
   WalletIcon,
 } from "lucide-react";
-import { AnimatedNumber, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Progress, Skeleton, StatCard, Stagger, StaggerItem } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+import { AnimatedNumber, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Progress, Skeleton, StatCard, Stagger, StaggerItem } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n } from "@rbms/web";
 import { OrderStatusPill, Thumb } from "../components/bits";
 import { fulfilmentStep, istDateOf, istEndOfDay, istMonthStartOf, money, nextPayoutEstimate, onboardingSteps, pendingSettlement, salesSummary } from "../lib/logic";
 import { useKycSubject, useMarketplaceSettings } from "../lib/queries";

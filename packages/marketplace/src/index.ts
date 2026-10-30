@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { MARKETPLACE_FEATURES, MARKETPLACE_PERMISSIONS } from "./features";
 import { marketplaceRoutes } from "./routes";
 import { vendorLedger, vendorOrders, vendorPayouts, vendorProductReviews, vendors, vendorUsers } from "./schema";

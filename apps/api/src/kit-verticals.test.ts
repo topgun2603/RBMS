@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { FeatureDef } from "@srirealtime/core";
-import { PACKS } from "@srirealtime/verticals";
-import { toLookup, type ProductRow, type VariantRow } from "@srirealtime/catalogue";
-import { emptyContext, type RequestContext } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
+import { PACKS } from "@rbms/verticals";
+import { toLookup, type ProductRow, type VariantRow } from "@rbms/catalogue";
+import { emptyContext, type RequestContext } from "@rbms/core";
 import Fastify from "fastify";
 import type { Logger } from "pino";
 import { counterResolveSchema, createCounter, createSolutionPresets, defaultPreset, effectivePreset, includedFor, switchableFor } from "./kit-verticals";

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { AppError, badRequest, notFound } from "@srirealtime/core";
+import { AppError, badRequest, notFound } from "@rbms/core";
 import type { AiRunner } from "../assist/hsn";
 import type { GuideIndex } from "../assist/help";
 import { assessShop, rankAtRisk, type ChurnAssessment, type ChurnFilter, type ShopSignals } from "./churn";

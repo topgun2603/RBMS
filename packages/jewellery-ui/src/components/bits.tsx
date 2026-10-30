@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription, cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Alert, AlertTitle, AlertDescription, cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { grams, money } from "../lib/format";
 import type { Metal } from "../lib/pricing";
 import type { Breakdown, ExchangeStatus, PieceStatus } from "../lib/types";

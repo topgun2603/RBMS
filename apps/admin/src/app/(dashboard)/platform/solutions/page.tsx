@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { BlocksIcon, StoreIcon } from "lucide-react";
-import { Badge, Card, PageHeader, Skeleton } from "@srirealtime/ui";
+import { Badge, Card, PageHeader, Skeleton } from "@rbms/ui";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";

@@ -5,7 +5,7 @@
  * React Query hooks. Money is integer paise; statement and book amounts are signed (+ money in, - money out).
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { ACC } from "./accounting";
 
 export const ACC_BANK = "accounting.bank";

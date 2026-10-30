@@ -13,7 +13,7 @@ import {
   Button,
   Input,
   Label,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { useI18n } from "@/lib/i18n";
 
 export interface ConfirmDialogProps {

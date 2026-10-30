@@ -14,12 +14,12 @@ const entryPoints = {
   "run-job": "src/scripts/run-job.ts",
 };
 
-/** Bundle our own @srirealtime/* packages; leave every other bare import to node_modules. */
+/** Bundle our own @rbms/* packages; leave every other bare import to node_modules. */
 const externalThirdParty = {
   name: "external-third-party",
   setup(b) {
     b.onResolve({ filter: /^[^./]/ }, (args) => {
-      if (args.path.startsWith("@srirealtime/")) return undefined;
+      if (args.path.startsWith("@rbms/")) return undefined;
       return { path: args.path, external: true };
     });
   },

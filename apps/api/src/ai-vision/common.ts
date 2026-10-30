@@ -1,4 +1,4 @@
-import { GST_RATES, isValidDate, isValidGstin, normalizeGstin } from "@srirealtime/gst";
+import { GST_RATES, isValidDate, isValidGstin, normalizeGstin } from "@rbms/gst";
 
 /**
  * Deterministic checks for what the vision helpers read (docs/ai.md "Scan a supplier bill"). The model is never trusted:

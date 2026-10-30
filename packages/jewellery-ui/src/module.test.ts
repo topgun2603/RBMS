@@ -49,7 +49,7 @@ describe("jewelleryModule", () => {
   });
 });
 
-describe("client pricing (mirrors @srirealtime/jewellery)", () => {
+describe("client pricing (mirrors @rbms/jewellery)", () => {
   it("derives purities from 24K and keeps overrides", () => {
     const card = resolveRates([
       { metal: "gold", purity: "24K", ratePerGram: 720000 },

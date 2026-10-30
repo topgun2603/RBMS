@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { absoluteUrl, apiUrl, ApiError, BrandingStyle, BrandMark, describeError, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useI18n, useRouteParams, useWebFonts } from "@srirealtime/web";
+import { absoluteUrl, apiUrl, ApiError, BrandingStyle, BrandMark, describeError, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useI18n, useRouteParams, useWebFonts } from "@rbms/web";
 import { BanIcon, CheckCircle2Icon, FileDownIcon, FileXIcon, Loader2Icon, PrinterIcon, ReceiptIcon, ThumbsDownIcon, ThumbsUpIcon, TimerOffIcon } from "lucide-react";
 import {
   AnimatedNumber,
@@ -20,7 +20,7 @@ import {
   SuccessCheck,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { InvoiceDocument } from "../components/invoice-document";
 import { useValidityText } from "../components/quotations/quotation-ui";
 import { money } from "../lib/format";

@@ -60,7 +60,7 @@ import {
  * sortable headers, row selection + bulk bar, remembered column visibility, sticky header, skeleton / empty / error
  * states, a pager footer and, on phones, a card list. docs/web-modules.md → "Lists and tables".
  *
- *   const dt = useDataTable({ columns, data, sort, onSortChange, pagination, ... });  // or useServerTable() in @srirealtime/web
+ *   const dt = useDataTable({ columns, data, sort, onSortChange, pagination, ... });  // or useServerTable() in @rbms/web
  *   <DataTableToolbar table={dt} />
  *   <DataTable table={dt} onRowClick={(row) => navigate(`invoices/${row.id}`)} />
  *

@@ -1,5 +1,5 @@
-import { newId } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { newId } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, desc, eq, isNotNull, lte, or } from "drizzle-orm";
 import { reportSchedules, savedReports, type ReportScheduleRow, type SavedReportRow } from "./schema";
 

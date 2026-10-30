@@ -2,7 +2,7 @@ import { siteOnly } from "../lib/site";
 import * as React from "react";
 import Link from "next/link";
 import { ArrowUpIcon, ChevronDownIcon, FacebookIcon, HeartIcon, LifeBuoyIcon, InstagramIcon, MailIcon, MessageCircleIcon, PackageSearchIcon, PhoneIcon, ShoppingBagIcon, UserRoundIcon, YoutubeIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { NewsletterForm } from "../client/carousel";
 import { PaymentIcons, TrustBadges } from "./trust";
 import type { Translator } from "../lib/messages";

@@ -1,7 +1,7 @@
 import { FileWarningIcon } from "lucide-react";
-import type { Translator } from "@srirealtime/i18n/client";
-import { Card } from "@srirealtime/ui/components/card";
-import { FadeIn, Reveal } from "@srirealtime/ui/motion";
+import type { Translator } from "@rbms/i18n/client";
+import { Card } from "@rbms/ui/components/card";
+import { FadeIn, Reveal } from "@rbms/ui/motion";
 import { Container } from "./sections";
 
 /** Legal page shell with an unmistakable "placeholder" banner. */

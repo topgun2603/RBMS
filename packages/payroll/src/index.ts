@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { PAYROLL_FEATURES, PAYROLL_PERMISSIONS } from "./ports";
 import { payrollRoutes } from "./routes";
 import {

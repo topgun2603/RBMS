@@ -1,22 +1,22 @@
-import { AppError, badRequest, defineModule, FULL_ACCESS_ROLES, requireUser, type AuditPort, type SrModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@srirealtime/gst";
-import type { createAuth } from "@srirealtime/auth";
-import { prefixFromName } from "@srirealtime/branches";
-import type { createBranding } from "@srirealtime/branding";
-import { renderPlatformInvoice, type createDocuments, DEFAULT_BRANDING } from "@srirealtime/documents";
-import type { JobsService } from "@srirealtime/jobs";
-import type { createNotify } from "@srirealtime/notify";
-import type { createPlans } from "@srirealtime/plans";
-import type { SettingsService } from "@srirealtime/settings";
+import { AppError, badRequest, defineModule, FULL_ACCESS_ROLES, requireUser, type AuditPort, type SrModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@rbms/gst";
+import type { createAuth } from "@rbms/auth";
+import { prefixFromName } from "@rbms/branches";
+import type { createBranding } from "@rbms/branding";
+import { renderPlatformInvoice, type createDocuments, DEFAULT_BRANDING } from "@rbms/documents";
+import type { JobsService } from "@rbms/jobs";
+import type { createNotify } from "@rbms/notify";
+import type { createPlans } from "@rbms/plans";
+import type { SettingsService } from "@rbms/settings";
 import {
   createSubscriptions,
   MockSubscriptionProvider,
   RazorpaySubscriptionProvider,
   SUBSCRIPTIONS_LIFECYCLE_JOB,
   type SubscriptionProvider,
-} from "@srirealtime/subscriptions";
-import { publicTenant, type createTenancy, type Tenant } from "@srirealtime/tenancy";
+} from "@rbms/subscriptions";
+import { publicTenant, type createTenancy, type Tenant } from "@rbms/tenancy";
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "pino";
 import { z } from "zod";

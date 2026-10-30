@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon } from "lucide-react";
-import { Alert, AlertTitle, StatusPill } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Alert, AlertTitle, StatusPill } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { ago, STATUS_TONE } from "../lib/format";
 import { useIsSchool } from "../lib/pack";
 import type { EnquiryStatus } from "../lib/types";

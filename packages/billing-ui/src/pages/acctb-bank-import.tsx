@@ -24,8 +24,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, useI18n } from "@rbms/web";
 import { AccountingPage, Panel } from "../components/accounting/parts";
 import { BankAccountSelect, Figure, Signed, useBankAccountParam } from "../components/accounting/part-b";
 import { BANK_FIELDS, useBankAccounts, useImportStatement, usePreviewImport, type ColumnMapping, type ImportPreview, type ImportResult } from "../lib/accounting-b";

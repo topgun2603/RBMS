@@ -1,5 +1,5 @@
-import { AppError, emptyContext, type FeatureDef, type TenantRef } from "@srirealtime/core";
-import { createDb } from "@srirealtime/db";
+import { AppError, emptyContext, type FeatureDef, type TenantRef } from "@rbms/core";
+import { createDb } from "@rbms/db";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createFeatures } from "./index";

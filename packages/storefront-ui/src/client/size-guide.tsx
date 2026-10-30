@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { RulerIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@srirealtime/ui/components/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@rbms/ui/components/dialog";
 import { useStore } from "./store-context";
 
 /** "Size guide" link that opens a dialog with the shop's guide (server-rendered content passed in). */

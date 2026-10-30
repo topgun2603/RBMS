@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input, Label } from "@srirealtime/ui";
+import { Input, Label } from "@rbms/ui";
 import { splitTags } from "@/components/crud/resource-page";
 import { FeatureMatrix, FeatureMatrixSkeleton } from "@/components/features/feature-matrix";
 import { QueryError } from "@/components/query-state";

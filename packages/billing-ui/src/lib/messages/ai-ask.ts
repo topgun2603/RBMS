@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.gstr1.explain.* strings: "Explain this month" on the GSTR-1 card (docs/ai.md, Phase 2). Keep en and ta key sets identical. */
 export const en: Messages = {

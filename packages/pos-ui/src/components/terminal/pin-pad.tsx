@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, DeleteIcon, Loader2Icon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { keyToPinAction, PIN_MAX, PIN_MIN, type PinPadAction } from "../../lib/pin";
 
 export interface PinPadProps {

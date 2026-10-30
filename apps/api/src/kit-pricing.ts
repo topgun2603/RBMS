@@ -1,10 +1,10 @@
-import type { CatalogItem, CatalogueService } from "@srirealtime/catalogue";
-import { findUnit } from "@srirealtime/catalogue";
-import { and, eq, inArray, isNull, type Db } from "@srirealtime/db";
-import { lineAmount } from "@srirealtime/gst";
-import { pricesExporter, pricesImporter, type CommitResult, type CommitRow, type ImportExportRegistry, type PriceExportRow, type PriceImportRow } from "@srirealtime/importexport";
-import { billingCustomers } from "@srirealtime/invoices";
-import { createPriceLists, PRICE_LISTS_FEATURE, resolvePrice, type PricingItemRecord, type PriceListsService, type ResolvedPrice } from "@srirealtime/pricelists";
+import type { CatalogItem, CatalogueService } from "@rbms/catalogue";
+import { findUnit } from "@rbms/catalogue";
+import { and, eq, inArray, isNull, type Db } from "@rbms/db";
+import { lineAmount } from "@rbms/gst";
+import { pricesExporter, pricesImporter, type CommitResult, type CommitRow, type ImportExportRegistry, type PriceExportRow, type PriceImportRow } from "@rbms/importexport";
+import { billingCustomers } from "@rbms/invoices";
+import { createPriceLists, PRICE_LISTS_FEATURE, resolvePrice, type PricingItemRecord, type PriceListsService, type ResolvedPrice } from "@rbms/pricelists";
 import type { FastifyRequest } from "fastify";
 
 /**

@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import "./fastify";
 import { DEVELOPER_FEATURES, DEVELOPER_PERMISSIONS } from "./features";
 import { apiKeyGuard, createApiKeyHook } from "./hook";

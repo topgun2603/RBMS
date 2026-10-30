@@ -1,4 +1,4 @@
-import { requirePermission, requireTenant, type RequestContext } from "@srirealtime/core";
+import { requirePermission, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { menuBodySchema, menuKeySchema } from "./content";

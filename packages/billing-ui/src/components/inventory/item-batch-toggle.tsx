@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarClockIcon, PlusIcon } from "lucide-react";
-import { Button, Label, Switch, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, Label, Switch, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { BatchReceiveDialog } from "./batch-receive-dialog";
 import { useItemTracking, useSetItemTracking } from "../../lib/queries-stock";
 

@@ -1,4 +1,4 @@
-import { sha256 } from "@srirealtime/core";
+import { sha256 } from "@rbms/core";
 import { ewbValidTill, ewbValidityDays, type CancelEwbPayload, type CancelIrnPayload } from "../ewb";
 import { financialYearLong, fromNicDate, toNicDateTime } from "../gst";
 import type { EInvoicePayload } from "../nic";

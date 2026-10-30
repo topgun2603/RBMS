@@ -1,4 +1,4 @@
-import { forbidden, hasPermission, isSuperAdmin, requireTenant, requireUser, unauthorized, type FeatureGatePort, type RequestContext } from "@srirealtime/core";
+import { forbidden, hasPermission, isSuperAdmin, requireTenant, requireUser, unauthorized, type FeatureGatePort, type RequestContext } from "@rbms/core";
 import {
   formatSseEvent,
   HEARTBEAT_MS,
@@ -10,8 +10,8 @@ import {
   type NonceStorePort,
   type PubSubPort,
   type Viewer,
-} from "@srirealtime/chat";
-import type { WhatsAppEvent } from "@srirealtime/whatsapp";
+} from "@rbms/chat";
+import type { WhatsAppEvent } from "@rbms/whatsapp";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { Logger } from "pino";
 

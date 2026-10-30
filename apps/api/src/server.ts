@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
-import { AppError, emptyContext, type SrModule } from "@srirealtime/core";
-import type { ErrorReporter } from "@srirealtime/monitoring";
+import { AppError, emptyContext, type SrModule } from "@rbms/core";
+import type { ErrorReporter } from "@rbms/monitoring";
 import Fastify, {
   LogController,
   type FastifyBaseLogger,

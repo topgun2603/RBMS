@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { CATALOGUE_FEATURES } from "./features";
 import { catalogueRoutes } from "./routes";
 import { catalogCategories, catalogCollections, catalogItemUnits, catalogProducts, catalogVariants } from "./schema";

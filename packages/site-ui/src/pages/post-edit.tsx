@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouteParams } from "@srirealtime/web";
+import { useRouteParams } from "@rbms/web";
 import { ContentEditor } from "../components/content-editor";
 import { ContentLoader } from "../components/content-loader";
 import { usePost } from "../lib/queries";

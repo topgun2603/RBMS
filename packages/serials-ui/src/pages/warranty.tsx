@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ScanLineIcon, SearchIcon, ShieldQuestionIcon } from "lucide-react";
-import { Button, Card, CardContent, EmptyState, Input, Skeleton } from "@srirealtime/ui";
-import { DetailRow, describeError, Page, PageHeading, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { Button, Card, CardContent, EmptyState, Input, Skeleton } from "@rbms/ui";
+import { DetailRow, describeError, Page, PageHeading, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { BillLink, EventTimeline, InlineError, StatusChip, WarrantyPill } from "../components/bits";
 import { ClaimForm } from "../components/claim-form";
 import { isStatus } from "../lib/http";

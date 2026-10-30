@@ -1,4 +1,4 @@
-import { sha256, type PermissionDef } from "@srirealtime/core";
+import { sha256, type PermissionDef } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { API_KEY_RE, apiKeyPrefix, generateApiKey, hashApiKey, isApiKeyToken, keyModeFor, looksLikeApiKey, randomBase62, validateScopes } from "./keys";
 

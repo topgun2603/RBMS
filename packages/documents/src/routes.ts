@@ -1,4 +1,4 @@
-import { notFound, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { notFound, requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyContextConfig, FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { RenderedDocument, DocumentsService } from "./service";

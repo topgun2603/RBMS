@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CompassIcon } from "lucide-react";
-import { Button, EmptyState } from "@srirealtime/ui";
+import { Button, EmptyState } from "@rbms/ui";
 import { useI18n } from "@/lib/i18n";
 
 export default function NotFound() {

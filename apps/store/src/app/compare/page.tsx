@@ -1,4 +1,4 @@
-import { ComparePage, compareMetadata } from "@srirealtime/storefront-ui";
+import { ComparePage, compareMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = compareMetadata;
 

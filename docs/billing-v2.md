@@ -6,12 +6,12 @@ dates `YYYY-MM-DD` (IST), tenant from `x-tenant`, errors `{ error: { code, messa
 Every report/list endpoint that returns rows accepts `format=csv` and then responds `text/csv; charset=utf-8` with a UTF-8 BOM
 and `Content-Disposition: attachment; filename="<name>-<from>-<to>.csv"`.
 
-GST maths lives in **`@srirealtime/gst`** (pure, browser-safe; `@srirealtime/invoices/calc` re-exports it).
+GST maths lives in **`@rbms/gst`** (pure, browser-safe; `@rbms/invoices/calc` re-exports it).
 `LineInput` gains an optional **`itemId?: string`** (saved item the line came from); it is kept in `LineTotals`.
 
 ---
 
-## 1. `@srirealtime/payments` — online collection (`/v1/payments`)
+## 1. `@rbms/payments` — online collection (`/v1/payments`)
 
 Razorpay, with **each shop using its own Razorpay account** (keys stored AES-256-GCM encrypted, never returned).
 A **mock provider** exists for development: when a tenant has no account configured and `allowMock` is on, checkout
@@ -52,7 +52,7 @@ Tables: `payment_accounts` (tenant_id pk, provider, key_id, key_secret_enc, webh
 `payment_events` (provider_event_id unique, tenant_id, type, payload jsonb, processed_at, created_at).
 Marking paid is a conditional update `WHERE status = 'created'` so `onPaid` runs once even if verify and webhook race.
 
-## 2. `@srirealtime/inventory` — stock, suppliers, purchases (`/v1/inventory`, staff routes)
+## 2. `@rbms/inventory` — stock, suppliers, purchases (`/v1/inventory`, staff routes)
 
 Items stay owned by invoices; inventory keys stock by `itemId` and reads item details through a port:
 ```ts
@@ -143,7 +143,7 @@ ref_type, ref_id, ref_number, unit_cost, note, created_by, created_at; index (te
 
 ## 4. Credit notes (`/v1/invoices`, permission `invoices.credit-note`)
 
-GST credit notes against issued bills: full or partial returns and value corrections. Maths in `@srirealtime/gst`
+GST credit notes against issued bills: full or partial returns and value corrections. Maths in `@rbms/gst`
 (`computeCreditNote`, `creditState`): each line takes its share of the original line's taxable value, CGST, SGST and IGST
 (same rate, same split, original place of supply); the last return of a line takes exactly what is left; the total is
 rounded to the rupee and the note that clears the bill gets `invoice total − earlier notes`.

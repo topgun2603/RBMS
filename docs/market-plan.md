@@ -69,7 +69,7 @@ storefront.
   - `appliance`: site visit with address and slot, AMC (annual maintenance contract) number.
 - **Area units:** sq ft / sq m with box coverage (one box = 15.5 sq ft) in catalogue + inventory, beside the scales
   quantity logic; the counter and the storefront sell by area and stock moves by box.
-- **Batches engine:** take batch, expiry and FEFO (first-expiry-first-out) out of `medicines` into `@srirealtime/batches`.
+- **Batches engine:** take batch, expiry and FEFO (first-expiry-first-out) out of `medicines` into `@rbms/batches`.
   `medicines` keeps schedules, prescriptions and the H1 register on top of it. Grocery, bakery and cosmetics can turn it
   on. Migration moves `medicine_batches` without losing history.
 - **Shoe size chart:** `sizeGuide: boolean` becomes `sizeGuide: "clothing" | "shoes" | null`.
@@ -86,11 +86,11 @@ Each is a back-end package + UI module, same contract as the others (docs/web-mo
 
 | Batch | Vertical | Package | Covers | Size |
 |---|---|---|---|---|
-| 12 | **Daily subscriptions** | `@srirealtime/standing-orders` | milk, water cans, newspapers, tiffin: delivery days, pause / skip, route sheet for the delivery boy, monthly bill with running balance | 3–4 wk |
-| 13 | **Wholesale / distributor** | `@srirealtime/wholesale` | price tiers per customer, credit limits, beat (route) plans for salesmen, schemes (buy 10 get 1), collections; retailers on srikit order through `marketplace` | 4 wk |
-| 14 | **Lodges & homestays** | `@srirealtime/stays` | rooms, rates, check-in / out, guest ID through `kyc`, restaurant bills charged to the room through `dining` | 3 wk |
-| 14 | **Clinics & labs** | `@srirealtime/clinic` | patients, consultations through `bookings`, test orders, sample collection, PDF reports through `documents`, prescriptions shared with `medicines` | 4 wk |
-| 14+ | **Rentals** | `@srirealtime/rentals` | availability by date, deposit, late fees, return condition | 3 wk |
+| 12 | **Daily subscriptions** | `@rbms/standing-orders` | milk, water cans, newspapers, tiffin: delivery days, pause / skip, route sheet for the delivery boy, monthly bill with running balance | 3–4 wk |
+| 13 | **Wholesale / distributor** | `@rbms/wholesale` | price tiers per customer, credit limits, beat (route) plans for salesmen, schemes (buy 10 get 1), collections; retailers on srikit order through `marketplace` | 4 wk |
+| 14 | **Lodges & homestays** | `@rbms/stays` | rooms, rates, check-in / out, guest ID through `kyc`, restaurant bills charged to the room through `dining` | 3 wk |
+| 14 | **Clinics & labs** | `@rbms/clinic` | patients, consultations through `bookings`, test orders, sample collection, PDF reports through `documents`, prescriptions shared with `medicines` | 4 wk |
+| 14+ | **Rentals** | `@rbms/rentals` | availability by date, deposit, late fees, return condition | 3 wk |
 
 ## Track D: Flutter apps
 
@@ -108,7 +108,7 @@ Repo layout (Dart workspace managed with Melos, its own CI job):
 apps/mobile_business      srikit Business
 apps/mobile_shops         srikit Shops (and the white-label template, track F)
 dart/srikit_api           generated API client
-dart/srikit_theme         theme generated from @srirealtime/branding tokens
+dart/srikit_theme         theme generated from @rbms/branding tokens
 dart/srikit_l10n          ARB files generated from the web message files
 dart/srikit_kit           shared widgets, auth, shop switcher, feature / permission gates
 ```
@@ -130,10 +130,10 @@ dart/srikit_kit           shared widgets, auth, shop switcher, feature / permiss
   slide with use (`MOBILE_SESSION_TTL_DAYS`); `auth_sessions.client` records the app.
 - Done: `GET /v1/mobile/config` and forced updates (426 `app_update_required` below `MOBILE_MIN_VERSIONS`;
   `MOBILE_LATEST_VERSIONS` for the update banner), in `apps/api/src/kit-mobile.ts`.
-- Done: `Idempotency-Key` on signed-in writes (`@srirealtime/idempotency`, table `idempotency_keys`, migration
+- Done: `Idempotency-Key` on signed-in writes (`@rbms/idempotency`, table `idempotency_keys`, migration
   `0019_mobile`).
 - Done: typed API document. `documented({ body, query, response })` (core) on a route puts its JSON Schemas in
-  `/v1/developer/openapi.json`; `pnpm --filter @srirealtime/api openapi -- --typed` writes only the typed operations.
+  `/v1/developer/openapi.json`; `pnpm --filter @rbms/api openapi -- --typed` writes only the typed operations.
   Typed so far: auth config / OTP / Firebase / me / logout, tenancy mine / current, features (full `FeatureState`),
   branding, invoices summary, push tokens, mobile config, and the counter-billing set (catalogue variant search and
   barcode / SKU lookup, `counter/resolve`, billing items, bill list / create / get / issue / payments / cancel / share /

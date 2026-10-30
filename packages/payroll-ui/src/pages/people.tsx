@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PencilIcon, Trash2Icon, UserPlusIcon, UsersIcon } from "lucide-react";
-import { Button, ChipGroup, EmptyState, Skeleton, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, useI18n, usePermission, useQueryParams } from "@srirealtime/web";
+import { Button, ChipGroup, EmptyState, Skeleton, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, useI18n, usePermission, useQueryParams } from "@rbms/web";
 import { BranchFilter, InlineError, dash, useBranchName } from "../components/bits";
 import { EmployeeDialog } from "../components/employee-dialog";
 import { PAYROLL_PERMISSIONS } from "../lib/access";

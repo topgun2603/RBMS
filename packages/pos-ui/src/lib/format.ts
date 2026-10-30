@@ -1,6 +1,6 @@
-import { formatINR } from "@srirealtime/gst";
+import { formatINR } from "@rbms/gst";
 
-export { todayIST } from "@srirealtime/gst";
+export { todayIST } from "@rbms/gst";
 
 /** ₹ with Indian grouping from integer paise. Always en-IN digits, also in Tamil. */
 export const money = (paise: number | null | undefined) => formatINR(Math.round(paise ?? 0));

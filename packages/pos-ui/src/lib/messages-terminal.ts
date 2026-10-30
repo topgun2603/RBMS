@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * pos.* strings of multi-terminal POS (docs/pos-terminals.md): Settings → POS terminals, pairing, the PIN lock screen,

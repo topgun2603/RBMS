@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, InfoIcon, ChevronDownIcon, ChevronUpIcon, ClipboardCopyIcon, Loader2Icon, PrinterIcon, SparklesIcon, UsersRoundIcon, CalendarRangeIcon } from "lucide-react";
-import { Button, Card, CardContent, ChipGroup, cn, EmptyState, Field, FieldControl, FieldHint, FieldLabel, Input, Skeleton, StatusPill, Switch, toast } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, SettingsNav, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, ChipGroup, cn, EmptyState, Field, FieldControl, FieldHint, FieldLabel, Input, Skeleton, StatusPill, Switch, toast } from "@rbms/ui";
+import { describeError, Page, PageHeading, SettingsNav, useI18n } from "@rbms/web";
 import {
   useAlerts,
   useCoaching,

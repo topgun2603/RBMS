@@ -1,4 +1,4 @@
-import { computeLine } from "@srirealtime/gst";
+import { computeLine } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { allocateToDebitNotes, computeDebitNote, debitCancelProblem, DebitNoteError, debitNotePrefix } from "./debit-notes-calc";
 import { debitNoteInputSchema } from "./debit-notes";

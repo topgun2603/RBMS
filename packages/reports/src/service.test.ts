@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { NOW, salesDef, TENANT } from "./fixtures.test-helpers";

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { motion, useReducedMotionSafe, type HTMLMotionProps } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { motion, useReducedMotionSafe, type HTMLMotionProps } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 
 /** Lifts on hover / press (cards, tiles). */
 export function Lift({ className, ...props }: HTMLMotionProps<"div">) {

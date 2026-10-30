@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useFeature } from "@srirealtime/web";
+import { useFeature } from "@rbms/web";
 import { useStockRows, useVariantProductMap } from "./queries";
 import type { StockRow, StockStatus } from "./types";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, apiDownload, type QueryParams } from "@srirealtime/web";
+import { api, apiDownload, type QueryParams } from "@rbms/web";
 import type {
   ExportJob,
   Exporter,

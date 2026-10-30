@@ -1,8 +1,8 @@
 "use client";
 
 import { Building2Icon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import { profitPdfPath, useBranchView, VAL, type BranchColumn } from "../../lib/valuation";
 import { Refreshing, TabError, TableCard, TableSkeleton, type RangeProps } from "./report-ui";

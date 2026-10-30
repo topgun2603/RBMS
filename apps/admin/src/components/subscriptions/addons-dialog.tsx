@@ -24,7 +24,7 @@ import {
   SelectValue,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { QueryError } from "@/components/query-state";
 import { api } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";

@@ -16,8 +16,8 @@ import {
   TrendingUpIcon,
   WalletCardsIcon,
 } from "lucide-react";
-import { Button, Card, CardContent, Skeleton, StatusPill, toast } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, Skeleton, StatusPill, toast } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n } from "@rbms/web";
 import { AccountingPage, Balance } from "../components/accounting/parts";
 import { ACC_POST, useAccountingOverview, useAccounts, useReconcile, useSyncNow } from "../lib/accounting";
 import { useHasPermission } from "../lib/access";

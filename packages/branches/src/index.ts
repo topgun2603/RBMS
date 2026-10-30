@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { BRANCHES_FEATURES, BRANCHES_MODULE, BRANCHES_PERMISSIONS } from "./features";
 import { branchContextHook, type BranchHookOptions } from "./hook";
 import { branchesRoutes } from "./routes";

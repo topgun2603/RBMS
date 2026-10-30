@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { emptyContext } from "@srirealtime/core";
+import { emptyContext } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { uploadsRoutes } from "./routes";
 import type { UploadsService } from "./service";

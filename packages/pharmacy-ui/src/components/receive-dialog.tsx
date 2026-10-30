@@ -17,8 +17,8 @@ import {
   FieldLabel,
   Input,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { monthFromNow, qty as fmtQty, rupeesToPaise } from "../lib/format";
 import { useReceiveBatch } from "../lib/queries";
 import type { ShopItem } from "../lib/types";

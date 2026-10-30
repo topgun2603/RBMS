@@ -29,7 +29,7 @@ import {
   toast,
   useReducedMotionSafe,
   type StatusTone,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ConfirmDialog,
   daysUntil,
@@ -50,7 +50,7 @@ import {
   type Subscription,
   type SubscriptionCurrent,
   type SubscriptionStatus,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { NoPermission } from "../components/bits";
 import { AddonsSection } from "../components/plan/addons";
 import { PlatformInvoices } from "../components/plan/invoices";

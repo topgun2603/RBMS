@@ -19,8 +19,8 @@ import {
   Skeleton,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, QueryError, useI18n } from "@rbms/web";
 import { InlineError, SectionCard } from "../bits";
 import { earnExample, maxRedeemOn, rewardPercent, validateSettings, type SettingsIssue } from "../../lib/loyalty";
 import { money, num, paiseToInput, rupeesToPaise } from "../../lib/format";

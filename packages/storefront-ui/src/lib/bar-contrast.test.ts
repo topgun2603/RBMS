@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { THEME_PRESETS } from "@srirealtime/branding/theme";
-import { contrastRatio, mix, readableForeground } from "@srirealtime/branding/color";
+import { THEME_PRESETS } from "@rbms/branding/theme";
+import { contrastRatio, mix, readableForeground } from "@rbms/branding/color";
 import { isDarkShop, withContrast } from "./scheme";
 
 /*

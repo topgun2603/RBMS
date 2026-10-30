@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, BanIcon, CheckCircle2Icon, CircleDotIcon, LockIcon, Loader2Icon, PauseCircleIcon, SkipForwardIcon } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { scheduleText, type RecurringRunStatus, type RecurringStatus, type ScheduleLike } from "../../lib/types-recurring";
 
 type IconT = React.ComponentType<{ className?: string }>;

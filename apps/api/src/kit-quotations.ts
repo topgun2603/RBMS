@@ -1,7 +1,7 @@
-import { AppError, type AuditEvent, type FeatureGatePort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { createQuotations, type InvoicesService, type QuotationOrdersPort, type QuotationSalesDocsPort } from "@srirealtime/invoices";
-import type { OrdersService } from "@srirealtime/orders";
+import { AppError, type AuditEvent, type FeatureGatePort } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { createQuotations, type InvoicesService, type QuotationOrdersPort, type QuotationSalesDocsPort } from "@rbms/invoices";
+import type { OrdersService } from "@rbms/orders";
 
 /** What the quotations wiring needs from the host's services (structural, so kit.ts passes its own objects). */
 export interface QuotationsWiring {

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, PackageIcon, PencilLineIcon } from "lucide-react";
-import { AnimatedNumber, cn } from "@srirealtime/ui";
-import { InsightCard, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { AnimatedNumber, cn } from "@rbms/ui";
+import { InsightCard, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { useProductCounts } from "../lib/queries";
 
 /** "More insights" card: products in the catalogue, with active and draft counts. */

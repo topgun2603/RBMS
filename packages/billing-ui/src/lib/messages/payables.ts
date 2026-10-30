@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.* strings for supplier payables, purchase orders and debit notes. Keep the en and ta key sets identical. */
 export const en: Messages = {

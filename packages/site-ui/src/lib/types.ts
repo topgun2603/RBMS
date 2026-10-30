@@ -282,7 +282,7 @@ export interface StoreSettings {
   contactEmail: string;
   social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
-  /** The shop's trade (@srirealtime/verticals pack id); "" = the app's default. Edited on Settings → Appearance. */
+  /** The shop's trade (@rbms/verticals pack id); "" = the app's default. Edited on Settings → Appearance. */
   businessType?: string;
   /** Show shoppers the "Install <shop> app" banner (installable storefront; default on). */
   installBanner?: boolean;

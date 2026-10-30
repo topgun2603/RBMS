@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { PackagePlusIcon, ScanBarcodeIcon, ShieldCheckIcon, SlidersHorizontalIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@rbms/web";
 import { SERIALS_FEATURES, SERIALS_PERMISSIONS, SERIALS_VIEW } from "./lib/access";
 import { withConfig, type SerialsConfig } from "./lib/config";
 import { serialsMessages } from "./lib/messages";

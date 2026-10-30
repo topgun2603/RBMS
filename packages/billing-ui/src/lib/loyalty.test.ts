@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError } from "@srirealtime/web";
+import { ApiError } from "@rbms/web";
 import { clampRedeemPoints, estimatedTotal, pointsValue, quotablePhone, redeemFailure } from "./loyalty";
 
 describe("loyalty redeem helpers", () => {

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CameraOffIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /** The Shape Detection API's BarcodeDetector (Chrome on Android/ChromeOS/macOS, Edge); typed here as TS lacks it. */
 interface DetectedBarcode {

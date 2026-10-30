@@ -19,8 +19,8 @@ import {
   SelectValue,
   Switch,
   Textarea,
-} from "@srirealtime/ui";
-import { DesignNotesButton, DeviceLabelButton, FaultNoteButton, MeasurementSheetButton, tOr, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { DesignNotesButton, DeviceLabelButton, FaultNoteButton, MeasurementSheetButton, tOr, useI18n } from "@rbms/web";
 import {
   EYES,
   GARMENT_MEASUREMENTS,

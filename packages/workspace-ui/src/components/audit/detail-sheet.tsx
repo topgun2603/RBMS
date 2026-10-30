@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, Code2Icon, GlobeIcon, MonitorSmartphoneIcon, UserIcon } from "lucide-react";
-import { Button, cn, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@srirealtime/ui";
-import { DetailRow, useI18n } from "@srirealtime/web";
+import { Button, cn, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@rbms/ui";
+import { DetailRow, useI18n } from "@rbms/web";
 import { diffJson, showValue } from "../../lib/diff";
 import type { AuditEvent } from "../../lib/types";
 import { actionText, auditModuleLabel } from "./action-label";

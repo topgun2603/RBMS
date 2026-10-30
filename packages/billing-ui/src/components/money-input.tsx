@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn, Input } from "@srirealtime/ui";
+import { cn, Input } from "@rbms/ui";
 
 /** ₹ amount typed in rupees ("1250.50"). The value stays a string; convert with rupeesToPaise. */
 export function MoneyInput({ className, onChange, ...props }: Omit<React.ComponentProps<typeof Input>, "type">) {

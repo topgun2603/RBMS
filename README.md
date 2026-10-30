@@ -93,7 +93,7 @@ Without provider keys, SMS/email/WhatsApp/push messages are printed to the API c
 works locally out of the box. Shops are addressed by subdomain in dev: `raja.localhost:3001`, `anbu.localhost:3002`
 (store admin), `anbu.localhost:3003` (storefront).
 
-Tests: `pnpm -r typecheck`, `pnpm -r test`; end to end (needs the dev servers): `pnpm --filter @srirealtime/api
+Tests: `pnpm -r typecheck`, `pnpm -r test`; end to end (needs the dev servers): `pnpm --filter @rbms/api
 test:e2e:all` (seeds the e2e shops e2e-bill / e2e-store / e2e-lite, runs the API scripts and the storefront browser test).
 See docs/features.md "End-to-end shops".
 
@@ -105,13 +105,13 @@ it in `apps/api/src/kit.ts`. For its screens, add a UI module next to it (below)
 
 ## Mounting billing in your app
 
-Billing is a UI module (`@srirealtime/billing-ui`), not an app: any Next.js app built on `@srirealtime/web` can mount it
+Billing is a UI module (`@rbms/billing-ui`), not an app: any Next.js app built on `@rbms/web` can mount it
 at any path, next to its own modules. Contract and details: [docs/web-modules.md](docs/web-modules.md).
 
 ```ts
 // apps/<yours>/src/web-app.ts
-import { billingModule } from "@srirealtime/billing-ui";
-import { createWebApp } from "@srirealtime/web";
+import { billingModule } from "@rbms/billing-ui";
+import { createWebApp } from "@rbms/web";
 import { storeModule } from "./store/module";
 
 export const webApp = createWebApp({
@@ -126,7 +126,7 @@ export const webApp = createWebApp({
 ```tsx
 // apps/<yours>/src/app/[[...slug]]/page.tsx: one catch-all route serves every screen, /login, /settings/* and public links
 "use client";
-import { WebAppRouter } from "@srirealtime/web";
+import { WebAppRouter } from "@rbms/web";
 import { webApp } from "@/web-app";
 
 export default function Page() {
@@ -134,11 +134,11 @@ export default function Page() {
 }
 ```
 
-Then list `@srirealtime/web`, `@srirealtime/billing-ui`, `@srirealtime/ui`, `@srirealtime/i18n` and `@srirealtime/gst` in
+Then list `@rbms/web`, `@rbms/billing-ui`, `@rbms/ui`, `@rbms/i18n` and `@rbms/gst` in
 `transpilePackages` (see `apps/shop/next.config.ts`), and let Tailwind scan the packages from your `globals.css`:
 
 ```css
-@import "@srirealtime/ui/styles.css";
+@import "@rbms/ui/styles.css";
 @source "../";
 @source "../../../../packages/web/src";
 @source "../../../../packages/billing-ui/src";

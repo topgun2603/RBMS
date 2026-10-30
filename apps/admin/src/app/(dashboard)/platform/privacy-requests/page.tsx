@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DownloadIcon, FileLockIcon, Loader2Icon, PlayIcon, Trash2Icon } from "lucide-react";
-import { Button, DataTable, DataTableToolbar, EmptyState, PageHeader, toast, type DataTableColumn } from "@srirealtime/ui";
+import { Button, DataTable, DataTableToolbar, EmptyState, PageHeader, toast, type DataTableColumn } from "@rbms/ui";
 import { StatusBadge } from "@/components/badges";
 import { Page } from "@/components/page";
 import { SuperAdminOnly } from "@/components/superadmin-only";

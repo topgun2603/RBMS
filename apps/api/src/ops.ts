@@ -1,14 +1,14 @@
 import { timingSafeEqual } from "node:crypto";
 import { monitorEventLoopDelay } from "node:perf_hooks";
-import { unauthorized } from "@srirealtime/core";
-import type { JobAttemptEvent, JobCounts, JobObserver } from "@srirealtime/jobs";
+import { unauthorized } from "@rbms/core";
+import type { JobAttemptEvent, JobCounts, JobObserver } from "@rbms/jobs";
 import {
   checkReadiness,
   PROMETHEUS_CONTENT_TYPE,
   type ErrorReporter,
   type MetricsRegistry,
   type ReadinessProbe,
-} from "@srirealtime/monitoring";
+} from "@rbms/monitoring";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 /** Paths served outside the tenancy/auth pipeline (no DB on the liveness path). */

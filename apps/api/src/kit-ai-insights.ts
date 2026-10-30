@@ -1,8 +1,8 @@
-import { createAiInsights, DAILY_JOB, indianPhone, resolveDailySummary, shortDate, type AiService, type AiSettings, type DailyPorts } from "@srirealtime/ai";
-import type { Db } from "@srirealtime/db";
-import { sql } from "@srirealtime/db";
-import { maskTarget, type SendInput, type SendResult } from "@srirealtime/notify";
-import { todayIST } from "@srirealtime/gst";
+import { createAiInsights, DAILY_JOB, indianPhone, resolveDailySummary, shortDate, type AiService, type AiSettings, type DailyPorts } from "@rbms/ai";
+import type { Db } from "@rbms/db";
+import { sql } from "@rbms/db";
+import { maskTarget, type SendInput, type SendResult } from "@rbms/notify";
+import { todayIST } from "@rbms/gst";
 import { gatherFacts, type ExpiryPort, type FactsItems } from "./ai-insights/facts";
 import { gatherReorder, type ReorderItems } from "./ai-insights/reorder";
 import { gatherSegment, loadReview, loadReviewTexts, peakHour } from "./ai-insights/audience";

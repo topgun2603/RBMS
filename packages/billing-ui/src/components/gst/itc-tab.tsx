@@ -25,8 +25,8 @@ import {
   TableHeader,
   TableRow,
   type StatusTone,
-} from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import { G, ITC_STATUSES, monthOfPeriod, taxTotal, useItc, type ItcRow, type ItcStatus } from "../../lib/gst";
 import { ItcDialog, type ItcTarget } from "./itc-dialog";

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "@srirealtime/ui";
-import { ApiError, apiUrl, currentTenantSlug, describeError, getToken, useI18n, type QueryParams } from "@srirealtime/web";
+import { toast } from "@rbms/ui";
+import { ApiError, apiUrl, currentTenantSlug, describeError, getToken, useI18n, type QueryParams } from "@rbms/web";
 
 /** PDF paths of `/v1/documents` (packages/documents/src/routes.ts). */
 export const PDF_PATHS = {

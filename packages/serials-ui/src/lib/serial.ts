@@ -1,4 +1,4 @@
-// Pure helpers mirrored from @srirealtime/serials (logic.ts) so the receive dialog can check rows before submit.
+// Pure helpers mirrored from @rbms/serials (logic.ts) so the receive dialog can check rows before submit.
 
 export function normaliseSerial(value: string): string {
   return value.replace(/\s+/g, "").toUpperCase();

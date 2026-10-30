@@ -1,10 +1,10 @@
 /**
  * Trust badges, the announcement ribbon's fallback and the footer's payment marks, derived from what the shop can back
- * up: its returns policy, cash on delivery, its trade (`@srirealtime/verticals` PACK_TRUST) and the owner's
+ * up: its returns policy, cash on delivery, its trade (`@rbms/verticals` PACK_TRUST) and the owner's
  * `store.trust` settings. A crackers shop says "Pay on confirmation", a florist "Fresh every morning", a salon "Pay at
  * the shop" — never "Easy returns" for goods that can't come back. Pure.
  */
-import { packFor, packTrust, type TrustPayment, type TrustReturns, type UspIcon } from "@srirealtime/verticals";
+import { packFor, packTrust, type TrustPayment, type TrustReturns, type UspIcon } from "@rbms/verticals";
 import type { StoreConfig } from "../types";
 type Translator = (key: string) => string;
 

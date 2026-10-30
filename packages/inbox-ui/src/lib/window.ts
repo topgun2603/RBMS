@@ -1,5 +1,5 @@
 /**
- * WhatsApp's 24-hour customer-service window (copied from @srirealtime/whatsapp logic.ts — UI modules don't import
+ * WhatsApp's 24-hour customer-service window (copied from @rbms/whatsapp logic.ts — UI modules don't import
  * server packages): free-form messages only within 24 h of the customer's last message; outside it, a template.
  */
 

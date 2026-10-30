@@ -1,4 +1,4 @@
-import { amountInWordsINR, computeInvoice } from "@srirealtime/gst";
+import { amountInWordsINR, computeInvoice } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { DocumentRegistry } from "./registry";
 import { registerBuiltins } from "./builtins";

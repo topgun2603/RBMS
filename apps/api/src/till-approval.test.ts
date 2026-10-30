@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { APPROVAL_MAX_FAILURES } from "./discount-guard";
 import { tillApprovals } from "./till-approval";

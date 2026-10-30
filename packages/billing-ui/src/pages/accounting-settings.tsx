@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { LockIcon, LockOpenIcon, PlayIcon, RefreshCwIcon, SearchCheckIcon, SettingsIcon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, ChipGroup, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle, ChipGroup, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage } from "../components/accounting/parts";
 import { ACC_LOCK, ACC_POST, useAccounts, useAccountingSettings, useBackfill, useSetLock, useSyncNow, useUpdateAccountingSettings, type SyncResult } from "../lib/accounting";
 import { useHasPermission } from "../lib/access";

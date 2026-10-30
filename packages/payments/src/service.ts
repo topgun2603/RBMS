@@ -1,5 +1,5 @@
-import { AppError, badRequest, notFound, randomToken, sha256, type FeatureGatePort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, notFound, randomToken, sha256, type FeatureGatePort } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, gt, isNotNull, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";

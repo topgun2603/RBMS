@@ -3,8 +3,8 @@
 import * as React from "react";
 import { AlertTriangleIcon, BanknoteIcon, CalendarClockIcon, Loader2Icon, SettingsIcon, SparklesIcon, TrendingUpIcon } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from "recharts";
-import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Skeleton, Slider, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Skeleton, Slider, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@rbms/ui";
+import { describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@rbms/web";
 import { useHasPermission } from "../lib/access";
 import { ChartTooltipBox } from "../components/charts/chart-card";
 import { compactINR, money, paiseToInput, rupeesToPaise, tickINR } from "../lib/format";

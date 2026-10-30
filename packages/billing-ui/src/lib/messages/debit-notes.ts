@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.dn.* strings: debit notes to customers (the bill's value goes up, CGST s.34). Keep the en and ta key sets identical. */
 export const en: Messages = {

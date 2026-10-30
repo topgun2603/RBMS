@@ -16,8 +16,8 @@ import {
   Trash2Icon,
   XCircleIcon,
 } from "lucide-react";
-import { Button, Card, cn, Input, Label, Skeleton, StatusPill, toast } from "@srirealtime/ui";
-import { ApiError, ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useTenantSlug } from "@srirealtime/web";
+import { Button, Card, cn, Input, Label, Skeleton, StatusPill, toast } from "@rbms/ui";
+import { ApiError, ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useTenantSlug } from "@rbms/web";
 import { ReadOnlyNote, Section } from "../components/bits";
 import { useIsManager } from "../lib/access";
 import { useAddDomain, useDeleteDomain, useDomainInstructions, useDomains, useVerifyDomain } from "../lib/queries";

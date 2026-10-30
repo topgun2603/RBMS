@@ -1,10 +1,10 @@
-/** Feature keys the jewellery UI uses (declared by @srirealtime/jewellery). */
+/** Feature keys the jewellery UI uses (declared by @rbms/jewellery). */
 export const JEWELLERY_FEATURES = {
   jewellery: "jewellery",
   exchange: "jewellery.exchange",
 } as const;
 
-/** Permissions of @srirealtime/jewellery. Owners and admins hold all of them. */
+/** Permissions of @rbms/jewellery. Owners and admins hold all of them. */
 export const JEWELLERY_PERMISSIONS = {
   rates: "jewellery.rates",
   manage: "jewellery.manage",

@@ -1,4 +1,4 @@
-import { computeLine, exclusiveOf, taxableOfInclusive } from "@srirealtime/gst";
+import { computeLine, exclusiveOf, taxableOfInclusive } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import {
   addDays,

@@ -1,4 +1,4 @@
-import { tenantId, timestamps } from "@srirealtime/db";
+import { tenantId, timestamps } from "@rbms/db";
 import { boolean, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
 
 /**

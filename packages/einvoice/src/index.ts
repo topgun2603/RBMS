@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { EINVOICE_FEATURES, EINVOICE_PERMISSIONS } from "./features";
 import { einvoiceRoutes } from "./routes";
 import { einvoiceAccounts, einvoiceRecords } from "./schema";

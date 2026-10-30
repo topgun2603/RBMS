@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutDashboardIcon } from "lucide-react";
-import type { WebModule } from "@srirealtime/web";
+import type { WebModule } from "@rbms/web";
 import { storeMessages } from "./messages";
 
 /**

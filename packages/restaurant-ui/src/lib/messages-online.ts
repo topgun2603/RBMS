@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Online orders (Zomato / Swiggy through an aggregator) and Settings → Online platforms. Merged into restaurantMessages. */
 export const onlineEn: Messages = {

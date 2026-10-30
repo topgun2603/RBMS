@@ -20,8 +20,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ApiError, DeviceLabelButton, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApiError, DeviceLabelButton, describeError, useI18n } from "@rbms/web";
 import { rupeesToPaise } from "../lib/format";
 import { useItemSettings, useReceiveUnits } from "../lib/queries";
 import { parseAndCheck, type ParsedRow, type RowCode } from "../lib/serial";

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ModuleLink, Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { api, ModuleLink, Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ArrowLeftRightIcon, DownloadIcon, PlusIcon, TruckIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
 import { StatTile } from "../components/charts/stat-tile";
 import { BoxIllustration } from "../components/illustrations";
 import { TransferStatusPill } from "../components/inventory/audit-bits";

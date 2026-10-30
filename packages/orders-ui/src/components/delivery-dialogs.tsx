@@ -17,8 +17,8 @@ import {
   InputGroupInput,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { parseSlabs, PINCODE_RE, PREFIX_RE } from "../lib/delivery";
 import { paiseToInput, rupeesToPaise } from "../lib/format";
 import { useSaveRate, useSaveZone } from "../lib/queries";

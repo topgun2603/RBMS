@@ -17,9 +17,9 @@ import {
   LanguagesIcon,
   QrCodeIcon,
 } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { FadeIn, RevealGroup, RevealItem } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { FadeIn, RevealGroup, RevealItem } from "@rbms/ui/motion";
 import { getT } from "@/lib/i18n-server";
 import { listOf } from "@/lib/messages";
 import { pageMetadata } from "@/lib/seo";

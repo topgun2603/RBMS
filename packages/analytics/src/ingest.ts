@@ -1,5 +1,5 @@
 /** Pure ingest helpers: validation, referrers, UTM, IP hashing and rate limiting (no database). */
-import { sha256 } from "@srirealtime/core";
+import { sha256 } from "@rbms/core";
 import { z } from "zod";
 import { EVENT_TYPES, type NewAnalyticsEvent } from "./schema";
 import { deviceOf } from "./ua";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScanLineIcon } from "lucide-react";
-import { KpiTile, useI18n } from "@srirealtime/web";
+import { KpiTile, useI18n } from "@rbms/web";
 import { useSummary } from "../lib/queries";
 
 /** KPI tile "Check-ins today", with active members underneath. */

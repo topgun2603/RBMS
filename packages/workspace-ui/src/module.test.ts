@@ -11,7 +11,7 @@ import {
   type RouteDef,
   type Subscription,
   type SubscriptionCurrent,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { AUDIT_MODULES, describeAction, ENTITY_TYPES, KNOWN_ACTION_IDS, normalizeAction } from "./lib/audit-actions";
 import { errorRowsCsv, toCsv } from "./lib/csv";
 import { diffJson } from "./lib/diff";

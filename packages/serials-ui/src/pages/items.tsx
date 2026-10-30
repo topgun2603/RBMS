@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PencilIcon, PlusIcon } from "lucide-react";
-import { Button, DataTable, DataTableToolbar, Switch, toast, type DataTableColumn } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useI18n, usePermission, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, DataTable, DataTableToolbar, Switch, toast, type DataTableColumn } from "@rbms/ui";
+import { describeError, Page, PageHeading, useI18n, usePermission, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ItemDialog } from "../components/item-dialog";
 import { SERIALS_PERMISSIONS } from "../lib/access";
 import { sk, useSaveItem } from "../lib/queries";

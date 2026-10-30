@@ -16,9 +16,9 @@ import {
   SheetHeader,
   SheetTitle,
   toast,
-} from "@srirealtime/ui";
-import { upiLink } from "@srirealtime/gst";
-import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, useOptionalShop, usePermission, useSettingsHref } from "@srirealtime/web";
+} from "@rbms/ui";
+import { upiLink } from "@rbms/gst";
+import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, useOptionalShop, usePermission, useSettingsHref } from "@rbms/web";
 import {
   addPayment,
   createBill,

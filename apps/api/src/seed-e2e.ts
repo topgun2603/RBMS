@@ -17,7 +17,7 @@ import { ensureShop, seedPlansAndProfiles, seedStoreCatalogue, seedStoreContent,
  * Only ever run it against development databases.
  *
  * Idempotent: creates what is missing, resets app/plan, and archives "E2E …" products of earlier runs so lists the
- * scripts read stay short.   pnpm --filter @srirealtime/api seed:e2e
+ * scripts read stay short.   pnpm --filter @rbms/api seed:e2e
  */
 export const E2E_OWNER = "e2e-owner@example.com";
 

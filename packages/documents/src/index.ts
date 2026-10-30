@@ -1,4 +1,4 @@
-import { defineModule, type FeatureDef, type SrModule } from "@srirealtime/core";
+import { defineModule, type FeatureDef, type SrModule } from "@rbms/core";
 import { registerBuiltins } from "./builtins";
 import { PuppeteerPdfDriver, type PdfDriver, type PuppeteerDriverOptions } from "./driver";
 import { DocumentRegistry } from "./registry";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { LandmarkIcon, ShieldAlertIcon, ShieldCheckIcon } from "lucide-react";
-import { Card, CardContent, EmptyState, StatusPill, Table, TableBody, TableCell, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Card, CardContent, EmptyState, StatusPill, Table, TableBody, TableCell, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useBalanceSheet, type BalanceSheetGroup } from "../lib/accounting";
 import { money, todayIST } from "../lib/format";

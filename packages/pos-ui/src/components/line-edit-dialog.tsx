@@ -26,9 +26,9 @@ import {
   SelectValue,
   ToggleGroup,
   ToggleGroupItem,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
-import { lineAmount } from "@srirealtime/gst";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
+import { lineAmount } from "@rbms/gst";
 import { cartLineGstRate, clampDiscount, percentDiscount, type CartLine } from "../lib/cart";
 import { money, paiseToInput, parseQty, rupeesToPaise } from "../lib/format";
 import { usePos } from "./pos-context";

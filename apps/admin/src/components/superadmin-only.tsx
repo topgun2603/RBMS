@@ -1,7 +1,7 @@
 "use client";
 
 import { LockIcon } from "lucide-react";
-import { EmptyState } from "@srirealtime/ui";
+import { EmptyState } from "@rbms/ui";
 import { Page } from "@/components/page";
 import { isSuperAdmin, useMe } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";

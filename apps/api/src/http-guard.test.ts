@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RATE_LIMIT, isAuthSensitive, isRateLimitExempt, MemoryWindowCounter, type RateLimitConfig } from "./http-guard";
 import { buildServer } from "./server";

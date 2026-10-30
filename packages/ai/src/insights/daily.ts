@@ -1,5 +1,5 @@
-import { notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { resolveDailySummary, dueNow, type DailySummarySettings } from "./daily-settings";
 import { aiDailySummaries, type AiDailySummaryRow, type SummaryDelivery } from "./schema";

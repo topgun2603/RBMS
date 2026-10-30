@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { MailIcon } from "lucide-react";
-import { KpiTile, useI18n } from "@srirealtime/web";
+import { KpiTile, useI18n } from "@rbms/web";
 import { useIsSchool } from "../lib/pack";
 import { useEnquiriesSummary } from "../lib/queries";
 

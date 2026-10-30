@@ -3,7 +3,7 @@
 import * as React from "react";
 import { z } from "zod";
 import { EyeOffIcon, LayersIcon } from "lucide-react";
-import { Badge, cn } from "@srirealtime/ui";
+import { Badge, cn } from "@rbms/ui";
 import { jsonText, parseJsonObject, ResourcePage, type ResourceConfig } from "@/components/crud/resource-page";
 import { PlanModulesPicker } from "@/components/features/plan-modules-picker";
 import { useAppProfiles } from "@/lib/features";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, DownloadIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
-import { Button, Card, CardContent, EmptyState, Field, FieldControl, FieldLabel, Input, Skeleton, StatusPill, Textarea, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, EmptyState, Field, FieldControl, FieldLabel, Input, Skeleton, StatusPill, Textarea, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, useI18n } from "@rbms/web";
 import { RIGHTS_STATUSES, RIGHTS_TYPES, useRight, useRights, useRightsAction, type RightsRequest, type RightsStatus } from "../../lib/queries-privacy";
 
 const STATUS_TONE: Record<RightsStatus, "info" | "warning" | "success" | "danger" | "neutral"> = {

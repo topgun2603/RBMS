@@ -1,5 +1,5 @@
-import { contrastRatio, hexToOklchString, mix, normalizeHex, readableForeground, relativeLuminance } from "@srirealtime/branding/color";
-import { surfaceVariables } from "@srirealtime/branding/tokens";
+import { contrastRatio, hexToOklchString, mix, normalizeHex, readableForeground, relativeLuminance } from "@rbms/branding/color";
+import { surfaceVariables } from "@rbms/branding/tokens";
 
 /**
  * The shopper's light / dark switch (client/header ThemeToggle, `sr_theme` in localStorage).

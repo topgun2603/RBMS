@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { GST_FILING_PERMISSIONS } from "./features";
 import { gstFilingRoutes } from "./routes";
 import { gst2bImports, gst2bRows, gstAdjustments, gstAdvances, gstDocFlags, gstFilings, gstSettings, gstTaxPayments } from "./schema";

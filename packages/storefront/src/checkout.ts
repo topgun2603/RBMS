@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { z } from "zod";
 import { mobileSchema, parseAddress, type FieldIssue, type ShopperAddress } from "./address";
 import type { DeliveryOption, DeliveryQuote, StoreSettings, StoreTrustSettings } from "./ports";

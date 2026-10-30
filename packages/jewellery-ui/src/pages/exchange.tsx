@@ -17,8 +17,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useI18n, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useI18n, useRouteParams } from "@rbms/web";
 import { ApplyDialog } from "../components/apply-dialog";
 import { ExchangeStatusPill, InlineError, useMetalLabel } from "../components/bits";
 import { jewelleryConfig } from "../lib/config";

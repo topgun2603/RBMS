@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon, LoaderIcon, MonitorIcon, RefreshCwIcon, SmartphoneIcon, TabletIcon, TriangleAlertIcon } from "lucide-react";
-import { Button, cn } from "@srirealtime/ui";
-import { api, useI18n, useTenantSlug } from "@srirealtime/web";
+import { Button, cn } from "@rbms/ui";
+import { api, useI18n, useTenantSlug } from "@rbms/web";
 import { storeUrlFor } from "../lib/store-url";
 import { LivePreviewFrame } from "./live-preview-frame";
 import { liveMessages } from "./live-preview-messages";

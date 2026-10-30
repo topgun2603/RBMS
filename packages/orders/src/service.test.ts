@@ -1,5 +1,5 @@
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
-import { createDb } from "@srirealtime/db";
+import { AppError, emptyContext, type RequestContext } from "@rbms/core";
+import { createDb } from "@rbms/db";
 import { eq } from "drizzle-orm";
 import Fastify from "fastify";
 import { afterAll, describe, expect, it, vi } from "vitest";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarCheckIcon, CalendarDaysIcon, CalendarRangeIcon, HandCoinsIcon, KeyRoundIcon, LandmarkIcon, UserRoundIcon, UsersIcon, WalletIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule } from "@rbms/web";
 import { DESK_ACCESS, PAYROLL_FEATURES, PAYROLL_PERMISSIONS } from "./lib/access";
 import { payrollMessages } from "./lib/messages";
 
@@ -34,7 +34,7 @@ const P = PAYROLL_PERMISSIONS;
 const page = (load: () => Promise<{ default: React.ComponentType }>) => React.lazy(load);
 
 /**
- * Staff attendance, leave and payroll (@srirealtime/payroll): the day board with one-tap marks, the month sheet with
+ * Staff attendance, leave and payroll (@rbms/payroll): the day board with one-tap marks, the month sheet with
  * corrections, leave requests and balances, staff records with salary structures, the monthly payroll with payslips and
  * the bank sheet, advances, statutory dues, "My attendance" for every staff member, the PIN check-in screen, and
  * Settings → Staff and payroll. createWebApp({ modules: [billingModule(), payrollModule(), …] }).

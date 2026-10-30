@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable } from "@srirealtime/web";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable } from "@rbms/web";
 import { MoreVerticalIcon, PencilIcon, PlusIcon, ReceiptTextIcon, ScrollTextIcon, StoreIcon, Trash2Icon } from "lucide-react";
 import {
   Button,
@@ -15,7 +15,7 @@ import {
   InitialsAvatar,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { PeopleIllustration } from "../components/illustrations";
 import { SupplierDialog } from "../components/inventory/supplier-dialog";
 import { money, stateLabel } from "../lib/format";

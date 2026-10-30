@@ -1,4 +1,4 @@
-import { TableMenuPage, tableMetadata } from "@srirealtime/storefront-ui";
+import { TableMenuPage, tableMetadata } from "@rbms/storefront-ui";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = tableMetadata;

@@ -1,4 +1,4 @@
-import { AppError, FULL_ACCESS_ROLES, isSuperAdmin, type BranchRef, type RequestContext } from "@srirealtime/core";
+import { AppError, FULL_ACCESS_ROLES, isSuperAdmin, type BranchRef, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { chooseBranch, type Assignment, type BranchAccess, type BranchLite } from "./logic";
 import { noopLogger, type LoggerPort } from "./ports";

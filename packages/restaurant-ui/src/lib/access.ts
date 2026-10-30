@@ -1,13 +1,13 @@
-/** Feature keys the restaurant UI uses (declared by @srirealtime/dining). */
+/** Feature keys the restaurant UI uses (declared by @rbms/dining). */
 export const RESTAURANT_FEATURES = {
   dining: "dining",
   kitchen: "dining.kitchen-display",
   qr: "dining.qr-ordering",
-  /** Zomato / Swiggy / ONDC orders through an aggregator (@srirealtime/aggregators). */
+  /** Zomato / Swiggy / ONDC orders through an aggregator (@rbms/aggregators). */
   platforms: "dining.aggregators",
 } as const;
 
-/** Permissions of @srirealtime/dining. Owners and admins hold all of them. */
+/** Permissions of @rbms/dining. Owners and admins hold all of them. */
 export const RESTAURANT_PERMISSIONS = {
   serve: "dining.serve",
   kitchen: "dining.kitchen",

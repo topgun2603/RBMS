@@ -1,5 +1,5 @@
-import { AppError, type AuditPort, type TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, type AuditPort, type TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { MAX_SYNC_BATCH, billListQuery, blockListQuery, closeBlockBody, offlineBillBody, reserveBody, reviewBody, type OfflineBillBody } from "./offline-schemas";
 import { financialYearOf, inRange, isLate, isRetryableStatus, negativeStockFlags, reconcileLines, remainingPayments, unusedSeqs } from "./offline-logic";

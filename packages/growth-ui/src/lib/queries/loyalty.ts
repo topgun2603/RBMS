@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, apiDownload } from "@srirealtime/web";
+import { api, apiDownload } from "@rbms/web";
 import { retry4xx } from "../http";
 import type { LedgerEntry, LedgerType, LoyaltyMember, LoyaltySettings, LoyaltySummary, MemberDetail, Paged } from "../types";
 

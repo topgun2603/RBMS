@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion, useReducedMotionSafe, useScroll, useTransform } from "@srirealtime/ui/motion";
+import { AnimatePresence, motion, useReducedMotionSafe, useScroll, useTransform } from "@rbms/ui/motion";
 import { useSite } from "./site-context";
 import { CreditBookMockup, InvoiceMockup, NotifyChip, PhoneStoreMockup } from "./mockups";
 

@@ -15,8 +15,8 @@ import {
   Label,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useFeature, useI18n, usePermission, useWebApp } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useFeature, useI18n, usePermission, useWebApp } from "@rbms/web";
 import { QrImage } from "../upi-qr";
 import { money, whatsappNumber } from "../../lib/format";
 import { usePublicUrl } from "../../lib/links";

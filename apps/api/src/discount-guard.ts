@@ -1,5 +1,5 @@
-import { AppError, FULL_ACCESS_ROLES, permissionsAllow, type AuditPort } from "@srirealtime/core";
-import { APPROVAL_PIN_HEADER, DISCOUNT_APPROVE_PERMISSION, evaluateDiscount, type DiscountLimit, type DiscountLine } from "@srirealtime/staff";
+import { AppError, FULL_ACCESS_ROLES, permissionsAllow, type AuditPort } from "@rbms/core";
+import { APPROVAL_PIN_HEADER, DISCOUNT_APPROVE_PERMISSION, evaluateDiscount, type DiscountLimit, type DiscountLine } from "@rbms/staff";
 import type { FastifyRequest } from "fastify";
 
 export interface DiscountGuardDeps {

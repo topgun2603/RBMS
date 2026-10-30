@@ -1,4 +1,4 @@
-import { proxyHandler } from "@srirealtime/storefront-ui";
+import { proxyHandler } from "@rbms/storefront-ui";
 
 /** Same-origin API proxy for the browser (the shop is resolved from this request's host). */
 export const dynamic = "force-dynamic";

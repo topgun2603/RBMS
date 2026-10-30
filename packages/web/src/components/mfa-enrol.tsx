@@ -4,7 +4,7 @@ import * as React from "react";
 import QRCode from "qrcode";
 import { useMutation } from "@tanstack/react-query";
 import { CopyIcon, DownloadIcon, Loader2Icon, ShieldCheckIcon } from "lucide-react";
-import { Button, OtpInput, toast } from "@srirealtime/ui";
+import { Button, OtpInput, toast } from "@rbms/ui";
 import { ApiError } from "../lib/api";
 import { describeError, useI18n } from "../lib/i18n";
 import { confirmMfaEnrol, recoveryCodesText, startMfaEnrol, type MfaEnrolStart } from "../lib/mfa";

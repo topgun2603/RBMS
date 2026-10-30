@@ -222,7 +222,7 @@ ${body}
 </body></html>`;
 
 // Names that must never appear in a customer guide.
-const banned = /srikit|srirealtime|localhost|@srirealtime/i;
+const banned = /srikit|srirealtime|localhost|@rbms/i;
 const hit = html.replace(/data:[a-z/+.-]+;base64,[A-Za-z0-9+/=]+/g, "").match(banned);
 if (hit) {
   console.error(`forbidden text in guide: "${hit[0]}"`);

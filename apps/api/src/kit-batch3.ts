@@ -1,29 +1,29 @@
 import { createHash } from "node:crypto";
-import { AppError, FULL_ACCESS_ROLES, permissionsAllow, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { createBranches } from "@srirealtime/branches";
-import type { createCatalogue } from "@srirealtime/catalogue";
-import { createChat, MemoryNonceStore, MemoryPubSub, type ChatNotification } from "@srirealtime/chat";
-import { createDeveloper, createRouteCollector } from "@srirealtime/developer";
-import { createEInvoice, type EInvoiceSource, type PartySource } from "@srirealtime/einvoice";
-import type { createInventory } from "@srirealtime/inventory";
-import type { createInvoices, CreditNote, DebitNote, Invoice } from "@srirealtime/invoices";
-import { createRedisNonceStore, createRedisPubSub, type JobsService } from "@srirealtime/jobs";
-import { createKyc, toVendorKycStatus } from "@srirealtime/kyc";
-import { createLoyalty, toIndianE164 } from "@srirealtime/loyalty";
-import { createMarketplace, razorpayRouteTransferPort, type SourceOrder } from "@srirealtime/marketplace";
-import type { createNotify } from "@srirealtime/notify";
-import type { createOrders, Order } from "@srirealtime/orders";
-import type { createPayments } from "@srirealtime/payments";
-import { createReports, DrizzleReportStore } from "@srirealtime/reports";
-import type { SettingsService } from "@srirealtime/settings";
-import type { createStaff } from "@srirealtime/staff";
-import { storeCustomers } from "@srirealtime/storefront";
-import { createSupport } from "@srirealtime/support";
-import type { createTenancy } from "@srirealtime/tenancy";
-import type { createAuth } from "@srirealtime/auth";
-import { createWhatsApp, type AudienceMember } from "@srirealtime/whatsapp";
-import { and, eq } from "@srirealtime/db";
+import { AppError, FULL_ACCESS_ROLES, permissionsAllow, type FeatureGatePort, type TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { createBranches } from "@rbms/branches";
+import type { createCatalogue } from "@rbms/catalogue";
+import { createChat, MemoryNonceStore, MemoryPubSub, type ChatNotification } from "@rbms/chat";
+import { createDeveloper, createRouteCollector } from "@rbms/developer";
+import { createEInvoice, type EInvoiceSource, type PartySource } from "@rbms/einvoice";
+import type { createInventory } from "@rbms/inventory";
+import type { createInvoices, CreditNote, DebitNote, Invoice } from "@rbms/invoices";
+import { createRedisNonceStore, createRedisPubSub, type JobsService } from "@rbms/jobs";
+import { createKyc, toVendorKycStatus } from "@rbms/kyc";
+import { createLoyalty, toIndianE164 } from "@rbms/loyalty";
+import { createMarketplace, razorpayRouteTransferPort, type SourceOrder } from "@rbms/marketplace";
+import type { createNotify } from "@rbms/notify";
+import type { createOrders, Order } from "@rbms/orders";
+import type { createPayments } from "@rbms/payments";
+import { createReports, DrizzleReportStore } from "@rbms/reports";
+import type { SettingsService } from "@rbms/settings";
+import type { createStaff } from "@rbms/staff";
+import { storeCustomers } from "@rbms/storefront";
+import { createSupport } from "@rbms/support";
+import type { createTenancy } from "@rbms/tenancy";
+import type { createAuth } from "@rbms/auth";
+import { createWhatsApp, type AudienceMember } from "@rbms/whatsapp";
+import { and, eq } from "@rbms/db";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { registerDatasets } from "./kit-reports";
@@ -63,9 +63,9 @@ export interface Batch3Deps {
   shopName: (tenantId: string) => Promise<string | null>;
   storeUrl: (tenantId: string) => Promise<string>;
   /** Every module's PermissionDefs (read lazily). */
-  permissions: () => import("@srirealtime/core").PermissionDef[];
+  permissions: () => import("@rbms/core").PermissionDef[];
   /** Audit log, for events the host hook can't attribute to a shop (KYC review decisions). */
-  audit?: import("@srirealtime/core").AuditPort;
+  audit?: import("@rbms/core").AuditPort;
 }
 
 const is404 = (e: unknown) => e instanceof AppError && e.status === 404;

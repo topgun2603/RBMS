@@ -1,6 +1,6 @@
-import { FULL_ACCESS_ROLES } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { createEnquiries, type ReceivedEnquiry } from "@srirealtime/enquiries";
+import { FULL_ACCESS_ROLES } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { createEnquiries, type ReceivedEnquiry } from "@rbms/enquiries";
 import type { Logger } from "pino";
 import { appUrlFor } from "./kit-batch5";
 

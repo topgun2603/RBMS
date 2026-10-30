@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, BadgeCheckIcon, ChevronRightIcon, InboxIcon, PackageCheckIcon, PlusIcon, ShoppingBagIcon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, EmptyState, InitialsAvatar, Skeleton, Stagger, StaggerItem } from "@srirealtime/ui";
-import { AttentionItem, KpiTile, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle, EmptyState, InitialsAvatar, Skeleton, Stagger, StaggerItem } from "@rbms/ui";
+import { AttentionItem, KpiTile, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { OrderStatusPill } from "../components/pills";
 import { PERMS, usePermissions } from "../lib/access";
 import { money, moneyCompact } from "../lib/format";

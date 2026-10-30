@@ -4,8 +4,8 @@
  * an `<name>.expected.json` next to it, runs it through the real `AiService` with the helper's own prompt and schema and
  * scores the raw reading field by field.
  *
- *   pnpm --filter @srirealtime/ai eval:vision                    MockProvider: pipeline and schema only, no cost
- *   pnpm --filter @srirealtime/ai eval:vision -- --live          REAL calls (costs money; needs ANTHROPIC_API_KEY)
+ *   pnpm --filter @rbms/ai eval:vision                    MockProvider: pipeline and schema only, no cost
+ *   pnpm --filter @rbms/ai eval:vision -- --live          REAL calls (costs money; needs ANTHROPIC_API_KEY)
  *   options: --group=purchase-bill|receipt  --only=01-grocery  --max-cost=USD (default 1)  --out=DIR
  *
  * Real bills have no `synthetic: true` in their expected file; the report keeps the two sets apart.
@@ -13,7 +13,7 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { costMicroUsd } from "../src/pricing";

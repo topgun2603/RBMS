@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * billing.* strings for expenses part B (docs/expenses-debit-notes.md): supplier link and buying on credit, branches,

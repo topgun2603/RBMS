@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 import { printingEn, printingTa } from "./messages-printing";
 import { offlineEn, offlineTa } from "./messages-offline";
 import { batchEn, batchTa } from "./messages-batches";

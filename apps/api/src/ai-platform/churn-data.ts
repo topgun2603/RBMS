@@ -1,5 +1,5 @@
-import type { aiPlatform } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import type { aiPlatform } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 /**
  * Read-only SQL behind Platform > Shops at risk (Phase 7 part B, docs/ai.md). One pass over every active shop: bills and

@@ -32,8 +32,8 @@ import {
   StatusPill,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useFeature, useI18n } from "@rbms/web";
 import { AuditorBadge, InlineError } from "../components/bits";
 import { WeekdayPicker } from "../components/employee-dialog";
 import { PAYROLL_FEATURES } from "../lib/access";

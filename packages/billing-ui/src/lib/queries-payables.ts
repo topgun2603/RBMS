@@ -2,7 +2,7 @@
 
 /** React Query hooks for supplier payables, purchase orders / goods receipts and debit notes (/v1/inventory/...). */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import type { Paged, Purchase, PurchaseSummary } from "./types";
 import type {
   ConvertInput,

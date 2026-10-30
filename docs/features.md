@@ -24,7 +24,7 @@ Example: Ecommerce = `invoices`, `invoices.whatsapp`, `invoices.reports`, `invoi
 (stock without purchases, no credit book, no reminders). Pro plan = `invoices.*`, `inventory.*`, `payments.*`.
 
 ```ts
-// @srirealtime/core
+// @rbms/core
 interface FeatureDef {
   key: string;                 // "invoices.credit-book"
   module: string;              // "invoices"
@@ -69,7 +69,7 @@ app.get("/credit-book", { config: { feature: "invoices.credit-book" } }, handler
 
 `TenantRef` gains `appId: string | null` (tenancy fills it).
 
-## `@srirealtime/features` API (`/v1/features`)
+## `@rbms/features` API (`/v1/features`)
 
 Tables: `app_profiles` (app_id text pk, name, features text[], timestamps), `tenant_feature_toggles` (tenant_id, feature, enabled,
 updated_by, timestamps; pk (tenant_id, feature)).
@@ -105,16 +105,16 @@ Seed (apps/api `pnpm seed`):
   `inventory`, `payments`; pro/enterprise = `invoices.*`, `inventory.*`, `payments.*`.
 - Demo shops: `raja` → pro, `kumar` → starter.
 
-End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent; development databases only):
+End-to-end shops (apps/api `pnpm --filter @rbms/api seed:e2e`, idempotent; development databases only):
 - `e2e-bill` (BL, pro), `e2e-store` (EC, pro: the demo store catalogue, WELCOME10, delivery zones, published home, about
   page, menus, store settings) and `e2e-lite` (BL, starter, for plan checks). The e2e scripts in `apps/api/test/e2e` only
   write to these shops; `test:e2e:all` seeds them (and puts each back on its plan as an active `manual` subscription) and
   runs `batch1.mjs`, `batch2.mjs`, `billing.mjs`, `batch3.mjs` (sections in `test/e2e/b3/`, docs/batch3.md "Integration") and
   `batch5.mjs` (sign-up and plan subscriptions on throwaway `e2e-su…` shops, docs/batch5.md) in sequence, then
   the storefront browser test when the dev servers are up.
-- Storefront browser test: `pnpm --filter @srirealtime/store test:e2e` (`apps/store/test/e2e.cjs`). Needs the api (:4000,
+- Storefront browser test: `pnpm --filter @rbms/store test:e2e` (`apps/store/test/e2e.cjs`). Needs the api (:4000,
   test OTP on) and store (:3003) dev servers and Chrome (`CHROME_PATH`, default the Windows install path; puppeteer-core
-  comes with `@srirealtime/documents`). It buys on `e2e-store.localhost:3003` as a fresh `+91 99990 xxxxx` shopper named
+  comes with `@rbms/documents`). It buys on `e2e-store.localhost:3003` as a fresh `+91 99990 xxxxx` shopper named
   "E2E Shopper …" (online + COD), checks the order lines add up to the charged prices, and screenshots each step into
   `SHOTS_DIR` (default `<tmp>/srikit-store-e2e`). Exits 2 (skipped) when a server is down; `test:e2e:all` reports that
   as SKIP. Its analytics anonymous id ends in `-e2e`.
@@ -124,7 +124,7 @@ End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent
   (`+9199990*,e2e-*@example.com`). Matching targets get no message, skip the resend/hourly limits and accept the code;
   the API ignores both variables when `NODE_ENV=production` and logs a line at startup either way. Shoppers, cashiers and
   bill customers in the scripts use +91 9999 00xxxx.
-- `pnpm --filter @srirealtime/api cleanup:e2e-data` (`-- --dry-run` to only count) removes what earlier e2e runs left in
+- `pnpm --filter @rbms/api cleanup:e2e-data` (`-- --dry-run` to only count) removes what earlier e2e runs left in
   the demo shops (raja, kumar, anbu), found by the scripts' markers ("E2E " names, test phones, the billing smoke's fixed
   customers/supplier, "Test Shopper" storefront accounts of the old browser test with their orders, carts, addresses,
   reviews and review votes); issued bills and orders are cancelled, not deleted. See `apps/api/src/e2e-cleanup.ts`. It also
@@ -133,7 +133,7 @@ End-to-end shops (apps/api `pnpm --filter @srirealtime/api seed:e2e`, idempotent
 
 ## Front end
 
-`@srirealtime/web` gives every app `useFeatures()` / `useFeature(key)` / `<Feature when="invoices.credit-book">` backed by
+`@rbms/web` gives every app `useFeatures()` / `useFeature(key)` / `<Feature when="invoices.credit-book">` backed by
 `GET /v1/features`. UI modules declare a `feature` on every nav item, route and dashboard widget, and the host shell hides what
 is off. A route whose feature is off shows an "Not available on your plan" (reason plan, with upgrade hint) or "Turned off"
 (reason shop, with a link to Settings → Features for owners) page instead of the screen.

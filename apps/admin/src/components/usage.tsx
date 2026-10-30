@@ -1,7 +1,7 @@
 "use client";
 
 import { BellIcon, MailIcon, MessageCircleIcon, SmartphoneIcon } from "lucide-react";
-import { Progress } from "@srirealtime/ui";
+import { Progress } from "@rbms/ui";
 import type { Channel } from "@/lib/types";
 
 export const channelIcon: Record<Channel, typeof MailIcon> = {

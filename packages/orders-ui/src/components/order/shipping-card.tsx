@@ -25,8 +25,8 @@ import {
   Input,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { absoluteUrl, ConfirmDialog, describeError, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { absoluteUrl, ConfirmDialog, describeError, useFeature, useI18n } from "@rbms/web";
 import { PERMS, usePermissions } from "../../lib/access";
 import { orNull } from "../../lib/format";
 import { useOrderAction, useShipmentAction, useShipments } from "../../lib/queries";

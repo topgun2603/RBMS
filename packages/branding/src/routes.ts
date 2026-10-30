@@ -1,4 +1,4 @@
-import { documented, requireRole, requireTenant } from "@srirealtime/core";
+import { documented, requireRole, requireTenant } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { BrandingService } from "./service";

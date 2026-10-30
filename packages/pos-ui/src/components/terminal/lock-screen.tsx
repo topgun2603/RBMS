@@ -16,8 +16,8 @@ import {
   DropdownMenuTrigger,
   InitialsAvatar,
   Skeleton,
-} from "@srirealtime/ui";
-import { ConfirmDialog, LocaleSwitcher, ThemeToggle, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, LocaleSwitcher, ThemeToggle, useI18n } from "@rbms/web";
 import { formatCountdown, lockSecondsLeft, padDisabled, pinPadReducer, unlockProblemOf, type PinPadAction, type UnlockProblem } from "../../lib/pin";
 import { getStaff, openPinSession } from "../../lib/terminal-api";
 import type { DeviceInfo, PinSession } from "../../lib/terminal-types";

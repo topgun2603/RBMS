@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ScaleIcon } from "lucide-react";
-import { lineAmount } from "@srirealtime/gst";
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, FieldError, FieldHint, FieldLabel, Input } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { lineAmount } from "@rbms/gst";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, FieldError, FieldHint, FieldLabel, Input } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { CartProduct } from "../lib/cart";
 import { money } from "../lib/format";
 import { parseManualWeight } from "../lib/scale-serial";

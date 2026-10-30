@@ -3,10 +3,10 @@
  * Payables (inventory reads and pays them through `ExpenseBillsPort`), the supplier and branch lookups the expenses
  * module needs, and the recurring-expenses job. Packages never import each other; this file joins them over the tables.
  */
-import { branches } from "@srirealtime/branches";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { expenseCategories, expenses, type BranchesPort, type SuppliersPort } from "@srirealtime/expenses";
-import type { ExpenseBill, ExpenseBillsPort, InventoryService } from "@srirealtime/inventory";
+import { branches } from "@rbms/branches";
+import type { Db, DbOrTx } from "@rbms/db";
+import { expenseCategories, expenses, type BranchesPort, type SuppliersPort } from "@rbms/expenses";
+import type { ExpenseBill, ExpenseBillsPort, InventoryService } from "@rbms/inventory";
 import { and, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 const isNotFound = (err: unknown) => (err as { status?: number })?.status === 404;

@@ -24,8 +24,8 @@ import {
   SelectValue,
   Skeleton,
   Textarea,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { duration, istIso, money, todayIST } from "../lib/format";
 import { useCreateAppointment, useServices, useStaff } from "../lib/queries";
 import type { Appointment, Slot } from "../lib/types";

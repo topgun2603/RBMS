@@ -1,5 +1,5 @@
 /** Pure quotation rules (no database): derived status, who may do what, advance and the dashboard figures. */
-import { sanitizePrefix } from "@srirealtime/gst";
+import { sanitizePrefix } from "@rbms/gst";
 import { addDaysISO } from "./ledger";
 import type { QuotationDisplayStatus, QuotationStatus } from "./schema";
 

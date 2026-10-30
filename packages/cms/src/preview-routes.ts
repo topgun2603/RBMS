@@ -1,4 +1,4 @@
-import { requirePermission, requireTenant, type RequestContext } from "@srirealtime/core";
+import { requirePermission, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { CMS_FEATURE_KEYS, CMS_PERMISSION_KEYS } from "./features";
 import { PREVIEW_DRAFT_MAX_BYTES, PREVIEW_TOKEN_HEADER, type CmsPreview } from "./preview";

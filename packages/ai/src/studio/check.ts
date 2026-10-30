@@ -1,4 +1,4 @@
-import { permissionsAllow } from "@srirealtime/core";
+import { permissionsAllow } from "@rbms/core";
 import { createHash } from "node:crypto";
 import { ALL_OPS, opOf } from "./ops";
 import { buildPreview } from "./diff";

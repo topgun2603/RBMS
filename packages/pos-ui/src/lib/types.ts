@@ -1,4 +1,4 @@
-import type { GstRateRule } from "@srirealtime/gst";
+import type { GstRateRule } from "@rbms/gst";
 /** API shapes the counter uses (subsets of the server types; see packages/invoices, catalogue, loyalty, branches). */
 
 export interface Paged<T> {

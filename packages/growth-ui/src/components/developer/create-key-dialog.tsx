@@ -22,8 +22,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@srirealtime/ui";
-import { describeError, useI18n, useOptionalSession } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n, useOptionalSession } from "@rbms/web";
 import { EXPIRY_PRESETS, expiryInFuture, expiryToIso, tomorrowIST, type ExpiryPreset } from "../../lib/developer";
 import { useCreateKey, useScopes } from "../../lib/queries/developer";
 import { InlineError } from "../bits";

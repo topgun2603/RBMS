@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useOptionalSession } from "@srirealtime/web";
+import { useOptionalSession } from "@rbms/web";
 
-/** Permission keys the orders UI checks (declared by @srirealtime/orders, coupons and the settings host). */
+/** Permission keys the orders UI checks (declared by @rbms/orders, coupons and the settings host). */
 export const PERMS = {
   manage: "orders.manage",
   cancel: "orders.cancel",
@@ -15,7 +15,7 @@ export const PERMS = {
 } as const;
 
 /**
- * Same matching as @srirealtime/core's permissionMatches: `*` is everything, a trailing `.*` covers the module and every
+ * Same matching as @rbms/core's permissionMatches: `*` is everything, a trailing `.*` covers the module and every
  * key below it, a middle `*` one segment.
  */
 export function permissionMatches(granted: string, key: string): boolean {

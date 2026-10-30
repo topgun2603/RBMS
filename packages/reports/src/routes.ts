@@ -1,4 +1,4 @@
-import { FULL_ACCESS_ROLES, hasPermission, isSuperAdmin, requirePermission, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { FULL_ACCESS_ROLES, hasPermission, isSuperAdmin, requirePermission, requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { REPORTS_FEATURE, REPORTS_PERMISSION_KEYS } from "./features";

@@ -1,6 +1,6 @@
 // Loyalty redemption on the bill form. Pure: no React, no fetch.
 
-import { ApiError } from "@srirealtime/web";
+import { ApiError } from "@rbms/web";
 
 export type RedeemReason = "no_points" | "below_min" | "order_too_small" | "disabled";
 /** Extra reasons the redeem step (POST /v1/invoices … loyaltyPoints) can give in 409 loyalty_redeem. */

@@ -4,8 +4,8 @@
  * Runs only with `POS_TEST_DATABASE_URL` set (a development Postgres); it works in a throw-away schema and drops it afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { emptyContext, type TenantRef } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { emptyContext, type TenantRef } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, BanIcon, PackageCheckIcon, ReceiptIcon, ShieldAlertIcon, ShieldCheckIcon, ShieldOffIcon, Undo2Icon, WrenchIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { useSerialsConfig } from "../lib/config";
 import type { SerialEvent, SerialStatus, WarrantyStatus } from "../lib/types";
 

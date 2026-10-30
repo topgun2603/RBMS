@@ -6,8 +6,8 @@
  *   PowerShell: $env:POS_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5432/srikit"; pnpm test
  */
 import { randomUUID } from "node:crypto";
-import { AppError, emptyContext, featureDisabled, paymentRequired, permissionsAllow, requirePermission, type TenantRef } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { AppError, emptyContext, featureDisabled, paymentRequired, permissionsAllow, requirePermission, type TenantRef } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -179,7 +179,7 @@ describe.skipIf(!URL_)("POS terminals against Postgres", () => {
       req.ctx.tenant = [T1, T2].find((t) => t.slug === slug) ?? null;
     });
     pos.deviceHook(app);
-    // Fake auth: bearer → session; a terminal-bound session needs that terminal's device (as @srirealtime/auth does).
+    // Fake auth: bearer → session; a terminal-bound session needs that terminal's device (as @rbms/auth does).
     app.addHook("onRequest", async (req) => {
       const token = req.headers.authorization?.replace(/^Bearer /, "");
       const s = token ? sessions.get(token) : undefined;

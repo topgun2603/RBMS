@@ -104,7 +104,7 @@ const OUTCOME_PROMISE =
   /\b(we|i|our team|the team)\s*(will|'ll|shall)\s+(definitely\s+|surely\s+)?(fix|resolve|solve|reverse|restore|add|build|release|launch|ship|enable|update)\b|\b(guarantee[ds]?|guaranteed|promise[ds]?|for sure|100%|assure[ds]?|definitely|surely)\b|சரிசெய்து (விடுவோம்|தருவோம்)|சரி செய்வோம்|உறுதியளிக்கிறோம்|உறுதியாக/i;
 /** Internal names and talk owners must never see. */
 export const INTERNAL_WORDS =
-  /\b(srikit|sri ?realtime|srirealtime|claude|anthropic|haiku|opus|sonnet|openai|gpt|llm|language model|ai model|the model|prompt|github|commit|pull request|repo(sitory)?|drizzle|fastify|next\.?js|typescript|postgres|redis|database table|stack ?trace|agent)\b|@srirealtime|\b[\w/-]+\.(tsx?|jsx?|mjs|json|sql|md)\b|\b(packages|apps)\/[\w-]/i;
+  /\b(srikit|sri ?realtime|srirealtime|claude|anthropic|haiku|opus|sonnet|openai|gpt|llm|language model|ai model|the model|prompt|github|commit|pull request|repo(sitory)?|drizzle|fastify|next\.?js|typescript|postgres|redis|database table|stack ?trace|agent)\b|@rbms|\b[\w/-]+\.(tsx?|jsx?|mjs|json|sql|md)\b|\b(packages|apps)\/[\w-]/i;
 const CONTACT = /(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}|[\w.+-]+@[\w-]+\.[\w.]+|https?:\/\/\S+|www\.(?!your|example)\S+|\bwa\.me\b/i;
 
 export interface DraftCheck {

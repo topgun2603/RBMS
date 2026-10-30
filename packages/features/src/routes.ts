@@ -1,4 +1,4 @@
-import { documented, notFound, requireRole, requireSuperAdmin, requireTenant } from "@srirealtime/core";
+import { documented, notFound, requireRole, requireSuperAdmin, requireTenant } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { FeaturesService, ProfileInput } from "./service";

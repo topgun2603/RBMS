@@ -7,7 +7,7 @@ import { cacheTags } from "../lib/cache-tags";
  * without CORS entries, and lets the shopper's IP / user agent reach analytics + rate limits.
  *
  * Mount in the app as `app/api/v1/[...path]/route.ts`:
- *   export { proxyHandler as GET, proxyHandler as POST, proxyHandler as PUT, proxyHandler as PATCH, proxyHandler as DELETE } from "@srirealtime/storefront-ui";
+ *   export { proxyHandler as GET, proxyHandler as POST, proxyHandler as PUT, proxyHandler as PATCH, proxyHandler as DELETE } from "@rbms/storefront-ui";
  */
 const PASS_REQUEST = ["accept", "accept-language", "authorization", "content-type", "user-agent", "referer", "origin", "x-guest-token", "last-event-id"];
 const PASS_RESPONSE = ["content-type", "cache-control", "retry-after", "content-disposition", "location"];

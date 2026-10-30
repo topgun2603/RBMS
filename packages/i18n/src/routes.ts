@@ -1,4 +1,4 @@
-import { requireRole, requireTenant } from "@srirealtime/core";
+import { requireRole, requireTenant } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { normalizeLocale } from "./client";

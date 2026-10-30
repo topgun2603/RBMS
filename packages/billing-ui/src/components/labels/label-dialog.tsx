@@ -27,8 +27,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   toast,
-} from "@srirealtime/ui";
-import { api, describeError, useDebounced, useI18n, useOptionalSession } from "@srirealtime/web";
+} from "@rbms/ui";
+import { api, describeError, useDebounced, useI18n, useOptionalSession } from "@rbms/web";
 import {
   expandLabels,
   LABEL_CSS,
@@ -48,7 +48,7 @@ import {
   type LabelField,
   type LabelItem,
   type PrinterConfig,
-} from "@srirealtime/receipt-print";
+} from "@rbms/receipt-print";
 import {
   designFromPreset,
   printHtml,

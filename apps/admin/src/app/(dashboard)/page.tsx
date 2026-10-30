@@ -26,7 +26,7 @@ import {
   StatCard,
   Stagger,
   StaggerItem,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { StatusBadge } from "@/components/badges";
 import { channelIcon, UsageBar } from "@/components/usage";
 import { Page } from "@/components/page";

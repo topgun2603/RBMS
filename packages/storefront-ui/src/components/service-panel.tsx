@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { CalendarCheck2Icon, Clock3Icon, MessageCircleIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import type { Product } from "../types";
 import { durationLabel, serviceAction } from "../lib/service-item";
 import { Price } from "./bits";

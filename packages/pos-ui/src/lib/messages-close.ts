@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** pos.day.* / pos.cash.* / pos.handover.* additions: pay-in / pay-out categories, X and Z reports, cashier handover, close rules (docs/counter-close-display-labels.md). Merged into posMessages. */
 export const closeEn: Messages = {

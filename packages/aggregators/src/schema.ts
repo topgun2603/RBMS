@@ -1,4 +1,4 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import type { AggOrderStatus, NormalizedOrder, Platform, ProviderId, Rider, TaxMode } from "./types";
 import type { MappedLine } from "./mapping";

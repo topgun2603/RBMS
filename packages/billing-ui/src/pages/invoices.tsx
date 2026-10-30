@@ -12,9 +12,9 @@ import {
   useMyBranches,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { FilePlus2Icon, FileTextIcon, PlusIcon, Undo2Icon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@rbms/ui";
 import { BillsIllustration } from "../components/illustrations";
 import { StatusBadge } from "../components/status-badge";
 import { money } from "../lib/format";

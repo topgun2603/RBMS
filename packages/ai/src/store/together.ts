@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { aiItemPairs } from "../schema";
 
 /**

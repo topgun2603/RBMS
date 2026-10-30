@@ -14,8 +14,8 @@ import {
   type FeatureGatePort,
   type ListPage,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import {
   financialYear,
   formatInvoiceNumber,
@@ -24,7 +24,7 @@ import {
   normalizeStateCode,
   sanitizePrefix,
   todayIST,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import { and, asc, count, desc, eq, gte, inArray, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { ORDER_FEATURES_KEYS } from "./features";
@@ -1425,7 +1425,7 @@ export class OrdersService {
     return "";
   }
 
-  /** Template variables (documented in @srirealtime/notify templates). */
+  /** Template variables (documented in @rbms/notify templates). */
   async messageVars(row: OrderRow, audience: "customer" | "owner", channel: NotifierSendInput["channel"]): Promise<Record<string, string>> {
     let shop = "";
     try {

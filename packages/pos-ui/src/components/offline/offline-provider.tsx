@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { toast } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { todayIST } from "../../lib/format";
 import { reportNetwork } from "../../lib/online";
 import { createOfflineApi } from "../../lib/offline/api";

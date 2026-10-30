@@ -1,6 +1,6 @@
 /**
  * Firebase Phone Authentication for the sign-in screens (docs/firebase-auth.md). Framework-free so the kit login,
- * the landing site (apps/www) and the admin app share it: `import … from "@srirealtime/web/firebase-phone"`.
+ * the landing site (apps/www) and the admin app share it: `import … from "@rbms/web/firebase-phone"`.
  *
  * Firebase only verifies the phone number. The ID token goes to `POST /v1/auth/firebase`, which starts our own session;
  * the Firebase client is signed out right after (in-memory persistence, nothing stored). The SDK (`firebase/app` +

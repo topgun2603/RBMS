@@ -1,4 +1,4 @@
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { filingCalendar } from "./calendar";
 import { buildCmp08, buildGstr4, quartersOfFy } from "./composition";

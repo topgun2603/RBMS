@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, BellIcon, BellOffIcon, BikeIcon, CheckIcon, FlameIcon, GlobeIcon, QrCodeIcon, ShoppingBagIcon, Undo2Icon, UtensilsIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Skeleton } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n, useStored, writeStored } from "@srirealtime/web";
+import { Button, ChipGroup, cn, Skeleton } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n, useStored, writeStored } from "@rbms/web";
 import { DueChip, PlatformBadge } from "../components/platform";
 import { elapsed, minutesSince, qty } from "../lib/format";
 import { minutesUntil } from "../lib/online";

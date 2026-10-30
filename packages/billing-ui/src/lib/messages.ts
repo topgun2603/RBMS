@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 import * as coreV2 from "./messages/core";
 import * as inventoryV2 from "./messages/inventory";
 import * as creditBookV2 from "./messages/credit-book";

@@ -103,7 +103,7 @@ The API writes a typed OpenAPI 3.1 document of the routes that declare their sha
 packages/developer/src/openapi.ts):
 
 ```sh
-pnpm --filter @srirealtime/api openapi -- --typed openapi.typed.json   # → apps/api/openapi.typed.json
+pnpm --filter @rbms/api openapi -- --typed openapi.typed.json   # → apps/api/openapi.typed.json
 node scripts/mobile/check-api-models.mjs                                # or pass another path to the document
 ```
 

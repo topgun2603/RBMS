@@ -14,14 +14,14 @@ import {
   DropdownMenuTrigger,
   motion,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { api } from "../lib/api";
 import { setStoredBranch, useStoredBranch } from "../lib/branch";
 import { useFeature } from "../lib/features";
 import { useI18n } from "../lib/i18n";
 import { useTenantSlug } from "../lib/tenant";
 
-/** Feature key of multi-branch shops (declared by @srirealtime/branches). */
+/** Feature key of multi-branch shops (declared by @rbms/branches). */
 export const MULTI_BRANCH_FEATURE = "multi-branch";
 
 /** A branch as `GET /v1/branches/mine` returns it (the fields the switcher uses). */

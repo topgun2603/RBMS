@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon, MailCheckIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Field, FieldControl, FieldHint, FieldLabel } from "@srirealtime/ui/components/field";
-import { Input } from "@srirealtime/ui/components/input";
+import { Button } from "@rbms/ui/components/button";
+import { Field, FieldControl, FieldHint, FieldLabel } from "@rbms/ui/components/field";
+import { Input } from "@rbms/ui/components/input";
 import {
   firebasePhoneErrorKind,
   firebasePhoneMessage,
@@ -18,7 +18,7 @@ import {
   signUpWithPassword,
   type AuthClientConfig,
   type SignInMethod,
-} from "@srirealtime/web/firebase-phone";
+} from "@rbms/web/firebase-phone";
 import { api, errorMessage, type SignInResult } from "@/lib/api";
 import { GoogleButton } from "./google-button";
 import { OtpSignIn } from "./otp-sign-in";

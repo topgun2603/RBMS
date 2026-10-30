@@ -1,4 +1,4 @@
-import { computeInvoice } from "@srirealtime/gst";
+import { computeInvoice } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { renderInvoice, renderInvoiceThermal } from "./renderers/invoice";
 import { renderTransferNote, type TransferNoteDocData } from "./renderers/transfer-note";

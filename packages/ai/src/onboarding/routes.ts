@@ -1,4 +1,4 @@
-import { badRequest, requireRole, requireTenant, type SrModule } from "@srirealtime/core";
+import { badRequest, requireRole, requireTenant, type SrModule } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { RateLimiter } from "../assist/routes";

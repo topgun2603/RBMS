@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { AiDraftBanner, api, describeError, sendAiFeedback, useDebounced, useI18n, useModuleNavigate, type AiOutcome } from "@srirealtime/web";
+import { AiDraftBanner, api, describeError, sendAiFeedback, useDebounced, useI18n, useModuleNavigate, type AiOutcome } from "@rbms/web";
 import { CheckIcon, Link2Icon, Loader2Icon, PackageIcon, PlusIcon, ScanLineIcon, StickyNoteIcon, Trash2Icon, UnlinkIcon } from "lucide-react";
-import { computeInvoice, isValidGstin } from "@srirealtime/gst";
+import { computeInvoice, isValidGstin } from "@rbms/gst";
 import {
   AnimatedNumber,
   AnimatePresence,
@@ -22,7 +22,7 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { cleanQty } from "./stock-meta";
 import { ChargesEditor, chargeInputs, chargesTotal, type ChargeDraft } from "./landed-charges";
 import { SupplierPicker, supplierPartyState, type SupplierParty } from "./supplier-picker";

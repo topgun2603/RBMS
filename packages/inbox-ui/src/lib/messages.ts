@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 import { aiEn, aiTa } from "./messages-ai";
 
 /**

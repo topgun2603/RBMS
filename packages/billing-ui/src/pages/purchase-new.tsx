@@ -2,7 +2,7 @@
 
 import { TruckIcon } from "lucide-react";
 import { PurchaseForm } from "../components/inventory/purchase-form";
-import { Page, PageHeading, useI18n } from "@srirealtime/web";
+import { Page, PageHeading, useI18n } from "@rbms/web";
 
 export default function NewPurchasePage() {
   const { t } = useI18n();

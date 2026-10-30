@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/uploads",
+  "name": "@rbms/uploads",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@srirealtime/core": "workspace:*",
-    "@srirealtime/db": "workspace:*",
+    "@rbms/core": "workspace:*",
+    "@rbms/db": "workspace:*",
     "@aws-sdk/client-s3": "^3.840.0",
     "@aws-sdk/s3-request-presigner": "^3.840.0",
     "drizzle-orm": "^0.44.0",

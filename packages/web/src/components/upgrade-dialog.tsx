@@ -14,7 +14,7 @@ import {
   Meter,
   motion,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { featureModuleName, featureName } from "../app/gate";
 import { useOptionalWebApp, useSettingsHref } from "../app/navigation";
 import { allSettingsPages, useOptionalSession } from "../app/session";

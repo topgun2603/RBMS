@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { requireRole, requireTenant, requireUser } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { GstinLookupService } from "./gstin-lookup";

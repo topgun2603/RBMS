@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** workspace.counter.* strings: Settings > Counter insights (alerts, coaching notes, shift planning; AI Phase 5 part A). Keep the en and ta key sets identical. */
 export const counterEn: Messages = {

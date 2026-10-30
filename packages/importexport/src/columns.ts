@@ -136,7 +136,7 @@ export function parseEmail(value: string): string {
   return s;
 }
 
-/** GST state codes (current), as in @srirealtime/gst. */
+/** GST state codes (current), as in @rbms/gst. */
 export const STATES: readonly { code: string; name: string; aliases?: string[] }[] = [
   { code: "01", name: "Jammu and Kashmir", aliases: ["j&k", "jk", "jammu & kashmir"] },
   { code: "02", name: "Himachal Pradesh", aliases: ["hp"] },

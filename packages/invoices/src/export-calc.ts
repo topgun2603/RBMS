@@ -13,7 +13,7 @@ import {
   paiseToForeign,
   type InvoiceTotals,
   type LineInput,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import { z } from "zod";
 
 /**

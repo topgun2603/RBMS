@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CameraIcon, FileUpIcon, Loader2Icon, ScanLineIcon, ShieldCheckIcon, TriangleAlertIcon } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui";
-import { useI18n, useSettingsHref } from "@srirealtime/web";
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui";
+import { useI18n, useSettingsHref } from "@rbms/web";
 import {
   SCAN_BILL_CREDITS,
   SCAN_RECEIPT_CREDITS,

@@ -20,7 +20,7 @@ import {
   Stagger,
   StaggerItem,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { Page } from "../components/page";
 import { useMe } from "../lib/auth";
 import { useOptionalShop } from "../lib/branding";

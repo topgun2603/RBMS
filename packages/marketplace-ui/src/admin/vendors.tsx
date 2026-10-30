@@ -25,8 +25,8 @@ import {
   Switch,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { KycPill, VendorLogo, VendorStatusPill } from "../components/bits";
 import { SubmitButton } from "../components/account";
 import { bpsToPercent, money, PHONE_RE } from "../lib/logic";

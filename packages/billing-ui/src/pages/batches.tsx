@@ -2,16 +2,16 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { AlertTriangleIcon, CalendarClockIcon, DownloadIcon, HistoryIcon, IndianRupeeIcon, MoreVerticalIcon, PencilIcon, PlusIcon, Settings2Icon, SlidersHorizontalIcon, Trash2Icon, XCircleIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, cn, DataTable, DataTableToolbar, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, EmptyState, toast, type DataTableColumn } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, cn, DataTable, DataTableToolbar, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, EmptyState, toast, type DataTableColumn } from "@rbms/ui";
 import { StatTile } from "../components/charts/stat-tile";
 import { BoxIllustration } from "../components/illustrations";
 import { BatchAdjustDialog, BatchEditDialog, BatchHistorySheet, BatchSettingsDialog } from "../components/inventory/batch-dialogs";
 import { BatchReceiveDialog } from "../components/inventory/batch-receive-dialog";
 import { ExpiryPill, fmtDay } from "../components/inventory/batch-bits";
 import { useHasPermission } from "../lib/access";
-import { describeError } from "@srirealtime/web";
+import { describeError } from "@rbms/web";
 import { formatQty, money } from "../lib/format";
 import { useExpirySummary } from "../lib/queries-stock";
 import { downloadCsv } from "../lib/queries-v2";

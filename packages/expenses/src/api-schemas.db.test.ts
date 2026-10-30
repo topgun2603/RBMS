@@ -6,9 +6,9 @@
  * a throw-away schema and drops it afterwards.
  *   PowerShell: $env:EXPENSES_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5433/srikit"; pnpm test
  */
-import { emptyContext, type RequestContext } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { emptyContext, type RequestContext } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance, type RouteOptions } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

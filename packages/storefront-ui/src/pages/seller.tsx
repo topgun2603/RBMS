@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BadgeCheckIcon, PackageIcon, StoreIcon } from "lucide-react";
-import { absoluteUrl, breadcrumbJsonLd, paiseToPrice, STORE_PATHS, type JsonLd as JsonLdData } from "@srirealtime/cms/seo";
+import { absoluteUrl, breadcrumbJsonLd, paiseToPrice, STORE_PATHS, type JsonLd as JsonLdData } from "@rbms/cms/seo";
 import { apiGetOrNull, getFeatures, getRequestInfo, requireStore } from "../server/api";
 import { getRatings, type SearchParams } from "../server/data";
 import { storeMetadata } from "../server/meta";

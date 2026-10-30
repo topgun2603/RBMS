@@ -3,9 +3,9 @@
  * (PI/26-27/0001, SO/..., DC/... per branch and FY), customers and GST totals (the invoice rules), share links and
  * WhatsApp / SMS / email sending, the shop settings and the data the PDFs print.
  */
-import { AppError, badRequest, notFound, type FeatureGatePort } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { computeInvoice, isInterState, todayIST, type InvoiceTotals, type LineInput } from "@srirealtime/gst";
+import { AppError, badRequest, notFound, type FeatureGatePort } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { computeInvoice, isInterState, todayIST, type InvoiceTotals, type LineInput } from "@rbms/gst";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { maskPhone, toIndianE164 } from "./ledger";
@@ -25,7 +25,7 @@ export interface SalesDocSettingsPort {
 export type SalesDocChannel = "whatsapp" | "sms" | "email";
 export const SALES_DOC_CHANNELS = ["whatsapp", "sms", "email"] as const;
 
-/** Notify template keys (built-ins in @srirealtime/notify, en + ta). Vars: shop, customer, number, amount, link. */
+/** Notify template keys (built-ins in @rbms/notify, en + ta). Vars: shop, customer, number, amount, link. */
 export const SALES_DOC_TEMPLATES: Record<SalesDocKind, string> = {
   proforma: "proforma.sent",
   sale_order: "sale-order.sent",

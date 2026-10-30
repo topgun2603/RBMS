@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/documents",
+  "name": "@rbms/documents",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,9 +13,9 @@
   "dependencies": {
     "@fontsource/noto-sans": "^5.2.0",
     "@fontsource/noto-sans-tamil": "^5.2.0",
-    "@srirealtime/core": "workspace:*",
-    "@srirealtime/db": "workspace:*",
-    "@srirealtime/gst": "workspace:*",
+    "@rbms/core": "workspace:*",
+    "@rbms/db": "workspace:*",
+    "@rbms/gst": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "puppeteer-core": "^24.0.0",
     "qrcode": "^1.5.4",

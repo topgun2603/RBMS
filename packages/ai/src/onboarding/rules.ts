@@ -1,4 +1,4 @@
-import { BUSINESS_TYPES, PACKS, packFor, type BusinessType } from "@srirealtime/verticals";
+import { BUSINESS_TYPES, PACKS, packFor, type BusinessType } from "@rbms/verticals";
 import { neutralise } from "../assist/safety";
 
 /**

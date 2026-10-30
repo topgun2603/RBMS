@@ -1,4 +1,4 @@
-import type { FeatureDef, FeatureGatePort, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { FeatureDef, FeatureGatePort, PermissionDef, TenantRef } from "@rbms/core";
 import type { MembershipsSettings } from "./logic";
 
 export type { FeatureGatePort };

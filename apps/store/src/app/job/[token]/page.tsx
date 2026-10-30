@@ -1,4 +1,4 @@
-import { JobTrackPage, jobTrackMetadata } from "@srirealtime/storefront-ui";
+import { JobTrackPage, jobTrackMetadata } from "@rbms/storefront-ui";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = jobTrackMetadata;

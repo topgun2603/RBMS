@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { safeEqual } from "@srirealtime/core";
+import { safeEqual } from "@rbms/core";
 import { normalisePhone, type OutboundStatus } from "./logic";
 
 /**

@@ -18,8 +18,8 @@ import {
   Skeleton,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useDebounced, useI18n, useTenantSlug } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useDebounced, useI18n, useTenantSlug } from "@rbms/web";
 import { VegMark } from "../components/bits";
 import { tableQrUrl } from "../lib/config";
 import { money } from "../lib/format";

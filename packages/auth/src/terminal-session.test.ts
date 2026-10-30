@@ -5,8 +5,8 @@
  *   PowerShell: $env:POS_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5432/srikit"; pnpm test
  * The hook part (no database) always runs.
  */
-import { AppError, emptyContext } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { AppError, emptyContext } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";

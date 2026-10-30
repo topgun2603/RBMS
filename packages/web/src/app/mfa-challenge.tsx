@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
-import { Button, Field, FieldControl, FieldLabel, Input, OtpInput, toast } from "@srirealtime/ui";
+import { Button, Field, FieldControl, FieldLabel, Input, OtpInput, toast } from "@rbms/ui";
 import { MfaEnrol, RecoveryCodes } from "../components/mfa-enrol";
 import { ApiError } from "../lib/api";
 import { useShop } from "../lib/branding";

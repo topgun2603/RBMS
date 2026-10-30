@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BoxIcon, InfoIcon, LinkIcon, PuzzleIcon } from "lucide-react";
-import { Badge, Button, cn, EmptyState, Skeleton, Switch } from "@srirealtime/ui";
+import { Badge, Button, cn, EmptyState, Skeleton, Switch } from "@rbms/ui";
 import { QueryError } from "@/components/query-state";
 import {
   buildGraph,

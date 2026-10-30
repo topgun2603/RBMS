@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, MonitorIcon } from "lucide-react";
-import { Button, Input } from "@srirealtime/ui";
-import { absoluteUrl, useTenantSlug } from "@srirealtime/web";
+import { Button, Input } from "@rbms/ui";
+import { absoluteUrl, useTenantSlug } from "@rbms/web";
 import { DISPLAY_TEXT, displayChannelName, type DisplayState } from "../../lib/display";
 import {
   DisplayHttpError,

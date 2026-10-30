@@ -5,7 +5,7 @@
  * WhatsApp sending, inventory, purchases, suppliers and reports. Money is integer paise.
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, apiDownload, type QueryParams } from "@srirealtime/web";
+import { api, apiDownload, type QueryParams } from "@rbms/web";
 import { qk } from "./queries";
 import type {
   AgeingResponse,

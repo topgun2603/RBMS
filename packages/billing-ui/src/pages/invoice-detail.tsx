@@ -15,7 +15,7 @@ import {
   useRouteParams,
   useShop,
   useTenantSlug,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
@@ -65,7 +65,7 @@ import {
   SuccessCheck,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { EINVOICE_FEATURE, EInvoiceCard } from "../components/einvoice/einvoice-card";
 import { CreditNoteDialog } from "../components/credit-notes/credit-note-dialog";
 import { CreditNoteStatusPill } from "../components/credit-notes/credit-note-ui";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScanLineIcon, UserPlusIcon, UsersIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
 import {
   ModuleLink,
   Page,
@@ -14,7 +14,7 @@ import {
   useQueryParams,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { dash, EndsOn } from "../components/bits";
 import { MemberDialog } from "../components/member-dialog";
 import { DESK_ACCESS, MEMBERSHIPS_FEATURES, MEMBERSHIPS_PERMISSIONS } from "../lib/access";

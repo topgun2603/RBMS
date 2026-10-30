@@ -1,5 +1,5 @@
 /** Pure credit-book, reminder and messaging rules (no database). */
-import { formatINR } from "@srirealtime/gst";
+import { formatINR } from "@rbms/gst";
 import { deriveStatus, OPEN_STATUSES } from "./logic";
 import type { InvoiceStatus, PaymentMethod } from "./schema";
 

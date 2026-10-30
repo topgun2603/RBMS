@@ -30,8 +30,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Amt, Panel, TableSkeleton } from "../components/accounting/parts";
 import { Figure } from "../components/accounting/part-b";
 import { ACC_LOCK } from "../lib/accounting";

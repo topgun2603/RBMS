@@ -1,5 +1,5 @@
-import { badRequest, conflict, notFound, type AuditPort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, conflict, notFound, type AuditPort } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, isNull, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { BREACH_REPORT_HOURS } from "./privacy-settings";

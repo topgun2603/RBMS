@@ -32,8 +32,8 @@ import {
   SelectValue,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@rbms/web";
 import { FieldError, ReadOnlyNote, SaveBar } from "../components/bits";
 import { SlugSelect } from "../components/pickers";
 import { useUnsavedGuard } from "../components/unsaved-guard";

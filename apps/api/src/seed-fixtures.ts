@@ -1,4 +1,4 @@
-import { seedPlans, type AddonInput, type PlanTier } from "@srirealtime/plans";
+import { seedPlans, type AddonInput, type PlanTier } from "@rbms/plans";
 import type { Logger } from "pino";
 import type { Kit } from "./kit";
 
@@ -526,7 +526,7 @@ async function seedAddons(kit: Kit, log: Logger) {
 export interface ShopSpec {
   slug: string;
   appId: "BL" | "EC" | "PH" | "RS" | "SV" | "SC";
-  /** The shop's trade (@srirealtime/verticals pack); applied with its look and starter content when the shop is created. */
+  /** The shop's trade (@rbms/verticals pack); applied with its look and starter content when the shop is created. */
   businessType?: string;
   /** Tier ("pro") — the shop gets its app's plan of that tier ("sv-pro") — or a full plan id. */
   planId: string;

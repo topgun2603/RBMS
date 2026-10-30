@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 /** Implemented by the catalogue: product id → name. Unknown ids are simply missing. */
 export interface CatalogPort {

@@ -10,7 +10,7 @@ and `validate`.
 | `docker/next.Dockerfile` | One recipe for all six Next apps (`--build-arg APP=store`), Next `output: "standalone"` |
 | `.dockerignore` | Keeps `node_modules`, `.next*`, `.env*`, `.git`, `infra/` and docs out of the build context |
 | `docker-compose.prod.yml` | Runs the built images locally against the dev Postgres/Redis (smoke test) |
-| `apps/api/build.mjs`, `apps/api/src/migrate.ts` | Production bundle (`pnpm --filter @srirealtime/api build`), and a migration runner that doesn't need drizzle-kit |
+| `apps/api/build.mjs`, `apps/api/src/migrate.ts` | Production bundle (`pnpm --filter @rbms/api build`), and a migration runner that doesn't need drizzle-kit |
 | `infra/terraform/bootstrap/` | Run once: S3 state bucket + DynamoDB lock table |
 | `infra/terraform/modules/` | `network`, `ecr`, `alb`, `ecs-service`, `database`, `cache`, `storage`, `monitoring`, `github-oidc` |
 | `infra/terraform/envs/staging/` | The staging root: variables, `terraform.tfvars.example`, `backend.tf` (commented template) |
@@ -106,7 +106,7 @@ BuildKit cache, run as the non-root `node` user, use tini as PID 1 and have a `H
 - **API** (`docker/api.Dockerfile`):
   - `build.mjs` bundles `src/` together with the TypeScript workspace packages into `dist/*.mjs` with esbuild.
     Third-party packages stay external.
-  - A separate stage runs `pnpm install --prod --frozen-lockfile --filter @srirealtime/api...` with hoisting, then
+  - A separate stage runs `pnpm install --prod --frozen-lockfile --filter @rbms/api...` with hoisting, then
     drops type packages, glibc builds of sharp and docs.
   - `pnpm deploy` isn't used: in pnpm 9 it re-resolves versions without the lockfile. `node-linker=hoisted` with
     `--filter` would install the whole workspace, Next included.
@@ -555,6 +555,6 @@ parameter). The rest are runtime environment variables.
   `envs/staging/`. Both passed: "Success! The configuration is valid." This ran with the AWS environment variables
   cleared and no AWS calls. tflint and checkov aren't installed, so they weren't run.
 - `pnpm turbo run typecheck` (62 packages); unit tests of jobs, db and api; `turbo run build --filter=./apps/*` (the
-  CI build job, which now also bundles the API); `pnpm --filter @srirealtime/api test:e2e:all` against the running
+  CI build job, which now also bundles the API); `pnpm --filter @rbms/api test:e2e:all` against the running
   dev servers.
 - The local Docker smoke test above.

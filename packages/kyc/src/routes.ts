@@ -1,4 +1,4 @@
-import { requireSuperAdmin, requireTenant, requireUser } from "@srirealtime/core";
+import { requireSuperAdmin, requireTenant, requireUser } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { KYC_FEATURE } from "./features";

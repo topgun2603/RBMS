@@ -1,5 +1,5 @@
-import { PROTECTED_TABLES } from "@srirealtime/consent";
-import type { Db } from "@srirealtime/db";
+import { PROTECTED_TABLES } from "@rbms/consent";
+import type { Db } from "@rbms/db";
 import { describe, expect, it } from "vitest";
 import { createRetentionCategories, createSubjectHandlers } from "./kit-privacy";
 

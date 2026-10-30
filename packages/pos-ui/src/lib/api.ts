@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, APPROVAL_PIN_HEADER, ApiError, apiUrl, authHeaders, type ApiOptions, type QueryParams } from "@srirealtime/web";
+import { api, APPROVAL_PIN_HEADER, ApiError, apiUrl, authHeaders, type ApiOptions, type QueryParams } from "@rbms/web";
 import type { WeighTicket } from "./terminal-types";
 import type {
   BillingItem,
@@ -19,7 +19,7 @@ import type {
   SellerProfile,
   VariantLookup,
 } from "./types";
-import type { LineInput } from "@srirealtime/gst";
+import type { LineInput } from "@rbms/gst";
 import { rememberCustomers, searchCachedCustomers } from "./offline/customers";
 
 /**

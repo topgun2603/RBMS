@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, BikeIcon, CheckIcon, ChefHatIcon, Loader2Icon, PackageCheckIcon, RefreshCwIcon, SettingsIcon, XIcon } from "lucide-react";
-import { Button, ChipGroup, cn, EmptyState, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusPill, toast, type StatusTone } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useI18n, usePermission, useSettingsHref } from "@srirealtime/web";
+import { Button, ChipGroup, cn, EmptyState, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, StatusPill, toast, type StatusTone } from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, usePermission, useSettingsHref } from "@rbms/web";
 import { InlineError, ReasonDialog } from "../components/bits";
 import { DueChip, PlatformBadge } from "../components/platform";
 import { RESTAURANT_PERMISSIONS } from "../lib/access";

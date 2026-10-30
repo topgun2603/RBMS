@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { qk } from "./queries";
 import type { CreditNote, CreditNoteInput, CreditNoteResult, CreditNoteStatus, CreditNoteSummary, Paged, Returnable } from "./types";
 

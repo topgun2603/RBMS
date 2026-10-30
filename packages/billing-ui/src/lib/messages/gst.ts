@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.gst.* strings: the GST centre (due dates, GSTR-1, GSTR-3B, input credit, GSTR-2B, composition). Keep the en and ta key sets identical. */
 export const en: Messages = {

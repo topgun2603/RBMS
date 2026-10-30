@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Strings for two-factor sign-in: Settings → Security and the second step on the login screen. Merged into `en` / `ta`

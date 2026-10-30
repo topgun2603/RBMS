@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon, InfoIcon } from "lucide-react";
-import { Badge, Button, Checkbox, cn, motion, useReducedMotionSafe } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Badge, Button, Checkbox, cn, motion, useReducedMotionSafe } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { columnOf, moveItem, type BuilderColumn } from "../../lib/report-spec";
 import type { ColumnType, DatasetInfo } from "../../lib/types";
 

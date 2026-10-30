@@ -43,8 +43,8 @@ import {
   Textarea,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, Page, PageHeading, QueryError, useDebounced, useI18n, useModuleNavigate } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, Page, PageHeading, QueryError, useDebounced, useI18n, useModuleNavigate } from "@rbms/web";
 import { AiCampaignWriter } from "../components/ai-campaign-writer";
 import { Section, TagEditor } from "../components/bits";
 import { useSlotName } from "../components/template-dialog";

@@ -1,4 +1,4 @@
-import { APPAREL_FOOTWEAR_GST_RULE as RULE, computeInvoice } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE as RULE, computeInvoice } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { cartLineGstRate, cartTotals, productToLine, setDiscount, toLineInput, type CartProduct } from "./cart";
 

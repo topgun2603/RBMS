@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Alert, AlertDescription } from "@srirealtime/ui";
+import { Alert, AlertDescription } from "@rbms/ui";
 import { useI18n } from "../../lib/i18n";
 import { AiDraftBanner } from "../ai-draft";
 import { PhotoPicker, postB, useBError, useBHelper, type Photo } from "./shared";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, ChevronDownIcon, ClockIcon, CopyIcon, EyeOffIcon, HistoryIcon, ImageIcon, InstagramIcon, MapPinIcon, MonitorIcon, PlayIcon, SmartphoneIcon, StarIcon, ZapIcon } from "lucide-react";
-import { cn, Skeleton } from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+import { cn, Skeleton } from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import type { SectionStyle } from "../../lib/content";
 import type { PublicProductSummary, ResolvedHomeSection } from "../../lib/types";

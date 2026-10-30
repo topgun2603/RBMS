@@ -12,8 +12,8 @@ import {
   SheetHeader,
   SheetTitle,
   type DataTableColumn,
-} from "@srirealtime/ui";
-import { api, QueryError, useI18n, useServerTable, type ListResponse, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { api, QueryError, useI18n, useServerTable, type ListResponse, type ServerFilterDefs } from "@rbms/web";
 import { CountTile, useRelativeTime } from "../bits";
 import { useImporters, useImportJob, wk } from "../../lib/queries";
 import type { ImportJob } from "../../lib/types";

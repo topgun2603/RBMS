@@ -1,4 +1,4 @@
-import { BookPage, bookMetadata } from "@srirealtime/storefront-ui";
+import { BookPage, bookMetadata } from "@rbms/storefront-ui";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = bookMetadata;

@@ -1,8 +1,8 @@
 /*
- * @srirealtime/ui design tokens + Tailwind v4 setup.
+ * @rbms/ui design tokens + Tailwind v4 setup.
  *
  * Consumers import this file once from their own globals.css:
- *   @import "@srirealtime/ui/styles.css";
+ *   @import "@rbms/ui/styles.css";
  *
  * Tenant branding (GET /v1/branding/theme.css or the `css` field of GET /v1/branding) is
  * injected as an *unlayered* stylesheet that overrides --primary, --primary-foreground,

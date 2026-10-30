@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import type { DebitNote, DebitNoteInput, DebitNoteSummary } from "./types-debit-notes";
 
 const INV = "/invoices";

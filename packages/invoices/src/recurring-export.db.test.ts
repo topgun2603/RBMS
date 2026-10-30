@@ -4,9 +4,9 @@
  * throw-away schema and drops it afterwards. Nothing is sent: the notifier is a fake that records messages.
  */
 import { randomUUID } from "node:crypto";
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
-import { gstinCheckChar } from "@srirealtime/gst";
+import { AppError, emptyContext, type RequestContext } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
+import { gstinCheckChar } from "@rbms/gst";
 import { and, eq, sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";

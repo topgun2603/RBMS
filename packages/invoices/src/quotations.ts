@@ -20,8 +20,8 @@ import {
   type FeatureGatePort,
   type ListPage,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import {
   amountInWordsINR,
   computeInvoice,
@@ -31,7 +31,7 @@ import {
   todayIST,
   type InvoiceTotals,
   type LineInput,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import { and, count, eq, gte, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { addDaysISO, dateText, maskPhone, moneyText, toIndianE164 } from "./ledger";
@@ -88,7 +88,7 @@ export interface QuotationSettingsPort {
 export type QuotationChannel = "whatsapp" | "sms" | "email";
 export const QUOTATION_CHANNELS = ["whatsapp", "sms", "email"] as const;
 
-/** Notify template key; built-in in @srirealtime/notify (whatsapp, sms and email, en + ta). */
+/** Notify template key; built-in in @rbms/notify (whatsapp, sms and email, en + ta). */
 export const QUOTATION_TEMPLATE = "quotation.sent";
 
 export interface QuotationNotifierPort {
@@ -239,7 +239,7 @@ export interface PublicQuotationResult {
   branding: { appName: string | null; logoUrl: string | null; css: string };
 }
 
-/** The data the PDF renderers print (structurally `QuotationDocData` of @srirealtime/documents). */
+/** The data the PDF renderers print (structurally `QuotationDocData` of @rbms/documents). */
 export interface QuotationDocData {
   id: string;
   number: string;

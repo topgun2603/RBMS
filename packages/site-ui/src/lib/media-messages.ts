@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** site.media.* strings for the media library, stock artwork and video upload. Merged into lib/messages (keep en and ta key sets identical). */
 export const mediaEn: Messages = {

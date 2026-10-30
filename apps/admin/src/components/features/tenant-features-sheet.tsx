@@ -4,7 +4,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { PuzzleIcon } from "lucide-react";
-import { Badge, EmptyState, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Skeleton } from "@srirealtime/ui";
+import { Badge, EmptyState, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Skeleton } from "@rbms/ui";
 import { FeatureOnOffBadges } from "@/components/features/feature-status";
 import { QueryError } from "@/components/query-state";
 import { api } from "@/lib/api";

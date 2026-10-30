@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { EXPENSES_FEATURES, EXPENSES_PERMISSIONS } from "./ports";
 import { expensesRoutes } from "./routes";
 import { RecurringExpensesService } from "./recurring";

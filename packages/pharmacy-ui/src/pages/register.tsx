@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FilePlusIcon, PrinterIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, StatusPill, type DataTableColumn } from "@srirealtime/ui";
-import { Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, DataTable, DataTableToolbar, StatusPill, type DataTableColumn } from "@rbms/ui";
+import { Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { SchedulePill } from "../components/bits";
 import { PrescriptionDialog } from "../components/prescription-dialog";
 import { expiryLabel, qty } from "../lib/format";

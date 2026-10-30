@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ClipboardCheckIcon, StoreIcon, WalletIcon } from "lucide-react";
-import { AnimatedNumber } from "@srirealtime/ui";
-import { AttentionItem, InsightCard, QueryError, useI18n } from "@srirealtime/web";
+import { AnimatedNumber } from "@rbms/ui";
+import { AttentionItem, InsightCard, QueryError, useI18n } from "@rbms/web";
 import { money, previewPayouts } from "../lib/logic";
 import { todayIST, useMarketplaceSettings, usePayoutPreviewData, useProductReviews, useVendorList } from "../lib/queries";
 

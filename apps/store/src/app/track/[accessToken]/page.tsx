@@ -1,4 +1,4 @@
-import { TrackPage, trackMetadata } from "@srirealtime/storefront-ui";
+import { TrackPage, trackMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ accessToken: string }> };
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /*
- * Editor side of the live-preview protocol. Structural copy of @srirealtime/storefront-ui `lib/preview-protocol.ts`
+ * Editor side of the live-preview protocol. Structural copy of @rbms/storefront-ui `lib/preview-protocol.ts`
  * (site-ui doesn't depend on the storefront package); keep the two in step and bump PREVIEW_PROTOCOL_VERSION in both
  * on breaking changes — the store reports its version in `ready` and the editor refuses a mismatch.
  */

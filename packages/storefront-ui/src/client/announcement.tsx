@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { useStore } from "./store-context";
 
 export interface Announcement {

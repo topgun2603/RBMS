@@ -6,7 +6,7 @@ import {
   requireRole,
   requireTenant,
   type RequestContext,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import "./fastify";

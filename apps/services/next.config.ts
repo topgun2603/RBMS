@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/payroll-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/pricelists", "@srirealtime/receipt-print", "@srirealtime/tenancy", "@srirealtime/orders-ui", "@srirealtime/enquiries-ui", "@srirealtime/site-ui", "@srirealtime/commerce-ui", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/bookings-ui", "@srirealtime/jobcards-ui", "@srirealtime/memberships-ui", "@srirealtime/serials-ui"],
+    transpilePackages: ["@rbms/growth-ui", "@rbms/inbox-ui", "@rbms/pos-ui", "@rbms/payroll-ui", "@rbms/web", "@rbms/billing-ui", "@rbms/workspace-ui", "@rbms/ui", "@rbms/i18n", "@rbms/gst", "@rbms/pricelists", "@rbms/receipt-print", "@rbms/tenancy", "@rbms/orders-ui", "@rbms/enquiries-ui", "@rbms/site-ui", "@rbms/commerce-ui", "@rbms/branding", "@rbms/verticals", "@rbms/bookings-ui", "@rbms/jobcards-ui", "@rbms/memberships-ui", "@rbms/serials-ui"],
     poweredByHeader: false,
     // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
     async headers() {

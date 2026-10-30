@@ -16,10 +16,10 @@ import {
   type PlatformInvoice,
   type SubscriptionCurrent,
   type UsageItem,
-} from "@srirealtime/web";
+} from "@rbms/web";
 
 /**
- * Plan & billing data. API types live in @srirealtime/web (lib/subscriptions.ts) so the shell banner, upgrade dialog
+ * Plan & billing data. API types live in @rbms/web (lib/subscriptions.ts) so the shell banner, upgrade dialog
  * and this page read the same shapes.
  */
 

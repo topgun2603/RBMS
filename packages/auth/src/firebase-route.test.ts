@@ -6,8 +6,8 @@
  * The parts that need no database (not configured, rejected tokens, /config, the SMS refusal) always run.
  */
 import { generateKeyPairSync } from "node:crypto";
-import { AppError, type AuditEvent } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { AppError, type AuditEvent } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { SignJWT } from "jose";

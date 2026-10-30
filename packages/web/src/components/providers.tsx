@@ -3,7 +3,7 @@
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, useTheme } from "next-themes";
-import { Toaster, TooltipProvider } from "@srirealtime/ui";
+import { Toaster, TooltipProvider } from "@rbms/ui";
 import { ApiError } from "../lib/api";
 import { FeaturesProvider } from "../lib/features";
 import { I18nProvider, type MessageBundle } from "../lib/i18n";

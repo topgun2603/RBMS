@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { GlobeIcon, InfoIcon } from "lucide-react";
-import { CURRENCIES, currencyDigits, foreignToPaise, formatForeign, lineAmount, normalizeRate, type LineInput } from "@srirealtime/gst";
+import { CURRENCIES, currencyDigits, foreignToPaise, formatForeign, lineAmount, normalizeRate, type LineInput } from "@rbms/gst";
 import {
   Card,
   CardContent,
@@ -23,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { money, paiseToInput, parseQty } from "../../lib/format";
 import type { Invoice, InvoiceInput } from "../../lib/types";
 import { isExportSupply, isSezSupply, SUPPLY_TYPES, withoutPayment, type SupplyType } from "../../lib/types-export";

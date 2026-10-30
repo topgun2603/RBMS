@@ -1,6 +1,6 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
-/** admin.dp.* strings: Platform > Data protection (platform notice and grievance contact, retention, breach register). Same wording as the shop screens in @srirealtime/workspace-ui. Keep the en and ta key sets identical. */
+/** admin.dp.* strings: Platform > Data protection (platform notice and grievance contact, retention, breach register). Same wording as the shop screens in @rbms/workspace-ui. Keep the en and ta key sets identical. */
 export const dataProtectionEn: Messages = {
   "admin.nav.dataProtection": "Data protection",
   "admin.dp.platformTitle": "RBMS data protection",

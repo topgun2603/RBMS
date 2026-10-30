@@ -1,8 +1,8 @@
 /**
  * AI eval runner (docs/ai.md "Evals").
  *
- *   pnpm --filter @srirealtime/ai eval                      mock provider: no network, no cost, structural checks only
- *   pnpm --filter @srirealtime/ai eval -- --live            REAL API calls (costs money; needs ANTHROPIC_API_KEY)
+ *   pnpm --filter @rbms/ai eval                      mock provider: no network, no cost, structural checks only
+ *   pnpm --filter @rbms/ai eval -- --live            REAL API calls (costs money; needs ANTHROPIC_API_KEY)
  *
  * Options: --feature=ask-shop|hsn-suggest|product-description|studio  --lang=ta|tanglish|en  --limit=N
  *          --max-cost=USD (live only, default 2: refuses to start when the estimate is higher)  --out=DIR
@@ -17,7 +17,7 @@ import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { CREDIT_MICRO_USD, costMicroUsd } from "../src/pricing";
 import { AiService } from "../src/service";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { SPECS, type EvalCase } from "./specs";
 
 const here = dirname(fileURLToPath(import.meta.url));

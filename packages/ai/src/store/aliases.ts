@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import type { AiRunner } from "../assist/hsn";
 import { DATA_RULES, dataBlock, neutralise, outputLooksInjected } from "../assist/safety";
 import { aiProductAliases, type AiProductAliasRow, type AliasSource } from "../schema";

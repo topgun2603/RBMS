@@ -1,8 +1,8 @@
 /**
  * Pure credit note business rules (no database): how the money goes back, the number prefix and when a note may be
- * cancelled. The GST maths (returnable quantities, line shares, totals) is `computeCreditNote` in @srirealtime/gst.
+ * cancelled. The GST maths (returnable quantities, line shares, totals) is `computeCreditNote` in @rbms/gst.
  */
-import { CreditNoteError, DEFAULT_INVOICE_PREFIX, sanitizePrefix } from "@srirealtime/gst";
+import { CreditNoteError, DEFAULT_INVOICE_PREFIX, sanitizePrefix } from "@rbms/gst";
 import type { RefundMode } from "./schema";
 
 export interface CreditSettlement {

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { ArrowRightIcon, ShoppingBagIcon } from "lucide-react";
-import { Button, EmptyState } from "@srirealtime/ui";
-import { Page, PageHeading, useI18n, useWebApp, type IconType } from "@srirealtime/web";
+import { Button, EmptyState } from "@rbms/ui";
+import { Page, PageHeading, useI18n, useWebApp, type IconType } from "@rbms/web";
 
 function Placeholder({ icon, title, subtitle, module }: { icon: IconType; title: string; subtitle: string; module: string }) {
   const { t } = useI18n();

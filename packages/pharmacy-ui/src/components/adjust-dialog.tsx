@@ -19,8 +19,8 @@ import {
   Input,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { expiryLabel, qty as fmtQty } from "../lib/format";
 import { useAdjustBatch, type AdjustBody } from "../lib/queries";
 import type { Batch } from "../lib/types";

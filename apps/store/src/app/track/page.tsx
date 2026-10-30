@@ -1,4 +1,4 @@
-import { TrackLookupPage, trackMetadata } from "@srirealtime/storefront-ui";
+import { TrackLookupPage, trackMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = trackMetadata;
 

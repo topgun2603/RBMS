@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Skeleton, Textarea, toast } from "@srirealtime/ui";
-import { DetailRow, describeError, useFeature, useI18n, usePermission } from "@srirealtime/web";
+import { Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Skeleton, Textarea, toast } from "@rbms/ui";
+import { DetailRow, describeError, useFeature, useI18n, usePermission } from "@rbms/web";
 import { SERIALS_FEATURES, SERIALS_PERMISSIONS } from "../lib/access";
 import { money } from "../lib/format";
 import { useSetStatus, useUnit } from "../lib/queries";

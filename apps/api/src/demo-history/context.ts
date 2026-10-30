@@ -29,7 +29,7 @@ export interface SimItem {
   rate: number;
   gstRate: number;
   /** Price-band GST rule (apparel / footwear); bill lines re-band after discounts. */
-  gstRule?: import("@srirealtime/gst").GstRateRule | null;
+  gstRule?: import("@rbms/gst").GstRateRule | null;
   entry: CatalogueEntry;
   /** Popularity weight (Pareto). */
   weight: number;

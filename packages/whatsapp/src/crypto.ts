@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
-// Copied from @srirealtime/payments (packages never import each other).
+// Copied from @rbms/payments (packages never import each other).
 
 const VERSION = "v1";
 const IV_BYTES = 12;

@@ -1,15 +1,15 @@
-import { AI_SETTINGS_DEFAULTS, AI_SETTINGS_SCHEMA } from "@srirealtime/ai";
-import { PRIVACY_SETTINGS_DEFAULTS, PRIVACY_SETTINGS_PUBLIC_KEYS, PRIVACY_SETTINGS_SCHEMA } from "@srirealtime/consent";
-import { LOYALTY_SETTINGS_DEFAULTS, LOYALTY_SETTINGS_SCHEMA } from "@srirealtime/loyalty";
-import { JEWELLERY_SETTINGS_DEFAULTS, JEWELLERY_SETTINGS_SCHEMA } from "@srirealtime/jewellery";
-import { MEMBERSHIPS_SETTINGS_DEFAULTS, MEMBERSHIPS_SETTINGS_SCHEMA } from "@srirealtime/memberships";
+import { AI_SETTINGS_DEFAULTS, AI_SETTINGS_SCHEMA } from "@rbms/ai";
+import { PRIVACY_SETTINGS_DEFAULTS, PRIVACY_SETTINGS_PUBLIC_KEYS, PRIVACY_SETTINGS_SCHEMA } from "@rbms/consent";
+import { LOYALTY_SETTINGS_DEFAULTS, LOYALTY_SETTINGS_SCHEMA } from "@rbms/loyalty";
+import { JEWELLERY_SETTINGS_DEFAULTS, JEWELLERY_SETTINGS_SCHEMA } from "@rbms/jewellery";
+import { MEMBERSHIPS_SETTINGS_DEFAULTS, MEMBERSHIPS_SETTINGS_SCHEMA } from "@rbms/memberships";
 import { SOLUTIONS_SETTINGS_DEFAULTS, SOLUTIONS_SETTINGS_SCHEMA } from "./kit-verticals";
-import { SCALES_SETTINGS_DEFAULTS, SCALES_SETTINGS_SCHEMA } from "@srirealtime/scales";
-import { MARKETPLACE_SETTINGS_DEFAULTS, MARKETPLACE_SETTINGS_PUBLIC_KEYS, MARKETPLACE_SETTINGS_SCHEMA } from "@srirealtime/marketplace";
-import { REVIEW_SETTINGS_DEFAULTS, REVIEW_SETTINGS_SCHEMA } from "@srirealtime/reviews";
-import { SUPPORT_SETTINGS_DEFAULTS, SUPPORT_SETTINGS_SCHEMA } from "@srirealtime/support";
-import { WHATSAPP_SETTINGS_DEFAULTS, WHATSAPP_SETTINGS_SCHEMA } from "@srirealtime/whatsapp";
-import type { SettingsService } from "@srirealtime/settings";
+import { SCALES_SETTINGS_DEFAULTS, SCALES_SETTINGS_SCHEMA } from "@rbms/scales";
+import { MARKETPLACE_SETTINGS_DEFAULTS, MARKETPLACE_SETTINGS_PUBLIC_KEYS, MARKETPLACE_SETTINGS_SCHEMA } from "@rbms/marketplace";
+import { REVIEW_SETTINGS_DEFAULTS, REVIEW_SETTINGS_SCHEMA } from "@rbms/reviews";
+import { SUPPORT_SETTINGS_DEFAULTS, SUPPORT_SETTINGS_SCHEMA } from "@rbms/support";
+import { WHATSAPP_SETTINGS_DEFAULTS, WHATSAPP_SETTINGS_SCHEMA } from "@rbms/whatsapp";
+import type { SettingsService } from "@rbms/settings";
 import { z } from "zod";
 
 /** Settings namespaces every app shares. Feature modules define their own namespaces next to their code. */
@@ -180,7 +180,7 @@ export function defineAppSettings(settings: SettingsService) {
         privacy: z.string().max(20_000).optional(),
         terms: z.string().max(20_000).optional(),
       }),
-      /** The shop's trade (@srirealtime/verticals pack id): storefront wording, size guide, starter content. "" = the app's default. */
+      /** The shop's trade (@rbms/verticals pack id): storefront wording, size guide, starter content. "" = the app's default. */
       businessType: z.string().max(40),
       /** Show shoppers the "Install <shop> app" banner (installable storefront / PWA). */
       installBanner: z.boolean(),

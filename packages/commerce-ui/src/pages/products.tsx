@@ -33,7 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ConfirmDialog,
   describeError,
@@ -54,7 +54,7 @@ import {
   useServerTable,
   useSettingsHref,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { ProductStatusPill, ProductThumb } from "../components/bits";
 import { useCategoryOptions } from "../components/category-select";
 import { ProductsIllustration } from "../components/illustrations";

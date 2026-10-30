@@ -1,7 +1,7 @@
 "use client";
 
-import { useI18n } from "@srirealtime/web";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
+import { useI18n } from "@rbms/web";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui";
 import { TagsIcon } from "lucide-react";
 import type { PricingCache } from "../lib/units";
 

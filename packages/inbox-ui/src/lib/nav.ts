@@ -1,5 +1,5 @@
 import { BookOpenIcon, LifeBuoyIcon, MegaphoneIcon, MessageCircleIcon, MessageSquareTextIcon } from "lucide-react";
-import type { NavItem } from "@srirealtime/web";
+import type { NavItem } from "@rbms/web";
 import { FEATURES, PERMS } from "./access";
 
 /** The "Inbox" nav section items (also the overview tiles). Features are all-of; permissions any-of. */

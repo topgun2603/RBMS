@@ -1,6 +1,6 @@
-import { sql, type Db } from "@srirealtime/db";
-import { createRedisProbe, type JobsService } from "@srirealtime/jobs";
-import { createMonitoring } from "@srirealtime/monitoring";
+import { sql, type Db } from "@rbms/db";
+import { createRedisProbe, type JobsService } from "@rbms/jobs";
+import { createMonitoring } from "@rbms/monitoring";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { dbCollector, jobObserver, processCollector, queueCollector, type OpsOptions } from "./ops";

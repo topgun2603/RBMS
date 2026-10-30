@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * pos.off.* strings of offline billing (docs/offline-billing.md): the banner, paying offline, the Pending bills screen,

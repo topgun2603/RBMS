@@ -1,5 +1,5 @@
-import { planAddDays as addDays, maskPhone, pctChange, type SummaryFacts } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import { planAddDays as addDays, maskPhone, pctChange, type SummaryFacts } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 /**
  * The daily summary's numbers, computed from the shop's own tables (docs/ai.md "Daily summary"). Nothing here calls a model.

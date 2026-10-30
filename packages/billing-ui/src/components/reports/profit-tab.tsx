@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownRightIcon, ArrowUpRightIcon, LandmarkIcon, PiggyBankIcon, ReceiptIndianRupeeIcon, ShoppingCartIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
-import { Card, cn, Skeleton } from "@srirealtime/ui";
-import { ModuleLink, useFeature, useI18n } from "@srirealtime/web";
+import { Card, cn, Skeleton } from "@rbms/ui";
+import { ModuleLink, useFeature, useI18n } from "@rbms/web";
 import { StatTile } from "../charts/stat-tile";
 import { useProfitReport } from "../../lib/expenses";
 import { money } from "../../lib/format";

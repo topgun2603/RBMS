@@ -1,4 +1,4 @@
-/** API shapes used by the orders UI (mirrors @srirealtime/orders, coupons, delivery and catalogue; dates arrive as ISO strings). */
+/** API shapes used by the orders UI (mirrors @rbms/orders, coupons, delivery and catalogue; dates arrive as ISO strings). */
 
 export type ISODate = string;
 

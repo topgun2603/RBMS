@@ -18,8 +18,8 @@ import {
   FieldLabel,
   Input,
   toast,
-} from "@srirealtime/ui";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { pinProblem, usePinActions } from "../../lib/pins";
 
 export interface PinTarget {

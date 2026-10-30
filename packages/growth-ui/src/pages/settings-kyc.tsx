@@ -42,8 +42,8 @@ import {
   toast,
   useReducedMotionSafe,
   type StatusTone,
-} from "@srirealtime/ui";
-import { absoluteUrl, ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, tOr, useI18n, useShop } from "@srirealtime/web";
+} from "@rbms/ui";
+import { absoluteUrl, ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, tOr, useI18n, useShop } from "@rbms/web";
 import { InlineError, NoAccess, SectionCard, useCan } from "../components/bits";
 import { isValidPan, isValidShopGstin, latestChecks, maskedRows, normalizeId, panFromGstin, scoreBand, STATUS_TONE } from "../lib/kyc";
 import { uploadKycFile, useAddDocument, useKycSubject, useRemoveDocument, useSubmitCheck } from "../lib/queries/kyc";

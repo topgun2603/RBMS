@@ -10,8 +10,8 @@ import {
   runList,
   searchAny,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import {
   computeInvoice,
   financialYear,
@@ -21,7 +21,7 @@ import {
   normalizeStateCode,
   todayIST,
   type LineInput,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import { and, asc, count, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { batchFieldsSchema } from "./batches";

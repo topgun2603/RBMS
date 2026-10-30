@@ -1,7 +1,7 @@
 // Batch 2a end-to-end (online store server side) against the running API (http://localhost:4000) and the real database.
-//   node test/e2e/batch2.mjs      (pnpm --filter @srirealtime/api test:e2e:2; test:e2e:all seeds and runs every script)
+//   node test/e2e/batch2.mjs      (pnpm --filter @rbms/api test:e2e:2; test:e2e:all seeds and runs every script)
 // The API must run in development (test OTP via TEST_OTP_CODE / TEST_OTP_TARGETS, mock payments and the mock carrier).
-// Shops: e2e-store (EC, pro; `pnpm --filter @srirealtime/api seed:e2e` creates its store content), e2e-bill (BL) and
+// Shops: e2e-store (EC, pro; `pnpm --filter @rbms/api seed:e2e` creates its store content), e2e-bill (BL) and
 // e2e-lite (BL, starter). Owner e2e-owner@example.com (a super-admin in the e2e seed, for the custom-domain force step).
 // Each run signs up a new shopper (+91 9999 00xxxx), so it is safe to re-run.
 import { spawnSync } from "node:child_process";
@@ -81,7 +81,7 @@ let tenantId, ak, cp, akS, akM, cpM;
 await step("owner signs in; demo products found; stock topped up", async () => {
   await signIn("owner", OWNER);
   tenantId = ok(await call("GET", "/v1/tenancy/current"), "tenant").id;
-  ak = ok(await call("GET", "/v1/catalog/public/products/anarkali-kurti", undefined, anon), "Anarkali Kurti (run pnpm --filter @srirealtime/api seed:e2e)");
+  ak = ok(await call("GET", "/v1/catalog/public/products/anarkali-kurti", undefined, anon), "Anarkali Kurti (run pnpm --filter @rbms/api seed:e2e)");
   cp = ok(await call("GET", "/v1/catalog/public/products/cotton-palazzo", undefined, anon), "Cotton Palazzo");
   [akS, akM] = ["S", "M"].map((t) => ak.variants.find((v) => v.title === t));
   cpM = cp.variants.find((v) => v.title === "M");
@@ -405,7 +405,7 @@ await step("analytics: text/plain beacon from the store origin + rollup → over
   const bot = ok(await call("POST", "/v1/analytics/public/events", body, { as: null, headers: { "content-type": "text/plain", "user-agent": "Googlebot/2.1 (+http://www.google.com/bot.html)" } }), "bot");
   eq(bot.accepted, 0, "bot events");
   await sleep(2_500); // ingest buffers ~2 s
-  const job = spawnSync("pnpm --filter @srirealtime/api job analytics.rollup", { encoding: "utf8", shell: true });
+  const job = spawnSync("pnpm --filter @rbms/api job analytics.rollup", { encoding: "utf8", shell: true });
   expect(job.status === 0, `rollup job failed: ${job.stderr?.slice(-400) || job.stdout?.slice(-400)}`);
   const rolled = /"rows":(\d+)/.exec(job.stdout)?.[1];
   expect(Number(rolled) > 0, `rollup wrote no rows: ${job.stdout.slice(-300)}`);

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   initials,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { displayName, isSuperAdmin, useSignOut } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import type { User } from "@/lib/types";

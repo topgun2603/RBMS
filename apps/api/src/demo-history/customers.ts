@@ -1,4 +1,4 @@
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import { addressFor, testPhone, uniqueNames } from "./names";
 import type { Profile } from "./profiles";
 import { createRng, hashSeed } from "./rng";

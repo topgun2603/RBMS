@@ -34,8 +34,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   toast,
-} from "@srirealtime/ui";
-import { ApprovalCancelled, describeError, useDiscountApproval, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApprovalCancelled, describeError, useDiscountApproval, useI18n } from "@rbms/web";
 import { fetchPdf, usePaymentsReport } from "../lib/api";
 import { money, rupeesToPaise, timeShort, todayIST } from "../lib/format";
 import { closeBlockers } from "../lib/close-check";

@@ -1,7 +1,7 @@
 "use client";
 
 import { WandSparklesIcon } from "lucide-react";
-import { Page, PageHeading, SettingsNav, SetupAssistant, useI18n } from "@srirealtime/web";
+import { Page, PageHeading, SettingsNav, SetupAssistant, useI18n } from "@rbms/web";
 import { useStepHref } from "../components/onboarding/steps";
 
 /**

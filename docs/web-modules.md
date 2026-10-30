@@ -4,16 +4,16 @@ Back-end modules are packages wired in `apps/api/src/kit.ts`. The front end foll
 package that any Next.js app mounts, at any path, with the features that app wants.
 
 ```
-packages/web            @srirealtime/web         Shared client kit: API client, session, OTP login, i18n, branding,
+packages/web            @rbms/web         Shared client kit: API client, session, OTP login, i18n, branding,
                                                  features, query provider, app shell, module router, common components
-packages/billing-ui     @srirealtime/billing-ui  The billing UI module (bills, customers, credit book, items, stock,
+packages/billing-ui     @rbms/billing-ui  The billing UI module (bills, customers, credit book, items, stock,
                                                  purchases, suppliers, reports, billing settings, public bill/statement pages)
 apps/billing            thin shell: billing-ui mounted at "/", tenant from the subdomain
-apps/admin              platform + workspace admin (migrates to @srirealtime/web)
+apps/admin              platform + workspace admin (migrates to @rbms/web)
 apps/shop               ecommerce demo shell: a store admin that mounts billing-ui at "/billing" with fewer features
 ```
 
-## The module contract (`@srirealtime/web`)
+## The module contract (`@rbms/web`)
 
 ```ts
 interface WebModule {
@@ -60,8 +60,8 @@ built from all modules' `nav`, filtered by `useFeatures()` (server state from `G
 reason shop → "Turned off" with a link to Settings → Features for owners; reason app → not found).
 
 ## Rules
-- UI modules import only `@srirealtime/web`, `@srirealtime/ui`, `@srirealtime/i18n/client` and pure packages such as
-  `@srirealtime/gst`. Never another UI module, and never `next/*` (navigation goes through the kit's hooks).
+- UI modules import only `@rbms/web`, `@rbms/ui`, `@rbms/i18n/client` and pure packages such as
+  `@rbms/gst`. Never another UI module, and never `next/*` (navigation goes through the kit's hooks).
 - Every nav item, route, widget, action and settings page that belongs to an optional feature declares `feature`.
   Inside pages, buttons that belong to another optional feature check it with `useFeature(key)` / `<Feature when>`.
 - Message keys are namespaced by module (`billing.*`); the kit's own strings are `web.*`.
@@ -132,9 +132,9 @@ tables"), the page binds that state to the URL. Three pieces:
 
 | Piece | Package | Role |
 |---|---|---|
-| `useServerTable<Row, typeof filters>(opts)` | `@srirealtime/web` | URL ⇄ state (`page`, `size`, `sort`, `q`, each filter) written with `router.replace` and no scroll jump; fetches through `api()` with TanStack Query (`keepPreviousData`); returns `{ table, query, state, filters, facets, total, apiParams, update, setSearch, setSort, setPage, setPageSize, clearFilters }` |
-| `<DataTable table={st.table} />` | `@srirealtime/ui` | TanStack Table v8 (manual paging/sorting/filtering): sortable headers (`aria-sort` + icon), numeric right-aligned columns, optional row checkboxes + floating bulk bar, sticky header (xl+, switched off automatically when the table is wider than the frame so it scrolls instead of clipping), skeleton rows on first load, dimmed rows + progress line while the next page loads, empty / no-results / error states, row click (Enter on a focused row too), footer "Showing 1–25 of 1,234" + rows per page (25/50/100) + prev/next + page numbers, and a card list on phones |
-| `<DataTableToolbar table={st.table} quickFilters? children? />` | `@srirealtime/ui` | search (debounced 300 ms; Enter applies at once), one button per filter (popover with checkboxes and counts from `facets`; a date filter with presets Today … This financial year and a custom from/to), the Columns menu (md+, remembered per table in localStorage), active-filter chips (× each) and "Clear filters". `children` go at the right end (export, view switch) |
+| `useServerTable<Row, typeof filters>(opts)` | `@rbms/web` | URL ⇄ state (`page`, `size`, `sort`, `q`, each filter) written with `router.replace` and no scroll jump; fetches through `api()` with TanStack Query (`keepPreviousData`); returns `{ table, query, state, filters, facets, total, apiParams, update, setSearch, setSort, setPage, setPageSize, clearFilters }` |
+| `<DataTable table={st.table} />` | `@rbms/ui` | TanStack Table v8 (manual paging/sorting/filtering): sortable headers (`aria-sort` + icon), numeric right-aligned columns, optional row checkboxes + floating bulk bar, sticky header (xl+, switched off automatically when the table is wider than the frame so it scrolls instead of clipping), skeleton rows on first load, dimmed rows + progress line while the next page loads, empty / no-results / error states, row click (Enter on a focused row too), footer "Showing 1–25 of 1,234" + rows per page (25/50/100) + prev/next + page numbers, and a card list on phones |
+| `<DataTableToolbar table={st.table} quickFilters? children? />` | `@rbms/ui` | search (debounced 300 ms; Enter applies at once), one button per filter (popover with checkboxes and counts from `facets`; a date filter with presets Today … This financial year and a custom from/to), the Columns menu (md+, remembered per table in localStorage), active-filter chips (× each) and "Clear filters". `children` go at the right end (export, view switch) |
 
 **URL:** `?page=3&size=50&sort=-total&q=meena&status=paid,overdue&from=2026-10-01&to=2026-10-31`. Defaults are left
 out (page 1, the default size, the default sort, empty filters); params the table doesn't own (`view=board`) are kept;
@@ -184,8 +184,8 @@ options/date filter (not `text` ones), keeping sort and page size.
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
-import { ChipGroup, DataTable, DataTableToolbar, type DataTableColumn } from "@srirealtime/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
+import { ChipGroup, DataTable, DataTableToolbar, type DataTableColumn } from "@rbms/ui";
 
 const STATUSES = ["open", "done", "void"] as const;
 
@@ -276,10 +276,10 @@ Notes for conversions:
 - `defaultSort` must equal the route's `defineSort` default, and every `sortable` key must be in its map (an unknown
   key is a 400; the hook drops sort keys from the URL that no column declares).
 - Small client-side lists keep the older props form `<DataTable columns data loading pagination? pageSize? />`;
-  `useDataTable({...})` from `@srirealtime/ui` builds an instance for any other data source (you handle sort/paging).
+  `useDataTable({...})` from `@rbms/ui` builds an instance for any other data source (you handle sort/paging).
 - The super-admin panel (apps/admin) has no web-kit app context or I18nProvider, so it uses its own thin
   `useServerTable` (`apps/admin/src/lib/use-server-table.tsx`) on the same pure helpers, imported from the
-  `@srirealtime/web/server-table-state` subpath; same options and URL contract, platform API calls (`tenant: null`),
+  `@rbms/web/server-table-state` subpath; same options and URL contract, platform API calls (`tenant: null`),
   strings under `admin.table.*`.
 - Pure, tested helpers: `parseTableState`, `serializeTableState`, `tableApiParams`, `patchTableState`,
   `clearTableFilters` (`packages/web/src/lib/server-table-state.ts`); `pageWindow`, `rangeInfo`, `nextSort`,
@@ -353,7 +353,7 @@ Every `Gated` thing (nav sections and items, routes, widgets, quick actions, set
 - **Who passes:** owners, admins and platform super-admins always (same as the API's `requirePermission`). Others need
   a grant that matches. If `/auth/me` sent no `permissions` array at all (an API without the staff module), the check
   fails open; the API's 403 is still the last word.
-- **Matching** is `@srirealtime/core`'s `permissionMatches`, mirrored in `packages/web/src/lib/permissions.ts` (the kit
+- **Matching** is `@rbms/core`'s `permissionMatches`, mirrored in `packages/web/src/lib/permissions.ts` (the kit
   doesn't depend on core): `*` is everything; `orders.*` covers `orders`, `orders.ship`, `orders.returns.approve`; a
   middle `*` is one segment (`*.view` covers `reports.view`, not `reports.sales.view`).
 - **Arrays are any-of** (holding one key is enough). Need all? Nest the item or check in the page.

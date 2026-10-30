@@ -2,7 +2,7 @@
 //   node test/e2e/batch5.mjs        (test:e2e:all seeds and runs every script)
 // Needs the API in development: test OTP (TEST_OTP_CODE / TEST_OTP_TARGETS), no PLATFORM_RAZORPAY_* (mock provider)
 // and Chrome for the invoice PDF. Every run signs up fresh throwaway shops `e2e-su…-<run>` owned by new
-// `e2e-su…-<run>@example.com` test identities; `pnpm --filter @srirealtime/api cleanup:e2e-data` deletes them. The
+// `e2e-su…-<run>@example.com` test identities; `pnpm --filter @rbms/api cleanup:e2e-data` deletes them. The
 // lifecycle job runs through the dev-only `POST /v1/subscriptions/mock/lifecycle` for one shop with a clock override,
 // so no other shop is touched. The super-admin steps use e2e-owner@example.com (made super-admin by seed:e2e).
 import { createHmac } from "node:crypto";

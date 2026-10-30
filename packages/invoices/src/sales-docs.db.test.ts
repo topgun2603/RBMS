@@ -6,8 +6,8 @@
  * schema and drops it afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { emptyContext, type RequestContext } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { emptyContext, type RequestContext } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -107,7 +107,7 @@ describe.skipIf(!URL_)("sales documents (Postgres)", () => {
         applyChallan: async (_t, input) => void challanMoves.push(input),
         reserve: async (_t, r) => {
           if (shortOfStock && !r.allowBackorder) {
-            const { AppError } = await import("@srirealtime/core");
+            const { AppError } = await import("@rbms/core");
             throw new AppError(409, "insufficient_stock", "Not enough stock for some items", { items: [] });
           }
           holds.push({ op: "reserve", refId: r.refId, lines: r.lines, allowBackorder: r.allowBackorder });

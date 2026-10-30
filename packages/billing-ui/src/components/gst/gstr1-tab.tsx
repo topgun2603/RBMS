@@ -24,8 +24,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { apiDownload, ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { apiDownload, ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { StateSelect } from "../state-select";
 import { MoneyInput } from "../money-input";
 import { GST_RATES, money, rupeesToPaise, stateLabel } from "../../lib/format";

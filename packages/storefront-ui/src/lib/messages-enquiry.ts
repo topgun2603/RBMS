@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** The enquiry form (contact / admission enquiry on the home page or any page). Merged into lib/messages. */
 export const enquiryEn: Messages = {

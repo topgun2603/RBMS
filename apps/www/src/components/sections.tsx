@@ -1,13 +1,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, QuoteIcon } from "lucide-react";
-import type { Translator } from "@srirealtime/i18n/client";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@srirealtime/ui/components/accordion";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { Reveal, RevealGroup, RevealItem } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import type { Translator } from "@rbms/i18n/client";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@rbms/ui/components/accordion";
+import { Badge } from "@rbms/ui/components/badge";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { Reveal, RevealGroup, RevealItem } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import { DrawLine, Lift, PopIn } from "./motion-bits";
 import { JsonLd } from "./json-ld";
 

@@ -1,13 +1,13 @@
 # Module conventions
 
-Every reusable module lives in `packages/<id>` and is published inside the workspace as `@srirealtime/<id>`
+Every reusable module lives in `packages/<id>` and is published inside the workspace as `@rbms/<id>`
 (ids match the Module Catalogue). The API host in `apps/api` wires modules together and serves them.
 
 ## Package layout
 
 ```
 packages/<id>/
-  package.json        name "@srirealtime/<id>", "type": "module", exports { ".": "./src/index.ts" }
+  package.json        name "@rbms/<id>", "type": "module", exports { ".": "./src/index.ts" }
   tsconfig.json       { "extends": "../../tsconfig.base.json", "include": ["src"] }
   src/
     schema.ts         Drizzle tables owned by this module (only if it has tables). drizzle-kit globs this file.
@@ -20,7 +20,7 @@ packages/<id>/
 - Source is consumed directly as TypeScript; there is no build step for packages.
 - Relative imports are **extensionless** (`from "./service"`), matching `moduleResolution: "Bundler"`.
 - Package scripts: `"typecheck": "tsc -p tsconfig.json"`, `"test": "vitest run --passWithNoTests"`.
-- Depend on `@srirealtime/core` and `@srirealtime/db` with `"workspace:*"`. Use `zod` `^3.25.0`,
+- Depend on `@rbms/core` and `@rbms/db` with `"workspace:*"`. Use `zod` `^3.25.0`,
   `drizzle-orm` `^0.44.0`, `fastify` `^5.3.0` (as peer + dev dependency, only if the package has routes).
 
 ## The factory
@@ -44,7 +44,7 @@ export function createNotify(deps: NotifyDeps) {
 
 ## Tenancy and data
 
-- Tenant-scoped tables use `tenantId()` from `@srirealtime/db`, plus `pk()` and `...timestamps()`.
+- Tenant-scoped tables use `tenantId()` from `@rbms/db`, plus `pk()` and `...timestamps()`.
 - **Every query on a tenant-scoped table filters by `tenant_id`.** Service methods take `tenantId` explicitly.
 - Table names are snake_case and prefixed with the module id when ambiguous (`notify_templates`).
 - Use `uuid` keys, `timestamp(..., { withTimezone: true })`, and `jsonb` for flexible config.
@@ -62,7 +62,7 @@ export function createNotify(deps: NotifyDeps) {
 ## Lists and tables
 
 Every list that can grow (bills, orders, customers, products, tickets …) is paged, sorted and filtered **on the server**
-with the helpers in `@srirealtime/core` (`packages/core/src/list.ts`). The UI side is in docs/web-modules.md →
+with the helpers in `@rbms/core` (`packages/core/src/list.ts`). The UI side is in docs/web-modules.md →
 "Lists and tables".
 
 **The contract**
@@ -84,7 +84,7 @@ GET /v1/<module>/<things>?limit=25&offset=50&sort=-date&q=meena&status=paid,unpa
 page query. `facets` (optional) gives per-value counts of one filter under all the *other* filters, for the
 "Status (12)" counts in the UI; compute it with a `group by` on the WHERE built without that filter.
 
-**Helpers** (`@srirealtime/core`)
+**Helpers** (`@rbms/core`)
 
 | Helper | Use |
 |---|---|
@@ -102,7 +102,7 @@ page query. `facets` (optional) gives per-value counts of one filter under all t
 
 ```ts
 // service.ts
-import { defineSort, facetCounts, listFilter, listQuerySchema, rangeOrder, runList, searchAny, type ListPage } from "@srirealtime/core";
+import { defineSort, facetCounts, listFilter, listQuerySchema, rangeOrder, runList, searchAny, type ListPage } from "@rbms/core";
 import { and, count, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 
 export const THING_STATUSES = ["open", "done", "void"] as const;

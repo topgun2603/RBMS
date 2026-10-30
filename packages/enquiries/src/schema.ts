@@ -1,4 +1,4 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { index, integer, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
 
 /** new → contacted → follow_up → converted (joined / admitted) or closed. Any status can be set from any other. */

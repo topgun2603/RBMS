@@ -1,4 +1,4 @@
-import { FULL_ACCESS_ROLES, badRequest, forbidden, isSuperAdmin, requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext, type SrModule } from "@srirealtime/core";
+import { FULL_ACCESS_ROLES, badRequest, forbidden, isSuperAdmin, requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext, type SrModule } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { RateLimiter } from "../assist/routes";

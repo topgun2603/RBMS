@@ -161,7 +161,7 @@ added to the Accounts section by `withAccountingPartB` (`billing-ui/src/accounti
 
 ## Operations
 
-- Dev script: `pnpm --filter @srirealtime/api exec tsx --env-file-if-exists=.env src/scripts/accounting-check.ts <slug> [--keep|--wipe]` posts a
+- Dev script: `pnpm --filter @rbms/api exec tsx --env-file-if-exists=.env src/scripts/accounting-check.ts <slug> [--keep|--wipe]` posts a
   shop's history, runs the reconciliation, prints the checks and removes the accounting rows again (`--keep` to leave them).
   Deleting posted rows needs `set_config('acct.allow_delete','on', true)` in the transaction (the service's `wipe()` does it).
 - Backfill speed: about 1,000 entries/s in a dev database (Theneer, 28,858 bills: 56,576 entries in 63 s). A repeat sync

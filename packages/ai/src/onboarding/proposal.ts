@@ -1,5 +1,5 @@
-import { themePreset } from "@srirealtime/branding/theme";
-import { BUSINESS_TYPES, PACKS, packOrDefault, type AppId, type BusinessType } from "@srirealtime/verticals";
+import { themePreset } from "@rbms/branding/theme";
+import { BUSINESS_TYPES, PACKS, packOrDefault, type AppId, type BusinessType } from "@rbms/verticals";
 import { filterClaims, neutralise, outputLooksInjected, sentences } from "../assist/safety";
 import type { ModelReading, SetupModelOutput } from "./read";
 import { ANSWER_KEYS, COLOURS, colourFrom, extrasFrom, fold, guessTrade, hasTamil, mentionsDelivery, mentionsPickup, moodsFrom, presetFor, splitGroups, tamilShare, type Answers, type ColourName, type Confidence } from "./rules";

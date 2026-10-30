@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingUpIcon } from "lucide-react";
-import { Page, PageHeading, PricingHintsPanel, useI18n } from "@srirealtime/web";
+import { Page, PageHeading, PricingHintsPanel, useI18n } from "@rbms/web";
 
 /** Items > Pricing hints (AI Phase 4 part B): computed in code from the shop's own sales; the AI only words them. Never changes a price. */
 export default function PricingHintsPage() {

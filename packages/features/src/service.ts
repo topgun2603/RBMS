@@ -5,8 +5,8 @@ import {
   paymentRequired,
   type FeatureDef,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeGrants, resolveFeatures, type FeatureState, type Reason } from "./resolve";

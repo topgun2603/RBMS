@@ -1,4 +1,4 @@
-import { amountInWordsINR, computeInvoice } from "@srirealtime/gst";
+import { amountInWordsINR, computeInvoice } from "@rbms/gst";
 import type { InvoiceDocData, OrderDocData, PurchaseDocData, PurchaseOrderDocData, QuotationDocData, StatementDocData } from "./types";
 
 const seller = {

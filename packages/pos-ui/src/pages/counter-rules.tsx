@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, SlidersHorizontalIcon } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldHint, FieldLabel, Input, InputGroup, InputGroupAddon, InputGroupInput, Skeleton, toast } from "@srirealtime/ui";
-import { api, describeError, Page, PageHeading, SettingsNav, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldHint, FieldLabel, Input, InputGroup, InputGroupAddon, InputGroupInput, Skeleton, toast } from "@rbms/ui";
+import { api, describeError, Page, PageHeading, SettingsNav, useI18n } from "@rbms/web";
 import { paiseToInput, rupeesToPaise } from "../lib/format";
 
 interface TillSettings {

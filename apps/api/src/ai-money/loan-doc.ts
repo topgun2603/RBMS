@@ -1,5 +1,5 @@
-import { aiMoney } from "@srirealtime/ai";
-import { esc, fmtDate, money, page, type DocLocale, type RenderContext } from "@srirealtime/documents";
+import { aiMoney } from "@rbms/ai";
+import { esc, fmtDate, money, page, type DocLocale, type RenderContext } from "@rbms/documents";
 
 /**
  * The printable loan readiness summary (A4). Every figure comes from the stored `LoanPackFacts`; the cover note is the one

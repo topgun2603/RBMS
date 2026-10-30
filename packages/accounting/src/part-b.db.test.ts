@@ -6,7 +6,7 @@
  * copies the accounting tables into a throw-away schema and drops it afterwards.
  *   PowerShell: $env:ACCOUNTING_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; npx vitest run --maxWorkers=2
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAccounting } from "./index";

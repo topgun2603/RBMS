@@ -13,8 +13,8 @@ import {
   SignpostIcon,
   UsersIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, ChipGroup, cn, EmptyState, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { Page, PageHeading, QueryError, useI18n, type Translator } from "@srirealtime/web";
+import { Card, CardContent, CardHeader, CardTitle, ChipGroup, cn, EmptyState, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { Page, PageHeading, QueryError, useI18n, type Translator } from "@rbms/web";
 import { BarList } from "../components/charts/bar-list";
 import { ChartCard } from "../components/charts/chart-card";
 import { FunnelChart } from "../components/charts/funnel-chart";

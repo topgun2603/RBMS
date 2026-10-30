@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, cn, Label } from "@srirealtime/ui";
+import { Checkbox, cn, Label } from "@rbms/ui";
 import { useI18n } from "@/lib/i18n";
 
 export const TENANT_ROLES = ["owner", "admin", "member"] as const;

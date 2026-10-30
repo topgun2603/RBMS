@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, LockIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, EmptyState, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, EmptyState, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { expiryLabel } from "../lib/format";
 import type { ExpiryStatus, MedicineSchedule } from "../lib/types";
 

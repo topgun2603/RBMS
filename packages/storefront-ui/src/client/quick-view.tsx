@@ -4,9 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@srirealtime/ui/components/dialog";
-import { motion } from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@rbms/ui/components/dialog";
+import { motion } from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { percentOff } from "../lib/format";
 import type { Availability, List, Product } from "../types";
 import { Bone } from "../components/skeletons";
@@ -14,7 +14,7 @@ import { SizeChart, sizeKindFor } from "../components/size-guide";
 import { call } from "./api";
 import { ProductGallery } from "./product-gallery";
 import { PurchasePanel, type AvailabilityMap } from "./purchase-panel";
-import { packFor } from "@srirealtime/verticals";
+import { packFor } from "@rbms/verticals";
 import { useStore } from "./store-context";
 
 /** Quick view from product cards: gallery, variant picker, add to cart — without leaving the listing. */

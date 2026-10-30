@@ -1,7 +1,7 @@
 import { enMore, taMore } from "./messages-more";
 import { enMfa, taMfa } from "./messages-mfa";
 import { enSignIn, taSignIn } from "./messages-signin";
-import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
+import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@rbms/i18n/client";
 
 /**
  * Marketing-site strings, English + Tamil. The audience is Tamil Nadu shop owners: plain words, Tamil that reads

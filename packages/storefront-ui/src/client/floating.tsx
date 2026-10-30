@@ -3,8 +3,8 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { ArrowUpIcon } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@srirealtime/ui/components/tooltip";
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotionSafe, useScroll } from "@srirealtime/ui/motion";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@rbms/ui/components/tooltip";
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotionSafe, useScroll } from "@rbms/ui/motion";
 import { ChatLauncher } from "./chat-widget";
 import { useStore } from "./store-context";
 

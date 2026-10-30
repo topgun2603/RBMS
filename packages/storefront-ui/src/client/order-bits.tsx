@@ -3,9 +3,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { CreditCardIcon, Loader2Icon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { motion, SuccessCheck, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { toast } from "@rbms/ui/components/sonner";
+import { motion, SuccessCheck, useReducedMotionSafe } from "@rbms/ui/motion";
 import { useOrderPayment } from "./payment";
 import { useStore } from "./store-context";
 

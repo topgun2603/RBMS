@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CheckCircle2Icon, DownloadIcon, FileTextIcon, InfoIcon, Loader2Icon, UploadCloudIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, cn, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useImportReviews } from "../lib/queries";
 import type { ReviewImportResult } from "../lib/types";
 

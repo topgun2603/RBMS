@@ -3,11 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, MessageCircleIcon, SearchIcon, ThumbsDownIcon, ThumbsUpIcon, TicketIcon, InboxIcon, XIcon } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@srirealtime/ui/components/accordion";
-import { Button } from "@srirealtime/ui/components/button";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@srirealtime/ui/components/field";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@rbms/ui/components/accordion";
+import { Button } from "@rbms/ui/components/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@rbms/ui/components/field";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { countArticles, filterFaq } from "../lib/help";
 import { featureOn, STORE_FEATURES } from "../lib/features";
 import { Markdown } from "../lib/markdown";

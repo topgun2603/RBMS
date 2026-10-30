@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ChevronRightIcon, HistoryIcon, RefreshCwIcon } from "lucide-react";
-import { Button, cn, DataTable, DataTableToolbar, EmptyState, Skeleton, type DataTableColumn } from "@srirealtime/ui";
-import { useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, cn, DataTable, DataTableToolbar, EmptyState, Skeleton, type DataTableColumn } from "@rbms/ui";
+import { useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { DELIVERY_PAGE_SIZE, shortUrl } from "../../lib/developer";
 import { DELIVERIES_DEFAULT_SORT, developerKeys, useEndpoints, useEvents, type DeliveryDetail } from "../../lib/queries/developer";
 import type { DeliveryStatus } from "../../lib/types";

@@ -1,4 +1,4 @@
-import { isValidGstin, normalizeGstin, stateFromGstin } from "@srirealtime/gst";
+import { isValidGstin, normalizeGstin, stateFromGstin } from "@rbms/gst";
 import type { ExpenseSrc, PurchaseReturnSrc, PurchaseSrc } from "./ports";
 import { addDays, daysBetween, fyStartYear, monthOf, type Tax } from "./util";
 

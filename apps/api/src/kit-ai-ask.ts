@@ -1,13 +1,13 @@
-import { askModule, type AiService, type AskPorts, type GstFigures } from "@srirealtime/ai";
-import type { SrModule } from "@srirealtime/core";
-import { sql, type Db } from "@srirealtime/db";
-import type { EInvoiceService } from "@srirealtime/einvoice";
-import type { ExpensesService } from "@srirealtime/expenses";
-import { todayIST } from "@srirealtime/gst";
-import type { InventoryService } from "@srirealtime/inventory";
-import type { InvoicesService } from "@srirealtime/invoices";
-import type { MedicinesService } from "@srirealtime/medicines";
-import type { BranchesService } from "@srirealtime/branches";
+import { askModule, type AiService, type AskPorts, type GstFigures } from "@rbms/ai";
+import type { SrModule } from "@rbms/core";
+import { sql, type Db } from "@rbms/db";
+import type { EInvoiceService } from "@rbms/einvoice";
+import type { ExpensesService } from "@rbms/expenses";
+import { todayIST } from "@rbms/gst";
+import type { InventoryService } from "@rbms/inventory";
+import type { InvoicesService } from "@rbms/invoices";
+import type { MedicinesService } from "@rbms/medicines";
+import type { BranchesService } from "@rbms/branches";
 
 export interface AskKitDeps {
   db: Db;

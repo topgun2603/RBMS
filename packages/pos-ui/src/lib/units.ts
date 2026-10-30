@@ -1,10 +1,10 @@
-import { resolvePrice, pickList, type PricingItem, type PricingList } from "@srirealtime/pricelists/resolve";
+import { resolvePrice, pickList, type PricingItem, type PricingList } from "@rbms/pricelists/resolve";
 import { clampDiscount, type CartLine, type CartProduct } from "./cart";
-import { lineAmount } from "@srirealtime/gst";
+import { lineAmount } from "@rbms/gst";
 
 /**
  * Alternate units and price lists at the counter (docs/price-lists-units.md). Pure: unit tested, and the same price
- * resolution as the API (`@srirealtime/pricelists/resolve`) over the cached lists, so it works offline.
+ * resolution as the API (`@rbms/pricelists/resolve`) over the cached lists, so it works offline.
  */
 
 /** An alternate unit of an item as the POS catalogue sends it: `price` for one of the unit. */

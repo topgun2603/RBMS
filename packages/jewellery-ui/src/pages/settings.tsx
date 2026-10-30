@@ -22,8 +22,8 @@ import {
   SelectValue,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n, usePermission } from "@rbms/web";
 import { InlineError } from "../components/bits";
 import { JEWELLERY_PERMISSIONS } from "../lib/access";
 import { decimalInput, parseDecimal } from "../lib/format";

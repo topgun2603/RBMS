@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { featureChecker, visibleFor, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { featureChecker, visibleFor, type FeatureState, type MountedModule } from "@rbms/web";
 import { barPercent, checkBranchGst, presetRange, sampleBillNumber, sanitizePrefix, suggestPrefix } from "./lib/branches";
 import { displayPhone, money, rupeesToPaise, searchTerm } from "./lib/format";
 import { isValidPan, isValidShopGstin, latestChecks, maskedRows, panFromGstin, scoreBand } from "./lib/kyc";

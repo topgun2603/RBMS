@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 import { absoluteUrl } from "../lib/api";
 import { useOptionalShop } from "../lib/branding";
 import { useOptionalWebApp } from "../app/navigation";

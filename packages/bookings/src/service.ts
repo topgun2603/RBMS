@@ -14,9 +14,9 @@ import {
   splitList,
   type ListPage,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db, Tx } from "@srirealtime/db";
-import { isValidDate, todayIST } from "@srirealtime/gst";
+} from "@rbms/core";
+import type { Db, Tx } from "@rbms/db";
+import { isValidDate, todayIST } from "@rbms/gst";
 import { and, asc, count, eq, gt, gte, inArray, isNull, lt, lte, ne, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {

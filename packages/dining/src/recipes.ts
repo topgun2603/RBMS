@@ -1,5 +1,5 @@
-import { badRequest, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { diningIngredients, diningRecipeLines, diningRecipes, type DiningIngredientRow } from "./schema";

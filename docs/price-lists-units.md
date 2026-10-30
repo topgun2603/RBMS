@@ -41,7 +41,7 @@ What uses the factor:
 
 | Where | Effect |
 |---|---|
-| Stock (`StockPort.applySale`, credit-note restock, challan out / return, sale-order holds) | moves `qty × unitFactor` base units (`baseQtyOf` in `@srirealtime/gst`) |
+| Stock (`StockPort.applySale`, credit-note restock, challan out / return, sale-order holds) | moves `qty × unitFactor` base units (`baseQtyOf` in `@rbms/gst`) |
 | Purchases, goods receipts, debit notes (`packages/inventory`) | stock in / out `qty × unitFactor`; the unit cost is the line's taxable value over the base quantity (`baseMilliOf`) |
 | Price-band GST (apparel / footwear) | banded on one piece: a box of 6 at ₹7,200 is ₹1,200 a piece |
 | GSTR-1 HSN summary (`packages/einvoice` `gstr1.ts`) and the HSN report (`packages/invoices` `reports.ts`) | counted in the base unit (24 pcs → UQC NOS), so one HSN keeps one UQC however the goods were packed |
@@ -64,7 +64,7 @@ item + unit (null = base unit) + `minQty` (slab: from this quantity up, 0 = any)
 
 ### Resolution (one pure function)
 
-`resolvePrice` in `packages/pricelists/src/resolve.ts` (also exported as `@srirealtime/pricelists/resolve` for the
+`resolvePrice` in `packages/pricelists/src/resolve.ts` (also exported as `@rbms/pricelists/resolve` for the
 browser). For an item, unit, quantity and date, the lists are tried in order — the list picked on the document (or else
 the customer's own list, else their group's), then the shop's default list — and the first that prices the line wins:
 

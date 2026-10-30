@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { Button, Textarea, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, Textarea, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useClaim } from "../lib/queries";
 
 /** "Log a claim": a note on the unit's history (the shop may later open a job card from it). */

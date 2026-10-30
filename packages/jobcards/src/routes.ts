@@ -1,4 +1,4 @@
-import { notFound, requireRole, requireTenant, tooMany, type RequestContext } from "@srirealtime/core";
+import { notFound, requireRole, requireTenant, tooMany, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { JOBCARDS_BILL, JOBCARDS_FEATURE, JOBCARDS_MANAGE, JOBCARDS_TRACKING_FEATURE, JOBCARDS_VIEW } from "./ports";

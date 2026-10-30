@@ -5,9 +5,9 @@
  * provider. Answers are cached 30 days for every shop (public registration data) and provider calls are rate-limited
  * per shop. Without a provider only the offline part runs, and the answer says so.
  */
-import { AppError, badRequest } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { normalizeGstin, parseGstin, stateName, type GstinParts } from "@srirealtime/gst";
+import { AppError, badRequest } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { normalizeGstin, parseGstin, stateName, type GstinParts } from "@rbms/gst";
 import { and, count, eq, gte, inArray } from "drizzle-orm";
 import { noopLogger, type LoggerPort } from "./ports";
 import { gstinLookupLog, gstinLookups, type GstinDetails, type GstinStatus } from "./schema-recurring";

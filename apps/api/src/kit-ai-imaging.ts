@@ -1,8 +1,8 @@
-import { imaging, type AiService } from "@srirealtime/ai";
-import type { Db } from "@srirealtime/db";
-import type { JobsService } from "@srirealtime/jobs";
+import { imaging, type AiService } from "@rbms/ai";
+import type { Db } from "@rbms/db";
+import type { JobsService } from "@rbms/jobs";
 import { allowedImageUrl } from "./kit-ai-trades-b";
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 
 /** The slice of the catalogue service photo cleanup uses. */
 export interface ImagingCatalogue {

@@ -1,5 +1,5 @@
 import { BadgeCheckIcon, ExternalLinkIcon, GlobeIcon, MailIcon, StoreIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import type { Translator } from "../lib/messages";
 import type { Review } from "../types";
 

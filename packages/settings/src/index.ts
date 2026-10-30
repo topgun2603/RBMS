@@ -1,5 +1,5 @@
-import { defineModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { defineModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { settingsRoutes } from "./routes";
 import { settingsValues } from "./schema";
 import { SettingsService } from "./service";

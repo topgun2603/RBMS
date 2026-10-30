@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { normalizeIndianMobile, parseAddress } from "./address";
 import { checkoutBodySchema, checkoutError, DEFAULT_STORE_SETTINGS, normalizeStoreSettings, validateCheckout, type CheckoutCheckInput } from "./checkout";

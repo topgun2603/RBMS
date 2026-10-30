@@ -1,4 +1,4 @@
-/** CSV and XLSX rendering of a report result (patterns copied from @srirealtime/importexport). */
+/** CSV and XLSX rendering of a report result (patterns copied from @rbms/importexport). */
 import ExcelJS from "exceljs";
 import type { PlanColumn, ReportRow } from "./types";
 

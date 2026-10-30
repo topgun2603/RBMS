@@ -5,9 +5,9 @@
  * credit note crediting at the original line's rate. Runs only with `INVOICES_TEST_DATABASE_URL` set; it copies the
  * invoices tables into a throw-away schema and drops it afterwards.
  */
-import { emptyContext, type RequestContext } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
-import { APPAREL_FOOTWEAR_GST_RULE as RULE, computeInvoice, exclusiveOf, todayIST } from "@srirealtime/gst";
+import { emptyContext, type RequestContext } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
+import { APPAREL_FOOTWEAR_GST_RULE as RULE, computeInvoice, exclusiveOf, todayIST } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

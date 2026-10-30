@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from "recharts";
-import { useReducedMotionSafe } from "@srirealtime/ui";
+import { useReducedMotionSafe } from "@rbms/ui";
 import { compactINR, num } from "../../lib/format";
 import type { RunColumn, RunResult } from "../../lib/types";
 

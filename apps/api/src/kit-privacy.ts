@@ -1,5 +1,5 @@
-import { authOtps, authSessions } from "@srirealtime/auth";
-import { chatMessages } from "@srirealtime/chat";
+import { authOtps, authSessions } from "@rbms/auth";
+import { chatMessages } from "@rbms/chat";
 import {
   PRIVACY_SETTINGS_DEFAULTS,
   normalisePhone,
@@ -10,23 +10,23 @@ import {
   type RetentionService,
   type SubjectHandler,
   type SubjectQuery,
-} from "@srirealtime/consent";
-import { enquiries } from "@srirealtime/enquiries";
-import { billingCustomers, invoices } from "@srirealtime/invoices";
-import { kycDocuments } from "@srirealtime/kyc";
-import { loyaltyLedger, loyaltyMembers } from "@srirealtime/loyalty";
-import { medicinePrescriptions } from "@srirealtime/medicines";
-import { membershipMembers, membershipSubscriptions } from "@srirealtime/memberships";
-import { orders } from "@srirealtime/orders";
-import { payrollEmployees } from "@srirealtime/payroll";
-import type { SettingsService } from "@srirealtime/settings";
-import { storeAddresses, storeCarts, storeCustomers, storeWishlist } from "@srirealtime/storefront";
-import { supportMessages, supportTickets } from "@srirealtime/support";
-import { tenants } from "@srirealtime/tenancy";
-import { files, type UploadsService } from "@srirealtime/uploads";
-import { waContacts, waMessages } from "@srirealtime/whatsapp";
-import type { Db } from "@srirealtime/db";
-import type { FeaturesService } from "@srirealtime/features";
+} from "@rbms/consent";
+import { enquiries } from "@rbms/enquiries";
+import { billingCustomers, invoices } from "@rbms/invoices";
+import { kycDocuments } from "@rbms/kyc";
+import { loyaltyLedger, loyaltyMembers } from "@rbms/loyalty";
+import { medicinePrescriptions } from "@rbms/medicines";
+import { membershipMembers, membershipSubscriptions } from "@rbms/memberships";
+import { orders } from "@rbms/orders";
+import { payrollEmployees } from "@rbms/payroll";
+import type { SettingsService } from "@rbms/settings";
+import { storeAddresses, storeCarts, storeCustomers, storeWishlist } from "@rbms/storefront";
+import { supportMessages, supportTickets } from "@rbms/support";
+import { tenants } from "@rbms/tenancy";
+import { files, type UploadsService } from "@rbms/uploads";
+import { waContacts, waMessages } from "@rbms/whatsapp";
+import type { Db } from "@rbms/db";
+import type { FeaturesService } from "@rbms/features";
 import { and, count, eq, inArray, isNotNull, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 
 /** Tables each retention category touches; the test in kit-privacy.test.ts checks none is a tax / accounting table. */

@@ -1,5 +1,5 @@
-import { tradesA } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import { tradesA } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 type Rows = Record<string, unknown>[];
 const rowsOf = (r: unknown) => r as Rows;

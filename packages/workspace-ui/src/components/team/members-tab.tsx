@@ -19,8 +19,8 @@ import {
   Switch,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, displayName, QueryError, SearchField, useI18n, useSession } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, displayName, QueryError, SearchField, useI18n, useSession } from "@rbms/web";
 import { LevelPill, useRelativeTime } from "../bits";
 import { useHasPermission, useMyUserId } from "../../lib/access";
 import { POS_DEVICES_PERMISSION, usePosPins } from "../../lib/pins";

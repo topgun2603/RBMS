@@ -25,8 +25,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { chartData, ReportChart, type ChartKind } from "./report-chart";
 import { serverIssues, useCellFormatter, useReportLabels } from "./shared";
 import type { DatasetInfo, RunColumn, RunResult } from "../../lib/types";

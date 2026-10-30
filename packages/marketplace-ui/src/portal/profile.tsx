@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ExternalLinkIcon, StoreIcon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, FadeIn, toast } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle, FadeIn, toast } from "@rbms/ui";
+import { describeError, Page, PageHeading, useI18n } from "@rbms/web";
 import { SubmitButton } from "../components/account";
 import { VendorLogo } from "../components/bits";
 import { ProfileFields, profileErrors, profileFromVendor, profilePatch, type ProfileDraft } from "../components/profile";

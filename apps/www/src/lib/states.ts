@@ -1,4 +1,4 @@
-/** GST state / UT codes (copied from @srirealtime/gst so the site needs no server package). */
+/** GST state / UT codes (copied from @rbms/gst so the site needs no server package). */
 export const GST_STATES: readonly { code: string; name: string; ta?: string }[] = [
   { code: "33", name: "Tamil Nadu", ta: "தமிழ்நாடு" },
   { code: "34", name: "Puducherry", ta: "புதுச்சேரி" },
@@ -45,6 +45,6 @@ const GSTIN_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 export const isGstinShape = (v: string) => GSTIN_RE.test(v);
 
 /** Slug rules come from packages/tenancy (browser-safe subpath), so the reserved list never drifts from the server. */
-export { slugify, validateSlug, RESERVED_SLUGS } from "@srirealtime/tenancy/slug";
-import { validateSlug } from "@srirealtime/tenancy/slug";
+export { slugify, validateSlug, RESERVED_SLUGS } from "@rbms/tenancy/slug";
+import { validateSlug } from "@rbms/tenancy/slug";
 export const slugShapeOk = (slug: string) => validateSlug(slug).ok;

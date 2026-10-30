@@ -1,9 +1,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, StarIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@srirealtime/ui/components/breadcrumb";
-import { serializeJsonLd, type JsonLd as JsonLdData } from "@srirealtime/cms/seo";
+import { cn } from "@rbms/ui/lib/utils";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@rbms/ui/components/breadcrumb";
+import { serializeJsonLd, type JsonLd as JsonLdData } from "@rbms/cms/seo";
 import { hashHue, imageUrl, initialsOf, money, percentOff } from "../lib/format";
 
 type T = (key: string, vars?: Record<string, string | number | null | undefined>) => string;

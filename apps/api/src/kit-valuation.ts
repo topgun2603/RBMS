@@ -8,13 +8,13 @@
  * Cost of goods sold comes from the cost recorded on each sale / return movement (both methods are kept; the shop's
  * method on the bill date picks one), so profit never drifts when later purchases move the average.
  */
-import { requirePermission, requireRole, requireTenant, type RequestContext, type SrModule, defineModule } from "@srirealtime/core";
-import { REPORT_CSS, reportBodyHtml, tableToCsv, type ReportTable } from "@srirealtime/accounting";
-import { sql, type Db, type SQL } from "@srirealtime/db";
-import { page, type DocumentRegistry } from "@srirealtime/documents";
-import { todayIST } from "@srirealtime/gst";
-import { CHARGE_KINDS, type InventoryService, type ItemCatalogPort } from "@srirealtime/inventory";
-import { datasetFromSql, type ReportsService } from "@srirealtime/reports";
+import { requirePermission, requireRole, requireTenant, type RequestContext, type SrModule, defineModule } from "@rbms/core";
+import { REPORT_CSS, reportBodyHtml, tableToCsv, type ReportTable } from "@rbms/accounting";
+import { sql, type Db, type SQL } from "@rbms/db";
+import { page, type DocumentRegistry } from "@rbms/documents";
+import { todayIST } from "@rbms/gst";
+import { CHARGE_KINDS, type InventoryService, type ItemCatalogPort } from "@rbms/inventory";
+import { datasetFromSql, type ReportsService } from "@rbms/reports";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 
@@ -46,7 +46,7 @@ export const returnSales = (db: Db) => async (tenantId: string) =>
 
 /**
  * A document line's quantity in the item's base (stock) unit, in SQL: `qty x unitFactor` to 3 decimals, like
- * `baseQtyOf` (@srirealtime/gst, docs/price-lists-units.md); lines without an alternate unit keep their qty. So boxes
+ * `baseQtyOf` (@rbms/gst, docs/price-lists-units.md); lines without an alternate unit keep their qty. So boxes
  * and pieces of one item add up, and match the stock movements (always in the base unit).
  */
 export const baseQtySql = (line: SQL): SQL =>

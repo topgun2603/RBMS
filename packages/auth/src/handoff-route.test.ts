@@ -3,8 +3,8 @@
  * exactly like an unknown code and burnt, so it can't be retried on the right shop either. Business-app handoffs
  * (no shop) keep working anywhere. Runs only with `AUTH_TEST_DATABASE_URL` (a development Postgres, own schema).
  */
-import { AppError } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { AppError } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";

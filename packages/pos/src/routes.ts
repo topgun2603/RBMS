@@ -9,7 +9,7 @@ import {
   requireUser,
   type DeviceRef,
   type RequestContext,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import {
   catalogQuery,

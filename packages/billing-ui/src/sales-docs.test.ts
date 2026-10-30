@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@rbms/web";
 import { billingMessages, billingModule } from "./index";
 import { permissionMatches } from "./lib/access";
 import { CHALLAN_REASONS, CHALLAN_STATUSES, PROFORMA_DISPLAY_STATUSES, SALE_ORDER_STATUSES, SALES_DOC_EVENT_TYPES, salesDocAsInvoice, TRANSPORT_MODES } from "./lib/types-sales-docs";

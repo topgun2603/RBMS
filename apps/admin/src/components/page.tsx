@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 
 /** Standard page container. The enter animation is applied once by the dashboard layout. */
 export function Page({ children, className, wide }: { children: React.ReactNode; className?: string; wide?: boolean }) {

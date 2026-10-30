@@ -1,4 +1,4 @@
-import { isValidDate } from "@srirealtime/gst";
+import { isValidDate } from "@rbms/gst";
 import { z } from "zod";
 import { ATTENDANCE_STATUSES, DEFAULT_PAYROLL_CONFIG, DUE_KINDS, isMonth, MONTHLY_BASES, parseHm, PAY_METHODS, PAY_TYPES, PT_MODES, type PayrollConfig } from "./logic";
 

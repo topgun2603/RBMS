@@ -1,4 +1,4 @@
-import { BlogIndexPage, blogMetadata } from "@srirealtime/storefront-ui";
+import { BlogIndexPage, blogMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = blogMetadata;
 

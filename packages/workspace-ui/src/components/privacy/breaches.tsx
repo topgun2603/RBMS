@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, CheckIcon, ClipboardCopyIcon, Loader2Icon, PlusIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Card, CardContent, EmptyState, Field, FieldControl, FieldLabel, Input, Skeleton, StatusPill, Textarea, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, Button, Card, CardContent, EmptyState, Field, FieldControl, FieldLabel, Input, Skeleton, StatusPill, Textarea, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { BREACH_DATA_TYPES, useBreach, useBreachActions, useBreaches, type Breach } from "../../lib/queries-privacy";
 
 const CLOCK_TONE = { ok: "success", due_soon: "warning", overdue: "danger", done: "success" } as const;

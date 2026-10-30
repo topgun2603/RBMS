@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { AlertTriangleIcon, CheckCircle2Icon, CircleAlertIcon, Loader2Icon, ShieldCheckIcon } from "lucide-react";
 import {
   Alert,
@@ -19,7 +19,7 @@ import {
   Skeleton,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { splitIssues, type EInvoiceIssue, type GenerateIrnResult } from "../../lib/einvoice";
 import { useEInvoiceAction, useEInvoicePreview } from "../../lib/queries-growth";
 

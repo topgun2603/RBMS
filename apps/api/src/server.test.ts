@@ -1,5 +1,5 @@
-import { badRequest, defineModule } from "@srirealtime/core";
-import { createMonitoring, type ErrorContext } from "@srirealtime/monitoring";
+import { badRequest, defineModule } from "@rbms/core";
+import { createMonitoring, type ErrorContext } from "@rbms/monitoring";
 import { describe, expect, it, vi } from "vitest";
 import { bearerMatches } from "./ops";
 import { buildServer, requestIdFor } from "./server";

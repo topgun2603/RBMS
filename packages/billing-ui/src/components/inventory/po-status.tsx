@@ -1,8 +1,8 @@
 "use client";
 
 import { BanIcon, CheckCircle2Icon, ClockIcon, FileEditIcon, PackageCheckIcon, SendIcon } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { PoStatus } from "../../lib/types-payables";
 
 const META: Record<PoStatus, { tone: StatusTone; icon: React.ComponentType<{ className?: string }> }> = {

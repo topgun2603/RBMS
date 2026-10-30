@@ -1,6 +1,6 @@
 # POS terminals: pairing, PINs, catalogue, weighing station
 
-Contract for multi-terminal POS (2026-10-22). The back end (`@srirealtime/pos`, `/v1/pos`) implements exactly this;
+Contract for multi-terminal POS (2026-10-22). The back end (`@rbms/pos`, `/v1/pos`) implements exactly this;
 the web POS (`pos-ui`, admin screens) and the Flutter app build against it. Change this file first if the contract has
 to change, and tell the other workstreams.
 

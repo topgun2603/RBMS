@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 /** The feature module name (feature keys and `catalogue.*` grants). The HTTP module id is "catalog" (`/v1/catalog`). */
 export const CATALOGUE_MODULE = "catalogue";

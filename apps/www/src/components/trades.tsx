@@ -4,10 +4,10 @@ import {
   HammerIcon, HeadphonesIcon, LeafIcon, PawPrintIcon, PillIcon, PuzzleIcon, ScissorsIcon, ShirtIcon, ShoppingBasketIcon, SmartphoneIcon, SparklesIcon,
   TrophyIcon, UtensilsCrossedIcon, WrenchIcon, BookOpenIcon, CpuIcon, FlaskConicalIcon, GraduationCapIcon,
 } from "lucide-react";
-import type { Translator } from "@srirealtime/i18n/client";
-import { Card } from "@srirealtime/ui/components/card";
-import { RevealGroup, RevealItem } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import type { Translator } from "@rbms/i18n/client";
+import { Card } from "@rbms/ui/components/card";
+import { RevealGroup, RevealItem } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import { demoStoreUrl } from "@/lib/site";
 import { DEMO_SLUG, tradeName, type BusinessType } from "@/lib/trades";
 import { Lift } from "./motion-bits";

@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, isNull, max } from "drizzle-orm";
 import { buildNotice, noticeHash, noticeVersionLabel, type NoticeContact, type NoticeInput } from "./privacy-notice";
 import { TAX_RECORD_YEARS, type PrivacyHostPort } from "./privacy-ports";

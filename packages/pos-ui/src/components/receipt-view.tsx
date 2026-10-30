@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangleIcon, Loader2Icon, MessageCircleIcon, PlusIcon, PrinterIcon } from "lucide-react";
-import { formatINR } from "@srirealtime/gst";
+import { formatINR } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -20,9 +20,9 @@ import {
   SuccessCheck,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { hasCashPayment, printDirectIfConfigured, resolvePrinterConfig } from "@srirealtime/receipt-print";
-import { describeError, useI18n, useOptionalShop } from "@srirealtime/web";
+} from "@rbms/ui";
+import { hasCashPayment, printDirectIfConfigured, resolvePrinterConfig } from "@rbms/receipt-print";
+import { describeError, useI18n, useOptionalShop } from "@rbms/web";
 import { fetchPdf, isNetworkError, sendBill, thermalPath } from "../lib/api";
 import { formatQty, mobileDigits, money, timeShort } from "../lib/format";
 import { reportNetwork } from "../lib/online";

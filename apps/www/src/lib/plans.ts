@@ -6,7 +6,7 @@
  * `modules` hold feature keys and module wildcards (docs/features.md): `inventory` is a module's base feature,
  * `inventory.*` the whole module.
  */
-import { formatCurrencyINR, type Locale, type Translator } from "@srirealtime/i18n/client";
+import { formatCurrencyINR, type Locale, type Translator } from "@rbms/i18n/client";
 import { appParam, type AppId } from "./site";
 
 export type PlanTier = "free" | "starter" | "pro" | "enterprise";

@@ -19,9 +19,9 @@ import {
   Input,
   Label,
   toast,
-} from "@srirealtime/ui";
-import { todayIST } from "@srirealtime/gst";
-import { describeError, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { todayIST } from "@rbms/gst";
+import { describeError, useFeature, useI18n } from "@rbms/web";
 import { MEMBERSHIPS_FEATURES } from "../lib/access";
 import { money, paiseToRupees, renewalStart, rupeesToPaise } from "../lib/format";
 import { useMemberActions, useSubscriptionActions } from "../lib/queries";

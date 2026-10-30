@@ -1,6 +1,6 @@
-import { AppError, FULL_ACCESS_ROLES, permissionsAllow, type AuditPort } from "@srirealtime/core";
-import type { TillApprovalPort } from "@srirealtime/invoices";
-import { DISCOUNT_APPROVE_PERMISSION } from "@srirealtime/staff";
+import { AppError, FULL_ACCESS_ROLES, permissionsAllow, type AuditPort } from "@rbms/core";
+import type { TillApprovalPort } from "@rbms/invoices";
+import { DISCOUNT_APPROVE_PERMISSION } from "@rbms/staff";
 import { APPROVAL_MAX_FAILURES, APPROVAL_WINDOW_MS } from "./discount-guard";
 
 export interface TillApprovalDeps {

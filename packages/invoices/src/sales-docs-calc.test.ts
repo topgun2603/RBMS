@@ -1,4 +1,4 @@
-import { computeInvoice } from "@srirealtime/gst";
+import { computeInvoice } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import {
   advanceFor,

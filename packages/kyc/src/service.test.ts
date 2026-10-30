@@ -1,4 +1,4 @@
-import { AppError, emptyContext, type AuditEvent, type RequestContext } from "@srirealtime/core";
+import { AppError, emptyContext, type AuditEvent, type RequestContext } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { MockKycDriver } from "./drivers/mock";
 import { KycProviderError, type KycDriver } from "./drivers/types";

@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 /**
  * Price lists ride on the catalogue module's feature tree (`catalogue.*` plans grant it), docs/price-lists-units.md.

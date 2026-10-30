@@ -1,4 +1,4 @@
-import { tooMany } from "@srirealtime/core";
+import { tooMany } from "@rbms/core";
 import type { FastifyReply, FastifyRequest, onRequestAsyncHookHandler, onSendAsyncHookHandler } from "fastify";
 import { OPS_PATHS } from "./ops";
 

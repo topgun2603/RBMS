@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useI18n } from "@srirealtime/web";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
+import { useI18n } from "@rbms/web";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui";
 import { TagsIcon } from "lucide-react";
 import { paiseToInput, parseQty } from "../../lib/format";
 import { resolvePrices, useCustomerPricing, usePriceLists, usePriceListsOn } from "../../lib/queries-pricing";

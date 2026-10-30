@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from "recharts";
-import { useReducedMotionSafe } from "@srirealtime/ui";
+import { useReducedMotionSafe } from "@rbms/ui";
 import { ChartTooltipBox } from "./chart-card";
 import { money, tickINR } from "../../lib/format";
 

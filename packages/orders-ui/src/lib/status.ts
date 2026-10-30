@@ -1,4 +1,4 @@
-// Pure order-status rules for the UI: the same machine as @srirealtime/orders (logic.ts), plus what the screens need
+// Pure order-status rules for the UI: the same machine as @rbms/orders (logic.ts), plus what the screens need
 // (the next step's button, kanban drops, which permission a move needs). No React, unit-tested.
 import type { OrderStatus, PaymentStatus } from "./types";
 

@@ -1,4 +1,4 @@
-import { computeInvoice, gstinCheckChar, type LineInput } from "@srirealtime/gst";
+import { computeInvoice, gstinCheckChar, type LineInput } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import {
   csvBuilders,

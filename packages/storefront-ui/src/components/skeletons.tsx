@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import type { GridLayout } from "../lib/grid";
 import { ProductGridSkeleton } from "./product-card";
 

@@ -19,7 +19,7 @@ import {
   OtpInput,
   SlideIn,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BrandMark } from "../components/brand-mark";
 import { LocaleSwitcher } from "../components/locale-switcher";
 import { ThemeToggle } from "../components/theme-toggle";

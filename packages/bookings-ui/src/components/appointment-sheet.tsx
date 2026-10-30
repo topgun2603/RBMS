@@ -28,8 +28,8 @@ import {
   SheetTitle,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, useAppNavigate, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, useAppNavigate, useI18n, usePermission } from "@rbms/web";
 import { BOOKINGS_PERMISSIONS } from "../lib/access";
 import { bookingsConfig } from "../lib/config";
 import { duration, istIso, istMinute, money, time12 } from "../lib/format";

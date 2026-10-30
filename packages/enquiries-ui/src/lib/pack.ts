@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { packOrDefault } from "@srirealtime/verticals";
-import { api, useOptionalShop } from "@srirealtime/web";
+import { packOrDefault } from "@rbms/verticals";
+import { api, useOptionalShop } from "@rbms/web";
 
 /** The shop's business type id ("school", "salon"…), from Settings → Appearance; falls back to the app's default trade. */
 export function usePackId(): string {

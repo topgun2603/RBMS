@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** commerce.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
 const en: Messages = {

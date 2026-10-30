@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { SERIALS_FEATURES, SERIALS_PERMISSIONS } from "./ports";
 import { serialsRoutes } from "./routes";
 import { serialEvents, serialItems, serialUnits } from "./schema";

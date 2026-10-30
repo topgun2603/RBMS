@@ -1,7 +1,7 @@
-import { aiPlatform, type AiService, type GuideIndex } from "@srirealtime/ai";
-import { inArray, type Db } from "@srirealtime/db";
-import type { JobsService } from "@srirealtime/jobs";
-import { tenants } from "@srirealtime/tenancy";
+import { aiPlatform, type AiService, type GuideIndex } from "@rbms/ai";
+import { inArray, type Db } from "@rbms/db";
+import type { JobsService } from "@rbms/jobs";
+import { tenants } from "@rbms/tenancy";
 import { churnSignals } from "./ai-platform/churn-data";
 
 /**

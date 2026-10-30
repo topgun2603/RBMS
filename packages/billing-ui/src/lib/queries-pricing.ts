@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, useFeature } from "@srirealtime/web";
+import { api, ApiError, useFeature } from "@rbms/web";
 import type { CustomerGroup, CustomerPricing, ItemUnits, PriceListDetail, PriceListInput, PriceListSummary, ResolveResult } from "./types-pricing";
 
 /** Price lists (docs/price-lists-units.md): feature `catalogue.price-lists`. */

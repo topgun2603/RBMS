@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BoxesIcon, LayersIcon, ScaleIcon, WarehouseIcon } from "lucide-react";
-import { ChipGroup } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { ChipGroup } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { StatTile } from "../charts/stat-tile";
 import { formatQty, money } from "../../lib/format";
 import { profitPdfPath, useStockValuation, VAL, type ValuationRow } from "../../lib/valuation";

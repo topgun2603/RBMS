@@ -1,6 +1,6 @@
 # Quotations (estimates)
 
-Feature `invoices.quotations`; routes under `/v1/quotations`; UI in `@srirealtime/billing-ui` (`/quotations`, public page `/q/:token`).
+Feature `invoices.quotations`; routes under `/v1/quotations`; UI in `@rbms/billing-ui` (`/quotations`, public page `/q/:token`).
 A quotation is a priced offer before the order. It never changes stock, sales reports, GSTR-1/3B, loyalty or the credit book:
 only the bill or order made from it does.
 
@@ -8,7 +8,7 @@ only the bill or order made from it does.
 
 - Code lives in `packages/invoices`: `quotations.ts` (service), `quotations-calc.ts` (pure rules), `quotations-routes.ts`,
   tables `quotations` and `quotation_series` in `schema.ts` (migration `0033_quotations`). Wiring: `apps/api/src/kit-quotations.ts`.
-- GST maths is `computeInvoice` from `@srirealtime/gst` (place of supply from the customer's state/GSTIN, round-off to the rupee).
+- GST maths is `computeInvoice` from `@rbms/gst` (place of supply from the customer's state/GSTIN, round-off to the rupee).
   Customers, items, share tokens and WhatsApp/SMS/email sending (notify template `quotation.sent`) are the invoices ones.
 - Numbering: `QT/26-27/0001`, one series per tenant, branch and FY (`quotation_series`, same locking as `invoice_series`).
   Prefix, default validity (15 days) and default terms are the shop settings namespace `quotations` (Settings -> Quotations).
@@ -37,7 +37,7 @@ only the bill or order made from it does.
 
 ## Demo data
 
-`pnpm --filter @srirealtime/api exec tsx src/scripts/seed-quotations.ts` (API on :4000, dev OTP) makes ten quotations in techzone, kumar and thaiyal
+`pnpm --filter @rbms/api exec tsx src/scripts/seed-quotations.ts` (API on :4000, dev OTP) makes ten quotations in techzone, kumar and thaiyal
 through the API (sent, accepted, converted to an order / issued bill with advance / draft bill, expired, declined, revised, draft). Re-runnable.
 
 ## Tests

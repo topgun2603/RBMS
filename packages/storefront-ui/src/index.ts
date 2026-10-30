@@ -1,5 +1,5 @@
 /**
- * @srirealtime/storefront-ui — the shopper-facing store theme for Next.js (App Router).
+ * @rbms/storefront-ui — the shopper-facing store theme for Next.js (App Router).
  *
  * Server pages (async server components + `*Metadata()` helpers) fetch the public API for the shop on the request host;
  * client components (cart, checkout, account, search, reviews) talk to the API through the same-origin proxy

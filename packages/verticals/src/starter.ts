@@ -1,8 +1,8 @@
-import { stockArtFor } from "@srirealtime/branding/stock-art";
+import { stockArtFor } from "@rbms/branding/stock-art";
 import type { BusinessPack, BusinessType } from "./packs";
 
 /**
- * A new shop's starter home page in the CMS section format (`@srirealtime/cms` homeSectionSchema validates it; see
+ * A new shop's starter home page in the CMS section format (`@rbms/cms` homeSectionSchema validates it; see
  * packages/cms/src/starter.test.ts). Each trade gets its own mix: a photo-less hero (the theme's brand block, or a
  * split hero), categories as round pictures or a mosaic, trade sections (today's gold rate, book an appointment, the
  * menu board), the pack's promises, where to find the shop and a newsletter.

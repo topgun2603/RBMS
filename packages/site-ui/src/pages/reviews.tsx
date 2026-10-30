@@ -46,7 +46,7 @@ import {
   Textarea,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   absoluteUrl,
   ConfirmDialog,
@@ -58,7 +58,7 @@ import {
   useI18n,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { Thumb } from "../components/bits";
 import { DraftReplyControls, ReviewThemesButton } from "../components/review-ai";
 import { AddReviewSheet } from "../components/review-add";

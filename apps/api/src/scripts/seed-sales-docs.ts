@@ -2,13 +2,13 @@
  * Demo proforma invoices, sale orders and delivery challans (docs/sales-documents.md), made through the running API as the
  * platform owner (no SQL):
  *
- *   pnpm --filter @srirealtime/api exec tsx src/scripts/seed-sales-docs.ts
+ *   pnpm --filter @rbms/api exec tsx src/scripts/seed-sales-docs.ts
  *
  * Needs the dev API on :4000 with the dev OTP (123456) for OWNER_EMAIL. Nothing is sent to customers (links are only
  * shared). Idempotent: a step whose demo customer already has that kind of document is skipped. Shops: kumar (general
  * stores, wholesale), techzone (electronics) and thaiyal (tailoring).
  */
-import { todayIST } from "@srirealtime/gst";
+import { todayIST } from "@rbms/gst";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:4000";
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? "gowtham_kumar@srirealtime.com";

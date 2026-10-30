@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { authRoutes, okResponse } from "./routes";

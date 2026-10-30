@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, Loader2Icon, LockIcon, PencilIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Skeleton, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Skeleton, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { useDeleteCategory, useExpenseCategories, useSaveCategory, type ExpenseCategory } from "../../lib/expenses";
 import { categoryLabel } from "./expense-dialog";
 

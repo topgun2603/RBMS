@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { ENQUIRIES_FEATURES, ENQUIRIES_PERMISSIONS } from "./ports";
 import { enquiriesRoutes } from "./routes";
 import { enquiries } from "./schema";

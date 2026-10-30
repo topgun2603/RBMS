@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n, useRouteParams } from "@srirealtime/web";
+import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n, useRouteParams } from "@rbms/web";
 import { BanIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, TagsIcon, HandCoinsIcon, Link2Icon, Loader2Icon, ReceiptTextIcon, StoreIcon, TruckIcon, Undo2Icon } from "lucide-react";
 import {
   Alert,
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { DebitNoteDialog, PayPurchaseDialog } from "../components/inventory/payables-dialogs";
 import { GstinStatusWarning } from "../components/gstin/gstin-assist";
 import { LabelDialog, type LabelSeed } from "../components/labels/label-dialog";

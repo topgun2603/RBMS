@@ -1,10 +1,10 @@
-/** Feature keys the appointments UI uses (declared by @srirealtime/bookings). */
+/** Feature keys the appointments UI uses (declared by @rbms/bookings). */
 export const BOOKINGS_FEATURES = {
   bookings: "bookings",
   online: "bookings.online",
 } as const;
 
-/** Permissions of @srirealtime/bookings. Owners and admins hold all of them. */
+/** Permissions of @rbms/bookings. Owners and admins hold all of them. */
 export const BOOKINGS_PERMISSIONS = {
   manage: "bookings.manage",
   desk: "bookings.desk",

@@ -1,8 +1,8 @@
 "use client";
 
 import { BanIcon, Undo2Icon } from "lucide-react";
-import { cn, StatusPill } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, StatusPill } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { CreditNoteStatus } from "../../lib/types";
 
 /** Credit note status as a pill (icon + label). */

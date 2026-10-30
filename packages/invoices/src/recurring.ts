@@ -19,9 +19,9 @@ import {
   type FeatureGatePort,
   type ListPage,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { computeInvoice, todayIST, type LineInput } from "@srirealtime/gst";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { computeInvoice, todayIST, type LineInput } from "@rbms/gst";
 import { and, asc, count, desc, eq, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { noopLogger, type LoggerPort } from "./ports";

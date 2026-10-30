@@ -19,8 +19,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { bpsToPercent, fulfilmentStep, money, saleAmountOf, signedMoney, type LedgerRow } from "../lib/logic";
 import type { Payout, VendorOrder } from "../lib/types";
 import { Amount, LedgerTypeTag, OrderStatusPill, PayoutPill, SettlementPill, Thumb } from "./bits";

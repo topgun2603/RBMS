@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /**
  * Money helpers of AI Phase 5 part B (docs/ai.md): credit risk bands, the 30-day cash-flow forecast, the loan readiness

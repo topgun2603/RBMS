@@ -3,7 +3,7 @@
  * The API only drafts; nothing is created or saved until the owner confirms.
  */
 import { useMutation } from "@tanstack/react-query";
-import { ApiError, api } from "@srirealtime/web";
+import { ApiError, api } from "@rbms/web";
 
 export const MENU_SCAN_CREDITS = 60;
 

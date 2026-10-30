@@ -1,4 +1,4 @@
-import { financialYear, formatInvoiceNumber } from "@srirealtime/gst";
+import { financialYear, formatInvoiceNumber } from "@rbms/gst";
 import type { LocalBlock, NumberingState } from "./types";
 
 /**

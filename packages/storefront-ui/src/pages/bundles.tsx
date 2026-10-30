@@ -2,7 +2,7 @@ import * as React from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PackageIcon } from "lucide-react";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { apiGetSafe, getRequestInfo, requireStore } from "../server/api";
 import { Breadcrumbs, Container, Empty } from "../components/bits";
 import { BundleList } from "../client/offers";

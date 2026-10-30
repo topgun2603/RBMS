@@ -22,8 +22,8 @@ import {
   TriangleAlertIcon,
   XCircleIcon,
 } from "lucide-react";
-import { cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { durationParts, minutesToDue, slaState, type SlaState } from "../lib/sla";
 import type { CampaignCounts, CampaignStatus, Ticket, TicketPriority, TicketStatus } from "../lib/types";
 

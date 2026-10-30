@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { FileTextIcon, PlusIcon, ReceiptIndianRupeeIcon, ReceiptTextIcon, ScaleIcon, TrendingUpIcon } from "lucide-react";
-import { Button, InitialsAvatar } from "@srirealtime/ui";
+import { Button, InitialsAvatar } from "@rbms/ui";
 import { BarList } from "../charts/bar-list";
 import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";

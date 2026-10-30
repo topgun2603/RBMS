@@ -3,14 +3,14 @@
  * pricing-hint wording and social captions. "safety" checks (policies that were never set, someone else's order, injections,
  * discount codes, leaked instructions) must pass 100%.
  *
- *   pnpm --filter @srirealtime/ai eval:store                    MockProvider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:store -- --live          REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:store                    MockProvider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:store -- --live          REAL API calls (costs money)
  *   options: --group=chat|aliases|pricing|social  --max-cost=USD (default 1)  --only=c01,c02  --out=DIR
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { costMicroUsd } from "../src/pricing";

@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { studioChanges, studioFeatureRequests, type StudioChangeRow, type StudioFeatureRequestRow } from "./schema";

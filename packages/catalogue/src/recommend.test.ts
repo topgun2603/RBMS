@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import {
   freshness,
   preferInStock,

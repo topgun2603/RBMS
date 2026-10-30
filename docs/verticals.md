@@ -5,16 +5,16 @@ own app profile, mounting the shared UI modules plus one vertical module.
 
 | App | Port | App profile | Vertical back end | Vertical UI | Demo shop (`pnpm seed`) |
 |---|---|---|---|---|---|
-| `apps/pharmacy` | 3006 | `PH` (with the online store) | `@srirealtime/medicines` (`/v1/medicines`) | `@srirealtime/pharmacy-ui` at `/pharmacy` | `thunai.localhost:3006` (store #22, `pnpm seed:stores thunai`) |
-| `apps/restaurant` | 3007 | `RS` | `@srirealtime/dining` (`/v1/dining`) | `@srirealtime/restaurant-ui` at `/dine` | `arusuvai.localhost:3007` |
-| `apps/services` | 3008 | `SV` | `@srirealtime/bookings`, `jobcards`, `memberships` | `bookings-ui` at `/appointments`, `jobcards-ui` at `/jobs`, `memberships-ui` at `/members` | `glow` (salon), `quickfix` (repair), `ironfit` (gym) `.localhost:3008` |
+| `apps/pharmacy` | 3006 | `PH` (with the online store) | `@rbms/medicines` (`/v1/medicines`) | `@rbms/pharmacy-ui` at `/pharmacy` | `thunai.localhost:3006` (store #22, `pnpm seed:stores thunai`) |
+| `apps/restaurant` | 3007 | `RS` | `@rbms/dining` (`/v1/dining`) | `@rbms/restaurant-ui` at `/dine` | `arusuvai.localhost:3007` |
+| `apps/services` | 3008 | `SV` | `@rbms/bookings`, `jobcards`, `memberships` | `bookings-ui` at `/appointments`, `jobcards-ui` at `/jobs`, `memberships-ui` at `/members` | `glow` (salon), `quickfix` (repair), `ironfit` (gym) `.localhost:3008` |
 
 What a shop sees is still app profile ∩ plan ∩ shop switches (docs/features.md). `PH` is the Billing profile plus
 `medicines.*`. `RS` is the online-store profile plus `dining.*`, without inventory (dishes are cooked to order, so stock
 never blocks an order) and so without branches. Plans: `medicines` and `dining` on every plan; the `.*` parts from
 starter up.
 
-## Pharmacy (`@srirealtime/medicines`)
+## Pharmacy (`@rbms/medicines`)
 
 - **Medicine details** per billing item (`itemId` = catalogue variant id): composition (salt), manufacturer, schedule
   (`otc`, `G`, `H`, `H1`, `X`, `narcotic`), pack size / unit, rack. Same composition = substitutes
@@ -34,7 +34,7 @@ starter up.
 - Permissions: `medicines.manage` (details, receive, adjust), `medicines.dispense` (read, prescriptions). Manager gets
   `medicines.*`, cashier `medicines.dispense`, stock keeper `medicines.manage`.
 
-## Restaurant (`@srirealtime/dining`)
+## Restaurant (`@rbms/dining`)
 
 - **Floor:** areas and tables (`dining_areas`, `dining_tables`). Each table has a `qrToken` for guest ordering;
   `POST /tables/:id/qr` issues a new one.
@@ -65,7 +65,7 @@ invoice `issued` / `cancelled` events and the store order `statusChanged` event.
 `0015_dining`. `seedRestaurantSetup` (seed-fixtures) gives restaurant demo shops two areas, ten tables and a
 `beverages` station for drinks.
 
-## Business packs and store themes (`@srirealtime/verticals`, `@srirealtime/branding` theme)
+## Business packs and store themes (`@rbms/verticals`, `@rbms/branding` theme)
 
 Thirty trades ship as **business packs** (`packages/verticals`, pure data): fashion, pharmacy, restaurant,
 cloud_kitchen, grocery, bakery, fresh, electronics, repair, salon, gym, jewellery, hardware, optical, tailoring, organic,
@@ -93,7 +93,7 @@ website, not a shop: the store hides the cart, wishlist, shopper account and pro
   the category example come from the pack.
 
 **Themes** live in the brand tokens (`tokens.theme`, `packages/branding/src/theme.ts`, also importable as
-`@srirealtime/branding/theme`): `header` (classic, centered, minimal, bold), `hero` (slider, split, full, compact),
+`@rbms/branding/theme`): `header` (classic, centered, minimal, bold), `hero` (slider, split, full, compact),
 `card` (standard, minimal, framed, overlay), `imageRatio` (portrait, square, landscape), `buttons` (rounded, pill,
 square), `density`, `sections` (plain, tinted, boxed), `motif` (none, kolam, dots, waves, grid, stripes), `headings` (display,
 uppercase, underline). Ten presets (heritage, boutique, fresh, care, bistro, tech, luxe, power, workshop, atelier) set
@@ -143,7 +143,7 @@ motif). The recipe they followed:
    tax-inclusive prices between ₹2,625 and ₹2,950 (the dead band: billed at 18% and flagged in the editor).
 4. **Home in English and Tamil.** `home(ctx)` returns the CMS home: sections with **stable ids** (`<prefix>-…`, never
    `starter-…`) and `translations.ta` = section id → the same section's words in Tamil (arrays by position). The
-   storefront shows them to Tamil shoppers (`localizeSections`, `@srirealtime/cms/localize`); only text is taken from a
+   storefront shows them to Tamil shoppers (`localizeSections`, `@rbms/cms/localize`); only text is taken from a
    translation, links / pictures / references always come from the section. The home editor (site-ui) edits English
    only and saves without `translations`, so an owner's edit drops the Tamil words rather than leaving stale ones.
    Menus, pages and product names are single-language. Typing pitfall: a literal array whose objects differ in shape
@@ -160,7 +160,7 @@ motif). The recipe they followed:
    `<slug>-pexels-<id>-<size>`, which later runs reuse. Offline, products fall back to the generated placeholder.
 6. **Seed** (idempotent: everything is matched by name / slug / code and only created when missing; the home is written
    only when the shop has none or still shows the untouched starter home):
-   `pnpm --filter @srirealtime/api seed:stores <slug>` (only the demo stores; `pnpm seed` runs them too). While building
+   `pnpm --filter @rbms/api seed:stores <slug>` (only the demo stores; `pnpm seed` runs them too). While building
    the home, `seed:stores <slug> --refresh-home` rewrites a home that is still the store's own seeded one. In dev,
    override `DATABASE_URL` / `REDIS_URL` in the environment if the database runs elsewhere than `.env` says. The seed
    exits before its store-cache refresh fires, so a running store keeps serving the old home after `--refresh-home`
@@ -184,16 +184,16 @@ motif). The recipe they followed:
 Salons, spas, gyms, repair shops, tailors and opticals (packs salon, gym, repair, tailoring, optical). Three engines,
 all billing through the kit's shared `billFromLines` adapter (`apps/api/src/kit.ts`, the same one dining uses):
 
-- **Appointments** (`@srirealtime/bookings`, `/v1/bookings`): services (catalogue items with duration and buffer),
+- **Appointments** (`@rbms/bookings`, `/v1/bookings`): services (catalogue items with duration and buffer),
   staff with the services they do, shop and staff weekly hours with breaks, time off, IST slot maths, a day calendar per
   staff, status flow booked → confirmed → arrived → in_service → completed (cancel / no-show), bills. Online booking on
   the store at `/book` (feature `bookings.online`), the customer's booking at `/booking/<code>` (view, cancel until 2 h
   before).
-- **Job cards** (`@srirealtime/jobcards`, `/v1/jobcards`): templates device (brand, model, IMEI, issue, accessories),
+- **Job cards** (`@rbms/jobcards`, `/v1/jobcards`): templates device (brand, model, IMEI, issue, accessories),
   garment (measurements, trial date), eyewear (Rx per eye, PD, lens) and general; received → diagnosed → awaiting
   approval → in progress → trial → ready → delivered (delivered only once billed); parts and labour lines, advance,
   bill, timeline. Customers follow their job at `/job/<code>` on the store (feature `jobcards.tracking`).
-- **Memberships** (`@srirealtime/memberships`, `/v1/memberships`): plans (days, sessions or unlimited, price, GST,
+- **Memberships** (`@rbms/memberships`, `/v1/memberships`): plans (days, sessions or unlimited, price, GST,
   freeze days), members with codes (M-0001), sell / renew / freeze / cancel with bills, a front-desk check-in screen
   (one check-in a day unless the `memberships` settings allow more), expiring lists and check-in reports.
 
@@ -210,15 +210,15 @@ Three engines that sit in the app profiles of several trades. Their features sta
 (`offByDefault` in `apps/api/src/kit.ts`); the business pack switches them on (`features` in
 `packages/verticals/src/packs.ts`), or the owner does in Settings → Features.
 
-- **Weighing scales** (`@srirealtime/scales`, `/v1/scales`, UI at `/weighing`; packs grocery, bakery, fresh, organic, florist_pooja; apps BL
+- **Weighing scales** (`@rbms/scales`, `/v1/scales`, UI at `/weighing`; packs grocery, bakery, fresh, organic, florist_pooja; apps BL
   and EC): PLUs per catalogue item (by weight or by count, tare), today's price list (writes catalogue prices), CSV
   export for the scale, label preview. Scale labels (EAN-13, prefix 20–29, 5-digit PLU, 5-digit weight) scanned at the
   counter become a weighed line (`qty` = kg).
-- **Serial numbers / IMEI + warranty** (`@srirealtime/serials`, `/v1/serials`; packs electronics, repair; apps EC and
+- **Serial numbers / IMEI + warranty** (`@rbms/serials`, `/v1/serials`; packs electronics, repair; apps EC and
   SV): tracked items with warranty months and dual IMEI, units received with IMEI check digits, scanning an IMEI at the
   counter adds that unit, the serial prints on the bill (`serials` on the bill line), issue marks it sold with its
   warranty from the bill date, cancel puts it back in stock; warranty lookup and claims.
-- **Jewellery** (`@srirealtime/jewellery`, `/v1/jewellery`; pack jewellery; app EC): the day's metal rates (24K / 999
+- **Jewellery** (`@rbms/jewellery`, `/v1/jewellery`; pack jewellery; app EC): the day's metal rates (24K / 999
   entered, other purities derived), pieces with gross / stone weight, wastage %, making (per gram, % or flat), stones,
   HUID and tag; saving rates reprices every piece in stock into the catalogue (GST-exclusive; tax-inclusive products
   get GST added by the kit). Bills mark pieces sold (cancel: back in stock). Old gold exchange (OG-0001) values old
@@ -363,7 +363,7 @@ notifications) clothing and footwear are taxed by their sale value:
   at 18% it is at or below it); srikit charges **18%** there (never under-pays tax; excess tax collected is simply
   paid over, Sec 76) and the product editor warns so the shop re-prices to ₹2,625 or less, or above ₹2,950. Brands
   publish the same cut-offs ("MRP up to ₹2,625 attract 5% GST, while those above ₹2,950 are taxed at 18%").
-- **Model.** `@srirealtime/gst` `rate-rule.ts`: `GstRateRule = { kind: "price-band", threshold: 250000 (paise of
+- **Model.** `@rbms/gst` `rate-rule.ts`: `GstRateRule = { kind: "price-band", threshold: 250000 (paise of
   taxable value per unit), below: 5, above: 18 }` (`APPAREL_FOOTWEAR_GST_RULE`), `effectiveGstRate(rule | rate,
   unitTaxable, qty)`, `gstRateForInclusive(rule | rate, inclusive, qty)` (with `deadBand`), `gstRateAtPrice`,
   `lineGstRate(line)` and `priceBandRuleForHsn(hsn)`. Comparisons are integer (`taxable × 1000 ≤ threshold ×

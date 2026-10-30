@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster, toast } from "@srirealtime/ui/components/sonner";
+import { Toaster, toast } from "@rbms/ui/components/sonner";
 import { LOCALE_COOKIE, translatorFor, type Locale, type Translator } from "../lib/messages";
 import type { AuthUser, PricedCart, StoreShell } from "../types";
 import { call, getToken, setCookie, setToken, setUnauthorizedHandler } from "./api";

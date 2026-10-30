@@ -4,7 +4,7 @@
  * client (client/pwa.tsx) and tests. No Next / DOM imports.
  */
 
-import { packFor, type BusinessType } from "@srirealtime/verticals";
+import { packFor, type BusinessType } from "@rbms/verticals";
 
 // ------------------------------------------------------------------ names and colours
 

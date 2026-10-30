@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 import * as branches from "./branches";
 import * as common from "./common";
 import * as developer from "./developer";

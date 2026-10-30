@@ -1,8 +1,8 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Strings for the trades section, /industries, the counters and online-store highlights, and the mobile app note.
- * Merged into `en` / `ta` in messages.ts. Trade names come from @srirealtime/verticals (name / nameTa); what each
+ * Merged into `en` / `ta` in messages.ts. Trade names come from @rbms/verticals (name / nameTa); what each
  * trade gets is written here and must only claim what the product ships (docs/verticals.md, product guide).
  */
 export const enMore: Messages = {

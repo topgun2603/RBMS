@@ -1,4 +1,4 @@
-import { notFound, requireUser, type RequestContext, type TenantRef } from "@srirealtime/core";
+import { notFound, requireUser, type RequestContext, type TenantRef } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { STOREFRONT_FEATURES_KEYS } from "./features";

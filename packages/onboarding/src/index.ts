@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { ONBOARDING_FEATURES } from "./features";
 import { onboardingRoutes } from "./routes";
 import { onboardingState } from "./schema";

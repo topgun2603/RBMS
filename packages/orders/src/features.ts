@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 export const ORDER_FEATURES_KEYS = {
   base: "orders",

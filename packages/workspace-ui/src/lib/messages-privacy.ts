@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** workspace.privacy.* strings: Settings > Privacy & data (DPDP notice, customers' requests, retention, breach register). Keep the en and ta key sets identical. */
 export const privacyEn: Messages = {

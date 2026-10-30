@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CalendarCheck2Icon, CheckIcon, Loader2Icon, UserRoundIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { money } from "../lib/format";
 import { ApiError, call, errorMessage } from "./api";
 import { useStore } from "./store-context";

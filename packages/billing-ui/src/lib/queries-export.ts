@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { qk } from "./queries";
 import type { Invoice } from "./types";
 import type { ForeignPaymentInput, GstinLookupResult, GstinStatus } from "./types-export";

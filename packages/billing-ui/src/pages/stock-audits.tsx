@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, useServerTable, describeError, type ServerFilterDefs } from "@srirealtime/web";
+import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, useServerTable, describeError, type ServerFilterDefs } from "@rbms/web";
 import { ClipboardCheckIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import {
   Button,
@@ -25,7 +25,7 @@ import {
   SelectValue,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BoxIllustration } from "../components/illustrations";
 import { AuditStatusPill } from "../components/inventory/audit-bits";
 import { fmtStamp } from "../components/inventory/batch-bits";

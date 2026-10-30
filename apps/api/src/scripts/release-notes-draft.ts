@@ -3,9 +3,9 @@
  * runs on a developer machine and either posts the list to the API (Platform > What's new then shows it as a draft to
  * write with AI) or saves it to a JSON file to paste or load on that page.
  *
- *   pnpm --filter @srirealtime/api release-notes:draft -- --since v1.4.0
- *   pnpm --filter @srirealtime/api release-notes:draft -- --since 565f234 --until HEAD --out notes.json
- *   RBMS_ADMIN_TOKEN=<super-admin session token> pnpm --filter @srirealtime/api release-notes:draft -- --since v1.4.0 --post http://127.0.0.1:4000
+ *   pnpm --filter @rbms/api release-notes:draft -- --since v1.4.0
+ *   pnpm --filter @rbms/api release-notes:draft -- --since 565f234 --until HEAD --out notes.json
+ *   RBMS_ADMIN_TOKEN=<super-admin session token> pnpm --filter @rbms/api release-notes:draft -- --since v1.4.0 --post http://127.0.0.1:4000
  *
  * Merges and housekeeping commits (chore, test, docs, ci, refactor, deps...) are left out by the same rules the API uses.
  * The token is read from the environment only and never printed.
@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { aiPlatform } from "@srirealtime/ai";
+import { aiPlatform } from "@rbms/ai";
 
 const argv = process.argv.slice(2).filter((a) => a !== "--");
 const opt = (name: string) => {

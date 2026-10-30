@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, PackageSearchIcon, PlusIcon } from "lucide-react";
-import { cn, Popover, PopoverAnchor, PopoverContent } from "@srirealtime/ui";
-import { useDebounced, useI18n } from "@srirealtime/web";
+import { cn, Popover, PopoverAnchor, PopoverContent } from "@rbms/ui";
+import { useDebounced, useI18n } from "@rbms/web";
 import { money } from "../lib/format";
 import { useVariantSearch } from "../lib/queries";
 import type { VariantLookup } from "../lib/types";

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { CalendarRangeIcon } from "lucide-react";
-import { ChipGroup, cn, Input, Label } from "@srirealtime/ui";
+import { ChipGroup, cn, Input, Label } from "@rbms/ui";
 import { rangeFor, RANGE_PRESETS, todayIST, type DateRange, type RangePreset } from "../lib/format";
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 
 export interface DateRangeValue extends DateRange {
   preset: RangePreset;

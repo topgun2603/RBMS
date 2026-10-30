@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ChevronDownIcon, NewspaperIcon } from "lucide-react";
-import { breadcrumbJsonLd, STORE_PATHS } from "@srirealtime/cms/seo";
+import { breadcrumbJsonLd, STORE_PATHS } from "@rbms/cms/seo";
 import { apiGetOrNull, apiGetSafe, getConfig, getRequestInfo, requireStore } from "../server/api";
 import { storeMetadata } from "../server/meta";
 import { formatDate } from "../lib/format";

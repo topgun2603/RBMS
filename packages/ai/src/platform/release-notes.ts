@@ -10,7 +10,7 @@ import { INTERNAL_WORDS } from "./triage";
 
 /**
  * "What's new" notes for shop owners (Phase 7 part B, light tier, platform account). Input: the list of commits (production
- * has no git, so the list is pasted on the admin page or posted by `pnpm --filter @srirealtime/api release-notes:draft`).
+ * has no git, so the list is pasted on the admin page or posted by `pnpm --filter @rbms/api release-notes:draft`).
  * The model writes plain, benefit-first lines in English and Tamil, grouped by app and trade; code then drops any line that
  * names internals (product code names, files, packages, vendors, "agent", "model"), makes a promise the commits do not state,
  * carries a number not in the commits, or whose Tamil is not Tamil. The team edits both languages and publishes; owners see

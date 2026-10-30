@@ -1,4 +1,4 @@
-import { formatINR } from "@srirealtime/gst";
+import { formatINR } from "@rbms/gst";
 import type { ReportTable } from "./reports-logic";
 
 const esc = (v: unknown) =>

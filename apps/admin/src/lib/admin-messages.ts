@@ -1,5 +1,5 @@
 import { dataProtectionEn, dataProtectionTa } from "./privacy-messages";
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * admin.* strings used by the admin panel. These are local fallbacks: the server bundle

@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef } from "@rbms/core";
 import type { ScalesSettings } from "./logic";
 
 /** A catalogue variant as the scales module needs it (catalogue's `VariantLookup` is assignable to it). */

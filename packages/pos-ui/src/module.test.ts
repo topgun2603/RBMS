@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildNavModel, featureChecker, normalizeBase, permissionAllows, visibleFor, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { buildNavModel, featureChecker, normalizeBase, permissionAllows, visibleFor, type FeatureState, type MountedModule } from "@rbms/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "./lib/access";
 import { posMessages } from "./lib/messages";
 import { SHORTCUTS } from "./lib/shortcuts";

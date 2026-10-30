@@ -1,4 +1,4 @@
-import { isValidGstin, normalizeGstin } from "@srirealtime/gst";
+import { isValidGstin, normalizeGstin } from "@rbms/gst";
 import { monthOf, parsePortalDate, type Tax } from "./util";
 
 /**

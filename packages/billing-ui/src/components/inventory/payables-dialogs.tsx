@@ -16,8 +16,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
 import { GrnBatchFields, type GrnBatchInput } from "./grn-batch-fields";
 import { ChargesEditor, chargeInputs, type ChargeDraft } from "./landed-charges";

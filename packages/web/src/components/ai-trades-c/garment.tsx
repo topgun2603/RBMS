@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { PaletteIcon, RulerIcon } from "lucide-react";
-import { Alert, AlertDescription, Badge, Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Textarea } from "@srirealtime/ui";
+import { Alert, AlertDescription, Badge, Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Textarea } from "@rbms/ui";
 import { tOr, useI18n } from "../../lib/i18n";
 import { AiDraftBanner } from "../ai-draft";
 import { PhotoButton, postTrades, useTradesError, useTradesHelper, type Run } from "./shared";

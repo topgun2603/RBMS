@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** growth.einvoice.* strings (settings page; the bill-detail actions live in billing-ui). */
 export const en: Messages = {

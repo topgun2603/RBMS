@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BookOpenCheckIcon, LockIcon, PlayIcon, SearchCheckIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, EmptyState, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, EmptyState, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@rbms/web";
 import { DownloadCsvButton } from "../reports/report-ui";
 import { ACC, ACC_POST, ACC_VIEW, accountingPdfPath, sideAmount, useAccountingOverview, useBackfill, type Account } from "../../lib/accounting";
 import { useHasPermission } from "../../lib/access";

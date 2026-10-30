@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BanIcon, CalendarClockIcon, CheckCircle2Icon, CircleSlashIcon, ClockIcon, TruckIcon } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { couponState, couponValueText, type CouponState } from "../lib/coupons";
 import type { Coupon } from "../lib/types";
 

@@ -4,8 +4,8 @@
 
 import * as React from "react";
 import { ArrowRightIcon, BadgeCheckIcon, InboxIcon, LifeBuoyIcon, MessageCircleIcon, MessageSquareTextIcon, OctagonAlertIcon } from "lucide-react";
-import { AnimatedNumber, Button, Card, CardContent, CardHeader, CardTitle, cn, Skeleton } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { AnimatedNumber, Button, Card, CardContent, CardHeader, CardTitle, cn, Skeleton } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { SlaBadge } from "./pills";
 import { useInboxSources } from "../widgets/inbox";
 import { useChatUnread, useTicketSummary, useWaUnread } from "../lib/queries";

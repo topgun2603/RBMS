@@ -17,8 +17,8 @@ import {
   TabsList,
   TabsTrigger,
   toast,
-} from "@srirealtime/ui";
-import { api, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { api, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { AccountPill } from "../components/bits";
 import { useLedgerColumns, usePayoutColumns } from "../components/table-columns";
 import { accountText, bpsToPercent, ledgerTotals, money, signedMoney } from "../lib/logic";

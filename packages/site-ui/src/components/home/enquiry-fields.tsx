@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Label, Textarea } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Label, Textarea } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { EnquiryFields, FieldErrors } from "../../lib/sections";
 import { FieldError, Optional, TextField } from "../bits";
 import { Area, Img, Toggle } from "./section-forms-extra";

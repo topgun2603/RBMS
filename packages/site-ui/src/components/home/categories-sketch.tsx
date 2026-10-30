@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowRightIcon, TagIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { absoluteUrl } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { absoluteUrl } from "@rbms/web";
 import type { ResolvedHomeSection } from "../../lib/types";
 
 /*

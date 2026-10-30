@@ -19,8 +19,8 @@ import {
   Input,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { InlineError } from "../bits";
 import { money, num } from "../../lib/format";
 import { useAdjustPoints } from "../../lib/queries/loyalty";

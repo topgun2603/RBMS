@@ -26,8 +26,8 @@ import {
   TabsList,
   TabsTrigger,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountSelect, AccountingPage, TableSkeleton } from "../components/accounting/parts";
 import { BankAccountSelect, Signed, useBankAccountParam } from "../components/accounting/part-b";
 import { useAccounts } from "../lib/accounting";

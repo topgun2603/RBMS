@@ -18,14 +18,14 @@ import {
   UtensilsCrossedIcon,
   XIcon,
 } from "lucide-react";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { Field, FieldControl, FieldError, FieldHint, FieldLabel, FieldRow, InputGroup, InputGroupAddon, InputGroupInput } from "@srirealtime/ui/components/field";
-import { Input } from "@srirealtime/ui/components/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui/components/select";
-import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Badge } from "@rbms/ui/components/badge";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { Field, FieldControl, FieldError, FieldHint, FieldLabel, FieldRow, InputGroup, InputGroupAddon, InputGroupInput } from "@rbms/ui/components/field";
+import { Input } from "@rbms/ui/components/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui/components/select";
+import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import { api, ApiError, errorMessage, getToken, handoffCode, handoffUrl, type SignupResult, type User } from "@/lib/api";
 import { POPULAR_TIER, isFreePlan, maxSavingPct, planDescription, planForTier, planName, planTier, pricePaise, rupees, tierFromParam, type Interval, type Plan, type PlanTier } from "@/lib/plans";
 import { BUSINESS_TYPES, PACKS, SHOP_DOMAIN, type AppId } from "@/lib/site";
@@ -33,7 +33,7 @@ import { GST_STATES, isGstinShape, slugShapeOk, slugify, stateLabel } from "@/li
 import { useSite } from "./site-context";
 import { OtpSignIn } from "./otp-sign-in";
 import { GoogleButton, useGoogleAvailable } from "./google-button";
-import { firebasePhoneMessage, isFirebaseError, signInWithGoogle } from "@srirealtime/web/firebase-phone";
+import { firebasePhoneMessage, isFirebaseError, signInWithGoogle } from "@rbms/web/firebase-phone";
 import { IntervalToggle } from "./interval-toggle";
 
 const STEPS = ["need", "signin", "shop", "plan", "create"] as const;

@@ -6,8 +6,8 @@ prompt injection, other shops' data, phone numbers in the text). Each case in `d
 (`expect`) and a plain note saying what a good answer looks like.
 
 ```
-pnpm --filter @srirealtime/ai eval                  # MockProvider: no network, no cost. Checks the pipeline only.
-pnpm --filter @srirealtime/ai eval --live           # REAL Claude calls. Costs money. Needs ANTHROPIC_API_KEY.
+pnpm --filter @rbms/ai eval                  # MockProvider: no network, no cost. Checks the pipeline only.
+pnpm --filter @rbms/ai eval --live           # REAL Claude calls. Costs money. Needs ANTHROPIC_API_KEY.
 ```
 
 Options: `--feature=ask-shop|hsn-suggest|product-description|studio`, `--lang=ta|tanglish|en`, `--limit=N`,
@@ -22,7 +22,7 @@ before switching a helper on, and again after changing a model or a prompt. In P
 
 ```
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
-pnpm --filter @srirealtime/ai eval --live --feature=hsn-suggest
+pnpm --filter @rbms/ai eval --live --feature=hsn-suggest
 ```
 
 **Reports** go to `evals/reports/<timestamp>-<mock|live>.json` and `.md` (git-ignored): pass/fail per feature and per

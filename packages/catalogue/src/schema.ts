@@ -1,5 +1,5 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
-import type { GstRateRule } from "@srirealtime/gst";
+import { pk, tenantId, timestamps } from "@rbms/db";
+import type { GstRateRule } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -80,7 +80,7 @@ export const catalogProducts = pgTable(
     hsn: text("hsn"),
     gstRate: real("gst_rate").notNull().default(0),
     /**
-     * Price-dependent GST (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above — @srirealtime/gst
+     * Price-dependent GST (apparel / footwear: 5% up to ₹2,500 taxable per piece, 18% above — @rbms/gst
      * rate-rule.ts). Null = the single `gstRate`. With a rule each variant (and each bill line, after discounts) is
      * taxed at its own band; `gstRate` stays as the fallback / default shown for filters.
      */

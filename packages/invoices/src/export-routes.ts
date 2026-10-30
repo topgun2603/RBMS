@@ -1,5 +1,5 @@
-import { CURRENCIES, COUNTRIES, formatForeign } from "@srirealtime/gst";
-import { requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { CURRENCIES, COUNTRIES, formatForeign } from "@rbms/gst";
+import { requireRole, requireTenant, requireUser } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { ForeignPaymentRequest } from "./export-calc";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CoinsIcon, GemIcon, PlusIcon, RecycleIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { JEWELLERY_FEATURES, JEWELLERY_PERMISSIONS, JEWELLERY_VIEW } from "./lib/access";
 import { setJewelleryConfig } from "./lib/config";
 import { jewelleryMessages } from "./lib/messages";

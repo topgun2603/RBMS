@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { BanIcon, CheckCircle2Icon, FileTextIcon, ImagePlusIcon, InfoIcon, Loader2Icon, ScanLineIcon, WalletIcon, XIcon } from "lucide-react";
-import { isValidGstin } from "@srirealtime/gst";
+import { isValidGstin } from "@rbms/gst";
 import {
   Button,
   ChipGroup,
@@ -25,7 +25,7 @@ import {
   SelectValue,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   AiDraftBanner,
   ConfirmDialog,
@@ -43,7 +43,7 @@ import {
   useI18n,
   useMyBranches,
   type AiOutcome,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { SupplierPicker, type SupplierParty } from "../inventory/supplier-picker";
 import { PaySupplierDialog } from "../inventory/payables-dialogs";
 import type { Supplier } from "../../lib/types";

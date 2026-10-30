@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, ScanFaceIcon, Trash2Icon } from "lucide-react";
-import { Alert, AlertDescription, Button, Input, toast } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, Input, toast } from "@rbms/ui";
 import { useI18n } from "../../lib/i18n";
 import { delImg, getImg, postImg, putImg, useImgError, useImgHelper, type ProductImage, type Pt, type TryonAnchors, type TryonKind } from "./shared";
 

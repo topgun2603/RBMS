@@ -1,5 +1,5 @@
-import { emptyContext, type RequestContext } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { emptyContext, type RequestContext } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import Fastify, { type RouteOptions } from "fastify";
 import { describe, expect, it } from "vitest";
 import { catalogueRoutes, variantLookupSchema, variantSearchResultSchema } from "./routes";

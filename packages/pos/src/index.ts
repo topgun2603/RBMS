@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { deviceContextHook } from "./hook";
 import { POS_FEATURES, POS_PERMISSIONS } from "./ports";
 import { posRoutes } from "./routes";

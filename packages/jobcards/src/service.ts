@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { AppError, badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, runList, searchAny, type ListPage, type TenantRef } from "@srirealtime/core";
-import type { Db, Tx } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { AppError, badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, runList, searchAny, type ListPage, type TenantRef } from "@rbms/core";
+import type { Db, Tx } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { and, asc, count, eq, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {

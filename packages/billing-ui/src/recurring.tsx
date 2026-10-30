@@ -6,7 +6,7 @@
  */
 import * as React from "react";
 import { RepeatIcon } from "lucide-react";
-import type { NavSection, RouteDef, WebModule } from "@srirealtime/web";
+import type { NavSection, RouteDef, WebModule } from "@rbms/web";
 import * as rc from "./lib/messages/recurring";
 
 export const RECURRING_FEATURE = "invoices.recurring";

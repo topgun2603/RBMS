@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.acctb.* strings for accounting Part B (bank, cheques, TDS/TCS, fixed assets, year-end). Keep en and ta key sets identical. */
 export const en: Messages = {

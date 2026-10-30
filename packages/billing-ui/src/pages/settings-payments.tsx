@@ -40,8 +40,8 @@ import {
   Switch,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ApiError, canManageShop, ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApiError, canManageShop, ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe } from "@rbms/web";
 import { CopyButton } from "../components/copy-button";
 import { CardIllustration } from "../components/illustrations";
 import { useDeletePaymentAccount, usePaymentAccount, useSavePaymentAccount } from "../lib/queries-v2";

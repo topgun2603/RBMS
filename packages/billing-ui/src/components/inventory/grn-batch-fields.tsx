@@ -1,7 +1,7 @@
 "use client";
 
-import { Input, Label } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Input, Label } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { useItemTracking } from "../../lib/queries-stock";
 
 export interface GrnBatchInput {

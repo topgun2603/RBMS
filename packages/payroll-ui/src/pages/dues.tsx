@@ -28,8 +28,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, Page, PageHeading, useI18n } from "@rbms/web";
 import { InlineError, MethodSelect } from "../components/bits";
 import { money, monthName, paiseToRupees, rupeesToPaise, todayIst } from "../lib/format";
 import { useCancelDue, useDues, usePayDue } from "../lib/queries";

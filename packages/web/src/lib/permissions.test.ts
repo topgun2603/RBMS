@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { permissionAllows, permissionMatches, permissionsAllow, roleAllows } from "./permissions";
 
-describe("permissionMatches (mirrors @srirealtime/core)", () => {
+describe("permissionMatches (mirrors @rbms/core)", () => {
   it.each([
     ["*", "orders.cancel", true],
     ["orders.cancel", "orders.cancel", true],

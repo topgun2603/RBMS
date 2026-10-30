@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, SearchIcon, XIcon } from "lucide-react";
-import { Button, cn, Input } from "@srirealtime/ui";
-import { useDebounced, useI18n } from "@srirealtime/web";
+import { Button, cn, Input } from "@rbms/ui";
+import { useDebounced, useI18n } from "@rbms/web";
 import { money } from "../lib/format";
 import { useBills, useShopItems } from "../lib/queries";
 import type { BillSummary, ShopItem } from "../lib/types";

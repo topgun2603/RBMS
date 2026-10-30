@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, apiUrl, currentTenantSlug, getToken, readStored, useStored, writeStored, type ApiOptions, type QueryParams } from "@srirealtime/web";
+import { api, ApiError, apiUrl, currentTenantSlug, getToken, readStored, useStored, writeStored, type ApiOptions, type QueryParams } from "@rbms/web";
 import { MP } from "./queries";
 import type {
   CatalogProduct,

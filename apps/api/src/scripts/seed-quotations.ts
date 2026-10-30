@@ -1,14 +1,14 @@
 /**
  * Demo quotations for three demo shops, made through the running API as the platform owner (no SQL):
  *
- *   pnpm --filter @srirealtime/api exec tsx src/scripts/seed-quotations.ts
+ *   pnpm --filter @rbms/api exec tsx src/scripts/seed-quotations.ts
  *
  * Needs the dev API on :4000 with the dev OTP (123456) for OWNER_EMAIL. Idempotent: a shop that already has a quotation
  * for one of the demo customers is skipped. Shops: techzone (electronics, orders), kumar (general stores, wholesale) and
  * thaiyal (tailoring). Mixed statuses: sent, accepted, converted (order, issued bill with advance, draft bill), expired,
  * declined, revised and draft. Customers answer through the public link, like in real life.
  */
-import { gstinCheckChar, todayIST } from "@srirealtime/gst";
+import { gstinCheckChar, todayIST } from "@rbms/gst";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:4000";
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? "gowtham_kumar@srirealtime.com";

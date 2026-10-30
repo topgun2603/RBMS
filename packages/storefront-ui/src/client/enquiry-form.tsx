@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, Loader2Icon } from "lucide-react";
-import { Field, FieldControl, FieldError, FieldLabel } from "@srirealtime/ui/components/field";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Field, FieldControl, FieldError, FieldLabel } from "@rbms/ui/components/field";
+import { cn } from "@rbms/ui/lib/utils";
 import { normalizeMobile } from "../lib/format";
 import type { EnquiryFormConfig } from "../types";
 import { StoreImage } from "../components/bits";

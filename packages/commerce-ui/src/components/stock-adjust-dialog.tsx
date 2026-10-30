@@ -18,8 +18,8 @@ import {
   FieldLabel,
   Input,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { cleanQty, formatQty, parseQty } from "../lib/format";
 import { useAdjustStock } from "../lib/queries";
 import type { StockAdjustInput } from "../lib/types";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { GiftIcon } from "lucide-react";
-import { AnimatedNumber } from "@srirealtime/ui";
-import { InsightCard, useI18n } from "@srirealtime/web";
+import { AnimatedNumber } from "@rbms/ui";
+import { InsightCard, useI18n } from "@rbms/web";
 import { isStatus } from "../lib/http";
 import { money, num } from "../lib/format";
 import { useLoyaltySummary } from "../lib/queries/loyalty";

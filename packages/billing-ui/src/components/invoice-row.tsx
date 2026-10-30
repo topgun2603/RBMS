@@ -1,8 +1,8 @@
 "use client";
 
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { ChevronRightIcon, FileTextIcon } from "lucide-react";
-import { cn, InitialsAvatar, Skeleton } from "@srirealtime/ui";
+import { cn, InitialsAvatar, Skeleton } from "@rbms/ui";
 import { StatusBadge } from "./status-badge";
 import { money } from "../lib/format";
 import type { InvoiceSummary } from "../lib/types";

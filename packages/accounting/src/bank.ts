@@ -4,9 +4,9 @@
  * Journal postings go through AccountingService (postModuleEntry / reverseModuleEntry); this file writes only the
  * acct_bank_* and acct_cheques tables.
  */
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { isValidDate } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { isValidDate } from "@rbms/gst";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";

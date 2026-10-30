@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, APPROVAL_PIN_HEADER } from "@srirealtime/web";
+import { api, APPROVAL_PIN_HEADER } from "@rbms/web";
 import type {
   Customer,
   CustomerInput,

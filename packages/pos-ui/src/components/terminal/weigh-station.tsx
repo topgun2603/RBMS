@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { lineAmount } from "@srirealtime/gst";
+import { lineAmount } from "@rbms/gst";
 import {
   CableIcon,
   CheckCircle2Icon,
@@ -46,8 +46,8 @@ import {
   TabsList,
   TabsTrigger,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ThemeToggle, useDebounced, useI18n, useSession } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ThemeToggle, useDebounced, useI18n, useSession } from "@rbms/web";
 import { POS_PERMISSIONS } from "../../lib/access";
 import { findByCode, findByPlu, fromPosItem, searchCatalog } from "../../lib/catalog-sync";
 import { money, moneyShort, timeShort } from "../../lib/format";

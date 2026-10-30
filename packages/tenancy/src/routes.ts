@@ -10,7 +10,7 @@ import {
   requireUser,
   tooMany,
   type RequestContext,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { CUSTOM_DOMAIN_FEATURE, shouldForceVerify } from "./domains";

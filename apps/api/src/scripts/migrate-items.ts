@@ -1,5 +1,5 @@
-import type { LegacyItemRow } from "@srirealtime/catalogue";
-import { billingItems } from "@srirealtime/invoices";
+import type { LegacyItemRow } from "@rbms/catalogue";
+import { billingItems } from "@rbms/invoices";
 import { pino } from "pino";
 import { env } from "../env";
 import { createKit } from "../kit";
@@ -9,7 +9,7 @@ import { createKit } from "../kit";
  * product with one default variant whose id is the old item id, so bills, stock and purchases keep pointing at it.
  * Re-running skips items already copied. `billing_items` itself is left untouched.
  *
- *   pnpm --filter @srirealtime/api migrate:items
+ *   pnpm --filter @rbms/api migrate:items
  */
 const log = pino({ level: "info" });
 const kit = createKit({ ...env, REDIS_URL: "memory" }, log);

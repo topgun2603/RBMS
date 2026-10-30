@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signBody } from "./parse";
 import type { HttpPort, KitchenOrderInput, KitchenPort, MenuItemInfo, MenuPort } from "./ports";

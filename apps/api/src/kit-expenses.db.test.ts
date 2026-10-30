@@ -6,10 +6,10 @@
  * the tables into a throw-away schema and drops it afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { expensePostings, isBalanced, SYS, supplierPaymentPostings, type Posting } from "@srirealtime/accounting";
-import { createDb, sql, type Db } from "@srirealtime/db";
-import { ExpensesService } from "@srirealtime/expenses";
-import { InventoryService, purchases } from "@srirealtime/inventory";
+import { expensePostings, isBalanced, SYS, supplierPaymentPostings, type Posting } from "@rbms/accounting";
+import { createDb, sql, type Db } from "@rbms/db";
+import { ExpensesService } from "@rbms/expenses";
+import { InventoryService, purchases } from "@rbms/inventory";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { accountingSources } from "./kit-accounting";
 import { expenseBillsPort, expenseSuppliersPort } from "./kit-expenses";

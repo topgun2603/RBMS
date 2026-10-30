@@ -5,7 +5,7 @@
  * the tables are copied into a throw-away schema which is dropped afterwards.
  *   PowerShell: $env:INVENTORY_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; npx vitest run src/challan-stock.db.test.ts
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CatalogItem, ItemCatalogPort } from "./ports";

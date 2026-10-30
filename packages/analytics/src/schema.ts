@@ -1,4 +1,4 @@
-import { pk, tenantId } from "@srirealtime/db";
+import { pk, tenantId } from "@rbms/db";
 import { bigint, date, index, integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const EVENT_TYPES = [

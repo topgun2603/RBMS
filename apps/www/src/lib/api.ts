@@ -5,7 +5,7 @@
  * login handoff code.
  */
 import type { Interval, Plan } from "./plans";
-import type { AuthClientConfig } from "@srirealtime/web/firebase-phone";
+import type { AuthClientConfig } from "@rbms/web/firebase-phone";
 import type { AppId } from "./site";
 
 const BASE = "/api/v1";

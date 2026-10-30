@@ -19,8 +19,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { eventsForApi, isAllEvents, urlProblem } from "../../lib/developer";
 import { useCreateEndpoint, useEvents, useUpdateEndpoint } from "../../lib/queries/developer";
 import type { WebhookEndpoint } from "../../lib/types";

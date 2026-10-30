@@ -1,6 +1,6 @@
-import { packOrDefault } from "@srirealtime/verticals";
-import { AppError, addDays, badRequest, conflict, notFound, randomToken, tooMany, type FeatureGatePort, type TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { packOrDefault } from "@rbms/verticals";
+import { AppError, addDays, badRequest, conflict, notFound, randomToken, tooMany, type FeatureGatePort, type TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { addressInputSchema, addressPatchSchema, MAX_ADDRESSES, normalizeIndianMobile, pincodeSchema, PINCODE_RE } from "./address";
@@ -149,7 +149,7 @@ export interface StoreConfig {
     name: string;
     logoUrl: string | null;
     css: string;
-    /** The shop's trade (@srirealtime/verticals pack id, never empty: the app's default when unset). */
+    /** The shop's trade (@rbms/verticals pack id, never empty: the app's default when unset). */
     businessType: string;
     /** Theme variants: header, hero, card, imageRatio, buttons, density, sections, motif, headings. */
     theme: Record<string, string>;

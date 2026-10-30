@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import QRCode from "qrcode";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 
 /** QR code (PNG data URL) for any text, e.g. a upi://pay link. Dark-on-white so every UPI app can scan it. */
 export function QrImage({ value, size = 160, className, alt }: { value: string; size?: number; className?: string; alt: string }) {

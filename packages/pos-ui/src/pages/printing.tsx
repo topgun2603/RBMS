@@ -26,9 +26,9 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { clearDeviceKeys, detectSupport, openDrawerDirect, pairPrinter, printTestPage, resolveConfig, type DirectResult, type PrinterConfig, type TransportKind, type TransportSupport } from "@srirealtime/receipt-print";
-import { describeError, Page, PageHeading, SettingsNav, useI18n, useTenantSlug } from "@srirealtime/web";
+} from "@rbms/ui";
+import { clearDeviceKeys, detectSupport, openDrawerDirect, pairPrinter, printTestPage, resolveConfig, type DirectResult, type PrinterConfig, type TransportKind, type TransportSupport } from "@rbms/receipt-print";
+import { describeError, Page, PageHeading, SettingsNav, useI18n, useTenantSlug } from "@rbms/web";
 import { failureKey, saveShopPrinting, usePrinterConfig } from "../lib/printing";
 import { configFromForm, DEVICE_KEYS, formFromConfig, LAYOUT_KEYS, pickKeys, validateForm, withPaperWidth, type PrintForm } from "../lib/printing-form";
 

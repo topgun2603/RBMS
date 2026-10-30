@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon, MailCheckIcon } from "lucide-react";
-import { Button, Field, FieldControl, FieldError, FieldHint, FieldLabel, Input, toast } from "@srirealtime/ui";
+import { Button, Field, FieldControl, FieldError, FieldHint, FieldLabel, Input, toast } from "@rbms/ui";
 import {
   firebasePhoneErrorKind,
   firebasePhoneMessage,

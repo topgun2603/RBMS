@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef, TenantRef } from "@rbms/core";
 import type { JobApproval } from "./logic";
 import type { JobStatus } from "./schema";
 import type { JobTemplate } from "./templates";

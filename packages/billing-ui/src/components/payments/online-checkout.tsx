@@ -15,8 +15,8 @@ import {
   SheetHeader,
   SheetTitle,
   toast,
-} from "@srirealtime/ui";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import { checkoutInvoice, completeMockPayment, verifyPayment } from "../../lib/queries-v2";
 import type { CheckoutResponse } from "../../lib/types";

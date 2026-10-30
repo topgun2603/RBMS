@@ -14,11 +14,11 @@ import {
   StaggerItem,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { ChartIllustration } from "../illustrations";
-import { describeError, QueryError, type QueryParams, useI18n } from "@srirealtime/web";
+import { describeError, QueryError, type QueryParams, useI18n } from "@rbms/web";
 import { downloadCsv } from "../../lib/queries-v2";
-import type { Translator } from "@srirealtime/i18n/client";
+import type { Translator } from "@rbms/i18n/client";
 
 /** Shared range props every dated tab receives. */
 export interface RangeProps {

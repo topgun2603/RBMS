@@ -27,8 +27,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, useI18n } from "@rbms/web";
 import { EmployeeSelect, InlineError, MethodSelect, MonthInput } from "../components/bits";
 import { money, paiseToRupees, rupeesToPaise, todayIst } from "../lib/format";
 import { useAdvances, useCancelAdvance, useCreateAdvance, useUpdateAdvance } from "../lib/queries";

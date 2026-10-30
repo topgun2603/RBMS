@@ -1,4 +1,4 @@
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import type { FinderOption } from "../types";
 
 /*

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, ModuleLink, Page, QueryError, useFeature, useI18n, useRouteParams } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, QueryError, useFeature, useI18n, useRouteParams } from "@rbms/web";
 import { ArrowLeftIcon, BanIcon, FileDownIcon, FilePlus2Icon, FileTextIcon, Loader2Icon, WalletIcon } from "lucide-react";
 import {
   Button,
@@ -28,7 +28,7 @@ import {
   TableRow,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { DebitNoteStatusPill } from "../components/debit-notes/debit-note-ui";
 import { formatQty, money } from "../lib/format";
 import { PDF_PATHS, usePdf } from "../lib/pdf";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, CircleAlertIcon, CircleSlashIcon, FlaskConicalIcon, GaugeIcon, HistoryIcon, Loader2Icon, MessageCircleIcon, PowerIcon, SearchIcon, ShieldCheckIcon, SparklesIcon, XCircleIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Label, Meter, Skeleton, StatusPill, Switch, toast, type StatusTone } from "@srirealtime/ui";
-import { canManageShop, describeError, Page, PageHeading, QueryError, SearchWordsBackfillCard, SettingsNav, ShopperChatSettings, useAppNavigate, useI18n, useMe, useSettingsHref } from "@srirealtime/web";
+import { Alert, AlertDescription, Button, Label, Meter, Skeleton, StatusPill, Switch, toast, type StatusTone } from "@rbms/ui";
+import { canManageShop, describeError, Page, PageHeading, QueryError, SearchWordsBackfillCard, SettingsNav, ShopperChatSettings, useAppNavigate, useI18n, useMe, useSettingsHref } from "@rbms/web";
 import { SectionCard } from "../components/plan/section-card";
 import { DailySummaryCard } from "../components/ai-daily-summary";
 import { useAiRuns, useAiSettings, useAiStatus, usePingAi, useSaveAiSettings, type AiFeatureRow, type AiRunRow, type AiSettingsValues, type AiStatus } from "../lib/queries-ai";

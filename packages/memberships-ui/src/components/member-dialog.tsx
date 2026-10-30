@@ -20,9 +20,9 @@ import {
   Label,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { todayIST } from "@srirealtime/gst";
-import { describeError, useFeature, useI18n, useModuleNavigate } from "@srirealtime/web";
+} from "@rbms/ui";
+import { todayIST } from "@rbms/gst";
+import { describeError, useFeature, useI18n, useModuleNavigate } from "@rbms/web";
 import { MEMBERSHIPS_FEATURES } from "../lib/access";
 import { phoneLabel } from "../lib/format";
 import { useCreateMember, useMemberActions } from "../lib/queries";

@@ -1,6 +1,6 @@
 "use client";
 
-import { absoluteUrl, api, ApiError } from "@srirealtime/web";
+import { absoluteUrl, api, ApiError } from "@rbms/web";
 import type { UploadedFile, UploadSignResponse } from "./types";
 
 export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;

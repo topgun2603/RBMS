@@ -13,10 +13,10 @@ import {
   Input,
   Label,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CopyButton } from "../copy-button";
 import { QrImage } from "../upi-qr";
-import { describeError, useI18n, useOptionalShop } from "@srirealtime/web";
+import { describeError, useI18n, useOptionalShop } from "@rbms/web";
 import { usePublicUrl } from "../../lib/links";
 import { useShareStatement } from "../../lib/queries-v2";
 import type { Customer } from "../../lib/types";

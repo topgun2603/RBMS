@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { WandSparklesIcon } from "lucide-react";
-import { EmptyState, PageHeader, Skeleton, StatCard } from "@srirealtime/ui";
+import { EmptyState, PageHeader, Skeleton, StatCard } from "@rbms/ui";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";

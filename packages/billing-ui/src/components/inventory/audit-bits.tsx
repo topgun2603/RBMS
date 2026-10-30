@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BanIcon, CheckCircle2Icon, CircleDashedIcon, ClipboardListIcon, ScanBarcodeIcon, SearchCheckIcon, TruckIcon, ClockIcon, PackageCheckIcon } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { AuditStatus, TransferStatus } from "../../lib/types-stock";
 
 type Icon = React.ComponentType<{ className?: string }>;

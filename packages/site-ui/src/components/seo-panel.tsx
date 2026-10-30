@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { SearchIcon } from "lucide-react";
-import { cn, Label, Switch, Textarea } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, Label, Switch, Textarea } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { SeoFields } from "../lib/types";
 import { FieldError, Optional, Section, TextField } from "./bits";
 import { ImageField } from "./image-field";

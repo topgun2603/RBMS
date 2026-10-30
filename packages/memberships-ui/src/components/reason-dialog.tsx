@@ -15,8 +15,8 @@ import {
   FieldError,
   FieldLabel,
   Input,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { InlineError } from "./bits";
 
 /** Asks for a reason (at least 2 characters) before a destructive step such as cancelling a plan. */

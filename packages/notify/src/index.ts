@@ -1,5 +1,5 @@
-import { defineModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { defineModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { ConsoleDriver } from "./drivers/console";
 import { FcmDriver } from "./drivers/fcm";
 import { Msg91Driver } from "./drivers/msg91";

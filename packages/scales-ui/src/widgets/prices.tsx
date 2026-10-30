@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { WeightIcon } from "lucide-react";
-import { InsightCard, useI18n } from "@srirealtime/web";
+import { InsightCard, useI18n } from "@rbms/web";
 import { isStatus } from "../lib/http";
 import { useLatestPriced } from "../lib/queries";
 

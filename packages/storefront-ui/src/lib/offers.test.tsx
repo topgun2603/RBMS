@@ -14,11 +14,11 @@ vi.mock("../client/store-context", async (orig) => ({
   ...(await orig<typeof import("../client/store-context")>()),
   useStore: () => ({ t, cart: cartApi, shell: { open: true }, locale: "en" }),
 }));
-vi.mock("@srirealtime/ui/motion", async (orig) => {
+vi.mock("@rbms/ui/motion", async (orig) => {
   const React = await import("react");
   const pass = ({ children, initial: _i, animate: _a, exit: _e, layout: _l, transition: _t, ...rest }: Record<string, unknown>) => React.createElement("div", rest, children as React.ReactNode);
   return {
-    ...(await orig<typeof import("@srirealtime/ui/motion")>()),
+    ...(await orig<typeof import("@rbms/ui/motion")>()),
     motion: new Proxy({}, { get: () => pass }),
     AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
     Reveal: ({ children, as: _as, ...rest }: Record<string, unknown>) => React.createElement("section", rest, children as React.ReactNode),

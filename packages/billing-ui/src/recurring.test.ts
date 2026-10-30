@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@rbms/web";
 import { billingMessages, billingModule } from "./index";
 import { permissionMatches } from "./lib/access";
 import { RECURRING_FREQUENCIES, RECURRING_RUN_STATUSES, RECURRING_STATUSES, scheduleText } from "./lib/types-recurring";

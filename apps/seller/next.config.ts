@@ -15,7 +15,7 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/web", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/marketplace-ui", "@srirealtime/tenancy"],
+    transpilePackages: ["@rbms/web", "@rbms/ui", "@rbms/i18n", "@rbms/gst", "@rbms/marketplace-ui", "@rbms/tenancy"],
     poweredByHeader: false,
     // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
     async headers() {

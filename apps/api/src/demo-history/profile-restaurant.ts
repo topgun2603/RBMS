@@ -1,4 +1,4 @@
-import { itemName } from "@srirealtime/catalogue";
+import { itemName } from "@rbms/catalogue";
 import { CAT, DISHES, GST_RATE, type Dish } from "../demo-stores/arusuvai-menu";
 import type { CatalogueEntry, Profile, Supplier } from "./profiles";
 

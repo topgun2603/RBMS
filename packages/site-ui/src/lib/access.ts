@@ -1,8 +1,8 @@
 "use client";
 
-import { permissionsAllow, useOptionalSession } from "@srirealtime/web";
+import { permissionsAllow, useOptionalSession } from "@rbms/web";
 
-/** Permissions this module checks (declared by @srirealtime/cms, reviews, staff and the settings host). */
+/** Permissions this module checks (declared by @rbms/cms, reviews, staff and the settings host). */
 export const PERMS = {
   cms: "cms.manage",
   reviews: "reviews.manage",

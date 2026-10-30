@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.platform.* strings: contacting RBMS support and the What's new panel (Phase 7 part B). Keep en and ta key sets identical. */
 export const enPlatform: Messages = {

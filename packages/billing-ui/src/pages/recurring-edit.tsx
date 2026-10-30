@@ -1,8 +1,8 @@
 "use client";
 
-import { ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { LockIcon, PencilLineIcon } from "lucide-react";
-import { Button, EmptyState, Skeleton } from "@srirealtime/ui";
+import { Button, EmptyState, Skeleton } from "@rbms/ui";
 import { RecurringForm } from "../components/recurring/rc-form";
 import { useRecurring } from "../lib/queries-recurring";
 

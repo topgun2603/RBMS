@@ -1,4 +1,4 @@
-/** Feature keys the memberships UI uses (declared by @srirealtime/memberships). */
+/** Feature keys the memberships UI uses (declared by @rbms/memberships). */
 export const MEMBERSHIPS_FEATURES = {
   memberships: "memberships",
   checkin: "memberships.checkin",
@@ -6,7 +6,7 @@ export const MEMBERSHIPS_FEATURES = {
   invoices: "invoices",
 } as const;
 
-/** Permissions of @srirealtime/memberships. Owners and admins hold all of them. */
+/** Permissions of @rbms/memberships. Owners and admins hold all of them. */
 export const MEMBERSHIPS_PERMISSIONS = {
   manage: "memberships.manage",
   checkin: "memberships.checkin",

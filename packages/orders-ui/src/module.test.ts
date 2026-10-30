@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { matchRoute, normalizeBase, type MountedModule } from "@srirealtime/web";
+import { matchRoute, normalizeBase, type MountedModule } from "@rbms/web";
 import { allows, permissionMatches } from "./lib/access";
 import { couponState, couponValueText, couponWindow, daysLeft, randomCode } from "./lib/coupons";
 import { parseSlabs, rateSummary, slabAmount } from "./lib/delivery";

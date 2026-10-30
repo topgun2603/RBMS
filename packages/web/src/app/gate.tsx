@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CompassIcon, LockIcon, PowerOffIcon, SparklesIcon } from "lucide-react";
-import { Button, EmptyState } from "@srirealtime/ui";
+import { Button, EmptyState } from "@rbms/ui";
 import { Page } from "../components/page";
 import { humanizeKey } from "../lib/format";
 import type { FeatureCheck } from "../lib/features";

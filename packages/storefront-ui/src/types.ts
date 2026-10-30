@@ -17,7 +17,7 @@ export interface StoreConfig {
     name: string;
     logoUrl: string | null;
     css: string;
-    /** The shop's trade (@srirealtime/verticals pack id). Older APIs leave it out. */
+    /** The shop's trade (@rbms/verticals pack id). Older APIs leave it out. */
     businessType?: string;
     /** Theme variants (header, hero, card, imageRatio, … see StoreThemeView). */
     theme?: Record<string, string>;
@@ -150,7 +150,7 @@ export interface Product {
   hsn: string | null;
   gstRate: number;
   /** Price-band GST (apparel / footwear: 5% up to ₹2,500 a piece before GST, 18% above); each variant at its own price. */
-  gstRule?: import("@srirealtime/gst").GstRateRule | null;
+  gstRule?: import("@rbms/gst").GstRateRule | null;
   unit: string;
   taxInclusive: boolean;
   tags: string[];
@@ -485,7 +485,7 @@ export interface PublicHome {
   seo: Seo | null;
   isDefault: boolean;
   publishedAt: string | null;
-  /** The home's words in other languages by section id (`localizeSections` from @srirealtime/cms/localize). */
+  /** The home's words in other languages by section id (`localizeSections` from @rbms/cms/localize). */
   translations?: Partial<Record<string, Record<string, unknown>>>;
 }
 
@@ -902,7 +902,7 @@ export interface StoreShell {
   theme: StoreThemeView;
 }
 
-/** The storefront's theme variants (mirrors @srirealtime/branding StoreTheme). */
+/** The storefront's theme variants (mirrors @rbms/branding StoreTheme). */
 export interface StoreThemeView {
   header: "classic" | "centered" | "minimal" | "bold" | "split";
   hero: "slider" | "split" | "full" | "compact";

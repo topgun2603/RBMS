@@ -11,8 +11,8 @@ import {
   unauthorized,
   type FeatureGatePort,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, arrayContains, asc, count, desc, eq, getTableColumns, gte, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { z } from "zod";
 import {

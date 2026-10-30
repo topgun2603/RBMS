@@ -17,7 +17,7 @@ import {
   UndoIcon,
   XIcon,
 } from "lucide-react";
-import { GST_RATES } from "@srirealtime/gst";
+import { GST_RATES } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -50,8 +50,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, QueryError, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, QueryError, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { cartesian, comboKey, discountPct, listingState, money, paiseToInput, parseQty, rupeesToPaise, variantTitle, type ListingState } from "../lib/logic";
 import { useMarketplaceSettings } from "../lib/queries";
 import {

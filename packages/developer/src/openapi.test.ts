@@ -1,4 +1,4 @@
-import { AppError, documented, emptyContext, type RequestContext } from "@srirealtime/core";
+import { AppError, documented, emptyContext, type RequestContext } from "@rbms/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { z, ZodError } from "zod";

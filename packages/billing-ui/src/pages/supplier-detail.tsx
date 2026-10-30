@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+import { api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { HandCoinsIcon, PencilIcon, ScrollTextIcon, StoreIcon, Undo2Icon } from "lucide-react";
 import {
   Button,
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { PaySupplierDialog } from "../components/inventory/payables-dialogs";
 import { SupplierDialog } from "../components/inventory/supplier-dialog";
 import { DownloadCsvButton } from "../components/reports/report-ui";

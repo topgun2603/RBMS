@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { DownloadIcon, LifeBuoyIcon, Loader2Icon, OctagonAlertIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, toast, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, toast, type DataTableColumn } from "@rbms/ui";
 import {
   api,
   apiDownload,
@@ -15,7 +15,7 @@ import {
   useQueryParams,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { Age } from "../components/bits";
 import { PriorityPill, SlaBadge, TicketStatusPill } from "../components/pills";
 import { useStaffName } from "../components/staff-select";

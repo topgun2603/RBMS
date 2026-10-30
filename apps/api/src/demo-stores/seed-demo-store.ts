@@ -1,5 +1,5 @@
-import { DEFAULT_LAYOUT_THEME, themePreset } from "@srirealtime/branding";
-import { packFor } from "@srirealtime/verticals";
+import { DEFAULT_LAYOUT_THEME, themePreset } from "@rbms/branding";
+import { packFor } from "@rbms/verticals";
 import type { Logger } from "pino";
 import type { Kit } from "../kit";
 import { ensureShop } from "../seed-fixtures";

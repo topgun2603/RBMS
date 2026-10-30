@@ -18,8 +18,8 @@ import {
   Input,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useSavePrescription } from "../lib/queries";
 import type { BillSummary, Prescription } from "../lib/types";
 import { InlineError } from "./bits";

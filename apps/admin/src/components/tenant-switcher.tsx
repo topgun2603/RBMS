@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Building2Icon, CheckIcon, ChevronsUpDownIcon, PlusIcon, SearchIcon } from "lucide-react";
-import { Button, Popover, PopoverContent, PopoverTrigger, ScrollArea, Skeleton, cn } from "@srirealtime/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger, ScrollArea, Skeleton, cn } from "@rbms/ui";
 import { useMyTenants, useSwitchTenant } from "@/lib/auth";
 import { tOr, useI18n } from "@/lib/i18n";
 import { useTenantSlug } from "@/lib/session";

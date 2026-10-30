@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import type { Channel } from "./schema";
 import type { BillingItemListQuery, CatalogueService } from "./service";
 import type { CatalogItem } from "./types";
@@ -32,7 +32,7 @@ export interface BillingItemInput {
   gstRate: number;
 }
 
-/** Same shape as `ItemSourcePort` in @srirealtime/invoices (declared here too; packages don't import each other). */
+/** Same shape as `ItemSourcePort` in @rbms/invoices (declared here too; packages don't import each other). */
 export interface BillingItemSource {
   list(
     tenantId: string,

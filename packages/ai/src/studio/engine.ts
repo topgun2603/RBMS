@@ -1,4 +1,4 @@
-import { AppError, badRequest, forbidden, notFound } from "@srirealtime/core";
+import { AppError, badRequest, forbidden, notFound } from "@rbms/core";
 import { maskText } from "../masking";
 import { buildPreview } from "./diff";
 import { checkPlan, hashOf, permissionProblem, type CheckResult } from "./check";

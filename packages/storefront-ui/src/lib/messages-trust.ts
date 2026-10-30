@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Trade-aware trust badges and announcement lines (lib/trust.ts) and the storefront polish round 2 strings. Merged into lib/messages. */
 export const trustEn: Messages = {

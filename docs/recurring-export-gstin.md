@@ -70,7 +70,7 @@ On the bill form: "Export, SEZ or foreign-currency bill".
   bill (`foreign: { currency, exchangeRate, lines: [{ rate, discount? }] }`, one entry per line, minor units) gets each line's
   rupee price = foreign price × the typed rate (to the paisa per unit); the foreign figures (`invoices.foreign`: lines,
   taxable, IGST at the bill's rate, total) are stored next to them. Currencies: ISO 4217 list with minor-unit digits
-  (`@srirealtime/gst` `CURRENCIES`; JPY 0, KWD / OMR / BHD 3). No live rate feed: the shop types the rate.
+  (`@rbms/gst` `CURRENCIES`; JPY 0, KWD / OMR / BHD 3). No live rate feed: the shop types the rate.
 - **LUT**: number (ARN) and date in Settings > Business profile (`billing` namespace `lutNumber`, `lutDate`); a bill
   without IGST can't be issued without them (400 `lut_missing`) and freezes them in `export_details` at issue.
 - Shipping bill no., date and port code (6 characters) on the bill; the buyer's country (`billing_customers.country`, ISO

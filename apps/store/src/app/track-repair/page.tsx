@@ -1,5 +1,5 @@
 /* "Track my repair" (job number + phone digits → /job/<token>). Takes over the /track-repair path from CMS pages. */
-import { TrackRepairPage, trackRepairMetadata } from "@srirealtime/storefront-ui";
+import { TrackRepairPage, trackRepairMetadata } from "@rbms/storefront-ui";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = trackRepairMetadata;

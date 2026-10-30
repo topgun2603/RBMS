@@ -1,5 +1,5 @@
 /** Pure KYC helpers: local format checks before a (paid) provider call, and display mapping. */
-import { isValidGstin } from "@srirealtime/gst";
+import { isValidGstin } from "@rbms/gst";
 import type { KycCheck, KycCheckType, KycSubjectStatus } from "./types";
 
 export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;

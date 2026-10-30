@@ -1,6 +1,6 @@
-import { badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny } from "@srirealtime/core";
-import type { Db, Tx } from "@srirealtime/db";
-import { isValidDate, todayIST } from "@srirealtime/gst";
+import { badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny } from "@rbms/core";
+import type { Db, Tx } from "@rbms/db";
+import { isValidDate, todayIST } from "@rbms/gst";
 import { and, asc, count, desc, eq, gt, gte, inArray, lt, lte, sql, sum, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { addDays, expiryStatus, fefoAllocate, normalizeExpiry, qtyByItem, roundQty, type ExpiryStatus } from "./logic";

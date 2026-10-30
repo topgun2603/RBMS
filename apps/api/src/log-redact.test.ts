@@ -1,5 +1,5 @@
 import { Writable } from "node:stream";
-import { LOG_REDACT_PATHS } from "@srirealtime/monitoring";
+import { LOG_REDACT_PATHS } from "@rbms/monitoring";
 import { pino } from "pino";
 import { describe, expect, it } from "vitest";
 

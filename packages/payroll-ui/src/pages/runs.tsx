@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, PlayIcon, WalletIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, EmptyState, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useI18n, useModuleNavigate } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, EmptyState, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@rbms/ui";
+import { describeError, Page, PageHeading, useI18n, useModuleNavigate } from "@rbms/web";
 import { InlineError, MonthInput, RunPill } from "../components/bits";
 import { addMonths, money, monthName, todayIst } from "../lib/format";
 import { isCode } from "../lib/http";

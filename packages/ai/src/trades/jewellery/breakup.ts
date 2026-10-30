@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import type { AiRunner } from "../../assist/hsn";
 import { dataBlock, DATA_RULES, filterClaims, neutralise } from "../../assist/safety";
 import { allowedNumbers, checkNumbers, rupees } from "../../insights/numbers";

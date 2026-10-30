@@ -11,9 +11,9 @@
  * date, and the next year opens with the balance sheet figures. Re-opening reverses the closing journal and puts the
  * lock back; both are recorded with who and why.
  */
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { isValidDate } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { isValidDate } from "@rbms/gst";
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";

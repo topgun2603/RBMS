@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { XIcon } from "lucide-react";
-import { AnimatePresence, cn, motion, useReducedMotionSafe, type ControlSize } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatePresence, cn, motion, useReducedMotionSafe, type ControlSize } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { splitList } from "../../lib/report-spec";
 
 /**

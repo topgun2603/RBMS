@@ -4,12 +4,12 @@
  */
 
 // ---------------------------------------------------------------- GST helpers
-// Same rules as @srirealtime/gst (which this package may not import): format + mod-36 check character.
+// Same rules as @rbms/gst (which this package may not import): format + mod-36 check character.
 
 const GSTIN_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const GSTIN_FORMAT = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
-/** GST state / UT codes in current use (retired 25 and 28 left out), same list as @srirealtime/gst. */
+/** GST state / UT codes in current use (retired 25 and 28 left out), same list as @rbms/gst. */
 export const GST_STATE_CODES: readonly string[] = [
   "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
   "20", "21", "22", "23", "24", "26", "27", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "97",

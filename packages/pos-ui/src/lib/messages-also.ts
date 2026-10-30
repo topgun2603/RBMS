@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** pos.also.* strings: "customers also buy" chips in the counter cart (AI Phase 4 part B, bought together; no AI model). Merged into posMessages. */
 export const alsoEn: Messages = {

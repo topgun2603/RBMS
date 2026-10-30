@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveConfig } from "@srirealtime/receipt-print";
+import { resolveConfig } from "@rbms/receipt-print";
 import { posMessages } from "./messages";
 import { configFromForm, DEVICE_KEYS, formFromConfig, LAYOUT_KEYS, pickKeys, validateForm, withPaperWidth } from "./printing-form";
 import { failureKey } from "./printing";

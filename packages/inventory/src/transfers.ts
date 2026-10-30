@@ -9,9 +9,9 @@
  * off on the note with a reason. The old instant transfer (`POST /v1/inventory/transfers`) is `instant()` here: send and
  * receive in one step, so existing screens, tests and integrations keep working.
  */
-import { AppError, badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { AppError, badRequest, conflict, notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { lineInTransit, transferStatusAfter } from "./batch-logic";

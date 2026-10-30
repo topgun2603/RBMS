@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { absoluteUrl, api, ApiError } from "@srirealtime/web";
+import { absoluteUrl, api, ApiError } from "@rbms/web";
 import { retry4xx } from "../http";
 import type { KycCheck, KycCheckType, KycDocument, KycDocumentKind, KycSubject, KycSubjectType } from "../types";
 

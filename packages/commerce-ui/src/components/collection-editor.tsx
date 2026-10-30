@@ -49,10 +49,10 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, useDebounced, useI18n, useModuleHref } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, useDebounced, useI18n, useModuleHref } from "@rbms/web";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { MoneyInput, Optional, ProductStatusPill, ProductThumb, Section } from "./bits";
 import { CategorySelect } from "./category-select";
 import { ImageManager } from "./image-manager";

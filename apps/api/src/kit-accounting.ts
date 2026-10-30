@@ -16,16 +16,16 @@ import type {
   StockValuePort,
   SupplierPaymentSrc,
   TillSrc,
-} from "@srirealtime/accounting";
-import { TDS_SETTLEMENT_PREFIX } from "@srirealtime/accounting";
-import type { Db } from "@srirealtime/db";
-import { expenseCategories, expenses, itcOf } from "@srirealtime/expenses";
-import { gstTaxPayments } from "@srirealtime/gstfiling";
-import { todayIST } from "@srirealtime/gst";
-import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, salesDebitNotes, tillSessions, type InvoicesService } from "@srirealtime/invoices";
-import { debitNotes, methodAt, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@srirealtime/inventory";
-import { and, eq, gt, inArray, isNull, sql } from "@srirealtime/db";
-import { likePattern } from "@srirealtime/core";
+} from "@rbms/accounting";
+import { TDS_SETTLEMENT_PREFIX } from "@rbms/accounting";
+import type { Db } from "@rbms/db";
+import { expenseCategories, expenses, itcOf } from "@rbms/expenses";
+import { gstTaxPayments } from "@rbms/gstfiling";
+import { todayIST } from "@rbms/gst";
+import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, salesDebitNotes, tillSessions, type InvoicesService } from "@rbms/invoices";
+import { debitNotes, methodAt, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@rbms/inventory";
+import { and, eq, gt, inArray, isNull, sql } from "@rbms/db";
+import { likePattern } from "@rbms/core";
 
 /** Ports of the accounting module over the invoices, inventory and expenses tables. Read-only, except settleSupplierTds / unsettleSupplierTds (Part B), which record and undo the TDS on a supplier bill through the inventory service. */
 export interface AccountingAdapterDeps {

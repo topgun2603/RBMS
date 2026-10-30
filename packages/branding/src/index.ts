@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { brandingRoutes } from "./routes";
 import { tenantBranding } from "./schema";
 import { stockArtRoutes } from "./stock-routes";

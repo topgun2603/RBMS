@@ -1221,7 +1221,7 @@ const translationValue: z.ZodType<TranslationValue> = z.lazy(() =>
 
 /**
  * The home page's words in other languages (`{ ta: { "<section id>": { heading: "…", items: [{ q: "…" }] } } }`):
- * the storefront shows them to shoppers browsing in that language (`localizeSections`, @srirealtime/cms/localize).
+ * the storefront shows them to shoppers browsing in that language (`localizeSections`, @rbms/cms/localize).
  * Only words are taken from a translation; links, pictures and references always come from the section.
  */
 export const homeTranslationsSchema = z

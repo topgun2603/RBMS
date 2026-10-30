@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ChevronDownIcon, XIcon } from "lucide-react";
-import { GST_STATES } from "@srirealtime/gst";
-import { Checkbox, cn, Popover, PopoverContent, PopoverTrigger } from "@srirealtime/ui";
-import { SearchField, useI18n } from "@srirealtime/web";
+import { GST_STATES } from "@rbms/gst";
+import { Checkbox, cn, Popover, PopoverContent, PopoverTrigger } from "@rbms/ui";
+import { SearchField, useI18n } from "@rbms/web";
 
 /**
  * Chips input: type and press Enter, comma or space to add; Backspace on an empty field removes the last chip.

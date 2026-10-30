@@ -11,7 +11,7 @@ import type { DemoStore } from "./types";
  * chain's name; Thunai means "companion" in Tamil and is made up for this demo, address, phone, GSTIN, drug licence and
  * pharmacist registration are placeholders). A neighbourhood pharmacy and wellness store: OTC and prescription
  * medicines, diabetes care, vitamins, baby care, personal care, siddha / ayurveda, first aid and home-check devices,
- * with batches and expiry, prescriptions and the Schedule H1 register behind the counter (`@srirealtime/medicines`).
+ * with batches and expiry, prescriptions and the Schedule H1 register behind the counter (`@rbms/medicines`).
  *
  * Page layout: rail + phone tabs (the trade's repeat-shopper layout). The home has no hero and a structure of its own:
  * what-do-you-need finder (need, who, form) -> shop-by-need tiles -> "have a prescription?" block -> how a prescription

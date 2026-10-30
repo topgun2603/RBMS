@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.labels.* strings: the barcode label designer (docs/counter-close-display-labels.md). Keep en and ta key sets identical. */
 export const en: Messages = {

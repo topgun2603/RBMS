@@ -2,14 +2,14 @@
  * Phase 1 evals: the four text helpers run through their REAL code (HSN with the reference check and retry, descriptions with
  * the claims filter, mapping on headers built from the importer presets, help Q&A on the real guides).
  *
- *   pnpm --filter @srirealtime/ai eval:phase1                       mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:phase1 --live                REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:phase1                       mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:phase1 --live                REAL API calls (costs money)
  *   options: --group=hsn|desc|mapping|help   --limit=N   --max-cost=USD (default 1)   --out=DIR
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { describeProduct } from "../src/assist/describe";
 import { askHelp, loadGuideIndex } from "../src/assist/help";
 import { suggestHsn } from "../src/assist/hsn";

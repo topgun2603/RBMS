@@ -1,5 +1,5 @@
 import { createHmac, randomInt } from "node:crypto";
-import { AppError, badRequest } from "@srirealtime/core";
+import { AppError, badRequest } from "@rbms/core";
 import type { DeviceInfo, TerminalRow, TerminalSettings, WeighTicketLine, WeighTicketRow } from "./schema";
 
 // ------------------------------------------------------------------ constants (docs/pos-terminals.md)

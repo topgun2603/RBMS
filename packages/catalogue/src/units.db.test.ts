@@ -3,7 +3,7 @@
  * lookups and units on items. Runs only with `CATALOGUE_TEST_DATABASE_URL` set (throw-away schema).
  */
 import { randomUUID } from "node:crypto";
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CatalogueService } from "./service";

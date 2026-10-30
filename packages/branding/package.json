@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/branding",
+  "name": "@rbms/branding",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@srirealtime/core": "workspace:*",
-    "@srirealtime/db": "workspace:*",
+    "@rbms/core": "workspace:*",
+    "@rbms/db": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "zod": "^3.25.0"
   },

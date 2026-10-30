@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ClipboardListIcon, Loader2Icon, RefreshCwIcon, SparklesIcon } from "lucide-react";
-import { describeError, QueryError, useI18n, useModuleNavigate } from "@srirealtime/web";
+import { describeError, QueryError, useI18n, useModuleNavigate } from "@rbms/web";
 import {
   Button,
   Checkbox,
@@ -19,7 +19,7 @@ import {
   SheetTitle,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { useIsPhone } from "../inventory/stock-meta";
 import { formatQty } from "../../lib/format";
 import { useCreateDraftPo, useReorderSuggestions, type ReorderItem } from "../../lib/ai-insights";

@@ -6,7 +6,7 @@ import {
   requireTenant,
   requireUser,
   type RequestContext,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { toCsv, type CsvColumn } from "./csv";
 import type { AuditEventRow } from "./schema";

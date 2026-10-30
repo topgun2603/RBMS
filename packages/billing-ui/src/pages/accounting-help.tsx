@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { HelpCircleIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { Card, CardContent, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { AccountingPage } from "../components/accounting/parts";
 
 const AUTO = ["invoice", "payment", "receipt", "creditNote", "purchase", "supplierPayment", "debitNote", "expense", "till", "stock", "opening"] as const;

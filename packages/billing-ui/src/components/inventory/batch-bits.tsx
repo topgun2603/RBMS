@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CheckCircle2Icon, CircleDashedIcon, ClockIcon, XCircleIcon } from "lucide-react";
-import { cn, Input, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useDebounced, useI18n } from "@srirealtime/web";
+import { cn, Input, StatusPill, type StatusTone } from "@rbms/ui";
+import { useDebounced, useI18n } from "@rbms/web";
 import { useItems } from "../../lib/queries";
 import type { Item } from "../../lib/types";
 import type { ExpiryStatus } from "../../lib/types-stock";

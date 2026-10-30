@@ -18,8 +18,8 @@ import {
   SelectValue,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
 import { money, paiseToInput, rupeesToPaise, todayIST } from "../../lib/format";
 import {

@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { COUPON_FEATURES, COUPONS_PERMISSIONS } from "./features";
 import { couponsRoutes } from "./routes";
 import { couponRedemptions, coupons, offerRedemptions, offers } from "./schema";

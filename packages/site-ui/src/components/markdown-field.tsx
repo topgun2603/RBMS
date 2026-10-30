@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BoldIcon, EyeIcon, ItalicIcon, Link2Icon, ListIcon, PencilIcon } from "lucide-react";
-import { cn, Label, Textarea } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, Label, Textarea } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { FieldError, Optional } from "./bits";
 import { Markdown } from "./markdown";
 

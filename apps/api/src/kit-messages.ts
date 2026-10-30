@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { defineModule, requireRole, requireTenant, type SrModule } from "@srirealtime/core";
-import { and, eq, gt, isNotNull, isNull, like, lt, or, sql, type Db } from "@srirealtime/db";
-import type { BookingNotice, NotifyPort as BookingsNotifyPort, createBookings } from "@srirealtime/bookings";
-import type { JobSummary, NotifyPort as JobcardsNotifyPort } from "@srirealtime/jobcards";
-import type { ExpiringMembership, MembershipNotifyPort, ReminderPort, SoldMembership, createMemberships } from "@srirealtime/memberships";
+import { defineModule, requireRole, requireTenant, type SrModule } from "@rbms/core";
+import { and, eq, gt, isNotNull, isNull, like, lt, or, sql, type Db } from "@rbms/db";
+import type { BookingNotice, NotifyPort as BookingsNotifyPort, createBookings } from "@rbms/bookings";
+import type { JobSummary, NotifyPort as JobcardsNotifyPort } from "@rbms/jobcards";
+import type { ExpiringMembership, MembershipNotifyPort, ReminderPort, SoldMembership, createMemberships } from "@rbms/memberships";
 import {
   CUSTOMER_EVENTS,
   CUSTOMER_EVENT_KEYS,
@@ -25,11 +25,11 @@ import {
   type MessagesSettings,
   type OptOutPort,
   type createNotify,
-} from "@srirealtime/notify";
-import type { SettingsService } from "@srirealtime/settings";
-import { settingsValues } from "@srirealtime/settings";
-import { storeCarts, storeCustomers } from "@srirealtime/storefront";
-import { waContacts } from "@srirealtime/whatsapp";
+} from "@rbms/notify";
+import type { SettingsService } from "@rbms/settings";
+import { settingsValues } from "@rbms/settings";
+import { storeCarts, storeCustomers } from "@rbms/storefront";
+import { waContacts } from "@rbms/whatsapp";
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "pino";
 import { z } from "zod";
@@ -530,11 +530,11 @@ export function createMessages(d: MessagesDeps) {
   return {
     messages,
     module,
-    /** NotifyPort for @srirealtime/bookings. */
+    /** NotifyPort for @rbms/bookings. */
     bookings,
-    /** NotifyPort for @srirealtime/jobcards. */
+    /** NotifyPort for @rbms/jobcards. */
     jobcards,
-    /** ReminderPort + MembershipNotifyPort for @srirealtime/memberships. */
+    /** ReminderPort + MembershipNotifyPort for @rbms/memberships. */
     memberships: { reminders: membershipReminders, notify: membershipNotify },
     /** Wraps the orders module's notifier. */
     orderNotifier,

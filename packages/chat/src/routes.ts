@@ -1,4 +1,4 @@
-import { forbidden, requireTenant } from "@srirealtime/core";
+import { forbidden, requireTenant } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { CHAT_FEATURE_KEYS } from "./features";

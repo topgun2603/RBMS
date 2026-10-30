@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { PlusIcon, SettingsIcon, ShoppingBagIcon, SparklesIcon, TicketPercentIcon, TruckIcon } from "lucide-react";
-import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { PERMS } from "./lib/access";
 import { ordersMessages } from "./lib/messages";
 
-/** Feature keys the orders UI uses (declared by @srirealtime/orders, coupons and delivery; docs/features.md). */
+/** Feature keys the orders UI uses (declared by @rbms/orders, coupons and delivery; docs/features.md). */
 export const ORDERS_FEATURES = {
   orders: "orders",
   returns: "orders.returns",

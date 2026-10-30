@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { displayName, useFeature, useOptionalShop, usePermission, useSession, useTenantSlug } from "@srirealtime/web";
+import { displayName, useFeature, useOptionalShop, usePermission, useSession, useTenantSlug } from "@rbms/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "../lib/access";
 import { setPosBranch, useMyBranches, useSellerProfile } from "../lib/api";
 import { useOnline, type OnlineState } from "../lib/online";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CustomerPricingCard } from "../components/pricing/customer-pricing-card";
-import { ConfirmDialog, describeError, ModuleLink, Page, QueryError, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+import { ConfirmDialog, describeError, ModuleLink, Page, QueryError, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import {
   BellRingIcon,
   DownloadIcon,
@@ -42,7 +42,7 @@ import {
   Stagger,
   StaggerItem,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CustomerDialog } from "../components/customer-dialog";
 import { DateRangePicker, initialRange, type DateRangeValue } from "../components/date-range-picker";
 import { InvoiceRow, InvoiceRowSkeleton } from "../components/invoice-row";

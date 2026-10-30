@@ -1,4 +1,4 @@
-import { documented, isSuperAdmin, permissionDenied, permissionsAllow, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { documented, isSuperAdmin, permissionDenied, permissionsAllow, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { csvDisposition, ordersCsv } from "./csv";

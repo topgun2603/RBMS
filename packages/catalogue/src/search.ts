@@ -479,7 +479,7 @@ export interface ProductRating {
   count: number;
 }
 
-/** Implemented by @srirealtime/reviews (`ratings`). Unknown products may be missing or have count 0. */
+/** Implemented by @rbms/reviews (`ratings`). Unknown products may be missing or have count 0. */
 export interface RatingsPort {
   ratings(tenantId: string, productIds: string[]): Promise<ProductRating[]>;
 }

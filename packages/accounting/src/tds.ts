@@ -3,9 +3,9 @@
  * and expenses, tax collected on sales, challans, the payable register, quarterly statement data (26Q / 27EQ style),
  * certificate summaries and the due-date calendar. Postings go through AccountingService; nothing here files a return.
  */
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { isValidDate } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { isValidDate } from "@rbms/gst";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";

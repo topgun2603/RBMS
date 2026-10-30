@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, CopyIcon, Loader2Icon, SparklesIcon } from "lucide-react";
-import { Button, Textarea, toast } from "@srirealtime/ui";
-import { AiDraftBanner, api, describeError, useI18n } from "@srirealtime/web";
+import { Button, Textarea, toast } from "@rbms/ui";
+import { AiDraftBanner, api, describeError, useI18n } from "@rbms/web";
 import { useMutation } from "@tanstack/react-query";
 import { Section } from "./bits";
 import { useMe } from "../lib/access";

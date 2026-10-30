@@ -1,4 +1,4 @@
-import type { GstRateRule } from "@srirealtime/gst";
+import type { GstRateRule } from "@rbms/gst";
 import type { OrderPaymentStatus, OrderStatus } from "./schema";
 import type { Order } from "./service";
 

@@ -1,4 +1,4 @@
-import { defineModule, requireTenant } from "@srirealtime/core";
+import { defineModule, requireTenant } from "@rbms/core";
 import type { FastifyRequest } from "fastify";
 import { plansRoutes } from "./routes";
 import { planAddons, plans, tenantPlanOverrides, usageCounters, usageCredits } from "./schema";

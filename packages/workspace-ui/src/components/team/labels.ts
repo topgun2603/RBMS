@@ -1,6 +1,6 @@
 "use client";
 
-import { humanizeKey, type Translator } from "@srirealtime/web";
+import { humanizeKey, type Translator } from "@rbms/web";
 import { BUILTIN_ROLE_NAMES } from "../../lib/permissions";
 import type { PermissionDef, Role } from "../../lib/types";
 

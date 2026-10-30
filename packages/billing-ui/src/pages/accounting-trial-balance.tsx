@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ScaleIcon, ShieldAlertIcon, ShieldCheckIcon } from "lucide-react";
-import { EmptyState, StatusPill, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { EmptyState, StatusPill, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Amt, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useTrialBalance } from "../lib/accounting";
 import { rangeFor, todayIST } from "../lib/format";

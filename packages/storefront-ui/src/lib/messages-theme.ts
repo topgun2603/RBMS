@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Header, card and product page variants (theme options). Merged into lib/messages. */
 export const themeEn: Messages = {

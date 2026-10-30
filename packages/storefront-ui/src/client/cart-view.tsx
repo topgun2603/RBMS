@@ -3,11 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { AlertTriangleIcon, ArrowRightIcon, CheckCircle2Icon, Loader2Icon, LockIcon, PartyPopperIcon, TagIcon, TicketPercentIcon, TruckIcon, XIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { Button } from "@rbms/ui/components/button";
+import { toast } from "@rbms/ui/components/sonner";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { etaRange, money } from "../lib/format";
 import type { PricedCart } from "../types";
 import { Empty } from "../components/bits";

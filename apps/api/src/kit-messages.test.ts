@@ -1,7 +1,7 @@
-import type { BookingNotice } from "@srirealtime/bookings";
-import type { JobSummary } from "@srirealtime/jobcards";
-import type { DedupePort, SendInput } from "@srirealtime/notify";
-import type { SettingsService } from "@srirealtime/settings";
+import type { BookingNotice } from "@rbms/bookings";
+import type { JobSummary } from "@rbms/jobcards";
+import type { DedupePort, SendInput } from "@rbms/notify";
+import type { SettingsService } from "@rbms/settings";
 import type { Logger } from "pino";
 import { describe, expect, it } from "vitest";
 import { bookingVars, cartRef, createMessages, istDate, jobEvent, jobVars, membershipVars, reminderDue } from "./kit-messages";

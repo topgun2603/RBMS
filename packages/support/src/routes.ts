@@ -1,4 +1,4 @@
-import { requirePermission, requireRole, requireTenant, requireUser, unauthorized, type RequestContext } from "@srirealtime/core";
+import { requirePermission, requireRole, requireTenant, requireUser, unauthorized, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { FaqArticleInput, FaqArticlePatch, FaqArticleQuery, FaqCategoryInput, FaqCategoryPatch } from "./faq";

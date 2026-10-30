@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, Loader2Icon, SearchIcon } from "lucide-react";
-import { cn, Field, FieldHint, FieldLabel, Input } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, Field, FieldHint, FieldLabel, Input } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { useSerialUnits } from "../lib/queries";
 
 /**

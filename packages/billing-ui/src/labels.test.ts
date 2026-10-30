@@ -57,7 +57,7 @@ describe("label messages", () => {
   });
 
   it("has a name for every size, preset and field the designer lists", async () => {
-    const { LABEL_SIZES, LABEL_PRESETS, LABEL_FIELDS } = await import("@srirealtime/receipt-print");
+    const { LABEL_SIZES, LABEL_PRESETS, LABEL_FIELDS } = await import("@rbms/receipt-print");
     for (const s of LABEL_SIZES) expect(en[`billing.labels.sizeName.${s.id}`]).toBeTruthy();
     for (const p of LABEL_PRESETS) expect(en[`billing.labels.preset.${p.id}`]).toBeTruthy();
     for (const f of LABEL_FIELDS) expect(en[`billing.labels.field.${f}`]).toBeTruthy();

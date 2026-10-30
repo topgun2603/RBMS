@@ -112,7 +112,7 @@ export const looksLikeRecoveryCode = (code: string): boolean => normalizeRecover
 /** HMAC (keyed with the app secret) of the normalised code. The codes are random 40-bit values, so a keyed hash is enough. */
 export const hashRecoveryCode = (pepper: string, code: string): string => createHmac("sha256", pepper).update(`mfa-recovery.${normalizeRecoveryCode(code)}`).digest("hex");
 
-// ---------------------------------------------------------------- secret box (AES-256-GCM, same format as @srirealtime/payments)
+// ---------------------------------------------------------------- secret box (AES-256-GCM, same format as @rbms/payments)
 
 const VERSION = "v1";
 export function createSecretBox(secret: string) {

@@ -14,8 +14,8 @@ import {
   searchAny,
   type FeatureGatePort,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, lt, lte, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";

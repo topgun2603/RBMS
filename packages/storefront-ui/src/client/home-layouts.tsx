@@ -3,10 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, Loader2Icon, PauseIcon, PlayIcon, RotateCcwIcon, SearchXIcon, XIcon } from "lucide-react";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@srirealtime/ui/components/dialog";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { useReducedMotionSafe } from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@rbms/ui/components/dialog";
+import { cn } from "@rbms/ui/lib/utils";
+import { useReducedMotionSafe } from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { finderQuery } from "../lib/finder";
 import { flashState } from "../lib/flash-window";
 import { sizeForFoot } from "../lib/shoe-size";

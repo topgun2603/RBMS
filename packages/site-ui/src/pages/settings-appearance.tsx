@@ -3,11 +3,11 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon, BriefcaseIcon, RotateCcwIcon, CheckIcon, ExternalLinkIcon, LayoutDashboardIcon, LayoutGridIcon, LayoutListIcon, LayoutTemplateIcon, PaletteIcon, PanelTopIcon, ShirtIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { LAYOUT_OPTIONS, THEME_OPTIONS, THEME_PRESETS, themePreset, type LayoutOptionKey, type LayoutTheme, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
+import { Button, ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@rbms/ui";
+import { LAYOUT_OPTIONS, THEME_OPTIONS, THEME_PRESETS, themePreset, type LayoutOptionKey, type LayoutTheme, type StoreTheme, type ThemeOptionKey } from "@rbms/branding/theme";
 import { MobileNavSketch, PageLayoutPicker } from "../components/page-layout-thumbs";
-import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@srirealtime/verticals";
-import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, StudioLink, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
+import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@rbms/verticals";
+import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, StudioLink, useI18n, useSettingsHref, useShop, useWebFonts } from "@rbms/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice } from "../components/brand-fields";
 import type { PreviewView } from "../components/theme-preview";

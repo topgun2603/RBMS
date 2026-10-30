@@ -1,5 +1,5 @@
-import { parseClient } from "@srirealtime/auth";
-import { AppError, defineModule, documented, type SrModule } from "@srirealtime/core";
+import { parseClient } from "@rbms/auth";
+import { AppError, defineModule, documented, type SrModule } from "@rbms/core";
 import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 

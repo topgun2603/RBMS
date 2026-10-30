@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STORE_THEME, THEME_OPTIONS, THEME_PRESETS, type ThemeOptionKey } from "@srirealtime/branding/theme";
+import { DEFAULT_STORE_THEME, THEME_OPTIONS, THEME_PRESETS, type ThemeOptionKey } from "@rbms/branding/theme";
 import { differsFromPreset, draftFrom, draftFromPreset, resetToPreset } from "./appearance";
 import { siteMessages } from "./messages";
 

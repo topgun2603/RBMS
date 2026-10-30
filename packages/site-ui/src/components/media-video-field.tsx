@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, RefreshCwIcon, Trash2Icon, VideoIcon, XIcon } from "lucide-react";
-import { Button, cn, Progress, toast } from "@srirealtime/ui";
-import { absoluteUrl, describeError, useI18n } from "@srirealtime/web";
+import { Button, cn, Progress, toast } from "@rbms/ui";
+import { absoluteUrl, describeError, useI18n } from "@rbms/web";
 import { checkMediaFile, useRefreshMedia, VIDEO_TYPES } from "../lib/media-library";
 import { uploadImage } from "../lib/queries";
 import { TextField } from "./bits";

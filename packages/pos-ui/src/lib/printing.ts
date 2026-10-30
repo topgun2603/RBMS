@@ -16,9 +16,9 @@ import {
   type PrinterConfig,
   type ReceiptData,
   type ReceiptLocale,
-} from "@srirealtime/receipt-print";
-import { api } from "@srirealtime/web";
-import { upiLink } from "@srirealtime/gst";
+} from "@rbms/receipt-print";
+import { api } from "@rbms/web";
+import { upiLink } from "@rbms/gst";
 import { isProvisionalSlip } from "./offline/bill";
 import type { Invoice, SellerProfile } from "./types";
 

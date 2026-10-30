@@ -1,5 +1,5 @@
-import { aiCounter, PLAN_FESTIVALS, type AiService, type AiSettings } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import { aiCounter, PLAN_FESTIVALS, type AiService, type AiSettings } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 import { posCatalogPort } from "./kit-pos";
 
 /**

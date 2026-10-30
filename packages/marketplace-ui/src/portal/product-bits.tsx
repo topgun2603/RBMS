@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertCircleIcon, ArchiveIcon, ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, HourglassIcon, ImagePlusIcon, Loader2Icon, PencilLineIcon, XIcon } from "lucide-react";
-import { AnimatePresence, Button, cn, motion, Progress, StatusPill, toast, type StatusTone } from "@srirealtime/ui";
-import { absoluteUrl, describeError, useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, cn, motion, Progress, StatusPill, toast, type StatusTone } from "@rbms/ui";
+import { absoluteUrl, describeError, useI18n } from "@rbms/web";
 import { uploadImage } from "../lib/queries";
 import type { ListingState } from "../lib/logic";
 import type { ProductImage, ProductStatus } from "../lib/types";

@@ -16,8 +16,8 @@ import {
   Undo2Icon,
   XCircleIcon,
 } from "lucide-react";
-import { Button, Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, InitialsAvatar, Skeleton, toast } from "@srirealtime/ui";
-import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@srirealtime/web";
+import { Button, Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, InitialsAvatar, Skeleton, toast } from "@rbms/ui";
+import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@rbms/web";
 import { dash, EndsOn, InlineError, SessionsBar, StatePill } from "../components/bits";
 import { MemberDialog } from "../components/member-dialog";
 import { ReasonDialog } from "../components/reason-dialog";

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Landing-site strings for the sign-in methods a shop can switch on: email + password (sign in, create account, verify

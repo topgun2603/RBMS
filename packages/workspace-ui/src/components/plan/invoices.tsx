@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, DownloadIcon, FileTextIcon, Loader2Icon, ReceiptIcon, XCircleIcon } from "lucide-react";
-import { Button, cn, EmptyState, motion, Skeleton, StatusPill, toast, useReducedMotionSafe } from "@srirealtime/ui";
-import { describeError, formatPaise, QueryError, useI18n, type PlatformInvoice } from "@srirealtime/web";
+import { Button, cn, EmptyState, motion, Skeleton, StatusPill, toast, useReducedMotionSafe } from "@rbms/ui";
+import { describeError, formatPaise, QueryError, useI18n, type PlatformInvoice } from "@rbms/web";
 import { downloadInvoicePdf, usePlatformInvoices } from "../../lib/subscriptions";
 import { SectionCard } from "./section-card";
 

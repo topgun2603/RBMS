@@ -1,4 +1,4 @@
-import { hasPermission, permissionDenied, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { hasPermission, permissionDenied, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { attendanceCsv, bankSheetCsv, csvDisposition, registerCsv } from "./csv";

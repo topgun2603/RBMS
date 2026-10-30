@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ChevronRightIcon, DownloadIcon, HistoryIcon, Loader2Icon } from "lucide-react";
-import { Button, DataTable, DataTableToolbar, EmptyState, toast, type DataTableColumn } from "@srirealtime/ui";
+import { Button, DataTable, DataTableToolbar, EmptyState, toast, type DataTableColumn } from "@rbms/ui";
 import {
   describeError,
   displayName,
@@ -13,7 +13,7 @@ import {
   useI18n,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { actionText, auditModuleLabel } from "../components/audit/action-label";
 import { AuditDetailSheet, deviceOf } from "../components/audit/detail-sheet";
 import { NoPermission } from "../components/bits";

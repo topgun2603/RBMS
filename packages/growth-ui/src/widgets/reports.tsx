@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarClockIcon } from "lucide-react";
-import { Skeleton } from "@srirealtime/ui";
-import { InsightCard, ModuleLink, useI18n } from "@srirealtime/web";
+import { Skeleton } from "@rbms/ui";
+import { InsightCard, ModuleLink, useI18n } from "@rbms/web";
 import { ScheduleStatus, useDateTime, useRelativeTime } from "../components/reports/shared";
 import { isStatus } from "../lib/http";
 import { useSavedReports, useSchedules } from "../lib/queries/reports";

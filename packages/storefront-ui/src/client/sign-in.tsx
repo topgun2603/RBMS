@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { KeyRoundIcon, Loader2Icon, MailIcon, PhoneIcon, ShieldCheckIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { OtpInput } from "@srirealtime/ui/components/otp-input";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Button } from "@rbms/ui/components/button";
+import { OtpInput } from "@rbms/ui/components/otp-input";
+import { toast } from "@rbms/ui/components/sonner";
+import { cn } from "@rbms/ui/lib/utils";
 import { normalizeMobile } from "../lib/format";
 import type { AuthUser } from "../types";
 import { call, errorMessage } from "./api";

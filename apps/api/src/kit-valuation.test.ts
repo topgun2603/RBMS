@@ -3,8 +3,8 @@
  * pieces of one item are one row with the quantity in pieces; the SQL base quantity matches `baseQtyOf`. The SQL part
  * runs only with `API_TEST_DATABASE_URL` set (it only evaluates expressions, no tables).
  */
-import { createDb, sql } from "@srirealtime/db";
-import { baseQtyOf } from "@srirealtime/gst";
+import { createDb, sql } from "@rbms/db";
+import { baseQtyOf } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { aggregateProfit, baseQtySql, expensesByBranch, type ProfitLineRow } from "./kit-valuation";
 

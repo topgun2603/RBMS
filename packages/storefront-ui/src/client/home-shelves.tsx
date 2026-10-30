@@ -3,10 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { EyeIcon, Loader2Icon, PlusIcon, ShoppingBagIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@srirealtime/ui/components/popover";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { useReducedMotionSafe } from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { Popover, PopoverContent, PopoverTrigger } from "@rbms/ui/components/popover";
+import { cn } from "@rbms/ui/lib/utils";
+import { useReducedMotionSafe } from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import type { ProductSummary } from "../types";
 import { Price, StoreImage } from "../components/bits";
 import { Countdown } from "./home-sections";

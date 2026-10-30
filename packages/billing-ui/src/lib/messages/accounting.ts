@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.accounting.* strings for the shop's books. Keep the en and ta key sets identical. */
 export const en: Messages = {

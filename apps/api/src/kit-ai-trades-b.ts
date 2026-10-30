@@ -1,9 +1,9 @@
-import { tradesB, type AiService } from "@srirealtime/ai";
-import { AppError } from "@srirealtime/core";
-import { sql, type Db } from "@srirealtime/db";
-import type { JobsService } from "@srirealtime/jobs";
-import { shrinkForVision } from "@srirealtime/uploads";
-import { packFor } from "@srirealtime/verticals";
+import { tradesB, type AiService } from "@rbms/ai";
+import { AppError } from "@rbms/core";
+import { sql, type Db } from "@rbms/db";
+import type { JobsService } from "@rbms/jobs";
+import { shrinkForVision } from "@rbms/uploads";
+import { packFor } from "@rbms/verticals";
 
 /** The slice of the catalogue service Phase 3 part B reads and writes (tags and attributes only; item creation goes through the normal routes). */
 export interface TradesBCatalogue {

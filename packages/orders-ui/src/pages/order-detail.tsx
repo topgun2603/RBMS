@@ -11,8 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
-} from "@srirealtime/ui";
-import { Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { Page, PageHeading, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { LinesCard } from "../components/order/lines-card";
 import { PaymentsCard } from "../components/order/payments-card";
 import { OrderProgress } from "../components/order/progress";

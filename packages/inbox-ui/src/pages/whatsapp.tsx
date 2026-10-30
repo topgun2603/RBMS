@@ -50,8 +50,8 @@ import {
   toast,
   ToggleGroup,
   ToggleGroupItem,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, QueryError, SearchField, useDebounced, useI18n, useQueryParams, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, QueryError, SearchField, useDebounced, useI18n, useQueryParams, useRouteParams } from "@rbms/web";
 import { Age, ConnectionPill, DaySeparator, Section, TagEditor, Ticks, UnreadBadge, useAnnouncer, type TickState } from "../components/bits";
 import { AutoTextarea, UploadTray, useUploads } from "../components/composer";
 import { StaffSelect, useStaffName } from "../components/staff-select";

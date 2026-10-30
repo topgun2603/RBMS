@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Strings for per-shop sign-in options: Settings → Sign-in options, and the extra sign-in methods on the login screen

@@ -1,4 +1,4 @@
-import { AppError, badRequest, documented, notFound, requireRole, requireSuperAdmin, requireTenant, requireUser, tooMany, type AuditEvent, type AuditPort } from "@srirealtime/core";
+import { AppError, badRequest, documented, notFound, requireRole, requireSuperAdmin, requireTenant, requireUser, tooMany, type AuditEvent, type AuditPort } from "@rbms/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sessionCookie } from "./helpers";

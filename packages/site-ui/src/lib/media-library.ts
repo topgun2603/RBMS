@@ -1,16 +1,16 @@
 "use client";
 
 import { infiniteQueryOptions, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { STOCK_SIZES, STOCK_SLOTS, isStockTrade, stockArtDataUrl, stockArtPath, type StockColors, type StockSlot, type StockTrade } from "@srirealtime/branding/stock-art";
-import { packOrDefault } from "@srirealtime/verticals";
-import { absoluteUrl, api, useOptionalShop } from "@srirealtime/web";
+import { STOCK_SIZES, STOCK_SLOTS, isStockTrade, stockArtDataUrl, stockArtPath, type StockColors, type StockSlot, type StockTrade } from "@rbms/branding/stock-art";
+import { packOrDefault } from "@rbms/verticals";
+import { absoluteUrl, api, useOptionalShop } from "@rbms/web";
 import * as React from "react";
 import { useBrand } from "./brand";
 import { useStoreSettings } from "./queries";
 
 /*
  * The site editor's media library: the shop's earlier uploads (`GET /v1/uploads`, staff only, newest first, keyset
- * paged) and stock artwork drawn in the shop's brand colours (@srirealtime/branding/stock-art, served by the API).
+ * paged) and stock artwork drawn in the shop's brand colours (@rbms/branding/stock-art, served by the API).
  */
 
 export type MediaKind = "image" | "video";

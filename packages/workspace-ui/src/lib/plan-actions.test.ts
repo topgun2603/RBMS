@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAwaitingPayment, type PlanInfo, type Subscription, type SubscriptionCurrent } from "@srirealtime/web";
+import { isAwaitingPayment, type PlanInfo, type Subscription, type SubscriptionCurrent } from "@rbms/web";
 import { planMode } from "./plan-actions";
 
 const plan = (id: string, monthly: number, sort: number): PlanInfo => ({

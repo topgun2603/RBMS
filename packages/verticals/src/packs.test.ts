@@ -1,4 +1,4 @@
-import { THEME_PRESETS } from "@srirealtime/branding";
+import { THEME_PRESETS } from "@rbms/branding";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_TYPES, copyFor, DEFAULT_PACK_FOR_APP, packFor, packOrDefault, PACKS, starterHome } from "./index";
 

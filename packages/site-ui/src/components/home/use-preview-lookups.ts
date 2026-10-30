@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQueries } from "@tanstack/react-query";
-import { api, ApiError } from "@srirealtime/web";
+import { api, ApiError } from "@rbms/web";
 import { referencedIds, type PreviewLookups, type SectionForm } from "../../lib/sections";
 import { sk, useCategories, useProductsByIds } from "../../lib/queries";
 import type { CategoryRef, PublicCollectionPage, PublicProductSummary } from "../../lib/types";

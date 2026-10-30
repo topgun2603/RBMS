@@ -1,5 +1,5 @@
 import type { CartPricingResult, CouponContextLine, CouponEvaluationResult, DeliveryOption, OfferGift, OfferNudge, StoreVariant, VariantAvailability } from "./ports";
-import { effectiveGstRate, type GstRateRule } from "@srirealtime/gst";
+import { effectiveGstRate, type GstRateRule } from "@rbms/gst";
 import type { StoredCartLine } from "./schema";
 
 /** Per-line quantity bounds (whole units). */

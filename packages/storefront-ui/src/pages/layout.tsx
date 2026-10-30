@@ -1,7 +1,7 @@
 import { siteOnly } from "../lib/site";
 import * as React from "react";
 import type { Metadata, Viewport } from "next";
-import { localizeSections } from "@srirealtime/cms/localize";
+import { localizeSections } from "@rbms/cms/localize";
 import { apiGetSafe, getBranding, getConfig, getMenus, getRequestInfo, getShell, getStoreT, storeCss } from "../server/api";
 import { helpCentreOn } from "../lib/features";
 import { imageUrl } from "../lib/format";

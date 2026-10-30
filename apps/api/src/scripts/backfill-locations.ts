@@ -6,7 +6,7 @@ import { createKit } from "../kit";
  * One-off, idempotent data migration for inventory locations: gives every tenant with legacy stock rows (no
  * location) a default "Main" location and moves those rows and movements to it. Safe while serving traffic.
  *
- *   pnpm --filter @srirealtime/api migrate:locations
+ *   pnpm --filter @rbms/api migrate:locations
  */
 const log = pino({ level: "info" });
 const kit = createKit({ ...env, REDIS_URL: "memory" }, log);

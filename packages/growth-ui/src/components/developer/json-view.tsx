@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 import { CopyButton } from "../bits";
 
 /** Monospace, scrollable code block with a copy button in the corner. */

@@ -1,4 +1,4 @@
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "./config";
 import { buildExp, buildNil } from "./gstr1x";

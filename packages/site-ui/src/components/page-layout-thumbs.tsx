@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
-import { LAYOUT_OPTIONS, type LayoutTheme } from "@srirealtime/branding/theme";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
+import { LAYOUT_OPTIONS, type LayoutTheme } from "@rbms/branding/theme";
 
 /*
  * Settings → Appearance → Page layout: a wireframe of each page layout (standard, category rail, side menu, magazine)

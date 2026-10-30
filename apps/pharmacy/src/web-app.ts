@@ -1,15 +1,15 @@
-import { billingModule } from "@srirealtime/billing-ui";
-import { commerceModule } from "@srirealtime/commerce-ui";
-import { enquiriesModule } from "@srirealtime/enquiries-ui";
-import { growthModule } from "@srirealtime/growth-ui";
-import { inboxModule } from "@srirealtime/inbox-ui";
-import { ordersModule } from "@srirealtime/orders-ui";
-import { pharmacyModule } from "@srirealtime/pharmacy-ui";
-import { payrollModule } from "@srirealtime/payroll-ui";
-import { posModule } from "@srirealtime/pos-ui";
-import { siteModule } from "@srirealtime/site-ui";
-import { createWebApp } from "@srirealtime/web";
-import { workspaceModule } from "@srirealtime/workspace-ui";
+import { billingModule } from "@rbms/billing-ui";
+import { commerceModule } from "@rbms/commerce-ui";
+import { enquiriesModule } from "@rbms/enquiries-ui";
+import { growthModule } from "@rbms/growth-ui";
+import { inboxModule } from "@rbms/inbox-ui";
+import { ordersModule } from "@rbms/orders-ui";
+import { pharmacyModule } from "@rbms/pharmacy-ui";
+import { payrollModule } from "@rbms/payroll-ui";
+import { posModule } from "@rbms/pos-ui";
+import { siteModule } from "@rbms/site-ui";
+import { createWebApp } from "@rbms/web";
+import { workspaceModule } from "@rbms/workspace-ui";
 
 /**
  * The pharmacy app (app profile "PH"): medicine billing at "/" with the counter, batches & expiry, prescriptions and the

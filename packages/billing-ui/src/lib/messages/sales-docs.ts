@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Proforma invoices, sale orders and delivery challans (docs/sales-documents.md): billing.sd.* and their nav keys. Tamil

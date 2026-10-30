@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Online booking (`/book`, `/booking/<code>`) and job tracking (`/job/<code>`). Merged into lib/messages. */
 export const servicesEn: Messages = {

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, QueryError, useI18n } from "@rbms/web";
 import { AlarmClockIcon, CalendarClockIcon, HandCoinsIcon, TruckIcon, WalletCardsIcon } from "lucide-react";
-import { Button, Card, CardContent, EmptyState, Input, Label, Skeleton, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
+import { Button, Card, CardContent, EmptyState, Input, Label, Skeleton, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
 import { PaySupplierDialog } from "../components/inventory/payables-dialogs";
 import { DownloadCsvButton } from "../components/reports/report-ui";
 import { useHasPermission } from "../lib/access";

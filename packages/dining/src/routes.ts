@@ -1,4 +1,4 @@
-import { notFound, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { notFound, requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { DINING_BILL, DINING_FEATURE, DINING_KDS_FEATURE, DINING_KITCHEN, DINING_MANAGE, DINING_QR_FEATURE, DINING_SERVE } from "./ports";

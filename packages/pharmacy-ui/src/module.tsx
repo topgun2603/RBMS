@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BookLockIcon, BoxesIcon, CalendarClockIcon, FileTextIcon, PackagePlusIcon, PillIcon, ScanLineIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@rbms/web";
 import { PHARMACY_FEATURES, PHARMACY_PERMISSIONS, PHARMACY_VIEW } from "./lib/access";
 import { pharmacyMessages } from "./lib/messages";
 

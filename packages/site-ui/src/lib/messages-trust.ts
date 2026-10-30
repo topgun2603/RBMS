@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** Store settings → Trust badges, Appearance → Reset to preset, and the flash sale's daily window. Merged into lib/messages. */
 export const trustEn: Messages = {

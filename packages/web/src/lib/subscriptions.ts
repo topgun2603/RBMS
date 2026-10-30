@@ -1,7 +1,7 @@
 /**
  * Plan subscription API shapes (`/v1/subscriptions`, `/v1/plans`; docs/batch5.md) and the pure helpers the kit's trial
  * banner, upgrade dialog and the workspace Plan & billing page share. One place for these types: UI modules import
- * them from `@srirealtime/web`. Money is integer paise; dates arrive as ISO strings.
+ * them from `@rbms/web`. Money is integer paise; dates arrive as ISO strings.
  */
 
 /** Permission that opens Plan & billing and the trial banner (owners/admins hold it). */

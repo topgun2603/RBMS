@@ -1,5 +1,5 @@
-import { createRedisWindowCounter } from "@srirealtime/jobs";
-import { LOG_REDACT_PATHS } from "@srirealtime/monitoring";
+import { createRedisWindowCounter } from "@rbms/jobs";
+import { LOG_REDACT_PATHS } from "@rbms/monitoring";
 import { pino } from "pino";
 import { env } from "./env";
 import { createKit } from "./kit";

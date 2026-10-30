@@ -1,5 +1,5 @@
 /** Pure feature resolution (no database): registry + app profile + plan + shop switches → per-feature state. */
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 export type Reason = "app" | "plan" | "shop" | "dependency";
 

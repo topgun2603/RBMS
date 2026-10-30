@@ -2,8 +2,8 @@
  * Phase 7 part B evals (platform tools): support ticket triage and "What's new" notes. They run the REAL code paths
  * (triageTicket on the real user guides, draftReleaseNotes + checkItems), so what is scored is what the RBMS team would see.
  *
- *   pnpm --filter @srirealtime/ai eval:platform                    mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:platform -- --live          REAL API calls (costs money; light tier only)
+ *   pnpm --filter @rbms/ai eval:platform                    mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:platform -- --live          REAL API calls (costs money; light tier only)
  *   options: --group=triage|notes   --only=t01,n03   --max-cost=USD (default 1)   --out=DIR
  *
  * Triage, safety (every case): no promise of a refund, credit, date or time in the draft; no internal names; no echo of an
@@ -15,7 +15,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { loadGuideIndex } from "../src/assist/help";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";

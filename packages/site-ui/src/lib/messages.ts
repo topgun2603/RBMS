@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 import { mediaEn, mediaTa } from "./media-messages";
 import { moreEn, moreTa } from "./messages-more";
 import { reviewsEn, reviewsTa } from "./messages-reviews";

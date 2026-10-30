@@ -1,4 +1,4 @@
-import { pk } from "@srirealtime/db";
+import { pk } from "@rbms/db";
 import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { HardwareQuoteButton, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { HardwareQuoteButton, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { FileSignatureIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@rbms/ui";
 import { QuotationStatusPill, useValidityText } from "../components/quotations/quotation-ui";
 import { compactINR, money } from "../lib/format";
 import { useQuotationSummary } from "../lib/queries-quotations";

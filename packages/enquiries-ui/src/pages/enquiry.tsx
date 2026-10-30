@@ -16,8 +16,8 @@ import {
   Skeleton,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, DetailRow, describeError, Page, PageHeading, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, DetailRow, describeError, Page, PageHeading, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { EnquiryStatusPill, InlineError, useAgo, useStatusLabel } from "../components/bits";
 import { phoneLabel, telUrl, whatsappUrl } from "../lib/format";
 import { useIsSchool } from "../lib/pack";

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { badRequest } from "@srirealtime/core";
+import { badRequest } from "@rbms/core";
 import { z } from "zod";
 import type { AiRunner } from "./hsn";
 import { DATA_RULES, dataBlock, neutralise, outputLooksInjected } from "./safety";

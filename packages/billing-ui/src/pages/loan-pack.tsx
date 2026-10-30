@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BanknoteIcon, FileTextIcon, Link2Icon, Loader2Icon, PrinterIcon, ShieldCheckIcon, Trash2Icon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@srirealtime/ui";
-import { apiUrl, describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@rbms/ui";
+import { apiUrl, describeError, Page, PageHeading, QueryError, useFeature, useI18n } from "@rbms/web";
 import { useHasPermission } from "../lib/access";
 import { CopyButton } from "../components/copy-button";
 import { fetchPdf } from "../lib/pdf";

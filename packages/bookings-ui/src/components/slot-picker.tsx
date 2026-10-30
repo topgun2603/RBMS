@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { cn, Input } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { cn, Input } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { hhmm, istMinute, parseHHMM, time12 } from "../lib/format";
 import { useAvailability } from "../lib/queries";
 import type { Slot } from "../lib/types";

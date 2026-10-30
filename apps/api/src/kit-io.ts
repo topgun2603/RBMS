@@ -1,6 +1,6 @@
-import { AppError } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import type { createCatalogue, Product } from "@srirealtime/catalogue";
+import { AppError } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import type { createCatalogue, Product } from "@rbms/catalogue";
 import type {
   BrandingPort,
   CreditNoteDocPort,
@@ -11,7 +11,7 @@ import type {
   PurchaseDocPort,
   StatementDocPort,
   TillDocPort,
-} from "@srirealtime/documents";
+} from "@rbms/documents";
 import {
   formatUnitsCell,
   customersExporter,
@@ -33,11 +33,11 @@ import {
   type SupplierImportRow,
   type StockExportRow,
   type StockImportRow,
-} from "@srirealtime/importexport";
-import type { createInventory, StockLocation } from "@srirealtime/inventory";
-import type { MedicinesService } from "@srirealtime/medicines";
-import type { createInvoices, Customer } from "@srirealtime/invoices";
-import type { createOrders } from "@srirealtime/orders";
+} from "@rbms/importexport";
+import type { createInventory, StockLocation } from "@rbms/inventory";
+import type { MedicinesService } from "@rbms/medicines";
+import type { createInvoices, Customer } from "@rbms/invoices";
+import type { createOrders } from "@rbms/orders";
 import { registerSwitching } from "./kit-switch";
 
 /**

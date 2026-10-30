@@ -1,4 +1,4 @@
-import type { FeatureGatePort } from "@srirealtime/core";
+import type { FeatureGatePort } from "@rbms/core";
 import type { ExternalAudienceKind, ExternalAudienceSource } from "./audience";
 import type { AudienceMember } from "./logic";
 import type { WhatsAppSettings } from "./settings";

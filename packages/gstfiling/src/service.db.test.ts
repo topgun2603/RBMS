@@ -4,8 +4,8 @@
  * (a development Postgres with migration 0034 applied); it copies the tables into a throw-away schema and drops it.
  *   PowerShell: $env:GSTFILING_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; npx vitest run --maxWorkers=2
  */
-import { createDb, type Db } from "@srirealtime/db";
-import { gstinCheckChar } from "@srirealtime/gst";
+import { createDb, type Db } from "@rbms/db";
+import { gstinCheckChar } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { GstSourcesPort, PurchaseSrc, SalesDocSrc } from "./ports";

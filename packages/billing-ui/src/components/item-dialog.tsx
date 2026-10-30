@@ -15,10 +15,10 @@ import {
   DialogTitle,
   Input,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { GstRateSelect } from "./gst-rate-select";
 import { MoneyInput } from "./money-input";
-import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, useFeature, useHsnSuggest, useI18n } from "@srirealtime/web";
+import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, useFeature, useHsnSuggest, useI18n } from "@rbms/web";
 import { ItemBatchToggle } from "./inventory/item-batch-toggle";
 import { ItemUnitsEditor } from "./pricing/item-units-editor";
 import { cleanQty } from "./inventory/stock-meta";

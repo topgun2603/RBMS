@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 import { enSignIn, taSignIn } from "./messages-signin";
 import { enSecurity, taSecurity } from "./messages-security";
 import { enAi, taAi } from "./messages-ai";
