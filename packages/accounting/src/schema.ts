@@ -127,11 +127,17 @@ export const acctLines = pgTable(
     /** Customer / supplier the line belongs to (debtors and creditors control accounts). */
     partyType: text("party_type").$type<PartyType>(),
     partyId: uuid("party_id"),
+    /**
+     * The branch (packages/branches) the line belongs to, from the source document's branch or stock location; null =
+     * head office / unassigned (manual vouchers, shop-wide documents, and every line posted before branch books).
+     */
+    branchId: uuid("branch_id"),
   },
   (t) => [
     index("acct_lines_entry_idx").on(t.entryId),
     index("acct_lines_tenant_account_date_idx").on(t.tenantId, t.accountId, t.entryDate),
     index("acct_lines_tenant_party_idx").on(t.tenantId, t.partyType, t.partyId),
+    index("acct_lines_tenant_branch_date_idx").on(t.tenantId, t.branchId, t.entryDate),
     check("acct_lines_amounts_chk", sql`${t.debit} >= 0 and ${t.credit} >= 0 and (${t.debit} = 0 or ${t.credit} = 0)`),
   ],
 );

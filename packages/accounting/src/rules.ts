@@ -46,6 +46,12 @@ export interface Posting {
   narration: string;
   reference?: string | null;
   lines: DraftLine[];
+  /**
+   * Branch every line of the posting belongs to (null = head office / unassigned). Not part of the content hash, so
+   * documents posted before branch books keep their branch-less entries; a cancellation or reversal follows the branch
+   * of the entry it mirrors (the engine looks it up, `MIRROR_BASE`).
+   */
+  branchId?: string | null;
 }
 
 export interface RuleOptions {
@@ -119,7 +125,8 @@ export function invoicePostings(inv: InvoiceSrc, o: RuleOptions): Posting[] {
   const who = party("customer", inv.customerId);
   const lines = billLines(SYS.sales, inv, who);
   const label = `Invoice ${inv.number ?? ""}`.trim();
-  const out: Posting[] = [{ sourceType: "invoice", sourceId: inv.id, date: inv.date, narration: `${label} - ${inv.customerName}`, reference: inv.number, lines }];
+  const branchId = inv.branchId ?? null;
+  const out: Posting[] = [{ sourceType: "invoice", sourceId: inv.id, date: inv.date, narration: `${label} - ${inv.customerName}`, reference: inv.number, lines, branchId }];
   if (inv.status === "cancelled") {
     out.push({
       sourceType: "invoice_cancel",
@@ -128,6 +135,7 @@ export function invoicePostings(inv: InvoiceSrc, o: RuleOptions): Posting[] {
       narration: `Cancelled ${label} - ${inv.customerName}`,
       reference: inv.number,
       lines: mirror(lines),
+      branchId,
     });
   }
   return out;
@@ -153,6 +161,7 @@ export function invoicePaymentPostings(p: InvoicePaymentSrc, o: RuleOptions): Po
       narration: `${what} (${p.method})${p.invoiceNumber ? ` for ${p.invoiceNumber}` : ""} - ${p.customerName}`,
       reference: p.invoiceNumber,
       lines,
+      branchId: p.branchId ?? null,
     },
   ];
 }
@@ -184,6 +193,7 @@ export function creditNotePostings(c: CreditNoteSrc, o: RuleOptions): Posting[] 
       narration: `Credit note ${c.number}${c.invoiceNumber ? ` against ${c.invoiceNumber}` : ""} - ${c.customerName}`,
       reference: c.number,
       lines,
+      branchId: c.branchId ?? null,
     },
   ];
 }
@@ -203,8 +213,9 @@ export function purchasePostings(p: PurchaseSrc, o: RuleOptions): Posting[] {
   if (!inScope(p.imported, o.importedBills)) return [];
   const who = party("supplier", p.supplierId);
   const lines = purchaseLines(SYS.purchases, p, who);
+  const branchId = p.branchId ?? null;
   const out: Posting[] = [
-    { sourceType: "purchase", sourceId: p.id, date: p.date, narration: `Purchase bill ${p.billNumber} - ${p.supplierName}`, reference: p.billNumber, lines },
+    { sourceType: "purchase", sourceId: p.id, date: p.date, narration: `Purchase bill ${p.billNumber} - ${p.supplierName}`, reference: p.billNumber, lines, branchId },
   ];
   if (p.status === "cancelled") {
     out.push({
@@ -214,6 +225,7 @@ export function purchasePostings(p: PurchaseSrc, o: RuleOptions): Posting[] {
       narration: `Cancelled purchase bill ${p.billNumber} - ${p.supplierName}`,
       reference: p.billNumber,
       lines: mirror(lines),
+      branchId,
     });
   }
   return out;
@@ -231,6 +243,7 @@ export function supplierPaymentPostings(p: SupplierPaymentSrc, o: RuleOptions): 
     date: p.date,
     narration: `${what} ${p.supplierName} (${p.mode})${p.purchaseBill ? ` for ${p.purchaseBill}` : ""}`,
     lines,
+    branchId: p.branchId ?? null,
   };
   if (!p.reversedOn) return [base];
   return [
@@ -244,8 +257,9 @@ export function debitNotePostings(d: DebitNoteSrc, o: RuleOptions): Posting[] {
   const who = party("supplier", d.supplierId);
   // A purchase bill in the other direction, against Purchase returns.
   const lines = mirror(purchaseLines(SYS.purchaseReturns, d, who));
+  const branchId = d.branchId ?? null;
   const out: Posting[] = [
-    { sourceType: "debit_note", sourceId: d.id, date: d.date, narration: `Debit note ${d.number} - ${d.supplierName}`, reference: d.number, lines },
+    { sourceType: "debit_note", sourceId: d.id, date: d.date, narration: `Debit note ${d.number} - ${d.supplierName}`, reference: d.number, lines, branchId },
   ];
   if (d.status === "cancelled") {
     out.push({
@@ -255,6 +269,7 @@ export function debitNotePostings(d: DebitNoteSrc, o: RuleOptions): Posting[] {
       narration: `Cancelled debit note ${d.number} - ${d.supplierName}`,
       reference: d.number,
       lines: mirror(lines),
+      branchId,
     });
   }
   return out;
@@ -281,9 +296,10 @@ export function expensePostings(e: ExpenseSrc, o: RuleOptions): Posting[] {
     credit,
   ]);
   const what = `Expense - ${e.categoryName}${e.vendorName ? ` - ${e.vendorName}` : ""}`;
-  const out: Posting[] = [{ sourceType: "expense", sourceId: e.id, date: e.date, narration: what, lines }];
+  const branchId = e.branchId ?? null;
+  const out: Posting[] = [{ sourceType: "expense", sourceId: e.id, date: e.date, narration: what, lines, branchId }];
   if (e.status === "cancelled") {
-    out.push({ sourceType: "expense_cancel", sourceId: e.id, date: later(e.date, e.cancelledOn), narration: `Cancelled: ${what}`, lines: mirror(lines) });
+    out.push({ sourceType: "expense_cancel", sourceId: e.id, date: later(e.date, e.cancelledOn), narration: `Cancelled: ${what}`, lines: mirror(lines), branchId });
   }
   return out;
 }
@@ -297,9 +313,10 @@ export function salesDebitNotePostings(d: SalesDebitNoteSrc): Posting[] {
   const who = party("customer", d.customerId);
   const lines = billLines(SYS.sales, { ...d, discount: 0 }, who);
   const what = `Debit note ${d.number}${d.invoiceNumber ? ` on ${d.invoiceNumber}` : ""} - ${d.customerName}`;
-  const out: Posting[] = [{ sourceType: "sales_debit_note", sourceId: d.id, date: d.date, narration: what, reference: d.number, lines }];
+  const branchId = d.branchId ?? null;
+  const out: Posting[] = [{ sourceType: "sales_debit_note", sourceId: d.id, date: d.date, narration: what, reference: d.number, lines, branchId }];
   if (d.status === "cancelled") {
-    out.push({ sourceType: "sales_debit_note_cancel", sourceId: d.id, date: later(d.date, d.cancelledOn), narration: `Cancelled ${what}`, reference: d.number, lines: mirror(lines) });
+    out.push({ sourceType: "sales_debit_note_cancel", sourceId: d.id, date: later(d.date, d.cancelledOn), narration: `Cancelled ${what}`, reference: d.number, lines: mirror(lines), branchId });
   }
   return out;
 }
@@ -326,6 +343,7 @@ const CASH_CATEGORY_NAMES: Readonly<Record<string, string>> = {
 
 export function tillPostings(t: TillSrc): Posting[] {
   const out: Posting[] = [];
+  const branchId = t.branchId ?? null;
   if (t.status === "closed" && t.closedOn && t.difference) {
     const d = t.difference;
     out.push({
@@ -334,6 +352,7 @@ export function tillPostings(t: TillSrc): Posting[] {
       date: t.closedOn,
       narration: `${d > 0 ? "Cash excess" : "Cash short"} when closing ${t.register}`,
       lines: d > 0 ? [dr(key(SYS.cash), d), cr(key(SYS.cashShortExcess), d)] : [dr(key(SYS.cashShortExcess), -d), cr(key(SYS.cash), -d)],
+      branchId,
     });
   }
   for (const h of t.handovers ?? []) {
@@ -345,6 +364,7 @@ export function tillPostings(t: TillSrc): Posting[] {
       date: h.on,
       narration: `${d > 0 ? "Cash excess" : "Cash short"} at handover of ${t.register}`,
       lines: d > 0 ? [dr(key(SYS.cash), d), cr(key(SYS.cashShortExcess), d)] : [dr(key(SYS.cashShortExcess), -d), cr(key(SYS.cash), -d)],
+      branchId,
     });
   }
   for (const c of t.cashEntries) {
@@ -356,6 +376,7 @@ export function tillPostings(t: TillSrc): Posting[] {
       date: c.on,
       narration: `${c.amount > 0 ? "Cash put in" : "Cash taken out"} of ${t.register}${c.category ? ` (${CASH_CATEGORY_NAMES[c.category] ?? c.category})` : ""}${c.reason ? `: ${c.reason}` : ""}`,
       lines: c.amount > 0 ? [dr(key(SYS.cash), a), cr(key(SYS.tillClearing), a)] : [dr(key(SYS.tillClearing), a), cr(key(SYS.cash), a)],
+      branchId,
     });
   }
   return out;
@@ -374,6 +395,7 @@ export function stockAdjustmentPostings(s: StockAdjustmentSrc): Posting[] {
       date: s.date,
       narration: `${what}${s.itemName ? ` - ${s.itemName}` : ""}`,
       lines: s.value > 0 ? [dr(key(SYS.stock), v), cr(key(other), v)] : [dr(key(other), v), cr(key(SYS.stock), v)],
+      branchId: s.branchId ?? null,
     },
   ];
 }
@@ -476,7 +498,10 @@ function withOpeningPlug(sourceType: string, what: string, lines: DraftLine[], d
 
 // ------------------------------------------------------------------ identity
 
-/** What a version of a posting was built from (date, narration and lines). Equal hash = nothing to do. */
+/**
+ * What a version of a posting was built from (date, narration and lines). Equal hash = nothing to do. The branch is
+ * left out on purpose: giving documents a branch must not re-post (reverse and repeat) the history already in the books.
+ */
 export function postingHash(p: Pick<Posting, "date" | "narration" | "lines">): string {
   const body = JSON.stringify([
     p.date,
@@ -495,6 +520,17 @@ export function effectiveDate(date: string, lockedThrough: string | null | undef
   }
   return { date, late: false };
 }
+
+/** A later posting that mirrors an earlier one of the same document; it is booked to the branch of that earlier entry. */
+export const MIRROR_BASE: Readonly<Record<string, string>> = {
+  invoice_cancel: "invoice",
+  purchase_cancel: "purchase",
+  supplier_payment_reversal: "supplier_payment",
+  debit_note_cancel: "debit_note",
+  expense_cancel: "expense",
+  sales_debit_note_cancel: "sales_debit_note",
+  gst_payment_cancel: "gst_payment",
+};
 
 /** Which source types the engine owns, in the order they are posted. */
 export const SOURCE_TYPES = [
