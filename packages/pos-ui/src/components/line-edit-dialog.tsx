@@ -32,7 +32,7 @@ import { lineAmount } from "@rbms/gst";
 import { cartLineGstRate, clampDiscount, percentDiscount, type CartLine } from "../lib/cart";
 import { money, paiseToInput, parseQty, rupeesToPaise } from "../lib/format";
 import { usePos } from "./pos-context";
-import { setLineUnit } from "../lib/units";
+import { boxesToCover, setLineUnit } from "../lib/units";
 
 export interface LineEdit {
   qty: number;
@@ -52,10 +52,13 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
   const [mode, setMode] = React.useState<"amount" | "percent">("amount");
   const [touched, setTouched] = React.useState(false);
   const [unit, setUnit] = React.useState("");
+  const [area, setArea] = React.useState("");
+  const [wastage, setWastage] = React.useState("10");
 
   React.useEffect(() => {
     if (!line) return;
     setUnit(line.unit);
+    setArea("");
     setQty(String(line.qty));
     setPrice(paiseToInput(line.price));
     setDisc(line.discount ? paiseToInput(line.discount) : "");
@@ -75,6 +78,16 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
     !can.discount ? clampDiscount(line.discount, gross) : mode === "percent" ? (pctOk && q !== null && p !== null ? percentDiscount({ qty: q, price: p }, pct ?? 0) : null) : rawDisc;
   const discTooBig = discount !== null && rawDisc !== null && rawDisc > gross;
   const valid = q !== null && p !== null && discount !== null && pctOk && !discTooBig;
+
+  // Tiles and flooring: type the room's area, get the boxes (stock moves by box).
+  const cover = boxesToCover(line, Number(area), "sqft", Number(wastage));
+  const useCover = () => {
+    if (!cover) return;
+    const next = setLineUnit([line], line.key, cover.unit)[0]!;
+    setUnit(cover.unit);
+    setPrice(paiseToInput(next.price));
+    setQty(String(cover.qty));
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +132,34 @@ export function LineEditDialog({ line, onClose, onSave }: { line: CartLine | nul
                 </SelectContent>
               </Select>
             </Field>
+          ) : null}
+          {boxesToCover(line, 1) && !line.ticket ? (
+            <FieldRow cols={3}>
+              <Field>
+                <FieldLabel>{t("pos.edit.area")}</FieldLabel>
+                <FieldControl>
+                  <InputGroup size="lg">
+                    <InputGroupInput value={area} onChange={(e) => setArea(e.target.value)} inputMode="decimal" aria-label={t("pos.edit.area")} />
+                    <InputGroupAddon>{t("pos.edit.sqft")}</InputGroupAddon>
+                  </InputGroup>
+                </FieldControl>
+              </Field>
+              <Field>
+                <FieldLabel>{t("pos.edit.wastage")}</FieldLabel>
+                <FieldControl>
+                  <InputGroup size="lg">
+                    <InputGroupInput value={wastage} onChange={(e) => setWastage(e.target.value)} inputMode="decimal" aria-label={t("pos.edit.wastage")} />
+                    <InputGroupAddon>%</InputGroupAddon>
+                  </InputGroup>
+                </FieldControl>
+              </Field>
+              <Field>
+                <FieldLabel>{t("pos.edit.boxesNeeded")}</FieldLabel>
+                <Button type="button" variant="outline" size="lg" disabled={!cover} onClick={useCover}>
+                  {cover ? t("pos.edit.useBoxes", { boxes: cover.qty, unit: cover.unit }) : "—"}
+                </Button>
+              </Field>
+            </FieldRow>
           ) : null}
           <FieldRow cols={2}>
             <Field>
