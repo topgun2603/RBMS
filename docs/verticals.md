@@ -92,7 +92,7 @@ website, not a shop: the store hides the cart, wishlist, shopper account and pro
   "Not listed: tell us", even when it maps to a pack through `ALIASES`. `packFor()` returns `null` for an unknown trade;
   `resolvePack(type, label, appId)` never does: chosen pack, then the typed words, then the app's default.
 - **Storefront:** `StoreConfig.shop.businessType | theme | fonts`. The translator overlays the pack's words
-  (`translatorFor(locale, businessType)`); the size guide shows only for `sizeGuide` packs; the "Made in Tamil Nadu"
+  (`translatorFor(locale, businessType)`); the size guide shows only for packs whose `sizeGuide` is `"clothing"` (bust / waist / length charts) or `"shoes"` (the men / women / kids shoe chart; a clothing pack still shows the shoe chart on a product whose name says so); the "Made in Tamil Nadu"
   badge only for `localMade` packs. The CMS default home (no published home) uses the pack's words too.
 - **New shops:** the on-tenant-created `starter` hook (`apps/api/src/kit-verticals.ts`) saves the trade from sign-up,
   applies the pack's preset, creates the starter categories and publishes the starter home (each step skipped when the

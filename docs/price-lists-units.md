@@ -114,3 +114,13 @@ and the item's own price.
 - The Flutter business app does not offer units or lists yet (its lines bill in the base unit, as before).
 - Item-wise sales reports group lines by item and unit (boxes and pieces are separate rows); valuation / profit code
   should use `baseQtyOf(line)` for quantities.
+
+## Area units (batch 10)
+
+Tiles, flooring and panels are priced by area and packed in boxes. No new tables: the item's base unit is `sqft` (or `sqm`)
+and `box` is an alternate unit whose `factor` is the coverage (1 box = 15.5 sq ft), so stock, bills and purchases move
+`boxes x coverage` of area like any other unit. A `sqm` alternate on a sq ft item must carry the exact factor
+(10.76391); anything else is refused. `POST /v1/catalog/variants/:id/area-quote` `{ area, areaUnit?, wastagePct?, boxUnit? }`
+returns the whole boxes that cover the area (with wastage), what they cover and the price; the POS line editor and the
+storefront product page (attribute `Coverage per box (sq ft)`) use the same maths (`packages/gst/src/area.ts`).
+

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const apiDir = join(here, "..", "..");
-const SCRIPTS = ["batch1.mjs", "batch2.mjs", "billing.mjs", "credit-notes.mjs", "batch3.mjs", "batch5.mjs"];
+const SCRIPTS = ["batch1.mjs", "batch2.mjs", "billing.mjs", "credit-notes.mjs", "batch3.mjs", "batch5.mjs", "batch10.mjs"];
 
 const seed = spawnSync("pnpm run seed:e2e", { cwd: apiDir, shell: true, encoding: "utf8" });
 if (seed.status !== 0) {

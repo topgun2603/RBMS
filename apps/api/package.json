@@ -28,6 +28,7 @@
     "seed:e2e": "tsx --env-file-if-exists=.env src/seed-e2e.ts",
     "cleanup:e2e-data": "tsx --env-file-if-exists=.env src/scripts/cleanup-e2e-data.ts",
     "test:e2e:billing": "node test/e2e/billing.mjs",
+    "test:e2e:10": "node test/e2e/batch10.mjs",
     "test:e2e:all": "node test/e2e/run-all.mjs"
   },
   "dependencies": {

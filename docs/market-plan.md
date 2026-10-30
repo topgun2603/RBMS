@@ -89,6 +89,16 @@ storefront.
 - New packs on top: `two_wheeler_service`, `car_service` (SV, vehicle template), `agri_inputs` (BL, batches + dealer
   licence no. on the bill), `auto_parts` (BL, part no. and fits-vehicle attributes).
 
+**Status (2026-10-30): built** on branch `feat/engines-batch10` (on top of `feat/packs-batch8-9`). The batches engine is not part of it: batches for any item already shipped (docs/stock-depth.md), so `agri_inputs` just switches `trackAll` on.
+
+- **Job-card templates** `vehicle`, `laundry`, `appliance` in `packages/jobcards/src/templates.ts` (strict zod schemas, summaries, `nextServiceDue`), the forms and read-only views in `packages/jobcards-ui`, English + Tamil. Laundry keeps pickup / drop flags, address and slot on the card; it does **not** yet create `delivery` tasks from them.
+- **Area units** reuse the alternate-unit model (docs/price-lists-units.md): base unit `sqft` / `sqm`, `box` is an alternate unit whose factor is the coverage, so stock moves `boxes x coverage` with no new tables. Pure maths in `packages/gst/src/area.ts`; `POST /v1/catalog/variants/:id/area-quote` (boxes, wastage, price); a "cover this area" row in the POS line editor; a box calculator on the storefront product page (reads the `Coverage per box (sq ft)` attribute); a wrong sq m factor on a sq ft item is refused.
+- **`sizeGuide`** is now `"clothing" | "shoes" | null`; `footwear` is `"shoes"`, a shoes pack never shows the bust / waist chart. The storefront already had the shoe chart; `sizeKindForGuide` picks it from the setting.
+- **Notifications:** booking confirmed (`booking.confirmed`), job ready (`job.ready`) and membership expiring (`membership.renewal_due` from the 09:00 job calling `remindAllExpiring`) were already wired to WhatsApp + SMS templates in `kit-messages.ts`. New: `job.service_due` (vehicle cards, N months after delivery, daily 09:30 job `messages.service-due`, English + Tamil). A km-only reminder is stored on the card and shown in the message, but nothing can fire on it (the odometer is not read again).
+- **Packs** `two_wheeler_service`, `car_service` (SV, `jobTemplate: "vehicle"`), `agri_inputs` (BL, `trackBatches`), `auto_parts` (BL, part number and fits-vehicle attributes): 52 packs in all, aliases, starter home, FAQ, hours, English + Tamil; `repair`, `tailoring`, `optical`, `laundry`, `ac_service` also name their `jobTemplate`.
+- **Not built:** the dealer licence number on the bill (there is no per-shop licence field on invoices yet); `jobTemplate` is data only (the new-job dialog does not preselect it); seeded demo shops and storefront render checks for the new packs; the "pickup / drop through `delivery`" link.
+- Tests: unit tests per engine; `apps/api/test/e2e/batch10.mjs` (10 steps, ran 10/10 against a local API and Postgres).
+
 **Done when:** each engine has unit tests and an e2e case, and the four new packs are live.
 
 ## Track C: new verticals
@@ -231,7 +241,7 @@ Two lanes, weeks from the start of batch 8:
 |---|---|---|
 | 1–2 | Batch 8: general packs, typed trade, picker, aliases | M0: API schemas, Dart client, devices + push, mobile sessions |
 | 3–4 | Batch 9: 30 packs | M1 starts |
-| 5–7 | Batch 10: templates, area units, batches engine, notifications, 4 packs | M1 |
+| 5–7 | Batch 10: templates, area units, ~~batches engine~~ (shipped, stock-depth.md), notifications, 4 packs | M1 (built 2026-10-30) |
 | 8–10 | Batch 11: import, languages, printing, open items | M1 ends: Android beta to demo shops |
 | 11–14 | Batch 12: daily subscriptions | M2: trade screens |
 | 15–18 | Batch 13: wholesale | M3: offline billing |
