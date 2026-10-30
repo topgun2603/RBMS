@@ -256,7 +256,7 @@ export interface Overview {
   conversionRate: number;
   trend: { date: string; visitors: number; purchases: number; revenue: number }[];
   funnel: { step: FunnelStep; count: number }[];
-  topProducts: { productId: string; name: string; views: number; addToCart: number; purchases: number }[];
+  topProducts: { productId: string; name: string; views: number; addToCart: number; purchases: number; revenue?: number }[];
   topSearches: { query: string; count: number }[];
   sources: { source: string; sessions: number }[];
   devices: { device: string; sessions: number }[];

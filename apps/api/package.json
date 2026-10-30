@@ -20,6 +20,7 @@
     "migrate:locations": "tsx --env-file-if-exists=.env src/scripts/backfill-locations.ts",
     "migrate:search": "tsx --env-file-if-exists=.env src/scripts/rebuild-search.ts",
     "job": "tsx --env-file-if-exists=.env src/scripts/run-job.ts",
+    "analytics:backfill": "tsx --env-file-if-exists=.env src/scripts/analytics-backfill.ts",
     "openapi": "tsx --env-file-if-exists=.env src/scripts/export-openapi.ts",
     "release-notes:draft": "tsx src/scripts/release-notes-draft.ts",
     "test:e2e": "node test/e2e/batch1.mjs",

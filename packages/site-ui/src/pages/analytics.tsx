@@ -253,6 +253,7 @@ export default function AnalyticsPage() {
                             <TableHead className="text-right">{t("site.analytics.views")}</TableHead>
                             <TableHead className="text-right">{t("site.analytics.addToCart")}</TableHead>
                             <TableHead className="text-right">{t("site.analytics.orders")}</TableHead>
+                            <TableHead className="text-right">{t("site.analytics.productSales")}</TableHead>
                             <TableHead className="text-right">{t("site.analytics.conversionShort")}</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -263,6 +264,7 @@ export default function AnalyticsPage() {
                               <TableCell className="text-right tabular-nums">{count(r.views)}</TableCell>
                               <TableCell className="text-right tabular-nums">{count(r.addToCart)}</TableCell>
                               <TableCell className="text-right tabular-nums">{count(r.purchases)}</TableCell>
+                              <TableCell className="text-right tabular-nums">{r.revenue ? money(r.revenue) : "-"}</TableCell>
                               <TableCell className="text-right tabular-nums">{pct(r.conversion)}</TableCell>
                             </TableRow>
                           ))}
