@@ -47,7 +47,19 @@ export interface ServerOptions {
   security?: { hsts: boolean } | false;
   /** Largest request body in bytes (Fastify's default is 1 MiB); routes with their own `bodyLimit` keep theirs. */
   bodyLimit?: number;
+  /**
+   * How many reverse proxies (load balancer, CDN) sit in front of the API (`TRUST_PROXY_HOPS`). The client IP is the
+   * X-Forwarded-For entry that many hops from the right, so addresses a client writes into the header itself are
+   * never used. 0 = no proxy (the socket address). Default 1.
+   */
+  trustProxyHops?: number;
 }
+
+/**
+ * Fastify `trustProxy` for `hops` proxies: the socket peer and the next `hops - 1` X-Forwarded-For entries (from the
+ * right) are proxies, so `req.ip` is the entry `hops` from the right. The API must only be reachable through them.
+ */
+export const trustHops = (hops: number) => (_addr: string, hop: number) => hop < hops;
 
 /** A caller-supplied request id is kept when it looks like one (load balancer, other service); otherwise a UUID. */
 const REQUEST_ID = /^[A-Za-z0-9._:-]{8,128}$/;
@@ -58,7 +70,9 @@ const OPS = new Set<string>(OPS_PATHS);
 
 export async function buildServer(opts: ServerOptions) {
   const base = {
-    trustProxy: true,
+    // A hop count, never `true`: `true` takes the left-most X-Forwarded-For entry, which the client controls. A function,
+    // not a number: Fastify 5 treats a numeric trustProxy as "trust nothing" (and then ignores X-Forwarded-Host too).
+    trustProxy: trustHops(opts.trustProxyHops ?? 1),
     genReqId: (req: { headers: Record<string, string | string[] | undefined> }) => requestIdFor(req.headers["x-request-id"]),
     // One structured line per request is logged in onResponse below (with tenant, user and route).
     logController: new LogController({ disableRequestLogging: true }),

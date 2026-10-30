@@ -31,6 +31,7 @@ const app = await buildServer({
   routeCollector: kit.routeCollector,
   errorReporter: kit.monitoring.reporter,
   ops: kit.ops,
+  trustProxyHops: env.TRUST_PROXY_HOPS,
   rateLimit: {
     ...DEFAULT_RATE_LIMIT,
     enabled: env.RATE_LIMIT_ENABLED,
