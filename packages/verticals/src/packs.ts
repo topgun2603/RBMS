@@ -48,6 +48,9 @@ export const PACK_GROUP_NAMES: Record<PackGroup, { en: string; ta: string }> = {
   general: { en: "Other trades", ta: "பிற தொழில்கள்" },
 };
 
+export const SIZE_GUIDES = ["clothing", "shoes"] as const;
+export type SizeGuide = (typeof SIZE_GUIDES)[number];
+
 export interface BusinessPack {
   id: BusinessType;
   name: string;
@@ -78,8 +81,12 @@ export interface BusinessPack {
   site?: boolean;
   /** Where the home page's main button goes: "/search" (shop) by default, "/book" for appointment trades. */
   ctaHref?: string;
-  /** Show the clothing size guide next to a "Size" option. */
-  sizeGuide: boolean;
+  /**
+   * The size guide shown next to a "Size" option: `clothing` (bust / waist / length charts), `shoes` (the men / women /
+   * kids shoe chart), or null for trades with none. A clothing pack that also sells shoes (sports) still gets the shoe
+   * chart on a product whose name says so.
+   */
+  sizeGuide: SizeGuide | null;
   /** Show the "Made in Tamil Nadu / local makers" trust badge. */
   localMade: boolean;
   usps: Usp[];
@@ -164,7 +171,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "kanchi-silk",
-    sizeGuide: true,
+    sizeGuide: "clothing",
     localMade: true,
     copy: {
       en: {
@@ -204,7 +211,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "PH",
     group: "health",
     preset: "pharma-clean",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -244,7 +251,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "RS",
     group: "food",
     preset: "madras-cafe",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -285,7 +292,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "food",
     preset: "street-bold",
     off: ["dining.qr-ordering"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -326,7 +333,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "food",
     preset: "kirana-fresh",
     features: ["scales", "pos.weighing"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -367,7 +374,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "food",
     preset: "patisserie",
     features: ["scales", "pos.weighing"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -408,7 +415,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "food",
     preset: "farm-market",
     features: ["scales", "pos.weighing"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -449,7 +456,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "retail",
     preset: "gadget-neon",
     features: ["serials", "serials.warranty"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -491,7 +498,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "fixit-pro",
     features: ["serials", "serials.warranty"],
     off: ["memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -533,7 +540,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "salon-blush",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -575,7 +582,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "gym-iron",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -616,7 +623,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "retail",
     preset: "temple-gold",
     features: ["jewellery", "jewellery.exchange"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -656,7 +663,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "BL",
     group: "building",
     preset: "builders-steel",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -698,7 +705,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "optic-clear",
     ctaHref: "/book",
     off: ["memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -740,7 +747,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "tailor-atelier",
     ctaHref: "/book",
     off: ["memberships"],
-    sizeGuide: true,
+    sizeGuide: "clothing",
     localMade: true,
     copy: {
       en: {
@@ -781,7 +788,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "food",
     preset: "farm-market",
     features: ["scales", "pos.weighing"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -826,7 +833,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "retail",
     preset: "boutique",
     // The storefront's shoe chart (UK/IND, EU, US, foot length; men / women / kids tabs) next to the Size option.
-    sizeGuide: true,
+    sizeGuide: "shoes",
     localMade: true,
     copy: {
       en: {
@@ -870,7 +877,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "optic-clear",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -914,7 +921,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "kirana-fresh",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -958,7 +965,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "salon-blush",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1002,7 +1009,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "kirana-fresh",
-    sizeGuide: false,
+    sizeGuide: null,
     // Made in Sivakasi.
     localMade: true,
     copy: {
@@ -1049,7 +1056,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "farm-market",
     // Loose flowers are weighed; jasmine strings go by the muzham (length), garlands by length or piece.
     features: ["scales", "pos.weighing"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -1094,7 +1101,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "retail",
     preset: "gadget-neon",
     // No serial numbers: phones (IMEI) are the electronics pack; accessories are counted, with the brand's warranty on the bill.
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1138,7 +1145,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "boutique",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -1182,7 +1189,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "heritage",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -1226,7 +1233,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "fresh",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1271,7 +1278,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "retail",
     preset: "power",
     // The clothing chart for jerseys and track pants; sports shoes get the shoe chart (sizeKindFor).
-    sizeGuide: true,
+    sizeGuide: "clothing",
     localMade: false,
     copy: {
       en: {
@@ -1317,7 +1324,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "madras-cafe",
     // Counter-first: order and pay at the counter (token), no table QR ordering.
     off: ["dining.qr-ordering"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1363,7 +1370,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "luxe",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1411,7 +1418,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     site: true,
     // The School app (SC) leaves out billing, stock, orders and the shop engines; of what it offers, no wishlist.
     off: ["storefront.wishlist"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1456,7 +1463,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "general",
     preset: "fresh",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1496,7 +1503,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "BL",
     group: "general",
     preset: "workshop",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1537,7 +1544,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "general",
     preset: "care",
     ctaHref: "/book",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1582,7 +1589,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "EC",
     group: "retail",
     preset: "heritage",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: true,
     copy: {
       en: {
@@ -1628,7 +1635,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "bistro",
     ctaHref: "/book",
     off: ["jobcards", "memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1674,7 +1681,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "lagoon-paws",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1720,7 +1727,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "atelier",
     ctaHref: "/book",
     off: ["memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1766,7 +1773,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "care",
     ctaHref: "/book",
     off: ["memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1812,7 +1819,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "boutique",
     ctaHref: "/book",
     off: ["jobcards", "memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1858,7 +1865,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "fixit-pro",
     ctaHref: "/book",
     off: ["memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1903,7 +1910,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "services",
     preset: "workshop",
     off: ["memberships", "bookings"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1949,7 +1956,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "copybook",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -1995,7 +2002,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "kumkum-manjal",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -2041,7 +2048,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "lotus-mist",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -2087,7 +2094,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "power",
     ctaHref: "/book",
     off: ["jobcards"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -2131,7 +2138,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     appId: "BL",
     group: "building",
     preset: "berry-bold",
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -2177,7 +2184,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     preset: "gadget-neon",
     features: ["serials", "serials.warranty"],
     off: ["memberships"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {
@@ -2222,7 +2229,7 @@ export const PACKS: Record<BusinessType, BusinessPack> = {
     group: "building",
     preset: "industrial",
     off: ["memberships", "bookings"],
-    sizeGuide: false,
+    sizeGuide: null,
     localMade: false,
     copy: {
       en: {

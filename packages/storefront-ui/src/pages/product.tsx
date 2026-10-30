@@ -22,7 +22,7 @@ import type { Availability, CmsPage, List, Product, ProductSummary, Promotions, 
 import { Breadcrumbs, Container, FoodMark, JsonLd, SectionTitle, Stars } from "../components/bits";
 import { ProductCard, ProductGrid, ProductGridSkeleton } from "../components/product-card";
 import { RailSkeleton } from "../components/skeletons";
-import { SizeChart, sizeKindFor } from "../components/size-guide";
+import { SizeChart, sizeKindForGuide } from "../components/size-guide";
 import { TrustBadges } from "../components/trust";
 import { Carousel } from "../client/carousel";
 import { ProductGallery } from "../client/product-gallery";
@@ -79,7 +79,7 @@ export async function ProductPage({ slug }: { slug: string }) {
   const anyInStock = avail.items.length === 0 || avail.items.some((a) => a.inStock);
   // The shop's own size guide page when it has one, else a sensible default chart for the category.
   // Footwear always gets the interactive shoe chart (men / women / kids tabs), with a link to the shop's own guide page.
-  const sizeKind = sizeKindFor(config.shop.businessType, product.categoryName, product.name);
+  const sizeKind = sizeKindForGuide(packFor(config.shop.businessType)?.sizeGuide, config.shop.businessType, product.categoryName, product.name) ?? "top";
   const shoeChart = sizeKind.startsWith("shoe-");
   const sizeGuide = !hasSizes ? undefined : shoeChart ? (
     <SizeChart key="size-chart" kind={sizeKind} t={t} guideHref={guidePage?.blocks.length ? "/pages/size-guide" : undefined} />

@@ -1,6 +1,6 @@
 import { THEME_PRESETS } from "@rbms/branding";
 import { describe, expect, it } from "vitest";
-import { APP_IDS, BUSINESS_TYPES, copyFor, DEFAULT_PACK_FOR_APP, GENERAL_PACKS, isGeneralPack, PACK_GROUPS, packFor, packOrDefault, packPickerGroups, packsByGroup, PACKS, resolvePack, starterHome } from "./index";
+import { APP_IDS, BUSINESS_TYPES, copyFor, DEFAULT_PACK_FOR_APP, GENERAL_PACKS, isGeneralPack, PACK_GROUPS, packFor, packOrDefault, packPickerGroups, packsByGroup, PACKS, resolvePack, SIZE_GUIDES, starterHome } from "./index";
 
 describe("business packs", () => {
   it("ships its solutions (batches 1 to 9 and the three general packs), each with a group, a real theme preset and full copy in both languages", () => {
@@ -23,6 +23,10 @@ describe("business packs", () => {
   it("only clothing, tailoring, footwear and sportswear get the size guide; no clothing words leak into other packs", () => {
     // Footwear's guide is the storefront's shoe chart (sizeKindFor picks it), not the clothing one; sports gets both.
     expect(BUSINESS_TYPES.filter((t) => PACKS[t].sizeGuide)).toEqual(["fashion", "tailoring", "footwear", "sports"]);
+    // The guide is a kind, not a flag: footwear has the shoe chart, the clothing trades the clothing ones, the rest none.
+    expect(Object.fromEntries(BUSINESS_TYPES.filter((t) => PACKS[t].sizeGuide).map((t) => [t, PACKS[t].sizeGuide]))).toEqual({ fashion: "clothing", tailoring: "clothing", footwear: "shoes", sports: "clothing" });
+    expect(BUSINESS_TYPES.filter((t) => !PACKS[t].sizeGuide).every((t) => PACKS[t].sizeGuide === null)).toBe(true);
+    for (const t of BUSINESS_TYPES) expect([null, ...SIZE_GUIDES], t).toContain(PACKS[t].sizeGuide);
     for (const t of BUSINESS_TYPES.filter((t) => t !== "fashion")) expect(JSON.stringify(PACKS[t].copy.en), t).not.toMatch(/kurti|saree/i);
   });
 
@@ -40,7 +44,7 @@ describe("business packs", () => {
 
   it("organic: an EC store on the scales, local makers' badge, millets and oils sold by weight and volume", () => {
     const p = PACKS.organic;
-    expect(p).toMatchObject({ appId: "EC", features: ["scales", "pos.weighing"], localMade: true, sizeGuide: false });
+    expect(p).toMatchObject({ appId: "EC", features: ["scales", "pos.weighing"], localMade: true, sizeGuide: null });
     expect(p.categories).toEqual(expect.arrayContaining(["Millets", "Cold-pressed oils", "Country sugar & jaggery"]));
     expect(p.editor.options).toEqual(expect.arrayContaining(["Weight", "Volume"]));
     expect(copyFor(p, "ta").search).toContain("சிறுதானியம்");
@@ -49,7 +53,7 @@ describe("business packs", () => {
     const want = { footwear: ["shoes", "Chappal", "slippers", "sandals", "shoe shop"], stationery: ["books", "school supplies", "office supplies", "Book shop"], toys: ["toy", "games", "kids toys", "Toy store"], cosmetics: ["cosmetic", "makeup", "skincare", "parlour products", "beauty products"] } as const;
     for (const [id, aliases] of Object.entries(want)) {
       const p = PACKS[id as keyof typeof want];
-      expect(p).toMatchObject({ id, appId: "EC", sizeGuide: id === "footwear" });
+      expect(p).toMatchObject({ id, appId: "EC", sizeGuide: id === "footwear" ? "shoes" : null });
       expect(p.features ?? []).not.toContain("serials");
       expect(p.usps).toHaveLength(3);
       for (const u of p.usps) for (const lang of ["en", "ta"] as const) expect(u.title[lang] && u.text[lang], `${id} usp ${lang}`).toBeTruthy();
