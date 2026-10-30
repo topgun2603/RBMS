@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { blankLine, linesFromInvoice, parseLine } from "../components/invoice-form";
 import { en, ta } from "./messages/line-serials";
 import { parseSerialText, serialsError } from "./line-serials";
 
@@ -29,8 +30,7 @@ describe("line serial messages", () => {
 });
 
 describe("serials on an invoice line", () => {
-  it("go onto the API line, come back from a saved bill, and are checked against the quantity", async () => {
-    const { blankLine, parseLine, linesFromInvoice } = await import("../components/invoice-form");
+  it("go onto the API line, come back from a saved bill, and are checked against the quantity", () => {
     const line = { ...blankLine("18"), description: "Phone", rate: "10000", qty: "2", serials: ["AAA111", "BBB222"] };
     expect(parseLine(line).input).toMatchObject({ qty: 2, serials: ["AAA111", "BBB222"] });
     expect(parseLine({ ...line, serials: ["AAA111", "BBB222", "CCC333"] }).errors.serials).toBe("billing.form.serials.tooMany");
