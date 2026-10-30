@@ -24,7 +24,7 @@ create table "${SCHEMA}".users (
 create table "${SCHEMA}".auth_sessions (
   id uuid primary key default gen_random_uuid(), user_id uuid not null references "${SCHEMA}".users(id) on delete cascade,
   token_hash text not null unique, expires_at timestamptz not null, last_seen_at timestamptz not null default now(),
-  ip text, user_agent text, client text, terminal_id uuid, revoked_at timestamptz, created_at timestamptz not null default now());
+  ip text, user_agent text, client text, terminal_id uuid, mfa_at timestamptz, revoked_at timestamptz, created_at timestamptz not null default now());
 `;
 const TERM = "7a7a7a7a-0000-4000-8000-000000000001";
 const OTHER = "7a7a7a7a-0000-4000-8000-000000000002";

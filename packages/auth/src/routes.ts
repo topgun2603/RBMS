@@ -285,7 +285,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       const me = requireUser(req.ctx);
       const { tenantId } = handoffCreateBody.parse(req.body ?? {});
       const appUrl = tenantId ? await service.handoffAppUrl(me.id, tenantId) : null;
-      const h = await service.createHandoff(me.id, { ip: req.ctx.ip });
+      const h = await service.createHandoff(me.id, { ip: req.ctx.ip, fromSessionId: me.sessionId });
       await record(req, {
         tenantId: tenantId ?? req.ctx.tenant?.id ?? null,
         actorUserId: me.id,
@@ -305,7 +305,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
     app.post("/store/handoff", SELF_AUDITED, async (req) => {
       const me = requireUser(req.ctx);
       const body = storeHandoffBody.parse(req.body);
-      const r = await service.createStoreHandoff(me.id, { shop: body.shop, origin: body.origin, returnUrl: body.return }, { ip: req.ctx.ip });
+      const r = await service.createStoreHandoff(me.id, { shop: body.shop, origin: body.origin, returnUrl: body.return }, { ip: req.ctx.ip, fromSessionId: me.sessionId });
       await record(req, {
         tenantId: r.tenantId,
         actorUserId: me.id,
@@ -373,7 +373,7 @@ export function authRoutes(service: AuthService, audit?: AuditPort, opts: { fire
       }
       const me = requireUser(req.ctx);
       try {
-        const r = await service.confirmMfaEnrol(me.id, body.code);
+        const r = await service.confirmMfaEnrol(me.id, body.code, me.sessionId);
         await mfaEvent(req, me.id, null, "auth.mfa.enabled", "Two-factor sign-in turned on");
         return r;
       } catch (err) {

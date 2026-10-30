@@ -22,11 +22,11 @@ create table "${SCHEMA}".users (
 create table "${SCHEMA}".auth_sessions (
   id uuid primary key default gen_random_uuid(), user_id uuid not null references "${SCHEMA}".users(id) on delete cascade,
   token_hash text not null unique, expires_at timestamptz not null, last_seen_at timestamptz not null default now(),
-  ip text, user_agent text, client text, terminal_id uuid, revoked_at timestamptz, created_at timestamptz not null default now());
+  ip text, user_agent text, client text, terminal_id uuid, mfa_at timestamptz, revoked_at timestamptz, created_at timestamptz not null default now());
 create table "${SCHEMA}".auth_handoffs (
   id uuid primary key default gen_random_uuid(), code_hash text not null unique,
   user_id uuid not null references "${SCHEMA}".users(id) on delete cascade,
-  expires_at timestamptz not null, consumed_at timestamptz, tenant_id uuid, ip text,
+  expires_at timestamptz not null, consumed_at timestamptz, tenant_id uuid, mfa_at timestamptz, ip text,
   created_at timestamptz not null default now());
 `;
 
@@ -97,6 +97,16 @@ describe.skipIf(!URL_)("POST /v1/auth/handoff/redeem is bound to the shop (Postg
     const code2 = await storeCode("anbu");
     expect((await redeem(code2)).statusCode).toBe(400);
     expect((await redeem(code2, "anbu")).statusCode).toBe(400);
+  });
+
+  it("the redeemed session carries the 2FA state of the session the code came from", async () => {
+    const from = async (mfaAt: Date | null) => (await service.createSession(userId, { mfaAt } as never)).session.id;
+    const passed = await service.createHandoff(userId, { fromSessionId: await from(new Date()) });
+    const oneFactor = await service.createHandoff(userId, { fromSessionId: await from(null) });
+    const auth = async (code: string) => (await service.authenticate((await redeem(code)).json().token))!.session.mfaAt;
+    expect(await auth(passed.code)).toBeInstanceOf(Date);
+    expect(await auth(oneFactor.code)).toBeNull();
+    expect(await auth((await service.createHandoff(userId)).code)).toBeNull();
   });
 
   it("business-app handoffs (no shop) still redeem anywhere", async () => {

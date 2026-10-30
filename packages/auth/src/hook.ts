@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { parseBearer, parseCookies } from "./helpers";
-import { FULL_ACCESS_ROLES } from "@rbms/core";
+import { AppError, FULL_ACCESS_ROLES } from "@rbms/core";
 import type { LoggerPort, MembershipLookup, PermissionResolverPort } from "./ports";
 import type { AuthService } from "./service";
 
@@ -26,13 +26,21 @@ export const defaultPermissionsFor = (roles: readonly string[]): string[] =>
  * Invalid, expired or revoked tokens leave `req.ctx.user` null; routes decide via `requireUser`. A POS PIN session
  * (bound to a terminal) without that terminal's device token (`ctx.device`, set by the pos device hook registered
  * before this one) fails the request with 401 `device_required`.
+ *
+ * Two-factor is enforced per request, not only at sign-in: when the shop requires 2FA (`requireMfa`) and the member is
+ * an owner, admin or manager, a session that did not pass 2FA (`mfaAt` null, e.g. signed in without the shop header)
+ * fails the request with 403 `mfa_required`. Under `mfaExemptPrefixes` (the auth routes, default "/v1/auth/") such a
+ * session keeps working without shop roles, so the user can still set 2FA up, sign out or sign in again.
+ * POS PIN sessions are exempt: they only work on a paired terminal.
  */
 export function authContextHook(
   service: AuthService,
   memberships: MembershipLookup,
   log?: LoggerPort,
   permissions?: PermissionResolverPort,
+  opts: { mfaExemptPrefixes?: readonly string[] } = {},
 ) {
+  const mfaExempt = opts.mfaExemptPrefixes ?? ["/v1/auth/"];
   return (app: FastifyInstance) => {
     app.addHook("onRequest", async (req) => {
       const token = tokenFromRequest(req, service.cookieName);
@@ -50,6 +58,12 @@ export function authContextHook(
         } catch (err) {
           log?.error({ err, tenantId: tenant.id, userId: auth.user.id }, "auth: membership lookup failed");
           throw err;
+        }
+        if (tenantRoles.length > 0 && !auth.session.mfaAt && !auth.session.terminalId && (await service.shopRequiresMfaFor(tenant.id, tenantRoles))) {
+          if (!mfaExempt.some((p) => req.url.startsWith(p))) {
+            throw new AppError(403, "mfa_required", "This shop requires two-factor sign-in. Please sign in again with your authenticator code.");
+          }
+          tenantRoles = [];
         }
         if (tenantRoles.length > 0) {
           try {
