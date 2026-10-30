@@ -38,5 +38,6 @@ and custom domains, covered by `apps/api/test/e2e/batch2.mjs` on the dedicated e
   carry `inclusiveTotal` and balance), analytics source attribution, demo content (branded hero, generated product
   images), test data kept out of the demo shops (`cleanup:e2e-data`, browser test on e2e-store).
 
-Open after 2b: per-product purchase analytics (the purchase beacon sends only the order value), a CLI for the analytics
-backfill window, CI for the e2e scripts (batch 6).
+Open after 2b: CI for the e2e scripts (batch 6). Done since: per-product purchase analytics (the purchase beacon sends
+the order lines; the analytics page shows orders and sales per product) and `pnpm --filter @rbms/api analytics:backfill
+[--days N] [--tenant <id>]` for the rollup backfill window.
