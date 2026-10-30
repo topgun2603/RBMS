@@ -142,6 +142,7 @@ export class FeaturesService {
       app: profile ? profile.features : null,
       plan: { modules: ent.modules, features: ent.features },
       toggles,
+      appId,
     });
     const value: TenantFeatures = { appId, planId: ent.planId, features, enabled };
     if (this.cache.size >= MAX_CACHE_ENTRIES) this.cache.clear();

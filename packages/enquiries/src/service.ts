@@ -2,15 +2,26 @@ import { conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFoun
 import type { Db } from "@rbms/db";
 import { and, count, desc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { formatEnquiryNumber, RateLimiter, REPEAT_WINDOW_MS, SHOP_RATE, toIndianE164, VISITOR_RATE } from "./logic";
-import { noopLogger, type EnquiryNotifyPort, type LoggerPort } from "./ports";
+import { ALERT_RATE, ENQUIRY_DIGEST_JOB, formatEnquiryNumber, MemoryWindowCounter, REPEAT_WINDOW_MS, SHOP_RATE, toIndianE164, VISITOR_RATE } from "./logic";
+import { noopLogger, type EnquiryCounterPort, type EnquiryNotifyPort, type EnquiryQueuePort, type LoggerPort } from "./ports";
 import { ENQUIRY_STATUSES, enquiries as E, type EnquiryRow, type EnquiryStatus } from "./schema";
 
 export interface EnquiriesDeps {
   db: Db;
   notify?: EnquiryNotifyPort;
+  /** Shared counter for the form's limits and the alert cap (Redis in the API). Default: this process's memory. */
+  counter?: EnquiryCounterPort;
+  /** For the digest after the alert cap; without it held-back alerts are only logged. */
+  queue?: EnquiryQueuePort;
   now?: () => Date;
   log?: LoggerPort;
+}
+
+/** Data of the `ENQUIRY_DIGEST_JOB` job. */
+export interface EnquiryDigestJob {
+  tenantId: string;
+  /** ISO time of the first held-back enquiry. */
+  since: string;
 }
 
 /** Collapses runs of whitespace; "" → undefined so empty optional fields are left out. */
@@ -152,17 +163,21 @@ export class EnquiriesService {
   private readonly notify?: EnquiryNotifyPort;
   private readonly now: () => Date;
   private readonly log: LoggerPort;
-  private readonly visitorLimiter: RateLimiter;
-  private readonly shopLimiter: RateLimiter;
+  private readonly counter: EnquiryCounterPort;
+  private readonly queue?: EnquiryQueuePort;
 
   constructor(deps: EnquiriesDeps) {
     this.db = deps.db;
     this.notify = deps.notify;
     this.now = deps.now ?? (() => new Date());
     this.log = deps.log ?? noopLogger;
-    const ms = () => this.now().getTime();
-    this.visitorLimiter = new RateLimiter(VISITOR_RATE.limit, VISITOR_RATE.windowMs, ms);
-    this.shopLimiter = new RateLimiter(SHOP_RATE.limit, SHOP_RATE.windowMs, ms);
+    this.counter = deps.counter ?? new MemoryWindowCounter(() => this.now().getTime());
+    this.queue = deps.queue;
+  }
+
+  /** Counts one hit; false once `max` hits fall in the current window. */
+  private async under(key: string, max: number, windowMs: number): Promise<boolean> {
+    return (await this.counter.hit(key, windowMs)).count <= max;
   }
 
   /**
@@ -171,7 +186,10 @@ export class EnquiriesService {
    */
   async submit(tenantId: string, input: unknown, opts: { ip?: string | null } = {}): Promise<{ ok: true; number: string | null }> {
     const b = publicEnquiryInput.parse(input);
-    if (!this.visitorLimiter.hit(`${tenantId}:${opts.ip ?? "?"}`) || !this.shopLimiter.hit(tenantId)) {
+    if (
+      !(await this.under(`enq:v:${tenantId}:${opts.ip ?? "?"}`, VISITOR_RATE.limit, VISITOR_RATE.windowMs)) ||
+      !(await this.under(`enq:s:${tenantId}`, SHOP_RATE.limit, SHOP_RATE.windowMs))
+    ) {
       throw tooMany("Too many enquiries from here: please try again in a few minutes");
     }
     if (b.website?.trim()) {
@@ -222,11 +240,37 @@ export class EnquiriesService {
     if (this.notify) {
       const n = this.notify;
       const e = { id: row.id, number: row.number, name: row.name, phone: row.phone, topic: row.topic, studentName: row.studentName, option: row.option };
-      void Promise.resolve()
-        .then(() => n.received(tenantId, e))
-        .catch((err) => this.log.warn({ err, tenantId, enquiry: row.number }, "enquiries: owner alert failed"));
+      void this.alert(tenantId, n, e, row.createdAt).catch((err) => this.log.warn({ err, tenantId, enquiry: row.number }, "enquiries: owner alert failed"));
     }
     return { ok: true, number: row.number };
+  }
+
+  /**
+   * One alert per enquiry up to `ALERT_RATE` an hour per shop (a flood of form posts must not flood the owners' phones
+   * or the WhatsApp bill); past that, one digest job when the hour's window ends (same job id = scheduled once).
+   */
+  private async alert(tenantId: string, n: EnquiryNotifyPort, e: Parameters<EnquiryNotifyPort["received"]>[1], createdAt: Date) {
+    const hit = await this.counter.hit(`enq:alert:${tenantId}`, ALERT_RATE.windowMs);
+    if (hit.count <= ALERT_RATE.limit) return n.received(tenantId, e);
+    if (!this.queue || !n.digest) {
+      this.log.info({ tenantId, enquiry: e.number }, "enquiries: owner alert held back (hourly cap)");
+      return;
+    }
+    const windowEnd = Math.round((this.now().getTime() + hit.resetMs) / 60_000);
+    const data: EnquiryDigestJob = { tenantId, since: createdAt.toISOString() };
+    await this.queue.enqueue(ENQUIRY_DIGEST_JOB, data, { delayMs: hit.resetMs, jobId: `enquiries-digest-${tenantId}-${windowEnd}` });
+  }
+
+  /** The digest job: how many enquiries came in since the first held-back one, sent to the owners in one message. */
+  async sendDigest(job: EnquiryDigestJob): Promise<void> {
+    if (!this.notify?.digest) return;
+    const since = new Date(job.since);
+    const [r] = await this.db
+      .select({ n: count() })
+      .from(E)
+      .where(and(eq(E.tenantId, job.tenantId), gte(E.createdAt, since)));
+    const n = Number(r?.n ?? 0);
+    if (n > 0) await this.notify.digest(job.tenantId, { count: n, since });
   }
 
   private listWhere(tenantId: string, q: z.output<typeof enquiryListQuery>, withStatus = true): SQL | undefined {

@@ -140,7 +140,7 @@ describe("client IP behind proxies", () => {
       corsOrigins: [],
       contextHooks: [],
       trustProxyHops,
-      modules: [defineModule({ id: "ip", routes: (r) => r.get("/", async (req) => ({ ip: req.ctx.ip })) })],
+      modules: [defineModule({ id: "ip", routes: (r) => { r.get("/", async (req) => ({ ip: req.ctx.ip })); } })],
     });
   const ipOf = async (app: Awaited<ReturnType<typeof ipServer>>, xff?: string) =>
     (await app.inject({ url: "/v1/ip", remoteAddress: "10.0.0.5", headers: xff ? { "x-forwarded-for": xff } : {} })).json().ip;
@@ -162,7 +162,7 @@ describe("client IP behind proxies", () => {
     const app = await buildServer({
       corsOrigins: [],
       contextHooks: [],
-      modules: [defineModule({ id: "host", routes: (r) => r.get("/", async (req) => ({ host: req.hostname })) })],
+      modules: [defineModule({ id: "host", routes: (r) => { r.get("/", async (req) => ({ host: req.hostname })); } })],
     });
     const res = await app.inject({ url: "/v1/host", remoteAddress: "10.0.0.5", headers: { "x-forwarded-host": "shop.example.in" } });
     expect(res.json().host).toBe("shop.example.in");

@@ -1,3 +1,4 @@
+import type { EnquiryCounterPort } from "./ports";
 /*
  * Pure helpers (no database): phone numbers, enquiry numbers and the in-memory limiter for the public form.
  */
@@ -23,38 +24,33 @@ export function toIndianE164(phone: string | null | undefined): string | null {
 /** "ENQ-0007"; numbers past 9999 just grow ("ENQ-12345"). */
 export const formatEnquiryNumber = (n: number): string => `ENQ-${String(n).padStart(4, "0")}`;
 
-/** In-memory sliding-window limiter (per process). `hit` returns false once `limit` hits fall inside `windowMs`. */
-export class RateLimiter {
-  private readonly hits = new Map<string, number[]>();
+/**
+ * Fixed-window counter in this process's memory: only the default when the host wires no shared counter (tests, a
+ * single dev process). The API passes its Redis-shared counter (apps/api http-guard.ts) so every instance counts together.
+ */
+export class MemoryWindowCounter implements EnquiryCounterPort {
+  private readonly slots = new Map<string, { count: number; resetAt: number }>();
   private calls = 0;
-
-  constructor(
-    readonly limit: number,
-    readonly windowMs: number,
-    private readonly now: () => number = Date.now,
-  ) {}
-
-  hit(key: string): boolean {
+  constructor(private readonly now: () => number = Date.now) {}
+  async hit(key: string, windowMs: number) {
     const t = this.now();
-    const from = t - this.windowMs;
-    const recent = (this.hits.get(key) ?? []).filter((x) => x > from);
-    if (++this.calls % 500 === 0) this.sweep(from);
-    if (recent.length >= this.limit) {
-      this.hits.set(key, recent);
-      return false;
+    if (++this.calls % 500 === 0) for (const [k, v] of this.slots) if (v.resetAt <= t) this.slots.delete(k);
+    let s = this.slots.get(key);
+    if (!s || s.resetAt <= t) {
+      s = { count: 0, resetAt: t + windowMs };
+      this.slots.set(key, s);
     }
-    recent.push(t);
-    this.hits.set(key, recent);
-    return true;
-  }
-
-  private sweep(from: number) {
-    for (const [k, v] of this.hits) if (!v.some((x) => x > from)) this.hits.delete(k);
+    s.count += 1;
+    return { count: s.count, resetMs: s.resetAt - t };
   }
 }
 
 /** Per visitor (shop + IP): a few tries in ten minutes. Per shop: a flood guard. */
 export const VISITOR_RATE = { limit: 5, windowMs: 10 * 60_000 };
 export const SHOP_RATE = { limit: 300, windowMs: 60 * 60_000 };
+/** Owner alerts per shop: one per enquiry up to `limit` an hour, then one digest when the hour is over. */
+export const ALERT_RATE = { limit: 10, windowMs: 60 * 60_000 };
+/** Background job that sends the digest of enquiries held back by `ALERT_RATE`. */
+export const ENQUIRY_DIGEST_JOB = "enquiries.alert-digest";
 /** The same phone sending the same topic again within this window gets the first enquiry back (double taps). */
 export const REPEAT_WINDOW_MS = 30 * 60_000;

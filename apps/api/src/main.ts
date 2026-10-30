@@ -1,4 +1,3 @@
-import { createRedisWindowCounter } from "@rbms/jobs";
 import { LOG_REDACT_PATHS } from "@rbms/monitoring";
 import { pino } from "pino";
 import { env } from "./env";
@@ -15,9 +14,9 @@ const log = pino({
 });
 
 const kit = createKit(env, log);
-// Rate-limit counters are shared through Redis (all API instances); in-memory when REDIS_URL=memory.
+// Rate-limit counters are shared through Redis (all API instances, kit.rateCounter); in-memory when REDIS_URL=memory.
 const scale = env.NODE_ENV === "production" ? 1 : 10;
-const rateCounter = env.REDIS_URL === "memory" ? null : createRedisWindowCounter(env.REDIS_URL);
+const rateCounter = kit.rateCounter;
 const app = await buildServer({
   loggerInstance: log,
   corsOrigins: env.CORS_ORIGINS.split(",").map((s) => corsOrigin(s.trim())),

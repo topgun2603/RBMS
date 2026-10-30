@@ -37,17 +37,21 @@ A `DemoStore` may carry `posts` (published by the seed, matched by slug) and, fo
 
 ## Enquiries module (`@rbms/enquiries`, `/v1/enquiries`, migration `0056_enquiries`)
 
-Feature `enquiries` (in the EC, PH, RS and SV profiles, every plan; shop switch), permission `enquiries.manage`.
+Feature `enquiries` (in the EC, PH, RS, SV and SC profiles, every plan; shop switch, on by default only in the School
+app SC: `defaultOnApps: ["SC"]`, other shops switch it on), permission `enquiries.manage`.
 
 - **Website** (no sign-in, store proxy allows only this path): `POST /public { name, phone, email?, topic?, studentName?,
   option?, message?, source?, noticeVersion?, website? }` → `{ ok, number: "ENQ-0007" }`. Indian mobile only (stored E.164).
-  5 tries per shop + IP in 10 min and 300 per shop an hour (429 `rate_limited`, in-memory per process). `website` is a
+  5 tries per shop + IP in 10 min and 300 per shop an hour (429 `rate_limited`; counted in the API's Redis-shared
+  rate-limit counter, `sharedWindowCounter` in `apps/api/src/http-guard.ts`, so all instances count together). `website` is a
   honeypot: filled → `{ ok, number: null }`, nothing stored. Same phone + topic within 30 min → the first enquiry's number.
 - **Staff**: `GET /enquiries` (paged; q, status, topic, from, to; `facets.status`, `topics`), `GET|PATCH|DELETE
   /enquiries/:id` (`PATCH { status?, note? }`; leaving `new` sets `contactedAt`), `GET /summary` (dashboard tile).
   Statuses new → contacted → follow_up → converted ("Admitted" for a school) / closed.
 - **Owner alert** (`apps/api/src/kit-enquiries.ts`, template `enquiry.received`): each owner / admin gets one alert on
-  the first channel that takes it: push, else WhatsApp, else email, linking to `/enquiries/:id` in their app.
+  the first channel that takes it: push, else WhatsApp, else email, linking to `/enquiries/:id` in their app. At most
+  10 alerts per shop an hour (`ALERT_RATE`); past that one job `enquiries.alert-digest` runs when the hour's window ends
+  and sends `enquiry.digest` ("N more website enquiries came in this past hour", link to `/enquiries`).
 - **Privacy (DPDP)**: the notice lists enquiries (what, why, how long) when the feature is on; rights requests find,
   export and erase enquiries by phone or email (handler `enquiries`); retention category `website_enquiries` (default 2
   years, min 30 days, delete). The form shows the privacy notice line and sends the notice version it showed.

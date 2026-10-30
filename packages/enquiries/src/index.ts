@@ -8,7 +8,7 @@ export * from "./schema";
 export * from "./logic";
 export * from "./ports";
 export { EnquiriesService, ENQUIRY_SORT, enquiryListQuery, enquiryPatch, publicEnquiryInput } from "./service";
-export type { EnquiriesDeps, EnquiriesSummary, EnquiryListQuery, EnquiryView, PublicEnquiryInput } from "./service";
+export type { EnquiriesDeps, EnquiryDigestJob, EnquiriesSummary, EnquiryListQuery, EnquiryView, PublicEnquiryInput } from "./service";
 export { enquiriesRoutes } from "./routes";
 
 /**

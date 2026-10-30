@@ -246,6 +246,7 @@ describe("batch 3 templates", () => {
     "chat.message": ["shop", "sender", "preview", "title", "link"],
     "developer.webhook_disabled": ["app", "url", "failures"],
     "enquiry.received": ["shop", "number", "name", "phone", "about", "link"],
+    "enquiry.digest": ["shop", "count", "link"],
   };
   const sample = {
     app: "SriKit",
@@ -272,12 +273,13 @@ describe("batch 3 templates", () => {
     name: "Meena",
     phone: "+919876543210",
     about: " - Admission 2027-28, Class 1",
+    count: "14",
   };
   const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\[~\]|€]*$/;
 
   it("ships sms, whatsapp and email (and push for chat) in English and Tamil", () => {
     for (const key of Object.keys(VARS)) {
-      const channels = key === "chat.message" || key === "enquiry.received" ?(["sms", "whatsapp", "email", "push"] as const) : (["sms", "whatsapp", "email"] as const);
+      const channels = key === "chat.message" || key === "enquiry.received" || key === "enquiry.digest" ?(["sms", "whatsapp", "email", "push"] as const) : (["sms", "whatsapp", "email"] as const);
       for (const channel of channels) {
         for (const locale of ["en", "ta"]) {
           const t = pickTemplate([], { tenantId: null, key, channel, locale })?.template;

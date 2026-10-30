@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatEnquiryNumber, RateLimiter, toIndianE164 } from "./logic";
+import { featureDefaultOn } from "@rbms/core";
+import { formatEnquiryNumber, MemoryWindowCounter, toIndianE164 } from "./logic";
+import { ENQUIRIES_FEATURES } from "./ports";
 import { enquiryListQuery, enquiryPatch, publicEnquiryInput } from "./service";
 
 describe("toIndianE164", () => {
@@ -18,16 +20,23 @@ describe("formatEnquiryNumber", () => {
   });
 });
 
-describe("RateLimiter", () => {
-  it("stops after the limit and lets through once the window passes", () => {
+describe("enquiries feature default", () => {
+  it("is on by default only for the school app", () => {
+    const [f] = ENQUIRIES_FEATURES;
+    expect(featureDefaultOn(f!, "SC")).toBe(true);
+    for (const app of ["EC", "BL", "PH", "RS", "SV", null]) expect(featureDefaultOn(f!, app)).toBe(false);
+  });
+});
+
+describe("MemoryWindowCounter", () => {
+  it("counts per key and starts again once the window passes", async () => {
     let t = 0;
-    const l = new RateLimiter(2, 1000, () => t);
-    expect(l.hit("a")).toBe(true);
-    expect(l.hit("a")).toBe(true);
-    expect(l.hit("a")).toBe(false);
-    expect(l.hit("b")).toBe(true);
+    const c = new MemoryWindowCounter(() => t);
+    expect((await c.hit("a", 1000)).count).toBe(1);
+    expect(await c.hit("a", 1000)).toEqual({ count: 2, resetMs: 1000 });
+    expect((await c.hit("b", 1000)).count).toBe(1);
     t = 1001;
-    expect(l.hit("a")).toBe(true);
+    expect((await c.hit("a", 1000)).count).toBe(1);
   });
 });
 
