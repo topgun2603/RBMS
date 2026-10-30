@@ -1671,7 +1671,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     profile: (appId) => features.service.getProfile(appId),
     settings: { get: () => solutionSettings.get(), setApp: (patch) => solutionSettings.setApp(patch) },
   });
-  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, log });
+  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, stockBatches: { trackAll: (tenantId) => inventory.service.batches.saveSettings(tenantId, { trackAll: true }) }, log });
   const solutions = createSolutions({ db, starter, presets, features: features.service, tenancy: tenancy.service });
   // Mobile apps (docs/market-plan.md, M0): forced updates and retry-safe writes.
   const mobile = createMobile({ min: parseVersionList(env.MOBILE_MIN_VERSIONS), latest: parseVersionList(env.MOBILE_LATEST_VERSIONS) });

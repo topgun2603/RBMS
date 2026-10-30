@@ -1,3 +1,4 @@
+import { JOB_TEMPLATES } from "@rbms/jobcards";
 import { describe, expect, it } from "vitest";
 import type { FeatureDef } from "@rbms/core";
 import { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
@@ -108,6 +109,17 @@ describe("solution presets for the batch 9 packs", () => {
   });
 });
 
+describe("workshop packs and the job card templates", () => {
+  it("every pack's jobTemplate is a real job card template, and a pack with one keeps job cards on", () => {
+    for (const id of BUSINESS_TYPES) {
+      const t = PACKS[id].jobTemplate;
+      if (!t) continue;
+      expect(JOB_TEMPLATES as readonly string[], id).toContain(t);
+      expect(PACKS[id].off ?? [], id).not.toContain("jobcards");
+    }
+  });
+});
+
 describe("starter: the trade the owner typed", () => {
   const tenant = (appId: string) => ({ id: "t1", name: "Test Shop", appId });
   function setup() {
@@ -145,6 +157,24 @@ describe("starter: the trade the owner typed", () => {
     expect((await starter.apply(tenant("RS"), null, { label: "dhaba" })).id).toBe("restaurant");
     expect(patches[0]).toEqual({ businessType: "pharmacy" });
     expect(patches[1]).toEqual({ businessType: "restaurant", businessLabel: "dhaba" });
+  });
+  it("agri inputs switch batch and expiry tracking on for the shop; other trades leave it alone", async () => {
+    const tracked: string[] = [];
+    const deps = {
+      storeSettings: { get: async () => ({}), setTenant: async () => undefined },
+      branding: { update: async () => undefined },
+      catalogue: { listCategories: async () => ({ items: [{}] }), createCategory: async () => undefined },
+      cms: { getHome: async () => ({ published: {} }), saveHomeDraft: async () => undefined, publishHome: async () => undefined },
+      stockBatches: { trackAll: async (id: string) => void tracked.push(id) },
+      log: { info: () => undefined, warn: () => undefined },
+    } as unknown as StarterDeps;
+    const starter = createStarter(deps);
+    await starter.apply({ id: "t-agri", name: "Uzhavan Agro", appId: "BL" }, "agri_inputs");
+    await starter.apply({ id: "t-tiles", name: "Tiles", appId: "BL" }, "tiles_sanitary");
+    expect(tracked).toEqual(["t-agri"]);
+    // A failing switch does not stop the rest of the setup.
+    const failing = createStarter({ ...deps, stockBatches: { trackAll: async () => Promise.reject(new Error("db down")) } } as unknown as StarterDeps);
+    await expect(failing.apply({ id: "t-agri2", name: "Agro", appId: "BL" }, "agri_inputs")).resolves.toMatchObject({ id: "agri_inputs" });
   });
   it("caps the label at 60 characters", async () => {
     const { starter, patches } = setup();

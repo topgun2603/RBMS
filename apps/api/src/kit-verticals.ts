@@ -26,6 +26,8 @@ export interface StarterDeps {
   /** The solution preset: which of the app's optional features the shop starts with on (written as shop switches). */
   presets?: SolutionPresets;
   features?: { applyToggles(tenantId: string, toggles: Readonly<Record<string, boolean>>): Promise<number> };
+  /** Batch and expiry on every item (inventory batch settings `trackAll`), for trades whose pack asks for it (`trackBatches`). */
+  stockBatches?: { trackAll(tenantId: string): Promise<unknown> };
   cms: {
     getHome(tenantId: string): Promise<{ published: unknown | null }>;
     saveHomeDraft(tenantId: string, input: unknown): Promise<unknown>;
@@ -61,6 +63,10 @@ export function createStarter(deps: StarterDeps) {
       await deps.features
         .applyToggles(tenant.id, toggles)
         .catch((err: unknown) => deps.log.warn({ err, tenantId: tenant.id }, "starter: could not apply the solution preset"));
+    }
+
+    if (pack.trackBatches && deps.stockBatches) {
+      await deps.stockBatches.trackAll(tenant.id).catch((err: unknown) => deps.log.warn({ err, tenantId: tenant.id }, "starter: could not switch batch tracking on"));
     }
 
     const preset = themePreset(pack.preset);

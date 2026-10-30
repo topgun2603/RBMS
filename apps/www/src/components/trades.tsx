@@ -3,7 +3,7 @@ import {
   ArmchairIcon, CakeIcon, CoffeeIcon, CookingPotIcon, DumbbellIcon, FishIcon, FlameIcon, FlowerIcon, FootprintsIcon, GemIcon, GiftIcon, GlassesIcon,
   HammerIcon, HeadphonesIcon, LeafIcon, PawPrintIcon, PillIcon, PuzzleIcon, ScissorsIcon, ShirtIcon, ShoppingBasketIcon, SmartphoneIcon, SparklesIcon,
   TrophyIcon, UtensilsCrossedIcon, WrenchIcon, BookOpenIcon, CpuIcon, FlaskConicalIcon, GraduationCapIcon,
-  BoneIcon, CameraIcon, CarIcon, ChefHatIcon, LayersIcon, MusicIcon, PaintRollerIcon, PartyPopperIcon, PrinterIcon, ReceiptIcon, SnowflakeIcon, StoreIcon, WashingMachineIcon, ZapIcon, LayoutGridIcon, BriefcaseIcon,
+  BoneIcon, CameraIcon, CarIcon, ChefHatIcon, LayersIcon, MusicIcon, PaintRollerIcon, PartyPopperIcon, PrinterIcon, ReceiptIcon, SnowflakeIcon, StoreIcon, WashingMachineIcon, ZapIcon, LayoutGridIcon, BriefcaseIcon, BikeIcon, SproutIcon, CogIcon,
 } from "lucide-react";
 import type { Translator } from "@rbms/i18n/client";
 import { Card } from "@rbms/ui/components/card";
@@ -21,6 +21,7 @@ const ICONS: Record<BusinessType, React.ComponentType<{ className?: string }>> =
   general_shop: StoreIcon, general_counter: ReceiptIcon, general_services: BriefcaseIcon,
   textiles_wholesale: LayersIcon, catering: ChefHatIcon, pet_grooming: BoneIcon, photo_studio: CameraIcon, laundry: WashingMachineIcon, event_decor: PartyPopperIcon, ac_service: SnowflakeIcon,
   print_shop: PrinterIcon, tuition: BookOpenIcon, dance_music: MusicIcon, yoga: LeafIcon, driving_school: CarIcon, paints: PaintRollerIcon, electricals: ZapIcon, tiles_sanitary: LayoutGridIcon,
+  two_wheeler_service: BikeIcon, car_service: CarIcon, agri_inputs: SproutIcon, auto_parts: CogIcon,
 };
 const TONES = ["bg-primary/10 text-primary", "bg-marigold/20 text-marigold-ink", "bg-leaf/15 text-leaf"];
 

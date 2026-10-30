@@ -10,8 +10,8 @@ export const TRADE_GROUPS: { key: string; ids: BusinessType[] }[] = [
   { key: "food", ids: ["grocery", "bakery", "fresh", "organic", "restaurant", "cloud_kitchen", "tea_stall", "catering"] },
   { key: "fashion", ids: ["fashion", "footwear", "jewellery", "cosmetics", "home_decor", "furniture", "florist_pooja", "crackers", "textiles_wholesale"] },
   { key: "health", ids: ["pharmacy", "optical", "salon", "spa", "gym"] },
-  { key: "tools", ids: ["hardware", "electronics", "mobile_accessories", "repair", "stationery", "toys", "sports", "pet_shop", "tailoring", "paints", "electricals", "tiles_sanitary", "print_shop"] },
-  { key: "services", ids: ["pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service"] },
+  { key: "tools", ids: ["hardware", "electronics", "mobile_accessories", "repair", "stationery", "toys", "sports", "pet_shop", "tailoring", "paints", "electricals", "tiles_sanitary", "print_shop", "agri_inputs", "auto_parts"] },
+  { key: "services", ids: ["pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service", "two_wheeler_service", "car_service"] },
   { key: "classes", ids: ["school", "tuition", "dance_music", "yoga", "driving_school"] },
 ];
 

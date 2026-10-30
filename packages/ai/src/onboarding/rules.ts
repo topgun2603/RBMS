@@ -200,6 +200,22 @@ export const TRADE_WORDS: Record<BusinessType, Kw[]> = {
     ...k(5, "tiles and sanitary", "tiles shop", "tile shop", "tiles store", "sanitaryware shop", "bathroom fittings", "bath fittings", "granite and marble", "டைல்ஸ்"),
     ...k(3, "tiles", "tile", "sanitary ware", "vitrified", "floor tiles", "wall tiles", "granite", "marble", "closet", "washbasin"),
   ],
+  two_wheeler_service: [
+    ...k(5, "two wheeler service", "two wheeler workshop", "bike service", "bike service centre", "bike workshop", "bike garage", "scooter service", "motorcycle service", "இருசக்கர வாகன சர்வீஸ்", "பைக் சர்வீஸ்"),
+    ...k(3, "bike repair", "scooter repair", "motorcycle repair", "two wheeler mechanic", "puncture", "பைக் பழுது"),
+  ],
+  car_service: [
+    ...k(5, "car service", "car service centre", "car garage", "car workshop", "car repair", "car mechanic", "automobile workshop", "கார் சர்வீஸ்", "கார் கேரேஜ்"),
+    ...k(3, "car wash", "car detailing", "denting and painting", "four wheeler service", "garage", "கார் வாஷ்"),
+  ],
+  agri_inputs: [
+    ...k(5, "agri inputs", "agri shop", "agro centre", "agro shop", "fertiliser shop", "fertilizer shop", "seed shop", "pesticide shop", "farm supplies", "விவசாய இடுபொருள்", "உரக்கடை"),
+    ...k(3, "fertiliser", "fertilizer", "pesticide", "seeds", "insecticide", "sprayer", "drip irrigation", "agriculture", "உரம்", "விதை"),
+  ],
+  auto_parts: [
+    ...k(5, "auto parts", "auto spares", "spare parts shop", "automobile spares", "bike spares", "car spares", "two wheeler spares", "vehicle spares", "motor parts", "ஆட்டோ உதிரிபாகம்"),
+    ...k(3, "spares", "brake pads", "filters", "clutch plate", "tyre shop", "battery shop", "lubricants", "engine oil"),
+  ],
 };
 
 const ORDERED_WORDS: { trade: BusinessType; word: string; weight: number; rx: RegExp }[] = BUSINESS_TYPES.flatMap((trade) => TRADE_WORDS[trade].map(([word, weight]) => ({ trade, word: fold(word), weight, rx: rxFor(fold(word)) }))).sort(

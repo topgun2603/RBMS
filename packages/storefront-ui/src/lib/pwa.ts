@@ -142,6 +142,10 @@ export const PACK_CATEGORIES: Record<BusinessType, string[]> = {
   paints: ["shopping", "utilities"],
   electricals: ["shopping", "utilities"],
   tiles_sanitary: ["shopping", "utilities"],
+  two_wheeler_service: ["utilities", "business"],
+  car_service: ["utilities", "business"],
+  agri_inputs: ["shopping", "business"],
+  auto_parts: ["shopping", "utilities"],
 };
 
 export function manifestCategories(businessType: string | null | undefined): string[] {

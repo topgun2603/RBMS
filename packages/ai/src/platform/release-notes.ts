@@ -22,7 +22,7 @@ export const NOTE_APPS = { BL: "Billing", EC: "Online shop", PH: "Pharmacy", RS:
 export type NoteApp = keyof typeof NOTE_APPS;
 /** Trades (packages/verticals BUSINESS_TYPES). Kept here so the AI package does not need the verticals data. */
 export const NOTE_TRADES = [
-  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa", "school", "general_shop", "general_counter", "general_services", "textiles_wholesale", "catering", "pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service", "print_shop", "tuition", "dance_music", "yoga", "driving_school", "paints", "electricals", "tiles_sanitary",
+  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa", "school", "general_shop", "general_counter", "general_services", "textiles_wholesale", "catering", "pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service", "print_shop", "tuition", "dance_music", "yoga", "driving_school", "paints", "electricals", "tiles_sanitary", "two_wheeler_service", "car_service", "agri_inputs", "auto_parts",
 ] as const;
 
 // ------------------------------------------------------------------ commits

@@ -80,6 +80,10 @@ const LAYOUT: Record<BusinessType, Part[]> = {
   paints: ["hero-split", "category-mosaic", "usp", "faq", "location", "newsletter"],
   electricals: ["hero-split", "categories", "usp", "faq", "location"],
   tiles_sanitary: ["hero", "category-mosaic", "usp", "faq", "location"],
+  two_wheeler_service: ["hero", "appointment", "categories", "usp", "testimonials", "faq", "location"],
+  car_service: ["hero-split", "appointment", "categories", "usp", "testimonials", "faq", "location"],
+  agri_inputs: ["hero-split", "categories", "usp", "faq", "location", "newsletter"],
+  auto_parts: ["hero", "category-mosaic", "usp", "faq", "location"],
 };
 
 /** Packs without stock artwork of their own borrow a near trade's (drawn in that trade's look, which the pack starts on). */
@@ -112,6 +116,10 @@ const STOCK_ART: Partial<Record<BusinessType, string>> = { organic: "fresh", foo
   paints: "hardware",
   electricals: "electronics",
   tiles_sanitary: "hardware",
+  two_wheeler_service: "repair",
+  car_service: "repair",
+  agri_inputs: "fresh",
+  auto_parts: "hardware",
 };
 
 // ------------------------------------------------------------------ trade words
@@ -208,6 +216,16 @@ const SERVICES: Partial<Record<BusinessType, { name: L; duration?: L }[]>> = {
     { name: l("Learner's licence help", "எல்.எல்.ஆர். உதவி"), duration: l("20 min", "20 நிமி") },
     { name: l("Course counselling", "பயிற்சித் திட்ட ஆலோசனை"), duration: l("15 min", "15 நிமி") },
   ],
+  two_wheeler_service: [
+    { name: l("General service", "பொது சர்வீஸ்"), duration: l("2 hours", "2 மணி நேரம்") },
+    { name: l("Oil change", "ஆயில் மாற்றம்"), duration: l("30 min", "30 நிமி") },
+    { name: l("Brake and clutch check", "பிரேக், கிளட்ச் சோதனை"), duration: l("45 min", "45 நிமி") },
+  ],
+  car_service: [
+    { name: l("Periodic service", "காலமுறை சர்வீஸ்"), duration: l("4 hours", "4 மணி நேரம்") },
+    { name: l("AC check and gas top-up", "ஏசி சோதனை, கேஸ் நிரப்புதல்"), duration: l("2 hours", "2 மணி நேரம்") },
+    { name: l("Wash and interior cleaning", "வாஷ், உள் சுத்தம்"), duration: l("90 min", "90 நிமி") },
+  ],
 };
 
 const APPOINTMENT: Partial<Record<BusinessType, { heading: L; text: L }>> = {
@@ -229,6 +247,8 @@ const APPOINTMENT: Partial<Record<BusinessType, { heading: L; text: L }>> = {
   dance_music: { heading: l("Book a trial class", "சோதனை வகுப்பை புக் செய்யுங்கள்"), text: l("Try a class first. Tell us the age and level and we suggest the right batch.", "முதலில் ஒரு வகுப்பில் கலந்து பாருங்கள். வயதையும் நிலையையும் சொல்லுங்கள், பொருத்தமான பேட்சைச் சொல்வோம்.") },
   yoga: { heading: l("Join a free trial class", "இலவச சோதனை வகுப்பில் சேருங்கள்"), text: l("Pick a batch that suits you; wear comfortable clothes and come on an empty stomach.", "உங்களுக்கு ஏற்ற பேட்சைத் தேர்ந்தெடுங்கள்; வசதியான ஆடை அணிந்து, வெறும் வயிற்றில் வாருங்கள்.") },
   driving_school: { heading: l("Book your first lesson", "முதல் பாடத்தை புக் செய்யுங்கள்"), text: l("Choose car or two-wheeler and a time; bring your learner's licence if you have one.", "கார் அல்லது இருசக்கர வாகனத்தையும் நேரத்தையும் தேர்ந்தெடுங்கள்; எல்.எல்.ஆர். இருந்தால் கொண்டு வாருங்கள்.") },
+  two_wheeler_service: { heading: l("Book a bike service", "பைக் சர்வீஸை புக் செய்யுங்கள்"), text: l("Pick a service and a time; tell us the registration number and we keep the history for your next visit.", "சேவையையும் நேரத்தையும் தேர்ந்தெடுங்கள்; பதிவு எண்ணைச் சொல்லுங்கள், அடுத்த வருகைக்கு வரலாற்றைப் பதிந்து வைப்போம்.") },
+  car_service: { heading: l("Book a car service", "கார் சர்வீஸை புக் செய்யுங்கள்"), text: l("Pick a service and a drop-off time; we send the estimate for your approval before any work starts.", "சேவையையும் கொண்டு வரும் நேரத்தையும் தேர்ந்தெடுங்கள்; வேலை தொடங்கும் முன் உங்கள் ஒப்புதலுக்கு மதிப்பீடு அனுப்புவோம்.") },
 };
 
 type Dish = { name: L; price: number; diet?: "veg" | "nonveg" | "egg" };
@@ -516,6 +536,26 @@ const FAQ: Partial<Record<BusinessType, { q: L; a: L }[]>> = {
     { q: l("Do you deliver to site?", "கட்டுமான இடத்துக்கு டெலிவரி உண்டா?"), a: l("Yes, with careful handling; we tell you the charge for your area before you order.", "ஆம், கவனமாகக் கையாண்டு; ஆர்டருக்கு முன் உங்கள் பகுதிக்கான கட்டணத்தைச் சொல்வோம்.") },
     { q: l("Can I return unopened boxes?", "திறக்காத பெட்டிகளைத் திருப்பலாமா?"), a: l("Unopened boxes of the same batch can be returned within a few days; ask us for the terms.", "அதே பேட்சின் திறக்காத பெட்டிகளைச் சில நாட்களுக்குள் திருப்பலாம்; விதிமுறைகளைக் கேளுங்கள்.") },
   ],
+  two_wheeler_service: [
+    { q: l("How long does a service take?", "சர்வீஸுக்கு எவ்வளவு நேரம்?"), a: l("A general service is usually ready the same day; we tell you when you drop the bike.", "பொது சர்வீஸ் பொதுவாக அதே நாளில் தயார்; பைக்கைக் கொடுக்கும்போது சொல்வோம்.") },
+    { q: l("Will you remind me of the next service?", "அடுத்த சர்வீஸை நினைவூட்டுவீர்களா?"), a: l("Yes, we message you on WhatsApp or SMS when it is due, by months or kilometres.", "ஆம், மாதங்கள் அல்லது கிலோமீட்டர் கணக்கில் நேரம் வரும்போது வாட்ஸ்அப் அல்லது SMS அனுப்புவோம்.") },
+    { q: l("Do you tell me the price first?", "முதலில் விலை சொல்வீர்களா?"), a: l("Yes, we tell you the cost before any extra work is done.", "ஆம், கூடுதல் வேலை செய்யும் முன் செலவைச் சொல்வோம்.") },
+  ],
+  car_service: [
+    { q: l("Do I approve the estimate?", "மதிப்பீட்டை நான் ஒப்புக்கொள்ள வேண்டுமா?"), a: l("Yes, we send the estimate to your phone and start only after you approve it.", "ஆம், மதிப்பீட்டை உங்கள் ஃபோனுக்கு அனுப்பி, நீங்கள் ஒப்புக்கொண்ட பிறகே தொடங்குவோம்.") },
+    { q: l("Can I see where my car is?", "என் கார் எங்கே என்று பார்க்கலாமா?"), a: l("Yes, the link in your message shows the status of your job.", "ஆம், செய்தியில் உள்ள இணைப்பு உங்கள் வேலையின் நிலையைக் காட்டும்.") },
+    { q: l("Do you give a warranty on work?", "வேலைக்கு உத்தரவாதம் உண்டா?"), a: l("Yes, on labour and spare parts; ask us for the terms.", "ஆம், உழைப்புக்கும் உதிரிபாகங்களுக்கும்; விதிமுறைகளைக் கேளுங்கள்.") },
+  ],
+  agri_inputs: [
+    { q: l("What should I use for my crop?", "என் பயிருக்கு எதைப் பயன்படுத்த வேண்டும்?"), a: l("Tell us the crop, the season and the problem; we suggest the right seed, fertiliser or spray and the dose per acre.", "பயிர், பருவம், பிரச்சினையைச் சொல்லுங்கள்; பொருத்தமான விதை, உரம், தெளிப்பு, ஏக்கருக்கான அளவைச் சொல்வோம்.") },
+    { q: l("Is the stock fresh?", "இருப்பு புதியதா?"), a: l("We track batch and expiry on every pack and sell the oldest in-date stock first.", "ஒவ்வொரு பேக்கிலும் பேட்ச், காலாவதியைக் கண்காணித்து, பழைய ஆனால் காலாவதியாகாத இருப்பை முதலில் விற்கிறோம்.") },
+    { q: l("Do you give a GST bill?", "GST பில் தருவீர்களா?"), a: l("Yes, with batch details; ask us for rates on bulk orders.", "ஆம், பேட்ச் விவரங்களுடன்; மொத்த ஆர்டருக்கு விலை கேளுங்கள்.") },
+  ],
+  auto_parts: [
+    { q: l("How do I know a part fits?", "பாகம் பொருந்தும் என்று எப்படி அறிவது?"), a: l("Each item lists the part number and the vehicles it fits; send us your model and year if unsure.", "ஒவ்வொரு பொருளிலும் பாக எண், பொருந்தும் வாகனங்கள் உண்டு; உறுதியில்லையெனில் மாடல், ஆண்டை அனுப்புங்கள்.") },
+    { q: l("Are the parts genuine?", "பாகங்கள் அசலா?"), a: l("We sell OEM and trusted aftermarket brands and say which is which.", "OEM மற்றும் நம்பகமான ஆஃப்டர்மார்க்கெட் பிராண்டுகளை விற்று, எது எதுவென்று சொல்கிறோம்.") },
+    { q: l("Do you give garage rates?", "கேரேஜ் விலை உண்டா?"), a: l("Yes, ask us for a quote on bulk and repeat orders; we give a GST bill.", "ஆம், மொத்த, தொடர் ஆர்டர்களுக்கு விலைப்பட்டியல் கேளுங்கள்; GST பில் தருவோம்.") },
+  ],
 };
 
 /** Draft customer words (hidden until the owner replaces them with real ones). */
@@ -561,6 +601,21 @@ const HOURS: Partial<Record<BusinessType, { label: L; value: L }[]>> = {
   ],
   ac_service: [
     { label: l("Every day", "தினமும்"), value: l("8:00 am – 8:00 pm", "காலை 8:00 – இரவு 8:00") },
+  ],
+  two_wheeler_service: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("8:30 am – 7:30 pm", "காலை 8:30 – இரவு 7:30") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("9:00 am – 1:00 pm", "காலை 9:00 – மதியம் 1:00") },
+  ],
+  car_service: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("8:30 am – 7:00 pm", "காலை 8:30 – மாலை 7:00") },
+  ],
+  agri_inputs: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("7:00 am – 8:00 pm", "காலை 7:00 – இரவு 8:00") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("7:00 am – 1:00 pm", "காலை 7:00 – மதியம் 1:00") },
+  ],
+  auto_parts: [
+    { label: l("Mon – Sat", "திங்கள் – சனி"), value: l("9:00 am – 8:30 pm", "காலை 9:00 – இரவு 8:30") },
+    { label: l("Sunday", "ஞாயிறு"), value: l("9:00 am – 1:00 pm", "காலை 9:00 – மதியம் 1:00") },
   ],
 };
 const DEFAULT_HOURS = [

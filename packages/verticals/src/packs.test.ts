@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { APP_IDS, BUSINESS_TYPES, copyFor, DEFAULT_PACK_FOR_APP, GENERAL_PACKS, isGeneralPack, PACK_GROUPS, packFor, packOrDefault, packPickerGroups, packsByGroup, PACKS, resolvePack, SIZE_GUIDES, starterHome } from "./index";
 
 describe("business packs", () => {
-  it("ships its solutions (batches 1 to 9 and the three general packs), each with a group, a real theme preset and full copy in both languages", () => {
-    expect(BUSINESS_TYPES.length).toBeGreaterThanOrEqual(48);
+  it("ships its solutions (batches 1 to 10 and the three general packs), each with a group, a real theme preset and full copy in both languages", () => {
+    expect(BUSINESS_TYPES.length).toBeGreaterThanOrEqual(52);
     expect(Object.keys(PACKS).sort()).toEqual([...BUSINESS_TYPES].sort());
     expect(new Set(BUSINESS_TYPES).size).toBe(BUSINESS_TYPES.length);
     const presets = new Set(THEME_PRESETS.map((p) => p.id));
@@ -275,6 +275,47 @@ describe("business packs", () => {
     expect(PACKS.tuition.copy.en.cta).toMatch(/demo/i);
     // Wholesale cloth is local-made; "Nobody turned away": no pack here leaks clothing words into other trades' copy.
     for (const id of Object.keys(want)) expect(JSON.stringify(PACKS[id as keyof typeof want].copy.en), id).not.toMatch(/kurti|saree/i);
+  });
+  it("batch 10: garages, agri inputs and auto parts have their app, group, job template, words and starter home", () => {
+    const want = {
+      two_wheeler_service: { app: "SV", group: "auto", job: "vehicle", aliases: ["bike service", "scooter repair", "two wheeler workshop"] },
+      car_service: { app: "SV", group: "auto", job: "vehicle", aliases: ["car garage", "car repair", "car wash"] },
+      agri_inputs: { app: "BL", group: "retail", job: undefined, aliases: ["fertiliser shop", "seed shop", "agro centre"] },
+      auto_parts: { app: "BL", group: "auto", job: undefined, aliases: ["auto spares", "bike spares", "tyre shop"] },
+    } as const;
+    for (const [id, { app, group, job, aliases }] of Object.entries(want)) {
+      const p = PACKS[id as keyof typeof want];
+      expect(p, id).toMatchObject({ id, appId: app, group, sizeGuide: null });
+      expect(p.jobTemplate, id).toBe(job);
+      expect(p.usps, id).toHaveLength(3);
+      expect(p.categories.length, id).toBeGreaterThanOrEqual(5);
+      expect(p.nameTa, id).toMatch(/[஀-௿]/);
+      for (const lang of ["en", "ta"] as const) {
+        for (const [k, v] of Object.entries(p.copy[lang])) expect(v.trim(), `${id}.${lang}.${k}`).not.toBe("");
+        for (const k of ["search", "heroHeading", "heroSubheading"] as const) expect(BUSINESS_TYPES.filter((t) => PACKS[t].copy[lang][k] === p.copy[lang][k]), `${id}.${lang}.${k}`).toEqual([id]);
+        const home = starterHome(p, "Shop", lang);
+        const faq = home.find((s) => s.type === "faq");
+        expect(faq && "items" in faq ? faq.items.length : 0, `${id} faq ${lang}`).toBeGreaterThanOrEqual(3);
+        if (app === "SV") {
+          const appt = home.find((s) => s.type === "appointment");
+          expect(appt && "services" in appt ? appt.services.length : 0, `${id} services ${lang}`).toBe(3);
+        }
+      }
+      for (const a of aliases) expect(packFor(a)?.id, a).toBe(id);
+      expect(p.ctaHref ?? "/search", id).toBe(app === "SV" ? "/book" : "/search");
+    }
+    // Garages keep job cards and bookings (they are workshops); the shops don't book.
+    for (const id of ["two_wheeler_service", "car_service"] as const) {
+      expect(PACKS[id].off ?? [], id).not.toContain("jobcards");
+      expect(PACKS[id].off ?? [], id).not.toContain("bookings");
+    }
+    expect(PACKS.agri_inputs.trackBatches).toBe(true);
+    expect(BUSINESS_TYPES.filter((t) => PACKS[t].trackBatches)).toEqual(["agri_inputs"]);
+    expect(PACKS.auto_parts.editor.attributes).toEqual(expect.arrayContaining(["Part number", "Fits vehicles"]));
+    // The workshop packs name the card template they start on; it is always one of the job card templates.
+    expect(Object.fromEntries(BUSINESS_TYPES.filter((t) => PACKS[t].jobTemplate).map((t) => [t, PACKS[t].jobTemplate]))).toEqual({
+      repair: "device", tailoring: "garment", optical: "eyewear", laundry: "laundry", ac_service: "appliance", two_wheeler_service: "vehicle", car_service: "vehicle",
+    });
   });
   it("picker groups: every real trade once, headings in both languages, no general pack, the app's own trades first", () => {
     for (const locale of ["en", "ta"]) {
