@@ -54,6 +54,46 @@ export interface EyewearDraft {
   coating: string;
   frame: string;
 }
+export const FUEL_LEVELS = ["empty", "quarter", "half", "three_quarter", "full"] as const;
+export const VEHICLE_SERVICE_TYPES = ["general_service", "oil_change", "repair", "tyres_brakes", "wash_detailing", "accident", "other"] as const;
+export const LAUNDRY_GARMENTS = ["shirt", "pant", "tshirt", "saree", "salwar", "blazer", "bedsheet", "blanket", "curtain", "other"] as const;
+export const LAUNDRY_SERVICES = ["wash_iron", "wash_fold", "iron_only", "dry_clean"] as const;
+export const APPLIANCE_KINDS = ["ac", "refrigerator", "washing_machine", "water_purifier", "tv", "microwave", "other"] as const;
+
+export interface VehicleDraft {
+  regNo: string;
+  make: string;
+  model: string;
+  km: string;
+  fuel: (typeof FUEL_LEVELS)[number] | "";
+  serviceType: (typeof VEHICLE_SERVICE_TYPES)[number];
+  complaint: string;
+  remindAfterMonths: string;
+  remindAfterKm: string;
+}
+export interface LaundryDraft {
+  service: (typeof LAUNDRY_SERVICES)[number];
+  /** Pieces by garment type, as typed. */
+  counts: Record<string, string>;
+  /** Comma-separated in the input. */
+  tagNumbers: string;
+  pickup: boolean;
+  drop: boolean;
+  address: string;
+  slot: string;
+  notes: string;
+}
+export interface ApplianceDraft {
+  kind: (typeof APPLIANCE_KINDS)[number];
+  brand: string;
+  model: string;
+  serial: string;
+  issue: string;
+  address: string;
+  date: string;
+  slot: string;
+  amcNumber: string;
+}
 export interface GeneralDraft {
   description: string;
 }
@@ -61,6 +101,9 @@ export interface FieldsDraft {
   device: DeviceDraft;
   garment: GarmentDraft;
   eyewear: EyewearDraft;
+  vehicle: VehicleDraft;
+  laundry: LaundryDraft;
+  appliance: ApplianceDraft;
   general: GeneralDraft;
 }
 
@@ -72,6 +115,9 @@ export function emptyDraft(): FieldsDraft {
     device: { brand: "", model: "", serial: "", issue: "", accessories: "", condition: "" },
     garment: { garmentType: "blouse", garmentName: "", fabricReceived: true, style: "", unit: "in", measurements: measurementRows("blouse"), trialDate: "" },
     eyewear: { right: emptyEye(), left: emptyEye(), pd: "", lensType: "", coating: "", frame: "" },
+    vehicle: { regNo: "", make: "", model: "", km: "", fuel: "", serviceType: "general_service", complaint: "", remindAfterMonths: "", remindAfterKm: "" },
+    laundry: { service: "wash_iron", counts: {}, tagNumbers: "", pickup: false, drop: false, address: "", slot: "", notes: "" },
+    appliance: { kind: "ac", brand: "", model: "", serial: "", issue: "", address: "", date: "", slot: "", amcNumber: "" },
     general: { description: "" },
   };
 }
@@ -118,6 +164,42 @@ export function draftFromFields(template: JobTemplate, fields: Record<string, un
       coating: str(f.coating),
       frame: str(f.frame),
     };
+  } else if (template === "vehicle") {
+    d.vehicle = {
+      regNo: str(f.regNo),
+      make: str(f.make),
+      model: str(f.model),
+      km: str(f.km),
+      fuel: (FUEL_LEVELS as readonly string[]).includes(str(f.fuel)) ? (str(f.fuel) as VehicleDraft["fuel"]) : "",
+      serviceType: (VEHICLE_SERVICE_TYPES as readonly string[]).includes(str(f.serviceType)) ? (str(f.serviceType) as VehicleDraft["serviceType"]) : "other",
+      complaint: str(f.complaint),
+      remindAfterMonths: str(f.remindAfterMonths),
+      remindAfterKm: str(f.remindAfterKm),
+    };
+  } else if (template === "laundry") {
+    d.laundry = {
+      service: (LAUNDRY_SERVICES as readonly string[]).includes(str(f.service)) ? (str(f.service) as LaundryDraft["service"]) : "wash_iron",
+      counts: Object.fromEntries(Object.entries(rec(f.garments)).map(([k, v]) => [k, str(v)])),
+      tagNumbers: Array.isArray(f.tagNumbers) ? f.tagNumbers.map(str).join(", ") : "",
+      pickup: f.pickup === true,
+      drop: f.drop === true,
+      address: str(f.address),
+      slot: str(f.slot),
+      notes: str(f.notes),
+    };
+  } else if (template === "appliance") {
+    const v = rec(f.visit);
+    d.appliance = {
+      kind: (APPLIANCE_KINDS as readonly string[]).includes(str(f.kind)) ? (str(f.kind) as ApplianceDraft["kind"]) : "other",
+      brand: str(f.brand),
+      model: str(f.model),
+      serial: str(f.serial),
+      issue: str(f.issue),
+      address: str(v.address),
+      date: str(v.date),
+      slot: str(v.slot),
+      amcNumber: str(f.amcNumber),
+    };
   } else {
     d.general = { description: str(f.description) };
   }
@@ -125,7 +207,7 @@ export function draftFromFields(template: JobTemplate, fields: Record<string, un
 }
 
 /** Problems `draftToFields` can report; message `jobcards.fields.error.<code>`. */
-export const FIELD_ERRORS = ["issue", "description", "measurement", "rx", "axis", "pd"] as const;
+export const FIELD_ERRORS = ["issue", "description", "measurement", "rx", "axis", "pd", "regNo", "km", "reminder", "garments", "tags", "pickupAddress", "visitAddress"] as const;
 export type FieldError = (typeof FIELD_ERRORS)[number];
 
 const orNull = (s: string) => s.trim() || null;
@@ -200,6 +282,53 @@ export function draftToFields(template: JobTemplate, draft: FieldsDraft): { fiel
     const pd = num(d.pd);
     if (pd === undefined || (pd !== null && (pd < 40 || pd > 85))) return { error: "pd" };
     return { fields: { right: eyes.right, left: eyes.left, pd, lensType: d.lensType || null, coating: orNull(d.coating), frame: orNull(d.frame) } };
+  }
+  if (template === "vehicle") {
+    const d = draft.vehicle;
+    const regNo = d.regNo.replace(/[\s-]+/g, "").toUpperCase();
+    if (!/^[A-Z0-9]{4,12}$/.test(regNo)) return { error: "regNo" };
+    const km = num(d.km);
+    if (km === undefined || km === null || !Number.isInteger(km) || km < 0 || km > 2_000_000) return { error: "km" };
+    const months = num(d.remindAfterMonths);
+    const rkm = num(d.remindAfterKm);
+    if (months === undefined || (months !== null && (!Number.isInteger(months) || months < 1 || months > 60))) return { error: "reminder" };
+    if (rkm === undefined || (rkm !== null && (!Number.isInteger(rkm) || rkm < 100 || rkm > 100_000))) return { error: "reminder" };
+    return {
+      fields: { regNo, make: orNull(d.make), model: orNull(d.model), km, fuel: d.fuel || null, serviceType: d.serviceType, complaint: orNull(d.complaint), remindAfterMonths: months, remindAfterKm: rkm },
+    };
+  }
+  if (template === "laundry") {
+    const d = draft.laundry;
+    const garments: Record<string, number> = {};
+    for (const [k, v] of Object.entries(d.counts)) {
+      const n = num(v);
+      if (n === undefined || (n !== null && (!Number.isInteger(n) || n < 0 || n > 500))) return { error: "garments" };
+      if (n) garments[k] = n;
+    }
+    if (!Object.keys(garments).length) return { error: "garments" };
+    const tagNumbers = d.tagNumbers
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (new Set(tagNumbers).size !== tagNumbers.length) return { error: "tags" };
+    if ((d.pickup || d.drop) && !d.address.trim()) return { error: "pickupAddress" };
+    return { fields: { service: d.service, garments, tagNumbers, pickup: d.pickup, drop: d.drop, address: orNull(d.address), slot: orNull(d.slot), notes: orNull(d.notes) } };
+  }
+  if (template === "appliance") {
+    const d = draft.appliance;
+    if (!d.issue.trim()) return { error: "issue" };
+    if (d.address.trim().length < 5) return { error: "visitAddress" };
+    return {
+      fields: {
+        kind: d.kind,
+        brand: orNull(d.brand),
+        model: orNull(d.model),
+        serial: orNull(d.serial),
+        issue: d.issue.trim(),
+        visit: { address: d.address.trim(), date: orNull(d.date), slot: orNull(d.slot) },
+        amcNumber: orNull(d.amcNumber),
+      },
+    };
   }
   const desc = draft.general.description.trim();
   if (!desc) return { error: "description" };

@@ -106,5 +106,58 @@ export function FieldsView({ template, fields }: { template: JobTemplate; fields
     );
   }
 
+  if (template === "vehicle") {
+    const fuel = str(f.fuel);
+    const svc = str(f.serviceType);
+    return (
+      <div className="divide-y">
+        {row(t("jobcards.fields.regNo"), str(f.regNo) && <span className="font-mono">{str(f.regNo)}</span>)}
+        {row(t("jobcards.fields.brand"), [str(f.make), str(f.model)].filter(Boolean).join(" ") || null)}
+        {row(t("jobcards.fields.km"), typeof f.km === "number" ? `${f.km} km` : null)}
+        {row(t("jobcards.fields.fuel"), fuel && tOr(t, `jobcards.fuel.${fuel}`, fuel))}
+        {row(t("jobcards.fields.serviceType"), svc && tOr(t, `jobcards.vehicleService.${svc}`, svc))}
+        {row(t("jobcards.fields.complaint"), str(f.complaint))}
+        {row(t("jobcards.fields.remindMonths"), typeof f.remindAfterMonths === "number" ? String(f.remindAfterMonths) : null)}
+        {row(t("jobcards.fields.remindKm"), typeof f.remindAfterKm === "number" ? String(f.remindAfterKm) : null)}
+      </div>
+    );
+  }
+
+  if (template === "laundry") {
+    const g = Object.entries(rec(f.garments)).filter(([, n]) => typeof n === "number" && n > 0) as [string, number][];
+    const tags = Array.isArray(f.tagNumbers) ? (f.tagNumbers as unknown[]).filter((x): x is string => typeof x === "string") : [];
+    const svc = str(f.service);
+    return (
+      <div className="divide-y">
+        {row(t("jobcards.fields.service"), svc && tOr(t, `jobcards.laundryService.${svc}`, svc))}
+        {row(t("jobcards.fields.garmentCounts"), g.map(([k, n]) => `${tOr(t, `jobcards.laundryGarment.${k}`, k)} × ${n}`).join(", "))}
+        {row(t("jobcards.fields.pieces"), String(g.reduce((a, [, n]) => a + n, 0)))}
+        {row(t("jobcards.fields.tagNumbers"), tags.length ? <span className="font-mono">{tags.join(", ")}</span> : null)}
+        {row(t("jobcards.fields.pickup"), f.pickup ? t("jobcards.common.yes") : null)}
+        {row(t("jobcards.fields.drop"), f.drop ? t("jobcards.common.yes") : null)}
+        {row(t("jobcards.fields.address"), str(f.address))}
+        {row(t("jobcards.fields.slot"), str(f.slot))}
+        {row(t("jobcards.fields.notes"), str(f.notes))}
+      </div>
+    );
+  }
+
+  if (template === "appliance") {
+    const v = rec(f.visit);
+    const kind = str(f.kind);
+    return (
+      <div className="divide-y">
+        {row(t("jobcards.fields.kind"), kind && tOr(t, `jobcards.applianceKind.${kind}`, kind))}
+        {row(t("jobcards.fields.brand"), [str(f.brand), str(f.model)].filter(Boolean).join(" ") || null)}
+        {row(t("jobcards.fields.serial"), str(f.serial) && <span className="font-mono">{str(f.serial)}</span>)}
+        {row(t("jobcards.fields.issue"), str(f.issue))}
+        {row(t("jobcards.fields.visitAddress"), str(v.address))}
+        {row(t("jobcards.fields.visitDate"), str(v.date) && formatDate(str(v.date)!))}
+        {row(t("jobcards.fields.slot"), str(v.slot))}
+        {row(t("jobcards.fields.amcNumber"), str(f.amcNumber) && <span className="font-mono">{str(f.amcNumber)}</span>)}
+      </div>
+    );
+  }
+
   return <p className="text-sm whitespace-pre-wrap">{str(f.description) ?? "—"}</p>;
 }
