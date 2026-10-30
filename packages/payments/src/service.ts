@@ -426,11 +426,14 @@ export class PaymentsService {
       throw appError(502, "provider_error", "Could not confirm the payment, try again");
     }
     if (payment.order_id !== orderId) throw appError(400, "invalid_payment", "Payment belongs to another order");
-    if (payment.status !== "captured" && payment.status !== "authorized") {
+    // Only captured money counts: an authorized payment can still be voided or expire uncaptured. (Auto-capture moves
+    // it on within seconds; the payment.captured webhook marks the order paid then.)
+    if (payment.status !== "captured") {
       throw appError(400, "payment_not_completed", `Payment is ${payment.status}`);
     }
-    if (payment.amount !== order.amount) {
-      this.log.error({ orderId, paymentId, expected: order.amount, got: payment.amount }, "payments: amount mismatch");
+    // Amounts are minor units: 50,000 of another currency is not ₹500.
+    if (payment.amount !== order.amount || payment.currency !== order.currency) {
+      this.log.error({ orderId, paymentId, expected: order.amount, got: payment.amount, currency: payment.currency, orderCurrency: order.currency }, "payments: amount mismatch");
       throw appError(400, "amount_mismatch", "Paid amount does not match the order");
     }
 
