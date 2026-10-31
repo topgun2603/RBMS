@@ -436,9 +436,7 @@ describe("amounts and payment state", () => {
     expect(p.onPaid).not.toHaveBeenCalled();
   });
 
-  // BUG: expected amount_mismatch / invalid_payment, got status "paid": verify() compares only the amount, never
-  // payment.currency against the order's INR, so 50,000 minor units of another currency would mark ₹500 paid.
-  it.fails("verify refuses a payment in another currency", async () => {
+  it("verify refuses a payment in another currency", async () => {
     const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch: pay({ currency: "USD" }) });
     const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
     expect(err).toBeInstanceOf(AppError);
