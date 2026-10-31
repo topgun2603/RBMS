@@ -8,7 +8,7 @@ shop that opens its business app, already signed in, **read only**.
 | Where | Variable | Meaning |
 | --- | --- | --- |
 | `apps/api/.env` | `DEMO_SHOPS` | Shop slugs (comma-separated) that offer the demo sign-in. Empty or unset = off (the default). |
-| `apps/www/.env.local` | `NEXT_PUBLIC_DEMO_STORE_URL` | Storefront template with `{slug}`, e.g. `http://{slug}.localhost:3003` or `https://{slug}.srikit.in`. Unset = the Online stores gallery and demo-store links are hidden. |
+| `apps/www/.env.local` | `NEXT_PUBLIC_DEMO_STORE_URL` | Storefront template with `{slug}`, e.g. `http://{slug}.localhost:3003` or `https://{slug}.rbms.in`. Unset = the Online stores gallery and demo-store links are hidden. |
 
 Dev values: `DEMO_SHOPS=kumar,raja,arusuvai,vaasam,theneer,thunai,techzone,sukham,thaiyal,quickfix,lakshmi`.
 Restart the API after changing `DEMO_SHOPS`. The list of cards lives in `apps/www/src/lib/demos.ts`; storefront

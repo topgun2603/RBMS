@@ -97,11 +97,11 @@ describe("devices", () => {
 
 describe("referrers and UTM", () => {
   it("extracts bare referrer hosts and ignores self-referrals", () => {
-    const self = ["raja.srikit.in", "www.rajastores.in:443"];
+    const self = ["raja.rbms.in", "www.rajastores.in:443"];
     expect(referrerHost("https://www.google.com/search?q=saree", self)).toBe("google.com");
     expect(referrerHost("https://l.instagram.com/?u=x", self)).toBe("l.instagram.com");
     expect(referrerHost("android-app://com.google.android.gm/", self)).toBe("com.google.android.gm");
-    expect(referrerHost("https://raja.srikit.in/products/x", self)).toBeNull();
+    expect(referrerHost("https://raja.rbms.in/products/x", self)).toBeNull();
     expect(referrerHost("https://rajastores.in/cart", self)).toBeNull();
     expect(referrerHost("http://WWW.RajaStores.in/", self)).toBeNull();
     expect(referrerHost("not a url", self)).toBeNull();

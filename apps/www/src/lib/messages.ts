@@ -8,7 +8,7 @@ import { createTranslator, normalizeLocale, type Locale, type Messages, type Tra
  * naturally (கடன் கணக்கு for the credit book — never Hindi terms such as "Khata").
  */
 export const en: Messages = {
-  "brand.name": "Srirealtime",
+  "brand.name": "RBMS",
   "brand.tagline": "Billing and online store for every kind of shop",
   "common.optional": "optional",
 
@@ -31,7 +31,7 @@ export const en: Messages = {
   "cta.noCard": "No card needed",
   "cta.cancelAnytime": "Cancel anytime",
   "cta.tamil": "English and தமிழ்",
-  "cta.title": "Open your shop on Srirealtime today",
+  "cta.title": "Open your shop on RBMS today",
   "cta.body": "Set up in five minutes. Your first bill can go out before the next customer walks in.",
   "cta.talk": "Questions? WhatsApp us",
 
@@ -141,7 +141,7 @@ export const en: Messages = {
   "faq.home.10.q": "Does it help with pharmacy records?",
   "faq.home.10.a": "Pharmacy has medicine batches with expiry (the batch that expires first is sold first, and expired stock is never sold), substitutes by salt, prescriptions and the Schedule H1 register for every H1 sale. It keeps the records; following your licence and the rules stays with you.",
   "faq.home.11.q": "Is my kind of shop supported?",
-  "faq.home.11.a": "Srirealtime has setups for 45 trades, from kirana and textiles to pharmacy, jewellery, salons and repair shops. If yours is not listed, a general setup works, and you can tell us your trade.",
+  "faq.home.11.a": "RBMS has setups for 45 trades, from kirana and textiles to pharmacy, jewellery, salons and repair shops. If yours is not listed, a general setup works, and you can tell us your trade.",
   "faq.home.12.q": "Does it work without internet?",
   "faq.home.12.a": "Yes. If the internet drops, the counter keeps billing: search and scanning work from the item list on the device, and each bill gets its final GST number from a block the counter reserved while online. The bills are sent automatically when you're back online. The credit book, loyalty points and returns need the connection.",
   "faq.home.13.q": "I use Vyapar, Tally, Busy or Marg. Can I move my data?",
@@ -149,7 +149,7 @@ export const en: Messages = {
 
   "billing.meta.title": "Billing software for shops: GST bills, credit book, POS",
   "billing.meta.description": "GST billing for Tamil Nadu shops: fast bills, credit book with WhatsApp reminders, POS counters with staff PINs, weighing station, purchases, stock and GST reports. In English and Tamil.",
-  "billing.eyebrow": "Srirealtime Billing",
+  "billing.eyebrow": "RBMS Billing",
   "billing.title": "Bills in seconds, dues under control",
   "billing.sub": "A billing counter that speaks your customers' language: GST bills on WhatsApp, a credit book that follows up for you, and stock that keeps itself up to date.",
   "billing.f.1.title": "GST invoices, estimates and returns",
@@ -175,7 +175,7 @@ export const en: Messages = {
 
   "store.meta.title": "Online store for your shop: website, UPI checkout, WhatsApp orders",
   "store.meta.description": "Put your Tamil Nadu shop online: your own website in Tamil and English, 20+ store looks, UPI and cash-on-delivery checkout, delivery zones or pickup, food ordering, WhatsApp order updates.",
-  "store.eyebrow": "Srirealtime Online Store",
+  "store.eyebrow": "RBMS Online Store",
   "store.title": "Your shop, open online all day",
   "store.sub": "A fast, good-looking website for your shop. Customers browse, pay by UPI or cash on delivery, and get order updates on WhatsApp.",
   "store.f.1.title": "Your own website, found on Google",
@@ -207,10 +207,10 @@ export const en: Messages = {
 
   "product.faq": "Questions about {product}",
   "product.everything": "Everything you need",
-  "product.alsoTry": "Also from Srirealtime",
+  "product.alsoTry": "Also from RBMS",
 
   "pricing.meta.title": "Pricing: simple plans for shops",
-  "pricing.meta.description": "Srirealtime plans for Billing and Online Store. Start with a 14-day free trial, no card needed. Pay monthly or yearly by UPI Autopay or card.",
+  "pricing.meta.description": "RBMS plans for Billing and Online Store. Start with a 14-day free trial, no card needed. Pay monthly or yearly by UPI Autopay or card.",
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Simple plans that grow with your shop",
   "pricing.sub": "Every paid plan starts with a 14-day free trial. No card needed to start.",
@@ -294,7 +294,7 @@ export const en: Messages = {
   "cmp.limit.storage_mb": "File storage",
   "cmp.limit.sms_per_month": "SMS a month",
   "cmp.limit.whatsapp_per_month": "WhatsApp messages a month",
-  "cmp.feature.remove_branding": "Remove Srirealtime branding",
+  "cmp.feature.remove_branding": "Remove RBMS branding",
   "cmp.feature.priority_support": "Priority support",
   "cmp.storage.gb": "{n} GB",
   "cmp.storage.mb": "{n} MB",
@@ -311,7 +311,7 @@ export const en: Messages = {
   "faq.pricing.5.a": "Any time from Settings. You keep your plan until the end of the paid period, then move to Free. Your data is never deleted.",
 
   "signup.meta.title": "Start your free trial",
-  "signup.meta.description": "Create your Srirealtime shop in a few minutes: sign in with an OTP, add your shop and start a 14-day free trial.",
+  "signup.meta.description": "Create your RBMS shop in a few minutes: sign in with an OTP, add your shop and start a 14-day free trial.",
   "signup.title": "Start your 14-day free trial",
   "signup.stepOf": "Step {n} of {total}",
   "signup.step.need": "Product",
@@ -389,7 +389,7 @@ export const en: Messages = {
   "otp.wrong": "That code isn't right. Try again.",
 
   "login.meta.title": "Log in to your shop",
-  "login.meta.description": "Open your Srirealtime shop: sign in with an OTP and pick the shop to open.",
+  "login.meta.description": "Open your RBMS shop: sign in with an OTP and pick the shop to open.",
   "login.title": "Open my shop",
   "login.sub": "Sign in to see your shops.",
   "login.shops": "Your shops",
@@ -440,7 +440,7 @@ export const en: Messages = {
   "footer.company": "Company",
   "footer.legal": "Legal",
   "footer.madeIn": "Made in Tamil Nadu",
-  "footer.rights": "© {year} Srirealtime. All rights reserved.",
+  "footer.rights": "© {year} RBMS. All rights reserved.",
 
   "error.network": "Can't reach the server. Check your connection and try again.",
   "error.generic": "Something went wrong. Please try again.",
@@ -492,7 +492,7 @@ export const en: Messages = {
   ...enMfa,
 };
 export const ta: Messages = {
-  "brand.name": "Srirealtime",
+  "brand.name": "RBMS",
   "brand.tagline": "எல்லா வகைக் கடைகளுக்கும் பில்லிங்கும் ஆன்லைன் ஸ்டோரும்",
   "common.optional": "விருப்பத்தேர்வு",
 
@@ -515,7 +515,7 @@ export const ta: Messages = {
   "cta.noCard": "கார்டு தேவையில்லை",
   "cta.cancelAnytime": "எப்போது வேண்டுமானாலும் நிறுத்தலாம்",
   "cta.tamil": "தமிழ் மற்றும் English",
-  "cta.title": "இன்றே உங்கள் கடையை Srirealtime-ல் தொடங்குங்கள்",
+  "cta.title": "இன்றே உங்கள் கடையை RBMS-ல் தொடங்குங்கள்",
   "cta.body": "ஐந்து நிமிடத்தில் தயார். அடுத்த வாடிக்கையாளர் வருவதற்குள் முதல் பில் அனுப்பலாம்.",
   "cta.talk": "சந்தேகமா? WhatsApp-ல் கேளுங்கள்",
 
@@ -633,7 +633,7 @@ export const ta: Messages = {
 
   "billing.meta.title": "கடைகளுக்கான பில்லிங் மென்பொருள்: GST பில், கடன் கணக்கு, POS",
   "billing.meta.description": "தமிழ்நாட்டுக் கடைகளுக்கான GST பில்லிங்: வேகமான பில், WhatsApp நினைவூட்டலுடன் கடன் கணக்கு, பணியாளர் PIN-உடன் POS கவுண்டர்கள், எடை நிலையம், கொள்முதல், இருப்பு, GST அறிக்கைகள். தமிழிலும் ஆங்கிலத்திலும்.",
-  "billing.eyebrow": "Srirealtime பில்லிங்",
+  "billing.eyebrow": "RBMS பில்லிங்",
   "billing.title": "நொடியில் பில், கட்டுக்குள் நிலுவை",
   "billing.sub": "உங்கள் வாடிக்கையாளரின் மொழி பேசும் பில்லிங் கவுண்டர்: WhatsApp-ல் GST பில், உங்களுக்காக நினைவூட்டும் கடன் கணக்கு, தானாக மாறும் இருப்பு.",
   "billing.f.1.title": "GST பில், மதிப்பீடு, திருப்பம்",
@@ -659,7 +659,7 @@ export const ta: Messages = {
 
   "store.meta.title": "உங்கள் கடைக்கு ஆன்லைன் ஸ்டோர்: இணையதளம், UPI, WhatsApp ஆர்டர்",
   "store.meta.description": "உங்கள் தமிழ்நாட்டுக் கடையை ஆன்லைனில் கொண்டு வாருங்கள்: தமிழ், ஆங்கிலத்தில் சொந்த இணையதளம், 20-க்கும் மேற்பட்ட ஸ்டோர் தோற்றங்கள், UPI மற்றும் டெலிவரியில் பணம், டெலிவரிப் பகுதிகள் அல்லது பிக்அப், உணவு ஆர்டர், WhatsApp ஆர்டர் தகவல்.",
-  "store.eyebrow": "Srirealtime ஆன்லைன் ஸ்டோர்",
+  "store.eyebrow": "RBMS ஆன்லைன் ஸ்டோர்",
   "store.title": "உங்கள் கடை, நாள் முழுதும் ஆன்லைனில் திறந்திருக்கும்",
   "store.sub": "உங்கள் கடைக்கு வேகமான, அழகான இணையதளம். வாடிக்கையாளர்கள் பார்த்து, UPI அல்லது டெலிவரியில் பணம் செலுத்தி, WhatsApp-ல் ஆர்டர் நிலையைப் பெறுவார்கள்.",
   "store.f.1.title": "உங்கள் சொந்த இணையதளம், Google-ல் தெரியும்",
@@ -691,10 +691,10 @@ export const ta: Messages = {
 
   "product.faq": "{product} பற்றிய கேள்விகள்",
   "product.everything": "உங்களுக்குத் தேவையான அனைத்தும்",
-  "product.alsoTry": "Srirealtime-லிருந்து மேலும்",
+  "product.alsoTry": "RBMS-லிருந்து மேலும்",
 
   "pricing.meta.title": "விலை: கடைகளுக்கான எளிய திட்டங்கள்",
-  "pricing.meta.description": "பில்லிங், ஆன்லைன் ஸ்டோருக்கான Srirealtime திட்டங்கள். கார்டு இல்லாமல் 14 நாள் இலவச சோதனை. UPI Autopay அல்லது கார்டு மூலம் மாதம் / ஆண்டுக்குக் கட்டலாம்.",
+  "pricing.meta.description": "பில்லிங், ஆன்லைன் ஸ்டோருக்கான RBMS திட்டங்கள். கார்டு இல்லாமல் 14 நாள் இலவச சோதனை. UPI Autopay அல்லது கார்டு மூலம் மாதம் / ஆண்டுக்குக் கட்டலாம்.",
   "pricing.eyebrow": "விலை",
   "pricing.title": "உங்கள் கடையுடன் வளரும் எளிய திட்டங்கள்",
   "pricing.sub": "ஒவ்வொரு கட்டணத் திட்டமும் 14 நாள் இலவச சோதனையுடன் தொடங்கும். தொடங்க கார்டு தேவையில்லை.",
@@ -778,7 +778,7 @@ export const ta: Messages = {
   "cmp.limit.storage_mb": "கோப்புச் சேமிப்பு",
   "cmp.limit.sms_per_month": "மாதத்துக்கு SMS",
   "cmp.limit.whatsapp_per_month": "மாதத்துக்கு WhatsApp செய்திகள்",
-  "cmp.feature.remove_branding": "Srirealtime அடையாளத்தை நீக்கு",
+  "cmp.feature.remove_branding": "RBMS அடையாளத்தை நீக்கு",
   "cmp.feature.priority_support": "முன்னுரிமை உதவி",
   "cmp.storage.gb": "{n} GB",
   "cmp.storage.mb": "{n} MB",
@@ -795,7 +795,7 @@ export const ta: Messages = {
   "faq.pricing.5.a": "அமைப்புகளிலிருந்து எப்போது வேண்டுமானாலும். கட்டிய காலம் முடியும் வரை உங்கள் திட்டம் தொடரும், பிறகு இலவசத்துக்கு மாறும். உங்கள் தரவு ஒருபோதும் நீக்கப்படாது.",
 
   "signup.meta.title": "இலவச சோதனையைத் தொடங்குங்கள்",
-  "signup.meta.description": "சில நிமிடங்களில் உங்கள் Srirealtime கடையை உருவாக்குங்கள்: OTP மூலம் உள்நுழைந்து, கடையைச் சேர்த்து, 14 நாள் இலவச சோதனையைத் தொடங்குங்கள்.",
+  "signup.meta.description": "சில நிமிடங்களில் உங்கள் RBMS கடையை உருவாக்குங்கள்: OTP மூலம் உள்நுழைந்து, கடையைச் சேர்த்து, 14 நாள் இலவச சோதனையைத் தொடங்குங்கள்.",
   "signup.title": "14 நாள் இலவச சோதனையைத் தொடங்குங்கள்",
   "signup.stepOf": "படி {n} / {total}",
   "signup.step.need": "தயாரிப்பு",
@@ -873,7 +873,7 @@ export const ta: Messages = {
   "otp.wrong": "குறியீடு தவறு. மீண்டும் முயலுங்கள்.",
 
   "login.meta.title": "உங்கள் கடையில் உள்நுழையுங்கள்",
-  "login.meta.description": "உங்கள் Srirealtime கடையைத் திறங்கள்: OTP மூலம் உள்நுழைந்து, திறக்க வேண்டிய கடையைத் தேர்ந்தெடுங்கள்.",
+  "login.meta.description": "உங்கள் RBMS கடையைத் திறங்கள்: OTP மூலம் உள்நுழைந்து, திறக்க வேண்டிய கடையைத் தேர்ந்தெடுங்கள்.",
   "login.title": "என் கடையைத் திற",
   "login.sub": "உங்கள் கடைகளைப் பார்க்க உள்நுழையுங்கள்.",
   "login.shops": "உங்கள் கடைகள்",
@@ -924,7 +924,7 @@ export const ta: Messages = {
   "footer.company": "நிறுவனம்",
   "footer.legal": "சட்டம்",
   "footer.madeIn": "தமிழ்நாட்டில் உருவானது",
-  "footer.rights": "© {year} Srirealtime. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
+  "footer.rights": "© {year} RBMS. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
 
   "error.network": "சர்வரை அடைய முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயலுங்கள்.",
   "error.generic": "ஏதோ தவறு நடந்தது. மீண்டும் முயலுங்கள்.",

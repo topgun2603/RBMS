@@ -434,7 +434,7 @@ self.addEventListener("fetch", (event) => {
   }
 });
 `;
-  return `/* srikit storefront service worker · build ${opts.buildId} · ${shortHash(body)} */${body}`;
+  return `/* RBMS storefront service worker · build ${opts.buildId} · ${shortHash(body)} */${body}`;
 }
 
 /** `GET /sw.js`. Same script for every shop; not cached by the browser's HTTP cache (updates are checked each load). */

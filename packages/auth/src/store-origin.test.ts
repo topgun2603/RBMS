@@ -3,11 +3,11 @@ import { matchStoreOrigin, matchStoreReturn, normalizeOrigin, storeOriginsFor } 
 
 describe("storefront origins of one shop", () => {
   const dev = storeOriginsFor("http://{slug}.localhost:3003", "anbu", []);
-  const prod = storeOriginsFor("EC=https://{slug}.srikit.in,BL=https://{slug}.billing.srikit.in/x", "raja", ["shop.raja.in", " www.raja.in "]);
+  const prod = storeOriginsFor("EC=https://{slug}.rbms.in,BL=https://{slug}.billing.rbms.in/x", "raja", ["shop.raja.in", " www.raja.in "]);
 
   it("builds them from the store host templates and verified custom domains", () => {
     expect(dev).toEqual(["http://anbu.localhost:3003"]);
-    expect(prod).toEqual(["https://raja.srikit.in", "https://raja.billing.srikit.in", "https://shop.raja.in", "https://www.raja.in"]);
+    expect(prod).toEqual(["https://raja.rbms.in", "https://raja.billing.rbms.in", "https://shop.raja.in", "https://www.raja.in"]);
   });
 
   it("accepts only an exact origin of that shop", () => {

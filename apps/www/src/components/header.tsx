@@ -89,7 +89,7 @@ export function SiteHeader() {
   return (
     <header className={cn("sticky top-0 z-40 border-b border-transparent transition-[background-color,border-color,box-shadow] duration-300", scrolled ? "border-border/70 bg-background/80 shadow-sm backdrop-blur-xl" : "bg-background/40 backdrop-blur-sm")}>
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-        <Link href="/" className="rounded-lg focus-ring" aria-label="Srirealtime">
+        <Link href="/" className="rounded-lg focus-ring" aria-label="RBMS">
           <Logo />
         </Link>
 

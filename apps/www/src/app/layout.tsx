@@ -20,9 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: `Srirealtime: ${t("brand.tagline")}`, template: "%s | Srirealtime" },
+    title: { default: `RBMS: ${t("brand.tagline")}`, template: "%s | RBMS" },
     description: t("hero.sub"),
-    applicationName: "Srirealtime",
+    applicationName: "RBMS",
     formatDetection: { telephone: false },
   };
 }

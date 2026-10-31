@@ -109,7 +109,7 @@ function displayWidth(col: PlanColumn, v: XlsxValue): number {
 /** A single-sheet workbook: styled frozen header, ₹ / number / date formats, fitted widths, bold totals row. */
 export async function reportXlsx(input: RenderInput): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "srikit";
+  wb.creator = "RBMS";
   const ws = wb.addWorksheet(sheetName(input.title), { views: [{ state: "frozen", ySplit: 1 }] });
   const data = input.rows.map((r) => input.columns.map((c) => xlsxValue(c, r[c.key] ?? null)));
   const totals = totalsCells(input, xlsxValue);

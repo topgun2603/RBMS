@@ -49,6 +49,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   "system",
   "platform",
   "srikit",
+  "rbms",
   "srirealtime",
 ];
 
@@ -121,7 +122,7 @@ export function normalizeHost(host: string): string {
 
 /**
  * Returns the tenant slug for a direct subdomain of `rootDomain`, otherwise null.
- * "acme.srikit.com" → "acme"; "srikit.com" → null; "a.b.srikit.com" → null; reserved names → null.
+ * "acme.rbms.in" → "acme"; "rbms.in" → null; "a.b.rbms.in" → null; reserved names → null.
  */
 export function slugFromHost(host: string | undefined | null, rootDomain: string): string | null {
   if (!host) return null;

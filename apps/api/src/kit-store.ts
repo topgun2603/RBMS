@@ -281,7 +281,7 @@ type TxtResolver = (host: string) => Promise<string[][]>;
 type CnameResolver = (host: string) => Promise<string[]>;
 
 /**
- * DNS check with node:dns/promises: TXT `_srikit-verify.<domain>` (chunks joined) equals the token; CNAME includes the
+ * DNS check with node:dns/promises: TXT `_rbms-verify.<domain>` (chunks joined) equals the token; CNAME includes the
  * platform target. Lookup errors (NXDOMAIN, timeouts) count as "not found".
  */
 export function dnsDomainVerifier(cnameTarget: string, dns: { resolveTxt: TxtResolver; resolveCname: CnameResolver } = { resolveTxt, resolveCname }): DomainVerifier {

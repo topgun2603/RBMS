@@ -512,7 +512,7 @@ await step("custom domain: add → instructions → verify (DNS miss) → super-
   const ins = ok(await call("GET", `/v1/tenancy/domains/${d.id}/instructions`), "instructions");
   const txt = ins.records.find((x) => x.type === "TXT");
   const cname = ins.records.find((x) => x.type === "CNAME");
-  expect(ins.status === "pending" && txt.host === `_srikit-verify.${domain}` && /^srikit-verify-/.test(txt.value) && cname.value === "stores.srikit.in", JSON.stringify(ins));
+  expect(ins.status === "pending" && txt.host === `_rbms-verify.${domain}` && /^rbms-verify-/.test(txt.value) && cname.value === "stores.rbms.in", JSON.stringify(ins));
   const miss = fails(await call("POST", `/v1/tenancy/domains/${d.id}/verify`, {}), 400, null, "verify without DNS");
   expect(miss.error.details?.txt === false, `details ${JSON.stringify(miss.error)}`);
   const forced = ok(await call("POST", `/v1/tenancy/domains/${d.id}/verify`, { force: true }), "force verify");

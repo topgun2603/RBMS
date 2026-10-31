@@ -374,7 +374,7 @@ notifications) clothing and footwear are taxed by their sale value:
   rate of the original supply: it credits at the bill line's rate.
 - **Tax-inclusive (MRP) prices.** For an inclusive price P per piece: P ≤ ₹2,625.00 (2,500 × 1.05) → 5%;
   P > ₹2,950.00 (2,500 × 1.18) → 18%. Between them no rate is consistent (at 5% the taxable value is above ₹2,500,
-  at 18% it is at or below it); srikit charges **18%** there (never under-pays tax; excess tax collected is simply
+  at 18% it is at or below it); RBMS charges **18%** there (never under-pays tax; excess tax collected is simply
   paid over, Sec 76) and the product editor warns so the shop re-prices to ₹2,625 or less, or above ₹2,950. Brands
   publish the same cut-offs ("MRP up to ₹2,625 attract 5% GST, while those above ₹2,950 are taxed at 18%").
 - **Model.** `@rbms/gst` `rate-rule.ts`: `GstRateRule = { kind: "price-band", threshold: 250000 (paise of

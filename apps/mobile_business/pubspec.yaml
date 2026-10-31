@@ -1,5 +1,5 @@
 name: srikit_business
-description: srikit Business — the owners' and staff app for every trade.
+description: RBMS Business — the owners' and staff app for every trade.
 publish_to: none
 # Keep in step with appVersion in lib/src/config.dart (sent in the x-client header).
 version: 0.1.0+1

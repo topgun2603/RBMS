@@ -4,7 +4,7 @@
 aws_account_id = "123456789012" # the account you chose for srikit; Terraform refuses any other credentials
 region         = "ap-south-1"
 
-# No domain yet: leave empty. Later: domain = "srikit.in" (Route 53 zone created here unless route53_zone_id is set).
+# No domain yet: leave empty. Later: domain = "rbms.in" (Route 53 zone created here unless route53_zone_id is set).
 domain = ""
 # create_route53_zone = true
 # route53_zone_id     = "Z0123456789ABCDEF"
@@ -29,7 +29,7 @@ store_default_tenant = "anbu"
 # Plain API settings (non-secret).
 api_environment = {
   EMAIL_FROM          = "no-reply@example.com"
-  PLATFORM_LEGAL_NAME = "Srirealtime"
+  PLATFORM_LEGAL_NAME = "RBMS"
   # PLATFORM_GSTIN    = "33AAAAA0000A1Z5"
   # PLATFORM_ADDRESS  = "..."
   # Required in production (the API refuses the mock KYC provider at boot). Use the provider's sandbox for staging.

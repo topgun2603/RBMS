@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "srikit Business",
+  "appTitle": "RBMS Business",
   "@appTitle": {
     "description": "App name. The brand stays in Latin letters in every language."
   },
@@ -97,7 +97,7 @@
   "languageEnglish": "English",
   "languageTamil": "தமிழ்",
   "signOut": "Sign out",
-  "signOutConfirm": "Sign out of srikit Business on this phone?",
+  "signOutConfirm": "Sign out of RBMS Business on this phone?",
   "signedInAs": "Signed in as {name}",
   "@signedInAs": {
     "placeholders": {
@@ -117,7 +117,7 @@
     }
   },
   "updateRequiredTitle": "Update the app",
-  "updateRequiredBody": "This version of srikit Business is no longer supported. Update it from the store to keep billing and managing your shop.",
+  "updateRequiredBody": "This version of RBMS Business is no longer supported. Update it from the store to keep billing and managing your shop.",
   "updateVersions": "Your version {current} · needed {minimum} or newer",
   "@updateVersions": {
     "placeholders": {
@@ -142,7 +142,7 @@
   },
   "updateNow": "Update",
   "updateCheckAgain": "I've updated, check again",
-  "updateAvailable": "A new version of srikit Business is available.",
+  "updateAvailable": "A new version of RBMS Business is available.",
   "updateLater": "Later",
   "tillNotOpened": "Day not opened",
   "tillOpenSince": "Day open · {time}",
@@ -732,7 +732,7 @@
       },
       "url": {
         "type": "String",
-        "example": "https://anna.srikit.in/s/abc"
+        "example": "https://anna.rbms.in/s/abc"
       }
     }
   },
@@ -753,7 +753,7 @@
       },
       "url": {
         "type": "String",
-        "example": "https://anna.srikit.in/s/abc"
+        "example": "https://anna.rbms.in/s/abc"
       }
     }
   },
@@ -770,7 +770,7 @@
       },
       "url": {
         "type": "String",
-        "example": "https://anna.srikit.in/s/abc"
+        "example": "https://anna.rbms.in/s/abc"
       }
     }
   },

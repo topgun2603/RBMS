@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'srikit Business';
+  String get appTitle => 'RBMS Business';
 
   @override
   String get loading => 'Opening…';
@@ -195,7 +195,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
-  String get signOutConfirm => 'Sign out of srikit Business on this phone?';
+  String get signOutConfirm => 'Sign out of RBMS Business on this phone?';
 
   @override
   String signedInAs(String name) {
@@ -212,7 +212,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateRequiredBody =>
-      'This version of srikit Business is no longer supported. Update it from the store to keep billing and managing your shop.';
+      'This version of RBMS Business is no longer supported. Update it from the store to keep billing and managing your shop.';
 
   @override
   String updateVersions(String current, String minimum) {
@@ -231,8 +231,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateCheckAgain => 'I\'ve updated, check again';
 
   @override
-  String get updateAvailable =>
-      'A new version of srikit Business is available.';
+  String get updateAvailable => 'A new version of RBMS Business is available.';
 
   @override
   String get updateLater => 'Later';

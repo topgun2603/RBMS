@@ -9,7 +9,7 @@ describe("appUrlFor", () => {
   });
   it("falls back to the first entry, or a single template", () => {
     expect(appUrlFor(setting, null, "x-shop")).toBe("http://x-shop.localhost:3001");
-    expect(appUrlFor("https://{slug}.srikit.in", "EC", "anbu")).toBe("https://anbu.srikit.in");
+    expect(appUrlFor("https://{slug}.rbms.in", "EC", "anbu")).toBe("https://anbu.rbms.in");
   });
 });
 

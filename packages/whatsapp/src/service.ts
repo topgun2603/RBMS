@@ -66,7 +66,7 @@ export interface WhatsAppDeps {
   db: Db;
   /** Secret for encrypting tokens and app secrets (e.g. env `WHATSAPP_SECRET_KEY`, falls back to the payments key). */
   secretKey: string;
-  /** Public API origin + prefix used to show the webhook URL, e.g. "https://api.srikit.in/v1/whatsapp". */
+  /** Public API origin + prefix used to show the webhook URL, e.g. "https://api.rbms.in/v1/whatsapp". */
   webhookBaseUrl?: string;
   /** Allow `provider: "mock"` accounts (development). */
   allowMock?: boolean;

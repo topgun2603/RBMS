@@ -9,7 +9,7 @@ class AppLocalizationsTa extends AppLocalizations {
   AppLocalizationsTa([String locale = 'ta']) : super(locale);
 
   @override
-  String get appTitle => 'srikit Business';
+  String get appTitle => 'RBMS Business';
 
   @override
   String get loading => 'திறக்கிறது…';
@@ -198,7 +198,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get signOutConfirm =>
-      'இந்தக் கைபேசியில் srikit Business-இலிருந்து வெளியேறவா?';
+      'இந்தக் கைபேசியில் RBMS Business-இலிருந்து வெளியேறவா?';
 
   @override
   String signedInAs(String name) {
@@ -215,7 +215,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get updateRequiredBody =>
-      'srikit Business-இன் இந்தப் பதிப்பு இனி ஆதரிக்கப்படாது. பில்லிங்கையும் கடை நிர்வாகத்தையும் தொடர, ஸ்டோரில் இருந்து புதுப்பிக்கவும்.';
+      'RBMS Business-இன் இந்தப் பதிப்பு இனி ஆதரிக்கப்படாது. பில்லிங்கையும் கடை நிர்வாகத்தையும் தொடர, ஸ்டோரில் இருந்து புதுப்பிக்கவும்.';
 
   @override
   String updateVersions(String current, String minimum) {
@@ -234,8 +234,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get updateCheckAgain => 'புதுப்பித்துவிட்டேன், மீண்டும் சரிபார்';
 
   @override
-  String get updateAvailable =>
-      'srikit Business-இன் புதிய பதிப்பு கிடைக்கிறது.';
+  String get updateAvailable => 'RBMS Business-இன் புதிய பதிப்பு கிடைக்கிறது.';
 
   @override
   String get updateLater => 'பிறகு';

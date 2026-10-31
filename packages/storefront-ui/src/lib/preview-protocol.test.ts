@@ -16,7 +16,7 @@ import {
 } from "./preview-protocol";
 
 const DEV = editorOrigins({ NODE_ENV: "development" });
-const PROD = editorOrigins({ NODE_ENV: "production", NEXT_PUBLIC_ROOT_DOMAIN: "srikit.in" });
+const PROD = editorOrigins({ NODE_ENV: "production", NEXT_PUBLIC_ROOT_DOMAIN: "rbms.in" });
 
 describe("editor origins", () => {
   it("dev: any localhost port, subdomains included", () => {
@@ -25,14 +25,14 @@ describe("editor origins", () => {
   });
 
   it("prod: https root domain and one-label subdomains only", () => {
-    expect(PROD).toEqual(["https://srikit.in", "https://*.srikit.in"]);
-    expect(isAllowedOrigin("https://anbu.srikit.in", PROD)).toBe(true);
-    expect(isAllowedOrigin("https://srikit.in", PROD)).toBe(true);
-    expect(isAllowedOrigin("http://anbu.srikit.in", PROD)).toBe(false);
-    expect(isAllowedOrigin("https://anbu.srikit.in.evil.com", PROD)).toBe(false);
-    expect(isAllowedOrigin("https://evilsrikit.in", PROD)).toBe(false);
-    expect(isAllowedOrigin("https://x.y.srikit.in", PROD)).toBe(false);
-    expect(isAllowedOrigin("https://anbu.srikit.in:8443", PROD)).toBe(false);
+    expect(PROD).toEqual(["https://rbms.in", "https://*.rbms.in"]);
+    expect(isAllowedOrigin("https://anbu.rbms.in", PROD)).toBe(true);
+    expect(isAllowedOrigin("https://rbms.in", PROD)).toBe(true);
+    expect(isAllowedOrigin("http://anbu.rbms.in", PROD)).toBe(false);
+    expect(isAllowedOrigin("https://anbu.rbms.in.evil.com", PROD)).toBe(false);
+    expect(isAllowedOrigin("https://evilrbms.in", PROD)).toBe(false);
+    expect(isAllowedOrigin("https://x.y.rbms.in", PROD)).toBe(false);
+    expect(isAllowedOrigin("https://anbu.rbms.in:8443", PROD)).toBe(false);
   });
 
   it("PREVIEW_EDITOR_ORIGINS overrides (invalid entries dropped)", () => {
@@ -45,7 +45,7 @@ describe("editor origins", () => {
     expect(originRegex("https://a.b")!.test("https://aXb")).toBe(false);
     expect(originRegex("ftp://x.com")).toBeNull();
     expect(originRegex("https://x.com/path")).toBeNull();
-    expect(frameAncestors(PROD)).toBe("'self' https://srikit.in https://*.srikit.in");
+    expect(frameAncestors(PROD)).toBe("'self' https://rbms.in https://*.rbms.in");
   });
 });
 
@@ -95,7 +95,7 @@ describe("middleware routing + cookie", () => {
     expect(p.action).toBe("preview");
     if (p.action === "preview") {
       expect(p.headers["cache-control"]).toContain("no-store");
-      expect(p.headers["content-security-policy"]).toBe("frame-ancestors 'self' https://srikit.in https://*.srikit.in");
+      expect(p.headers["content-security-policy"]).toBe("frame-ancestors 'self' https://rbms.in https://*.rbms.in");
     }
   });
 

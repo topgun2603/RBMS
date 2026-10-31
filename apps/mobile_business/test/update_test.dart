@@ -71,11 +71,11 @@ void main() {
     final server = FakeSrikitServer(updateAvailable: true)..issuedToken = 'session-token';
     final c = await launch(tester, server, stored: {SessionStore.tokenKey: 'session-token'});
     expect(c.stage, AppStage.ready);
-    expect(find.text('A new version of srikit Business is available.'), findsOneWidget);
+    expect(find.text('A new version of RBMS Business is available.'), findsOneWidget);
 
     await tester.tap(find.byKey(UpdateAvailableBanner.laterButton));
     await tester.pumpAndSettle();
-    expect(find.text('A new version of srikit Business is available.'), findsNothing);
+    expect(find.text('A new version of RBMS Business is available.'), findsNothing);
     expect(c.stage, AppStage.ready);
   });
 
@@ -83,6 +83,6 @@ void main() {
     final server = FakeSrikitServer()..issuedToken = 'session-token';
     await launch(tester, server, stored: {SessionStore.tokenKey: 'session-token'});
     expect(find.byType(UpdateAvailableBanner, skipOffstage: false), findsOneWidget); // present, but renders nothing
-    expect(find.text('A new version of srikit Business is available.'), findsNothing);
+    expect(find.text('A new version of RBMS Business is available.'), findsNothing);
   });
 }

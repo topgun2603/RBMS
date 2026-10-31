@@ -46,9 +46,9 @@ describe("firebase hosts and the www round trip", () => {
   it("matches exact hosts and .suffix entries", () => {
     expect(isFirebaseAuthHost("localhost", ["localhost"])).toBe(true);
     expect(isFirebaseAuthHost("raja.localhost", ["localhost"])).toBe(false);
-    expect(isFirebaseAuthHost("raja.srikit.in", [".srikit.in"])).toBe(true);
-    expect(isFirebaseAuthHost("srikit.in", [".srikit.in"])).toBe(false);
-    expect(isFirebaseAuthHost("evilsrikit.in", [".srikit.in"])).toBe(false);
+    expect(isFirebaseAuthHost("raja.rbms.in", [".rbms.in"])).toBe(true);
+    expect(isFirebaseAuthHost("rbms.in", [".rbms.in"])).toBe(false);
+    expect(isFirebaseAuthHost("evilrbms.in", [".rbms.in"])).toBe(false);
   });
 
   it("builds the www login URL", () => {
@@ -57,21 +57,21 @@ describe("firebase hosts and the www round trip", () => {
     );
   });
 
-  const origins = ["http://*.localhost:3001", "http://localhost:3000", "https://*.srikit.in"];
+  const origins = ["http://*.localhost:3001", "http://localhost:3000", "https://*.rbms.in"];
   it("accepts return URLs on allowed origins ending in /login", () => {
     expect(safeReturnUrl("http://raja.localhost:3001/login", origins)).toBe("http://raja.localhost:3001/login");
-    expect(safeReturnUrl("https://raja.srikit.in/billing/login?handoff=old#x", origins)).toBe("https://raja.srikit.in/billing/login");
+    expect(safeReturnUrl("https://raja.rbms.in/billing/login?handoff=old#x", origins)).toBe("https://raja.rbms.in/billing/login");
     expect(safeReturnUrl("http://localhost:3000/login", origins)).toBe("http://localhost:3000/login");
   });
   it("refuses anything else", () => {
     expect(safeReturnUrl(null, origins)).toBeNull();
     expect(safeReturnUrl("https://evil.com/login", origins)).toBeNull();
-    expect(safeReturnUrl("https://raja.srikit.in.evil.com/login", origins)).toBeNull();
-    expect(safeReturnUrl("https://a.b.srikit.in/login", origins)).toBeNull();
-    expect(safeReturnUrl("http://raja.srikit.in/login", origins)).toBeNull();
+    expect(safeReturnUrl("https://raja.rbms.in.evil.com/login", origins)).toBeNull();
+    expect(safeReturnUrl("https://a.b.rbms.in/login", origins)).toBeNull();
+    expect(safeReturnUrl("http://raja.rbms.in/login", origins)).toBeNull();
     expect(safeReturnUrl("http://raja.localhost:3003/login", origins)).toBeNull();
-    expect(safeReturnUrl("https://raja.srikit.in/account", origins)).toBeNull();
-    expect(safeReturnUrl("https://user:pw@raja.srikit.in/login", origins)).toBeNull();
+    expect(safeReturnUrl("https://raja.rbms.in/account", origins)).toBeNull();
+    expect(safeReturnUrl("https://user:pw@raja.rbms.in/login", origins)).toBeNull();
     expect(safeReturnUrl("javascript:alert(1)//login", origins)).toBeNull();
     expect(safeReturnUrl("not a url", origins)).toBeNull();
   });

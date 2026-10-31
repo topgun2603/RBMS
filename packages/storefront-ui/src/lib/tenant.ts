@@ -1,7 +1,7 @@
 /**
  * Which shop a request is for, from its host. Pure (shared by the server pages, the API proxy and tests).
  *
- * - `<slug>.<root>` (anbu.localhost:3003, anbu.srikit.in) → the shop slug, sent to the API as `x-tenant`.
+ * - `<slug>.<root>` (anbu.localhost:3003, anbu.rbms.in) → the shop slug, sent to the API as `x-tenant`.
  * - Any other host (a shop's verified custom domain, e.g. www.anbufashions.in) → no slug; the original host is sent as
  *   `x-forwarded-host`. The API runs Fastify with `trustProxy`, so `req.hostname` becomes that host and the tenancy hook
  *   resolves the verified custom domain — no API change needed.

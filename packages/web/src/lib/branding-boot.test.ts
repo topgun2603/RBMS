@@ -24,7 +24,7 @@ const css = ":root{--primary:oklch(0.5 0.2 30)}";
 describe("branding boot script", () => {
   it("applies the cached CSS of the subdomain's shop", () => {
     expect(boot("raja.localhost", { [`${BRANDING_CACHE_PREFIX}raja`]: css })).toEqual({ id: BRANDING_BOOT_ID, css, count: 1 });
-    expect(boot("raja.srikit.in", { [`${BRANDING_CACHE_PREFIX}raja`]: css })?.css).toBe(css);
+    expect(boot("raja.rbms.in", { [`${BRANDING_CACHE_PREFIX}raja`]: css })?.css).toBe(css);
   });
 
   it("never applies another shop's colours", () => {

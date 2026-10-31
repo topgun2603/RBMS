@@ -81,9 +81,9 @@ void main() {
       url = r.url;
       return json({'ok': true});
     }));
-    c.setBaseUrl('https://api.srikit.in/');
+    c.setBaseUrl('https://api.rbms.in/');
     await c.get('/pos/device');
-    expect(url.toString(), 'https://api.srikit.in/v1/pos/device');
+    expect(url.toString(), 'https://api.rbms.in/v1/pos/device');
   });
 
   test('onUnauthorized hears every 401 with its code', () async {

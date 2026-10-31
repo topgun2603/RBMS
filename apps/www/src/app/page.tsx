@@ -31,7 +31,7 @@ import { Container, CtaBand, Eyebrow, FaqSection, FeatureGrid, HowItWorks, Secti
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, locale } = await getT();
-  return pageMetadata({ title: `Srirealtime: ${t("brand.tagline")}`, absoluteTitle: true, description: t("hero.sub"), path: "/", locale });
+  return pageMetadata({ title: `RBMS: ${t("brand.tagline")}`, absoluteTitle: true, description: t("hero.sub"), path: "/", locale });
 }
 
 export default async function HomePage() {

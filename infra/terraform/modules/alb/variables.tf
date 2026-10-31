@@ -17,7 +17,7 @@ variable "allowed_cidrs" {
 }
 
 variable "domain" {
-  description = "Root domain (e.g. srikit.in). Empty = no-domain mode: plain HTTP, one listener port per app on the ALB DNS name."
+  description = "Root domain (e.g. rbms.in). Empty = no-domain mode: plain HTTP, one listener port per app on the ALB DNS name."
   type        = string
   default     = ""
 }

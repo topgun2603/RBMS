@@ -54,33 +54,33 @@ describe("slugify and slugCandidates", () => {
 
 describe("slugFromHost", () => {
   it("extracts a direct subdomain", () => {
-    expect(slugFromHost("acme.srikit.com", "srikit.com")).toBe("acme");
+    expect(slugFromHost("acme.rbms.in", "rbms.in")).toBe("acme");
   });
   it("strips the port", () => {
-    expect(slugFromHost("acme.srikit.com:443", "srikit.com")).toBe("acme");
+    expect(slugFromHost("acme.rbms.in:443", "rbms.in")).toBe("acme");
     expect(slugFromHost("acme.localhost:3000", "localhost")).toBe("acme");
   });
   it("is case-insensitive and tolerates a trailing dot", () => {
-    expect(slugFromHost("ACME.Srikit.com.", "srikit.com")).toBe("acme");
+    expect(slugFromHost("ACME.RBMS.in.", "rbms.in")).toBe("acme");
   });
   it("returns null for the root domain", () => {
-    expect(slugFromHost("srikit.com", "srikit.com")).toBeNull();
+    expect(slugFromHost("rbms.in", "rbms.in")).toBeNull();
     expect(slugFromHost("localhost:3000", "localhost")).toBeNull();
   });
   it("returns null for nested subdomains", () => {
-    expect(slugFromHost("a.b.srikit.com", "srikit.com")).toBeNull();
+    expect(slugFromHost("a.b.rbms.in", "rbms.in")).toBeNull();
   });
   it("returns null for other domains", () => {
-    expect(slugFromHost("acme.example.com", "srikit.com")).toBeNull();
-    expect(slugFromHost("evilsrikit.com", "srikit.com")).toBeNull();
+    expect(slugFromHost("acme.example.com", "rbms.in")).toBeNull();
+    expect(slugFromHost("evilrbms.in", "rbms.in")).toBeNull();
   });
   it("returns null for reserved or invalid subdomains", () => {
-    expect(slugFromHost("www.srikit.com", "srikit.com")).toBeNull();
-    expect(slugFromHost("ab.srikit.com", "srikit.com")).toBeNull();
+    expect(slugFromHost("www.rbms.in", "rbms.in")).toBeNull();
+    expect(slugFromHost("ab.rbms.in", "rbms.in")).toBeNull();
   });
   it("handles empty input and IPv6", () => {
-    expect(slugFromHost("", "srikit.com")).toBeNull();
-    expect(slugFromHost(undefined, "srikit.com")).toBeNull();
+    expect(slugFromHost("", "rbms.in")).toBeNull();
+    expect(slugFromHost(undefined, "rbms.in")).toBeNull();
     expect(slugFromHost("[::1]:3000", "localhost")).toBeNull();
   });
 });
@@ -90,9 +90,9 @@ describe("host helpers", () => {
     expect(normalizeHost("Shop.Acme.in:8080")).toBe("shop.acme.in");
   });
   it("isPlatformHost", () => {
-    expect(isPlatformHost("srikit.com", "srikit.com")).toBe(true);
-    expect(isPlatformHost("a.b.srikit.com", "srikit.com")).toBe(true);
-    expect(isPlatformHost("shop.acme.in", "srikit.com")).toBe(false);
+    expect(isPlatformHost("rbms.in", "rbms.in")).toBe(true);
+    expect(isPlatformHost("a.b.rbms.in", "rbms.in")).toBe(true);
+    expect(isPlatformHost("shop.acme.in", "rbms.in")).toBe(false);
   });
   it("isValidDomain", () => {
     expect(isValidDomain("shop.acme.in")).toBe(true);

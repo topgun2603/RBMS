@@ -112,7 +112,7 @@ describe("billing templates", () => {
     amount: "Rs.1,00,00,000.00",
     balance: "Rs.1,00,00,000.00",
     dueDate: "14 Oct 2026",
-    link: "https://sri-lakshmi-silks.srirealtime.com/i/AbCdEfGhIjKlMnOpQrStUv",
+    link: "https://sri-lakshmi-silks.rbms.in/i/AbCdEfGhIjKlMnOpQrStUv",
   };
   const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\[~\]|€]*$/;
 
@@ -153,7 +153,7 @@ describe("billing templates", () => {
   it("renders a reminder", () => {
     const t = pickTemplate([], { tenantId: null, key: "invoice.reminder", channel: "whatsapp", locale: "en" })!.template;
     expect(render(t.body, { ...sample, amount: "₹950.00" })).toBe(
-      "Sri Lakshmi Silks and Sarees 1: Dear Ravichandran Subramanian, ₹950.00 is pending on your account. Please pay: https://sri-lakshmi-silks.srirealtime.com/i/AbCdEfGhIjKlMnOpQrStUv Ignore if already paid.",
+      "Sri Lakshmi Silks and Sarees 1: Dear Ravichandran Subramanian, ₹950.00 is pending on your account. Please pay: https://sri-lakshmi-silks.rbms.in/i/AbCdEfGhIjKlMnOpQrStUv Ignore if already paid.",
     );
   });
 });
@@ -174,7 +174,7 @@ describe("order templates", () => {
     amount: "Rs.1,00,00,000.00",
     items: "12 items",
     tracking: "Professional Couriers 123456789012",
-    link: "https://sri-lakshmi-silks.srirealtime.com/o/AbCdEfGhIjKlMnOpQrStUvWx",
+    link: "https://sri-lakshmi-silks.rbms.in/o/AbCdEfGhIjKlMnOpQrStUvWx",
   };
   const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\[~\]|€]*$/;
 
@@ -224,7 +224,7 @@ describe("order templates", () => {
     const msg = composeMessage({ channel: "email", to: "a@b.in", template: email, vars: sample, locale: "ta", config: {} });
     expect(msg.subject).toBe("ஆர்டர் ORDERS/26-27/1234 பெறப்பட்டது - Sri Lakshmi Silks and Sarees 1");
     expect(msg.body).toContain("நன்றி Ravichandran Subramanian!");
-    expect(msg.html).toContain("https://sri-lakshmi-silks.srirealtime.com/o/");
+    expect(msg.html).toContain("https://sri-lakshmi-silks.rbms.in/o/");
   });
 });
 

@@ -1,6 +1,6 @@
 /**
  * Where a shopper's sign-in may be handed back to: the storefront origins of ONE shop. Firebase can't authorize every
- * `<shop>.srikit.in`, so sign-in happens on the landing site and a single-use handoff code goes back to the storefront
+ * `<shop>.rbms.in`, so sign-in happens on the landing site and a single-use handoff code goes back to the storefront
  * (docs/firebase-auth.md section 7). The code signs someone in, so the destination is decided here from the shop's own
  * configuration, never from what the query string claims.
  */

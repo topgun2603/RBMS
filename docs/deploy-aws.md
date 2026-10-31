@@ -219,7 +219,7 @@ Terraform.
 
 You need: the AWS CLI v2, Terraform ≥ 1.10, Docker, `jq`, and the account you choose below.
 
-1. **Pick the account.** Use a dedicated AWS account for srikit, ideally in an AWS Organization with a separate
+1. **Pick the account.** Use a dedicated AWS account for RBMS, ideally in an AWS Organization with a separate
    `srikit-staging` account. **Do not use the credentials already on this machine** (IAM user `buildr-deploy`); they
    belong to an unrelated account. Set `aws_account_id` in tfvars: the provider then refuses to run against any
    other account.
@@ -459,7 +459,7 @@ How values are provided:
 | `NODE_ENV` | `production` (computed) | real providers only; mocks refused |
 | `PORT` | `4000`; worker sidecar `4001` (computed) | |
 | `JOBS_WORKERS` | API `false`, worker `true` (computed) | new in batch 7 |
-| `APP_NAME` | default `Srirealtime` (plain to override) | |
+| `APP_NAME` | default `RBMS` (plain to override) | |
 | `API_PUBLIC_URL` | `urls.api` (computed) | |
 | `ROOT_DOMAIN` | domain or ALB name (computed) | |
 | `CORS_ORIGINS` | all app origins incl. `https://*.billing.<domain>` (computed) | |

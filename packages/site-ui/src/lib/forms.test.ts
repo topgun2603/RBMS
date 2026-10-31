@@ -97,7 +97,7 @@ describe("money and links", () => {
 
   it("builds storefront URLs from the template", () => {
     expect(storeUrlFor("anbu", "/", "http://{slug}.localhost:3003")).toBe("http://anbu.localhost:3003/");
-    expect(storeUrlFor("anbu", "/about", "https://{slug}.srikit.in/")).toBe("https://anbu.srikit.in/about");
+    expect(storeUrlFor("anbu", "/about", "https://{slug}.rbms.in/")).toBe("https://anbu.rbms.in/about");
     expect(storeUrlFor("anbu", "blog/x", "https://shop.in")).toBe("https://shop.in/blog/x");
   });
 });

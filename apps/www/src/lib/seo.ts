@@ -12,7 +12,7 @@ export function pageMetadata(opts: { title: string; description: string; path: s
     openGraph: {
       type: "website",
       url,
-      siteName: "Srirealtime",
+      siteName: "RBMS",
       title: opts.title,
       description: opts.description,
       locale: opts.locale === "ta" ? "ta_IN" : "en_IN",
@@ -26,7 +26,7 @@ export function pageMetadata(opts: { title: string; description: string; path: s
 export const organizationJsonLd = () => ({
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Srirealtime",
+  name: "RBMS",
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description: "Billing and online store software for shops in Tamil Nadu and across India.",

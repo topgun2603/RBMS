@@ -11,7 +11,7 @@ Many billing products sold in India are desktop software with a one-time licence
 
 ## Side by side
 
-| | One-time licence (desktop) | srikit subscription |
+| | One-time licence (desktop) | RBMS subscription |
 |---|---|---|
 | First payment | ₹10,000 – ₹60,000 | [Plan price, per month or year] |
 | Yearly renewal | Support/AMC and updates, usually extra | Included |
@@ -27,7 +27,7 @@ Many billing products sold in India are desktop software with a one-time licence
 
 ## Three-year cost example (replace with real plan prices)
 
-| Year | One-time licence | srikit |
+| Year | One-time licence | RBMS |
 |---|---|---|
 | 1 | Licence ₹[X] + setup | ₹[plan] |
 | 2 | AMC ₹[Y] | ₹[plan] |
@@ -53,7 +53,7 @@ The shop does. [Confirm export policy: customers, products, invoices exported on
 [Confirm: export of all data in CSV/Excel at any time, no lock-in fee.]
 
 **"Do I need a special machine?"**
-No. A phone, tablet or computer with a browser is enough. Counters that want a touch terminal, printer, scanner and cash drawer can buy a kit. [Confirm whether srikit sells kits; market range for a touch terminal is ₹33,000 – ₹77,000, printer ₹7,000 – ₹8,500, cash drawer about ₹5,850.]
+No. A phone, tablet or computer with a browser is enough. Counters that want a touch terminal, printer, scanner and cash drawer can buy a kit. [Confirm whether RBMS sells kits; market range for a touch terminal is ₹33,000 – ₹77,000, printer ₹7,000 – ₹8,500, cash drawer about ₹5,850.]
 
 ## Decisions needed before this goes to print
 

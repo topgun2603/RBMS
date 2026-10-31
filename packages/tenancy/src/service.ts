@@ -24,20 +24,20 @@ import { isPlatformHost, isValidDomain, normalizeHost, slugCandidates, slugFromH
 
 export interface TenancyDeps {
   db: Db;
-  /** e.g. "srikit.com" in production, "localhost" in development. */
+  /** e.g. "rbms.in" in production, "localhost" in development. */
   rootDomain: string;
   /** Called after a tenant's plan changes (wire to plans.service.invalidate). */
   onPlanChange?: (tenantId: string, planId: string | null) => void | Promise<void>;
   /** Called after a tenant's app changes (wire to features.service.invalidate). */
   onAppChange?: (tenantId: string, appId: string | null) => void | Promise<void>;
   /**
-   * Optional DNS check for custom domains (apps/api: node:dns/promises). `txt` = the `_srikit-verify.<domain>` TXT
+   * Optional DNS check for custom domains (apps/api: node:dns/promises). `txt` = the `_rbms-verify.<domain>` TXT
    * record holds `token` (this verifies the domain); `cname` = the domain points at `cnameTarget` (guidance only).
    * When set, owners/admins can verify their own domains and `verifyPending()` works; when absent, only a
    * super-admin can mark a domain verified.
    */
   domainVerifier?: DomainVerifier;
-  /** CNAME target shown in the DNS instructions (env CNAME_TARGET), default "stores.srikit.in". */
+  /** CNAME target shown in the DNS instructions (env CNAME_TARGET), default "stores.rbms.in". */
   cnameTarget?: string;
   /**
    * Turns a phone number or email into a user id, creating the user if needed (wire to auth).
@@ -437,7 +437,7 @@ export class TenancyService {
 
   /**
    * Marks a domain verified. Without `force`, the `domainVerifier` must find the TXT record
-   * (`_srikit-verify.<domain>` = token) first; a miss throws 400 with `{ txt, cname }` details.
+   * (`_rbms-verify.<domain>` = token) first; a miss throws 400 with `{ txt, cname }` details.
    * Pass `force` (super-admin) to skip the check.
    */
   async verifyDomain(tenantId: string, domainId: string, opts: { force?: boolean } = {}): Promise<TenantDomain> {

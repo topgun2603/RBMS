@@ -50,7 +50,7 @@ export interface ShopPort {
   info(tenantId: string): Promise<{ name: string; tagline?: string | null; logoUrl?: string | null; businessType?: string | null; appId?: string | null }>;
 }
 
-/** The storefront's public origin for a tenant, e.g. "https://raja.srikit.in" or the custom domain. */
+/** The storefront's public origin for a tenant, e.g. "https://raja.rbms.in" or the custom domain. */
 export interface StoreUrlPort {
   baseUrl(tenantId: string): Promise<string> | string;
 }

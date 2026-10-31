@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// App name. The brand stays in Latin letters in every language.
   ///
   /// In en, this message translates to:
-  /// **'srikit Business'**
+  /// **'RBMS Business'**
   String get appTitle;
 
   /// No description provided for @loading.
@@ -431,7 +431,7 @@ abstract class AppLocalizations {
   /// No description provided for @signOutConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Sign out of srikit Business on this phone?'**
+  /// **'Sign out of RBMS Business on this phone?'**
   String get signOutConfirm;
 
   /// No description provided for @signedInAs.
@@ -455,7 +455,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateRequiredBody.
   ///
   /// In en, this message translates to:
-  /// **'This version of srikit Business is no longer supported. Update it from the store to keep billing and managing your shop.'**
+  /// **'This version of RBMS Business is no longer supported. Update it from the store to keep billing and managing your shop.'**
   String get updateRequiredBody;
 
   /// No description provided for @updateVersions.
@@ -485,7 +485,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateAvailable.
   ///
   /// In en, this message translates to:
-  /// **'A new version of srikit Business is available.'**
+  /// **'A new version of RBMS Business is available.'**
   String get updateAvailable;
 
   /// No description provided for @updateLater.

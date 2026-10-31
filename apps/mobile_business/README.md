@@ -1,7 +1,7 @@
-# srikit Business (Flutter)
+# RBMS Business (Flutter)
 
 The owners' and staff app for every trade (docs/market-plan.md, track D). Package id `in.srikit.business`, display
-name "srikit Business". Android first; iOS builds from the same code.
+name "RBMS Business". Android first; iOS builds from the same code.
 
 So far: splash → app version check → session restore → phone sign-in (OTP) → shop picker → home shell (Home
 dashboard, **Bill: counter billing**, **Orders**, More → **Products**, **Stock**, **Customers**, **Credit book** and

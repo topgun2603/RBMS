@@ -5,7 +5,7 @@ import { z } from "zod";
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(4000),
-  APP_NAME: z.string().default("Srirealtime"),
+  APP_NAME: z.string().default("RBMS"),
   /** Public URL of this API, used in signed local-upload URLs. */
   API_PUBLIC_URL: z.string().url().default("http://localhost:4000"),
   /** Secret for HMAC-signed URLs. Must be set (32+ chars) in production. */
@@ -26,7 +26,7 @@ export const envSchema = z.object({
   /** Online store URL (sitemap, robots.txt); {slug} = shop subdomain. One template, or APP=template pairs. Verified custom domains win. */
   STORE_PUBLIC_URL: z.string().default("http://{slug}.localhost:3003"),
   /** Where shops point their custom domain (CNAME), shown in the DNS instructions. */
-  CNAME_TARGET: z.string().default("stores.srikit.in"),
+  CNAME_TARGET: z.string().default("stores.rbms.in"),
   SESSION_TTL_DAYS: z.coerce.number().default(30),
   /** Sessions of the srikit mobile apps (`x-client` header): days, sliding with use. */
   MOBILE_SESSION_TTL_DAYS: z.coerce.number().default(90),
@@ -64,7 +64,7 @@ export const envSchema = z.object({
   /** DLT-approved MSG91 flow id for the OTP template. */
   MSG91_OTP_FLOW_ID: optionalString(),
   RESEND_API_KEY: optionalString(),
-  EMAIL_FROM: z.string().default("no-reply@srirealtime.com"),
+  EMAIL_FROM: z.string().default("no-reply@rbms.in"),
   WHATSAPP_TOKEN: optionalString(),
   WHATSAPP_PHONE_NUMBER_ID: optionalString(),
   FCM_SERVICE_ACCOUNT_JSON: optionalString(),
@@ -101,7 +101,7 @@ export const envSchema = z.object({
   PLATFORM_RAZORPAY_KEY_SECRET: optionalString(),
   PLATFORM_RAZORPAY_WEBHOOK_SECRET: optionalString(),
   /** The platform as the seller on its plan invoices (18% GST). */
-  PLATFORM_LEGAL_NAME: z.string().default("Srirealtime"),
+  PLATFORM_LEGAL_NAME: z.string().default("RBMS"),
   PLATFORM_GSTIN: optionalString(),
   /** 2-digit GST state code of the platform: CGST+SGST for shops in this state, IGST otherwise. Default 33 (Tamil Nadu). */
   PLATFORM_STATE_CODE: z.string().regex(/^\d{2}$/, "2-digit GST state code").default("33"),

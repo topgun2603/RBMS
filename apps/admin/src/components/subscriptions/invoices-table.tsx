@@ -27,7 +27,7 @@ import { INVOICES_KEY, VoidInvoiceDialog } from "./dialogs";
 const STATUSES = ["paid", "void"] as const;
 
 /**
- * Platform (Srirealtime → shop) tax invoices, server-paged: paid/void pills, date range, search, sort on number, date
+ * Platform (RBMS → shop) tax invoices, server-paged: paid/void pills, date range, search, sort on number, date
  * and total; PDF and void per row. URL params are prefixed `inv.` (the page also holds the subscription table's).
  */
 export function PlatformInvoicesTable() {

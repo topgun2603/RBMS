@@ -304,7 +304,7 @@ cases built from the real Vyapar / Tally / Busy / Marg presets, 20 help question
 
 ## Going live
 
-1. Create an Anthropic API key (a dedicated workspace for srikit) and **set a monthly spend limit** in the Anthropic
+1. Create an Anthropic API key (a dedicated workspace for RBMS) and **set a monthly spend limit** in the Anthropic
    Console before the first request. Credits protect each shop; the spend limit protects you.
 2. Set `ANTHROPIC_API_KEY` as a secret on the API service (and the worker), and `AI_ENABLED=true`. In production without a
    key every AI call answers 503 `ai_unavailable`.

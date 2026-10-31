@@ -51,8 +51,8 @@ The project in use is `srikit-cdea0`.
 
 1. **Build → Authentication → Sign-in method → Add new provider → Google → Enable.** Pick a public-facing name and a
    support email → **Save**. No OAuth client id or secret is needed on our side.
-2. **Authentication → Settings → Authorized domains: list only the landing site** (`srikit.in`, `www.srikit.in`, plus
-   `admin.srikit.in`). Do **not** add shop subdomains or custom domains: shoppers never sign in there, the popup runs on
+2. **Authentication → Settings → Authorized domains: list only the landing site** (`rbms.in`, `www.rbms.in`, plus
+   `admin.rbms.in`). Do **not** add shop subdomains or custom domains: shoppers never sign in there, the popup runs on
    the landing site (section 7). `localhost` is authorized by default, which covers local development
    (`localhost:3005`, with the shops on `*.localhost:3003`).
 3. Make sure the web app config (section 1) is in the landing site's environment (`NEXT_PUBLIC_FIREBASE_*`). The API needs
@@ -88,11 +88,11 @@ Add the fixed hosts:
 
 | Host | Why |
 | --- | --- |
-| `srikit.in`, `www.srikit.in` | the landing site (sign-up wizard, `/login`). This is where phone sign-in for shops happens. |
-| `admin.srikit.in` | the super-admin app |
+| `rbms.in`, `www.rbms.in` | the landing site (sign-up wizard, `/login`). This is where phone sign-in for shops happens. |
+| `admin.rbms.in` | the super-admin app |
 
-**Authorized domains don't accept wildcards.** You can't add `*.srikit.in`, and every shop gets its own subdomain
-(`raja.srikit.in`, `anbu.srikit.in`, …). Adding each shop by hand or through the API doesn't scale, and the list has a
+**Authorized domains don't accept wildcards.** You can't add `*.rbms.in`, and every shop gets its own subdomain
+(`raja.rbms.in`, `anbu.rbms.in`, …). Adding each shop by hand or through the API doesn't scale, and the list has a
 size limit.
 
 ### What we do: verify on the landing site and hand the session back
@@ -111,7 +111,7 @@ The web-kit login (billing `:3001`, shop `:3002`, seller `:3004`) checks whether
 Because a handoff code signs someone in, the landing site only returns to URLs that pass all of these checks:
 
 - the origin matches `NEXT_PUBLIC_PHONE_RETURN_ORIGINS`, where `*` is exactly one subdomain label, e.g.
-  `https://*.srikit.in`;
+  `https://*.rbms.in`;
 - the URL has no user name or password;
 - the path ends in `/login`.
 
@@ -126,8 +126,8 @@ The user sees one extra page load. Email, WhatsApp and test numbers are unaffect
 **Possible shortcut, to be verified.** Firebase's own origin check treats an authorized domain as also covering its
 subdomains. On 2026-10-17 the invisible reCAPTCHA loaded and ran on `raja.localhost` as well as `localhost`. What
 hasn't been verified is whether Firebase then accepts the request to send the code from the subdomain: that check
-happens server-side and needs a real run. To test it, add `srikit.in` to the authorized domains, then set
-`NEXT_PUBLIC_FIREBASE_AUTH_HOSTS=.srikit.in,localhost` on one shop app and try a fictional test number there (see
+happens server-side and needs a real run. To test it, add `rbms.in` to the authorized domains, then set
+`NEXT_PUBLIC_FIREBASE_AUTH_HOSTS=.rbms.in,localhost` on one shop app and try a fictional test number there (see
 section 6). If it works, shops can verify in place. If you get `auth/unauthorized-domain` or a captcha error, keep the
 default (`localhost`) and the landing-site round trip.
 
@@ -156,7 +156,7 @@ driver would accept the code and drop it. WhatsApp, email and development are un
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | same | `1:…:web:…` |
 | `NEXT_PUBLIC_FIREBASE_AUTH_HOSTS` | billing, shop, seller | hosts where phone sign-in runs in place: exact names or `.suffix`. Default `localhost`. |
 | `NEXT_PUBLIC_WWW_URL` | billing, shop, seller, storefront apps (store, pharmacy, restaurant, services) | the landing site, default `http://localhost:3005` |
-| `NEXT_PUBLIC_PHONE_RETURN_ORIGINS` | www | where `/login` may hand a sign-in back to. Default: the dev admin/billing/shop/seller origins. Production example: `https://admin.srikit.in,https://*.srikit.in` (only if storefronts are not on `*.srikit.in`; otherwise list the app hosts precisely). |
+| `NEXT_PUBLIC_PHONE_RETURN_ORIGINS` | www | where `/login` may hand a sign-in back to. Default: the dev admin/billing/shop/seller origins. Production example: `https://admin.rbms.in,https://*.rbms.in` (only if storefronts are not on `*.rbms.in`; otherwise list the app hosts precisely). |
 
 The web config is public by design: anyone can read it from the page. Protect the project with the authorized
 domains and the SMS region policy. You can also restrict the API key to your HTTP referrers in Google Cloud Console →
@@ -204,7 +204,7 @@ handles them.
 Shoppers sign in to a storefront (`packages/storefront-ui`: account, checkout, chat, support) with **Continue with Google**
 and with their **mobile number**. Email codes and the dev test numbers stay on the storefront's own code form.
 
-Storefronts run on per-shop subdomains (`anbu.srikit.in`, `anbu.localhost:3003`) and on custom domains, so Firebase
+Storefronts run on per-shop subdomains (`anbu.rbms.in`, `anbu.localhost:3003`) and on custom domains, so Firebase
 can't be used in place (section 3). The same landing-site round trip is used, as a popup:
 
 ```

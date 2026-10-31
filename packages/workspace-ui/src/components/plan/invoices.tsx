@@ -7,7 +7,7 @@ import { describeError, formatPaise, QueryError, useI18n, type PlatformInvoice }
 import { downloadInvoicePdf, usePlatformInvoices } from "../../lib/subscriptions";
 import { SectionCard } from "./section-card";
 
-/** Srirealtime's GST invoices for the plan: number, date, period, total (GST split) and the PDF. */
+/** RBMS's GST invoices for the plan: number, date, period, total (GST split) and the PDF. */
 export function PlatformInvoices({ planName }: { planName: (id: string) => string }) {
   const { t, formatDate } = useI18n();
   const reduced = useReducedMotionSafe();

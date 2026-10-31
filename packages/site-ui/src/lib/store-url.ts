@@ -4,8 +4,8 @@ import { useTenantSlug } from "@rbms/web";
 
 /** Default storefront URL template; `{slug}` is the shop's subdomain. Override with NEXT_PUBLIC_STORE_URL. */
 export const DEFAULT_STORE_URL = "http://{slug}.localhost:3003";
-/** Root domain of the hosted store addresses (`<slug>.srikit.in`). */
-export const DEFAULT_STORE_DOMAIN = "srikit.in";
+/** Root domain of the hosted store addresses (`<slug>.rbms.in`). */
+export const DEFAULT_STORE_DOMAIN = "rbms.in";
 
 const template = () => (process.env.NEXT_PUBLIC_STORE_URL || DEFAULT_STORE_URL).replace(/\/+$/, "");
 
@@ -16,7 +16,7 @@ export function storeUrlFor(slug: string, path = "/", tpl: string = template()):
   return p === "/" ? `${base}/` : `${base}${p}`;
 }
 
-/** Hosted address shown on the Domain page, e.g. "anbu.srikit.in". */
+/** Hosted address shown on the Domain page, e.g. "anbu.rbms.in". */
 export const storeDomainFor = (slug: string) => `${slug}.${process.env.NEXT_PUBLIC_STORE_DOMAIN || DEFAULT_STORE_DOMAIN}`;
 
 /** Storefront URL builder for the current shop (null before the shop is known). */

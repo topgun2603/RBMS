@@ -24,7 +24,7 @@ Future<(SrikitApi, FakeSrikitServer)> unlockedApi() async {
 void main() {
   group('pairing QR', () {
     test('srikit-pair:1:<origin>:<code> gives the origin and the code', () {
-      expect(parsePairingQr('srikit-pair:1:https://api.srikit.in:ABCD-2345'), const PairingQr('https://api.srikit.in', 'ABCD2345'));
+      expect(parsePairingQr('srikit-pair:1:https://api.rbms.in:ABCD-2345'), const PairingQr('https://api.rbms.in', 'ABCD2345'));
       // An origin with a port: the code is after the last colon.
       expect(parsePairingQr(' SRIKIT-PAIR:1:http://192.168.1.20:4000:abcd2345 '), const PairingQr('http://192.168.1.20:4000', 'ABCD2345'));
     });
@@ -41,9 +41,9 @@ void main() {
     });
 
     test("the QR's origin is used only when it differs from the build's", () {
-      final qr = parsePairingQr('srikit-pair:1:https://api.srikit.in/:ABCD2345')!;
-      expect(pairingOrigin(qr, 'https://api.srikit.in'), isNull);
-      expect(pairingOrigin(qr, 'http://10.0.2.2:4000'), 'https://api.srikit.in');
+      final qr = parsePairingQr('srikit-pair:1:https://api.rbms.in/:ABCD2345')!;
+      expect(pairingOrigin(qr, 'https://api.rbms.in'), isNull);
+      expect(pairingOrigin(qr, 'http://10.0.2.2:4000'), 'https://api.rbms.in');
       expect(pairingOrigin(parsePairingQr('ABCD2345')!, 'http://10.0.2.2:4000'), isNull);
     });
 

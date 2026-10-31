@@ -6,7 +6,7 @@ const base: PlatformInvoiceDocData = {
   number: "SR/2026-27/00001",
   date: "2026-10-16",
   status: "paid",
-  seller: { legalName: "Srirealtime", gstin: "33AABFR1234K1ZI", stateCode: "33", address: "Coimbatore" },
+  seller: { legalName: "RBMS", gstin: "33AABFR1234K1ZI", stateCode: "33", address: "Coimbatore" },
   buyer: { legalName: "Anbu Stores", gstin: null, stateCode: "33", address: "Madurai" },
   placeOfSupply: "33",
   description: "Pro plan (monthly)",
@@ -39,7 +39,7 @@ describe("platform invoice", () => {
     expect(d.cancelReason).toBe("Refunded");
   });
   it("renders a tax invoice with both parties", () => {
-    const html = renderPlatformInvoice(base, { locale: "en", branding: { ...DEFAULT_BRANDING, appName: "Srirealtime" } });
+    const html = renderPlatformInvoice(base, { locale: "en", branding: { ...DEFAULT_BRANDING, appName: "RBMS" } });
     expect(html).toContain("SR/2026-27/00001");
     expect(html).toContain("Anbu Stores");
     expect(html).toContain("33AABFR1234K1ZI");
@@ -66,7 +66,7 @@ describe("platform invoice with a proration credit", () => {
     expect(d.lines[1]).toMatchObject({ taxable: -33_803, cgst: -3_042, unit: "credit" });
     expect(d.lines.reduce((s, l) => s + l.taxable, 0)).toBe(d.totals.taxable);
     expect(d.lines.reduce((s, l) => s + l.total, 0)).toBe(d.totals.total);
-    const html = renderPlatformInvoice({ ...base, lines: null }, { locale: "en", branding: { ...DEFAULT_BRANDING, appName: "Srirealtime" } });
+    const html = renderPlatformInvoice({ ...base, lines: null }, { locale: "en", branding: { ...DEFAULT_BRANDING, appName: "RBMS" } });
     expect(html).toContain("998314");
   });
 });

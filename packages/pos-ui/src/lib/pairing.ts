@@ -24,7 +24,7 @@ export function formatPairingInput(input: string): string {
 }
 
 export interface PairingQr {
-  /** API origin the code belongs to ("https://api.srikit.in"). */
+  /** API origin the code belongs to ("https://api.rbms.in"). */
   origin: string;
   code: string;
 }

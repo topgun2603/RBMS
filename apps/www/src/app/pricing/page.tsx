@@ -151,9 +151,9 @@ function offersJsonLd(plans: Plan[], app: AppId, t: Translator) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `Srirealtime ${t(`app.${app}`)}`,
+    name: `RBMS ${t(`app.${app}`)}`,
     description: t("brand.tagline"),
-    brand: { "@type": "Brand", name: "Srirealtime" },
+    brand: { "@type": "Brand", name: "RBMS" },
     url: `${SITE_URL}/pricing?app=${appParam(app)}`,
     offers: plans.flatMap((p) =>
       (["monthly", "yearly"] as const)

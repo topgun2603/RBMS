@@ -1,6 +1,6 @@
 import { cn } from "@rbms/ui/lib/utils";
 
-/** Srirealtime mark: a rounded tile with a kolam-style loop (four dots joined by one line). */
+/** RBMS mark: a rounded tile with a kolam-style loop (four dots joined by one line). */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" aria-hidden="true" className={cn("size-8", className)}>
@@ -28,7 +28,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoMark />
-      <span className="font-display text-lg font-bold tracking-tight">Srirealtime</span>
+      <span className="font-display text-lg font-bold tracking-tight">RBMS</span>
     </span>
   );
 }

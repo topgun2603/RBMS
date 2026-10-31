@@ -1,8 +1,8 @@
 # Batch 5 contract: sign-up, plan subscriptions, landing + pricing
 
-Goal: a shop owner finds Srirealtime on the public site, picks Billing or Online Store and a plan, signs up with an OTP,
+Goal: a shop owner finds RBMS on the public site, picks Billing or Online Store and a plan, signs up with an OTP,
 creates the shop, gets a 14-day trial of the chosen paid plan without a card, then pays monthly or yearly through
-Razorpay Subscriptions (UPI Autopay or card mandate). Srirealtime (the platform) is the seller: platform invoices carry
+Razorpay Subscriptions (UPI Autopay or card mandate). RBMS (the platform) is the seller: platform invoices carry
 its GSTIN with 18% GST. Everything follows docs/CONVENTIONS.md (module packages, ports, `kit.ts` wiring) and the
 standing UI rules in docs/batch4.md (shadcn + Framer Motion, Field primitive, English + Tamil, no Hindi terms,
 mobile-first, dark mode). Money is integer paise; dates are IST.
@@ -231,7 +231,7 @@ Sign-up and tenancy:
 Env (apps/api):
 - `PLATFORM_RAZORPAY_KEY_ID`, `PLATFORM_RAZORPAY_KEY_SECRET`, `PLATFORM_RAZORPAY_WEBHOOK_SECRET`: all three or none.
   With none, development uses the mock and production answers 503 on checkout.
-- `PLATFORM_LEGAL_NAME` (default "Srirealtime"), `PLATFORM_GSTIN`, `PLATFORM_STATE_CODE` (default 33) and
+- `PLATFORM_LEGAL_NAME` (default "RBMS"), `PLATFORM_GSTIN`, `PLATFORM_STATE_CODE` (default 33) and
   `PLATFORM_ADDRESS`.
 - `PLATFORM_INVOICE_PREFIX` (default SR).
 - `WWW_PUBLIC_URL` (default http://localhost:3005).

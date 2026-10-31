@@ -24,7 +24,7 @@ export const tenantDomains = pgTable(
     tenantId: tenantId(),
     domain: text("domain").notNull().unique(),
     verified: boolean("verified").notNull().default(false),
-    /** Value of the `_srikit-verify.<domain>` TXT record. Set on add; older rows get one lazily. */
+    /** Value of the `_rbms-verify.<domain>` TXT record. Set on add; older rows get one lazily. */
     verificationToken: text("verification_token"),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
     /** Last DNS check (manual or the `tenancy.domains.verify` job). */

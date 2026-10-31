@@ -26,7 +26,7 @@ export interface RequestInfo {
   host: string;
   /** Shop slug for `<slug>.<root>` hosts, null on custom domains. */
   slug: string | null;
-  /** "https://anbu.srikit.in" — canonical URLs, JSON-LD, sitemap links. */
+  /** "https://anbu.rbms.in" — canonical URLs, JSON-LD, sitemap links. */
   baseUrl: string;
   locale: Locale;
   t: Translator;

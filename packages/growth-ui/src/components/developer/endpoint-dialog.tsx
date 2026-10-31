@@ -112,7 +112,7 @@ export function EndpointSheet({
                 className="font-mono"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/webhooks/srikit"
+                placeholder="https://example.com/webhooks/rbms"
                 autoComplete="off"
                 autoFocus={!endpoint}
                 maxLength={2000}

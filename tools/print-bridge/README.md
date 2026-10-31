@@ -13,14 +13,14 @@ and forwards them, unchanged, to the printer named in its config. Full setup gui
 ## Install (Windows)
 
 1. Install Node 22 LTS (nodejs.org).
-2. Copy this folder to the counter PC, e.g. `C:\srikit-print-bridge`.
+2. Copy this folder to the counter PC, e.g. `C:\rbms-print-bridge`.
 3. `node bridge.mjs --new-token` and paste the output as `token` in a copy of `config.example.json` saved as `config.json`.
 4. Set `allowedOrigins` to the address you open the counter on (e.g. `https://acme.yourapp.com`), and `printers`:
    - Windows queue: `{ "type": "windows", "printer": "<exact name in Devices and Printers>" }`
    - LAN: `{ "type": "tcp", "host": "192.168.1.50", "port": 9100 }`
    - Linux / macOS: `{ "type": "cups", "queue": "<lpstat -p name>" }`
 5. `node bridge.mjs` and keep it running. To start with Windows: Task Scheduler, "At log on", action
-   `node C:\srikit-print-bridge\bridge.mjs`.
+   `node C:\rbms-print-bridge\bridge.mjs`.
 6. In the app: Settings, Printing, Printer = "Local print bridge", paste the token, Test print.
 
 ## Safety notes

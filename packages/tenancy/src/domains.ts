@@ -1,10 +1,10 @@
 /** Custom-domain verification helpers (pure): tokens, DNS instructions, the verifier port and the feature. */
 import { randomToken, type FeatureDef } from "@rbms/core";
 
-/** TXT record name prefix: `_srikit-verify.<domain>`. */
-export const VERIFY_RECORD_PREFIX = "_srikit-verify";
+/** TXT record name prefix: `_rbms-verify.<domain>`. */
+export const VERIFY_RECORD_PREFIX = "_rbms-verify";
 /** Default CNAME target (env CNAME_TARGET in apps/api). */
-export const DEFAULT_CNAME_TARGET = "stores.srikit.in";
+export const DEFAULT_CNAME_TARGET = "stores.rbms.in";
 export const CUSTOM_DOMAIN_FEATURE = "custom-domain";
 
 export const TENANCY_FEATURES: FeatureDef[] = [
@@ -24,12 +24,12 @@ export interface DomainCheck {
 
 /**
  * DNS check for a custom domain (apps/api implements it with node:dns/promises): `txt` = a TXT record at
- * `_srikit-verify.<domain>` equals `token`; `cname` = the domain CNAMEs to the platform target.
+ * `_rbms-verify.<domain>` equals `token`; `cname` = the domain CNAMEs to the platform target.
  */
 export type DomainVerifier = (domain: string, opts: { token: string }) => Promise<DomainCheck>;
 
-/** New verification token, e.g. "srikit-verify-3q2x…" (URL-safe, fits a TXT record). */
-export const newVerificationToken = () => `srikit-verify-${randomToken(18)}`;
+/** New verification token, e.g. "rbms-verify-3q2x…" (URL-safe, fits a TXT record). */
+export const newVerificationToken = () => `rbms-verify-${randomToken(18)}`;
 
 /** Second-level suffixes under which the registrable domain has three labels (common in India and nearby). */
 const TWO_PART_SUFFIXES = new Set([

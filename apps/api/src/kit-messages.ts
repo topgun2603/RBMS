@@ -230,7 +230,7 @@ export interface MessagesDeps {
   features: { isEnabled(tenantId: string, key: string): Promise<boolean> };
   auth: { getUser(id: string): Promise<{ phone?: string | null; email?: string | null } | null> };
   shopName: (tenantId: string) => Promise<string | null>;
-  /** The shop's public store, e.g. "https://glow.srikit.in" (no trailing slash). */
+  /** The shop's public store, e.g. "https://glow.rbms.in" (no trailing slash). */
   storeUrl: (tenantId: string) => Promise<string>;
   /** Registers a job the kit can also run on demand (`kit.runJob`). */
   defineJob: (name: string, handler: () => Promise<void>) => void;

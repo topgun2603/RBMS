@@ -59,7 +59,7 @@ export function serializeJsonLd(data: JsonLd | JsonLd[]): string {
 export type Availability = "InStock" | "OutOfStock" | "PreOrder" | "BackOrder" | "LimitedAvailability" | "Discontinued";
 
 export interface ProductJsonLdInput {
-  /** Store base URL, e.g. "https://raja.srikit.in". */
+  /** Store base URL, e.g. "https://raja.rbms.in". */
   baseUrl: string;
   name: string;
   slug: string;

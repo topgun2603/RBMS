@@ -67,7 +67,7 @@ describe.skipIf(!URL_)("pending upgrades against Postgres", () => {
       db,
       provider,
       clock: () => now,
-      config: { seller: { legalName: "Srirealtime", gstin: null, stateCode: "33", address: null }, allowMock: true },
+      config: { seller: { legalName: "RBMS", gstin: null, stateCode: "33", address: null }, allowMock: true },
       plans: { getPlan: async (id) => PLANS.find((p) => p.id === id) ?? null, listPlans: async () => PLANS, usage: async () => [] },
       tenancy: {
         getTenant: async (id) => tenants.get(id) ?? null,

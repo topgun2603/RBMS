@@ -10,7 +10,7 @@ Five tracks, run as two lanes in parallel: web + back end (tracks A, B, C, E) an
 | A | Never say no: general packs, typed-trade capture, grouped picker, 30 new packs | 8, 9 |
 | B | Small engine changes that unlock more trades | 10 |
 | C | New verticals for big markets | 12, 13, 14 |
-| D | Flutter apps: srikit Business, then srikit Shops | M0–M4 |
+| D | Flutter apps: RBMS Business, then RBMS Shops | M0–M4 |
 | E | Market levers: import from other software, more languages, printing, open items | 11 |
 | F | White-label branded apps for top-plan shops | after M4 |
 
@@ -115,7 +115,7 @@ Each is a back-end package + UI module, same contract as the others (docs/web-mo
 
 ## Track D: Flutter apps
 
-**Under the srikit Play / App Store account:** srikit Business (owners and staff, every trade) and srikit Shops (one
+**Under the RBMS Play / App Store account:** RBMS Business (owners and staff, every trade) and RBMS Shops (one
 customer app for every shop). No per-shop apps on our account: Google Play's repetitive-content policy and Apple 4.2.6
 both forbid a template service publishing apps for its clients, and one strike could take down the account. Branded
 apps for shops are track F.
@@ -126,8 +126,8 @@ phone sign-in, and features / permissions decided on the server.
 Repo layout (Dart workspace managed with Melos, its own CI job):
 
 ```
-apps/mobile_business      srikit Business
-apps/mobile_shops         srikit Shops (and the white-label template, track F)
+apps/mobile_business      RBMS Business
+apps/mobile_shops         RBMS Shops (and the white-label template, track F)
 dart/srikit_api           generated API client
 dart/srikit_theme         theme generated from @rbms/branding tokens
 dart/srikit_l10n          ARB files generated from the web message files
@@ -174,7 +174,7 @@ dart/srikit_kit           shared widgets, auth, shop switcher, feature / permiss
 - Open: Dart client generation from the typed document (hand-written models checked against it for now), the CI job
   for the Dart packages, real Firebase / FCM config.
 
-### M1: srikit Business v1 (6–8 weeks)
+### M1: RBMS Business v1 (6–8 weeks)
 
 Sign-in (Firebase phone), shop switcher, dashboard, **counter billing** with camera barcode scan and Bluetooth thermal
 printing, bill share on WhatsApp, products and stock, orders with push alerts, customers and credit book, expenses,
@@ -197,7 +197,7 @@ Web counter first (2026-10-24, docs/offline-billing.md): the same rules are buil
 reserved number blocks of the real series, idempotent sync, flags for review). The Flutter app can reuse the server side
 as is (`/v1/pos/offline/*`); only the local database and screens remain.
 
-### M4: srikit Shops (6 weeks)
+### M4: RBMS Shops (6 weeks)
 
 The customer app over `storefront` + `marketplace`: nearby shops, search, cart and checkout, bookings, job and order
 tracking, loyalty, chat. Each shop's page uses that shop's theme. The web storefronts stay, and each one already installs
@@ -211,7 +211,7 @@ a shop-branded offline page (cart, checkout and account pages are never cached).
 ### Batch 11: switch-over and reach (2–3 weeks)
 
 - **Import from other software** in one click, on top of `importexport`: Tally (XML), Vyapar and Khatabook exports,
-  Excel / CSV for items, customers with balances, and opening stock. This makes it easy for shops to move to srikit.
+  Excel / CSV for items, customers with balances, and opening stock. This makes it easy for shops to move to RBMS.
 - **More languages:** pack copy goes from `{ en, ta }` to one entry per locale. Add Hindi, Telugu, Kannada, Malayalam
   (one at a time, starting with whichever the demand list shows first).
 - **Printing:** thermal bill and KOT slips from the web (QZ Tray or the browser print dialog) and the "print bill at
@@ -232,7 +232,7 @@ The Shopify + Tapcart way:
 - A build pipeline (fastlane + Codemagic or GitHub Actions) builds, signs and uploads every branded app, so 100 apps
   are not 100 times the work.
 - Each store listing gets its own screenshots and text from that shop's data, so the apps don't look repetitive.
-- Every other shop gets its web storefront plus a listing in srikit Shops.
+- Every other shop gets its web storefront plus a listing in RBMS Shops.
 
 ## Order of work
 
@@ -246,7 +246,7 @@ Two lanes, weeks from the start of batch 8:
 | 8–10 | Batch 11: import, languages, printing, open items | M1 ends: Android beta to demo shops |
 | 11–14 | Batch 12: daily subscriptions | M2: trade screens |
 | 15–18 | Batch 13: wholesale | M3: offline billing |
-| 19–24 | Batch 14: lodges, clinics, rentals | M4: srikit Shops |
+| 19–24 | Batch 14: lodges, clinics, rentals | M4: RBMS Shops |
 | 25+ | Next trades from the demand list | Track F: branded apps |
 
 The sizes assume today's pace on the web side and at least one person mainly on Flutter.
@@ -266,7 +266,7 @@ The sizes assume today's pace on the web side and at least one person mainly on 
 
 ## Open decisions
 
-1. Customer app: one srikit Shops app plus branded apps on top plans (this plan's assumption), or something else?
+1. Customer app: one RBMS Shops app plus branded apps on top plans (this plan's assumption), or something else?
 2. App ids for the new verticals: their own apps (e.g. `HS` for stays, `CL` for clinics) or packs on existing apps?
 3. iOS: with M1, or after Android is stable (this plan's assumption)?
 4. Which language after Tamil: Hindi, Telugu, Kannada or Malayalam?

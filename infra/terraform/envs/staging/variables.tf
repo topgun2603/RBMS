@@ -25,7 +25,7 @@ variable "environment" {
 
 variable "domain" {
   description = <<-EOT
-    Root domain, e.g. "srikit.in". Empty (default) = no-domain mode: plain HTTP on the load balancer's AWS name, one
+    Root domain, e.g. "rbms.in". Empty (default) = no-domain mode: plain HTTP on the load balancer's AWS name, one
     port per app. Set it to switch to HTTPS + host names: <domain> (www), api., admin., <shop>.billing., <shop>.shop.,
     <shop>.seller. and <shop>.<domain> (store).
   EOT

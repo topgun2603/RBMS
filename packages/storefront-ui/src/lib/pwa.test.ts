@@ -129,8 +129,8 @@ describe("buildManifest", () => {
 });
 
 describe("service worker routing", () => {
-  const origin = "https://anbu.srikit.in";
-  const uploads = ["https://api.srikit.in/v1/uploads/", "https://cdn.srikit.in/"];
+  const origin = "https://anbu.rbms.in";
+  const uploads = ["https://api.rbms.in/v1/uploads/", "https://cdn.rbms.in/"];
   const s = (url: string, extra: Partial<SwRequestInfo> = {}) => swStrategy({ url, method: "GET", origin, uploads, ...extra });
 
   it("never touches cart, checkout, account, orders, the API, token pages or non-GET", () => {
@@ -156,11 +156,11 @@ describe("service worker routing", () => {
   });
 
   it("stale-while-revalidate for product images from the uploads URL", () => {
-    expect(s("https://api.srikit.in/v1/uploads/files/t/1/kurti.jpg")).toBe("stale-while-revalidate");
-    expect(s("https://api.srikit.in/v1/uploads/files/t/1/doc", { destination: "image" })).toBe("stale-while-revalidate");
-    expect(s("https://cdn.srikit.in/t/1/a.webp")).toBe("stale-while-revalidate");
-    expect(s("https://api.srikit.in/v1/uploads/files/t/1/invoice.pdf", { destination: "" })).toBe("bypass");
-    expect(s("https://api.srikit.in/v1/store/config")).toBe("bypass");
+    expect(s("https://api.rbms.in/v1/uploads/files/t/1/kurti.jpg")).toBe("stale-while-revalidate");
+    expect(s("https://api.rbms.in/v1/uploads/files/t/1/doc", { destination: "image" })).toBe("stale-while-revalidate");
+    expect(s("https://cdn.rbms.in/t/1/a.webp")).toBe("stale-while-revalidate");
+    expect(s("https://api.rbms.in/v1/uploads/files/t/1/invoice.pdf", { destination: "" })).toBe("bypass");
+    expect(s("https://api.rbms.in/v1/store/config")).toBe("bypass");
     expect(s("https://images.pexels.com/x.jpg", { destination: "image" })).toBe("bypass");
     expect(s(`${origin}/app-icon/192.png`)).toBe("stale-while-revalidate");
   });

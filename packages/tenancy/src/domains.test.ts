@@ -24,7 +24,7 @@ describe("domain helpers", () => {
 
   it("makes distinct TXT-safe tokens", () => {
     const a = newVerificationToken();
-    expect(a).toMatch(/^srikit-verify-[A-Za-z0-9_-]{20,}$/);
+    expect(a).toMatch(/^rbms-verify-[A-Za-z0-9_-]{20,}$/);
     expect(newVerificationToken()).not.toBe(a);
   });
 
@@ -33,7 +33,7 @@ describe("domain helpers", () => {
     expect(i).toEqual({
       domain: "shop.rajastores.in",
       records: [
-        { type: "TXT", host: "_srikit-verify.shop.rajastores.in", value: "tok" },
+        { type: "TXT", host: "_rbms-verify.shop.rajastores.in", value: "tok" },
         { type: "CNAME", host: "shop.rajastores.in", value: "stores.example.in" },
       ],
       status: "pending",
@@ -89,14 +89,14 @@ function fakeDb(initial: Partial<TenantDomain>) {
   return { db: db as unknown as Db, row: () => row };
 }
 
-const service = (db: Db, domainVerifier?: DomainVerifier) => new TenancyService({ db, rootDomain: "srikit.in", domainVerifier });
+const service = (db: Db, domainVerifier?: DomainVerifier) => new TenancyService({ db, rootDomain: "rbms.in", domainVerifier });
 
 describe("domain verification", () => {
   it("gives old rows a token lazily when instructions are read", async () => {
     const f = fakeDb({ verificationToken: null });
     const i = await service(f.db).domainInstructions("t1", "d1");
-    expect(f.row().verificationToken).toMatch(/^srikit-verify-/);
-    expect(i.records[0]).toEqual({ type: "TXT", host: "_srikit-verify.shop.rajastores.in", value: f.row().verificationToken });
+    expect(f.row().verificationToken).toMatch(/^rbms-verify-/);
+    expect(i.records[0]).toEqual({ type: "TXT", host: "_rbms-verify.shop.rajastores.in", value: f.row().verificationToken });
     expect(i.status).toBe("pending");
   });
 
@@ -133,7 +133,7 @@ describe("domain verification", () => {
   it("verifyPending checks pending domains and is a no-op without a verifier", async () => {
     expect(await service(fakeDb({}).db).verifyPending()).toEqual({ checked: 0, verified: 0 });
     const f = fakeDb({ verificationToken: null });
-    const verifier = vi.fn<DomainVerifier>(async (_d, { token }) => ({ txt: token.startsWith("srikit-verify-"), cname: true }));
+    const verifier = vi.fn<DomainVerifier>(async (_d, { token }) => ({ txt: token.startsWith("rbms-verify-"), cname: true }));
     expect(await service(f.db, verifier).verifyPending()).toEqual({ checked: 1, verified: 1 });
     expect(f.row().verified).toBe(true);
     const g = fakeDb({ verificationToken: "tok" });

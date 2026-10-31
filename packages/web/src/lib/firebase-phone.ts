@@ -103,7 +103,7 @@ export async function resolvePhoneMethod(
 
 /**
  * Hosts where Firebase phone sign-in may run in place: NEXT_PUBLIC_FIREBASE_AUTH_HOSTS, comma-separated exact host
- * names ("localhost", "srikit.in") or ".suffix" entries for every subdomain (".srikit.in"). Default "localhost".
+ * names ("localhost", "rbms.in") or ".suffix" entries for every subdomain (".rbms.in"). Default "localhost".
  * Must mirror the Firebase console's authorized domains. Elsewhere the kit login sends the user to the landing site's
  * /login to verify the number and comes back with a handoff code.
  */
@@ -141,7 +141,7 @@ export function methodSignInRedirectUrl(wwwUrl: string, method: "google" | "pass
 
 /**
  * Validates a `?return=` URL before a handoff code is sent there (a code signs the user in, so an open redirect would
- * hand over the account). Allowed: an origin matching one of `origins` ("https://admin.srikit.in",
+ * hand over the account). Allowed: an origin matching one of `origins` ("https://admin.rbms.in",
  * "http://*.localhost:3001" — `*` = one subdomain label), no credentials, and a path ending in "/login". Returns the
  * normalised URL without `handoff`, or null.
  */

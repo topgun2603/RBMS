@@ -247,7 +247,7 @@ function verify(header, rawBody) {
 const app = express();
 
 // Keep the RAW body: re-serialised JSON won't match the signature.
-app.post("/webhooks/srikit", express.raw({ type: "application/json" }), (req, res) => {
+app.post("/webhooks/rbms", express.raw({ type: "application/json" }), (req, res) => {
   const raw = req.body.toString("utf8");
   if (!verify(req.get("x-srikit-signature"), raw)) return res.status(400).send("bad signature");
 

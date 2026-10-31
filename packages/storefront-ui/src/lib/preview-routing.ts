@@ -42,8 +42,8 @@ export function safePreviewPath(path: unknown): string | null {
 // ------------------------------------------------------------------ origins
 
 /**
- * Editor origins allowed to drive the preview, as patterns: an exact origin (`https://app.srikit.in`), a one-label
- * subdomain wildcard (`https://*.srikit.in`) and/or any port (`http://*.localhost:*`). Same `*.` syntax as the API's
+ * Editor origins allowed to drive the preview, as patterns: an exact origin (`https://app.rbms.in`), a one-label
+ * subdomain wildcard (`https://*.rbms.in`) and/or any port (`http://*.localhost:*`). Same `*.` syntax as the API's
  * CORS_ORIGINS. Patterns are also valid CSP `frame-ancestors` sources.
  */
 export function originRegex(pattern: string): RegExp | null {

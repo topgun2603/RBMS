@@ -22,7 +22,7 @@ export function setTenantStrategy(next: TenantStrategy) {
 }
 export const getTenantStrategy = () => strategy;
 
-/** Root domain shops live under: raja.localhost (dev) or raja.srikit.in (production). */
+/** Root domain shops live under: raja.localhost (dev) or raja.rbms.in (production). */
 export function rootDomain(): string {
   return strategy.from === "hostname" && strategy.rootDomain
     ? strategy.rootDomain.toLowerCase().replace(/^\.+|\.+$/g, "")
@@ -33,8 +33,8 @@ export function rootDomain(): string {
 const isShopSlug = (s: string) => validateSlug(s).ok;
 
 /**
- * "raja.localhost:3001" → "raja"; "raja.srikit.in" → "raja" (root srikit.in);
- * "localhost", "srikit.in", "www.srikit.in", IPs and unrelated hosts → null.
+ * "raja.localhost:3001" → "raja"; "raja.rbms.in" → "raja" (root rbms.in);
+ * "localhost", "rbms.in", "www.rbms.in", IPs and unrelated hosts → null.
  */
 export function tenantFromHost(host: string | null | undefined, root: string = rootDomain()): string | null {
   if (!host) return null;

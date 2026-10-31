@@ -116,14 +116,14 @@ Tables: `cms_home` (tenant pk, draft jsonb, published jsonb, published_at), `cms
   `{ sales: { taxable, tax }, purchases: { taxable, itc }, expenses: { total, itc }, grossProfit /* sales.taxable − purchases.taxable */, netProfit /* grossProfit − (expenses.total − expenses.itc) */, gst: { output, itc, payable } }` via `SalesReportPort` (invoices gst-summary totals) and `PurchasesReportPort` (inventory purchases report). CSV for the list.
 
 ### Custom domain (extend `@rbms/tenancy`)
-- `GET /v1/tenancy/domains/:id/instructions` → `{ domain, records: [{ type: "TXT", host: "_srikit-verify.<domain>", value: <token> }, { type: "CNAME", host: <domain or www>, value: <CNAME_TARGET> }], status }` (token stored on tenant_domains).
+- `GET /v1/tenancy/domains/:id/instructions` → `{ domain, records: [{ type: "TXT", host: "_rbms-verify.<domain>", value: <token> }, { type: "CNAME", host: <domain or www>, value: <CNAME_TARGET> }], status }` (token stored on tenant_domains).
 - Verifier implemented in apps/api with `node:dns/promises` (`resolveTxt`, `resolveCname`); `POST /domains/:id/verify` uses it; job `tenancy.domains.verify` every 30 min for pending domains.
-- Env `CNAME_TARGET` (default `stores.srikit.in`). Feature `custom-domain` declared by tenancy (dependsOn nothing; plan pro). Verified custom domains already resolve tenants (tenancy.resolve).
+- Env `CNAME_TARGET` (default `stores.rbms.in`). Feature `custom-domain` declared by tenancy (dependsOn nothing; plan pro). Verified custom domains already resolve tenants (tenancy.resolve).
 
 ## 6. Installable storefront (PWA)
 
 Every shop's online store (`apps/store` + `packages/storefront-ui`) installs as its own home-screen app, with the shop's
-name, icon and colours. Same host resolution as the pages (`<slug>.srikit.in` / verified custom domain); a host without a
+name, icon and colours. Same host resolution as the pages (`<slug>.rbms.in` / verified custom domain); a host without a
 shop (unknown subdomain, unverified domain, store switched off) gets 404 for every URL below.
 
 - `GET /manifest.webmanifest` (`server/pwa.tsx` manifestHandler; linked from the root metadata): `name` = shop name,

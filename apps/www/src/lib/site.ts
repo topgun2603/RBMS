@@ -57,13 +57,13 @@ export const PHONE_RETURN_ORIGINS = (
   .filter(Boolean);
 
 export const CONTACT_WHATSAPP = process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "";
-export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@srirealtime.com";
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@rbms.in";
 
 /** The trades a shop can pick at sign-up: the business packs (@rbms/verticals), grouped for the picker. */
 export { BUSINESS_TYPES, PACKS, packPickerGroups } from "@rbms/verticals";
 
 /**
- * Demo storefronts, e.g. "https://{slug}.srikit.in". Unset = no demo links are shown (never defaulted to localhost).
+ * Demo storefronts, e.g. "https://{slug}.rbms.in". Unset = no demo links are shown (never defaulted to localhost).
  * Read at build/start time, so set it in .env.local / the deploy environment.
  */
 export const DEMO_STORE_URL = (process.env.NEXT_PUBLIC_DEMO_STORE_URL || "").trim();

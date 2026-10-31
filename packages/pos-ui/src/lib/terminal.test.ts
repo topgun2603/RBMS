@@ -99,7 +99,7 @@ describe("pairing codes and QR", () => {
 
   it("parses the QR payload (origin may contain colons) and bare codes", () => {
     expect(parsePairingQr("srikit-pair:1:http://localhost:4000:ABCD-2345")).toEqual({ origin: "http://localhost:4000", code: "ABCD2345" });
-    expect(parsePairingQr("srikit-pair:1:https://api.srikit.in:wxyz9876")).toEqual({ origin: "https://api.srikit.in", code: "WXYZ9876" });
+    expect(parsePairingQr("srikit-pair:1:https://api.rbms.in:wxyz9876")).toEqual({ origin: "https://api.rbms.in", code: "WXYZ9876" });
     expect(parsePairingQr("ABCD-2345")).toEqual({ origin: "", code: "ABCD2345" });
     expect(parsePairingQr("srikit-pair:2:x:ABCD-2345")).toBeNull();
     expect(parsePairingQr("https://example.com")).toBeNull();

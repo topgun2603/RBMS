@@ -97,7 +97,7 @@ export interface WorkbookInput {
 /** Builds an .xlsx in memory: styled, frozen header row, optional Help sheet. */
 export async function writeXlsx(input: WorkbookInput): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "srikit";
+  wb.creator = "RBMS";
   const ws = wb.addWorksheet(input.sheetName ?? "Data", { views: [{ state: "frozen", ySplit: 1 }] });
   ws.columns = input.columns.map((c) => ({ header: c.header, width: c.width ?? Math.min(40, Math.max(12, c.header.length + 4)), style: c.numFmt ? { numFmt: c.numFmt } : {} }));
   styleHeader(ws.getRow(1));

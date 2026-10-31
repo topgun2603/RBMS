@@ -11,7 +11,7 @@ describe("login handoff", () => {
   it("builds the shop app's login URL with the code", () => {
     expect(handoffLoginUrl("http://acme.localhost:3001", "abc_DEF-123")).toBe("http://acme.localhost:3001/login?handoff=abc_DEF-123");
     expect(handoffLoginUrl("http://acme.localhost:3002/billing/", "c0de")).toBe("http://acme.localhost:3002/billing/login?handoff=c0de");
-    expect(handoffLoginUrl("https://acme.srikit.in/?x=1", "c")).toBe("https://acme.srikit.in/login?x=1&handoff=c");
+    expect(handoffLoginUrl("https://acme.rbms.in/?x=1", "c")).toBe("https://acme.rbms.in/login?x=1&handoff=c");
   });
 });
 

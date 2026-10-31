@@ -235,6 +235,6 @@ export function testPageRows(name: string, o: { charsPerLine: number; widthDots:
     { t: "text", text: "Rs. 1,234.50", align: "right" },
   ];
   if (o.locale === "ta") rows.push({ t: "text", text: RECEIPT_LABELS.ta.thanks, align: "center" });
-  rows.push({ t: "qr", data: "https://srirealtime.com" }, { t: "rule" });
+  rows.push({ t: "qr", data: "https://rbms.in" }, { t: "rule" });
   return rows;
 }

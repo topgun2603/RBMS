@@ -11,14 +11,14 @@ export const enMore: Messages = {
   // ---- trades section (home) and /industries
   "trades.eyebrow": "Every trade",
   "trades.title": "One system, set up for your trade",
-  "trades.body": "Choose your trade when you sign up. Srirealtime prepares your starter categories, the look of your online store and the right tools, in English and Tamil. You can change all of it later.",
+  "trades.body": "Choose your trade when you sign up. RBMS prepares your starter categories, the look of your online store and the right tools, in English and Tamil. You can change all of it later.",
   "trades.all": "See all 45 trades",
   "trades.also": "And also",
   "trades.demo": "See a demo store",
   "trades.custom": "Not on the list? A general setup is ready, and you can tell us your trade.",
 
   "industries.meta.title": "Billing and online store for every trade: kirana, pharmacy, restaurant, textiles and more",
-  "industries.meta.description": "Srirealtime is set up for 45 trades in Tamil Nadu: grocery, pharmacy, restaurant, bakery, textiles, jewellery, electronics, repair, salon, gym, tailoring and more. In English and Tamil.",
+  "industries.meta.description": "RBMS is set up for 45 trades in Tamil Nadu: grocery, pharmacy, restaurant, bakery, textiles, jewellery, electronics, repair, salon, gym, tailoring and more. In English and Tamil.",
   "industries.eyebrow": "Trades",
   "industries.title": "Made for how your trade works",
   "industries.sub": "Each trade gets sensible categories, its own online store look, a home page in English and Tamil and the right tools switched on. Here is what you get.",
@@ -120,7 +120,7 @@ export const enMore: Messages = {
   "mobile.title": "Business app for Android",
   "mobile.body": "Bill with your phone's camera scanner, and check orders, products and stock, customers, the credit book and expenses. In English and Tamil, in your shop's colours. We are opening it to shops in stages: write to us to ask for access.",
   "mobile.cta": "Ask for early access",
-  "mobile.mailSubject": "Srirealtime Android app: early access",
+  "mobile.mailSubject": "RBMS Android app: early access",
   // ---- live demo (/demo) and the home band
   "nav.demo": "Live demo",
   "demo.meta.title": "Live demo: real online stores and billing apps you can open",
@@ -169,7 +169,7 @@ export const taMore: Messages = {
   "trades.custom": "பட்டியலில் இல்லையா? பொதுவான அமைப்பு தயாராக உள்ளது; உங்கள் தொழிலை எங்களுக்குச் சொல்லுங்கள்.",
 
   "industries.meta.title": "ஒவ்வொரு தொழிலுக்கும் பில்லிங், ஆன்லைன் ஸ்டோர்: மளிகை, மருந்தகம், உணவகம், ஜவுளி மற்றும் பல",
-  "industries.meta.description": "தமிழ்நாட்டின் 45 தொழில்களுக்குத் தயாரான Srirealtime: மளிகை, மருந்தகம், உணவகம், பேக்கரி, ஜவுளி, நகை, எலக்ட்ரானிக்ஸ், ரிப்பேர், சலூன், ஜிம், தையல் மற்றும் பல. தமிழிலும் ஆங்கிலத்திலும்.",
+  "industries.meta.description": "தமிழ்நாட்டின் 45 தொழில்களுக்குத் தயாரான RBMS: மளிகை, மருந்தகம், உணவகம், பேக்கரி, ஜவுளி, நகை, எலக்ட்ரானிக்ஸ், ரிப்பேர், சலூன், ஜிம், தையல் மற்றும் பல. தமிழிலும் ஆங்கிலத்திலும்.",
   "industries.eyebrow": "தொழில்கள்",
   "industries.title": "உங்கள் தொழில் நடக்கும் விதத்துக்கே உருவானது",
   "industries.sub": "ஒவ்வொரு தொழிலுக்கும் பொருத்தமான வகைகள், தனி ஆன்லைன் ஸ்டோர் தோற்றம், தமிழ்-ஆங்கில முகப்புப் பக்கம், தேவையான கருவிகள் தயாராக இருக்கும். உங்களுக்குக் கிடைப்பது இதோ.",
@@ -268,7 +268,7 @@ export const taMore: Messages = {
   "mobile.title": "ஆண்ட்ராய்டுக்கான வணிக ஆப்",
   "mobile.body": "போன் கேமரா ஸ்கேனரில் பில் போடலாம்; ஆர்டர்கள், பொருட்கள், இருப்பு, வாடிக்கையாளர்கள், கடன் கணக்கு, செலவுகளைப் பார்க்கலாம். தமிழிலும் ஆங்கிலத்திலும், உங்கள் கடையின் நிறங்களில். கடைகளுக்கு படிப்படியாகத் திறக்கிறோம்; அணுகல் கேட்க எங்களுக்கு எழுதுங்கள்.",
   "mobile.cta": "முன்னோட்ட அணுகல் கேள்",
-  "mobile.mailSubject": "Srirealtime Android ஆப்: முன்னோட்ட அணுகல்",
+  "mobile.mailSubject": "RBMS Android ஆப்: முன்னோட்ட அணுகல்",
   // ---- live demo (/demo) and the home band
   "nav.demo": "நேரடி டெமோ",
   "demo.meta.title": "நேரடி டெமோ: திறந்து பார்க்கக்கூடிய உண்மையான ஆன்லைன் ஸ்டோர்களும் பில்லிங் ஆப்களும்",

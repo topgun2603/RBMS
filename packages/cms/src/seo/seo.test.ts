@@ -14,7 +14,7 @@ import {
 import { absoluteUrl } from "./paths";
 import { buildRobotsTxt, buildSitemap, buildSitemapXml, lastmodOf, SITEMAP_MAX_URLS, xmlEscape } from "./sitemap";
 
-const BASE = "https://raja.srikit.in/";
+const BASE = "https://raja.rbms.in/";
 
 describe("sitemap", () => {
   it("absolute, escaped URLs with ISO lastmod in priority order", () => {
@@ -32,19 +32,19 @@ describe("sitemap", () => {
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')).toBe(true);
     const locs = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toEqual([
-      "https://raja.srikit.in/",
-      "https://raja.srikit.in/about",
-      "https://raja.srikit.in/blog",
-      "https://raja.srikit.in/blog/care-tips",
-      "https://raja.srikit.in/blog/new",
-      "https://raja.srikit.in/c/sarees",
-      "https://raja.srikit.in/collections/best",
-      "https://raja.srikit.in/p/silk%26cotton%3C1%3E",
+      "https://raja.rbms.in/",
+      "https://raja.rbms.in/about",
+      "https://raja.rbms.in/blog",
+      "https://raja.rbms.in/blog/care-tips",
+      "https://raja.rbms.in/blog/new",
+      "https://raja.rbms.in/c/sarees",
+      "https://raja.rbms.in/collections/best",
+      "https://raja.rbms.in/p/silk%26cotton%3C1%3E",
     ]);
-    expect(xml).toContain("<url><loc>https://raja.srikit.in/</loc><lastmod>2026-10-01T10:00:00Z</lastmod></url>");
-    expect(xml).toContain("<loc>https://raja.srikit.in/blog</loc><lastmod>2026-09-12T00:00:00Z</lastmod>");
-    expect(xml).toContain("<url><loc>https://raja.srikit.in/c/sarees</loc></url>");
-    expect(xml).toContain("<url><loc>https://raja.srikit.in/collections/best</loc></url>");
+    expect(xml).toContain("<url><loc>https://raja.rbms.in/</loc><lastmod>2026-10-01T10:00:00Z</lastmod></url>");
+    expect(xml).toContain("<loc>https://raja.rbms.in/blog</loc><lastmod>2026-09-12T00:00:00Z</lastmod>");
+    expect(xml).toContain("<url><loc>https://raja.rbms.in/c/sarees</loc></url>");
+    expect(xml).toContain("<url><loc>https://raja.rbms.in/collections/best</loc></url>");
     expect(xml.endsWith("</urlset>\n")).toBe(true);
   });
 
@@ -70,8 +70,8 @@ describe("sitemap", () => {
 
 describe("robots.txt", () => {
   it("allows all, disallows private flows and links the sitemap", () => {
-    expect(buildRobotsTxt("https://raja.srikit.in/")).toBe(
-      "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /checkout\nDisallow: /cart\n\nSitemap: https://raja.srikit.in/sitemap.xml\n",
+    expect(buildRobotsTxt("https://raja.rbms.in/")).toBe(
+      "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /checkout\nDisallow: /cart\n\nSitemap: https://raja.rbms.in/sitemap.xml\n",
     );
   });
 });
@@ -92,8 +92,8 @@ describe("JSON-LD", () => {
       "@context": "https://schema.org",
       "@type": "Product",
       name: "Kanchipuram Silk Saree",
-      url: "https://raja.srikit.in/p/kanchi-silk",
-      image: ["https://raja.srikit.in/uploads/a.jpg", "https://cdn.x/b.jpg"],
+      url: "https://raja.rbms.in/p/kanchi-silk",
+      image: ["https://raja.rbms.in/uploads/a.jpg", "https://cdn.x/b.jpg"],
       description: "Pure silk with zari border.",
       sku: "KS-01",
       brand: { "@type": "Brand", name: "Raja" },
@@ -102,7 +102,7 @@ describe("JSON-LD", () => {
         price: "12499.00",
         priceCurrency: "INR",
         availability: "https://schema.org/InStock",
-        url: "https://raja.srikit.in/p/kanchi-silk",
+        url: "https://raja.rbms.in/p/kanchi-silk",
       },
     });
     expect(ld).not.toHaveProperty("aggregateRating");
@@ -138,8 +138,8 @@ describe("JSON-LD", () => {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://raja.srikit.in/" },
-        { "@type": "ListItem", position: 2, name: "Sarees", item: "https://raja.srikit.in/c/sarees" },
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://raja.rbms.in/" },
+        { "@type": "ListItem", position: 2, name: "Sarees", item: "https://raja.rbms.in/c/sarees" },
         { "@type": "ListItem", position: 3, name: "Silk" },
       ],
     });
@@ -152,8 +152,8 @@ describe("JSON-LD", () => {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: "Raja Silks",
-      url: "https://raja.srikit.in/",
-      logo: "https://raja.srikit.in/logo.png",
+      url: "https://raja.rbms.in/",
+      logo: "https://raja.rbms.in/logo.png",
       sameAs: ["https://instagram.com/raja"],
     });
   });
@@ -163,10 +163,10 @@ describe("JSON-LD", () => {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: "Raja Silks",
-      url: "https://raja.srikit.in/",
+      url: "https://raja.rbms.in/",
       potentialAction: {
         "@type": "SearchAction",
-        target: { "@type": "EntryPoint", urlTemplate: "https://raja.srikit.in/search?q={search_term_string}" },
+        target: { "@type": "EntryPoint", urlTemplate: "https://raja.rbms.in/search?q={search_term_string}" },
         "query-input": "required name=search_term_string",
       },
     });
@@ -197,8 +197,8 @@ describe("defaultMeta", () => {
     expect(m).toMatchObject({
       title: "Raja Silks – Silks since 1962",
       description: "Silks since 1962",
-      canonical: "https://raja.srikit.in/",
-      openGraph: { type: "website", siteName: "Raja Silks", locale: "en_IN", images: [{ url: "https://raja.srikit.in/logo.png" }] },
+      canonical: "https://raja.rbms.in/",
+      openGraph: { type: "website", siteName: "Raja Silks", locale: "en_IN", images: [{ url: "https://raja.rbms.in/logo.png" }] },
     });
     expect(m.robots).toBeUndefined();
   });
@@ -207,7 +207,7 @@ describe("defaultMeta", () => {
     const desc = "A *pure* silk saree. ".repeat(20);
     const m = defaultMeta(shop, { kind: "product", slug: "kanchi", name: "Kanchi Saree", description: desc, image: "https://cdn/a.jpg" });
     expect(m.title).toBe("Kanchi Saree | Raja Silks");
-    expect(m.canonical).toBe("https://raja.srikit.in/p/kanchi");
+    expect(m.canonical).toBe("https://raja.rbms.in/p/kanchi");
     expect(m.description.length).toBeLessThanOrEqual(160);
     expect(m.description.endsWith("…")).toBe(true);
     expect(m.description).not.toContain("*");
@@ -220,7 +220,7 @@ describe("defaultMeta", () => {
       title: "About",
       seo: { title: "Our story", description: "Four generations of weavers", noindex: true },
     });
-    expect(o).toMatchObject({ title: "Our story", description: "Four generations of weavers", canonical: "https://raja.srikit.in/about", robots: "noindex, nofollow" });
+    expect(o).toMatchObject({ title: "Our story", description: "Four generations of weavers", canonical: "https://raja.rbms.in/about", robots: "noindex, nofollow" });
   });
 
   it("post is an article with dates; fallbacks without a description", () => {

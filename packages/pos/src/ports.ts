@@ -187,7 +187,7 @@ export interface LoggerPort {
 export interface PosConfig {
   /** Key for PIN lookups (derive it from APP_SECRET; never the raw secret). */
   pinKey: string;
-  /** Public API origin for the pairing QR, e.g. "https://api.srikit.in". */
+  /** Public API origin for the pairing QR, e.g. "https://api.rbms.in". */
   apiOrigin: string;
 }
 
