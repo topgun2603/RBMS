@@ -375,3 +375,74 @@ describe("credentials (internal)", () => {
     await expect(make([[account({ keySecretEnc: "garbage" })]]).credentials(TENANT)).rejects.toBeInstanceOf(AppError);
   });
 });
+
+describe("amounts and payment state", () => {
+  const sig = hmac("order_ABC|pay_123", "key-secret");
+  const pay = (over: Record<string, unknown> = {}) =>
+    jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "INR", status: "captured", method: "upi", ...over });
+
+  it("checkout refuses amounts Razorpay cannot take: under ₹1, fractional paise, over the cap", async () => {
+    for (const amount of [99, 0, -100, 100.5, 2_000_000_001]) {
+      const { service, purpose: p, fake } = setup([]);
+      p.resolve.mockResolvedValueOnce({ ...(await p.resolve()), amount });
+      expect(code(await service.checkout({ kind: "invoice", ref: REF }).catch((e) => e))).toBe("not_payable");
+      expect(fake.ops).toHaveLength(0);
+    }
+  });
+
+  it("checkout accepts exactly ₹1 and asks Razorpay for that many paise in INR", async () => {
+    const fetch = jsonFetch(200, { id: "order_NEW", amount: 100, currency: "INR", receipt: "inv-1", status: "created" });
+    const { service, purpose: p } = setup([[account()], [], [order({ amount: 100, providerOrderId: "order_NEW" })]], { fetch });
+    p.resolve.mockResolvedValueOnce({ ...(await p.resolve()), amount: 100 });
+    const res = await service.checkout({ kind: "invoice", ref: REF });
+    expect(res).toMatchObject({ orderId: "order_NEW", amount: 100, currency: "INR" });
+    const body = JSON.parse(String((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(body).toMatchObject({ amount: 100, currency: "INR" });
+  });
+
+  it("verify refuses a payment that is not captured or authorized", async () => {
+    for (const status of ["failed", "created", "refunded"]) {
+      const { service, purpose: p } = setup([[order()], [account()]], { fetch: pay({ status }) });
+      expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("payment_not_completed");
+      expect(p.onPaid).not.toHaveBeenCalled();
+    }
+  });
+
+  it("verify refuses a payment of another order", async () => {
+    const { service, purpose: p } = setup([[order()], [account()]], { fetch: pay({ order_id: "order_OTHER" }) });
+    expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("invalid_payment");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("verify refuses a partial payment (one paisa short)", async () => {
+    const { service, purpose: p } = setup([[order()], [account()]], { fetch: pay({ amount: 49_999 }) });
+    expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("amount_mismatch");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  // BUG: expected amount_mismatch / invalid_payment, got status "paid": verify() compares only the amount, never
+  // payment.currency against the order's INR, so 50,000 minor units of another currency would mark ₹500 paid.
+  it.fails("verify refuses a payment in another currency", async () => {
+    const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch: pay({ currency: "USD" }) });
+    const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
+    expect(err).toBeInstanceOf(AppError);
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("a webhook with the wrong amount is recorded but does not mark the order paid", async () => {
+    const body = JSON.stringify({ event: "payment.captured", payload: { payment: { entity: { id: "pay_9", order_id: "order_ABC", amount: 100, method: "upi", status: "captured" } } } });
+    const { service, purpose: p, log } = setup([[account()], [{ id: "e1" }], [order()], []]);
+    expect(await service.handleWebhook(TENANT, Buffer.from(body), hmac(body, "hook-secret"), "evt_amt")).toEqual({ ok: true, result: "ignored" });
+    expect(p.onPaid).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalledWith(expect.objectContaining({ expected: 50_000, got: 100 }), "payments: webhook amount mismatch");
+  });
+
+  it("a webhook for an order the tenant does not have changes nothing", async () => {
+    const body = JSON.stringify({ event: "order.paid", payload: { payment: { entity: { id: "pay_9", order_id: "order_ELSE", amount: 50_000, status: "captured" } } } });
+    const { service, purpose: p, fake } = setup([[account()], [{ id: "e1" }], [], []]);
+    expect(await service.handleWebhook(TENANT, Buffer.from(body), hmac(body, "hook-secret"), "evt_x")).toEqual({ ok: true, result: "ignored" });
+    expect(p.onPaid).not.toHaveBeenCalled();
+    // account, event insert, order lookup (scoped by tenant), event processed: no order update.
+    expect(fake.ops).toHaveLength(4);
+  });
+});
