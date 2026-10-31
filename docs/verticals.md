@@ -26,6 +26,10 @@ starter up.
   takes each batched item's quantity from its unexpired batches, soonest expiry first. Expired batches are never sold.
   Idempotent per bill. Cancelling the bill puts it back. Items with no batches are left alone; a shortfall is logged
   and the sale stands. Ledger: `medicine_batch_movements`.
+- **Batch choice at the counter:** `GET /batches/tracking?ids=` and `GET /batches/pick?itemId=&qty=` (same shape as
+  inventory's). The POS offers a pharmacy item's batches (tap the batch on the line); the chosen batch travels as the
+  invoice line's `batchId`, and `onInvoiceIssued` takes it first, then first-expiry-first-out for the rest (an expired
+  or empty choice falls back to FEFO).
 - **Prescriptions** (`medicines.prescriptions`): patient, prescriber (registration no.), date, linked to the bill.
 - **Schedule H1 register** (`medicines.register`): every net sale of an H1 / X / narcotic medicine with batch,
   prescriber and patient; `missingRx=true` lists sales still without a prescription.
@@ -225,7 +229,8 @@ Three engines that sit in the app profiles of several trades. Their features sta
 - **Serial numbers / IMEI + warranty** (`@rbms/serials`, `/v1/serials`; packs electronics, repair; apps EC and
   SV): tracked items with warranty months and dual IMEI, units received with IMEI check digits, scanning an IMEI at the
   counter adds that unit, the serial prints on the bill (`serials` on the bill line), issue marks it sold with its
-  warranty from the bill date, cancel puts it back in stock; warranty lookup and claims.
+  warranty from the bill date, cancel puts it back in stock; warranty lookup and claims. The billing app's bill editor has a
+  "Serial numbers / IMEI" box on lines of tracked items (one per line, at most one per unit).
 - **Jewellery** (`@rbms/jewellery`, `/v1/jewellery`; pack jewellery; app EC): the day's metal rates (24K / 999
   entered, other purities derived), pieces with gross / stone weight, wastage %, making (per gram, % or flat), stones,
   HUID and tag; saving rates reprices every piece in stock into the catalogue (GST-exclusive; tax-inclusive products
@@ -398,13 +403,10 @@ Finance Act, 2026); re-check the entries before changing the rule.
 
 - A live push channel for the kitchen display (it polls; the WhatsApp SSE in `kit-live.ts` is the pattern to copy).
 - Printed KOT slips (thermal) and a "print bill at table" button.
-- Recipes / raw-material stock for restaurants, and batch choice at the pharmacy counter (today FEFO picks the batch).
+- Recipes / raw-material stock for restaurants.
 - Terraform (`infra/terraform/envs/staging`) still lists only the original apps.
 - SMS / WhatsApp for the service engines (booking confirmations, "your job is ready", membership expiry reminders):
   the ports exist (`NotifyPort`, `ReminderPort`) but aren't wired to templates yet; `memberships.service
   .remindAllExpiring` is ready for a daily job.
 - Price-embedded scale labels (the scale prints the price, not the weight): the resolver turns the price into a
   quantity at today's unit price; a line amount override at the counter would be exact.
-- A serial number field in the billing app's bill editor (the counter and the API take serials today).
-- `apps/api/test/e2e/batch5.mjs` still uses the shared plan ids (`starter`, `pro`); it needs the app plan ids.
-- Add-ons (extra branches, WhatsApp credits) billed on top of a plan.

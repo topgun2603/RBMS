@@ -217,8 +217,9 @@ a shop-branded offline page (cart, checkout and account pages are never cached).
 - **Printing:** thermal bill and KOT slips from the web (QZ Tray or the browser print dialog) and the "print bill at
   table" button.
 - **Open items from docs/verticals.md:** push for the kitchen display (done in M0), recipes and raw-material stock for
-  restaurants, batch choice at the pharmacy counter, the serial number field in the billing app's bill editor, the
-  shared plan ids in `batch5.mjs`, Terraform for the new apps, plan add-ons (extra branches, WhatsApp credits).
+  restaurants, Terraform for the new apps. Done: batch choice at the pharmacy counter, the serial number field in the
+  billing app's bill editor, the app plan ids in `batch5.mjs` (and `seed:e2e`), plan add-ons (extra branches, WhatsApp
+  credits; built earlier, see "Plan add-ons" in docs/verticals.md).
 
 ## Track F: branded apps for top-plan shops (after M4)
 

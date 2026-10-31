@@ -14,6 +14,8 @@ export interface StoreEvent {
   productId?: string;
   variantId?: string;
   value?: number;
+  /** `purchase` only: the order lines (product id + line total in paise). */
+  items?: { productId: string; value: number }[];
   query?: string;
   referrer?: string;
   utm?: { source?: string; medium?: string; campaign?: string };

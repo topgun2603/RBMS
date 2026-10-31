@@ -859,7 +859,7 @@ export interface Tracking {
   paymentMethod: string;
   placedAt: string;
   timeline: { type: string; status: string | null; message: string | null; at: string }[];
-  lines: { name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
+  lines: { productId?: string; name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
   totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number; loyalty?: { points: number; discount: number } };
   fulfillment: { carrier: string | null; trackingNumber: string | null; trackingUrl: string | null };
   shipTo: { city: string; pincode: string } | null;

@@ -140,6 +140,52 @@ describe("referrers and UTM", () => {
   });
 });
 
+describe("purchase items", () => {
+  const now = new Date("2026-10-15T10:00:00Z");
+  const build = (events: unknown[]) =>
+    toEventRows("t1", ingestSchema.parse({ anonymousId: "anon_12345678", sessionId: "sess_12345678", events }), {
+      userAgent: UA.iphone,
+      ipHash: null,
+      selfHosts: [],
+      now,
+    });
+
+  it("expands a purchase's items into purchase_item rows, summing a product on two lines", () => {
+    const rows = build([{ type: "purchase", value: 90000, items: [{ productId: P1, value: 50000 }, { productId: P2, value: 30000 }, { productId: P1, value: 10000 }] }]);
+    expect(rows.map((r) => [r.type, r.productId, r.value])).toEqual([
+      ["purchase", null, 90000],
+      ["purchase_item", P1, 60000],
+      ["purchase_item", P2, 30000],
+    ]);
+  });
+
+  it("ignores items on other event types and rejects bad items", () => {
+    expect(build([{ type: "page_view", items: [{ productId: P1, value: 1 }] }])).toHaveLength(1);
+    const bad = { anonymousId: "anon_12345678", sessionId: "sess_12345678" };
+    expect(ingestSchema.safeParse({ ...bad, events: [{ type: "purchase", items: [{ productId: "x", value: 1 }] }] }).success).toBe(false);
+    expect(ingestSchema.safeParse({ ...bad, events: [{ type: "purchase", items: [{ productId: P1, value: -5 }] }] }).success).toBe(false);
+  });
+
+  it("rolls items up per product without counting extra orders", () => {
+    const rows = aggregateDay([
+      ev({ type: "purchase", sessionId: "s1", anonymousId: "A", value: 90000 }),
+      ev({ type: "purchase_item", sessionId: "s1", anonymousId: "A", productId: P1, value: 60000 }),
+      ev({ type: "purchase_item", sessionId: "s1", anonymousId: "A", productId: P2, value: 30000 }),
+    ]);
+    expect(metric(rows, METRICS.purchases)).toBe(1);
+    expect(metric(rows, METRICS.revenue)).toBe(90000);
+    expect(metric(rows, METRICS.productPurchasesBy, P1)).toBe(1);
+    expect(metric(rows, METRICS.productRevenueBy, P1)).toBe(60000);
+    expect(metric(rows, METRICS.productRevenueBy, P2)).toBe(30000);
+    expect(metric(rows, METRICS.funnelSessions, "purchase")).toBe(1);
+    const o = assembleOverview("2026-10-15", "2026-10-15", rows.map((r): DatedMetricRow => ({ date: "2026-10-15", ...r })));
+    expect(o.topProducts.map((p) => [p.productId, p.purchases, p.revenue])).toEqual([
+      [P1, 1, 60000],
+      [P2, 1, 30000],
+    ]);
+  });
+});
+
 describe("ip hashing and rate limiting", () => {
   it("hashes with a salt that rotates per IST day", () => {
     const s = new DailySalt("secret");

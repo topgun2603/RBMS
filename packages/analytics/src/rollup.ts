@@ -22,6 +22,8 @@ export const METRICS = {
   productViewsBy: "product_views_by",
   productAddToCartBy: "product_add_to_cart_by",
   productPurchasesBy: "product_purchases_by",
+  /** dimension = product id; value = paise sold in purchases (from `purchase_item` events). */
+  productRevenueBy: "product_revenue_by",
   /** dimension = normalised query. */
   searches: "searches",
 } as const;
@@ -70,6 +72,7 @@ const TYPE_ORDER: Record<EventType, number> = {
   remove_from_cart: 4,
   begin_checkout: 5,
   purchase: 6,
+  purchase_item: 7,
 };
 
 /** Whether the event says where the visit came from (only page views carry referrer / UTM). */
@@ -91,6 +94,7 @@ export function aggregateDay(events: readonly RollupEvent[]): MetricRow[] {
   const pViews = new Map<string, number>();
   const pCart = new Map<string, number>();
   const pBuys = new Map<string, number>();
+  const pRevenue = new Map<string, number>();
   const searches = new Map<string, number>();
 
   for (const e of sorted) {
@@ -102,6 +106,13 @@ export function aggregateDay(events: readonly RollupEvent[]): MetricRow[] {
     } else if (!s.sourced && hasSource(e)) {
       s.source = sourceOf(e);
       s.sourced = true;
+    }
+    if (e.type === "purchase_item") {
+      if (e.productId) {
+        inc(pBuys, e.productId);
+        inc(pRevenue, e.productId, Math.max(e.value ?? 0, 0));
+      }
+      continue;
     }
     counts[e.type]++;
     if (e.type === "product_view" || e.type === "add_to_cart" || e.type === "begin_checkout" || e.type === "purchase") {
@@ -151,6 +162,7 @@ export function aggregateDay(events: readonly RollupEvent[]): MetricRow[] {
     add(METRICS.productViewsBy, pViews);
     add(METRICS.productAddToCartBy, pCart);
     add(METRICS.productPurchasesBy, pBuys);
+    add(METRICS.productRevenueBy, pRevenue);
   }
   for (const [q, v] of topN(searches, MAX_SEARCHES_PER_DAY)) rows.push({ metric: METRICS.searches, dimension: q, value: v });
 

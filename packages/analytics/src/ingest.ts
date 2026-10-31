@@ -14,12 +14,21 @@ export const utmSchema = z
   .object({ source: short.optional().nullable(), medium: short.optional().nullable(), campaign: short.optional().nullable() })
   .partial();
 
+/** One order line on a `purchase` event: product and the line's value in paise. */
+export const purchaseItemSchema = z.object({
+  productId: z.string().uuid(),
+  value: z.number().int().min(0).max(MAX_PAISE),
+});
+export const MAX_PURCHASE_ITEMS = 50;
+
 export const eventSchema = z.object({
   type: z.enum(EVENT_TYPES),
   path: z.string().max(512).optional().nullable(),
   productId: z.string().uuid().optional().nullable(),
   variantId: z.string().uuid().optional().nullable(),
   value: z.number().int().min(0).max(MAX_PAISE).optional().nullable(),
+  /** Only read on `purchase`: the order's lines, stored as `purchase_item` rows for per-product purchases. */
+  items: z.array(purchaseItemSchema).max(MAX_PURCHASE_ITEMS).optional().nullable(),
   query: z.string().max(200).optional().nullable(),
   referrer: z.string().max(2048).optional().nullable(),
   utm: utmSchema.optional().nullable(),
@@ -214,12 +223,29 @@ export interface IngestMeta {
   now: Date;
 }
 
+/** `purchase_item` rows for a purchase row: one per product (a product on two lines is summed), same time and session. */
+function purchaseItemRows(purchase: NewAnalyticsEvent, items: IngestEvent["items"]): NewAnalyticsEvent[] {
+  const byProduct = new Map<string, number>();
+  for (const i of items ?? []) byProduct.set(i.productId, (byProduct.get(i.productId) ?? 0) + i.value);
+  return [...byProduct].map(([productId, value]) => ({
+    ...purchase,
+    type: "purchase_item" as const,
+    productId,
+    variantId: null,
+    value,
+    referrerHost: null,
+    utmSource: null,
+    utmMedium: null,
+    utmCampaign: null,
+  }));
+}
+
 /** Validated input → rows for analytics_events. */
 export function toEventRows(tenantId: string, input: IngestInput, meta: IngestMeta): NewAnalyticsEvent[] {
   const device = deviceOf(meta.userAgent);
-  return input.events.map((e) => {
+  return input.events.flatMap((e) => {
     const utm = parseUtm(e.utm, e.path);
-    return {
+    const row: NewAnalyticsEvent = {
       tenantId,
       at: eventTime(e.at, meta.now),
       type: e.type,
@@ -237,5 +263,6 @@ export function toEventRows(tenantId: string, input: IngestInput, meta: IngestMe
       device,
       ipHash: meta.ipHash,
     };
+    return e.type === "purchase" ? [row, ...purchaseItemRows(row, e.items)] : [row];
   });
 }

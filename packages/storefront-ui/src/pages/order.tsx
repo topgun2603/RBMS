@@ -25,6 +25,10 @@ export async function trackMetadata(): Promise<Metadata> {
   return { title: t("order.track"), robots: { index: false, follow: false } };
 }
 
+/** Order lines for the purchase beacon (lines from an older API carry no product id and are left out). */
+export const purchaseItems = (lines: Tracking["lines"]) =>
+  lines.flatMap((l) => (l.productId ? [{ productId: l.productId, value: l.total }] : []));
+
 const FLOW = ["placed", "confirmed", "packed", "shipped", "delivered"] as const;
 
 /** `/order/[accessToken]`: confirmation right after checkout (success animation, pay-now if unpaid). */
@@ -35,7 +39,7 @@ export async function OrderConfirmationPage({ accessToken }: { accessToken: stri
   const unpaid = o.paymentMethod === "online" && (o.paymentStatus === "unpaid" || o.paymentStatus === "pending") && o.status !== "cancelled";
   return (
     <Container className="max-w-3xl py-10 sm:py-14">
-      {!unpaid && <PurchaseTracker orderNumber={o.number} value={o.totals.total} />}
+      {!unpaid && <PurchaseTracker orderNumber={o.number} value={o.totals.total} items={purchaseItems(o.lines)} />}
       <div className="text-center" data-testid="order-confirmation">
         {unpaid ? (
           <span className="mx-auto flex size-20 items-center justify-center rounded-full bg-warning/15 text-warning-ink">

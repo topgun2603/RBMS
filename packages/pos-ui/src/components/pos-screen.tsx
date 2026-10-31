@@ -229,7 +229,7 @@ function Counter() {
 
   // Items with batches: the oldest-expiry batch is put on the line; tap it to choose another.
   const [batchKey, setBatchKey] = React.useState<string | null>(null);
-  const batchTracked = useAutoBatches(lines, (fn) => setCart((c) => ({ ...c, lines: fn(c.lines) })), env.has.inventory && env.online.online);
+  const batchTracked = useAutoBatches(lines, (fn) => setCart((c) => ({ ...c, lines: fn(c.lines) })), (env.has.inventory || env.has.medicines) && env.online.online, env.has.medicines);
 
   // The till session of this register (server-side; the last one seen is cached for offline display).
   const branchReady = !env.has.branches || !!env.branch;

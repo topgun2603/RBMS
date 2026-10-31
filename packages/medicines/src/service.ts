@@ -3,7 +3,7 @@ import type { Db, Tx } from "@rbms/db";
 import { isValidDate, todayIST } from "@rbms/gst";
 import { and, asc, count, desc, eq, gt, gte, inArray, lt, lte, sql, sum, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { addDays, expiryStatus, fefoAllocate, normalizeExpiry, qtyByItem, roundQty, type ExpiryStatus } from "./logic";
+import { addDays, chosenBatches, expiryStatus, fefoAllocate, normalizeExpiry, qtyByItem, roundQty, type ExpiryStatus } from "./logic";
 import { noopLogger, MEDICINES_FEATURE, type FeatureGatePort, type LoggerPort, type SoldBill, type StockPort } from "./ports";
 import {
   MEDICINE_SCHEDULES,
@@ -161,6 +161,26 @@ export interface MedicineView extends MedicineRow {
   inRegister: boolean;
 }
 
+/** `GET /batches/pick`: the counter's batch choice, shaped like inventory's. */
+export interface MedicinePick {
+  itemId: string;
+  tracked: boolean;
+  rule: "fefo";
+  expiredPolicy: "block";
+  batches: {
+    batchId: string;
+    batchNo: string;
+    expiry: string;
+    mrp: number | null;
+    qty: number;
+    status: ExpiryStatus;
+    daysLeft: number;
+    suggestedDiscount: null;
+  }[];
+  suggestion: { batchId: string; qty: number }[];
+  short: number;
+}
+
 export interface BatchView extends Omit<MedicineBatchRow, "qty"> {
   qty: number;
   status: ExpiryStatus;
@@ -298,6 +318,54 @@ export class MedicinesService {
   }
 
   // ---------------------------------------------------------------- batches
+
+  /** Which of these items have medicine batches (the counter then offers a batch choice for them). */
+  async trackingFor(tenantId: string, itemIds: string[]): Promise<{ itemId: string; tracked: boolean }[]> {
+    if (itemIds.length === 0) return [];
+    const rows = await this.db
+      .selectDistinct({ itemId: medicineBatches.itemId })
+      .from(medicineBatches)
+      .where(and(eq(medicineBatches.tenantId, tenantId), inArray(medicineBatches.itemId, itemIds)));
+    const have = new Set(rows.map((r) => r.itemId));
+    return itemIds.map((itemId) => ({ itemId, tracked: have.has(itemId) }));
+  }
+
+  /**
+   * The counter's batch choice for one medicine (same shape as inventory's `GET /batches/pick`): batches with stock,
+   * soonest expiry first, and the first-expiry-first-out suggestion for `qty`. Expired batches are listed but marked
+   * `expired` and never sold.
+   */
+  async pick(tenantId: string, itemId: string, qty = 1): Promise<MedicinePick> {
+    const today = this.today();
+    const rows = await this.db
+      .select()
+      .from(medicineBatches)
+      .where(and(eq(medicineBatches.tenantId, tenantId), eq(medicineBatches.itemId, itemId), gt(medicineBatches.qty, "0")))
+      .orderBy(asc(medicineBatches.expiry), asc(medicineBatches.id));
+    const batches = rows.map((r) => {
+      const days = daysBetween(today, r.expiry);
+      return {
+        batchId: r.id,
+        batchNo: r.batchNo,
+        expiry: r.expiry,
+        mrp: r.mrp === null ? null : toNum(r.mrp),
+        qty: toNum(r.qty),
+        status: expiryStatus(r.expiry, today, 90),
+        daysLeft: days,
+        suggestedDiscount: null,
+      };
+    });
+    const fefo = fefoAllocate(batches.map((b) => ({ id: b.batchId, expiry: b.expiry, qty: b.qty })), roundQty(qty), today);
+    return {
+      itemId,
+      tracked: batches.length > 0,
+      rule: "fefo",
+      expiredPolicy: "block",
+      batches,
+      suggestion: fefo.allocations,
+      short: fefo.short,
+    };
+  }
 
   private batchView(row: MedicineBatchRow, today: string, within: number): BatchView {
     return { ...row, qty: toNum(row.qty), status: expiryStatus(row.expiry, today, within), daysLeft: daysBetween(today, row.expiry) };
@@ -526,6 +594,7 @@ export class MedicinesService {
       if (!(await this.enabled(tenantId))) return;
       const wanted = qtyByItem(bill.lines);
       if (wanted.size === 0) return;
+      const chosen = chosenBatches(bill.lines);
       const today = this.today();
       await this.db.transaction(async (tx) => {
         // One bill at a time per shop+bill, so a retried hook can't take stock twice.
@@ -547,6 +616,7 @@ export class MedicinesService {
             mine.map((b) => ({ id: b.id, expiry: b.expiry, qty: toNum(b.qty) })),
             qty,
             today,
+            chosen.get(itemId)?.filter((c) => mine.some((b) => b.id === c.batchId)),
           );
           for (const a of allocations) {
             const batch = mine.find((b) => b.id === a.batchId)!;
