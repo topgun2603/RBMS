@@ -1,10 +1,10 @@
 import type { BookingNotice } from "@rbms/bookings";
-import type { JobSummary } from "@rbms/jobcards";
+import type { JobSummary, ServiceDue } from "@rbms/jobcards";
 import type { DedupePort, SendInput } from "@rbms/notify";
 import type { SettingsService } from "@rbms/settings";
 import type { Logger } from "pino";
 import { describe, expect, it } from "vitest";
-import { bookingVars, cartRef, createMessages, istDate, jobEvent, jobVars, membershipVars, reminderDue } from "./kit-messages";
+import { bookingVars, cartRef, createMessages, istDate, jobEvent, jobVars, membershipVars, reminderDue, serviceDueVars } from "./kit-messages";
 
 /** 2026-10-21 at HH:MM IST. */
 const ist = (hh: number, mm = 0, day = 21) => new Date(Date.UTC(2026, 9, day, hh, mm) - 330 * 60_000);
@@ -109,6 +109,26 @@ describe("reminderDue", () => {
   });
 });
 
+const due: ServiceDue = {
+  tenantId: "t1",
+  jobId: "j9",
+  label: "JC-0044",
+  customerName: "Murugan",
+  customerPhone: "+919876500044",
+  trackToken: "trk9",
+  regNo: "TN09AB1234",
+  dueDate: "2026-10-21",
+  dueKm: 15450,
+};
+
+describe("vehicle service reminder", () => {
+  it("names the vehicle, the date and the km in the message language", () => {
+    expect(serviceDueVars(due, "en", "L")).toEqual({ customer: "Murugan", number: "JC-0044", vehicle: "TN09AB1234", dueDate: "21 Oct 2026", dueKm: " or at 15450 km", link: "L" });
+    expect(serviceDueVars({ ...due, dueKm: null }, "en", "L").dueKm).toBe("");
+    expect(serviceDueVars(due, "ta", "L").dueKm).toBe(" அல்லது 15450 கி.மீ");
+  });
+});
+
 function harness(opts: { features?: Record<string, boolean>; stored?: Record<string, unknown>; now?: Date } = {}) {
   const stored: Record<string, unknown> = { ...(opts.stored ?? {}) };
   const settings = {
@@ -134,6 +154,7 @@ function harness(opts: { features?: Record<string, boolean>; stored?: Record<str
   const jobs = new Map<string, () => Promise<void>>();
   const remindable: (BookingNotice & { tenantId: string; createdAt: Date })[] = [];
   const reminded: { tenantId: string; days: number }[] = [];
+  const dueToday: ServiceDue[] = [];
   const m = createMessages({
     log: { info() {}, warn() {}, error() {} } as unknown as Logger,
     db: {} as never,
@@ -152,12 +173,13 @@ function harness(opts: { features?: Record<string, boolean>; stored?: Record<str
         remindExpiring: async (tenantId: string, days: number) => (reminded.push({ tenantId, days }), 1),
         expiring: async () => [{ memberId: "m1", memberCode: "M-0004", name: "Chitra", phone: "9876500033", subscriptionId: "s4", planName: "Monthly", endDate: "2026-10-19", daysLeft: -2 }],
       } as never,
+      jobcards: { serviceDueOn: async () => dueToday } as never,
     }),
     dedupe,
     optOut: { optedOut: async () => false },
     now: () => opts.now ?? ist(11, 0),
   });
-  return { m, sent, jobs, remindable, reminded, stored };
+  return { m, sent, jobs, remindable, reminded, stored, dueToday };
 }
 
 describe("createMessages ports", () => {
@@ -188,6 +210,20 @@ describe("createMessages ports", () => {
     await h.m.jobcards.statusChanged("t1", job);
     expect(h.sent).toHaveLength(1);
     expect(h.sent[0]).toMatchObject({ template: "job.approval", vars: { amount: "Rs.1,770.00", link: "https://glow.example/job/trk" } });
+  });
+
+  it("service due: the daily job texts each vehicle once, with the tracking link; off with job cards", async () => {
+    const h = harness();
+    h.dueToday.push(due);
+    await h.jobs.get("messages.service-due")!();
+    await h.jobs.get("messages.service-due")!();
+    expect(h.sent).toHaveLength(1);
+    expect(h.sent[0]).toMatchObject({ channel: "whatsapp", to: "+919876500044", template: "job.service_due" });
+    expect(h.sent[0]!.vars).toMatchObject({ vehicle: "TN09AB1234", dueKm: " or at 15450 km", link: "https://glow.example/job/trk9" });
+    const off = harness({ features: { jobcards: false } });
+    off.dueToday.push(due);
+    await off.jobs.get("messages.service-due")!();
+    expect(off.sent).toHaveLength(0);
   });
 
   it("memberships: welcome vs renewed; renewal reminders per item", async () => {
@@ -221,7 +257,7 @@ describe("createMessages ports", () => {
 
 describe("createMessages jobs", () => {
   it("registers the jobs", () => {
-    expect([...harness().jobs.keys()].sort()).toEqual(["messages.abandoned-carts", "messages.booking-reminders", "messages.memberships", "messages.purge"]);
+    expect([...harness().jobs.keys()].sort()).toEqual(["messages.abandoned-carts", "messages.booking-reminders", "messages.memberships", "messages.purge", "messages.service-due"]);
   });
 
   it("booking reminders follow each shop's lead time and send once per appointment time", async () => {

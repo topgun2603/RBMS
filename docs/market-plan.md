@@ -40,6 +40,15 @@ EC gets a clothing store. Fix that and capture demand:
 
 **Done when:** a sign-up with any trade text lands on a sensible pack, and the admin sees the demand list.
 
+**Status (2026-10-30): built** on branch `feat/packs-batch8-9`.
+- Packs: `general_shop` (EC), `general_counter` (BL), `general_services` (SV); `DEFAULT_PACK_FOR_APP` points EC / BL / SV at them (PH, RS, SC unchanged). `packFor()` still returns `null` for an unknown trade; `packOrDefault()` and the new `resolvePack(type, label, appId)` (chosen pack, then the typed words through `ALIASES`, then the app's default) never do.
+- `BusinessPack.group` (food, retail, health, services, education, auto, building, general), `packsByGroup()` and `packPickerGroups(locale, appId)`; the `auto` group is empty until batch 10's vehicle packs.
+- Typed trade: `store` setting `businessLabel` (private, max 60). Sign-up sends `businessLabel` for "Not listed: tell us" (`POST /v1/signup` body and `signup` metadata); the starter keeps the label even when it maps to a pack; Settings → Appearance saves `{ businessType, businessLabel }` (a listed trade clears the label).
+- Picker: one `TradePicker` in `@rbms/ui` (search, grouped, last option "Not listed: tell us"), used by sign-up (`apps/www`) and Settings → Appearance (`site-ui`).
+- Demand list: `GET /v1/solutions/demand` (super-admin) → `{ items: [{ label, shops, appIds, lastAt }], total }`, counting shops on a general pack by lower-cased, trimmed text; admin Platform → Solutions has a "Not covered" tab.
+- Aliases: about 550 more entries in `ALIASES` (lodge → `general_services`, milk / dairy → `grocery`, xerox → `print_shop`, driving school, tuition, florist, footwear, stationery…).
+- Tests: `packs.test.ts` no longer fixes a count; it checks groups, general packs, aliases and unknown → general. `kit-verticals.test.ts` covers the starter label and the demand aggregation. Not browser-tested.
+
 ### Batch 9: 30 new packs (2 weeks, three sets of 10)
 
 Pure data in `packs.ts` + `starter.ts` (layout, services, FAQ, hours), English + Tamil, using engines we already have.
@@ -59,6 +68,8 @@ features in batch 10.
 **Done when:** all 45+ packs pass the pack and starter tests, and each one has a demo shop render checked on the
 storefront.
 
+**Status (2026-10-30): data built, demo shops not.** The 14 packs already in `packs.ts` (`organic`, `footwear`, `stationery`, `toys`, `cosmetics`, `crackers`, `florist_pooja`, `furniture`, `home_decor`, `pet_shop`, `sports`, `tea_stall`, `spa`, `mobile_accessories`) were left as they were. Added now, with the app from the table, group, theme preset, solution preset (`off` list), starter layout, services, FAQ, hours, aliases, English + Tamil: `textiles_wholesale`, `catering`, `pet_grooming`, `photo_studio`, `laundry`, `event_decor`, `ac_service`, `print_shop` (BL), `tuition`, `dance_music`, `yoga`, `driving_school`, `paints`, `electricals`, `tiles_sanitary`. That is 45 trade packs plus the 3 general ones: 48. The pack and starter tests pass. Still to do: a seeded demo shop per new pack and a storefront render check (`DEMO_SLUG` in `apps/www/src/lib/trades.ts` has none for them); `gifts_toys` in the table above is the existing `toys` pack. Batch 10 engines (vehicle / laundry job-card templates, area units) are not part of this.
+
 ## Track B: small engine changes
 
 ### Batch 10: engines that unlock trades (3 weeks)
@@ -77,6 +88,16 @@ storefront.
   booking confirmed, job ready, membership expiring (daily job on `memberships.service.remindAllExpiring`).
 - New packs on top: `two_wheeler_service`, `car_service` (SV, vehicle template), `agri_inputs` (BL, batches + dealer
   licence no. on the bill), `auto_parts` (BL, part no. and fits-vehicle attributes).
+
+**Status (2026-10-30): built** on branch `feat/engines-batch10` (on top of `feat/packs-batch8-9`). The batches engine is not part of it: batches for any item already shipped (docs/stock-depth.md), so `agri_inputs` just switches `trackAll` on.
+
+- **Job-card templates** `vehicle`, `laundry`, `appliance` in `packages/jobcards/src/templates.ts` (strict zod schemas, summaries, `nextServiceDue`), the forms and read-only views in `packages/jobcards-ui`, English + Tamil. Laundry keeps pickup / drop flags, address and slot on the card; it does **not** yet create `delivery` tasks from them.
+- **Area units** reuse the alternate-unit model (docs/price-lists-units.md): base unit `sqft` / `sqm`, `box` is an alternate unit whose factor is the coverage, so stock moves `boxes x coverage` with no new tables. Pure maths in `packages/gst/src/area.ts`; `POST /v1/catalog/variants/:id/area-quote` (boxes, wastage, price); a "cover this area" row in the POS line editor; a box calculator on the storefront product page (reads the `Coverage per box (sq ft)` attribute); a wrong sq m factor on a sq ft item is refused.
+- **`sizeGuide`** is now `"clothing" | "shoes" | null`; `footwear` is `"shoes"`, a shoes pack never shows the bust / waist chart. The storefront already had the shoe chart; `sizeKindForGuide` picks it from the setting.
+- **Notifications:** booking confirmed (`booking.confirmed`), job ready (`job.ready`) and membership expiring (`membership.renewal_due` from the 09:00 job calling `remindAllExpiring`) were already wired to WhatsApp + SMS templates in `kit-messages.ts`. New: `job.service_due` (vehicle cards, N months after delivery, daily 09:30 job `messages.service-due`, English + Tamil). A km-only reminder is stored on the card and shown in the message, but nothing can fire on it (the odometer is not read again).
+- **Packs** `two_wheeler_service`, `car_service` (SV, `jobTemplate: "vehicle"`), `agri_inputs` (BL, `trackBatches`), `auto_parts` (BL, part number and fits-vehicle attributes): 52 packs in all, aliases, starter home, FAQ, hours, English + Tamil; `repair`, `tailoring`, `optical`, `laundry`, `ac_service` also name their `jobTemplate`.
+- **Not built:** the dealer licence number on the bill (there is no per-shop licence field on invoices yet); `jobTemplate` is data only (the new-job dialog does not preselect it); seeded demo shops and storefront render checks for the new packs; the "pickup / drop through `delivery`" link.
+- Tests: unit tests per engine; `apps/api/test/e2e/batch10.mjs` (10 steps, ran 10/10 against a local API and Postgres).
 
 **Done when:** each engine has unit tests and an e2e case, and the four new packs are live.
 
@@ -220,7 +241,7 @@ Two lanes, weeks from the start of batch 8:
 |---|---|---|
 | 1–2 | Batch 8: general packs, typed trade, picker, aliases | M0: API schemas, Dart client, devices + push, mobile sessions |
 | 3–4 | Batch 9: 30 packs | M1 starts |
-| 5–7 | Batch 10: templates, area units, batches engine, notifications, 4 packs | M1 |
+| 5–7 | Batch 10: templates, area units, ~~batches engine~~ (shipped, stock-depth.md), notifications, 4 packs | M1 (built 2026-10-30) |
 | 8–10 | Batch 11: import, languages, printing, open items | M1 ends: Android beta to demo shops |
 | 11–14 | Batch 12: daily subscriptions | M2: trade screens |
 | 15–18 | Batch 13: wholesale | M3: offline billing |

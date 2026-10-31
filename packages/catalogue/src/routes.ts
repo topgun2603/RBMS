@@ -451,6 +451,11 @@ export function catalogueRoutes(service: CatalogueService, opts: CatalogueRouteO
         const { id } = idParam.parse(req.params);
         return service.units.set(tid(req), id, body(req));
       });
+      // sell by area: boxes that cover a room (tiles, flooring)
+      staff.post("/variants/:id/area-quote", BASE, async (req) => {
+        const { id } = idParam.parse(req.params);
+        return service.units.areaQuote(tid(req), id, body(req));
+      });
       staff.get("/variants/search", base({ query: variantSearchQuerySchema, response: variantSearchResultSchema }), async (req) =>
         service.searchVariants(tid(req), query(req) as VariantSearchQuery),
       );

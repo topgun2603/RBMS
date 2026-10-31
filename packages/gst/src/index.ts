@@ -10,3 +10,4 @@ export * from "./format";
 export * from "./credit-note";
 export * from "./currency";
 export * from "./countries";
+export * from "./area";

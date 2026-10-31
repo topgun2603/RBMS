@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { allowedMoves, canMove, formatJobNumber, isOverdue, jobTotals, lineTax, moveBlock, nextSteps, parseJobNumber } from "./logic";
-import { defaultMeasurements, fieldsSummary, parseFields } from "./templates";
+import { defaultMeasurements, fieldsSummary, laundryPieces, nextServiceDue, parseFields } from "./templates";
 
 describe("formatJobNumber", () => {
   it("pads to four digits and keeps growing", () => {
@@ -116,5 +116,58 @@ describe("template fields", () => {
   it("summarises a card in one line", () => {
     expect(fieldsSummary("device", { brand: "Redmi", model: "Note 12", issue: "Screen broken" })).toBe("Redmi Note 12 · Screen broken");
     expect(fieldsSummary("garment", { garmentType: "blouse" })).toBe("blouse");
+  });
+});
+
+describe("vehicle template", () => {
+  const base = { regNo: "tn 09-ab 1234", km: 12450, serviceType: "general_service" };
+  it("normalises the registration number and keeps the reminder terms", () => {
+    const f = parseFields("vehicle", { ...base, make: "Honda", model: "Activa", fuel: "half", remindAfterMonths: 6, remindAfterKm: 3000 }) as Record<string, unknown>;
+    expect(f).toMatchObject({ regNo: "TN09AB1234", km: 12450, fuel: "half", remindAfterMonths: 6, remindAfterKm: 3000 });
+    expect(fieldsSummary("vehicle", f)).toBe("TN09AB1234 · Honda Activa · general service");
+  });
+  it("rejects a bad registration, a negative km, an unknown service type and stray keys", () => {
+    expect(() => parseFields("vehicle", { ...base, regNo: "x" })).toThrow(ZodError);
+    expect(() => parseFields("vehicle", { ...base, km: -1 })).toThrow(ZodError);
+    expect(() => parseFields("vehicle", { ...base, serviceType: "paint" })).toThrow(ZodError);
+    expect(() => parseFields("vehicle", { ...base, ownerPin: "1234" })).toThrow(ZodError);
+  });
+  it("works out the next service by months, km or both", () => {
+    expect(nextServiceDue({ km: 12450, remindAfterMonths: 6, remindAfterKm: 3000 }, "2026-10-30")).toEqual({ date: "2027-04-30", km: 15450 });
+    expect(nextServiceDue({ km: 100, remindAfterMonths: 6 }, "2026-08-31")).toEqual({ date: "2027-02-28", km: null });
+    expect(nextServiceDue({ km: 100, remindAfterKm: 2500 }, "2026-10-30")).toEqual({ date: null, km: 2600 });
+    expect(nextServiceDue({ km: 100 }, "2026-10-30")).toEqual({ date: null, km: null });
+  });
+});
+
+describe("laundry template", () => {
+  it("counts pieces by type and keeps tag numbers", () => {
+    const f = parseFields("laundry", { garments: { shirt: 4, saree: 1 }, tagNumbers: ["A12", "A13"], pickup: true, drop: true, address: "12, Gandhi Rd, Madurai", slot: "10:00-12:00" }) as Record<string, unknown>;
+    expect(laundryPieces(f.garments as Record<string, number>)).toBe(5);
+    expect(f).toMatchObject({ service: "wash_iron", pickup: true, drop: true });
+    expect(fieldsSummary("laundry", f)).toBe("5 pieces · wash iron");
+  });
+  it("needs a piece, an address for pickup or drop, and unique tags", () => {
+    expect(() => parseFields("laundry", { garments: {} })).toThrow(ZodError);
+    expect(() => parseFields("laundry", { garments: { shirt: 0 } })).toThrow(ZodError);
+    expect(() => parseFields("laundry", { garments: { shirt: 1 }, pickup: true })).toThrow(ZodError);
+    expect(() => parseFields("laundry", { garments: { shirt: 1 }, tagNumbers: ["A1", "A1"] })).toThrow(ZodError);
+    expect(() => parseFields("laundry", { garments: { cape: 1 } })).toThrow(ZodError);
+    expect(parseFields("laundry", { garments: { shirt: 1 } })).toMatchObject({ pickup: false, drop: false, address: null });
+  });
+});
+
+describe("appliance template", () => {
+  const base = { kind: "ac", issue: "Not cooling", visit: { address: "5, Anna Nagar, Chennai", date: "2026-11-02", slot: "14:00-16:00" } };
+  it("keeps the site visit and the AMC number", () => {
+    const f = parseFields("appliance", { ...base, brand: "Voltas", model: "1.5T", amcNumber: "AMC-2026-0044" }) as Record<string, unknown>;
+    expect(f).toMatchObject({ amcNumber: "AMC-2026-0044", visit: { date: "2026-11-02", slot: "14:00-16:00" } });
+    expect(fieldsSummary("appliance", f)).toBe("ac · Voltas 1.5T · Not cooling");
+  });
+  it("needs a visit address and a real date", () => {
+    expect(() => parseFields("appliance", { ...base, visit: { address: "x" } })).toThrow(ZodError);
+    expect(() => parseFields("appliance", { ...base, visit: { ...base.visit, date: "2026-13-40" } })).toThrow(ZodError);
+    expect(() => parseFields("appliance", { ...base, kind: "toaster" })).toThrow(ZodError);
+    expect(parseFields("appliance", base)).toMatchObject({ amcNumber: null });
   });
 });

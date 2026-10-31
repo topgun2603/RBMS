@@ -22,17 +22,25 @@ import {
 } from "@rbms/ui";
 import { DesignNotesButton, DeviceLabelButton, FaultNoteButton, MeasurementSheetButton, tOr, useI18n } from "@rbms/web";
 import {
+  APPLIANCE_KINDS,
   EYES,
+  FUEL_LEVELS,
   GARMENT_MEASUREMENTS,
   GARMENT_TYPES,
+  LAUNDRY_GARMENTS,
+  LAUNDRY_SERVICES,
   LENS_TYPES,
   RX_FIELDS,
+  VEHICLE_SERVICE_TYPES,
+  type ApplianceDraft,
   type DeviceDraft,
   type EyewearDraft,
   type FieldError as FieldProblem,
   type FieldsDraft,
   type GarmentDraft,
   type GarmentType,
+  type LaundryDraft,
+  type VehicleDraft,
 } from "../lib/templates";
 import type { JobTemplate } from "../lib/types";
 
@@ -51,6 +59,9 @@ export function FieldsForm({ template, draft, onChange, error }: FormProps) {
   if (template === "device") return <DeviceForm value={draft.device} onChange={(device) => onChange({ ...draft, device })} error={error} msg={msg} />;
   if (template === "garment") return <GarmentForm value={draft.garment} onChange={(garment) => onChange({ ...draft, garment })} msg={error === "measurement" ? msg : null} />;
   if (template === "eyewear") return <EyewearForm value={draft.eyewear} onChange={(eyewear) => onChange({ ...draft, eyewear })} msg={msg} />;
+  if (template === "vehicle") return <VehicleForm value={draft.vehicle} onChange={(vehicle) => onChange({ ...draft, vehicle })} error={error} msg={msg} />;
+  if (template === "laundry") return <LaundryForm value={draft.laundry} onChange={(laundry) => onChange({ ...draft, laundry })} error={error} msg={msg} />;
+  if (template === "appliance") return <ApplianceForm value={draft.appliance} onChange={(appliance) => onChange({ ...draft, appliance })} error={error} msg={msg} />;
   return (
     <Field invalid={error === "description"}>
       <FieldLabel>{t("jobcards.fields.description")}</FieldLabel>
@@ -337,6 +348,143 @@ function EyewearForm({ value, onChange, msg }: { value: EyewearDraft; onChange: 
           </FieldControl>
         </Field>
       </FieldRow>
+    </div>
+  );
+}
+
+type SubFormProps<T> = { value: T; onChange: (v: T) => void; error?: FieldProblem | null; msg: string | null };
+
+/** One labelled text input of a template form. */
+function TextField({ label, value, onChange, max, error, msg, hint, type, inputMode }: { label: string; value: string; onChange: (v: string) => void; max: number; error?: boolean; msg?: string | null; hint?: string; type?: string; inputMode?: "numeric" | "text" }) {
+  return (
+    <Field invalid={!!error}>
+      <FieldLabel>{label}</FieldLabel>
+      <FieldControl>
+        <Input type={type} inputMode={inputMode} maxLength={max} value={value} onChange={(e) => onChange(e.target.value)} />
+      </FieldControl>
+      {hint && <FieldHint>{hint}</FieldHint>}
+      <FieldError>{error ? msg : null}</FieldError>
+    </Field>
+  );
+}
+
+function VehicleForm({ value, onChange, error, msg }: SubFormProps<VehicleDraft>) {
+  const { t } = useI18n();
+  const set = (patch: Partial<VehicleDraft>) => onChange({ ...value, ...patch });
+  return (
+    <div className="grid gap-5" data-testid="jobcards-vehicle">
+      <FieldRow cols={3}>
+        <TextField label={t("jobcards.fields.regNo")} value={value.regNo} max={20} onChange={(regNo) => set({ regNo })} error={error === "regNo"} msg={msg} />
+        <TextField label={t("jobcards.fields.brand")} value={value.make} max={60} onChange={(make) => set({ make })} />
+        <TextField label={t("jobcards.fields.model")} value={value.model} max={80} onChange={(model) => set({ model })} />
+      </FieldRow>
+      <TextField label={t("jobcards.fields.km")} value={value.km} max={8} inputMode="numeric" onChange={(km) => set({ km })} error={error === "km"} msg={msg} />
+      <Field>
+        <FieldLabel htmlFor={null}>{t("jobcards.fields.fuel")}</FieldLabel>
+        <ChipGroup aria-label={t("jobcards.fields.fuel")} value={value.fuel || "none"} onChange={(f) => set({ fuel: f === "none" ? "" : f })} options={[{ value: "none", label: "—" }, ...FUEL_LEVELS.map((f) => ({ value: f, label: t(`jobcards.fuel.${f}`) }))]} />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={null}>{t("jobcards.fields.serviceType")}</FieldLabel>
+        <ChipGroup aria-label={t("jobcards.fields.serviceType")} value={value.serviceType} onChange={(serviceType) => set({ serviceType })} options={VEHICLE_SERVICE_TYPES.map((v) => ({ value: v, label: t(`jobcards.vehicleService.${v}`) }))} />
+      </Field>
+      <Field>
+        <FieldLabel>{t("jobcards.fields.complaint")}</FieldLabel>
+        <FieldControl>
+          <Textarea rows={2} maxLength={1000} value={value.complaint} onChange={(e) => set({ complaint: e.target.value })} />
+        </FieldControl>
+      </Field>
+      <FieldRow cols={2}>
+        <TextField label={t("jobcards.fields.remindMonths")} value={value.remindAfterMonths} max={2} inputMode="numeric" onChange={(remindAfterMonths) => set({ remindAfterMonths })} error={error === "reminder"} msg={msg} hint={t("jobcards.fields.remindHint")} />
+        <TextField label={t("jobcards.fields.remindKm")} value={value.remindAfterKm} max={6} inputMode="numeric" onChange={(remindAfterKm) => set({ remindAfterKm })} error={error === "reminder"} />
+      </FieldRow>
+    </div>
+  );
+}
+
+function LaundryForm({ value, onChange, error, msg }: SubFormProps<LaundryDraft>) {
+  const { t } = useI18n();
+  const set = (patch: Partial<LaundryDraft>) => onChange({ ...value, ...patch });
+  const sw = (id: string, label: string, checked: boolean, fn: (v: boolean) => void) => (
+    <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <Switch id={id} checked={checked} onCheckedChange={fn} />
+    </div>
+  );
+  return (
+    <div className="grid gap-5" data-testid="jobcards-laundry">
+      <Field>
+        <FieldLabel htmlFor={null}>{t("jobcards.fields.service")}</FieldLabel>
+        <ChipGroup aria-label={t("jobcards.fields.service")} value={value.service} onChange={(service) => set({ service })} options={LAUNDRY_SERVICES.map((v) => ({ value: v, label: t(`jobcards.laundryService.${v}`) }))} />
+      </Field>
+      <fieldset className="grid gap-3">
+        <legend className="text-sm font-medium">{t("jobcards.fields.garmentCounts")}</legend>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {LAUNDRY_GARMENTS.map((g) => (
+            <div key={g} className="grid gap-1">
+              <label htmlFor={`jc-lg-${g}`} className="text-meta text-muted-foreground">
+                {t(`jobcards.laundryGarment.${g}`)}
+              </label>
+              <Input id={`jc-lg-${g}`} inputMode="numeric" maxLength={3} value={value.counts[g] ?? ""} onChange={(e) => set({ counts: { ...value.counts, [g]: e.target.value } })} />
+            </div>
+          ))}
+        </div>
+        {error === "garments" && <p className="text-sm text-destructive">{msg}</p>}
+      </fieldset>
+      <TextField label={t("jobcards.fields.tagNumbers")} value={value.tagNumbers} max={1000} onChange={(tagNumbers) => set({ tagNumbers })} hint={t("jobcards.fields.tagHint")} error={error === "tags"} msg={msg} />
+      {sw("jc-pickup", t("jobcards.fields.pickup"), value.pickup, (pickup) => set({ pickup }))}
+      {sw("jc-drop", t("jobcards.fields.drop"), value.drop, (drop) => set({ drop }))}
+      {(value.pickup || value.drop) && (
+        <FieldRow cols={2}>
+          <Field invalid={error === "pickupAddress"}>
+            <FieldLabel>{t("jobcards.fields.address")}</FieldLabel>
+            <FieldControl>
+              <Textarea rows={2} maxLength={500} value={value.address} onChange={(e) => set({ address: e.target.value })} />
+            </FieldControl>
+            <FieldError>{error === "pickupAddress" ? msg : null}</FieldError>
+          </Field>
+          <TextField label={t("jobcards.fields.slot")} value={value.slot} max={60} onChange={(slot) => set({ slot })} />
+        </FieldRow>
+      )}
+      <TextField label={t("jobcards.fields.notes")} value={value.notes} max={500} onChange={(notes) => set({ notes })} />
+    </div>
+  );
+}
+
+function ApplianceForm({ value, onChange, error, msg }: SubFormProps<ApplianceDraft>) {
+  const { t } = useI18n();
+  const set = (patch: Partial<ApplianceDraft>) => onChange({ ...value, ...patch });
+  return (
+    <div className="grid gap-5" data-testid="jobcards-appliance">
+      <Field>
+        <FieldLabel htmlFor={null}>{t("jobcards.fields.kind")}</FieldLabel>
+        <ChipGroup aria-label={t("jobcards.fields.kind")} value={value.kind} onChange={(kind) => set({ kind })} options={APPLIANCE_KINDS.map((v) => ({ value: v, label: t(`jobcards.applianceKind.${v}`) }))} />
+      </Field>
+      <FieldRow cols={3}>
+        <TextField label={t("jobcards.fields.brand")} value={value.brand} max={60} onChange={(brand) => set({ brand })} />
+        <TextField label={t("jobcards.fields.model")} value={value.model} max={80} onChange={(model) => set({ model })} />
+        <TextField label={t("jobcards.fields.serial")} value={value.serial} max={60} onChange={(serial) => set({ serial })} />
+      </FieldRow>
+      <Field invalid={error === "issue"}>
+        <FieldLabel>{t("jobcards.fields.issue")}</FieldLabel>
+        <FieldControl>
+          <Textarea rows={2} maxLength={1000} value={value.issue} onChange={(e) => set({ issue: e.target.value })} />
+        </FieldControl>
+        <FieldError>{error === "issue" ? msg : null}</FieldError>
+      </Field>
+      <Field invalid={error === "visitAddress"}>
+        <FieldLabel>{t("jobcards.fields.visitAddress")}</FieldLabel>
+        <FieldControl>
+          <Textarea rows={2} maxLength={500} value={value.address} onChange={(e) => set({ address: e.target.value })} />
+        </FieldControl>
+        <FieldError>{error === "visitAddress" ? msg : null}</FieldError>
+      </Field>
+      <FieldRow cols={2}>
+        <TextField label={t("jobcards.fields.visitDate")} type="date" value={value.date} max={10} onChange={(date) => set({ date })} />
+        <TextField label={t("jobcards.fields.slot")} value={value.slot} max={40} onChange={(slot) => set({ slot })} />
+      </FieldRow>
+      <TextField label={t("jobcards.fields.amcNumber")} value={value.amcNumber} max={40} onChange={(amcNumber) => set({ amcNumber })} hint={t("jobcards.fields.amcHint")} />
     </div>
   );
 }

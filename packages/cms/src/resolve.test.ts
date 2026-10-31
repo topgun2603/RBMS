@@ -86,16 +86,16 @@ describe("resolveSections", () => {
 });
 
 describe("default home", () => {
-  it("hero with the shop name, categories and newest products", async () => {
+  it("hero with the shop name, categories and newest products (no trade chosen: the general shop pack's neutral words)", async () => {
     const home = await defaultHome(T, { catalog: stubCatalog(), shop });
     expect(home.isDefault).toBe(true);
     expect(home.sections.map((s) => s.type)).toEqual(["hero", "categories", "products"]);
     expect(home.sections[0]).toEqual({
       type: "hero",
-      slides: [{ imageUrl: null, heading: "Raja Silks", subheading: "Since 1962", cta: { label: "Shop the collection", href: "/products" } }],
+      slides: [{ imageUrl: null, heading: "Raja Silks", subheading: "Since 1962", cta: { label: "Order now", href: "/products" } }],
     });
-    expect(home.sections[1]).toMatchObject({ title: "Shop by category" });
-    expect(home.sections[2]).toMatchObject({ title: "New arrivals", href: "/products" });
+    expect(home.sections[1]).toMatchObject({ title: "Our products" });
+    expect(home.sections[2]).toMatchObject({ title: "New products", href: "/products" });
   });
 
   it("speaks the shop's trade (business pack), not clothing", async () => {

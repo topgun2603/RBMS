@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { en, ta } from "../lib/messages";
-import { sizeKindFor } from "./size-guide";
+import { sizeKindFor, sizeKindForGuide } from "./size-guide";
 
 describe("sizeKindFor", () => {
   it("keeps the clothing charts for clothing", () => {
@@ -30,5 +30,24 @@ describe("sizeKindFor", () => {
       expect(ta[k], k).toBeTruthy();
     }
     expect(ta["size.shoe.kids"]).toMatch(/[஀-௿]/);
+  });
+});
+
+describe("sizeKindForGuide (the pack's sizeGuide setting)", () => {
+  it("gives no chart to a trade without a guide", () => {
+    expect(sizeKindForGuide(null, "grocery", "Rice")).toBeNull();
+    expect(sizeKindForGuide(undefined, "grocery", "Rice")).toBeNull();
+  });
+  it("always gives a shoes pack the shoe chart, on the right tab", () => {
+    expect(sizeKindForGuide("shoes", "footwear", "Formal", "Leather Oxford")).toBe("shoe-men");
+    expect(sizeKindForGuide("shoes", "footwear", "Women", "Block heel")).toBe("shoe-women");
+    expect(sizeKindForGuide("shoes", "footwear", "Kids", "Velcro")).toBe("shoe-kids");
+    // Even when the words look like clothing, a shoe shop never shows the bust / waist chart.
+    expect(sizeKindForGuide("shoes", "footwear", "Pant lookalike", "Canvas trainer")).toBe("shoe-men");
+  });
+  it("keeps clothing words for a clothing pack, with the shoe chart for its shoes", () => {
+    expect(sizeKindForGuide("clothing", "fashion", "Sarees", "Silk saree")).toBe("saree");
+    expect(sizeKindForGuide("clothing", "sports", "Track pant")).toBe("bottom");
+    expect(sizeKindForGuide("clothing", "sports", "Running shoes")).toBe("shoe-men");
   });
 });

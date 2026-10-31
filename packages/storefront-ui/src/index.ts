@@ -76,7 +76,7 @@ export { ProductCard, ProductGrid, ProductGridSkeleton } from "./components/prod
 export { ListingSkeleton, ProductPageSkeleton, CartSkeleton, CheckoutSkeleton, AccountSkeleton, TrackSkeleton, RailSkeleton, HelpSkeleton, SellerSkeleton, Bone } from "./components/skeletons";
 export { TrustBadges, PaymentIcons } from "./components/trust";
 export { EmptyBagArt, NoResultsArt, NoOrdersArt, EmptyWishlistArt, LostArt, OfflineArt } from "./components/illustrations";
-export { SizeChart, sizeKindFor } from "./components/size-guide";
+export { SizeChart, sizeKindFor, sizeKindForGuide } from "./components/size-guide";
 export { StoreImage, Price, Stars, JsonLd, Breadcrumbs, Container, Empty } from "./components/bits";
 
 // client components

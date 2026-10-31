@@ -4,7 +4,7 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 /** The board's columns (jobs still in the shop). */
 export const BOARD_STATUSES = ["received", "diagnosed", "awaiting_approval", "approved", "in_progress", "trial", "ready"] as const;
 
-export const JOB_TEMPLATES = ["device", "garment", "eyewear", "general"] as const;
+export const JOB_TEMPLATES = ["device", "garment", "eyewear", "vehicle", "laundry", "appliance", "general"] as const;
 export type JobTemplate = (typeof JOB_TEMPLATES)[number];
 
 export const JOB_PRIORITIES = ["normal", "urgent"] as const;

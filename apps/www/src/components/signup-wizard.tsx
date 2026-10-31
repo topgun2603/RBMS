@@ -23,12 +23,13 @@ import { Button } from "@rbms/ui/components/button";
 import { Card } from "@rbms/ui/components/card";
 import { Field, FieldControl, FieldError, FieldHint, FieldLabel, FieldRow, InputGroup, InputGroupAddon, InputGroupInput } from "@rbms/ui/components/field";
 import { Input } from "@rbms/ui/components/input";
+import { TRADE_NOT_LISTED, TradePicker } from "@rbms/ui/components/trade-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui/components/select";
 import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe } from "@rbms/ui/motion";
 import { cn } from "@rbms/ui/lib/utils";
 import { api, ApiError, errorMessage, getToken, handoffCode, handoffUrl, type SignupResult, type User } from "@/lib/api";
 import { POPULAR_TIER, isFreePlan, maxSavingPct, planDescription, planForTier, planName, planTier, pricePaise, rupees, tierFromParam, type Interval, type Plan, type PlanTier } from "@/lib/plans";
-import { BUSINESS_TYPES, PACKS, SHOP_DOMAIN, type AppId } from "@/lib/site";
+import { packPickerGroups, SHOP_DOMAIN, type AppId } from "@/lib/site";
 import { GST_STATES, isGstinShape, slugShapeOk, slugify, stateLabel } from "@/lib/states";
 import { useSite } from "./site-context";
 import { OtpSignIn } from "./otp-sign-in";
@@ -48,7 +49,10 @@ interface Draft {
   slug: string;
   slugEdited: boolean;
   state: string;
+  /** A listed trade's pack id, `TRADE_NOT_LISTED`, or "" when none was picked. */
   businessType: string;
+  /** What the owner typed under "Not listed: tell us". */
+  businessLabel: string;
   gstin: string;
   /** The plan is kept as a tier, so changing the app keeps "Pro" and the POST sends that app's plan id. */
   tier: PlanTier | null;
@@ -81,6 +85,7 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
     slugEdited: false,
     state: "33",
     businessType: "",
+    businessLabel: "",
     gstin: "",
     tier: wantedTier ?? POPULAR_TIER,
     interval: initialInterval,
@@ -199,7 +204,14 @@ export function SignupWizard({ plans, initialPlan, initialInterval, initialApp }
         planId: plan.id,
         interval: draft.interval,
         state: draft.state,
-        ...(draft.businessType ? { businessType: draft.businessType } : {}),
+        // A listed trade goes as its pack; "Not listed" sends the owner's words and the server picks the nearest pack (or a general one).
+        ...(draft.businessType === TRADE_NOT_LISTED
+          ? draft.businessLabel.trim()
+            ? { businessLabel: draft.businessLabel.trim().replace(/\s+/g, " ") }
+            : {}
+          : draft.businessType
+            ? { businessType: draft.businessType }
+            : {}),
         ...(gstin ? { gstin } : {}),
         ...(user?.phone ? { phone: user.phone } : {}),
       });
@@ -500,6 +512,8 @@ function ShopStep({
   onSuggestion: (s: string) => void;
 }) {
   const showSlugError = (touched || (draft.slugEdited && draft.slug.length > 0) || slugState.status === "taken") && errors.slug;
+  // Grouped trades, the ones made for the chosen product first; the last option, "Not listed: tell us", takes any other trade.
+  const tradeGroups = React.useMemo(() => packPickerGroups(locale, draft.app), [locale, draft.app]);
   return (
     <div className="grid gap-5">
       <Field invalid={touched && !!errors.name}>
@@ -557,7 +571,7 @@ function ShopStep({
         </AnimatePresence>
       </Field>
 
-      <FieldRow cols={2}>
+      <FieldRow cols={1}>
         <Field>
           <FieldLabel>{t("signup.shop.state")}</FieldLabel>
           <Select value={draft.state} onValueChange={(v) => set("state", v)}>
@@ -575,27 +589,27 @@ function ShopStep({
             </SelectContent>
           </Select>
         </Field>
-        <Field>
-          <FieldLabel optional={t("common.optional")}>{t("signup.shop.type")}</FieldLabel>
-          <Select value={draft.businessType || undefined} onValueChange={(v) => set("businessType", v)}>
-            <FieldControl>
-              <SelectTrigger size="lg" className="w-full" data-testid="shop-type">
-                <SelectValue placeholder={t("signup.shop.typePlaceholder")} />
-              </SelectTrigger>
-            </FieldControl>
-            <SelectContent>
-              {/* Trades made for the chosen product first; any trade can still be picked. */}
-              {[...BUSINESS_TYPES]
-                .sort((a, b) => Number(PACKS[b].appId === draft.app) - Number(PACKS[a].appId === draft.app))
-                .map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {locale === "ta" ? PACKS[b].nameTa : PACKS[b].name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </Field>
       </FieldRow>
+
+      <Field>
+        <FieldLabel optional={t("common.optional")}>{t("signup.shop.type")}</FieldLabel>
+        <TradePicker
+          groups={tradeGroups}
+          value={draft.businessType}
+          onChange={(v) => set("businessType", v)}
+          label={draft.businessLabel}
+          onLabelChange={(v) => set("businessLabel", v)}
+          data-testid="shop-type"
+          text={{
+            search: t("signup.shop.typeSearch"),
+            empty: t("signup.shop.typeEmpty"),
+            notListed: t("signup.shop.typeNotListed"),
+            notListedHint: t("signup.shop.typeNotListedHint"),
+            labelField: t("signup.shop.typeLabel"),
+            labelPlaceholder: t("signup.shop.typeLabelPlaceholder"),
+          }}
+        />
+      </Field>
 
       <Field invalid={!!errors.gstin}>
         <FieldLabel optional={t("common.optional")}>{t("signup.shop.gstin")}</FieldLabel>

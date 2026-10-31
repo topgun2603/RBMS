@@ -275,7 +275,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     defineJob,
     schedule: (name, cron) => jobs.service.schedule(name, cron),
-    engines: () => ({ bookings: bookings.service, memberships: memberships.service }),
+    engines: () => ({ bookings: bookings.service, memberships: memberships.service, jobcards: jobcards.service }),
   });
 
   // Fixed OTP for test identities (e2e scripts); never in production (testOtpConfig drops it there).
@@ -1664,14 +1664,14 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
 
   // Business packs (kit-verticals.ts): a new shop gets its trade, the trade's theme preset, starter categories and a
   // starter home page. Runs after batch 5's "defaults" hook, so the preset replaces the sign-up colour.
-  // Solution presets: which optional features a shop of each of the 15 solutions starts with (Platform → Apps & features).
+  // Solution presets: which optional features a shop of each solution starts with (Platform → Apps & features).
   const solutionSettings = settings.service.handle("solutions");
   const presets = createSolutionPresets({
     registry: () => features.service.registry(),
     profile: (appId) => features.service.getProfile(appId),
     settings: { get: () => solutionSettings.get(), setApp: (patch) => solutionSettings.setApp(patch) },
   });
-  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, log });
+  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, stockBatches: { trackAll: (tenantId) => inventory.service.batches.saveSettings(tenantId, { trackAll: true }) }, log });
   const solutions = createSolutions({ db, starter, presets, features: features.service, tenancy: tenancy.service });
   // Mobile apps (docs/market-plan.md, M0): forced updates and retry-safe writes.
   const mobile = createMobile({ min: parseVersionList(env.MOBILE_MIN_VERSIONS), latest: parseVersionList(env.MOBILE_LATEST_VERSIONS) });
@@ -1841,8 +1841,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   tenancy.service.onTenantCreated({
     name: "starter",
     run: async ({ tenant, details }) => {
-      const signup = (details.signup ?? null) as { businessType?: string | null } | null;
-      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null);
+      const signup = (details.signup ?? null) as { businessType?: string | null; businessLabel?: string | null } | null;
+      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null, { label: signup?.businessLabel ?? null });
     },
   });
 

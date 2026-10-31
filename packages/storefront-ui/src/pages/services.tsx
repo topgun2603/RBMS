@@ -108,7 +108,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 interface JobTrack {
   label: string;
-  template: "device" | "garment" | "eyewear" | "general";
+  template: "device" | "garment" | "eyewear" | "vehicle" | "laundry" | "appliance" | "general";
   status: string;
   dueDate: string | null;
   total: number;

@@ -11,6 +11,8 @@ export interface Solution {
   nameTa: string;
   tagline: string;
   appId: string;
+  /** Where the trade picker lists it (food, retail, health, services, education, auto, building, general). */
+  group: string;
   preset: { id: string; name: string; primary: string; background: string | null; fontHeading: string } | null;
   categories: string[];
   shops: number;
@@ -37,14 +39,31 @@ export interface TenantSolution {
   effective: string;
 }
 
+/** One line of `GET /v1/solutions/demand` ("Not covered"): a trade owners typed that has no pack of its own. */
+export interface DemandItem {
+  /** Lower-cased, trimmed. */
+  label: string;
+  shops: number;
+  /** The apps of the shops that typed it, most common first. */
+  appIds: string[];
+  /** The latest shop that typed it (ISO). */
+  lastAt: string | null;
+}
+
 const sk = {
   all: ["platform", "solutions"] as const,
+  demand: ["platform", "solutions", "demand"] as const,
   preset: (id: string) => ["platform", "solutions", "preset", id] as const,
   tenants: (ids: string[]) => ["platform", "solutions", "tenants", ids.join(",")] as const,
 };
 
 export function useSolutions() {
   return useQuery({ queryKey: sk.all, queryFn: () => api.get<{ items: Solution[] }>("/solutions", undefined, { tenant: null }).then((r) => r.items), staleTime: 60_000 });
+}
+
+/** Typed trades on shops running a general pack, counted: what to build next. */
+export function useDemand() {
+  return useQuery({ queryKey: sk.demand, queryFn: () => api.get<{ items: DemandItem[]; total: number }>("/solutions/demand", undefined, { tenant: null }), staleTime: 60_000 });
 }
 
 export function useTenantSolutions(ids: string[]) {

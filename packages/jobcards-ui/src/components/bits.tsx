@@ -6,10 +6,12 @@ import {
   BadgeCheckIcon,
   BanIcon,
   CalendarIcon,
+  CarIcon,
   CheckCheckIcon,
   GlassesIcon,
   HourglassIcon,
   InboxIcon,
+  PlugZapIcon,
   Loader2Icon,
   PackageCheckIcon,
   RulerIcon,
@@ -87,6 +89,9 @@ export const TEMPLATE_ICON: Record<JobTemplate, React.ComponentType<{ className?
   device: SmartphoneIcon,
   garment: ShirtIcon,
   eyewear: GlassesIcon,
+  vehicle: CarIcon,
+  laundry: ShirtIcon,
+  appliance: PlugZapIcon,
   general: WrenchIcon,
 };
 

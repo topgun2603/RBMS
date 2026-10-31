@@ -68,7 +68,7 @@ for an Indian small-business billing/POS/ERP buyer; effort S (days) / M (1-3 wee
 
 - Vendor billing: plans, Razorpay subscriptions, UPI Autopay, add-ons (`packages/subscriptions`, `plans`; docs/batch5.md): Done.
 - Support: tickets, FAQ, SLA, chat (`packages/support`, `chat`): Done.
-- Onboarding + industry packs (`packages/onboarding`, `verticals`): Done, a differentiator.
+- Onboarding + industry packs (`packages/onboarding`, `verticals`): Done, a differentiator. Updated 2026-10-30 (batch 10): 52 packs, `sizeGuide` is clothing / shoes / none, vehicle / laundry / appliance job-card templates, area units (box coverage on the alternate-unit model, `docs/market-plan.md` Batch 10) and the vehicle service-due reminder; dealer licence on the bill is still open. Updated 2026-10-30: 48 packs in groups, three general packs so no trade is turned away, the owner's typed trade kept and counted in Platform → Solutions → Not covered (docs/market-plan.md batches 8 and 9; demo shops for the new packs still to do).
 - Online store, aggregators (Zomato/Swiggy/ONDC), marketplace: beyond Vyapar scope.
 - Vendor-side backups + restore drill: Done, but AWS deployment is "prepared, not applied" (docs/roadmap.md batch 7).
 

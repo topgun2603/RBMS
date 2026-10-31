@@ -60,6 +60,8 @@ export interface SignupDetails {
   gstin: string | null;
   phone: string | null;
   businessType: string | null;
+  /** The trade in the owner's own words (sign-up "Not listed: tell us", or a typed trade). */
+  businessLabel?: string | null;
 }
 
 /** Brand colour by business type (the owner changes it in Settings → Branding). */
@@ -88,6 +90,7 @@ const signupBody = z.object({
   planId: z.string().trim().min(1).max(40),
   interval: z.enum(["monthly", "yearly"]).default("monthly"),
   businessType: z.string().trim().max(60).optional().nullable(),
+  businessLabel: z.string().trim().max(60).optional().nullable(),
   state: z.string().trim().min(1).max(4),
   gstin: z.string().trim().max(20).optional().nullable(),
   phone: z.string().trim().max(20).optional().nullable(),
@@ -273,7 +276,7 @@ export function createBatch5(d: Batch5Deps) {
       await branding.update(tenant.id, { appName: tenant.name, tokens: { colors: { primary: colour } } });
       if (s) {
         await tenancy.update(tenant.id, {
-          metadata: { ...tenant.metadata, signup: { source: "www", businessType: s.businessType, planId: s.planId, interval: s.interval, at: new Date().toISOString() } },
+          metadata: { ...tenant.metadata, signup: { source: "www", businessType: s.businessType, businessLabel: s.businessLabel ?? null, planId: s.planId, interval: s.interval, at: new Date().toISOString() } },
         });
       }
     },
@@ -323,6 +326,7 @@ export function createBatch5(d: Batch5Deps) {
           gstin,
           phone: b.phone?.trim() || null,
           businessType: b.businessType?.trim() || null,
+          businessLabel: b.businessLabel?.trim() || null,
         };
         // At most 5 new shops an hour per user (valid requests only, so typos while filling the form don't count).
         if (!perUser.hit(user.id)) throw new AppError(429, "rate_limited", "Too many shops created; please try again in an hour");

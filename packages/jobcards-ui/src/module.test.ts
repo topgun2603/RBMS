@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { JOBCARDS_FEATURES, JOBCARDS_PERMISSIONS } from "./lib/access";
 import { jobcardsMessages } from "./lib/messages";
-import { draftFromFields, draftToFields, emptyDraft, EYES, FIELD_ERRORS, GARMENT_TYPES, LENS_TYPES, MEASURE_KEYS, RX_FIELDS } from "./lib/templates";
+import { APPLIANCE_KINDS, draftFromFields, draftToFields, emptyDraft, EYES, FIELD_ERRORS, FUEL_LEVELS, GARMENT_TYPES, LAUNDRY_GARMENTS, LAUNDRY_SERVICES, LENS_TYPES, MEASURE_KEYS, RX_FIELDS, VEHICLE_SERVICE_TYPES } from "./lib/templates";
 import { JOB_FLOW, JOB_STATUSES, JOB_TEMPLATES, LINE_KINDS } from "./lib/types";
 import { jobcardsModule } from "./module";
 
@@ -29,6 +29,7 @@ describe("jobcards messages", () => {
     for (const s of JOB_STATUSES) used.add(`jobcards.status.${s}`);
     for (const s of JOB_FLOW.slice(1)) used.add(`jobcards.move.${s}`);
     for (const s of JOB_TEMPLATES) used.add(`jobcards.template.${s}`).add(`jobcards.templateHint.${s}`);
+    for (const [pre, list] of Object.entries({ fuel: FUEL_LEVELS, vehicleService: VEHICLE_SERVICE_TYPES, laundryGarment: LAUNDRY_GARMENTS, laundryService: LAUNDRY_SERVICES, applianceKind: APPLIANCE_KINDS })) for (const k of list) used.add(`jobcards.${pre}.${k}`);
     for (const g of GARMENT_TYPES) used.add(`jobcards.garment.${g}`);
     for (const k of MEASURE_KEYS) used.add(`jobcards.measure.${k}`);
     for (const l of LENS_TYPES) used.add(`jobcards.lens.${l}`);
@@ -93,5 +94,44 @@ describe("template forms", () => {
     expect(d.garment.garmentType).toBe("pant");
     expect(d.garment.measurements.find((m) => m.key === "waist")?.value).toBe("32");
     expect(d.garment.measurements.at(-1)).toEqual({ key: "rise", value: "11" });
+  });
+
+  it("vehicle: normalises the registration, needs a km reading and checks the reminder terms", () => {
+    const d = emptyDraft();
+    d.vehicle = { ...d.vehicle, regNo: "tn 09 ab 1234", km: "12450", remindAfterMonths: "6", remindAfterKm: "3000", fuel: "half" };
+    expect(draftToFields("vehicle", d).fields).toMatchObject({ regNo: "TN09AB1234", km: 12450, remindAfterMonths: 6, remindAfterKm: 3000, fuel: "half", serviceType: "general_service" });
+    d.vehicle.km = "";
+    expect(draftToFields("vehicle", d).error).toBe("km");
+    d.vehicle.km = "10";
+    d.vehicle.remindAfterMonths = "0";
+    expect(draftToFields("vehicle", d).error).toBe("reminder");
+    d.vehicle.regNo = "x";
+    expect(draftToFields("vehicle", d).error).toBe("regNo");
+  });
+
+  it("laundry: counts pieces, rejects repeated tags and wants an address for pickup", () => {
+    const d = emptyDraft();
+    expect(draftToFields("laundry", d).error).toBe("garments");
+    d.laundry.counts = { shirt: "4", saree: "1", pant: "" };
+    d.laundry.tagNumbers = "A12, A13";
+    expect(draftToFields("laundry", d).fields).toMatchObject({ garments: { shirt: 4, saree: 1 }, tagNumbers: ["A12", "A13"], pickup: false });
+    d.laundry.tagNumbers = "A1, A1";
+    expect(draftToFields("laundry", d).error).toBe("tags");
+    d.laundry.tagNumbers = "";
+    d.laundry.pickup = true;
+    expect(draftToFields("laundry", d).error).toBe("pickupAddress");
+    d.laundry.address = "12 Gandhi Rd";
+    expect(draftToFields("laundry", d).fields).toMatchObject({ pickup: true, address: "12 Gandhi Rd" });
+  });
+
+  it("appliance: needs the problem and a visit address; reads the AMC number back", () => {
+    const d = emptyDraft();
+    expect(draftToFields("appliance", d).error).toBe("issue");
+    d.appliance = { ...d.appliance, issue: "Not cooling", address: "5 Anna Nagar", date: "2026-11-02", slot: "14:00-16:00", amcNumber: "AMC-44" };
+    const out = draftToFields("appliance", d);
+    expect(out.fields).toMatchObject({ kind: "ac", visit: { address: "5 Anna Nagar", date: "2026-11-02" }, amcNumber: "AMC-44" });
+    expect(draftFromFields("appliance", out.fields!).appliance).toMatchObject({ address: "5 Anna Nagar", amcNumber: "AMC-44" });
+    d.appliance.address = "x";
+    expect(draftToFields("appliance", d).error).toBe("visitAddress");
   });
 });

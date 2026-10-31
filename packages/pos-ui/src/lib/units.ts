@@ -1,6 +1,6 @@
 import { resolvePrice, pickList, type PricingItem, type PricingList } from "@rbms/pricelists/resolve";
 import { clampDiscount, type CartLine, type CartProduct } from "./cart";
-import { lineAmount } from "@rbms/gst";
+import { boxesForArea, lineAmount, normaliseAreaUnit, type AreaUnit } from "@rbms/gst";
 
 /**
  * Alternate units and price lists at the counter (docs/price-lists-units.md). Pure: unit tested, and the same price
@@ -110,4 +110,23 @@ export function repriceLines(lines: readonly CartLine[], lists: readonly Pricing
     return { ...l, price, listPrice: price, discount: clampDiscount(l.discount, lineAmount(l.qty, price)) };
   });
   return changed ? out : (lines as CartLine[]);
+}
+
+
+/**
+ * Selling by area at the counter (tiles, flooring): for an item whose base unit is sq ft / sq m and that has a box
+ * unit, the whole boxes that cover `area` (plus wastage). Null when the item isn't sold that way or the input is not
+ * a positive number. The line then goes in as `qty` of the box unit and stock moves by `qty × coverage`.
+ */
+export function boxesToCover(
+  p: Pick<CartProduct, "unit" | "baseUnit" | "units">,
+  area: number,
+  areaUnit: AreaUnit = "sqft",
+  wastagePct = 0,
+): { unit: string; qty: number; covered: number; coverage: number } | null {
+  const base = normaliseAreaUnit(baseUnitOf(p));
+  const box = p.units?.find((u) => !normaliseAreaUnit(u.unit));
+  if (!base || !box || !(area > 0) || !(wastagePct >= 0 && wastagePct <= 100)) return null;
+  const r = boxesForArea({ area, areaUnit, coverage: box.factor, coverageUnit: base, wastagePct });
+  return { unit: box.unit, qty: r.boxes, covered: r.covered, coverage: box.factor };
 }
