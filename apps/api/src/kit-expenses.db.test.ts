@@ -16,7 +16,8 @@ import { expenseBillsPort, expenseSuppliersPort } from "./kit-expenses";
 
 const URL_ = process.env.EXPENSES_TEST_DATABASE_URL;
 const SCHEMA = `exp_payables_${Math.random().toString(36).slice(2, 10)}`;
-const TABLES = ["expense_categories", "expenses", "suppliers", "purchases", "purchase_payments", "debit_notes"];
+// The books also read branches and where a purchase's goods went (branch books, kit-accounting.ts).
+const TABLES = ["expense_categories", "expenses", "suppliers", "purchases", "purchase_payments", "debit_notes", "branches", "goods_receipts", "purchase_orders", "stock_movements"];
 const T = randomUUID();
 
 describe.skipIf(!URL_)("credit expenses in Payables and the books (Postgres)", () => {

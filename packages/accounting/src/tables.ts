@@ -66,6 +66,48 @@ export function profitLossTable(pl: ProfitLoss, shop: string): ReportTable {
   };
 }
 
+/** Profit and loss with a column per branch, head office / unassigned, and the whole shop. */
+export function profitLossBranchTable(
+  r: { from: string; to: string; consolidated: ProfitLoss; columns: { branch: { id: string | null; name: string }; pl: ProfitLoss }[]; check: { ok: boolean; difference: number } },
+  shop: string,
+): ReportTable {
+  const cols = r.columns.map((c, i) => ({ key: `b${i}`, pl: c.pl, label: c.branch.name }));
+  const all = [...cols, { key: "total", pl: r.consolidated, label: "Whole shop" }];
+  const rows: ReportTable["rows"] = [];
+  const add = (name: string, f: (pl: ProfitLoss) => number, style?: "head" | "total") =>
+    rows.push({ cells: { name, ...Object.fromEntries(all.map((c) => [c.key, f(c.pl)])) }, style });
+  const sec = (pl: ProfitLoss, key: string) => pl.sections.find((s) => s.key === key)!;
+  // Every account that has an amount in any column, in code order.
+  const linesOf = (key: string) => {
+    const seen = new Map<string, { code: string | null; name: string }>();
+    for (const c of all) for (const l of sec(c.pl, key).lines) seen.set(l.accountId ?? l.name, { code: l.code, name: l.name });
+    return [...seen.entries()].sort((x, y) => (x[1].code ?? "").localeCompare(y[1].code ?? "", undefined, { numeric: true }));
+  };
+  const amountIn = (pl: ProfitLoss, key: string, id: string) => sec(pl, key).lines.find((l) => (l.accountId ?? l.name) === id)?.amount ?? 0;
+  const section = (key: string, label: string) => {
+    add(label, (pl) => sec(pl, key).total, "head");
+    if (key === "cogs") add("  Opening stock", (pl) => pl.stock.opening);
+    for (const [id, l] of linesOf(key)) add(`  ${l.name}`, (pl) => amountIn(pl, key, id));
+    if (key === "cogs") add("  Less: closing stock", (pl) => -pl.stock.closing);
+  };
+  section("sales", sec(r.consolidated, "sales").label);
+  section("cogs", "Cost of goods sold");
+  add("Gross profit", (pl) => pl.grossProfit, "total");
+  section("otherIncome", sec(r.consolidated, "otherIncome").label);
+  section("expenses", sec(r.consolidated, "expenses").label);
+  add("Net profit", (pl) => pl.netProfit, "total");
+  return {
+    title: "Profit and loss by branch",
+    subtitle: `${shop} - ${period(r.from, r.to)}`,
+    columns: [{ key: "name", label: "Particulars" }, ...all.map((c) => ({ key: c.key, label: c.label, kind: "money" as const }))],
+    rows,
+    notes: [
+      "Head office / unassigned holds manual entries, shop-wide documents (customer receipts, payroll, opening balances) and everything posted before branch books.",
+      r.check.ok ? "The branches add up to the whole shop." : `The branches differ from the whole shop by ${(r.check.difference / 100).toFixed(2)}.`,
+    ],
+  };
+}
+
 export function balanceSheetTable(bs: BalanceSheet, shop: string): ReportTable {
   const rows: ReportTable["rows"] = [];
   const block = (title: string, groups: BalanceSheet["assets"], total: number) => {

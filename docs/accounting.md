@@ -14,7 +14,8 @@ depreciation and the year-end close are Part B (below).
   **Manager**, the default staff role and the demo role hold `*.view`, which includes `accounting.view`. Cashier and
   stock-keeper have none.
 - Migration `0032_accounting` (tables `acct_accounts`, `acct_entries`, `acct_lines`, `acct_settings`, `acct_lock_log`, plus
-  two triggers that make posted rows immutable at the database).
+  two triggers that make posted rows immutable at the database); `0058_branch_books` adds the nullable
+  `acct_lines.branch_id` (Branch books, below).
 
 ## Design
 
@@ -115,7 +116,8 @@ other income; a loss is a debit there). Year-end revaluation of open foreign bal
 
 ## Reports
 
-All under `GET /v1/accounting/reports/...`, `format=csv` for a CSV (rupees, UTF-8 BOM) and a PDF at
+Trial balance, profit and loss, day book, ledger and cash book take `branchId=<branch id>` or `branchId=none` (head
+office / unassigned), see Branch books. All under `GET /v1/accounting/reports/...`, `format=csv` for a CSV (rupees, UTF-8 BOM) and a PDF at
 `GET /v1/documents/accounting-report/<report>.pdf?from=&to=` (a document type registered in `kit.ts`; the HTML comes from
 `pdf.ts`, wrapped by the documents module like every other PDF; Tamil locale supported).
 
@@ -128,6 +130,7 @@ All under `GET /v1/accounting/reports/...`, `format=csv` for a CSV (rupees, UTF-
 | Profit and loss | `reports/profit-loss?from&to&compare=previous` | sales, COGS (opening stock + purchases - closing stock), gross profit, other income, expenses, net profit; optional comparison period |
 | Balance sheet | `reports/balance-sheet?asOf` | assets, liabilities, equity; stock at live valuation, profit to date carried to equity; `balanced` flag |
 | GST ledger summary | `reports/gst-ledger?from&to` | output vs input per CGST/SGST/IGST/cess |
+| Profit and loss by branch | `reports/profit-loss-branches?from&to` | a column per branch, head office / unassigned and the whole shop; `check.ok` when the columns add up (see Branch books) |
 | Reconciliation | `reconcile?from&to`, `reconcile/parties?type=customer|supplier` | see below |
 
 **Stock valuation (periodic method).** Closing stock = sum over tracked items of quantity at the date x current
@@ -186,7 +189,8 @@ added to the Accounts section by `withAccountingPartB` (`billing-ui/src/accounti
    in the self-check as manual adjustments.
 8. Payments by UPI/card/cheque all go to the main bank account unless mapped in Settings; no clearing account, no card
    settlement lag.
-9. Multi-branch shops share one set of books; no per-branch P&L yet. No multi-currency.
+9. Branch books are a dimension of the one set of books (below), not separate books per branch: no inter-branch
+   accounts, a branch's balance sheet is not drawn. No multi-currency.
 10. Reads run an incremental-by-full-scan sync at most every 20 s per shop; very large shops (100k+ documents) should
     move this to a scheduled job and an events feed from the source modules (the ports are the seam).
 11. The audit page does not yet name accounting actions (they are logged as `accounting.post /journal-entries` and so on).
@@ -246,9 +250,7 @@ balance (blocking), the year has ended (blocking), open statement lines, undepos
 credit book / Payables don't know about (TCS collected, bank-statement entries with a party, TDS not settled on the bill),
 listed as explained items.
 
-**Per-branch books: not built (gap).** Journal lines have no `branch_id`; a branch dimension would need a column on
-`acct_lines`, the branch on every source document read through the ports, and branch filters on every report. Not cheap,
-so left for later (see Limits).
+**Per-branch books:** built 2026-10-30, see Branch books below.
 
 **Limits (Part B).** PDFs: the bank reconciliation, TDS quarterly data and certificate summary are report tables served
 through `/v1/documents/accounting-report/<name>.pdf` (CSV works the same way); in this dev environment every
@@ -257,8 +259,63 @@ payment must be undone in the bill (the books follow the document). TDS reasons,
 server are English in the Tamil screens. Depreciation is book depreciation (SLM / WDV by days in use), not the
 income-tax block method. One closing journal per year; no partial-year closes.
 
+## Branch books (built 2026-10-30)
+
+A branch dimension on journal lines, so a multi-branch shop (packages/branches) sees each branch's trial balance, profit
+and loss, day book and ledger, and the profit and loss of all branches side by side with the whole shop.
+
+- **Column.** Migration `0058_branch_books`: nullable `acct_lines.branch_id` and the index
+  `(tenant_id, branch_id, entry_date)`. Additive: no journal is rewritten, and every line posted before it stays
+  branch-less, shown as **Head office / unassigned**.
+- **Where the branch comes from** (`ports.ts` `branchId` on the sources, read in `apps/api/src/kit-accounting.ts`):
+
+  | Source | Branch |
+  |---|---|
+  | Bill, credit note, debit note to a customer, till (difference, cash in/out) | the document's `branch_id` |
+  | Payment on a bill (and refunds) | the bill's branch |
+  | Expense | the expense's `branch_id` (shop-wide expenses: none) |
+  | Purchase bill | the branch whose stock location received it: the goods receipt's location, else the bill's own stock movements, else the purchase order's location |
+  | Supplier payment | the branch of the bill paid, or of the expense bought on credit; on account: none |
+  | Debit note to a supplier | the branch of its stock location |
+  | Opening stock, hand adjustment, stock audit difference | the branch of the movement's location |
+  | Customer receipts, opening balances, payroll, composition tax, manual vouchers, Part B entries | none (head office / unassigned) |
+
+  A location belongs to the branch whose `stock_location_id` it is; a location of no branch is unassigned.
+- **Idempotent and versioned as before.** The branch is set on every line of a posting but is **not part of the content
+  hash** (`postingHash`): giving existing documents a branch does not reverse and re-post history, so old entries keep
+  no branch. A changed document is reversed and re-posted as today; the new version carries the branch. A reversal
+  (engine or manual) copies the branch of each line it reverses. A mirror posting (`invoice_cancel`, `purchase_cancel`,
+  `supplier_payment_reversal`, `debit_note_cancel`, `expense_cancel`, `sales_debit_note_cancel`, `gst_payment_cancel`;
+  `MIRROR_BASE` in `rules.ts`) takes the branch of the active entry it mirrors, so a bill posted before branch books
+  and cancelled after nets to zero in head office / unassigned, not in two places. Every entry still balances, and so do
+  the lines of each branch on their own.
+- **Reports.** `branchId=<id>|none` on `reports/trial-balance`, `reports/profit-loss`, `reports/day-book` (and
+  `journal-entries`: entries with a line of that branch), `reports/ledger` and `reports/cash-book`, CSV and PDF too.
+  `reports/profit-loss-branches` (and its CSV / PDF, report `profit-loss-branches`) gives one column per branch, head
+  office / unassigned and the whole shop, with `check` = the columns' sum against the consolidated profit. Balance sheet
+  and GST summary stay shop-wide. `GET /v1/accounting/branches` lists the branches for the filter (the last item, id
+  null, is head office / unassigned); a branch that is gone but has lines keeps a column.
+- **Stock per branch.** `StockValuePort.valueByBranch` splits the valued stock by the branch of each location (moving
+  average, or the FIFO layers from the date the shop values by FIFO: inventory `costing.bookValueByLocation`); the parts
+  add up to the shop's value. A branch's opening stock = its value the day before + its Stock-account movements, closing
+  = its value at the end, so the branches' cost of goods adds up to the shop's. Without a split, all valued stock is in
+  head office / unassigned.
+- **UI.** Accounts > Trial balance, Profit and loss, Day book and Ledger have a Branch picker (whole shop, each branch,
+  head office / unassigned), shown only when the shop has branches; Profit and loss has a "Branch by branch" view with
+  the whole-shop column and the add-up check. EN and TA in `lib/messages/accounting.ts`.
+- **Checks.** `accounting-check.ts` prints `branch TB` (each branch balances, the branches' debits and credits add up to
+  the shop's) and `branch P&L` (the columns add up to the consolidated profit). Tests: `branch-books.test.ts` (every
+  source type with and without a branch, hash unchanged, mirrors in the same branch, per-branch trial balance and P&L add
+  up), `branch-books.db.test.ts` (engine against Postgres: history not re-posted, cancellations, versions, filtered
+  reports add up), `apps/api/src/kit-accounting.db.test.ts` (the ports read each document's branch, stock split adds
+  up).
+- **Limits.** Manual vouchers have no branch field yet (they are head office / unassigned); no inter-branch transfer
+  entries (a stock transfer moves no money in the books, so the receiving branch's closing stock rises with no cost in
+  its period); customer receipts are shop-wide, so a branch's Debtors balance is not its customers' balance; a
+  document whose branch changes after posting keeps the branch it was posted with until its content changes.
+
 ## Not built yet
 
-Budgets, cost centres, per-branch books, multi-currency, recurring journals, GSTR-3B set-off entries, e-way-bill and
+Budgets, cost centres, branch on manual vouchers, inter-branch accounts, multi-currency, recurring journals, GSTR-3B set-off entries, e-way-bill and
 e-invoice cross-checks against the ledger, scheduled sync and an events feed for purchases/expenses, bank feeds (API),
 MT940 / PDF statements, TDS returns in the FVU format, salary TDS returns (24Q; payroll takes a manual monthly salary TDS, `docs/payroll.md`).

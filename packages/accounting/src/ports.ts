@@ -30,6 +30,8 @@ export interface InvoiceSrc extends TaxParts {
   roundOff: number;
   /** IST date of cancellation. */
   cancelledOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface InvoicePaymentSrc {
@@ -51,6 +53,8 @@ export interface InvoicePaymentSrc {
    * `amount`, the part of the bill it settled at the bill's rate. Absent / 0 = none.
    */
   forexDiff?: number;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface ReceiptSrc {
@@ -79,6 +83,8 @@ export interface CreditNoteSrc extends TaxParts {
   roundOff: number;
   /** IST date of cancellation. */
   cancelledOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface PurchaseSrc extends TaxParts {
@@ -92,6 +98,8 @@ export interface PurchaseSrc extends TaxParts {
   total: number;
   roundOff: number;
   cancelledOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface SupplierPaymentSrc {
@@ -107,6 +115,8 @@ export interface SupplierPaymentSrc {
   date: string;
   /** IST date it was reversed (the row stays for the audit trail). */
   reversedOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface DebitNoteSrc extends TaxParts {
@@ -120,6 +130,8 @@ export interface DebitNoteSrc extends TaxParts {
   total: number;
   roundOff: number;
   cancelledOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface ExpenseSrc {
@@ -144,6 +156,8 @@ export interface ExpenseSrc {
   supplierId?: string | null;
   /** IST date it was cancelled. */
   cancelledOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 /** A debit note to a customer (CGST s.34): the customer owes more on an earlier bill (docs/expenses-debit-notes.md). */
@@ -160,6 +174,8 @@ export interface SalesDebitNoteSrc extends TaxParts {
   roundOff: number;
   /** IST date of cancellation. */
   cancelledOn: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 export interface TillSrc {
@@ -174,6 +190,8 @@ export interface TillSrc {
   cashEntries: { id: string; amount: number; reason: string; on: string; category?: string }[];
   /** Differences found when the drawer changed hands (counted - expected, paise); posted like a closing difference. */
   handovers?: { id: string; difference: number; on: string }[];
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 /** Stock put in or written off by hand (opening stock, adjustments), valued in paise: + = stock added, - = removed. */
@@ -183,6 +201,8 @@ export interface StockAdjustmentSrc {
   reason: "opening" | "adjustment";
   value: number;
   itemName: string | null;
+  /** Branch of the document (packages/branches); null / absent = head office / unassigned. */
+  branchId?: string | null;
 }
 
 /** Composition tax paid by challan (CMP-08), entered in GST filing. Paid in full from the money account. */
@@ -288,6 +308,17 @@ export const TDS_SETTLEMENT_PREFIX = "TDS:";
 /** Stock value (paise) as of a date from the inventory moving-average cost; null when the shop does not track stock. */
 export interface StockValuePort {
   value(tenantId: string, asOf: string): Promise<number | null>;
+  /**
+   * The same value split by branch (the branch whose stock location holds the stock; key null = locations of no branch).
+   * The parts add up to `value`. Leave out when not known: per-branch profit and loss then carries all valued stock in
+   * the head office / unassigned column.
+   */
+  valueByBranch?(tenantId: string, asOf: string): Promise<Map<string | null, number> | null>;
+}
+
+/** The shop's branches (packages/branches), for the branch filter and the per-branch profit and loss. */
+export interface BranchesPort {
+  list(tenantId: string): Promise<{ id: string; name: string; code: string; active: boolean }[]>;
 }
 
 /** The existing modules' own totals, for the reconciliation page. */

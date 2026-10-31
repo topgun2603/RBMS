@@ -92,6 +92,8 @@ export interface EntryLine {
   memo: string | null;
   partyType: string | null;
   partyId: string | null;
+  /** Branch of the line; null = head office / unassigned. */
+  branchId?: string | null;
 }
 export interface Entry {
   id: string;
@@ -165,6 +167,23 @@ export interface ProfitLoss {
   netProfit: number;
   compareGrossProfit?: number;
   compareNetProfit?: number;
+}
+
+/** A branch of the report filter; id null = head office / unassigned (`branchId=none`). */
+export interface AccountingBranch {
+  id: string | null;
+  name: string;
+  code: string;
+  active: boolean;
+}
+
+/** Profit and loss with a column per branch and the whole shop (`reports/profit-loss-branches`). */
+export interface ProfitLossByBranch {
+  from: string;
+  to: string;
+  consolidated: ProfitLoss;
+  columns: { branch: AccountingBranch; pl: ProfitLoss }[];
+  check: { grossProfit: number; netProfit: number; difference: number; ok: boolean };
 }
 
 export interface BalanceSheetGroup {
@@ -299,16 +318,23 @@ export const useAccounts = (balances = false, enabled = true) =>
 export const useEntries = (params: QueryParams, enabled = true) =>
   useQuery({ queryKey: ["accounting", "entries", params], queryFn: ({ signal }) => api.get<EntryPage>(`${ACC}/journal-entries`, params, { signal }), placeholderData: keepPreviousData, enabled });
 
-export const useTrialBalance = (p: { from: string; to: string }) =>
+/** Branches for the report filter (the last one is head office / unassigned). */
+export const useAccountingBranches = () =>
+  useQuery({ queryKey: ["accounting", "branches"], queryFn: () => api.get<{ items: AccountingBranch[] }>(`${ACC}/branches`).then((r) => r.items), ...stale });
+
+export const useProfitLossByBranch = (p: { from: string; to: string }, enabled = true) =>
+  useQuery({ queryKey: ["accounting", "pnl-branches", p], queryFn: ({ signal }) => api.get<ProfitLossByBranch>(`${ACC}/reports/profit-loss-branches`, p, { signal }), placeholderData: keepPreviousData, enabled });
+
+export const useTrialBalance = (p: { from: string; to: string; branchId?: string }) =>
   useQuery({ queryKey: ["accounting", "tb", p], queryFn: ({ signal }) => api.get<TrialBalance>(`${ACC}/reports/trial-balance`, p, { signal }), placeholderData: keepPreviousData });
 
-export const useProfitLoss = (p: { from: string; to: string; compare?: string }) =>
+export const useProfitLoss = (p: { from: string; to: string; compare?: string; branchId?: string }) =>
   useQuery({ queryKey: ["accounting", "pnl", p], queryFn: ({ signal }) => api.get<ProfitLoss>(`${ACC}/reports/profit-loss`, p, { signal }), placeholderData: keepPreviousData });
 
 export const useBalanceSheet = (asOf: string) =>
   useQuery({ queryKey: ["accounting", "bs", asOf], queryFn: ({ signal }) => api.get<BalanceSheet>(`${ACC}/reports/balance-sheet`, { asOf }, { signal }), placeholderData: keepPreviousData });
 
-export const useLedger = (p: { accountId: string; from: string; to: string }, enabled = true) =>
+export const useLedger = (p: { accountId: string; from: string; to: string; branchId?: string }, enabled = true) =>
   useQuery({ queryKey: ["accounting", "ledger", p], queryFn: ({ signal }) => api.get<Ledger>(`${ACC}/reports/ledger`, p, { signal }), enabled: enabled && !!p.accountId, placeholderData: keepPreviousData });
 
 export const useCashBook = (p: { accountId?: string; from: string; to: string }) =>

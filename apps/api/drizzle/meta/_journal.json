@@ -407,6 +407,13 @@
       "when": 1793347598998,
       "tag": "0057_auth_session_mfa",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793445108303,
+      "tag": "0058_branch_books",
+      "breakpoints": true
     }
   ]
 }

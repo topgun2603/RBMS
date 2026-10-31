@@ -11,7 +11,7 @@ const ID = "/:id([0-9a-fA-F-]{36})";
 const formatQuery = z.object({ format: z.enum(["json", "csv"]).default("json") }).passthrough();
 const bool = (v: unknown) => v === true || v === "true" || v === "1";
 
-const REPORTS = ["trial-balance", "profit-loss", "balance-sheet", "gst-ledger", "ledger", "cash-book"] as const;
+const REPORTS = ["trial-balance", "profit-loss", "profit-loss-branches", "balance-sheet", "gst-ledger", "ledger", "cash-book"] as const;
 
 const cfg = (permission: AccountingPermission) => ({ config: { feature: ACCOUNTING_FEATURE, permission } });
 
@@ -37,6 +37,8 @@ export function accountingRoutes(service: AccountingService) {
     const q = (req: { query: unknown }) => (req.query ?? {}) as Record<string, string | undefined>;
 
     app.get("/overview", cfg(P.view), async (req) => service.overview(guard(req.ctx, P.view)));
+    // Branches for the report filter; the last item (id null) is head office / unassigned (`branchId=none`).
+    app.get("/branches", cfg(P.view), async (req) => ({ items: await service.branchList(guard(req.ctx, P.view)) }));
 
     // ---- chart of accounts
     app.get("/accounts", cfg(P.view), async (req) => {
@@ -87,6 +89,8 @@ export function accountingRoutes(service: AccountingService) {
             return service.trialBalance(t, query);
           case "profit-loss":
             return service.profitLoss(t, query);
+          case "profit-loss-branches":
+            return service.profitLossByBranch(t, query);
           case "balance-sheet":
             return service.balanceSheet(t, query);
           case "gst-ledger":
@@ -94,7 +98,7 @@ export function accountingRoutes(service: AccountingService) {
           case "cash-book":
             return service.cashBook(t, query);
           default:
-            return service.accountLedger(t, { accountId: query.accountId ?? "", from: query.from, to: query.to, partyId: query.partyId });
+            return service.accountLedger(t, { accountId: query.accountId ?? "", from: query.from, to: query.to, partyId: query.partyId, branchId: query.branchId });
         }
       });
     }

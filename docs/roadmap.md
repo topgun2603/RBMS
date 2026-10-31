@@ -23,6 +23,9 @@ larger UI module) that any app mounts. Nothing app-specific.
 | 10 | Engines for more trades: vehicle / laundry / appliance job-card templates, area units (sq ft / sq m with box coverage), `sizeGuide` clothing / shoes, vehicle service-due reminder, 4 packs (52 in all) — docs/market-plan.md | built 2026-10-30 (branch `feat/engines-batch10`; unit tests and `batch10.mjs` e2e; no dealer licence on bills, no demo shops yet) |
 | 11–14, M0–M4 | New verticals and the Flutter apps (RBMS Business, RBMS Shops) — plan docs/market-plan.md | planned (drafted 2026-10-20) |
 
+Competitor gap work is tracked row by row in docs/gap-analysis.md (latest: per-branch books in accounting, 2026-10-30,
+docs/accounting.md "Branch books").
+
 ## Batch 2a + 2b status (2026-10-15)
 
 **2a (server)** done: storefront, delivery, search + collections, reviews, cms + seo, onboarding, analytics, expenses

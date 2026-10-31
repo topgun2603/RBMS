@@ -14,7 +14,7 @@ import { createDelivery, DELIVERY_TRACK_JOB } from "@rbms/delivery";
 import { createDocuments, page, type DocSeller } from "@rbms/documents";
 import { createExpenses, RECURRING_EXPENSES_CRON, RECURRING_EXPENSES_JOB } from "@rbms/expenses";
 import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "@rbms/accounting";
-import { accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
+import { accountingBranches, accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
 import { createPrivacyHost, wirePrivacy } from "./kit-privacy";
 import { createGstFiling } from "@rbms/gstfiling";
 import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
@@ -1073,6 +1073,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     sources: accountingSources(accountingDeps),
     stock: accountingStock(accountingDeps),
     reconcile: accountingReconcile(accountingDeps),
+    branches: accountingBranches(db),
     features: features.gate,
     shopName: async (tenantId) => {
       const p = await billingProfile.get({ tenantId });

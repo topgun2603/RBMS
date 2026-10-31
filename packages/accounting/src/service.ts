@@ -6,13 +6,14 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { ACCOUNT_GROUPS, EXPENSE_CATEGORY_CODE_BASE, GROUP_BY_KEY, NORMAL_SIDE, STANDARD_CHART, SYS } from "./chart";
 import { CLOSING_SOURCE_TYPES, PART_B_LABELS, PART_B_SOURCE_TYPES, type PartBSourceType } from "./part-b-types";
-import type { FeatureGatePort, LoggerPort, MoneyMethod, ReconcilePort, SourcesPort, StockValuePort } from "./ports";
+import type { BranchesPort, FeatureGatePort, LoggerPort, MoneyMethod, ReconcilePort, SourcesPort, StockValuePort } from "./ports";
 import { noopLogger } from "./ports";
 import {
   balanceSheetTable,
   dayBookTable,
   gstTable,
   ledgerTable,
+  profitLossBranchTable,
   profitLossTable,
   trialBalanceTable,
 } from "./tables";
@@ -42,6 +43,7 @@ import {
   invoicePaymentPostings,
   invoicePostings,
   isBalanced,
+  MIRROR_BASE,
   mirror,
   openingPartiesPosting,
   payrollPostings,
@@ -82,6 +84,8 @@ export interface AccountingDeps {
   stock?: StockValuePort;
   reconcile?: ReconcilePort;
   features?: FeatureGatePort;
+  /** The shop's branches (names for the branch filter and the per-branch profit and loss). */
+  branches?: BranchesPort;
   /** The shop's name for report headings. */
   shopName?: (tenantId: string) => Promise<string>;
   log?: LoggerPort;
@@ -172,6 +176,19 @@ export const settingsPatch = z
   .strict();
 export const backfillInput = z.object({ from: date.nullish(), dryRun: z.boolean().optional() }).strict();
 
+/**
+ * Branch filter of the reports: a branch id, or "none" for head office / unassigned (lines with no branch). Empty or
+ * absent = the whole shop.
+ */
+export const branchParam = z.preprocess((v) => (v === "" || v === null ? undefined : v), z.union([z.literal("none"), z.string().uuid()]).optional());
+/** undefined = every branch, null = head office / unassigned, else that branch. */
+export type BranchFilter = string | null | undefined;
+export const branchFilterOf = (v: unknown): BranchFilter => {
+  const b = branchParam.parse(v);
+  return b === "none" ? null : b;
+};
+const branchCond = (b: BranchFilter): SQL | undefined => (b === undefined ? undefined : b === null ? isNull(acctLines.branchId) : eq(acctLines.branchId, b));
+
 const rangeQuery = z
   .object({ from: listFilter.date(), to: listFilter.date() })
   .superRefine(rangeOrder("from", "to"));
@@ -185,6 +202,8 @@ export const entryListQuery = listQuerySchema({ defaultLimit: 50, maxLimit: 200 
     status: listFilter.oneOf(["posted", "reversed"] as const),
     accountId: listFilter.id(),
     sourceType: listFilter.oneOf([...SOURCE_TYPES, ...PART_B_SOURCE_TYPES] as const),
+    /** Entries with a line of this branch ("none" = with a line of no branch). */
+    branchId: branchParam,
   })
   .superRefine(rangeOrder("from", "to"));
 export type EntryListQuery = z.input<typeof entryListQuery>;
@@ -207,6 +226,7 @@ export interface EntryLineView {
   memo: string | null;
   partyType: string | null;
   partyId: string | null;
+  branchId: string | null;
 }
 export interface EntryView extends AcctEntry {
   /** Plain-language kind: "Journal voucher", "Sales bill", ... */
@@ -247,6 +267,27 @@ export interface PartyDifference {
   ledger: number;
   source: number;
   difference: number;
+}
+
+type StockMemo = Map<string, Promise<unknown>>;
+
+/** Name of the column / filter value for lines with no branch. */
+export const UNASSIGNED_BRANCH = "Head office / unassigned";
+
+export interface BranchColumn {
+  /** null = head office / unassigned. */
+  id: string | null;
+  name: string;
+  code: string;
+  active: boolean;
+}
+export interface ProfitLossByBranch {
+  from: string;
+  to: string;
+  consolidated: ProfitLoss;
+  columns: { branch: BranchColumn; pl: ProfitLoss }[];
+  /** Sum of the columns; `ok` when it equals the consolidated profit to the paisa. */
+  check: { grossProfit: number; netProfit: number; difference: number; ok: boolean };
 }
 
 const fyStart = (d: string) => {
@@ -551,25 +592,49 @@ export class AccountingService {
    * Sums per account between two dates. `excludeClosing` leaves out the year-end closing journals (and their
    * reversals), so the profit and loss and the trial balance of a closed year still show the year's figures.
    */
-  async balancesBetween(tenantId: string, from: string | null, to: string | null, opts: { excludeClosing?: boolean } = {}): Promise<Map<string, Balance>> {
+  async balancesBetween(tenantId: string, from: string | null, to: string | null, opts: { excludeClosing?: boolean; branch?: BranchFilter } = {}): Promise<Map<string, Balance>> {
     const rows = await this.db
       .select({ id: acctLines.accountId, debit: sql<string>`coalesce(sum(${acctLines.debit}), 0)`, credit: sql<string>`coalesce(sum(${acctLines.credit}), 0)` })
       .from(acctLines)
-      .where(
-        and(
-          eq(acctLines.tenantId, tenantId),
-          from ? gte(acctLines.entryDate, from) : undefined,
-          to ? lte(acctLines.entryDate, to) : undefined,
-          opts.excludeClosing
-            ? sql`${acctLines.entryId} not in (select e.id from ${acctEntries} e where e.tenant_id = ${tenantId} and e.source_type in (${sql.join(CLOSING_SOURCE_TYPES.map((x) => sql`${x}`), sql`, `)}))`
-            : undefined,
-        ),
-      )
+      .where(this.balanceWhere(tenantId, from, to, opts))
       .groupBy(acctLines.accountId);
     return new Map(rows.map((r) => [r.id, { debit: num(r.debit), credit: num(r.credit) }]));
   }
-  balancesTo(tenantId: string, to: string, opts: { excludeClosing?: boolean } = {}) {
+  balancesTo(tenantId: string, to: string, opts: { excludeClosing?: boolean; branch?: BranchFilter } = {}) {
     return this.balancesBetween(tenantId, null, to, opts);
+  }
+
+  /** The same sums split by branch (key null = head office / unassigned), in one scan. */
+  async balancesByBranch(tenantId: string, from: string | null, to: string | null, opts: { excludeClosing?: boolean } = {}): Promise<Map<string | null, Map<string, Balance>>> {
+    const rows = await this.db
+      .select({
+        branchId: acctLines.branchId,
+        id: acctLines.accountId,
+        debit: sql<string>`coalesce(sum(${acctLines.debit}), 0)`,
+        credit: sql<string>`coalesce(sum(${acctLines.credit}), 0)`,
+      })
+      .from(acctLines)
+      .where(this.balanceWhere(tenantId, from, to, opts))
+      .groupBy(acctLines.branchId, acctLines.accountId);
+    const out = new Map<string | null, Map<string, Balance>>();
+    for (const r of rows) {
+      const m = out.get(r.branchId) ?? new Map<string, Balance>();
+      m.set(r.id, { debit: num(r.debit), credit: num(r.credit) });
+      out.set(r.branchId, m);
+    }
+    return out;
+  }
+
+  private balanceWhere(tenantId: string, from: string | null, to: string | null, opts: { excludeClosing?: boolean; branch?: BranchFilter }) {
+    return and(
+      eq(acctLines.tenantId, tenantId),
+      from ? gte(acctLines.entryDate, from) : undefined,
+      to ? lte(acctLines.entryDate, to) : undefined,
+      branchCond(opts.branch),
+      opts.excludeClosing
+        ? sql`${acctLines.entryId} not in (select e.id from ${acctEntries} e where e.tenant_id = ${tenantId} and e.source_type in (${sql.join(CLOSING_SOURCE_TYPES.map((x) => sql`${x}`), sql`, `)}))`
+        : undefined,
+    );
   }
 
   // ================================================================ entries
@@ -710,7 +775,7 @@ export class AccountingService {
         })
         .returning({ id: acctEntries.id });
       await tx.insert(acctLines).values(
-        lines.map((l) => ({ tenantId, entryId: r!.id, lineNo: l.lineNo, accountId: l.accountId, entryDate: when, debit: l.credit, credit: l.debit, memo: l.memo, partyType: l.partyType, partyId: l.partyId })),
+        lines.map((l) => ({ tenantId, entryId: r!.id, lineNo: l.lineNo, accountId: l.accountId, entryDate: when, debit: l.credit, credit: l.debit, memo: l.memo, partyType: l.partyType, partyId: l.partyId, branchId: l.branchId })),
       );
       await tx.update(acctEntries).set({ status: "reversed", reversedById: r!.id, reversedAt: this.now(), reversalReason: p.reason }).where(eq(acctEntries.id, e.id));
       return r!.id;
@@ -726,7 +791,7 @@ export class AccountingService {
     const by = new Map<string, EntryLineView[]>();
     for (const l of lines) {
       const list = by.get(l.entryId) ?? [];
-      list.push({ id: l.id, lineNo: l.lineNo, accountId: l.accountId, accountCode: l.code, accountName: l.name, debit: l.debit, credit: l.credit, memo: l.memo, partyType: l.partyType, partyId: l.partyId });
+      list.push({ id: l.id, lineNo: l.lineNo, accountId: l.accountId, accountCode: l.code, accountName: l.name, debit: l.debit, credit: l.credit, memo: l.memo, partyType: l.partyType, partyId: l.partyId, branchId: l.branchId });
       by.set(l.entryId, list);
     }
     return rows.map((e) => ({
@@ -750,6 +815,7 @@ export class AccountingService {
         memo: acctLines.memo,
         partyType: acctLines.partyType,
         partyId: acctLines.partyId,
+        branchId: acctLines.branchId,
       })
       .from(acctLines)
       .innerJoin(acctAccounts, eq(acctAccounts.id, acctLines.accountId))
@@ -772,6 +838,11 @@ export class AccountingService {
       p.status?.length ? inArray(acctEntries.status, p.status) : undefined,
       p.sourceType?.length ? inArray(acctEntries.sourceType, p.sourceType) : undefined,
       p.accountId ? sql`exists (select 1 from ${acctLines} l where l.entry_id = ${acctEntries.id} and l.account_id = ${p.accountId})` : undefined,
+      p.branchId === "none"
+        ? sql`exists (select 1 from ${acctLines} l where l.entry_id = ${acctEntries.id} and l.branch_id is null)`
+        : p.branchId
+          ? sql`exists (select 1 from ${acctLines} l where l.entry_id = ${acctEntries.id} and l.branch_id = ${p.branchId})`
+          : undefined,
       searchAny(p.q, [acctEntries.narration, acctEntries.number, acctEntries.reference]),
     );
   }
@@ -800,21 +871,27 @@ export class AccountingService {
     return { from: p.from ?? fyStart(to), to };
   }
 
-  async trialBalance(tenantId: string, q: { from?: string; to?: string } = {}): Promise<TrialBalance> {
+  /** `branchId` (a branch or "none") limits it to the lines of one branch; each branch's lines balance on their own. */
+  async trialBalance(tenantId: string, q: { from?: string; to?: string; branchId?: string } = {}): Promise<TrialBalance & { branchId: string | null }> {
     await this.ensureInit(tenantId);
     await this.ensureFresh(tenantId);
     const { from, to } = await this.range(q);
-    const [accounts, before, during] = await Promise.all([this.accountInfos(tenantId), this.balancesTo(tenantId, addDays(from, -1)), this.balancesBetween(tenantId, from, to, { excludeClosing: true })]);
-    return buildTrialBalance(accounts, before, during, { from, to });
+    const branch = branchFilterOf(q.branchId);
+    const [accounts, before, during] = await Promise.all([
+      this.accountInfos(tenantId),
+      this.balancesTo(tenantId, addDays(from, -1), { branch }),
+      this.balancesBetween(tenantId, from, to, { excludeClosing: true, branch }),
+    ]);
+    return { ...buildTrialBalance(accounts, before, during, { from, to }), branchId: q.branchId ? (branch ?? "none") : null };
   }
 
-  async accountLedger(tenantId: string, q: { accountId: string; from?: string; to?: string; partyId?: string }): Promise<Ledger & { account: AcctAccount; from: string; to: string }> {
+  async accountLedger(tenantId: string, q: { accountId: string; from?: string; to?: string; partyId?: string; branchId?: string }): Promise<Ledger & { account: AcctAccount; from: string; to: string }> {
     await this.ensureInit(tenantId);
     await this.ensureFresh(tenantId);
     const account = await this.getAccount(tenantId, z.string().uuid().parse(q.accountId));
     const { from, to } = await this.range(q);
     const party = q.partyId ? z.string().uuid().parse(q.partyId) : null;
-    const base = [eq(acctLines.tenantId, tenantId), eq(acctLines.accountId, account.id), party ? eq(acctLines.partyId, party) : undefined];
+    const base = [eq(acctLines.tenantId, tenantId), eq(acctLines.accountId, account.id), party ? eq(acctLines.partyId, party) : undefined, branchCond(branchFilterOf(q.branchId))];
     const [open] = await this.db
       .select({ debit: sql<string>`coalesce(sum(${acctLines.debit}), 0)`, credit: sql<string>`coalesce(sum(${acctLines.credit}), 0)` })
       .from(acctLines)
@@ -841,33 +918,53 @@ export class AccountingService {
   }
 
   /** The cash (or a bank) account's ledger with the money accounts to pick from. */
-  async cashBook(tenantId: string, q: { accountId?: string; from?: string; to?: string } = {}) {
+  async cashBook(tenantId: string, q: { accountId?: string; from?: string; to?: string; branchId?: string } = {}) {
     const accounts = (await this.listAccounts(tenantId)).filter((a) => a.isCash || a.isBank);
     const pick = q.accountId ?? accounts.find((a) => a.key === SYS.cash)?.id ?? accounts[0]?.id;
     if (!pick) throw notFound("Cash account");
-    const ledger = await this.accountLedger(tenantId, { accountId: pick, from: q.from, to: q.to });
+    const ledger = await this.accountLedger(tenantId, { accountId: pick, from: q.from, to: q.to, branchId: q.branchId });
     return { ...ledger, accounts: accounts.map((a) => ({ id: a.id, name: a.name, isBank: a.isBank, isCash: a.isCash })) };
   }
 
-  async stockPart(tenantId: string, from: string, to: string, accounts: readonly AccountInfo[]) {
+  /**
+   * Opening and closing stock of the period. With a branch filter the valued stock is that branch's share
+   * (`StockValuePort.valueByBranch`); without a split the whole value sits with head office / unassigned, so the branches
+   * always add up to the shop.
+   */
+  async stockPart(tenantId: string, from: string, to: string, accounts: readonly AccountInfo[], branch?: BranchFilter, memo?: StockMemo) {
     const s = await this.settings(tenantId);
     if (!s.valueStock || !this.deps.stock) return { opening: 0, closing: 0, ledgerNow: 0, enabled: false };
     const stockIds = accounts.filter((a) => a.group === "stock").map((a) => a.id);
-    const [vOpen, vClose] = await Promise.all([this.deps.stock.value(tenantId, addDays(from, -1)), this.deps.stock.value(tenantId, to)]);
+    const [vOpen, vClose] = await Promise.all([this.stockValue(tenantId, addDays(from, -1), branch, memo), this.stockValue(tenantId, to, branch, memo)]);
     if (vClose === null && vOpen === null) return { opening: 0, closing: 0, ledgerNow: 0, enabled: false };
-    const [bBefore, bTo] = await Promise.all([this.balancesTo(tenantId, addDays(from, -1), { excludeClosing: true }), this.balancesTo(tenantId, to, { excludeClosing: true })]);
+    const [bBefore, bTo] = await Promise.all([this.balancesTo(tenantId, addDays(from, -1), { excludeClosing: true, branch }), this.balancesTo(tenantId, to, { excludeClosing: true, branch })]);
     const sum = (m: Map<string, Balance>) => stockIds.reduce((t, id) => t + ((m.get(id)?.debit ?? 0) - (m.get(id)?.credit ?? 0)), 0);
     const moved = sum(bTo) - sum(bBefore);
     return { opening: (vOpen ?? 0) + moved, closing: vClose ?? 0, ledgerNow: sum(bTo), enabled: true };
   }
 
-  async profitLoss(tenantId: string, q: { from?: string; to?: string; compare?: string; compareFrom?: string; compareTo?: string } = {}): Promise<ProfitLoss> {
+  private async stockValue(tenantId: string, asOf: string, branch: BranchFilter, memo: StockMemo = new Map()): Promise<number | null> {
+    const port = this.deps.stock!;
+    const once = <T>(k: string, f: () => Promise<T>): Promise<T> => {
+      if (!memo.has(k)) memo.set(k, f());
+      return memo.get(k) as Promise<T>;
+    };
+    const total = () => once(`v|${asOf}`, () => port.value(tenantId, asOf));
+    if (branch === undefined) return total();
+    const split = port.valueByBranch ? await once(`s|${asOf}`, () => port.valueByBranch!(tenantId, asOf)) : null;
+    if (split) return split.get(branch) ?? 0;
+    // No split known: all valued stock is head office's.
+    return branch === null ? total() : 0;
+  }
+
+  async profitLoss(tenantId: string, q: { from?: string; to?: string; compare?: string; compareFrom?: string; compareTo?: string; branchId?: string } = {}): Promise<ProfitLoss> {
     await this.ensureInit(tenantId);
     await this.ensureFresh(tenantId);
     const { from, to } = await this.range(q);
+    const branch = branchFilterOf(q.branchId);
     const accounts = await this.accountInfos(tenantId);
-    const cur = await this.balancesBetween(tenantId, from, to, { excludeClosing: true });
-    const stock = await this.stockPart(tenantId, from, to, accounts);
+    const cur = await this.balancesBetween(tenantId, from, to, { excludeClosing: true, branch });
+    const stock = await this.stockPart(tenantId, from, to, accounts, branch);
     let cmp: Parameters<typeof buildProfitLoss>[4] = null;
     if (q.compare === "previous" || q.compareFrom) {
       let cf = q.compareFrom;
@@ -878,9 +975,51 @@ export class AccountingService {
         cf = addDays(ct, -days);
       }
       if (!isValidDate(cf) || !isValidDate(ct) || cf > ct) throw badRequest("Check the comparison dates");
-      cmp = { balances: await this.balancesBetween(tenantId, cf, ct, { excludeClosing: true }), stock: await this.stockPart(tenantId, cf, ct, accounts), from: cf, to: ct };
+      cmp = { balances: await this.balancesBetween(tenantId, cf, ct, { excludeClosing: true, branch }), stock: await this.stockPart(tenantId, cf, ct, accounts, branch), from: cf, to: ct };
     }
     return buildProfitLoss(accounts, cur, stock, { from, to }, cmp);
+  }
+
+  /** The shop's branches plus head office / unassigned (id null), for the branch filter. Branches with lines but no longer listed keep a column. */
+  async branchList(tenantId: string, used: Iterable<string | null> = []): Promise<BranchColumn[]> {
+    const listed = this.deps.branches ? await this.deps.branches.list(tenantId) : [];
+    const out: BranchColumn[] = listed.map((b) => ({ id: b.id, name: b.name, code: b.code, active: b.active }));
+    for (const id of used) if (id && !out.some((b) => b.id === id)) out.push({ id, name: `Branch ${id.slice(0, 8)}`, code: "", active: false });
+    out.push({ id: null, name: UNASSIGNED_BRANCH, code: "", active: true });
+    return out;
+  }
+
+  /**
+   * Profit and loss of every branch side by side with the whole shop. Columns: each branch, then head office /
+   * unassigned (lines with no branch: manual vouchers, shop-wide documents and entries posted before branch books).
+   * The columns add up to the consolidated figures to the paisa (`check`).
+   */
+  async profitLossByBranch(tenantId: string, q: { from?: string; to?: string } = {}): Promise<ProfitLossByBranch> {
+    await this.ensureInit(tenantId);
+    await this.ensureFresh(tenantId);
+    const { from, to } = await this.range(q);
+    const accounts = await this.accountInfos(tenantId);
+    const [consolidated, byBranch] = await Promise.all([this.profitLoss(tenantId, { from, to }), this.balancesByBranch(tenantId, from, to, { excludeClosing: true })]);
+    const branches = await this.branchList(tenantId, byBranch.keys());
+    const columns: ProfitLossByBranch["columns"] = [];
+    const memo: StockMemo = new Map();
+    for (const b of branches) {
+      const stock = await this.stockPart(tenantId, from, to, accounts, b.id, memo);
+      const pl = buildProfitLoss(accounts, byBranch.get(b.id) ?? new Map(), stock, { from, to });
+      // A branch with no lines and no stock in the period is left out (head office / unassigned always stays).
+      if (b.id !== null && !byBranch.has(b.id) && stock.opening === 0 && stock.closing === 0 && !b.active) continue;
+      columns.push({ branch: b, pl });
+    }
+    const sumOf = (f: (p: ProfitLoss) => number) => columns.reduce((t, c) => t + f(c.pl), 0);
+    const netProfit = sumOf((p) => p.netProfit);
+    const grossProfit = sumOf((p) => p.grossProfit);
+    return {
+      from,
+      to,
+      consolidated,
+      columns,
+      check: { grossProfit, netProfit, difference: netProfit - consolidated.netProfit, ok: netProfit === consolidated.netProfit && grossProfit === consolidated.grossProfit },
+    };
   }
 
   async balanceSheet(tenantId: string, q: { asOf?: string } = {}): Promise<BalanceSheet> {
@@ -1168,15 +1307,23 @@ export class AccountingService {
           total: amount,
           reversalOfId: r.entry.id,
         });
-        for (const l of ls) lineRows.push({ tenantId, entryId: id, lineNo: l.lineNo, accountId: l.accountId, entryDate: eff.date, debit: l.credit, credit: l.debit, memo: l.memo, partyType: l.partyType, partyId: l.partyId });
+        for (const l of ls) lineRows.push({ tenantId, entryId: id, lineNo: l.lineNo, accountId: l.accountId, entryDate: eff.date, debit: l.credit, credit: l.debit, memo: l.memo, partyType: l.partyType, partyId: l.partyId, branchId: l.branchId });
         reversedUpdates.push({ id: r.entry.id, by: id });
         bump(r.entry.sourceType ?? "?", "reversed");
         if (eff.late) result.late += 1;
       }
 
+      // A cancellation / reversal goes to the branch of the entry it mirrors (which may be branch-less when it was posted
+      // before branch books), so the two always net to zero in the same branch.
+      const mirrorBranch = await this.mirrorBranches(tx, tenantId, toPost.map((x) => x.p));
+      // A base posted (or re-posted) in this same run wins over what is stored.
+      for (const x of toPost) if (Object.values(MIRROR_BASE).includes(x.p.sourceType)) mirrorBranch.set(`${x.p.sourceType}|${x.p.sourceId}`, x.p.branchId ?? null);
+
       for (const x of toPost) {
         const id = randomUUID();
         const eff = effectiveDate(x.p.date, lock);
+        const base = MIRROR_BASE[x.p.sourceType];
+        const branchId = base && mirrorBranch.has(`${base}|${x.p.sourceId}`) ? mirrorBranch.get(`${base}|${x.p.sourceId}`)! : (x.p.branchId ?? null);
         const resolved = x.p.lines.map((l) => ({ l, accountId: resolve(l) }));
         const missing = resolved.find((r) => !r.accountId);
         if (missing) {
@@ -1214,6 +1361,7 @@ export class AccountingService {
             memo: r.l.memo ?? null,
             partyType: r.l.party?.type ?? null,
             partyId: r.l.party?.id ?? null,
+            branchId,
           }),
         );
         bump(x.p.sourceType, "posted");
@@ -1237,6 +1385,23 @@ export class AccountingService {
       this.fresh.set(tenantId, this.now().getTime());
     }
     return result;
+  }
+
+  /** Branch of the active entry each mirror posting (`*_cancel`, `*_reversal`) mirrors, keyed "baseType|sourceId". */
+  private async mirrorBranches(tx: DbOrTx, tenantId: string, postings: readonly Posting[]): Promise<Map<string, string | null>> {
+    const out = new Map<string, string | null>();
+    const wanted = postings.filter((p) => MIRROR_BASE[p.sourceType]);
+    if (wanted.length === 0) return out;
+    const types = [...new Set(wanted.map((p) => MIRROR_BASE[p.sourceType]!))];
+    for (const part of chunks([...new Set(wanted.map((p) => p.sourceId))], 1000)) {
+      const rows = await tx
+        .select({ sourceType: acctEntries.sourceType, sourceId: acctEntries.sourceId, branchId: acctLines.branchId })
+        .from(acctEntries)
+        .innerJoin(acctLines, and(eq(acctLines.entryId, acctEntries.id), eq(acctLines.lineNo, 1)))
+        .where(and(eq(acctEntries.tenantId, tenantId), eq(acctEntries.status, "posted"), inArray(acctEntries.sourceType, types), inArray(acctEntries.sourceId, part)));
+      for (const r of rows) out.set(`${r.sourceType}|${r.sourceId}`, r.branchId);
+    }
+    return out;
   }
 
   private async nextExpenseCode(tx: DbOrTx, tenantId: string): Promise<string> {
@@ -1642,15 +1807,17 @@ export class AccountingService {
         return balanceSheetTable(await this.balanceSheet(tenantId, q), shop);
       case "gst-ledger":
         return gstTable(await this.gstLedger(tenantId, q), shop);
+      case "profit-loss-branches":
+        return profitLossBranchTable(await this.profitLossByBranch(tenantId, q), shop);
       case "ledger":
-        return ledgerTable(await this.accountLedger(tenantId, { accountId: q.accountId ?? "", from: q.from, to: q.to, partyId: q.partyId }), shop);
+        return ledgerTable(await this.accountLedger(tenantId, { accountId: q.accountId ?? "", from: q.from, to: q.to, partyId: q.partyId, branchId: q.branchId }), shop);
       case "cash-book":
         return ledgerTable(await this.cashBook(tenantId, q), shop);
       case "day-book": {
         const { from, to } = await this.range(q);
         const items: EntryView[] = [];
         for (let offset = 0; offset < 5000; offset += 200) {
-          const page = await this.listEntries(tenantId, { from, to, limit: 200, offset, sort: "date" });
+          const page = await this.listEntries(tenantId, { from, to, limit: 200, offset, sort: "date", branchId: q.branchId });
           items.push(...page.items);
           if (offset + 200 >= page.total) break;
         }

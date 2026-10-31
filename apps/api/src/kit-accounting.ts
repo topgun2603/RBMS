@@ -1,4 +1,5 @@
 import type {
+  BranchesPort,
   GstPaymentSrc,
   CreditNoteSrc,
   DebitNoteSrc,
@@ -18,13 +19,14 @@ import type {
   TillSrc,
 } from "@rbms/accounting";
 import { TDS_SETTLEMENT_PREFIX } from "@rbms/accounting";
+import { branches } from "@rbms/branches";
 import type { Db } from "@rbms/db";
 import { expenseCategories, expenses, itcOf } from "@rbms/expenses";
 import { gstTaxPayments } from "@rbms/gstfiling";
 import { todayIST } from "@rbms/gst";
 import { billingCustomers, creditNotes, customerReceipts, invoicePayments, invoices, salesDebitNotes, tillSessions, type InvoicesService } from "@rbms/invoices";
-import { debitNotes, methodAt, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@rbms/inventory";
-import { and, eq, gt, inArray, isNull, sql } from "@rbms/db";
+import { debitNotes, goodsReceipts, methodAt, purchaseOrders, purchasePayments, purchases, stockItems, stockMovements, suppliers, type InventoryService } from "@rbms/inventory";
+import { and, eq, gt, inArray, isNull, sql, type SQL } from "@rbms/db";
 import { likePattern } from "@rbms/core";
 
 /** Ports of the accounting module over the invoices, inventory and expenses tables. Read-only, except settleSupplierTds / unsettleSupplierTds (Part B), which record and undo the TDS on a supplier bill through the inventory service. */
@@ -43,6 +45,23 @@ const istDate = (d: Date | null | undefined) => (d ? todayIST(d) : null);
 const method = (m: string): MoneyMethod => (m === "cash" || m === "upi" || m === "card" || m === "bank" || m === "cheque" ? m : "other");
 const n = (v: unknown) => Number(v ?? 0);
 
+/** The branch that sells from stock location `loc` (packages/branches `stock_location_id`); null when none does. */
+const branchOfLocation = (tenantId: string, loc: SQL | unknown) =>
+  sql<string | null>`(select ${branches.id} from ${branches} where ${branches.tenantId} = ${tenantId} and ${branches.stockLocationId} = ${loc} limit 1)`;
+/**
+ * Where a purchase bill's goods went: its goods receipt, else its own stock movements, else its purchase order. Purchase
+ * bills carry no branch, so the books take the branch of that location.
+ */
+const purchaseBranch = (tenantId: string) =>
+  branchOfLocation(
+    tenantId,
+    sql`coalesce(
+      (select ${goodsReceipts.locationId} from ${goodsReceipts} where ${goodsReceipts.tenantId} = ${tenantId} and ${goodsReceipts.id} = ${purchases.goodsReceiptId}),
+      (select m.location_id from ${stockMovements} m where m.tenant_id = ${tenantId} and m.ref_type = 'purchase' and m.ref_id = ${purchases.id}::text and m.location_id is not null limit 1),
+      (select ${purchaseOrders.locationId} from ${purchaseOrders} where ${purchaseOrders.tenantId} = ${tenantId} and ${purchaseOrders.id} = ${purchases.purchaseOrderId})
+    )`,
+  );
+
 export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
   const { db } = deps;
   return {
@@ -59,6 +78,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           total: invoices.total,
           totals: invoices.totals,
           cancelledAt: invoices.cancelledAt,
+          branchId: invoices.branchId,
         })
         .from(invoices)
         .where(and(eq(invoices.tenantId, tenantId), sql`${invoices.status} <> 'draft'`));
@@ -80,6 +100,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           igst: n(r.totals.igst),
           roundOff: n(r.totals.roundOff),
           cancelledOn: istDate(r.cancelledAt),
+          branchId: r.branchId,
         }),
       );
     },
@@ -98,6 +119,8 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           method: invoicePayments.method,
           receiptId: invoicePayments.receiptId,
           forexDiff: invoicePayments.forexDiff,
+          // A payment belongs to the branch of its bill.
+          branchId: invoices.branchId,
         })
         .from(invoicePayments)
         .innerJoin(invoices, and(eq(invoices.id, invoicePayments.invoiceId), eq(invoices.tenantId, tenantId)))
@@ -115,6 +138,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           method: method(r.method),
           receiptId: r.receiptId,
           ...(r.forexDiff ? { forexDiff: r.forexDiff } : {}),
+          branchId: r.branchId,
         }),
       );
     },
@@ -143,6 +167,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           cancelledAt: creditNotes.cancelledAt,
           invoiceStatus: invoices.status,
           invoiceImported: invoices.imported,
+          branchId: creditNotes.branchId,
         })
         .from(creditNotes)
         .innerJoin(invoices, and(eq(invoices.id, creditNotes.invoiceId), eq(invoices.tenantId, tenantId)))
@@ -165,12 +190,13 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           igst: n(r.totals.igst),
           roundOff: n(r.totals.roundOff),
           cancelledOn: istDate(r.cancelledAt),
+          branchId: r.branchId,
         }),
       );
     },
 
     async purchases(tenantId) {
-      const rows = await db.select().from(purchases).where(eq(purchases.tenantId, tenantId));
+      const rows = (await db.select({ p: purchases, branchId: purchaseBranch(tenantId) }).from(purchases).where(eq(purchases.tenantId, tenantId))).map(({ p, branchId }) => ({ ...p, branchId }));
       return rows.map(
         (r): PurchaseSrc => ({
           id: r.id,
@@ -186,6 +212,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           igst: n(r.totals.igst),
           roundOff: n(r.totals.roundOff),
           cancelledOn: istDate(r.cancelledAt),
+          branchId: r.branchId,
         }),
       );
     },
@@ -204,6 +231,8 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           mode: purchasePayments.mode,
           date: purchasePayments.date,
           reversedAt: purchasePayments.reversedAt,
+          // The branch of the bill paid (or of the expense bought on credit); on account = none.
+          branchId: sql<string | null>`coalesce(${purchaseBranch(tenantId)}, ${expenses.branchId})`,
         })
         .from(purchasePayments)
         .leftJoin(suppliers, eq(suppliers.id, purchasePayments.supplierId))
@@ -225,18 +254,19 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           mode: method(r.mode),
           date: r.date,
           reversedOn: istDate(r.reversedAt),
+          branchId: r.branchId,
         }),
       );
     },
 
     async debitNotes(tenantId) {
       const rows = await db
-        .select({ d: debitNotes, imported: purchases.imported })
+        .select({ d: debitNotes, imported: purchases.imported, branchId: branchOfLocation(tenantId, debitNotes.locationId) })
         .from(debitNotes)
         .leftJoin(purchases, eq(purchases.id, debitNotes.purchaseId))
         .where(eq(debitNotes.tenantId, tenantId));
       return rows.map(
-        ({ d, imported }): DebitNoteSrc => ({
+        ({ d, imported, branchId }): DebitNoteSrc => ({
           id: d.id,
           number: d.number,
           date: d.date,
@@ -250,6 +280,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           igst: n(d.totals.igst),
           roundOff: n(d.totals.roundOff),
           cancelledOn: istDate(d.cancelledAt),
+          branchId,
         }),
       );
     },
@@ -279,6 +310,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           onCredit: e.paymentMethod === "credit" && !!e.supplierId,
           supplierId: e.supplierId,
           cancelledOn: e.status === "cancelled" ? istDate(e.updatedAt) : null,
+          branchId: e.branchId,
         }),
       );
     },
@@ -302,6 +334,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           igst: n(r.totals.igst),
           roundOff: n(r.totals.roundOff),
           cancelledOn: istDate(r.cancelledAt),
+          branchId: r.branchId,
         }),
       );
     },
@@ -330,7 +363,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
 
     async tills(tenantId) {
       const rows = await db
-        .select({ id: tillSessions.id, register: tillSessions.register, status: tillSessions.status, closedAt: tillSessions.closedAt, difference: tillSessions.difference, cashEntries: tillSessions.cashEntries, handovers: tillSessions.handovers })
+        .select({ id: tillSessions.id, register: tillSessions.register, status: tillSessions.status, closedAt: tillSessions.closedAt, difference: tillSessions.difference, cashEntries: tillSessions.cashEntries, handovers: tillSessions.handovers, branchId: tillSessions.branchId })
         .from(tillSessions)
         .where(eq(tillSessions.tenantId, tenantId));
       return rows.map(
@@ -342,6 +375,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           difference: r.difference,
           cashEntries: (r.cashEntries ?? []).map((c) => ({ id: c.id, amount: c.amount, reason: c.reason, on: todayIST(new Date(c.at)), ...(c.category ? { category: c.category } : {}) })),
           handovers: (r.handovers ?? []).map((h) => ({ id: h.id, difference: h.difference, on: todayIST(new Date(h.at)) })),
+          branchId: r.branchId,
         }),
       );
     },
@@ -372,6 +406,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
           at: stockMovements.createdAt,
           avgCost: stockItems.avgCost,
           costFifo: stockMovements.costFifo,
+          branchId: branchOfLocation(tenantId, stockMovements.locationId),
         })
         .from(stockMovements)
         .leftJoin(
@@ -386,7 +421,7 @@ export function accountingSources(deps: AccountingAdapterDeps): SourcesPort {
         const unit = delta > 0 ? (r.unitCost ?? r.avgCost ?? 0) : (r.avgCost ?? r.unitCost ?? 0);
         const fifo = history.length > 0 && r.costFifo !== null && methodAt(history, todayIST(r.at)) === "fifo";
         const value = fifo ? r.costFifo! : Math.round(delta * unit);
-        return value ? [{ id: r.id, date: todayIST(r.at), reason: r.reason === "opening" ? "opening" : "adjustment", value, itemName: null }] : [];
+        return value ? [{ id: r.id, date: todayIST(r.at), reason: r.reason === "opening" ? "opening" : "adjustment", value, itemName: null, branchId: r.branchId }] : [];
       });
     },
 
@@ -454,8 +489,32 @@ export function accountingStock(deps: Pick<AccountingAdapterDeps, "db" | "isEnab
       if (deps.inventory) return deps.inventory.costing.bookValue(tenantId, asOf, () => averageValue(tenantId, asOf));
       return averageValue(tenantId, asOf);
     },
+    /** The same value by the branch that sells from each stock location (null = locations of no branch). */
+    async valueByBranch(tenantId, asOf) {
+      if (!(await deps.isEnabled(tenantId, "inventory"))) return null;
+      const byLocation = deps.inventory
+        ? await deps.inventory.costing.bookValueByLocation(tenantId, asOf, () => averageByLocation(tenantId, asOf))
+        : await averageByLocation(tenantId, asOf);
+      const owner = new Map(
+        (await db.select({ id: branches.id, loc: branches.stockLocationId }).from(branches).where(and(eq(branches.tenantId, tenantId), sql`${branches.stockLocationId} is not null`))).map(
+          (b) => [b.loc!, b.id],
+        ),
+      );
+      const out = new Map<string | null, number>();
+      for (const [loc, v] of byLocation) {
+        const b = owner.get(loc) ?? null;
+        out.set(b, (out.get(b) ?? 0) + v);
+      }
+      return out;
+    },
   };
   async function averageValue(tenantId: string, asOf: string): Promise<number> {
+    let total = 0;
+    for (const v of (await averageByLocation(tenantId, asOf)).values()) total += v;
+    return total;
+  }
+  /** Moving-average value per stock location ("" = rows with no location). */
+  async function averageByLocation(tenantId: string, asOf: string): Promise<Map<string, number>> {
     const items = await db
       .select({ itemId: stockItems.itemId, locationId: stockItems.locationId, qty: stockItems.qty, avgCost: stockItems.avgCost })
       .from(stockItems)
@@ -471,12 +530,13 @@ export function accountingStock(deps: Pick<AccountingAdapterDeps, "db" | "isEnab
         .groupBy(stockMovements.itemId, stockMovements.locationId);
       for (const r of rows) after.set(key(r.itemId, r.locationId), Number(r.delta));
     }
-    let total = 0;
+    const out = new Map<string, number>();
     for (const i of items) {
       const qty = Math.max(0, Number(i.qty) - (after.get(key(i.itemId, i.locationId)) ?? 0));
-      total += Math.round(qty * (i.avgCost ?? 0));
+      const loc = i.locationId ?? "";
+      out.set(loc, (out.get(loc) ?? 0) + Math.round(qty * (i.avgCost ?? 0)));
     }
-    return total;
+    return out;
   }
 }
 
@@ -505,5 +565,13 @@ export function accountingReconcile(deps: AccountingAdapterDeps): ReconcilePort 
       const itc = (await deps.inventory.purchaseReport(tenantId, { from, to })).itc;
       return { taxable: itc.taxable, cgst: itc.cgst, sgst: itc.sgst, igst: itc.igst };
     },
+  };
+}
+
+/** The shop's branches, for the books' branch filter and the per-branch profit and loss. */
+export function accountingBranches(db: Db): BranchesPort {
+  return {
+    list: (tenantId) =>
+      db.select({ id: branches.id, name: branches.name, code: branches.code, active: branches.active }).from(branches).where(eq(branches.tenantId, tenantId)).orderBy(sql`${branches.isDefault} desc`, branches.name),
   };
 }
