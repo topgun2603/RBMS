@@ -1,7 +1,7 @@
 import { themePreset } from "@rbms/branding";
 import { variantLookupSchema } from "@rbms/catalogue";
 import { weighTicketSchema } from "@rbms/pos";
-import { badRequest, defineModule, documented, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@rbms/core";
+import { badRequest, defineModule, documented, featureDefaultOn, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@rbms/core";
 import { grants } from "@rbms/features";
 import { and, eq, inArray, isNull, sql, type Db } from "@rbms/db";
 import { settingsValues } from "@rbms/settings";
@@ -131,18 +131,18 @@ export function includedFor(registry: readonly FeatureDef[], appGrants: readonly
  * The preset a solution starts from: the switchable features that are on by default, plus the trade's own engines
  * (`pack.features`), minus what the trade doesn't use (`pack.off`: keys, or module ids for a whole module).
  */
-export function defaultPreset(pack: Pick<BusinessPack, "features" | "off">, switchable: readonly FeatureDef[]): string[] {
+export function defaultPreset(pack: Pick<BusinessPack, "features" | "off" | "appId">, switchable: readonly FeatureDef[]): string[] {
   const extra = new Set(pack.features ?? []);
   const off = new Set(pack.off ?? []);
   return switchable
-    .filter((d) => (d.defaultOn !== false || extra.has(d.key)) && !off.has(d.key) && !off.has(d.module))
+    .filter((d) => (featureDefaultOn(d, pack.appId) || extra.has(d.key)) && !off.has(d.key) && !off.has(d.module))
     .map((d) => d.key);
 }
 
 /** A stored preset narrowed to what the app can switch now (features may have been added or removed since). */
 export function effectivePreset(
   stored: readonly string[] | undefined,
-  pack: Pick<BusinessPack, "features" | "off">,
+  pack: Pick<BusinessPack, "features" | "off" | "appId">,
   switchable: readonly FeatureDef[],
 ): string[] {
   if (!stored) return defaultPreset(pack, switchable);

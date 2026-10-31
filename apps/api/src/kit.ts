@@ -60,7 +60,9 @@ import { wireSalesDocs } from "./kit-sales-docs";
 import { RECURRING_CRON, RECURRING_JOB, wireRecurringExport } from "./kit-recurring";
 import { expenseBillsPort, expenseBranchesPort, expenseSuppliersPort } from "./kit-expenses";
 import { wirePayroll } from "./kit-payroll";
-import { createJobs } from "@rbms/jobs";
+import { createJobs, createRedisWindowCounter } from "@rbms/jobs";
+import { sharedWindowCounter } from "./http-guard";
+import { ENQUIRY_DIGEST_JOB, type EnquiryDigestJob } from "@rbms/enquiries";
 import { createNotify, type NotifyConfig } from "@rbms/notify";
 import { createPayments } from "@rbms/payments";
 import { createPlans } from "@rbms/plans";
@@ -141,6 +143,9 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   // Error reporter, metrics and readiness probes (docs/ops.md); the job observer reports final job failures.
   const kitOps = createKitOps(env, log, db);
   const jobs = createJobs({ redisUrl: env.REDIS_URL, log, observer: kitOps.observer, workers: env.JOBS_WORKERS });
+  // Rate-limit counters shared by every API instance through Redis (the HTTP guard and the enquiry form); in-memory
+  // when REDIS_URL=memory.
+  const rateCounter = env.REDIS_URL === "memory" ? null : createRedisWindowCounter(env.REDIS_URL);
   const PLANS_RECONCILE_JOB = "plans.reconcile-usage";
   /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @rbms/api job <name>`). */
   const jobHandlers = new Map<string, () => Promise<void>>();
@@ -326,6 +331,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     db,
     config: { storage: storageFor(env), publicBaseUrl: env.PUBLIC_UPLOAD_BASE_URL },
     log,
+    // Marketplace sellers upload product images and their logo to the shop without being its members.
+    access: { isUploader: async (tenantId, userId) => ((await b3?.marketplace.service.memberships(tenantId, userId)) ?? []).length > 0 },
   });
 
   const consent = createConsent({
@@ -1307,9 +1314,12 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     tenant: (tenantId) => tenancy.service.getById(tenantId),
     members: (tenantId) => tenancy.service.listMembers(tenantId),
     sendToUser: (input) => notify.service.sendToUser(input),
+    counter: sharedWindowCounter(rateCounter),
+    queue: jobs.service,
     now: clock,
     log,
   });
+  jobs.service.define<EnquiryDigestJob>(ENQUIRY_DIGEST_JOB, (data) => enquiries.service.sendDigest(data));
 
   // Setup checklist: each step's check reads the module that owns it.
   const onboarding = createOnboarding({ db, featureGate: features.gate, log });
@@ -2019,6 +2029,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     bookings,
     memberships,
     enquiries,
+    rateCounter,
     starter,
     ...batch3Parts(batch3),
     subscriptions: batch5.subscriptions,

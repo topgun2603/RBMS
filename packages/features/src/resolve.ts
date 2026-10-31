@@ -1,5 +1,5 @@
 /** Pure feature resolution (no database): registry + app profile + plan + shop switches → per-feature state. */
-import type { FeatureDef } from "@rbms/core";
+import { featureDefaultOn, type FeatureDef } from "@rbms/core";
 
 export type Reason = "app" | "plan" | "shop" | "dependency";
 
@@ -33,6 +33,8 @@ export interface ResolveInput {
   plan: PlanGrants;
   /** The shop owner's switches by feature key (only `shopToggle` features are read). */
   toggles: Readonly<Record<string, boolean>>;
+  /** The shop's app, for features on by default only in some apps (`defaultOnApps`). */
+  appId?: string | null;
 }
 
 export interface Resolution {
@@ -56,9 +58,9 @@ export function grants(list: readonly string[], def: Pick<FeatureDef, "key" | "m
 const planAllows = (plan: PlanGrants, def: FeatureDef) => grants(plan.modules, def) && plan.features[def.key] !== false;
 
 /** The shop owner's effective switch for a feature (non-toggle features are always on). */
-export function shopAllows(def: FeatureDef, toggles: Readonly<Record<string, boolean>>): boolean {
+export function shopAllows(def: FeatureDef, toggles: Readonly<Record<string, boolean>>, appId: string | null = null): boolean {
   if (!def.shopToggle) return true;
-  return toggles[def.key] ?? def.defaultOn ?? true;
+  return toggles[def.key] ?? featureDefaultOn(def, appId);
 }
 
 /**
@@ -87,7 +89,7 @@ export function resolveFeatures(input: ResolveInput): Resolution {
     visiting.delete(key);
 
     const available = reason === null;
-    if (available && !shopAllows(def, input.toggles)) reason = "shop";
+    if (available && !shopAllows(def, input.toggles, input.appId ?? null)) reason = "shop";
     const result = { enabled: reason === null, reason, available };
     memo.set(key, result);
     return result;

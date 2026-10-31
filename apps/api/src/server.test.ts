@@ -133,3 +133,38 @@ describe("helpers", () => {
     expect(bearerMatches("Basic abc", "abc")).toBe(false);
   });
 });
+
+describe("client IP behind proxies", () => {
+  const ipServer = (trustProxyHops?: number) =>
+    buildServer({
+      corsOrigins: [],
+      contextHooks: [],
+      trustProxyHops,
+      modules: [defineModule({ id: "ip", routes: (r) => { r.get("/", async (req) => ({ ip: req.ctx.ip })); } })],
+    });
+  const ipOf = async (app: Awaited<ReturnType<typeof ipServer>>, xff?: string) =>
+    (await app.inject({ url: "/v1/ip", remoteAddress: "10.0.0.5", headers: xff ? { "x-forwarded-for": xff } : {} })).json().ip;
+
+  it("ignores X-Forwarded-For entries the client wrote: one trusted hop by default", async () => {
+    const app = await ipServer();
+    // The load balancer appends the real client (203.0.113.9) to whatever the client sent.
+    expect(await ipOf(app, "6.6.6.6, 203.0.113.9")).toBe("203.0.113.9");
+    expect(await ipOf(app, "203.0.113.9")).toBe("203.0.113.9");
+    expect(await ipOf(app)).toBe("10.0.0.5");
+  });
+
+  it("follows the configured hop count", async () => {
+    expect(await ipOf(await ipServer(2), "6.6.6.6, 203.0.113.9, 10.0.0.7")).toBe("203.0.113.9");
+    expect(await ipOf(await ipServer(0), "6.6.6.6, 203.0.113.9")).toBe("10.0.0.5");
+  });
+
+  it("still takes the shop's custom domain from X-Forwarded-Host (the store proxy)", async () => {
+    const app = await buildServer({
+      corsOrigins: [],
+      contextHooks: [],
+      modules: [defineModule({ id: "host", routes: (r) => { r.get("/", async (req) => ({ host: req.hostname })); } })],
+    });
+    const res = await app.inject({ url: "/v1/host", remoteAddress: "10.0.0.5", headers: { "x-forwarded-host": "shop.example.in" } });
+    expect(res.json().host).toBe("shop.example.in");
+  });
+});

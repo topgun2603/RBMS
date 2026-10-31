@@ -1,4 +1,4 @@
-import { authOtps, authSessions } from "@rbms/auth";
+import { authOtps, authSessions, users } from "@rbms/auth";
 import { chatMessages } from "@rbms/chat";
 import {
   PRIVACY_SETTINGS_DEFAULTS,
@@ -88,12 +88,17 @@ export function createPrivacyHost(deps: PrivacyKitDeps): PrivacyHostPort {
       return rows.map((r) => r.id);
     },
     async contactOf(tenantId, userId) {
-      const [c] = await deps.db
-        .select({ name: storeCustomers.name, phone: storeCustomers.phone, email: storeCustomers.email })
-        .from(storeCustomers)
-        .where(and(eq(storeCustomers.tenantId, tenantId), eq(storeCustomers.userId, userId)))
-        .limit(1);
-      return c ? { name: c.name || null, phone: c.phone, email: c.email } : null;
+      // Phone and email from the sign-in account (verified by OTP / Google / Firebase); the shop profile's are editable.
+      const [[u], [c]] = await Promise.all([
+        deps.db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
+        deps.db
+          .select({ name: storeCustomers.name })
+          .from(storeCustomers)
+          .where(and(eq(storeCustomers.tenantId, tenantId), eq(storeCustomers.userId, userId)))
+          .limit(1),
+      ]);
+      if (!u) return null;
+      return { name: c?.name || u.name || null, phone: u.phone, email: u.email };
     },
   };
 }

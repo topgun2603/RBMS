@@ -37,6 +37,17 @@ export interface FeatureDef {
   shopToggle?: boolean;
   /** Shop-toggle default when the owner never touched it (default true). */
   defaultOn?: boolean;
+  /**
+   * On by default only in these apps (e.g. ["SC"]), off by default in every other app; overrides `defaultOn`. The app
+   * profile and plan must still grant the feature; the owner can still switch it either way.
+   */
+  defaultOnApps?: readonly string[];
+}
+
+/** A shop toggle's default in an app when the owner never touched it (`defaultOnApps`, else `defaultOn`, else on). */
+export function featureDefaultOn(def: Pick<FeatureDef, "defaultOn" | "defaultOnApps">, appId: string | null | undefined): boolean {
+  if (def.defaultOnApps) return !!appId && def.defaultOnApps.includes(appId);
+  return def.defaultOn ?? true;
 }
 
 /** Lets a module check a shop's feature outside the request pipeline (public links, background jobs). */

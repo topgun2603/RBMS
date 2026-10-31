@@ -185,6 +185,15 @@ describe("resolveFeatures — shop switches", () => {
     expect(r.features[1]).toMatchObject({ enabled: true, reason: null, shopEnabled: true });
   });
 
+  it("defaultOnApps: on by default only in those apps (enquiries for schools)", () => {
+    const registry = [def("enquiries", { shopToggle: true, defaultOnApps: ["SC"] })];
+    const plan = { modules: ["enquiries"], features: {} };
+    expect(resolveFeatures({ registry, app: null, plan, toggles: {}, appId: "SC" }).enabled).toEqual(["enquiries"]);
+    expect(resolveFeatures({ registry, app: null, plan, toggles: {}, appId: "EC" }).features[0]).toMatchObject({ enabled: false, reason: "shop", available: true });
+    expect(resolveFeatures({ registry, app: null, plan, toggles: {}, appId: null }).enabled).toEqual([]);
+    expect(resolveFeatures({ registry, app: null, plan, toggles: { enquiries: true }, appId: "EC" }).enabled).toEqual(["enquiries"]);
+  });
+
   it("ignores toggles for non-toggle features", () => {
     const { by } = run({ toggles: { invoices: false, "invoices.reports": false } });
     expect(by["invoices"]!.enabled).toBe(true);

@@ -130,6 +130,7 @@ function orderTemplates(): TemplateContent[] {
 //   chat.message: shop, sender, preview, title, link (also push: subject = title)
 //   developer.webhook_disabled: url, failures
 //   enquiry.received (to owners): shop, number, name, phone, about, link (also push)
+//   enquiry.digest (to owners, after the hourly alert cap): shop, count, link (also push)
 type Copy = { body: string; subject: string };
 const BATCH3: Record<string, { en: Copy; ta: Copy; push?: { en: string; ta: string } }> = {
   "marketplace.vendor_approved": {
@@ -283,6 +284,17 @@ const BATCH3: Record<string, { en: Copy; ta: Copy; push?: { en: string; ta: stri
       subject: "{{name}} அனுப்பிய புதிய விசாரணை {{number}}",
     },
     push: { en: "{{name}} ({{phone}}){{about}}", ta: "{{name}} ({{phone}}){{about}}" },
+  },
+  "enquiry.digest": {
+    en: {
+      body: "{{shop}}: {{count}} more website enquiries came in this past hour. Open: {{link}}",
+      subject: "{{count}} more website enquiries",
+    },
+    ta: {
+      body: "{{shop}}: கடந்த ஒரு மணி நேரத்தில் இணையதளத்தில் மேலும் {{count}} விசாரணைகள் வந்துள்ளன. பார்க்க: {{link}}",
+      subject: "மேலும் {{count}} இணையதள விசாரணைகள்",
+    },
+    push: { en: "{{count}} more website enquiries", ta: "மேலும் {{count}} இணையதள விசாரணைகள்" },
   },
   "developer.webhook_disabled": {
     en: {

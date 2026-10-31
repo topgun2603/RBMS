@@ -132,6 +132,13 @@ export const envSchema = z.object({
   /** Log level (pino). Default debug in development, info otherwise. */
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   // ---- HTTP hardening (apps/api/src/http-guard.ts)
+  /**
+   * Reverse proxies in front of the API (the load balancer = 1). The client IP used for rate limits, audit and sign-in
+   * records is the X-Forwarded-For entry this many hops from the right; entries further left are written by the client
+   * and ignored. 0 = the API is reached directly (socket address). Default 1. Too high lets clients spoof their IP;
+   * too low makes every request look like it came from the proxy.
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
   /** Global HTTP rate limit (fixed windows; Redis-shared when REDIS_URL is set). Default on. */
   RATE_LIMIT_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),

@@ -257,7 +257,8 @@ export class KycService {
     if (subjectType === "shop" && subjectId !== tenantId) throw badRequest("For shop KYC the subject id is the shop's own id");
     if (subjectType === "vendor" && this.vendors?.vendorExists && !(await this.vendors.vendorExists(tenantId, subjectId))) throw notFound("Vendor");
     if (isSuperAdmin(ctx) || hasPermission(ctx, KYC_MANAGE)) return tenantId;
-    if (subjectType === "user" && subjectId === user.id) return tenantId;
+    // Your own user KYC, but only in a shop you belong to: a resolved shop alone is not access to it.
+    if (subjectType === "user" && subjectId === user.id && user.tenantRoles.length > 0) return tenantId;
     if (subjectType === "vendor" && this.vendors && (await this.vendors.isVendorOwner(tenantId, subjectId, user.id))) return tenantId;
     throw forbidden();
   }

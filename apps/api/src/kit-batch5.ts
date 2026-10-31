@@ -333,7 +333,7 @@ export function createBatch5(d: Batch5Deps) {
         const tenant = await tenancy.create({ slug: b.slug, name: b.shopName, ownerUserId: user.id, appId: b.appId, details: { signup } });
         // A hook failure is logged; the shop still gets a subscription here.
         const current = await subs.service.ensure(tenant.id);
-        const handoff = await auth.createHandoff(user.id, { ip: req.ctx.ip });
+        const handoff = await auth.createHandoff(user.id, { ip: req.ctx.ip, fromSessionId: user.sessionId });
         const appUrl = shopAppUrl(tenant);
         const fresh = (await tenancy.getById(tenant.id)) ?? tenant;
         return {

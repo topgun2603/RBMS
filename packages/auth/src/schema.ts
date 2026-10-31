@@ -56,6 +56,12 @@ export const authSessions = pgTable(
      * request that carries that terminal's device token; it never slides. Null for every other session.
      */
     terminalId: uuid("terminal_id"),
+    /**
+     * When this session passed two-factor (a TOTP or recovery code at sign-in, enrolment, or carried over by a handoff
+     * from such a session). Null = signed in with one factor only; shops that require 2FA refuse such sessions for
+     * owners, admins and managers (`authContextHook`).
+     */
+    mfaAt: timestamp("mfa_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -96,6 +102,8 @@ export const authHandoffs = pgTable(
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
     /** The shop a storefront handoff was made for; only that shop can redeem it. Null for business-app handoffs. */
     tenantId: uuid("tenant_id"),
+    /** The `mfa_at` of the session that created the code; the redeemed session gets the same 2FA state. */
+    mfaAt: timestamp("mfa_at", { withTimezone: true }),
     ip: text("ip"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

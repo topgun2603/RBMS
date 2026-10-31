@@ -249,7 +249,7 @@ describe("verify", () => {
   });
 
   it("fetches the payment, checks amount and marks paid with the stored amount", async () => {
-    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, status: "captured", method: "netbanking", created_at: 1760000000 });
+    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "INR", status: "captured", method: "netbanking", created_at: 1760000000 });
     const paid = order({ status: "paid", method: "bank", providerPaymentId: "pay_123", paidAt: new Date(1760000000 * 1000) });
     const { service, purpose: p } = setup([[order()], [account()], [paid]], { fetch });
     expect(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig })).toEqual({ status: "paid", amount: 50_000 });
@@ -262,6 +262,22 @@ describe("verify", () => {
     const { service, purpose: p } = setup([[order()], [account()]], { fetch });
     const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
     expect(err.code).toBe("amount_mismatch");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("refuses a payment in another currency", async () => {
+    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "USD", status: "captured", method: "card" });
+    const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch });
+    const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
+    expect(err.code).toBe("amount_mismatch");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("refuses a payment that is only authorized, not captured", async () => {
+    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "INR", status: "authorized", method: "card" });
+    const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch });
+    const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
+    expect(err.code).toBe("payment_not_completed");
     expect(p.onPaid).not.toHaveBeenCalled();
   });
 

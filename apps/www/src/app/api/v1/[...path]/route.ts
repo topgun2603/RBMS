@@ -19,6 +19,19 @@ function allowed(path: string, method: string): boolean {
   return true;
 }
 
+/** Load balancers in front of this app (`TRUST_PROXY_HOPS`, default 1), like the API's setting of the same name. */
+const PROXY_HOPS = (() => {
+  const n = Number(process.env.TRUST_PROXY_HOPS ?? 1);
+  return Number.isInteger(n) && n >= 1 && n <= 10 ? n : 1;
+})();
+
+/** The X-Forwarded-For entry `hops` from the right (what the nearest trusted proxy saw); never a client-written one. */
+function forwardedClientIp(header: string | null, hops: number): string | null {
+  const parts = (header ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const ip = parts.length >= hops ? parts[parts.length - hops] : undefined;
+  return ip && /^[0-9a-fA-F:.]{2,45}$/.test(ip) ? ip : null;
+}
+
 async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api/, "");
@@ -30,8 +43,9 @@ async function handler(req: Request): Promise<Response> {
     const v = req.headers.get(k);
     if (v) headers.set(k, v);
   }
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) headers.set("x-forwarded-for", fwd);
+  // Only the visitor's real address goes on (one entry): anything further left in the header was written by the client.
+  const client = forwardedClientIp(req.headers.get("x-forwarded-for"), PROXY_HOPS);
+  if (client) headers.set("x-forwarded-for", client);
 
   const body = method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();
   let res: Response;

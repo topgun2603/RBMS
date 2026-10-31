@@ -75,6 +75,7 @@ export const enSignIn: Messages = {
   "web.errors.method_disabled": "This way of signing in is turned off for this shop. Please use another option.",
   "web.errors.no_method_enabled": "Keep at least one sign-in method on that works on this platform.",
   "web.errors.firebase_email_unverified": "Please verify your email first. Open the link we emailed you, then sign in again.",
+  "web.errors.mfa_required": "This shop requires two-factor sign-in. Please sign in again with your authenticator code.",
 };
 
 export const taSignIn: Messages = {
@@ -145,4 +146,5 @@ export const taSignIn: Messages = {
   "web.errors.method_disabled": "இந்த வழியில் உள்நுழைவது இந்தக் கடைக்கு நிறுத்தப்பட்டுள்ளது. வேறு வழியைப் பயன்படுத்தவும்.",
   "web.errors.no_method_enabled": "இந்தத் தளத்தில் செயல்படும் குறைந்தது ஒரு உள்நுழைவு வழியை இயக்கத்தில் வைத்திருங்கள்.",
   "web.errors.firebase_email_unverified": "முதலில் உங்கள் மின்னஞ்சலைச் சரிபார்க்கவும். நாங்கள் அனுப்பிய இணைப்பைத் திறந்து, மீண்டும் உள்நுழையவும்.",
+  "web.errors.mfa_required": "இந்தக் கடைக்கு இரு-படி உள்நுழைவு தேவை. உங்கள் அங்கீகரிப்புச் செயலியின் குறியீட்டுடன் மீண்டும் உள்நுழையவும்.",
 };

@@ -493,6 +493,7 @@ How values are provided:
 | `LOG_LEVEL`, `READY_TIMEOUT_MS` | `info`, `2000` (computed) | |
 | `GIT_SHA`, `BUILD_TIME` | image build arguments | shown by `/version` |
 | `SESSION_TTL_DAYS`, `OTP_TTL_MINUTES` | defaults (plain to change) | |
+| `TRUST_PROXY_HOPS` | default `1` (the ALB) | proxies in front of the API; the client IP (rate limits, audit, sign-in records) is the `X-Forwarded-For` entry this many hops from the right, so client-written entries are ignored. Raise it only if another proxy (CDN) is added in front of the ALB |
 | `SEED_SUPERADMIN`, `SEED_DEMO` | only as overrides of a seed run | |
 | `TEST_OTP_CODE`, `TEST_OTP_TARGETS` | never set | ignored in production anyway |
 | `CHROME_PATH` | `/usr/bin/chromium-browser` (image) | |
@@ -514,8 +515,16 @@ parameter). The rest are runtime environment variables.
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_CONTACT_*` | admin, www | `next_public` | `next_public` |
 | `PORT` | all (runtime) | 3000–3005, the dev ports | same |
 | `API_URL` | store, www (runtime, server-side) | `http://<alb>:4000` | `https://api.<d>` |
+| `TRUST_PROXY_HOPS` | store, www (runtime) | default `1` | default `1` |
 | `DEFAULT_TENANT` | store (runtime) | `store_default_tenant` | unset |
 | `GIT_SHA` | all (build) | the commit | the commit |
+
+**Client IPs through the store and www proxies.** Their `/api/v1/*` proxies forward one `X-Forwarded-For` entry: the
+visitor's address as the ALB saw it (`TRUST_PROXY_HOPS` hops from the right). The API then trusts one hop. While
+`API_URL` points back at the public ALB, the ALB appends the store task's own address, so the API sees the store task
+as the client for proxied shopper calls (they share one per-IP budget). Point `API_URL` at a direct route (ECS Service
+Connect or an internal ALB that the store reaches without the public one) to keep per-shopper limits; do not raise the
+API's `TRUST_PROXY_HOPS` to 2 for this, because direct browser calls would then trust a client-written entry.
 
 ## Decide before applying
 
