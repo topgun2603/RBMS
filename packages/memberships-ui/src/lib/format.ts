@@ -1,5 +1,5 @@
-import { formatINR } from "@srirealtime/gst";
-import type { StatusTone } from "@srirealtime/ui";
+import { formatINR } from "@rbms/gst";
+import type { StatusTone } from "@rbms/ui";
 
 /** ₹ with Indian grouping from integer paise. */
 export const money = (paise: number | null | undefined) => formatINR(Math.round(paise ?? 0));

@@ -21,6 +21,7 @@ import { TECHZONE } from "./techzone";
 import { THENEER } from "./theneer";
 import { SPA } from "./spa";
 import { ARUSUVAI } from "./arusuvai";
+import { THAMARAI } from "./thamarai";
 import { THAIYAL } from "./thaiyal";
 import { THUNAI } from "./thunai";
 import type { DemoStore } from "./types";
@@ -29,7 +30,7 @@ import type { DemoStore } from "./types";
  * The demo stores of the "20+ stores" series, one look each (docs/verticals.md, "How to add a new store look + demo
  * shop"). Seeded by `pnpm seed` (after the demo shops) and on their own by `pnpm seed:stores [slug…]`.
  */
-export const DEMO_STORES: DemoStore[] = [MURUGAN, PORUNAI, CAUVERY, VAYAL, THARI, ARASAN, AZHAGU, PADHAM, EZHUTHAANI, PAMBARAM, THIRUVIZHA, MALLIGAI, KAIPESI, MARAM, KALAIYAGAM, SELLAM, MAIDHANAM, VAASAM, QUICKFIX, TECHZONE, THENEER, THAIYAL, SPA, THUNAI, ARUSUVAI];
+export const DEMO_STORES: DemoStore[] = [MURUGAN, PORUNAI, CAUVERY, VAYAL, THARI, ARASAN, AZHAGU, PADHAM, EZHUTHAANI, PAMBARAM, THIRUVIZHA, MALLIGAI, KAIPESI, MARAM, KALAIYAGAM, SELLAM, MAIDHANAM, VAASAM, QUICKFIX, TECHZONE, THENEER, THAIYAL, SPA, THUNAI, ARUSUVAI, THAMARAI];
 
 export { seedDemoStore } from "./seed-demo-store";
 export type { DemoStore } from "./types";

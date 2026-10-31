@@ -3,8 +3,8 @@
  * short-billed, freight or other charges billed later (docs/expenses-debit-notes.md). Re-exported by schema.ts, which
  * drizzle-kit reads. Not the supplier debit notes of purchase returns (`debit_notes`, packages/inventory).
  */
-import { pk, tenantId, timestamps } from "@srirealtime/db";
-import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
+import { pk, tenantId, timestamps } from "@rbms/db";
+import type { InvoiceTotals, LineTotals } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { CustomerSnapshot, SellerProfile } from "./ports";

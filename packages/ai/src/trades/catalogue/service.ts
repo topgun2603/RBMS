@@ -1,5 +1,5 @@
-import { AppError, badRequest, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { aiPhotoBatches, type AiPhotoBatchRow, type PhotoBatchStatus } from "../../schema";

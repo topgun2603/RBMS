@@ -1,6 +1,6 @@
 import type { MarketplaceSettings } from "./settings";
 
-export type { FeatureGatePort } from "@srirealtime/core";
+export type { FeatureGatePort } from "@rbms/core";
 
 /** Order statuses as the orders module defines them. */
 export const ORDER_STATUSES = ["placed", "confirmed", "packed", "shipped", "delivered", "cancelled", "returned"] as const;

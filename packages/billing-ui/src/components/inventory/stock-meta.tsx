@@ -14,8 +14,8 @@ import {
   Undo2Icon,
   XCircleIcon,
 } from "lucide-react";
-import { StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { StockReason, StockRow, StockStatus } from "../../lib/types";
 
 type Icon = React.ComponentType<{ className?: string }>;

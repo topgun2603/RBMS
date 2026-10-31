@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { absoluteUrl, apiUrl, ApiError, BrandingStyle, BrandMark, describeError, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useI18n, useRouteParams, useWebFonts } from "@srirealtime/web";
+import { absoluteUrl, apiUrl, ApiError, BrandingStyle, BrandMark, describeError, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useI18n, useRouteParams, useWebFonts } from "@rbms/web";
 import { FileDownIcon, FileXIcon, Loader2Icon, PrinterIcon } from "lucide-react";
-import { AnimatedNumber, Button, EmptyState, FadeIn, Skeleton, toast } from "@srirealtime/ui";
+import { AnimatedNumber, Button, EmptyState, FadeIn, Skeleton, toast } from "@rbms/ui";
 import { InvoiceDocument } from "../components/invoice-document";
 import { useSalesDocMeta } from "../components/sales-docs/sd-ui";
 import { money } from "../lib/format";

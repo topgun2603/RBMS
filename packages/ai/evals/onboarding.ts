@@ -5,13 +5,13 @@
  * that nothing is invented or injected, that a trade of another app is only suggested, and that every step passes the
  * Studio checks. "Raw issues" counts what the model said that our checks overruled.
  *
- *   pnpm --filter @srirealtime/ai eval:onboarding                  mock provider: the rules alone, no cost
- *   pnpm --filter @srirealtime/ai eval:onboarding --live           REAL API calls (costs money, about 2 cents a run)
+ *   pnpm --filter @rbms/ai eval:onboarding                  mock provider: the rules alone, no cost
+ *   pnpm --filter @rbms/ai eval:onboarding --live           REAL API calls (costs money, about 2 cents a run)
  *   options: --only=id,id   --max-cost=USD (default 0.5)   --out=DIR
  */
-import { homeDocSchema } from "@srirealtime/cms";
-import type { Db } from "@srirealtime/db";
-import { PACKS } from "@srirealtime/verticals";
+import { homeDocSchema } from "@rbms/cms";
+import type { Db } from "@rbms/db";
+import { PACKS } from "@rbms/verticals";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

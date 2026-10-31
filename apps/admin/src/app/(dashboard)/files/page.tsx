@@ -37,7 +37,7 @@ import {
   StaggerItem,
   Switch,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";

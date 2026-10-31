@@ -1,5 +1,5 @@
-import { marketplaceModule } from "@srirealtime/marketplace-ui";
-import { createWebApp } from "@srirealtime/web";
+import { marketplaceModule } from "@rbms/marketplace-ui";
+import { createWebApp } from "@rbms/web";
 
 /**
  * The seller app: the marketplace seller portal at "/" for a shop's marketplace sellers. The shop comes from the

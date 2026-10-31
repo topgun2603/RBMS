@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarClockIcon } from "lucide-react";
-import { AttentionItem, useI18n } from "@srirealtime/web";
+import { AttentionItem, useI18n } from "@rbms/web";
 import { isStatus } from "../lib/http";
 import { useSummary } from "../lib/queries";
 

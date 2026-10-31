@@ -37,8 +37,8 @@ import {
   TooltipContent,
   TooltipTrigger,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { AUTO_DISABLE_AFTER, isAllEvents, relativeTime, shortUrl } from "../../lib/developer";
 import { useDeleteEndpoint, useEndpoints, useEvents, useRotateSecret, useTestEndpoint, useUpdateEndpoint } from "../../lib/queries/developer";
 import type { WebhookEndpoint } from "../../lib/types";

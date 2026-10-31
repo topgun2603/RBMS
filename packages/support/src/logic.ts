@@ -1,4 +1,4 @@
-import { listFilter, listQuerySchema, rangeOrder, splitList } from "@srirealtime/core";
+import { listFilter, listQuerySchema, rangeOrder, splitList } from "@rbms/core";
 import { z } from "zod";
 import { stripHtml } from "./faq";
 import {

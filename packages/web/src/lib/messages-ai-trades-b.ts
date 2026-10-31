@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiB.* strings: Phase 3 part B AI helpers (catalogue from photos, product photo tags, counter pack identify, jewellery HUID and price breakup). Keep en and ta key sets identical. */
 export const enAiTradesB: Messages = {

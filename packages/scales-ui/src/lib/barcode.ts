@@ -12,7 +12,7 @@
  * loaded with, and the value is either the net weight in grams (1.250 kg) or the price in paise (₹12.50).
  * `prefix length + pluDigits + valueDigits` must be 12.
  *
- * Pure and browser-safe (no imports): the POS reads it through `@srirealtime/scales/barcode`.
+ * Pure and browser-safe (no imports): the POS reads it through `@rbms/scales/barcode`.
  */
 
 export type ScaleValueKind = "weight" | "price";

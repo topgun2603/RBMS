@@ -19,9 +19,9 @@ import {
   searchAny,
   type ListPage,
   type TenantRef,
-} from "@srirealtime/core";
-import type { DbOrTx } from "@srirealtime/db";
-import { amountInWordsINR, financialYear, formatInvoiceNumber, type LineInput } from "@srirealtime/gst";
+} from "@rbms/core";
+import type { DbOrTx } from "@rbms/db";
+import { amountInWordsINR, financialYear, formatInvoiceNumber, type LineInput } from "@rbms/gst";
 import { and, count, eq, gte, inArray, lte, ne, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { moneyText } from "./ledger";

@@ -1,7 +1,7 @@
-import { AppError, requirePermission, type PermissionDef } from "@srirealtime/core";
-import { CATALOGUE_PERMISSIONS } from "@srirealtime/catalogue";
-import { INVENTORY_PERMISSIONS, INVENTORY_ROUTE_PERMISSIONS } from "@srirealtime/inventory";
-import { ORDER_PERMISSIONS_KEYS } from "@srirealtime/orders";
+import { AppError, requirePermission, type PermissionDef } from "@rbms/core";
+import { CATALOGUE_PERMISSIONS } from "@rbms/catalogue";
+import { INVENTORY_PERMISSIONS, INVENTORY_ROUTE_PERMISSIONS } from "@rbms/inventory";
+import { ORDER_PERMISSIONS_KEYS } from "@rbms/orders";
 import type { FastifyInstance, FastifyRequest, RouteOptions } from "fastify";
 
 /**

@@ -1,4 +1,4 @@
-import { pk, tenantId } from "@srirealtime/db";
+import { pk, tenantId } from "@rbms/db";
 import { bigint, date, index, integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const EVENT_TYPES = [
@@ -8,6 +8,8 @@ export const EVENT_TYPES = [
   "remove_from_cart",
   "begin_checkout",
   "purchase",
+  /** One line of a purchase (product id + line value); sent with `purchase`, never counted as an order itself. */
+  "purchase_item",
   "search",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];

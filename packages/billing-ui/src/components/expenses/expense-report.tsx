@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Card, ChipGroup, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Card, ChipGroup, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { DateRangePicker, initialRange, type DateRangeValue } from "../date-range-picker";
 import { DownloadCsvButton, TabError } from "../reports/report-ui";
 import { categoryLabel } from "./expense-dialog";

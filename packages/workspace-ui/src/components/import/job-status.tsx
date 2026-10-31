@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CheckCircle2Icon, ClockIcon, DownloadIcon, Loader2Icon, Undo2Icon, XCircleIcon } from "lucide-react";
-import { Button, StatusPill, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, StatusPill, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { downloadImportErrors, useRollbackImport } from "../../lib/queries";
 import { errorRowsCsv, saveText } from "../../lib/csv";
 import type { ImportJob, ImportJobStatus } from "../../lib/types";

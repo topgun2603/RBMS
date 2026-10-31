@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { BookOpenIcon } from "lucide-react";
-import { Button, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
-import { AccountSelect, AccountingPage, Amt, Balance, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
+import { Button, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
+import { AccountSelect, AccountingPage, Amt, Balance, BranchSelect, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useAccounts, useLedger } from "../lib/accounting";
 import { rangeFor, todayIST } from "../lib/format";
 
@@ -26,7 +26,8 @@ export default function AccountingLedgerPage() {
     if (!accountId && accounts.data) setAccountId(accounts.data.find((a) => a.key === "cash")?.id ?? accounts.data[0]?.id ?? "");
   }, [accountId, accounts.data]);
 
-  const ledger = useLedger({ accountId, from, to });
+  const [branchId, setBranchId] = React.useState("");
+  const ledger = useLedger({ accountId, from, to, branchId: branchId || undefined });
   const money = accounts.data?.filter((a) => a.isCash || a.isBank) ?? [];
 
   return (
@@ -43,7 +44,9 @@ export default function AccountingLedgerPage() {
         <span className="text-sm font-medium">{t("billing.accounting.account")}</span>
         <AccountSelect aria-label={t("billing.accounting.account")} value={accountId} onChange={setAccountId} accounts={accounts.data ?? []} />
       </div>
-      <ReportBar report="ledger" params={{ accountId, from, to }} from={from} to={to} onFrom={setFrom} onTo={setTo} />
+      <ReportBar report="ledger" params={{ accountId, from, to, branchId }} from={from} to={to} onFrom={setFrom} onTo={setTo}>
+        <BranchSelect value={branchId} onChange={setBranchId} />
+      </ReportBar>
 
       {ledger.isError && !ledger.data ? (
         <QueryError error={ledger.error} onRetry={() => void ledger.refetch()} />

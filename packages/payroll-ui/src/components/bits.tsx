@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, ShieldAlertIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useFeature, useI18n, useMyBranches } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, type StatusTone } from "@rbms/ui";
+import { useFeature, useI18n, useMyBranches } from "@rbms/web";
 import { PAYROLL_FEATURES } from "../lib/access";
 import { useEmployees, useLeaveTypes } from "../lib/queries";
 import { PAY_METHODS, type AttendanceStatus, type ExpectedDay, type LineWarning, type PayMethod, type RunStatus } from "../lib/types";

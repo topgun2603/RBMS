@@ -1,4 +1,4 @@
-import { defineModule, type SrModule } from "@srirealtime/core";
+import { defineModule, type SrModule } from "@rbms/core";
 import { aiImageCleanups, aiTryons } from "../schema";
 import { imagingRoutes } from "./routes";
 import { ImagingService, type ImagingDeps } from "./service";

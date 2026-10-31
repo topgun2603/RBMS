@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useI18n } from "@srirealtime/web";
-import { cn, Skeleton, Stagger, StaggerItem, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
+import { ModuleLink, useI18n } from "@rbms/web";
+import { cn, Skeleton, Stagger, StaggerItem, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
 import { money } from "../../lib/format";
 import type { LedgerEntry, LedgerResponse } from "../../lib/types";
 import { balanceInk, ledgerTypeMeta } from "./credit-book-ui";

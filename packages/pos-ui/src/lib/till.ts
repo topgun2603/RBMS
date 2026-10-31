@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { APPROVAL_PIN_HEADER } from "@srirealtime/web";
+import { APPROVAL_PIN_HEADER } from "@rbms/web";
 import { posApi, isNetworkError } from "./api";
 import { reportNetwork } from "./online";
 import { readJson, storageKey, writeJson, type DayRecord } from "./storage";

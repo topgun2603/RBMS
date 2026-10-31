@@ -1,8 +1,8 @@
 "use client";
 
-import { GST_STATES } from "@srirealtime/gst";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { GST_STATES } from "@rbms/gst";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /** GST state picker ("33 · Tamil Nadu"). Value is the 2-digit state code. */
 export function StateSelect({

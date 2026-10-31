@@ -1,7 +1,7 @@
 "use client";
 
-import { KpiTile } from "@srirealtime/web";
-import { useI18n } from "@srirealtime/web";
+import { KpiTile } from "@rbms/web";
+import { useI18n } from "@rbms/web";
 import { WalletCardsIcon } from "lucide-react";
 import { compactINR, money } from "../lib/format";
 import { usePayablesSummary } from "../lib/queries-payables";

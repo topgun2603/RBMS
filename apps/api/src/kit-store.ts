@@ -1,14 +1,14 @@
 import { resolveCname, resolveTxt } from "node:dns/promises";
-import { AppError, type FeatureGatePort } from "@srirealtime/core";
-import { isPublicRef, type BookableServicesPort, type createCatalogue, type ProductRef, type StockSqlPort } from "@srirealtime/catalogue";
-import { sql } from "@srirealtime/db";
-import { stockItems } from "@srirealtime/inventory";
-import type { CatalogPort as CmsCatalogPort, PublicProductSummary as CmsProductSummary } from "@srirealtime/cms";
-import type { FulfillmentOrder, OrderFulfillmentPort } from "@srirealtime/delivery";
-import type { createInventory } from "@srirealtime/inventory";
-import type { createOrders, Order } from "@srirealtime/orders";
-import type { AvailabilityPort, CatalogPort as StoreCatalogPort, OrdersPort as StoreOrdersPort, StoreOrder, VariantAvailability } from "@srirealtime/storefront";
-import { VERIFY_RECORD_PREFIX, type DomainVerifier } from "@srirealtime/tenancy";
+import { AppError, type FeatureGatePort } from "@rbms/core";
+import { isPublicRef, type BookableServicesPort, type createCatalogue, type ProductRef, type StockSqlPort } from "@rbms/catalogue";
+import { sql } from "@rbms/db";
+import { stockItems } from "@rbms/inventory";
+import type { CatalogPort as CmsCatalogPort, PublicProductSummary as CmsProductSummary } from "@rbms/cms";
+import type { FulfillmentOrder, OrderFulfillmentPort } from "@rbms/delivery";
+import type { createInventory } from "@rbms/inventory";
+import type { createOrders, Order } from "@rbms/orders";
+import type { AvailabilityPort, CatalogPort as StoreCatalogPort, OrdersPort as StoreOrdersPort, StoreOrder, VariantAvailability } from "@rbms/storefront";
+import { VERIFY_RECORD_PREFIX, type DomainVerifier } from "@rbms/tenancy";
 
 /**
  * Ports of the batch-2 store modules (storefront, delivery, cms, reviews, catalogue search) implemented over the

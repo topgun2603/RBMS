@@ -1,5 +1,5 @@
-import { paymentRequired, type TenantRef } from "@srirealtime/core";
-import { periodFor } from "@srirealtime/plans";
+import { paymentRequired, type TenantRef } from "@rbms/core";
+import { periodFor } from "@rbms/plans";
 import { describe, expect, it } from "vitest";
 import { planCredits, type PlansCredits } from "./kit-ai";
 

@@ -1,22 +1,22 @@
-import { AppError, badRequest, defineModule, FULL_ACCESS_ROLES, requireUser, type AuditPort, type SrModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@srirealtime/gst";
-import type { createAuth } from "@srirealtime/auth";
-import { prefixFromName } from "@srirealtime/branches";
-import type { createBranding } from "@srirealtime/branding";
-import { renderPlatformInvoice, type createDocuments, DEFAULT_BRANDING } from "@srirealtime/documents";
-import type { JobsService } from "@srirealtime/jobs";
-import type { createNotify } from "@srirealtime/notify";
-import type { createPlans } from "@srirealtime/plans";
-import type { SettingsService } from "@srirealtime/settings";
+import { AppError, badRequest, defineModule, FULL_ACCESS_ROLES, requireUser, type AuditPort, type SrModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@rbms/gst";
+import type { createAuth } from "@rbms/auth";
+import { prefixFromName } from "@rbms/branches";
+import type { createBranding } from "@rbms/branding";
+import { renderPlatformInvoice, type createDocuments, DEFAULT_BRANDING } from "@rbms/documents";
+import type { JobsService } from "@rbms/jobs";
+import type { createNotify } from "@rbms/notify";
+import type { createPlans } from "@rbms/plans";
+import type { SettingsService } from "@rbms/settings";
 import {
   createSubscriptions,
   MockSubscriptionProvider,
   RazorpaySubscriptionProvider,
   SUBSCRIPTIONS_LIFECYCLE_JOB,
   type SubscriptionProvider,
-} from "@srirealtime/subscriptions";
-import { publicTenant, type createTenancy, type Tenant } from "@srirealtime/tenancy";
+} from "@rbms/subscriptions";
+import { publicTenant, type createTenancy, type Tenant } from "@rbms/tenancy";
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "pino";
 import { z } from "zod";
@@ -53,13 +53,15 @@ export interface Batch5Deps {
 
 /** Sign-up details passed to the on-tenant-created hooks (`details.signup`). */
 export interface SignupDetails {
-  appId: "BL" | "EC" | "PH" | "RS" | "SV";
+  appId: "BL" | "EC" | "PH" | "RS" | "SV" | "SC";
   planId: string;
   interval: "monthly" | "yearly";
   state: string;
   gstin: string | null;
   phone: string | null;
   businessType: string | null;
+  /** The trade in the owner's own words (sign-up "Not listed: tell us", or a typed trade). */
+  businessLabel?: string | null;
 }
 
 /** Brand colour by business type (the owner changes it in Settings → Branding). */
@@ -84,10 +86,11 @@ const DEFAULT_COLOUR = "#0f766e";
 const signupBody = z.object({
   shopName: z.string().trim().min(2).max(120),
   slug: z.string().trim().toLowerCase().min(1).max(60),
-  appId: z.enum(["BL", "EC", "PH", "RS", "SV"]),
+  appId: z.enum(["BL", "EC", "PH", "RS", "SV", "SC"]),
   planId: z.string().trim().min(1).max(40),
   interval: z.enum(["monthly", "yearly"]).default("monthly"),
   businessType: z.string().trim().max(60).optional().nullable(),
+  businessLabel: z.string().trim().max(60).optional().nullable(),
   state: z.string().trim().min(1).max(4),
   gstin: z.string().trim().max(20).optional().nullable(),
   phone: z.string().trim().max(20).optional().nullable(),
@@ -273,7 +276,7 @@ export function createBatch5(d: Batch5Deps) {
       await branding.update(tenant.id, { appName: tenant.name, tokens: { colors: { primary: colour } } });
       if (s) {
         await tenancy.update(tenant.id, {
-          metadata: { ...tenant.metadata, signup: { source: "www", businessType: s.businessType, planId: s.planId, interval: s.interval, at: new Date().toISOString() } },
+          metadata: { ...tenant.metadata, signup: { source: "www", businessType: s.businessType, businessLabel: s.businessLabel ?? null, planId: s.planId, interval: s.interval, at: new Date().toISOString() } },
         });
       }
     },
@@ -323,13 +326,14 @@ export function createBatch5(d: Batch5Deps) {
           gstin,
           phone: b.phone?.trim() || null,
           businessType: b.businessType?.trim() || null,
+          businessLabel: b.businessLabel?.trim() || null,
         };
         // At most 5 new shops an hour per user (valid requests only, so typos while filling the form don't count).
         if (!perUser.hit(user.id)) throw new AppError(429, "rate_limited", "Too many shops created; please try again in an hour");
         const tenant = await tenancy.create({ slug: b.slug, name: b.shopName, ownerUserId: user.id, appId: b.appId, details: { signup } });
         // A hook failure is logged; the shop still gets a subscription here.
         const current = await subs.service.ensure(tenant.id);
-        const handoff = await auth.createHandoff(user.id, { ip: req.ctx.ip });
+        const handoff = await auth.createHandoff(user.id, { ip: req.ctx.ip, fromSessionId: user.sessionId });
         const appUrl = shopAppUrl(tenant);
         const fresh = (await tenancy.getById(tenant.id)) ?? tenant;
         return {

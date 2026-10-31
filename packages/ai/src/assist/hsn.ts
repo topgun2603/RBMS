@@ -1,5 +1,5 @@
-import { effectiveGstRate, GST_RATES, priceBandRuleForHsn, type GstPriceBandRule } from "@srirealtime/gst";
-import { badRequest } from "@srirealtime/core";
+import { effectiveGstRate, GST_RATES, priceBandRuleForHsn, type GstPriceBandRule } from "@rbms/gst";
+import { badRequest } from "@rbms/core";
 import { z } from "zod";
 import type { AiService } from "../service";
 import { digitsOf, lookupHsn, sacHeadings, searchHeadings, sharesWord, validateHsn, type HsnEntry } from "./hsn-ref";

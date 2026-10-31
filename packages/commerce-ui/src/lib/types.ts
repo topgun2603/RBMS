@@ -1,4 +1,4 @@
-import type { GstRateRule } from "@srirealtime/gst";
+import type { GstRateRule } from "@rbms/gst";
 /**
  * API shapes of `/v1/catalog` (packages/catalogue/src/types.ts) and the parts of `/v1/inventory` and `/v1/uploads`
  * this module uses. Money is integer paise; dates arrive as ISO strings.

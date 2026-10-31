@@ -1,7 +1,7 @@
 "use client";
 
-import { Card, StatusPill } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Card, StatusPill } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { SparklesIcon } from "lucide-react";
 import { useHasPermission } from "../lib/access";
 import { useLatestSummaryCard } from "../lib/ai-insights";

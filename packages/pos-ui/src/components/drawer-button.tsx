@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, BanknoteIcon } from "lucide-react";
-import { Button, DropdownMenuItem, toast } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Button, DropdownMenuItem, toast } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { posApi } from "../lib/api";
 import { failureKey, kickDrawer, useDeviceConfig } from "../lib/printing";
 import { usePos } from "./pos-context";
@@ -11,7 +11,7 @@ import { usePos } from "./pos-context";
 /**
  * "No sale / open drawer": pulses the cash drawer through the direct printer. Only shown when this device has a direct
  * printer and the cashier holds the till permission (open and close the POS cash drawer). Each press is
- * logged on this device (lib/log in @srirealtime/receipt-print); there is no server audit entry yet (docs/printing.md).
+ * logged on this device (lib/log in @rbms/receipt-print); there is no server audit entry yet (docs/printing.md).
  */
 export function useNoSale() {
   const { t } = useI18n();

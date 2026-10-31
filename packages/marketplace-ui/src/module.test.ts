@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildNavModel, checkGate, createWebApp, matchRoute, normalizeBase, type GateContext, type MountedModule } from "@srirealtime/web";
+import { buildNavModel, checkGate, createWebApp, matchRoute, normalizeBase, type GateContext, type MountedModule } from "@rbms/web";
 import { kycErrorKey } from "./lib/logic";
 import { marketplaceMessages } from "./lib/messages";
 import {

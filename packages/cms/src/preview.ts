@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { badRequest, forbidden, unauthorized } from "@srirealtime/core";
+import { badRequest, forbidden, unauthorized } from "@rbms/core";
 import { z } from "zod";
 import { CMS_LIMITS, seoSchema } from "./content";
 import { noopLogger, type CatalogPort, type LoggerPort, type ShopPort } from "./ports";

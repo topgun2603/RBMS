@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** workspace.ai.* strings: Settings > AI (switch, helpers, usage, recent runs). Keep the en and ta key sets identical. */
 export const aiEn: Messages = {

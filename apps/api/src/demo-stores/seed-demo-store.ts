@@ -1,5 +1,5 @@
-import { DEFAULT_LAYOUT_THEME, themePreset } from "@srirealtime/branding";
-import { packFor } from "@srirealtime/verticals";
+import { DEFAULT_LAYOUT_THEME, themePreset } from "@rbms/branding";
+import { packFor } from "@rbms/verticals";
 import type { Logger } from "pino";
 import type { Kit } from "../kit";
 import { ensureShop } from "../seed-fixtures";
@@ -100,6 +100,17 @@ export async function seedDemoStore(kit: Kit, store: DemoStore, ownerUserId: str
     const p = await kit.cms.service.createPage(tenantId, { title: page.title, slug: page.slug, blocks: page.blocks(ctx(urls)) });
     await kit.cms.service.setPageStatus(tenantId, p.id, "published");
     log.info({ slug, page: page.slug }, "demo store: page published");
+  }
+
+  for (const post of store.posts ?? []) {
+    const found = (await kit.cms.service.listPosts(tenantId, { q: post.title, limit: 100 })).items.some((p) => p.slug === post.slug);
+    if (found) continue;
+    const wanted = [...collectPhotos((c) => post.blocks(c)), { id: post.cover, size: "wide" as PhotoSize }];
+    const urls = await photos.preload(wanted);
+    if (urls.size < new Set(wanted.map((w) => `${w.id}-${w.size}`)).size) continue;
+    const made = await kit.cms.service.createPost(tenantId, { title: post.title, slug: post.slug, excerpt: post.excerpt, coverUrl: ctx(urls).photo(post.cover, "wide"), tags: post.tags, authorName: post.authorName, blocks: post.blocks(ctx(urls)) });
+    await kit.cms.service.setPostStatus(tenantId, made.id, "published");
+    log.info({ slug, post: post.slug }, "demo store: post published");
   }
 
   for (const key of ["header", "footer"] as const) {

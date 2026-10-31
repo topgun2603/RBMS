@@ -1,5 +1,5 @@
-import { AppError } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { describe, expect, it, vi } from "vitest";
 import { createSecretBox } from "./crypto";
 import type { PayoutDriver } from "./payouts";

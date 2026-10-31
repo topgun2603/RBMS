@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { JOBCARDS_FEATURES, JOBCARDS_PERMISSIONS } from "./ports";
 import { jobcardsRoutes } from "./routes";
 import { jobcardEvents, jobcardLines, jobcards } from "./schema";

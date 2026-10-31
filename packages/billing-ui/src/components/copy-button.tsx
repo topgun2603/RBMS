@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { AnimatePresence, Button, motion, toast } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, motion, toast } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /** Copies `value`; the icon morphs into a check for 2s. */
 export function CopyButton({

@@ -2,7 +2,7 @@
  * Pure rules of proforma invoices, sale orders and delivery challans (no database): settings, derived statuses, who may
  * do what, and the per-line fulfilment arithmetic (ordered, delivered, invoiced). docs/sales-documents.md.
  */
-import { sanitizePrefix, type LineInput, type LineTotals } from "@srirealtime/gst";
+import { sanitizePrefix, type LineInput, type LineTotals } from "@rbms/gst";
 import { addDaysISO } from "./ledger";
 import type {
   ChallanReason,

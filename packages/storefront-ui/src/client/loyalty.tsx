@@ -3,11 +3,11 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon, ArrowDownLeftIcon, ArrowUpRightIcon, ClockIcon, CrownIcon, GiftIcon, InfoIcon, SparklesIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Progress } from "@srirealtime/ui/components/progress";
-import { Switch } from "@srirealtime/ui/components/switch";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { Progress } from "@rbms/ui/components/progress";
+import { Switch } from "@rbms/ui/components/switch";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { clampPoints, pointsValue, signedPoints, tierProgress } from "../lib/loyalty";
 import { formatDate, money } from "../lib/format";
 import type { LoyaltyEntry, LoyaltyMe, LoyaltyQuote } from "../types";

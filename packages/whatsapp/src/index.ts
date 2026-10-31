@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { WHATSAPP_FEATURES, WHATSAPP_PERMISSIONS } from "./features";
 import { whatsappRoutes } from "./routes";
 import { waAccounts, waCampaignRecipients, waCampaigns, waContacts, waMessages, waNotes, waTemplates } from "./schema";

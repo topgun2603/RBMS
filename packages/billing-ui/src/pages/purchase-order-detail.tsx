@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+import { ConfirmDialog, describeError, DetailRow, ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { BanIcon, ClipboardListIcon, DownloadIcon, Loader2Icon, PackageCheckIcon, PrinterIcon, ReceiptTextIcon, SendIcon, TruckIcon } from "lucide-react";
 import {
   Button,
@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { ReceiveDialog } from "../components/inventory/payables-dialogs";
 import { PoStatusPill } from "../components/inventory/po-status";
 import { formatQty, money } from "../lib/format";

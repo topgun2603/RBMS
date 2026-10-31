@@ -11,8 +11,8 @@ import {
   searchAny,
   type AuditPort,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, count, desc, eq, inArray, lt, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import type { NoticeService } from "./privacy-notice-service";
@@ -137,7 +137,14 @@ export class RightsService {
     const now = ctx.now ?? new Date();
     const settings = await this.deps.host.settings(tenantId);
     let { name, phone, email } = { name: input.name ?? null, phone: input.phone ?? null, email: input.email || null };
-    if (ctx.userId && this.deps.host.contactOf) {
+    if (ctx.source === "store") {
+      // A shopper asks about their own data only: the request is matched on the signed-in account's verified contact,
+      // never on a phone/email typed into the form (that would export or erase someone else's records).
+      const c = ctx.userId && this.deps.host.contactOf ? await this.deps.host.contactOf(tenantId, ctx.userId) : null;
+      name = c?.name ?? null;
+      phone = c?.phone ?? null;
+      email = c?.email ?? null;
+    } else if (ctx.userId && this.deps.host.contactOf) {
       const c = await this.deps.host.contactOf(tenantId, ctx.userId);
       name ??= c?.name ?? null;
       phone ??= c?.phone ?? null;

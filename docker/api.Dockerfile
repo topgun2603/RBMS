@@ -30,8 +30,8 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm fetch
 # ---------------------------------------------------------------- build: bundle src + the workspace packages it uses
 FROM fetch AS build
 COPY . .
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store     pnpm install --frozen-lockfile --offline --filter "@srirealtime/api..."
-RUN pnpm --filter @srirealtime/api build
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store     pnpm install --frozen-lockfile --offline --filter "@rbms/api..."
+RUN pnpm --filter @rbms/api build
 
 # ---------------------------------------------------------------- prod-deps: the pruned node_modules
 # Production dependencies of the API and of the workspace packages it bundles, from the frozen lockfile: no
@@ -42,8 +42,8 @@ RUN pnpm --filter @srirealtime/api build
 FROM fetch AS prod-deps
 COPY . .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile --offline --prod --ignore-scripts --config.shamefully-hoist=true --filter "@srirealtime/api..." \
- && rm -rf node_modules/@srirealtime apps/api/node_modules/@srirealtime node_modules/.cache \
+    pnpm install --frozen-lockfile --offline --prod --ignore-scripts --config.shamefully-hoist=true --filter "@rbms/api..." \
+ && rm -rf node_modules/@rbms apps/api/node_modules/@rbms node_modules/.cache \
  && find node_modules/.pnpm -maxdepth 1 \( -name "@types+*" -o \( -name "@img+sharp-*linux-*" ! -name "*linuxmusl*" \) \) -exec rm -rf {} + \
  && find node_modules/.pnpm -type f \( -name "*.md" -o -name "*.map" -o -name "*.d.ts" -o -name "*.d.mts" -o -name "*.d.cts" -o -name "CHANGELOG*" \) -delete \
  && mkdir -p apps/api/node_modules

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { api, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import {
   AlertTriangleIcon,
   BoxesIcon,
@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { ReorderSheet } from "../components/ai/reorder-sheet";
 import { useHasPermission } from "../lib/access";
 import { StatTile } from "../components/charts/stat-tile";

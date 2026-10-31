@@ -1,5 +1,5 @@
 /** Debit notes to customers (`/v1/invoices/debit-notes`, docs/expenses-debit-notes.md). Money is integer paise. */
-import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
+import type { InvoiceTotals, LineTotals } from "@rbms/gst";
 import type { ISODate, InvoiceParty, SellerProfile } from "./types";
 
 export type DebitNoteReason = "price_revision" | "short_billed" | "freight" | "other_charges" | "other";

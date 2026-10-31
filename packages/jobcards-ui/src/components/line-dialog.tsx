@@ -26,8 +26,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@srirealtime/ui";
-import { describeError, useFeature, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useFeature, useI18n, usePermission } from "@rbms/web";
 import { money, paiseToInput, rupeesToPaise } from "../lib/format";
 import type { LineBody } from "../lib/queries";
 import { LINE_KINDS, type JobLine, type LineKind, type ShopItem } from "../lib/types";

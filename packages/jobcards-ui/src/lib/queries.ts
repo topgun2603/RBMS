@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api } from "@srirealtime/web";
+import { ApiError, api } from "@rbms/web";
 import type { ApprovalChannel, ApprovalDecision, BillResult, Job, JobPriority, JobsSummary, JobStatus, JobSummary, JobTemplate, LineKind, SerialUnit, ShopItem } from "./types";
 import { BOARD_STATUSES } from "./types";
 

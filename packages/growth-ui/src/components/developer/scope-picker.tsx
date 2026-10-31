@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { SearchXIcon } from "lucide-react";
-import { Badge, Button, Checkbox, cn, EmptyState, Skeleton } from "@srirealtime/ui";
-import { humanizeKey, SearchField, tOr, useI18n, type Translator } from "@srirealtime/web";
+import { Badge, Button, Checkbox, cn, EmptyState, Skeleton } from "@rbms/ui";
+import { humanizeKey, SearchField, tOr, useI18n, type Translator } from "@rbms/web";
 import { groupScopes, groupState, toggleGroup, toggleKey } from "../../lib/developer";
 import type { ScopeDef } from "../../lib/types";
 

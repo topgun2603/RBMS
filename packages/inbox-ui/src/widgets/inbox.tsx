@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { LifeBuoyIcon, MessageCircleIcon, MessageSquareTextIcon, OctagonAlertIcon } from "lucide-react";
-import { AttentionItem, useFeature, useI18n } from "@srirealtime/web";
+import { AttentionItem, useFeature, useI18n } from "@rbms/web";
 import { FEATURES, PERMS, useMe } from "../lib/access";
 import { useChatUnread, useTicketSummary, useWaUnread } from "../lib/queries";
 

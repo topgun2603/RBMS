@@ -1,4 +1,4 @@
-import { defineModule, type FeatureDef, type PermissionDef } from "@srirealtime/core";
+import { defineModule, type FeatureDef, type PermissionDef } from "@rbms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { deriveAuditEvent } from "./derive";
 import { auditRoutes } from "./routes";

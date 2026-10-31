@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { validateSlug } from "@srirealtime/tenancy/slug";
+import { validateSlug } from "@rbms/tenancy/slug";
 import { getStoredTenant, useStored, TENANT_KEY } from "./session";
 
 /**
@@ -88,4 +88,4 @@ export function rootUrl(): string {
 }
 
 export const isValidShopSlug = (s: string) => isShopSlug(s);
-export { RESERVED_SLUGS, validateSlug } from "@srirealtime/tenancy/slug";
+export { RESERVED_SLUGS, validateSlug } from "@rbms/tenancy/slug";

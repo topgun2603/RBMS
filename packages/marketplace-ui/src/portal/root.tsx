@@ -33,7 +33,7 @@ import {
   PageTransition,
   Skeleton,
   type AppShellLinkComponent,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   BrandMark,
   displayName,
@@ -53,7 +53,7 @@ import {
   useSignOut,
   useToken,
   useWebApp,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { VendorLogo } from "../components/bits";
 import { pickMembership, setStoredVendor, useMemberships, useStoredVendor, useVendor, useVendorSelf, VendorProvider } from "../lib/vendor";
 import type { VendorMembership } from "../lib/types";

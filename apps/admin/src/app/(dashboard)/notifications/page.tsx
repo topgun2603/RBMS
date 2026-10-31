@@ -33,7 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { StatusBadge } from "@/components/badges";
 import { ResourcePage, type ResourceConfig } from "@/components/crud/resource-page";
 import { Page } from "@/components/page";

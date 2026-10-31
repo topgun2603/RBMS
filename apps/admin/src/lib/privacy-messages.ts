@@ -1,6 +1,6 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
-/** admin.dp.* strings: Platform > Data protection (platform notice and grievance contact, retention, breach register). Same wording as the shop screens in @srirealtime/workspace-ui. Keep the en and ta key sets identical. */
+/** admin.dp.* strings: Platform > Data protection (platform notice and grievance contact, retention, breach register). Same wording as the shop screens in @rbms/workspace-ui. Keep the en and ta key sets identical. */
 export const dataProtectionEn: Messages = {
   "admin.nav.dataProtection": "Data protection",
   "admin.dp.platformTitle": "RBMS data protection",
@@ -142,6 +142,8 @@ export const dataProtectionEn: Messages = {
   "admin.dp.ret.cat.staff_after_exit.desc": "Phone, bank and ID numbers of staff who left. Pay runs and payslips stay.",
   "admin.dp.ret.cat.kyc_documents": "Identity documents",
   "admin.dp.ret.cat.kyc_documents.desc": "Documents uploaded for verification, and the files.",
+  "admin.dp.ret.cat.website_enquiries": "Website enquiries",
+  "admin.dp.ret.cat.website_enquiries.desc": "Enquiries sent from the website form (name, phone, student, message).",
   "admin.dp.ret.cat.ai_run_inputs": "AI prompts kept for debugging",
   "admin.dp.ret.cat.ai_run_inputs.desc": "Only when you switch on 'keep prompts'. Cleared automatically.",
   "admin.dp.ret.cat.otp_logs": "One-time passwords",
@@ -362,6 +364,8 @@ export const dataProtectionTa: Messages = {
   "admin.dp.ret.cat.staff_after_exit.desc": "விலகிய பணியாளர்களின் தொலைபேசி, வங்கி மற்றும் அடையாள எண்கள். சம்பள ஓட்டங்களும் சம்பளச் சீட்டுகளும் இருக்கும்.",
   "admin.dp.ret.cat.kyc_documents": "அடையாள ஆவணங்கள்",
   "admin.dp.ret.cat.kyc_documents.desc": "சரிபார்ப்புக்குப் பதிவேற்றிய ஆவணங்களும் கோப்புகளும்.",
+  "admin.dp.ret.cat.website_enquiries": "இணையதள விசாரணைகள்",
+  "admin.dp.ret.cat.website_enquiries.desc": "இணையதளப் படிவத்தில் வந்த விசாரணைகள் (பெயர், தொலைபேசி, மாணவர், செய்தி).",
   "admin.dp.ret.cat.ai_run_inputs": "பிழைதிருத்தத்துக்காக வைத்த AI உள்ளீடுகள்",
   "admin.dp.ret.cat.ai_run_inputs.desc": "'உள்ளீடுகளை வை' என்பதை இயக்கினால் மட்டும். தானாக அழிக்கப்படும்.",
   "admin.dp.ret.cat.otp_logs": "ஒருமுறை கடவுச்சொற்கள்",

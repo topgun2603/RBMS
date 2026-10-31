@@ -37,8 +37,8 @@ import {
   StatusPill,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useFeature, useI18n } from "@rbms/web";
 import { CopyButton, Field, MoneyInput, Optional, ReadOnlyNote, Section } from "../components/bits";
 import { RateDialog, ZoneDialog } from "../components/delivery-dialogs";
 import { DeliveryIllustration } from "../components/illustrations";

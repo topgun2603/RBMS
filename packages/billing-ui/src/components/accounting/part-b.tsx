@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Card, CardContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import type { BankAccountRow, ChequeStatus } from "../../lib/accounting-b";
 

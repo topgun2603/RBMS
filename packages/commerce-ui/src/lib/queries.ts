@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { absoluteUrl, api, apiDownload, ApiError } from "@srirealtime/web";
+import { absoluteUrl, api, apiDownload, ApiError } from "@rbms/web";
 import type {
   Category,
   CategoryInput,

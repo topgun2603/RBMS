@@ -17,8 +17,8 @@ import {
   TruckIcon,
   Undo2Icon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Card, CardContent, CardHeader, CardTitle, cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import type {
   ChallanReason,

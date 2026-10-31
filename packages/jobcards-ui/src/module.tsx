@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ClipboardListIcon, ClipboardPlusIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@rbms/web";
 import { JOBCARDS_FEATURES, JOBCARDS_PERMISSIONS, JOBCARDS_VIEW } from "./lib/access";
 import { setJobcardsConfig } from "./lib/config";
 import { jobcardsMessages } from "./lib/messages";

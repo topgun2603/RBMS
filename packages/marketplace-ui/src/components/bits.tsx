@@ -19,8 +19,8 @@ import {
   WalletIcon,
   XCircleIcon,
 } from "lucide-react";
-import { cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+import { cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 import type {
   KycCheckStatus,
   KycSubjectStatus,

@@ -3,8 +3,8 @@
 import * as React from "react";
 import { FileTextIcon } from "lucide-react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { Button, Card, EmptyState, Skeleton } from "@srirealtime/ui";
-import { ApiError, ModuleLink, Page, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, EmptyState, Skeleton } from "@rbms/ui";
+import { ApiError, ModuleLink, Page, QueryError, useI18n } from "@rbms/web";
 
 /** Loading / not found / error states around a page or post editor. */
 export function ContentLoader<T>({ kind, query, children }: { kind: "page" | "post"; query: UseQueryResult<T, unknown>; children: (item: T) => React.ReactNode }) {

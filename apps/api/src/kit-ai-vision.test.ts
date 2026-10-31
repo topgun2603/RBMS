@@ -1,7 +1,7 @@
-import { AI_FEATURES, AI_PERMISSIONS, AI_SETTINGS_DEFAULTS, AiService, MockProvider, resolveAiConfig, type AiSettings, type CreditBalance, type CreditsPort } from "@srirealtime/ai";
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { gstinCheckChar } from "@srirealtime/gst";
+import { AI_FEATURES, AI_PERMISSIONS, AI_SETTINGS_DEFAULTS, AiService, MockProvider, resolveAiConfig, type AiSettings, type CreditBalance, type CreditsPort } from "@rbms/ai";
+import { AppError, emptyContext, type RequestContext } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { gstinCheckChar } from "@rbms/gst";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
@@ -210,7 +210,7 @@ describe("file checks and registry", () => {
   });
 
   it("registers both helpers as live vision features", async () => {
-    const { AI_FEATURE_REGISTRY } = await import("@srirealtime/ai");
+    const { AI_FEATURE_REGISTRY } = await import("@rbms/ai");
     for (const key of ["bill-scan", "receipt-scan"]) expect(AI_FEATURE_REGISTRY.find((f) => f.key === key)).toMatchObject({ status: "live", tier: "vision" });
     expect(AI_FEATURES.length + AI_PERMISSIONS.length).toBeGreaterThan(0);
   });

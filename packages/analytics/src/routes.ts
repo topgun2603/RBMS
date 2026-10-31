@@ -1,4 +1,4 @@
-import { badRequest, requirePermission, requireRole, requireTenant } from "@srirealtime/core";
+import { badRequest, requirePermission, requireRole, requireTenant } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ANALYTICS_FEATURE } from "./ports";

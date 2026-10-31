@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /**
  * Staff POS PINs (docs/pos-terminals.md → Staff PINs): who has one, set / reset / remove a member's PIN (pos.devices),

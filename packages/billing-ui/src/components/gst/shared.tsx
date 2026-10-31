@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertCircleIcon, AlertTriangleIcon, DownloadIcon, InfoIcon, Loader2Icon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, toast } from "@srirealtime/ui";
-import { apiDownload, describeError, tOr, useI18n, type QueryParams } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill, toast } from "@rbms/ui";
+import { apiDownload, describeError, tOr, useI18n, type QueryParams } from "@rbms/web";
 import { useHasPermission } from "../../lib/access";
 import { money, todayIST } from "../../lib/format";
 import { GST_MANAGE, isQuarterKey, monthOptions, parseQuarter, quarterOptions, type CellId, type FilingIssue, type RcmCategory } from "../../lib/gst";

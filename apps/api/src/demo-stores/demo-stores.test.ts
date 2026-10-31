@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { themePreset } from "@srirealtime/branding";
-import { blocksSchema, homeDocSchema, localizeSections, menuItemsSchema } from "@srirealtime/cms";
-import { GST_RATES } from "@srirealtime/gst";
-import { PACKS, type BusinessType } from "@srirealtime/verticals";
+import { themePreset } from "@rbms/branding";
+import { blocksSchema, homeDocSchema, localizeSections, menuItemsSchema, postInputSchema } from "@rbms/cms";
+import { GST_RATES } from "@rbms/gst";
+import { PACKS, type BusinessType } from "@rbms/verticals";
 import { DEMO_STORES } from "./index";
 import { imageType, pexelsUrl, variantInputs } from "./seed-demo-store";
 import type { DemoStore, HomeContext, PhotoSize } from "./types";
@@ -24,7 +24,7 @@ function fakeCtx() {
 
 describe.each(DEMO_STORES.map((s) => [s.shop.slug, s] as [string, DemoStore]))("demo store %s", (_slug, store) => {
   it("runs on an app with the online store, in a known trade, with its own look", () => {
-    expect(["EC", "PH", "RS", "SV"]).toContain(store.shop.appId);
+    expect(["EC", "PH", "RS", "SV", "SC"]).toContain(store.shop.appId);
     expect(PACKS[store.shop.businessType as BusinessType]).toBeDefined();
     const preset = themePreset(store.preset);
     expect(preset).not.toBeNull();
@@ -34,8 +34,10 @@ describe.each(DEMO_STORES.map((s) => [s.shop.slug, s] as [string, DemoStore]))("
     expect(DEMO_STORES.filter((s) => s.preset === store.preset)).toHaveLength(1);
   });
 
-  it("has a believable catalogue: 30–95 products over its categories, valid GST, MRP ≥ price, unique names and SKUs", () => {
-    expect(store.products.length).toBeGreaterThanOrEqual(30);
+  it("has a believable catalogue: 30–95 products over its categories (a website-only school: 10+ programmes), valid GST, MRP ≥ price, unique names and SKUs", () => {
+    // A website-only store (school) lists programmes, not goods: a smaller catalogue, and no price (shown as "Fee on enquiry").
+    const site = !!PACKS[store.shop.businessType as BusinessType].site;
+    expect(store.products.length).toBeGreaterThanOrEqual(site ? 10 : 30);
     expect(store.products.length).toBeLessThanOrEqual(95);
     const cats = new Set(store.categories.map((c) => c.name));
     // Every category has products, or (a parent) sub-categories that have them; parents are listed before children.
@@ -53,7 +55,8 @@ describe.each(DEMO_STORES.map((s) => [s.shop.slug, s] as [string, DemoStore]))("
       const combos = (p.options ?? []).reduce((n, o) => n * o.values.length, 1);
       expect(p.variants, p.name).toHaveLength(combos);
       for (const v of p.variants) {
-        expect(v.price, p.name).toBeGreaterThan(0);
+        if (site) expect(v.price, p.name).toBeGreaterThanOrEqual(0);
+        else expect(v.price, p.name).toBeGreaterThan(0);
         expect(v.mrp, p.name).toBeGreaterThanOrEqual(v.price);
         for (const o of p.options ?? []) expect(o.values, p.name).toContain(v.values?.[o.name]);
       }
@@ -65,7 +68,8 @@ describe.each(DEMO_STORES.map((s) => [s.shop.slug, s] as [string, DemoStore]))("
     const { ctx, photos } = fakeCtx();
     store.home(ctx);
     for (const p of store.pages) p.blocks(ctx);
-    const used = new Set([...store.products.map((p) => p.photo), ...store.categories.map((c) => c.photo), ...photos.map((p) => p.id)]);
+    for (const post of store.posts ?? []) post.blocks(ctx);
+    const used = new Set([...store.products.map((p) => p.photo), ...store.categories.map((c) => c.photo), ...(store.posts ?? []).map((p) => p.cover), ...photos.map((p) => p.id)]);
     for (const id of used) expect(store.photos[id], `photo ${id}`).toBeDefined();
     for (const id of Object.keys(store.photos)) expect(used.has(Number(id)), `photo ${id} unused`).toBe(true);
   });
@@ -90,6 +94,7 @@ describe.each(DEMO_STORES.map((s) => [s.shop.slug, s] as [string, DemoStore]))("
 
   it("has valid pages and menus", () => {
     for (const p of store.pages) expect(blocksSchema.safeParse(p.blocks(fakeCtx().ctx)).success, p.slug).toBe(true);
+    for (const post of store.posts ?? []) expect(postInputSchema.safeParse({ title: post.title, slug: post.slug, excerpt: post.excerpt, tags: post.tags, authorName: post.authorName, blocks: post.blocks(fakeCtx().ctx) }).success, post.slug).toBe(true);
     expect(menuItemsSchema.safeParse(store.menus.header).success).toBe(true);
     expect(menuItemsSchema.safeParse(store.menus.footer).success).toBe(true);
     const pageSlugs = new Set(store.pages.map((p) => p.slug));

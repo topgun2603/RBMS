@@ -1,5 +1,5 @@
-import { mergeTokens, type BrandTokens } from "@srirealtime/branding/tokens";
-import type { HomeDoc, MenuItem } from "@srirealtime/cms";
+import { mergeTokens, type BrandTokens } from "@rbms/branding/tokens";
+import type { HomeDoc, MenuItem } from "@rbms/cms";
 import type { BrandingArea, CategoriesArea, DiscountsArea, FeatureArea, HomeArea, MenuArea, PageArea, RolesArea, SettingsArea, SignInArea } from "./areas";
 import type { Bi, ChangeLine, StudioEnv, StudioPreview, StudioState } from "./types";
 

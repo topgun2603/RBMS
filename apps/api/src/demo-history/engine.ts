@@ -1,5 +1,5 @@
 import type { Logger } from "pino";
-import { APPAREL_FOOTWEAR_GST_RULE } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE } from "@rbms/gst";
 import type { Kit } from "../kit";
 import { addDays, istMinutes, istToday, pendingDays, windowDates } from "./calendar";
 import { SimClock, type PurchaseLineSpec, type BillDraft, type BillLine, type HistoryCtx, type IndustryHook, type IssuedBill, type LowStock, type Session, type SimCustomer, type SimItem } from "./context";

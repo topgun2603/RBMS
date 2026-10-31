@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CrownIcon, LockIcon, ShieldCheckIcon, UserIcon, UserRoundXIcon } from "lucide-react";
-import { cn, EmptyState, motion, StatusPill, useReducedMotionSafe } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, EmptyState, motion, StatusPill, useReducedMotionSafe } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { Level } from "../lib/types";
 
 /** Panel for a page the member may not use (the server would answer 403 anyway). */

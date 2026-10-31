@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { SearchIcon } from "lucide-react";
-import { cn, Input } from "@srirealtime/ui";
+import { cn, Input } from "@rbms/ui";
 
 /** Search box that reports its value after `delay` ms of inactivity (for server-side search). */
 export function DebouncedSearch({

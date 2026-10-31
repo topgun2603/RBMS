@@ -6,7 +6,7 @@ import { createKit } from "../kit";
  * Posts a shop's history into the books, runs the reconciliation and prints the checks (docs/accounting.md). Meant for
  * development and for checking a shop before switching its books on:
  *
- *   pnpm --filter @srirealtime/api exec tsx --env-file-if-exists=.env src/scripts/accounting-check.ts <tenant-slug> [--wipe] [--keep]
+ *   pnpm --filter @rbms/api exec tsx --env-file-if-exists=.env src/scripts/accounting-check.ts <tenant-slug> [--wipe] [--keep]
  *
  * By default the shop's accounting rows are removed again afterwards (--keep leaves them; --wipe only removes them).
  */
@@ -41,6 +41,16 @@ try {
     const bs = await svc.balanceSheet(tenant.id, {});
     console.log("trial balance balanced:", tb.balanced, JSON.stringify(tb.totals));
     console.log("balance sheet balanced:", bs.balanced, "difference", bs.difference, "assets", bs.totalAssets, "profit", bs.profitToDate, "stock", bs.stockValue);
+    // Branch books: each branch's trial balance balances and the branches add up to the shop; so does the P&L.
+    const parts = [...(await svc.branchList(tenant.id)).map((b) => b.id ?? "none")];
+    const tbs = await Promise.all(parts.map((b) => svc.trialBalance(tenant.id, { branchId: b })));
+    const debit = tbs.reduce((t, x) => t + x.totals.debit, 0);
+    const credit = tbs.reduce((t, x) => t + x.totals.credit, 0);
+    const tbOk = tbs.every((x) => x.balanced) && debit === tb.totals.debit && credit === tb.totals.credit;
+    console.log(`${tbOk ? "OK  " : "DIFF"} branch TB     branches=${parts.length} debit=${debit}/${tb.totals.debit} credit=${credit}/${tb.totals.credit} each balanced=${tbs.every((x) => x.balanced)}`);
+    const plb = await svc.profitLossByBranch(tenant.id, {});
+    console.log(`${plb.check.ok ? "OK  " : "DIFF"} branch P&L    net=${plb.check.netProfit}/${plb.consolidated.netProfit} gross=${plb.check.grossProfit}/${plb.consolidated.grossProfit}`);
+    for (const c of plb.columns) console.log(`     ${c.branch.name.padEnd(26)} net=${c.pl.netProfit}`);
     console.log("total ms", Date.now() - t0);
     if (!flags.includes("--keep")) {
       await svc.wipe(tenant.id);

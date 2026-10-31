@@ -1,4 +1,4 @@
-import { OrderConfirmationPage, orderMetadata } from "@srirealtime/storefront-ui";
+import { OrderConfirmationPage, orderMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ accessToken: string }> };
 

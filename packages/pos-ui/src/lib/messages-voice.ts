@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * pos.voice.* strings: Tamil voice billing in the counter's search bar (AI Phase 5 part A). Merged into posMessages. Keep the en and

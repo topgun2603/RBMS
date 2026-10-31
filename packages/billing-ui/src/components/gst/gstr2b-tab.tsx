@@ -34,8 +34,8 @@ import {
   TableRow,
   toast,
   type StatusTone,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import {
   G,

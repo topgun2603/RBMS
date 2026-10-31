@@ -1,4 +1,4 @@
-import { revalidateHandler } from "@srirealtime/storefront-ui";
+import { revalidateHandler } from "@rbms/storefront-ui";
 
 /**
  * On-demand revalidation: the API posts here (shared secret STORE_REVALIDATE_SECRET) right after staff change a

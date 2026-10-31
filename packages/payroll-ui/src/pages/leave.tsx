@@ -34,8 +34,8 @@ import {
   TableRow,
   toast,
   type StatusTone,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, useI18n, usePermission } from "@rbms/web";
 import { InlineError } from "../components/bits";
 import { LeaveDialog } from "../components/leave-dialog";
 import { PAYROLL_PERMISSIONS } from "../lib/access";

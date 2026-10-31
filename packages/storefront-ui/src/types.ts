@@ -17,7 +17,7 @@ export interface StoreConfig {
     name: string;
     logoUrl: string | null;
     css: string;
-    /** The shop's trade (@srirealtime/verticals pack id). Older APIs leave it out. */
+    /** The shop's trade (@rbms/verticals pack id). Older APIs leave it out. */
     businessType?: string;
     /** Theme variants (header, hero, card, imageRatio, … see StoreThemeView). */
     theme?: Record<string, string>;
@@ -150,7 +150,7 @@ export interface Product {
   hsn: string | null;
   gstRate: number;
   /** Price-band GST (apparel / footwear: 5% up to ₹2,500 a piece before GST, 18% above); each variant at its own price. */
-  gstRule?: import("@srirealtime/gst").GstRateRule | null;
+  gstRule?: import("@rbms/gst").GstRateRule | null;
   unit: string;
   taxInclusive: boolean;
   tags: string[];
@@ -326,6 +326,7 @@ type Sections =
   | { type: "location"; title?: string; address?: string; hours: { label: string; value: string }[]; phone?: string; whatsapp?: string; coords?: string; mapLink?: string }
   | { type: "menu-board"; title?: string; groups: { name: string; items: { name: string; description?: string; price?: number; diet?: Diet }[] }[]; cta?: Cta }
   | { type: "appointment"; heading: string; text?: string; services: { name: string; duration?: string; price?: number }[]; cta?: Cta }
+  | ({ type: "enquiry-form" } & EnquiryFormConfig)
   | { type: "before-after"; title?: string; text?: string; beforeUrl: string; afterUrl: string; beforeLabel?: string; afterLabel?: string }
   | { type: "gold-rates"; title?: string; text?: string; showSilver: boolean }
   | { type: "instagram"; title?: string; handle: string; images: { url: string; alt: string; href?: string }[] }
@@ -484,8 +485,27 @@ export interface PublicHome {
   seo: Seo | null;
   isDefault: boolean;
   publishedAt: string | null;
-  /** The home's words in other languages by section id (`localizeSections` from @srirealtime/cms/localize). */
+  /** The home's words in other languages by section id (`localizeSections` from @rbms/cms/localize). */
   translations?: Partial<Record<string, Record<string, unknown>>>;
+}
+
+/** A contact / admission enquiry form (home section and page block share it). */
+export interface EnquiryFormConfig {
+  heading: string;
+  text?: string;
+  /** Sent with every enquiry (e.g. "Admission 2027-28"). */
+  topic?: string;
+  askStudent: boolean;
+  studentLabel?: string;
+  optionLabel?: string;
+  /** Choices for a select; the select is hidden when empty. */
+  options: string[];
+  askEmail: boolean;
+  askMessage: boolean;
+  submitLabel?: string;
+  successText?: string;
+  imageUrl?: string;
+  imageAlt?: string;
 }
 
 export type Block =
@@ -496,7 +516,8 @@ export type Block =
   | { type: "button"; id?: string; label: string; href: string; style: "primary" | "secondary" }
   | { type: "faq"; id?: string; items: { q: string; a: string }[] }
   | { type: "video"; id?: string; youtubeId: string; title?: string }
-  | { type: "divider"; id?: string };
+  | { type: "divider"; id?: string }
+  | ({ type: "enquiry-form"; id?: string } & EnquiryFormConfig);
 
 export interface CmsPage {
   id: string;
@@ -838,7 +859,7 @@ export interface Tracking {
   paymentMethod: string;
   placedAt: string;
   timeline: { type: string; status: string | null; message: string | null; at: string }[];
-  lines: { name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
+  lines: { productId?: string; name: string; image: string | null; qty: number; unit: string; price: number; total: number }[];
   totals: { subtotal: number; discount: number; shipping: number; codFee: number; total: number; loyalty?: { points: number; discount: number } };
   fulfillment: { carrier: string | null; trackingNumber: string | null; trackingUrl: string | null };
   shipTo: { city: string; pincode: string } | null;
@@ -881,7 +902,7 @@ export interface StoreShell {
   theme: StoreThemeView;
 }
 
-/** The storefront's theme variants (mirrors @srirealtime/branding StoreTheme). */
+/** The storefront's theme variants (mirrors @rbms/branding StoreTheme). */
 export interface StoreThemeView {
   header: "classic" | "centered" | "minimal" | "bold" | "split";
   hero: "slider" | "split" | "full" | "compact";

@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
-// Same AES-256-GCM secret box as @srirealtime/payments (copied: packages never import each other).
+// Same AES-256-GCM secret box as @rbms/payments (copied: packages never import each other).
 
 const VERSION = "v1";
 const IV_BYTES = 12;

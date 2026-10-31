@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, ModuleLink, Page, QueryError, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@srirealtime/web";
+import { ConfirmDialog, describeError, ModuleLink, Page, QueryError, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@rbms/web";
 import { ArrowLeftIcon, BanIcon, CalendarClockIcon, MoreHorizontalIcon, PauseIcon, PencilIcon, PlayIcon, ReceiptIcon, RepeatIcon, SkipForwardIcon, Trash2Icon } from "lucide-react";
 import {
   Button,
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { RecurringStatusPill, RunStatusPill, useScheduleText } from "../components/recurring/rc-ui";
 import { useHasPermission } from "../lib/access";
 import { money } from "../lib/format";

@@ -1,4 +1,4 @@
-import { joinPath, matchRoute, type MountedModule } from "@srirealtime/web";
+import { joinPath, matchRoute, type MountedModule } from "@rbms/web";
 
 /**
  * Onboarding step hrefs are hints relative to the app root ("settings/business", "invoices/new",

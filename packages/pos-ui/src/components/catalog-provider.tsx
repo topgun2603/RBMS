@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ApiError } from "@srirealtime/web";
+import { ApiError } from "@rbms/web";
 import { openCatalogStore } from "../lib/catalog-idb";
 import { buildCatalogIndex, emptySnapshot, snapshotFrom, syncCatalog, type CatalogIndex, type CatalogSnapshot, type CatalogStore } from "../lib/catalog-sync";
 import { readPricing, writePricing } from "../lib/pricing-idb";

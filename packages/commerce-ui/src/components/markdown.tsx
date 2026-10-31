@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 
 /*
  * A tiny, safe markdown renderer for product descriptions: headings (#, ##, ###), paragraphs, bullet and numbered

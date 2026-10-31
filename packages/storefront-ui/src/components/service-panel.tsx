@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { CalendarCheck2Icon, Clock3Icon, MessageCircleIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import type { Product } from "../types";
 import { durationLabel, serviceAction } from "../lib/service-item";
 import { Price } from "./bits";
@@ -20,7 +20,9 @@ export function ServicePanel({ product, t, contact, className }: { product: Prod
   const duration = durationLabel(product.service?.durationMin, t) ?? (product.attributes?.Duration || product.attributes?.duration || null);
   const varies = product.priceMax > product.priceMin;
   const book = action.kind === "book";
-  const steps = book ? [t("service.how1"), t("service.how2"), t("service.how3")] : [t("service.enquire1"), t("service.enquire2"), t("service.enquire3")];
+  // No price at all (a school programme): the enquiry steps talk about the fee, not a bill after the service.
+  const quote = !book && product.priceMin <= 0;
+  const steps = book ? [t("service.how1"), t("service.how2"), t("service.how3")] : quote ? [t("service.quote1"), t("service.quote2"), t("service.quote3")] : [t("service.enquire1"), t("service.enquire2"), t("service.enquire3")];
   const button = (
     <>
       {book ? <CalendarCheck2Icon className="size-5" /> : <MessageCircleIcon className="size-5" />}
@@ -51,7 +53,7 @@ export function ServicePanel({ product, t, contact, className }: { product: Prod
       )}
       <section aria-labelledby="svc-how" className="rounded-2xl border bg-card p-4 text-card-foreground shadow-xs sm:p-5">
         <h2 id="svc-how" className="mb-3 text-base font-semibold">
-          {book ? t("service.howTitle") : t("service.enquireTitle")}
+          {book ? t("service.howTitle") : quote ? t("service.quoteTitle") : t("service.enquireTitle")}
         </h2>
         <ol className="grid gap-2.5 text-[15px] text-foreground/80">
           {steps.map((s, i) => (

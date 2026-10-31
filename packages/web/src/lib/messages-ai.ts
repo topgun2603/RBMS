@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.ai.* strings: the AI draft banner every AI helper reuses, and the errors the AI routes send. Keep en and ta key sets identical. */
 export const enAi: Messages = {

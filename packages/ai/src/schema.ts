@@ -1,4 +1,4 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { date, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { SummaryFacts } from "./insights/summary";

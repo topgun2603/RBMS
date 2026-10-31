@@ -7,9 +7,9 @@
  */
 import * as React from "react";
 import { AlertTriangleIcon, Loader2Icon, SearchIcon } from "lucide-react";
-import { parseGstin, stateName } from "@srirealtime/gst";
-import { Alert, AlertDescription, Badge, Button, cn } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { parseGstin, stateName } from "@rbms/gst";
+import { Alert, AlertDescription, Badge, Button, cn } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useGstinInfo, useGstinLookup, useGstinStatuses } from "../../lib/queries-export";
 import type { GstinDetails, GstinLookupResult, GstinStatus } from "../../lib/types-export";
 

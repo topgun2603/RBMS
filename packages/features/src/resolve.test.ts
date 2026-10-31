@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { grants, normalizeGrants, resolveFeatures, shopAllows, type ResolveInput } from "./resolve";
 
@@ -183,6 +183,15 @@ describe("resolveFeatures — shop switches", () => {
     const r = resolveFeatures({ registry, app: null, plan: { modules: ["x", "y"], features: {} }, toggles: { x: false, y: true } });
     expect(r.features[0]).toMatchObject({ enabled: false, reason: "shop", shopEnabled: false });
     expect(r.features[1]).toMatchObject({ enabled: true, reason: null, shopEnabled: true });
+  });
+
+  it("defaultOnApps: on by default only in those apps (enquiries for schools)", () => {
+    const registry = [def("enquiries", { shopToggle: true, defaultOnApps: ["SC"] })];
+    const plan = { modules: ["enquiries"], features: {} };
+    expect(resolveFeatures({ registry, app: null, plan, toggles: {}, appId: "SC" }).enabled).toEqual(["enquiries"]);
+    expect(resolveFeatures({ registry, app: null, plan, toggles: {}, appId: "EC" }).features[0]).toMatchObject({ enabled: false, reason: "shop", available: true });
+    expect(resolveFeatures({ registry, app: null, plan, toggles: {}, appId: null }).enabled).toEqual([]);
+    expect(resolveFeatures({ registry, app: null, plan, toggles: { enquiries: true }, appId: "EC" }).enabled).toEqual(["enquiries"]);
   });
 
   it("ignores toggles for non-toggle features", () => {

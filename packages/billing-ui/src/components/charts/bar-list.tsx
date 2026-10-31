@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink } from "@srirealtime/web";
-import { cn, motion, Tooltip, TooltipContent, TooltipTrigger, useReducedMotionSafe } from "@srirealtime/ui";
+import { ModuleLink } from "@rbms/web";
+import { cn, motion, Tooltip, TooltipContent, TooltipTrigger, useReducedMotionSafe } from "@rbms/ui";
 import { ChartTooltipBox } from "./chart-card";
 import { money } from "../../lib/format";
 

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, PowerOffIcon, RefreshCwIcon, WifiOffIcon } from "lucide-react";
-import { Button, Card, CardContent } from "@srirealtime/ui";
+import { Button, Card, CardContent } from "@rbms/ui";
 import {
   getTenantStrategy,
   SessionProvider,
@@ -15,7 +15,7 @@ import {
   useI18n,
   useTenantSlug,
   type MeResponse,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { POS_FEATURES } from "../../lib/access";
 import { initialTerminal, sessionExpired, terminalReducer, terminalView } from "../../lib/pairing";
 import { idleExpired } from "../../lib/pin";

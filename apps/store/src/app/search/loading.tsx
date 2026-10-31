@@ -1,4 +1,4 @@
-import { ListingSkeleton } from "@srirealtime/storefront-ui";
+import { ListingSkeleton } from "@rbms/storefront-ui";
 
 export default function Loading() {
   return <ListingSkeleton />;

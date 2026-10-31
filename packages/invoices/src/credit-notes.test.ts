@@ -1,4 +1,4 @@
-import { computeCreditNote, computeInvoice, CreditNoteError, gstinCheckChar, type LineInput } from "@srirealtime/gst";
+import { computeCreditNote, computeInvoice, CreditNoteError, gstinCheckChar, type LineInput } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { cancelProblem, creditNotePrefix, settleCreditNote } from "./credit-notes-calc";
 import { buildLedger, ledgerEvents } from "./ledger";

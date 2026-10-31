@@ -1,4 +1,4 @@
-import { timestamps } from "@srirealtime/db";
+import { timestamps } from "@rbms/db";
 import { jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import type { BrandTokensPatch } from "./tokens";
 

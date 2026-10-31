@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** growth.reports.* strings. */
 export const en: Messages = {

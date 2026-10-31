@@ -1,5 +1,5 @@
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, count, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { listApplies, pickList, resolvePrice, unitOf, type PricingEntry, type PricingItem, type PricingList, type ResolvedPrice } from "./resolve";

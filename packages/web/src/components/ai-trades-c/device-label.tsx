@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScanBarcodeIcon } from "lucide-react";
-import { Alert, AlertDescription, Badge, Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label } from "@srirealtime/ui";
+import { Alert, AlertDescription, Badge, Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label } from "@rbms/ui";
 import { useI18n } from "../../lib/i18n";
 import { AiDraftBanner } from "../ai-draft";
 import { PhotoButton, postTrades, useTradesError, useTradesHelper, type Run } from "./shared";

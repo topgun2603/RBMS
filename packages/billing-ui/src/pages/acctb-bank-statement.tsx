@@ -27,8 +27,8 @@ import {
   TableRow,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Panel, TableSkeleton } from "../components/accounting/parts";
 import { BankAccountSelect, Figure, useBankAccountParam } from "../components/accounting/part-b";
 import { MoneyInput } from "../components/money-input";

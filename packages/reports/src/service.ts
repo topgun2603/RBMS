@@ -1,4 +1,4 @@
-import { badRequest, conflict, featureDisabled, forbidden, notFound, permissionDenied } from "@srirealtime/core";
+import { badRequest, conflict, featureDisabled, forbidden, notFound, permissionDenied } from "@rbms/core";
 import { z } from "zod";
 import { displayDate, istDate } from "./dates";
 import { REPORTS_FEATURE } from "./features";

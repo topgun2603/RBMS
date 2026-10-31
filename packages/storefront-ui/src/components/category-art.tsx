@@ -117,7 +117,7 @@ import {
   TrophyIcon,
   type LucideProps,
 } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { imageUrl } from "../lib/format";
 import { StoreImage } from "./bits";
 

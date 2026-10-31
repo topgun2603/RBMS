@@ -1,4 +1,4 @@
-import { PACKS, packOrDefault } from "@srirealtime/verticals";
+import { PACKS, packOrDefault } from "@rbms/verticals";
 import type { BrandingArea, CategoriesArea, HomeArea, SettingsArea } from "../studio/areas";
 import type { PlannedOp } from "../studio/types";
 import { buildHome, isStarterHome } from "./home";

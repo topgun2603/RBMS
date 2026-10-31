@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CopyIcon, Loader2Icon, MessageCircleIcon, PrinterIcon, ReceiptTextIcon, ScanTextIcon } from "lucide-react";
-import { Alert, AlertDescription, Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, toast } from "@srirealtime/ui";
+import { Alert, AlertDescription, Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, toast } from "@rbms/ui";
 import { ApiError } from "../../lib/api";
 import { useI18n } from "../../lib/i18n";
 import { AiDraftBanner, sendAiFeedback } from "../ai-draft";

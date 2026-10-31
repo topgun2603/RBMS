@@ -1,4 +1,4 @@
-import { SHOP_DEFAULT_KEYS, defaultCharsPerLine, defaultWidthDots, sanitizeConfig, type PrinterConfig } from "@srirealtime/receipt-print";
+import { SHOP_DEFAULT_KEYS, defaultCharsPerLine, defaultWidthDots, sanitizeConfig, type PrinterConfig } from "@rbms/receipt-print";
 
 /** The Printing settings form: numbers and line lists as text so typing is never fought. Pure, unit-tested. */
 export interface PrintForm {

@@ -1,5 +1,5 @@
-import { mergeTokens, type BrandTokens } from "@srirealtime/branding/tokens";
-import { LAYOUT_OPTIONS, STORE_FONTS, THEME_OPTIONS, THEME_PRESETS } from "@srirealtime/branding/theme";
+import { mergeTokens, type BrandTokens } from "@rbms/branding/tokens";
+import { LAYOUT_OPTIONS, STORE_FONTS, THEME_OPTIONS, THEME_PRESETS } from "@rbms/branding/theme";
 import { z } from "zod";
 import { DATA_RULES, dataBlock, neutralise, outputLooksInjected } from "../assist/safety";
 import type { AiRunRequest, AiRunResult, AiTool } from "../types";

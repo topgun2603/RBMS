@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { ArmchairIcon, CalendarCheck2Icon, LandmarkIcon, PercentIcon } from "lucide-react";
-import type { NavSection, RouteDef, WebModule } from "@srirealtime/web";
+import type { NavSection, RouteDef, WebModule } from "@rbms/web";
 import { ACC_VIEW } from "./lib/accounting";
 import { ACC_BANK } from "./lib/accounting-b";
 import * as partB from "./lib/messages/accounting-b";

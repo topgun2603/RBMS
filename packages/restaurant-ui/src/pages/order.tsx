@@ -33,8 +33,8 @@ import {
   Input,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useDebounced, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useDebounced, useI18n, useModuleNavigate, usePermission, useRouteParams } from "@rbms/web";
 import { BillDialog } from "../components/bill-dialog";
 import { InlineError, KotPill, ReasonDialog, VegMark } from "../components/bits";
 import { RESTAURANT_PERMISSIONS } from "../lib/access";

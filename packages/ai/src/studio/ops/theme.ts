@@ -1,5 +1,5 @@
-import { brandTokensSchema, contrastWarnings, mergeTokens, type BrandTokens, type BrandTokensPatch } from "@srirealtime/branding/tokens";
-import { LAYOUT_OPTIONS, STORE_FONTS, THEME_OPTIONS, THEME_PRESETS, themePreset, storeThemePatchSchema } from "@srirealtime/branding/theme";
+import { brandTokensSchema, contrastWarnings, mergeTokens, type BrandTokens, type BrandTokensPatch } from "@rbms/branding/tokens";
+import { LAYOUT_OPTIONS, STORE_FONTS, THEME_OPTIONS, THEME_PRESETS, themePreset, storeThemePatchSchema } from "@rbms/branding/theme";
 import { z } from "zod";
 import { AREA, fail, type BrandingArea } from "../areas";
 import type { Bi, StudioEnv, StudioState } from "../types";

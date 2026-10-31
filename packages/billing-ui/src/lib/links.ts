@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useModuleHref } from "@srirealtime/web";
+import { useModuleHref } from "@rbms/web";
 
 /**
  * Absolute URL of one of this module's public pages ("i/<token>", "s/<token>") wherever the host mounted the module

@@ -1,5 +1,5 @@
-import { badRequest, notFound } from "@srirealtime/core";
-import { isValidGstin, normalizeGstin } from "@srirealtime/gst";
+import { badRequest, notFound } from "@rbms/core";
+import { isValidGstin, normalizeGstin } from "@rbms/gst";
 import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { ItcDoc } from "./itc";

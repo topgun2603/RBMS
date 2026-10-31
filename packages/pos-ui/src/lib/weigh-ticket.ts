@@ -1,4 +1,4 @@
-import { lineAmount } from "@srirealtime/gst";
+import { lineAmount } from "@rbms/gst";
 import type { CartLine } from "./cart";
 import type { WeighTicket } from "./terminal-types";
 

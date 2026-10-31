@@ -8,8 +8,8 @@ import {
   safeEqual,
   unauthorized,
   type FeatureGatePort,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, notInArray, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { ShiprocketClient, ShiprocketDriver, ShiprocketError, parseShiprocketWebhook, type TokenCache, memoryTokenCache } from "./carriers/shiprocket";

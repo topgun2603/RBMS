@@ -1,5 +1,5 @@
 // Seeds the dedicated e2e shops, then runs every end-to-end script in sequence against the running API.
-//   pnpm --filter @srirealtime/api test:e2e:all
+//   pnpm --filter @rbms/api test:e2e:all
 // Needs the API in development with the test OTP on (apps/api/.env: TEST_OTP_CODE, TEST_OTP_TARGETS); see
 // docs/features.md "End-to-end shops". Then the storefront browser test (apps/store test:e2e) when the api and store
 // dev servers are up (skipped with a message otherwise). Exit code 1 when the seed or any script fails.
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const apiDir = join(here, "..", "..");
-const SCRIPTS = ["batch1.mjs", "batch2.mjs", "billing.mjs", "credit-notes.mjs", "batch3.mjs", "batch5.mjs"];
+const SCRIPTS = ["batch1.mjs", "batch2.mjs", "billing.mjs", "credit-notes.mjs", "batch3.mjs", "batch5.mjs", "batch10.mjs"];
 
 const seed = spawnSync("pnpm run seed:e2e", { cwd: apiDir, shell: true, encoding: "utf8" });
 if (seed.status !== 0) {

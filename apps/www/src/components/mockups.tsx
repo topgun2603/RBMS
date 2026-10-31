@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { CheckIcon, CheckCheckIcon, ShoppingBagIcon, SearchIcon, BellRingIcon, IndianRupeeIcon, MessageCircleIcon, PackageIcon } from "lucide-react";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Card } from "@srirealtime/ui/components/card";
-import { AnimatedNumber, AnimatePresence, RollingNumber, motion, useInView, useReducedMotionSafe } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Badge } from "@rbms/ui/components/badge";
+import { Card } from "@rbms/ui/components/card";
+import { AnimatedNumber, AnimatePresence, RollingNumber, motion, useInView, useReducedMotionSafe } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import { useSite } from "./site-context";
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;

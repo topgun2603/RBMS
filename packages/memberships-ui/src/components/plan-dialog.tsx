@@ -26,9 +26,9 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { GST_RATES } from "@srirealtime/gst";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { GST_RATES } from "@rbms/gst";
+import { describeError, useI18n } from "@rbms/web";
 import { DURATION_PRESETS, paiseToRupees, presetFor, rupeesToPaise } from "../lib/format";
 import { useSavePlan } from "../lib/queries";
 import type { Plan } from "../lib/types";

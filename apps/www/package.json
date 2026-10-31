@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/www",
+  "name": "@rbms/www",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,11 +12,11 @@
     "test:e2e": "node test/e2e.cjs"
   },
   "dependencies": {
-    "@srirealtime/i18n": "workspace:*",
-    "@srirealtime/tenancy": "workspace:*",
-    "@srirealtime/ui": "workspace:*",
-    "@srirealtime/verticals": "workspace:*",
-    "@srirealtime/web": "workspace:*",
+    "@rbms/i18n": "workspace:*",
+    "@rbms/tenancy": "workspace:*",
+    "@rbms/ui": "workspace:*",
+    "@rbms/verticals": "workspace:*",
+    "@rbms/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "firebase": "^12.19.0",
     "lucide-react": "^0.525.0",

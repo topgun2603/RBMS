@@ -1,4 +1,4 @@
-import { badRequest } from "@srirealtime/core";
+import { badRequest } from "@rbms/core";
 import type { z } from "zod";
 import { splitPatch, type Layer } from "./merge";
 

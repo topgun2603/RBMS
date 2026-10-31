@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BookOpenIcon, CodeXmlIcon, HistoryIcon, KeyRoundIcon, WebhookIcon } from "lucide-react";
-import { FadeIn, Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
-import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { FadeIn, Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
+import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { DELIVERIES_ENDPOINT_PARAM, DELIVERIES_URL_PREFIX, DeliveriesTab } from "../components/developer/deliveries-tab";
 import { DocsTab } from "../components/developer/docs-tab";
 import { KeysTab } from "../components/developer/keys-tab";

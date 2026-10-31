@@ -1,5 +1,5 @@
-import { AppError } from "@srirealtime/core";
-import { createDb } from "@srirealtime/db";
+import { AppError } from "@rbms/core";
+import { createDb } from "@rbms/db";
 import { afterAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { importJobs } from "./schema";

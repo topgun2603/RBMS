@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BellRingIcon, CheckCheckIcon, FileTextIcon, HashIcon, Loader2Icon, LockIcon, PackageOpenIcon, SaveIcon, ShoppingBagIcon } from "lucide-react";
-import { AnimatePresence, Button, ChipGroup, Input, motion, Skeleton, Switch, toast } from "@srirealtime/ui";
-import { describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useOptionalSession } from "@srirealtime/web";
+import { AnimatePresence, Button, ChipGroup, Input, motion, Skeleton, Switch, toast } from "@rbms/ui";
+import { describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useOptionalSession } from "@rbms/web";
 import { Field, ReadOnlyNote, Section } from "../components/bits";
 import { PREFIX_RE, sampleNumber, withDefaults } from "../lib/order-settings";
 import { useOrderSettings, useSaveOrderSettings } from "../lib/queries";

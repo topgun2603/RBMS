@@ -1,4 +1,4 @@
-import { exclusiveOf } from "@srirealtime/gst";
+import { exclusiveOf } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import {
   buildTree,

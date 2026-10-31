@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, CircleDashedIcon, CircleSlashIcon, XCircleIcon } from "lucide-react";
-import { StatusPill, Tooltip, TooltipContent, TooltipTrigger } from "@srirealtime/ui";
-import { ApiError, useI18n } from "@srirealtime/web";
+import { StatusPill, Tooltip, TooltipContent, TooltipTrigger } from "@rbms/ui";
+import { ApiError, useI18n } from "@rbms/web";
 import { money, num } from "../../lib/format";
 import { bucketLabel, columnOf, optionLabel, relativeParts, type Issue, type OutputKey } from "../../lib/report-spec";
 import type { DatasetInfo, DateBucket, DatePreset, FilterOp, MeasureFn, ReportSchedule, RunColumn } from "../../lib/types";

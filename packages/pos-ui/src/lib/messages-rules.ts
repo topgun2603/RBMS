@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** pos.rules.* strings: Settings, Counter rules (cash difference limit, customer display messages). Merged into posMessages. */
 export const rulesEn: Messages = {

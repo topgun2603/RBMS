@@ -1,5 +1,5 @@
-import { AppError, badRequest, notFound, randomToken, sha256, type FeatureGatePort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, notFound, randomToken, sha256, type FeatureGatePort } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, gt, isNotNull, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";
@@ -26,7 +26,7 @@ import {
   type PaymentPurpose,
   type ShopNamePort,
 } from "./ports";
-import { RazorpayClient, RazorpayError } from "./razorpay";
+import { RazorpayClient, RazorpayError, type RazorpayPayment } from "./razorpay";
 import { paymentAccounts, paymentEvents, paymentOrders, type OrderStatus, type PaymentAccountRow, type PaymentOrderRow } from "./schema";
 import { verifyPaymentSignature, verifyWebhookSignature } from "./signature";
 
@@ -415,9 +415,10 @@ export class PaymentsService {
     }
     if (order.status === "paid") return { status: "paid", amount: order.amount };
 
+    const client = this.client(account.keyId, secret);
     let payment;
     try {
-      payment = await this.client(account.keyId, secret).fetchPayment(paymentId);
+      payment = await client.fetchPayment(paymentId);
     } catch (err) {
       if (err instanceof RazorpayError && err.status >= 400 && err.status < 500) {
         throw appError(400, "invalid_payment", "Payment not found at Razorpay");
@@ -426,12 +427,17 @@ export class PaymentsService {
       throw appError(502, "provider_error", "Could not confirm the payment, try again");
     }
     if (payment.order_id !== orderId) throw appError(400, "invalid_payment", "Payment belongs to another order");
-    if (payment.status !== "captured" && payment.status !== "authorized") {
-      throw appError(400, "payment_not_completed", `Payment is ${payment.status}`);
-    }
-    if (payment.amount !== order.amount) {
-      this.log.error({ orderId, paymentId, expected: order.amount, got: payment.amount }, "payments: amount mismatch");
+    // Amounts are minor units: 50,000 of another currency is not ₹500. Checked before any capture.
+    if (payment.amount !== order.amount || payment.currency !== order.currency) {
+      this.log.error({ orderId, paymentId, expected: order.amount, got: payment.amount, currency: payment.currency, orderCurrency: order.currency }, "payments: amount mismatch");
       throw appError(400, "amount_mismatch", "Paid amount does not match the order");
+    }
+    // Only captured money counts: an authorized payment can still be voided or expire uncaptured. The checkout handler
+    // can run before Razorpay's auto-capture (or the account captures manually), so take the money here rather than
+    // telling a shopper who paid that it failed.
+    if (payment.status === "authorized") payment = await this.capture(client, payment, orderId);
+    if (payment.status !== "captured") {
+      throw appError(400, "payment_not_completed", `Payment is ${payment.status}`);
     }
 
     await this.markPaid(order, {
@@ -440,6 +446,24 @@ export class PaymentsService {
       paidAt: payment.created_at ? new Date(payment.created_at * 1000) : this.now(),
     });
     return { status: "paid", amount: order.amount };
+  }
+
+  /**
+   * Captures an authorized payment for its full amount. When the capture is refused (auto-capture got there first, or
+   * the payment moved on), the payment is read again and its state decides.
+   */
+  private async capture(client: RazorpayClient, payment: RazorpayPayment, orderId: string): Promise<RazorpayPayment> {
+    try {
+      return await client.capturePayment(payment.id, payment.amount, payment.currency);
+    } catch (err) {
+      this.log.warn({ err, orderId, paymentId: payment.id }, "payments: capture refused, reading the payment again");
+      try {
+        return await client.fetchPayment(payment.id);
+      } catch (again) {
+        this.log.error({ err: again, orderId, paymentId: payment.id }, "payments: Razorpay payment fetch failed after capture");
+        throw appError(502, "provider_error", "Could not confirm the payment, try again");
+      }
+    }
   }
 
   async mockComplete(input: MockCompleteInput): Promise<PaidResult> {

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, PrinterIcon, SparklesIcon } from "lucide-react";
-import { Button, Input } from "@srirealtime/ui";
-import { AiDraftBanner, Page, PageHeading, describeError, useI18n } from "@srirealtime/web";
+import { Button, Input } from "@rbms/ui";
+import { AiDraftBanner, Page, PageHeading, describeError, useI18n } from "@rbms/web";
 import { usePlan, type PlanAction, type PlanResult } from "../lib/ai";
 
 const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;

@@ -27,7 +27,7 @@ import {
   SelectValue,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { api } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";
 import { plansForApp } from "@/lib/plans";

@@ -1,4 +1,4 @@
-import { hasPermission, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { hasPermission, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { WHATSAPP_FEATURE_KEYS, WHATSAPP_PERMISSION_KEYS } from "./features";

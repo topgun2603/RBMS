@@ -1,5 +1,5 @@
-import { facetCounts } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { facetCounts } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, count, desc, eq, gte, sql, type SQL } from "drizzle-orm";
 import { REVIEW_SORT, reviewConditions, type ReviewPageQuery } from "./list";
 import {

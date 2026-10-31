@@ -1,5 +1,5 @@
-import { authOtps, authSessions } from "@srirealtime/auth";
-import { chatMessages } from "@srirealtime/chat";
+import { authOtps, authSessions, users } from "@rbms/auth";
+import { chatMessages } from "@rbms/chat";
 import {
   PRIVACY_SETTINGS_DEFAULTS,
   normalisePhone,
@@ -10,22 +10,23 @@ import {
   type RetentionService,
   type SubjectHandler,
   type SubjectQuery,
-} from "@srirealtime/consent";
-import { billingCustomers, invoices } from "@srirealtime/invoices";
-import { kycDocuments } from "@srirealtime/kyc";
-import { loyaltyLedger, loyaltyMembers } from "@srirealtime/loyalty";
-import { medicinePrescriptions } from "@srirealtime/medicines";
-import { membershipMembers, membershipSubscriptions } from "@srirealtime/memberships";
-import { orders } from "@srirealtime/orders";
-import { payrollEmployees } from "@srirealtime/payroll";
-import type { SettingsService } from "@srirealtime/settings";
-import { storeAddresses, storeCarts, storeCustomers, storeWishlist } from "@srirealtime/storefront";
-import { supportMessages, supportTickets } from "@srirealtime/support";
-import { tenants } from "@srirealtime/tenancy";
-import { files, type UploadsService } from "@srirealtime/uploads";
-import { waContacts, waMessages } from "@srirealtime/whatsapp";
-import type { Db } from "@srirealtime/db";
-import type { FeaturesService } from "@srirealtime/features";
+} from "@rbms/consent";
+import { enquiries } from "@rbms/enquiries";
+import { billingCustomers, invoices } from "@rbms/invoices";
+import { kycDocuments } from "@rbms/kyc";
+import { loyaltyLedger, loyaltyMembers } from "@rbms/loyalty";
+import { medicinePrescriptions } from "@rbms/medicines";
+import { membershipMembers, membershipSubscriptions } from "@rbms/memberships";
+import { orders } from "@rbms/orders";
+import { payrollEmployees } from "@rbms/payroll";
+import type { SettingsService } from "@rbms/settings";
+import { storeAddresses, storeCarts, storeCustomers, storeWishlist } from "@rbms/storefront";
+import { supportMessages, supportTickets } from "@rbms/support";
+import { tenants } from "@rbms/tenancy";
+import { files, type UploadsService } from "@rbms/uploads";
+import { waContacts, waMessages } from "@rbms/whatsapp";
+import type { Db } from "@rbms/db";
+import type { FeaturesService } from "@rbms/features";
 import { and, count, eq, inArray, isNotNull, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 
 /** Tables each retention category touches; the test in kit-privacy.test.ts checks none is a tax / accounting table. */
@@ -61,8 +62,8 @@ export function createPrivacyHost(deps: PrivacyKitDeps): PrivacyHostPort {
       const [b, aiSettings] = await Promise.all([deps.settings.handle("billing").get({ tenantId }) as Promise<Record<string, string>>, deps.settings.handle("ai").get({ tenantId }) as Promise<{ enabled?: boolean }>]);
       const f = deps.features();
       const on = (key: string) => f.isEnabled(tenantId, key).catch(() => false);
-      const [storefront, loyalty, memberships, pharmacy, payroll, aiOn, whatsapp, delivery, bookings, jobcards] = await Promise.all(
-        ["storefront", "loyalty", "memberships", "medicines", "payroll", "ai", "whatsapp", "delivery", "bookings", "jobcards"].map(on),
+      const [storefront, loyalty, memberships, pharmacy, payroll, aiOn, whatsapp, delivery, bookings, jobcards, enquiriesOn] = await Promise.all(
+        ["storefront", "loyalty", "memberships", "medicines", "payroll", "ai", "whatsapp", "delivery", "bookings", "jobcards", "enquiries"].map(on),
       );
       return {
         shopName: t?.name ?? "",
@@ -78,6 +79,7 @@ export function createPrivacyHost(deps: PrivacyKitDeps): PrivacyHostPort {
           messaging: !!whatsapp,
           delivery: !!delivery,
           services: !!bookings || !!jobcards,
+          enquiries: !!enquiriesOn,
         },
       };
     },
@@ -86,12 +88,17 @@ export function createPrivacyHost(deps: PrivacyKitDeps): PrivacyHostPort {
       return rows.map((r) => r.id);
     },
     async contactOf(tenantId, userId) {
-      const [c] = await deps.db
-        .select({ name: storeCustomers.name, phone: storeCustomers.phone, email: storeCustomers.email })
-        .from(storeCustomers)
-        .where(and(eq(storeCustomers.tenantId, tenantId), eq(storeCustomers.userId, userId)))
-        .limit(1);
-      return c ? { name: c.name || null, phone: c.phone, email: c.email } : null;
+      // Phone and email from the sign-in account (verified by OTP / Google / Firebase); the shop profile's are editable.
+      const [[u], [c]] = await Promise.all([
+        deps.db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
+        deps.db
+          .select({ name: storeCustomers.name })
+          .from(storeCustomers)
+          .where(and(eq(storeCustomers.tenantId, tenantId), eq(storeCustomers.userId, userId)))
+          .limit(1),
+      ]);
+      if (!u) return null;
+      return { name: c?.name || u.name || null, phone: u.phone, email: u.email };
     },
   };
 }
@@ -312,7 +319,31 @@ export function createSubjectHandlers(deps: { db: Db; uploads: () => UploadsServ
     },
   };
 
-  return [storeCustomersHandler, billingHandler, loyaltyHandler, membershipHandler, whatsappHandler, supportHandler];
+  const enquiriesHandler: SubjectHandler = {
+    id: "enquiries",
+    label: "Website enquiry",
+    async locate(tenantId, q) {
+      const or_ = [...phoneOr(enquiries.phone, q), ...emailEq(enquiries.email, q)];
+      if (!or_.length) return [];
+      const rows = await db.select({ id: enquiries.id, number: enquiries.number, name: enquiries.name }).from(enquiries).where(and(eq(enquiries.tenantId, tenantId), or(...or_)));
+      return rows.map((r) => ({ id: r.id, label: `${r.number} ${r.name}` }));
+    },
+    async export(tenantId, id) {
+      const [e] = await db.select().from(enquiries).where(and(eq(enquiries.tenantId, tenantId), eq(enquiries.id, id))).limit(1);
+      return {
+        enquiry: e
+          ? { number: e.number, name: e.name, phone: e.phone, email: e.email, topic: e.topic, studentName: e.studentName, option: e.option, message: e.message, status: e.status, createdAt: e.createdAt }
+          : null,
+      };
+    },
+    async anonymise(tenantId, id) {
+      await db.delete(enquiries).where(and(eq(enquiries.tenantId, tenantId), eq(enquiries.id, id)));
+      return { anonymised: true, kept: [] };
+    },
+    correctionHint: "Website enquiry: correct it under Enquiries (staff note), or delete it.",
+  };
+
+  return [storeCustomersHandler, billingHandler, loyaltyHandler, membershipHandler, whatsappHandler, supportHandler, enquiriesHandler];
 }
 
 // ---------------------------------------------------------------------------------------------------- retention catalogue
@@ -525,6 +556,22 @@ export function createRetentionCategories(deps: { db: Db; uploads: () => Uploads
         const t = tid(s);
         const rows = await db.delete(kycDocuments).where(and(eq(kycDocuments.tenantId, t), lt(kycDocuments.createdAt, cutoff))).returning({ url: kycDocuments.fileUrl });
         await removeUploads(db, deps.uploads, t, rows.map((r) => r.url));
+        return rows.length;
+      },
+    },
+    {
+      key: "website_enquiries",
+      scope: "shop",
+      defaultDays: 730,
+      minDays: 30,
+      action: "delete",
+      touches: ["enquiries"],
+      async count(s, cutoff) {
+        const [r] = await db.select({ n: count() }).from(enquiries).where(and(eq(enquiries.tenantId, tid(s)), lt(enquiries.createdAt, cutoff)));
+        return Number(r?.n ?? 0);
+      },
+      async purge(s, cutoff) {
+        const rows = await db.delete(enquiries).where(and(eq(enquiries.tenantId, tid(s)), lt(enquiries.createdAt, cutoff))).returning({ id: enquiries.id });
         return rows.length;
       },
     },

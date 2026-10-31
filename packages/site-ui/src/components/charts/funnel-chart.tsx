@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownIcon } from "lucide-react";
-import { motion, useReducedMotionSafe } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { motion, useReducedMotionSafe } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { FunnelRow } from "../../lib/analytics";
 import { pct } from "../../lib/format";
 

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
-import { Button, Input, Label, Switch, toast } from "@srirealtime/ui";
+import { Button, Input, Label, Switch, toast } from "@rbms/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 

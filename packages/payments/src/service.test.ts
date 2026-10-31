@@ -1,5 +1,5 @@
-import { AppError } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { createSecretBox } from "./crypto";
@@ -249,7 +249,7 @@ describe("verify", () => {
   });
 
   it("fetches the payment, checks amount and marks paid with the stored amount", async () => {
-    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, status: "captured", method: "netbanking", created_at: 1760000000 });
+    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "INR", status: "captured", method: "netbanking", created_at: 1760000000 });
     const paid = order({ status: "paid", method: "bank", providerPaymentId: "pay_123", paidAt: new Date(1760000000 * 1000) });
     const { service, purpose: p } = setup([[order()], [account()], [paid]], { fetch });
     expect(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig })).toEqual({ status: "paid", amount: 50_000 });
@@ -263,6 +263,60 @@ describe("verify", () => {
     const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
     expect(err.code).toBe("amount_mismatch");
     expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("refuses a payment in another currency", async () => {
+    const fetch = jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "USD", status: "captured", method: "card" });
+    const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch });
+    const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
+    expect(err.code).toBe("amount_mismatch");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  describe("a payment that is only authorized", () => {
+    const authorized = { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "INR", status: "authorized", method: "card" };
+    const captured = { ...authorized, status: "captured" };
+    const replies = (...rs: [number, unknown][]) => {
+      const fetch = vi.fn(async (_url: string, _init?: RequestInit) => {
+        const [status, body] = rs.shift() ?? [500, {}];
+        return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      });
+      return fetch as unknown as ReturnType<typeof jsonFetch>;
+    };
+    const call = (fetch: ReturnType<typeof jsonFetch>, i: number) => fetch.mock.calls[i] as unknown as [string, RequestInit];
+
+    it("captures it for the full amount and marks the order paid", async () => {
+      const fetch = replies([200, authorized], [200, captured]);
+      const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch });
+      expect(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig })).toEqual({ status: "paid", amount: 50_000 });
+      const [url, init] = call(fetch, 1);
+      expect([url, init.method, JSON.parse(String(init.body))]).toEqual(["https://api.razorpay.com/v1/payments/pay_123/capture", "POST", { amount: 50_000, currency: "INR" }]);
+      expect(p.onPaid).toHaveBeenCalledOnce();
+    });
+
+    it("reads the payment again when the capture is refused (auto-capture got there first)", async () => {
+      const fetch = replies([200, authorized], [400, { error: { code: "BAD_REQUEST_ERROR", description: "This payment has already been captured" } }], [200, captured]);
+      const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch });
+      expect(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig })).toEqual({ status: "paid", amount: 50_000 });
+      expect(p.onPaid).toHaveBeenCalledOnce();
+    });
+
+    it("stays not completed when the capture is refused and the payment is still not captured", async () => {
+      const fetch = replies([200, authorized], [400, { error: { description: "Payment expired" } }], [200, { ...authorized, status: "failed" }]);
+      const { service, purpose: p } = setup([[order()], [account()]], { fetch });
+      expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("payment_not_completed");
+      expect(p.onPaid).not.toHaveBeenCalled();
+    });
+
+    it("is never captured when the amount or currency is wrong", async () => {
+      for (const wrong of [{ amount: 49_999 }, { currency: "USD" }]) {
+        const fetch = replies([200, { ...authorized, ...wrong }]);
+        const { service, purpose: p } = setup([[order()], [account()]], { fetch });
+        expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("amount_mismatch");
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(p.onPaid).not.toHaveBeenCalled();
+      }
+    });
   });
 
   it("is idempotent for already-paid orders", async () => {
@@ -373,5 +427,74 @@ describe("credentials (internal)", () => {
 
   it("fails closed when the secret cannot be decrypted", async () => {
     await expect(make([[account({ keySecretEnc: "garbage" })]]).credentials(TENANT)).rejects.toBeInstanceOf(AppError);
+  });
+});
+
+describe("amounts and payment state", () => {
+  const sig = hmac("order_ABC|pay_123", "key-secret");
+  const pay = (over: Record<string, unknown> = {}) =>
+    jsonFetch(200, { id: "pay_123", order_id: "order_ABC", amount: 50_000, currency: "INR", status: "captured", method: "upi", ...over });
+
+  it("checkout refuses amounts Razorpay cannot take: under ₹1, fractional paise, over the cap", async () => {
+    for (const amount of [99, 0, -100, 100.5, 2_000_000_001]) {
+      const { service, purpose: p, fake } = setup([]);
+      p.resolve.mockResolvedValueOnce({ ...(await p.resolve()), amount });
+      expect(code(await service.checkout({ kind: "invoice", ref: REF }).catch((e) => e))).toBe("not_payable");
+      expect(fake.ops).toHaveLength(0);
+    }
+  });
+
+  it("checkout accepts exactly ₹1 and asks Razorpay for that many paise in INR", async () => {
+    const fetch = jsonFetch(200, { id: "order_NEW", amount: 100, currency: "INR", receipt: "inv-1", status: "created" });
+    const { service, purpose: p } = setup([[account()], [], [order({ amount: 100, providerOrderId: "order_NEW" })]], { fetch });
+    p.resolve.mockResolvedValueOnce({ ...(await p.resolve()), amount: 100 });
+    const res = await service.checkout({ kind: "invoice", ref: REF });
+    expect(res).toMatchObject({ orderId: "order_NEW", amount: 100, currency: "INR" });
+    const body = JSON.parse(String((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(body).toMatchObject({ amount: 100, currency: "INR" });
+  });
+
+  it("verify refuses a payment that is not captured or authorized", async () => {
+    for (const status of ["failed", "created", "refunded"]) {
+      const { service, purpose: p } = setup([[order()], [account()]], { fetch: pay({ status }) });
+      expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("payment_not_completed");
+      expect(p.onPaid).not.toHaveBeenCalled();
+    }
+  });
+
+  it("verify refuses a payment of another order", async () => {
+    const { service, purpose: p } = setup([[order()], [account()]], { fetch: pay({ order_id: "order_OTHER" }) });
+    expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("invalid_payment");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("verify refuses a partial payment (one paisa short)", async () => {
+    const { service, purpose: p } = setup([[order()], [account()]], { fetch: pay({ amount: 49_999 }) });
+    expect(code(await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e))).toBe("amount_mismatch");
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("verify refuses a payment in another currency", async () => {
+    const { service, purpose: p } = setup([[order()], [account()], [order({ status: "paid" })]], { fetch: pay({ currency: "USD" }) });
+    const err = await service.verify({ orderId: "order_ABC", paymentId: "pay_123", signature: sig }).catch((e) => e);
+    expect(err).toBeInstanceOf(AppError);
+    expect(p.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("a webhook with the wrong amount is recorded but does not mark the order paid", async () => {
+    const body = JSON.stringify({ event: "payment.captured", payload: { payment: { entity: { id: "pay_9", order_id: "order_ABC", amount: 100, method: "upi", status: "captured" } } } });
+    const { service, purpose: p, log } = setup([[account()], [{ id: "e1" }], [order()], []]);
+    expect(await service.handleWebhook(TENANT, Buffer.from(body), hmac(body, "hook-secret"), "evt_amt")).toEqual({ ok: true, result: "ignored" });
+    expect(p.onPaid).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalledWith(expect.objectContaining({ expected: 50_000, got: 100 }), "payments: webhook amount mismatch");
+  });
+
+  it("a webhook for an order the tenant does not have changes nothing", async () => {
+    const body = JSON.stringify({ event: "order.paid", payload: { payment: { entity: { id: "pay_9", order_id: "order_ELSE", amount: 50_000, status: "captured" } } } });
+    const { service, purpose: p, fake } = setup([[account()], [{ id: "e1" }], [], []]);
+    expect(await service.handleWebhook(TENANT, Buffer.from(body), hmac(body, "hook-secret"), "evt_x")).toEqual({ ok: true, result: "ignored" });
+    expect(p.onPaid).not.toHaveBeenCalled();
+    // account, event insert, order lookup (scoped by tenant), event processed: no order update.
+    expect(fake.ops).toHaveLength(4);
   });
 });

@@ -1,4 +1,4 @@
-import { AppError, emptyContext, requireBranch, type RequestContext, type UserRef } from "@srirealtime/core";
+import { AppError, emptyContext, requireBranch, type RequestContext, type UserRef } from "@rbms/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { branchContextHook, resolveRequestBranch, type BranchDirectory } from "./hook";

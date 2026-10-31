@@ -1,8 +1,8 @@
-import { aiStore, type AiService, type AiSettings } from "@srirealtime/ai";
-import { AppError, type TenantRef } from "@srirealtime/core";
-import { sql, type Db } from "@srirealtime/db";
-import type { JobsService } from "@srirealtime/jobs";
-import { composeSocialImage } from "@srirealtime/uploads";
+import { aiStore, type AiService, type AiSettings } from "@rbms/ai";
+import { AppError, type TenantRef } from "@rbms/core";
+import { sql, type Db } from "@rbms/db";
+import type { JobsService } from "@rbms/jobs";
+import { composeSocialImage } from "@rbms/uploads";
 import { allowedImageUrl } from "./kit-ai-trades-b";
 import { policyLines } from "./kit-ai-assist";
 

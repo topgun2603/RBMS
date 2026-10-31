@@ -1,17 +1,18 @@
-import { billingModule } from "@srirealtime/billing-ui";
-import { bookingsModule } from "@srirealtime/bookings-ui";
-import { commerceModule } from "@srirealtime/commerce-ui";
-import { growthModule } from "@srirealtime/growth-ui";
-import { inboxModule } from "@srirealtime/inbox-ui";
-import { jobcardsModule } from "@srirealtime/jobcards-ui";
-import { membershipsModule } from "@srirealtime/memberships-ui";
-import { ordersModule } from "@srirealtime/orders-ui";
-import { payrollModule } from "@srirealtime/payroll-ui";
-import { posModule } from "@srirealtime/pos-ui";
-import { serialsModule } from "@srirealtime/serials-ui";
-import { siteModule } from "@srirealtime/site-ui";
-import { createWebApp, currentTenantSlug } from "@srirealtime/web";
-import { workspaceModule } from "@srirealtime/workspace-ui";
+import { billingModule } from "@rbms/billing-ui";
+import { bookingsModule } from "@rbms/bookings-ui";
+import { commerceModule } from "@rbms/commerce-ui";
+import { enquiriesModule } from "@rbms/enquiries-ui";
+import { growthModule } from "@rbms/growth-ui";
+import { inboxModule } from "@rbms/inbox-ui";
+import { jobcardsModule } from "@rbms/jobcards-ui";
+import { membershipsModule } from "@rbms/memberships-ui";
+import { ordersModule } from "@rbms/orders-ui";
+import { payrollModule } from "@rbms/payroll-ui";
+import { posModule } from "@rbms/pos-ui";
+import { serialsModule } from "@rbms/serials-ui";
+import { siteModule } from "@rbms/site-ui";
+import { createWebApp, currentTenantSlug } from "@rbms/web";
+import { workspaceModule } from "@rbms/workspace-ui";
 
 /** The shop's online store ({slug} = shop subdomain): job cards link customers to `<store>/job/<code>` to track work. */
 const STORE_URL = process.env.NEXT_PUBLIC_STORE_URL || "http://{slug}.localhost:3003";
@@ -39,6 +40,7 @@ export const webApp = createWebApp({
     ordersModule(),
     commerceModule(),
     siteModule(),
+    enquiriesModule(),
     inboxModule({ basePath: "/inbox", links: { invoice: (id) => `/invoices/${id}` } }),
     growthModule(),
     payrollModule(),

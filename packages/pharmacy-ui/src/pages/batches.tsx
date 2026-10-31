@@ -13,8 +13,8 @@ import {
   DropdownMenuTrigger,
   StatCard,
   type DataTableColumn,
-} from "@srirealtime/ui";
-import { Page, PageHeading, useI18n, usePermission, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { Page, PageHeading, useI18n, usePermission, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { AdjustDialog } from "../components/adjust-dialog";
 import { ExpiryPill } from "../components/bits";
 import { MovementsDialog } from "../components/movements-dialog";

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, describeError, ModuleLink, useI18n } from "@srirealtime/web";
+import { ConfirmDialog, describeError, ModuleLink, useI18n } from "@rbms/web";
 import { HandCoinsIcon, Undo2Icon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill, toast } from "@srirealtime/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill, toast } from "@rbms/ui";
 import { useHasPermission } from "../../lib/access";
 import { formatQty, money } from "../../lib/format";
 import { useCancelDebitNote, useDebitNotesOf, usePurchasePayments, useReversePayment } from "../../lib/queries-payables";

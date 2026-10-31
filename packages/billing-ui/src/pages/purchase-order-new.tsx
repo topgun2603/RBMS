@@ -1,7 +1,7 @@
 "use client";
 
 import { ClipboardListIcon } from "lucide-react";
-import { Page, PageHeading, useI18n } from "@srirealtime/web";
+import { Page, PageHeading, useI18n } from "@rbms/web";
 import { PurchaseForm } from "../components/inventory/purchase-form";
 
 export default function NewPurchaseOrderPage() {

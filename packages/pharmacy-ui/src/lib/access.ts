@@ -1,11 +1,11 @@
-/** Feature keys the pharmacy UI uses (declared by @srirealtime/medicines). */
+/** Feature keys the pharmacy UI uses (declared by @rbms/medicines). */
 export const PHARMACY_FEATURES = {
   medicines: "medicines",
   prescriptions: "medicines.prescriptions",
   register: "medicines.register",
 } as const;
 
-/** Permissions of @srirealtime/medicines. Owners and admins hold both. */
+/** Permissions of @rbms/medicines. Owners and admins hold both. */
 export const PHARMACY_PERMISSIONS = {
   manage: "medicines.manage",
   dispense: "medicines.dispense",

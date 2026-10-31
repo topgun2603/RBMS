@@ -1,4 +1,4 @@
-import { HelpArticlePage, helpArticleMetadata } from "@srirealtime/storefront-ui";
+import { HelpArticlePage, helpArticleMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ slug: string }> };
 

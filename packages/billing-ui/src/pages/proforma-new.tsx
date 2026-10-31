@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Page, PageHeading, useI18n, useQueryParams } from "@srirealtime/web";
+import { Page, PageHeading, useI18n, useQueryParams } from "@rbms/web";
 import { FileBadgeIcon } from "lucide-react";
 import { SalesDocForm } from "../components/sales-docs/sd-form";
 

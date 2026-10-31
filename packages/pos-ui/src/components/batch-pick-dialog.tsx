@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CheckIcon } from "lucide-react";
-import { Badge, cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Badge, cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { CartLine } from "../lib/cart";
 import { useBatchPick } from "../lib/batches";
+import { usePos } from "./pos-context";
 import { fmtExpiry, formatQty } from "../lib/format";
 
 export { fmtExpiry };
@@ -21,7 +22,8 @@ export function BatchPickDialog({
   onPick: (key: string, batch: { id: string; no: string; expiry: string | null; qty?: number } | null) => void;
 }) {
   const { t } = useI18n();
-  const q = useBatchPick(line?.itemId ?? null, line?.qty ?? 1);
+  const env = usePos();
+  const q = useBatchPick(line?.itemId ?? null, line?.qty ?? 1, env.has.medicines);
   const data = q.data;
   return (
     <Dialog open={!!line} onOpenChange={(o) => !o && onClose()}>

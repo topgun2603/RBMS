@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { DownloadIcon, Loader2Icon, ReceiptTextIcon, RefreshCwIcon, RotateCcwIcon, XCircleIcon } from "lucide-react";
-import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, EmptyState, toast } from "@srirealtime/ui";
-import { ConfirmDialog, useI18n } from "@srirealtime/web";
+import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, EmptyState, toast } from "@rbms/ui";
+import { ConfirmDialog, useI18n } from "@rbms/web";
 import { money, timeShort } from "../../lib/format";
 import { isPending } from "../../lib/offline/queue";
 import type { OfflineFlag, QueuedBill } from "../../lib/offline/types";

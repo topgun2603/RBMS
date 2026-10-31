@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PencilIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
-import { Button, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Skeleton, toast } from "@srirealtime/ui";
-import { ConfirmDialog, DetailRow, PriceBreakupButton, describeError, useI18n } from "@srirealtime/web";
+import { Button, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Skeleton, toast } from "@rbms/ui";
+import { ConfirmDialog, DetailRow, PriceBreakupButton, describeError, useI18n } from "@rbms/web";
 import { grams, money } from "../lib/format";
 import { usePieceActions, usePiecePrice } from "../lib/queries";
 import type { Piece } from "../lib/types";

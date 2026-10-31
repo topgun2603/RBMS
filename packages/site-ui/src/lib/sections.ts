@@ -303,7 +303,79 @@ type Forms =
       alsoLabel: string;
       productIds: string[];
       shades: ShadeForm[];
-    };
+    }
+  | ({ type: "enquiry-form"; id?: string } & EnquiryFields);
+
+/** The enquiry form's editable fields, shared by the home section and the page block (`options`: one choice per line). */
+export interface EnquiryFields {
+  heading: string;
+  text: string;
+  topic: string;
+  askStudent: boolean;
+  studentLabel: string;
+  optionLabel: string;
+  options: string;
+  askEmail: boolean;
+  askMessage: boolean;
+  submitLabel: string;
+  successText: string;
+  imageUrl: string;
+  imageAlt: string;
+}
+
+interface EnquiryShape {
+  heading?: string | null;
+  text?: string | null;
+  topic?: string | null;
+  askStudent?: boolean;
+  studentLabel?: string | null;
+  optionLabel?: string | null;
+  options?: string[];
+  askEmail?: boolean;
+  askMessage?: boolean;
+  submitLabel?: string | null;
+  successText?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+}
+
+/** Stored enquiry form → editor fields. */
+export function enquiryToFields(x: EnquiryShape): EnquiryFields {
+  return {
+    heading: s(x.heading),
+    text: s(x.text),
+    topic: s(x.topic),
+    askStudent: x.askStudent === true,
+    studentLabel: s(x.studentLabel),
+    optionLabel: s(x.optionLabel),
+    options: (x.options ?? []).join("\n"),
+    askEmail: x.askEmail !== false,
+    askMessage: x.askMessage !== false,
+    submitLabel: s(x.submitLabel),
+    successText: s(x.successText),
+    imageUrl: s(x.imageUrl),
+    imageAlt: s(x.imageAlt),
+  };
+}
+
+/** Editor fields → what the schema takes (blank choice lines dropped). */
+export function enquiryFromFields(f: EnquiryFields) {
+  return {
+    heading: f.heading.trim(),
+    ...opt("text", f.text),
+    ...opt("topic", f.topic),
+    askStudent: f.askStudent,
+    ...(f.askStudent ? opt("studentLabel", f.studentLabel) : {}),
+    options: f.options.split("\n").map((o) => o.trim()).filter(Boolean),
+    ...(f.options.trim() ? opt("optionLabel", f.optionLabel) : {}),
+    askEmail: f.askEmail,
+    askMessage: f.askMessage,
+    ...opt("submitLabel", f.submitLabel),
+    ...opt("successText", f.successText),
+    ...opt("imageUrl", f.imageUrl),
+    ...(f.imageUrl.trim() ? opt("imageAlt", f.imageAlt) : {}),
+  };
+}
 
 /** One section in the editor: its own fields plus the shared style (all "" = theme defaults). */
 export type SectionForm = Forms & { style?: StyleForm };
@@ -576,6 +648,8 @@ function toFields(section: HomeSection | HomeSectionInput): Forms {
       };
     case "gold-rates":
       return { type: "gold-rates", ...idOf(x.id), title: s(x.title), text: s(x.text), showSilver: x.showSilver !== false };
+    case "enquiry-form":
+      return { type: "enquiry-form", ...idOf(x.id), ...enquiryToFields(x) };
     case "instagram":
       return { type: "instagram", ...idOf(x.id), title: s(x.title), handle: s(x.handle), images: x.images.map((i) => ({ url: s(i.url), alt: s(i.alt), href: s(i.href) })) };
     case "product-tabs":
@@ -948,6 +1022,8 @@ function fromFields(f: Forms): HomeSectionInput {
         ...opt("beforeLabel", f.beforeLabel),
         ...opt("afterLabel", f.afterLabel),
       };
+    case "enquiry-form":
+      return { type: "enquiry-form", ...idOf(f.id), ...enquiryFromFields(f) };
     case "gold-rates":
       return { type: "gold-rates", ...idOf(f.id), ...opt("title", f.title), ...opt("text", f.text), showSilver: f.showSilver };
     case "instagram":
@@ -1300,6 +1376,8 @@ export interface SectionSamples {
   menuDish: string;
   appointmentHeading: string;
   appointmentText: string;
+  enquiryHeading: string;
+  enquiryText: string;
   serviceName: string;
   book: string;
   beforeAfterTitle: string;
@@ -1418,6 +1496,8 @@ function newFields(type: HomeSectionType, x: SectionSamples, id: string): Forms 
       return { type, id, title: x.menuTitle, groups: [{ name: x.menuGroup, items: [{ ...emptyDish(), name: x.menuDish, diet: "veg" }] }], ctaLabel: "", ctaHref: "" };
     case "appointment":
       return { type, id, heading: x.appointmentHeading, text: x.appointmentText, services: [{ name: x.serviceName, duration: "", price: "" }], ctaLabel: x.book, ctaHref: "/book" };
+    case "enquiry-form":
+      return { type, id, ...enquiryToFields({ heading: x.enquiryHeading, text: x.enquiryText }) };
     case "before-after":
       return { type, id, title: x.beforeAfterTitle, text: "", beforeUrl: "", afterUrl: "", beforeLabel: "", afterLabel: "" };
     case "gold-rates":

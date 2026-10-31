@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { BOOKINGS_FEATURES, BOOKINGS_PERMISSIONS } from "./ports";
 import { bookingsRoutes } from "./routes";
 import { bookingAppointmentItems, bookingAppointments, bookingHours, bookingServices, bookingStaff, bookingTimeoff } from "./schema";

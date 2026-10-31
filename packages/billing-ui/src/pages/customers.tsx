@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { NotebookTabsIcon, PlusIcon, UsersRoundIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, StatusPill, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, StatusPill, type DataTableColumn } from "@rbms/ui";
 import { CustomerDialog } from "../components/customer-dialog";
 import { PeopleIllustration } from "../components/illustrations";
 import { BalancePill, balanceInk } from "../components/credit-book/credit-book-ui";

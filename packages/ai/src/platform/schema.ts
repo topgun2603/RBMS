@@ -1,4 +1,4 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 /**
@@ -150,7 +150,7 @@ export interface ReleaseNoteItem {
   id: string;
   en: string;
   ta: string;
-  /** App ids (BL, EC, PH, RS, SV); empty = every app. */
+  /** App ids (BL, EC, PH, RS, SV, SC); empty = every app. */
   apps: string[];
   /** Business types (grocery, pharmacy...); empty = every trade. */
   trades: string[];

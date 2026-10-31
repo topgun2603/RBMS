@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { lineAmount } from "@srirealtime/gst";
+import { lineAmount } from "@rbms/gst";
 import { addProduct, setPrice, setQty, stepQty, type CartLine, type CartProduct } from "./cart";
 import { applyCatalogChange, buildCatalogIndex, emptySnapshot, fetchCatalogChange, findByCode, findByPlu, searchCatalog, syncCatalog, type CatalogStore } from "./catalog-sync";
 import { CODE128_PATTERNS, code128Bars, code128Values } from "./code128";

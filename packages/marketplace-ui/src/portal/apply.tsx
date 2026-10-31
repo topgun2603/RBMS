@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BadgeIndianRupeeIcon, LogOutIcon, PackageIcon, ShieldCheckIcon, StoreIcon } from "lucide-react";
-import { Button, Card, CardContent, FadeIn, Stagger, StaggerItem, SuccessCheck, toast } from "@srirealtime/ui";
-import { ApiError, BrandMark, describeError, displayName, LocaleSwitcher, ThemeToggle, useI18n, useMe, useShop, useSignOut, useWebApp } from "@srirealtime/web";
+import { Button, Card, CardContent, FadeIn, Stagger, StaggerItem, SuccessCheck, toast } from "@rbms/ui";
+import { ApiError, BrandMark, describeError, displayName, LocaleSwitcher, ThemeToggle, useI18n, useMe, useShop, useSignOut, useWebApp } from "@rbms/web";
 import { SubmitButton } from "../components/account";
 import { emptyProfile, ProfileFields, profileErrors, profilePatch, type ProfileDraft } from "../components/profile";
 import { useApply } from "../lib/vendor";

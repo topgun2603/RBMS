@@ -1,6 +1,6 @@
-import { aiOnboarding, type AiService, type AiSettings, type studio } from "@srirealtime/ai";
-import type { SrModule } from "@srirealtime/core";
-import type { OnboardingStep } from "@srirealtime/onboarding";
+import { aiOnboarding, type AiService, type AiSettings, type studio } from "@rbms/ai";
+import type { SrModule } from "@rbms/core";
+import type { OnboardingStep } from "@rbms/onboarding";
 
 export interface AiOnboardingKitDeps {
   ai: AiService;

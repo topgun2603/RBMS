@@ -1,5 +1,5 @@
-import { AppError, badRequest, tooMany } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, tooMany } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { authMfa } from "./schema";
 import {

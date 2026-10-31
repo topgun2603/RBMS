@@ -1,4 +1,4 @@
-import { HomePage, homeMetadata } from "@srirealtime/storefront-ui";
+import { HomePage, homeMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = homeMetadata;
 

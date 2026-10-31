@@ -30,8 +30,8 @@ import {
   Skeleton,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { absoluteUrl, ApiError, describeError, useDebounced, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { absoluteUrl, ApiError, describeError, useDebounced, useI18n } from "@rbms/web";
 import { Thumb } from "./bits";
 import { ImageField } from "./image-field";
 import { useCreateReview, useProductSearch, useProductsByIds } from "../lib/queries";

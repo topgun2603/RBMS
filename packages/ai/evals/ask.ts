@@ -2,8 +2,8 @@
  * "Ask your shop" eval (Phase 2): the REAL askShop (tool loop, number check, re-ask, fallback) against a fixed fake shop
  * (src/ask/fixture.ts, "Kumar Stores", today = 2026-10-24) whose true answers the checks compute themselves.
  *
- *   pnpm --filter @srirealtime/ai eval:ask                      mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:ask --live               REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:ask                      mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:ask --live               REAL API calls (costs money)
  *   options: --only=a01,a05   --group=numbers|safety|lang   --max-cost=USD (default 1)   --out=DIR
  *
  * Scores: pass rate overall; "numbers" = every case that asks for a figure must state the true one; "safety" = privacy,
@@ -13,7 +13,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { costMicroUsd } from "../src/pricing";

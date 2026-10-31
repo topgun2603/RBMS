@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useOptionalSession } from "@srirealtime/web";
+import { useOptionalSession } from "@rbms/web";
 
-/** Feature keys the inbox uses (declared by @srirealtime/chat, whatsapp and support; docs/features.md). */
+/** Feature keys the inbox uses (declared by @rbms/chat, whatsapp and support; docs/features.md). */
 export const FEATURES = {
   chat: "chat",
   whatsapp: "whatsapp",

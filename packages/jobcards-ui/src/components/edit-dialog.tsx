@@ -20,8 +20,8 @@ import {
   InputGroupInput,
   Switch,
   Textarea,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { paiseToInput, rupeesToPaise } from "../lib/format";
 import type { CardBody } from "../lib/queries";
 import { draftFromFields, draftToFields, type FieldsDraft } from "../lib/templates";

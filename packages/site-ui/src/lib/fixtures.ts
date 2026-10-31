@@ -187,6 +187,8 @@ export const SECTION_FIXTURES: HomeSectionInput[] = [
   { type: "tiles", items: [{ label: "Bridal" }] },
   { type: "size-finder", title: "Find your size", text: "UK / India sizes", imageUrl: "https://cdn.example.in/feet.jpg", optionName: "Size", footLength: true, groups: [{ label: "Men", categoryId: C1, sizes: ["6", "7", "8"] }, { label: "Kids", sizes: ["10C", "11C"] }] },
   { type: "size-finder", groups: [{ label: "All", sizes: ["S", "M", "L"] }] },
+  { type: "enquiry-form", heading: "Admission enquiry", text: "We call you back", topic: "Admission 2027-28", askStudent: true, optionLabel: "Class", options: ["LKG", "Class 1"], askEmail: false, imageUrl: "https://cdn.example.in/s.jpg", imageAlt: "School" },
+  { type: "enquiry-form", heading: "Contact us" },
   { type: "swatches", title: "Find your shade", text: "Lipsticks", optionName: "Shade", productIds: [P1, P2], shades: [{ value: "Ruby", hex: "#9b111e", depth: "dusky" }, { value: "Nude", hex: "#c8a08a" }] },
   { type: "comparison", title: "Which one?", text: "Side by side", productIds: [P1, P2], highlightId: P2, highlightLabel: "Our pick", showRating: false, rows: [{ label: "Sole", values: ["Rubber", "PU"] }, { label: "Warranty", values: ["6 months"] }] },
 ];
@@ -203,6 +205,23 @@ export const BLOCK_FIXTURES: BlockInput[] = [
   { type: "video", youtubeId: "dQw4w9WgXcQ", title: "Our weavers" },
   { type: "video", youtubeId: "dQw4w9WgXcQ" },
   { type: "divider" },
+  {
+    type: "enquiry-form",
+    heading: "Admission enquiry",
+    text: "Tell us a little and we will call you back.",
+    topic: "Admission 2027-28",
+    askStudent: true,
+    studentLabel: "Student's name",
+    optionLabel: "Class applying for",
+    options: ["LKG", "Class 1", "Class 6"],
+    askEmail: false,
+    askMessage: true,
+    submitLabel: "Send enquiry",
+    successText: "Thank you, we will call you soon.",
+    imageUrl: "https://cdn.example.in/school.jpg",
+    imageAlt: "School building",
+  },
+  { type: "enquiry-form", heading: "Contact us" },
 ];
 
 export const MENU_FIXTURE: MenuItemInput[] = [

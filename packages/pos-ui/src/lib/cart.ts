@@ -9,7 +9,7 @@ import {
   type GstRateRule,
   type InvoiceTotals,
   type LineInput,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 
 /**
  * Cart math for the counter. Prices are what the shop sells at: GST-inclusive for tax-inclusive (MRP) products,

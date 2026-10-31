@@ -11,7 +11,7 @@ import {
   type DataTableInstance,
   type DataTableLabels,
   type DateRangePresetId,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { useModuleNavigate, useQueryParams } from "../app/navigation";
 import { api, type QueryParams } from "./api";
 import { useI18n } from "./i18n";

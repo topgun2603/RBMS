@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { Button, ChipGroup, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
 import { ItemCombobox } from "./batch-bits";
 import { cleanQty } from "./stock-meta";

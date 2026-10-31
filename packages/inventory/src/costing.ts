@@ -6,9 +6,9 @@
  * The weighted average stays exactly as `change()` computes it; this service only adds layers, draws and the two cost
  * columns. Every write happens inside the caller's stock transaction, after the stock row was locked.
  */
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { computeInvoice, GST_RATES, todayIST } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { computeInvoice, GST_RATES, todayIST } from "@rbms/gst";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, gt, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -637,6 +637,24 @@ export class CostingService {
     let total = 0;
     for (const [k, v] of await this.fifoByItem(tenantId, asOf)) if (tracked.has(k) && v.milli > 0) total += v.value;
     return total;
+  }
+
+  /**
+   * `bookValue` split by stock location (key = location id, "" = rows with no location): FIFO layers from the date the
+   * shop values by FIFO, else `average()` (which must split the same way). The parts add up to `bookValue`.
+   */
+  async bookValueByLocation(tenantId: string, asOf: string, average: () => Promise<Map<string, number>>): Promise<Map<string, number>> {
+    if ((await this.methodOn(tenantId, asOf)) !== "fifo") return average();
+    await this.ensureBuilt(tenantId);
+    const tracked = await this.trackedKeys(tenantId);
+    const out = new Map<string, number>();
+    for (const [k, v] of await this.fifoByItem(tenantId, asOf)) {
+      if (!tracked.has(k) || v.milli <= 0) continue;
+      const loc = k.slice(k.indexOf("|") + 1);
+      const key = loc === "null" ? "" : loc;
+      out.set(key, (out.get(key) ?? 0) + v.value);
+    }
+    return out;
   }
 
   private async trackedKeys(tenantId: string) {

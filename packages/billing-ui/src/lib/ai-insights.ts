@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /** Reorder suggestions and the daily summary card (docs/ai.md Phase 2 part B). The API computes every number. */
 

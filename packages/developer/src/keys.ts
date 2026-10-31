@@ -1,4 +1,4 @@
-import { permissionMatches, permissionsAllow, sha256, type PermissionDef } from "@srirealtime/core";
+import { permissionMatches, permissionsAllow, sha256, type PermissionDef } from "@rbms/core";
 import { randomBytes } from "node:crypto";
 
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

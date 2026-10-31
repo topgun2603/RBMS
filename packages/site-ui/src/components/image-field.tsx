@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, ArrowRightIcon, ImagePlusIcon, ImagesIcon, Link2Icon, Loader2Icon, Trash2Icon, UploadCloudIcon } from "lucide-react";
-import { AnimatePresence, Button, cn, Input, motion, Progress, toast } from "@srirealtime/ui";
-import { absoluteUrl, describeError, useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, cn, Input, motion, Progress, toast } from "@rbms/ui";
+import { absoluteUrl, describeError, useI18n } from "@rbms/web";
 import type { ImageForm } from "../lib/blocks";
 import { checkMediaFile, MEDIA_LIMITS, useRefreshMedia } from "../lib/media-library";
 import { uploadImage } from "../lib/queries";

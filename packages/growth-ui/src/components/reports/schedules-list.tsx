@@ -16,8 +16,8 @@ import {
   Switch,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { ScheduleDialog } from "./schedule-dialog";
 import { ScheduleStatus, useDateTime, useRelativeTime } from "./shared";
 import { useDeleteSchedule, useRunScheduleNow, useSchedules, useToggleSchedule } from "../../lib/queries/reports";

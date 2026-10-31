@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { PREVIEW_COOKIE, previewRouting } from "@srirealtime/storefront-ui/preview";
+import { PREVIEW_COOKIE, previewRouting } from "@rbms/storefront-ui/preview";
 
 /**
  * Live preview only (everything else passes through untouched):

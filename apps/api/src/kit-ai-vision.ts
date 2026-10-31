@@ -1,6 +1,6 @@
-import { AI_PERMISSION_KEYS, PURCHASE_BILL_FEATURE, PURCHASE_BILL_SCHEMA, PURCHASE_BILL_SYSTEM, RECEIPT_FEATURE, RECEIPT_SCHEMA, RECEIPT_SYSTEM, type AiImageType, type AiService } from "@srirealtime/ai";
-import { AppError, badRequest, requirePermission, requireRole, requireTenant, requireUser, type SrModule } from "@srirealtime/core";
-import { todayIST } from "@srirealtime/gst";
+import { AI_PERMISSION_KEYS, PURCHASE_BILL_FEATURE, PURCHASE_BILL_SCHEMA, PURCHASE_BILL_SYSTEM, RECEIPT_FEATURE, RECEIPT_SCHEMA, RECEIPT_SYSTEM, type AiImageType, type AiService } from "@rbms/ai";
+import { AppError, badRequest, requirePermission, requireRole, requireTenant, requireUser, type SrModule } from "@rbms/core";
+import { todayIST } from "@rbms/gst";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { processBill, type BillContext } from "./ai-vision/bill";

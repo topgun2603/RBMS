@@ -5,7 +5,7 @@
  * Postgres with migration 0049 applied); it copies the payroll tables into a throw-away schema and drops it afterwards.
  *   PowerShell: $env:PAYROLL_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; pnpm test
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PayrollService } from "./service";

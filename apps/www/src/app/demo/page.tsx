@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Reveal } from "@srirealtime/ui/motion";
+import { Reveal } from "@rbms/ui/motion";
 import { getT } from "@/lib/i18n-server";
 import { pageMetadata } from "@/lib/seo";
 import { DEMO_STORES } from "@/lib/demos";

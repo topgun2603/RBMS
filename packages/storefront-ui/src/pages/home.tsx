@@ -3,15 +3,15 @@ import * as React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRightIcon } from "lucide-react";
-import { organizationJsonLd, STORE_PATHS, websiteSearchJsonLd } from "@srirealtime/cms/seo";
+import { organizationJsonLd, STORE_PATHS, websiteSearchJsonLd } from "@rbms/cms/seo";
 import { apiGetFresh, apiGetSafe, getRequestInfo, requireStore } from "../server/api";
 import { getRatings } from "../server/data";
 import { storeMetadata } from "../server/meta";
 import { Markdown, safeHref } from "../lib/markdown";
 import type { Translator } from "../lib/messages";
-import { localizeSections } from "@srirealtime/cms/localize";
+import { localizeSections } from "@rbms/cms/localize";
 import type { CollectionPage, HomeSection, List, PostSummary, Product, ProductSummary, PublicHome, PublicMetalRates, Rating, Recommendations, SearchResult, ShopReviewSummary, StoreConfig } from "../types";
-import { Reveal } from "@srirealtime/ui/motion";
+import { Reveal } from "@rbms/ui/motion";
 import { percentOff } from "../lib/format";
 import { freshIds } from "../lib/cards";
 import { Container, JsonLd, SectionTitle, StoreImage } from "../components/bits";
@@ -24,6 +24,7 @@ import { WindowGate } from "../client/home-layouts";
 import { CategoryShelfSection, ComparisonSection, FinderSection, FlashSaleSection, flashSaleOutside, SizeFinderSection, StickyStorySection, StoriesSection, SwatchesSection, TilesSection } from "./home-layouts";
 import {
   AppointmentSection,
+  EnquiryFormSection,
   BeforeAfterSection,
   CategoryMosaicSection,
   FaqSection,
@@ -440,6 +441,8 @@ export function HomeSectionView({
       return <MenuBoardSection s={s} t={t} />;
     case "appointment":
       return <AppointmentSection s={s} t={t} />;
+    case "enquiry-form":
+      return <EnquiryFormSection s={s} />;
     case "before-after":
       return <BeforeAfterSection s={s} />;
     case "gold-rates":

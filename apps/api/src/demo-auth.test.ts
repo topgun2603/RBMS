@@ -1,8 +1,8 @@
-import { AppError, emptyContext } from "@srirealtime/core";
+import { AppError, emptyContext } from "@rbms/core";
 import Fastify, { type FastifyInstance } from "fastify";
 import { describe, expect, it } from "vitest";
 import { DEMO_ROLE, DEMO_SESSION_MS, demoAuthModule, demoGuard, parseDemoShops, type DemoAuthDeps } from "./demo-auth";
-import { SlidingWindow } from "@srirealtime/auth";
+import { SlidingWindow } from "@rbms/auth";
 
 async function guardApp(user: Record<string, unknown> | null, tenant: boolean, createdAt: Date, now = Date.now()) {
   const app = withErrors(Fastify());

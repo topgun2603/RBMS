@@ -36,12 +36,12 @@ import {
   WalletCardsIcon,
   WarehouseIcon,
 } from "lucide-react";
-import { ModuleDashboard, type NavSection, type RouteDef, type WebModule, type WidgetDef } from "@srirealtime/web";
+import { ModuleDashboard, type NavSection, type RouteDef, type WebModule, type WidgetDef } from "@rbms/web";
 import { ACC_POST, ACC_VIEW } from "./lib/accounting";
 import { EXPENSES_PERMISSION, QUOTATIONS_MANAGE_PERMISSION, QUOTATIONS_VIEW_PERMISSION } from "./lib/access";
 import { billingMessages } from "./lib/messages";
 
-/** Feature keys the billing UI uses (declared by @srirealtime/invoices, inventory and payments; docs/features.md). */
+/** Feature keys the billing UI uses (declared by @rbms/invoices, inventory and payments; docs/features.md). */
 export const BILLING_FEATURES = {
   invoices: "invoices",
   whatsapp: "invoices.whatsapp",
@@ -49,20 +49,20 @@ export const BILLING_FEATURES = {
   creditBook: "invoices.credit-book",
   reports: "invoices.reports",
   gstReports: "invoices.gst-reports",
-  /** Quotations (estimates) that turn into a bill or an order (@srirealtime/invoices). */
+  /** Quotations (estimates) that turn into a bill or an order (@rbms/invoices). */
   quotations: "invoices.quotations",
   inventory: "inventory",
   purchases: "inventory.purchases",
   /** Several stock locations (branches, warehouses) and transfers between them. */
   locations: "inventory.locations",
   payments: "payments",
-  /** Expenses and the profit report (@srirealtime/expenses). */
+  /** Expenses and the profit report (@rbms/expenses). */
   expenses: "expenses",
-  /** PDF downloads (@srirealtime/documents). */
+  /** PDF downloads (@rbms/documents). */
   documents: "documents",
-  /** Price lists, wholesale slabs and customer groups (@srirealtime/pricelists, docs/price-lists-units.md). */
+  /** Price lists, wholesale slabs and customer groups (@rbms/pricelists, docs/price-lists-units.md). */
   priceLists: "catalogue.price-lists",
-  /** Double-entry books: chart of accounts, journal, ledgers, trial balance, P&L, balance sheet (@srirealtime/accounting). */
+  /** Double-entry books: chart of accounts, journal, ledgers, trial balance, P&L, balance sheet (@rbms/accounting). */
   accounting: "accounting",
 } as const;
 

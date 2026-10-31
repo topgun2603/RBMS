@@ -1,4 +1,4 @@
-import { AppError, badRequest, forbidden, hasPermission, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { AppError, badRequest, forbidden, hasPermission, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { AI_FEATURE, AI_PERMISSION_KEYS } from "../features";

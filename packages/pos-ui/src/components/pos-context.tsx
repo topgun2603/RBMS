@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { displayName, useFeature, useOptionalShop, usePermission, useSession, useTenantSlug } from "@srirealtime/web";
+import { displayName, useFeature, useOptionalShop, usePermission, useSession, useTenantSlug } from "@rbms/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "../lib/access";
 import { setPosBranch, useMyBranches, useSellerProfile } from "../lib/api";
 import { useOnline, type OnlineState } from "../lib/online";
@@ -27,6 +27,8 @@ export interface PosEnv {
   has: {
     catalogue: boolean;
     inventory: boolean;
+    /** Pharmacy batches (medicines) for the batch choice. */
+    medicines: boolean;
     loyalty: boolean;
     whatsapp: boolean;
     creditBook: boolean;
@@ -57,6 +59,7 @@ export function PosProvider({ children }: { children: React.ReactNode }) {
   const has = {
     catalogue: useFeature(POS_FEATURES.catalogue),
     inventory: useFeature(POS_FEATURES.inventory),
+    medicines: useFeature(POS_FEATURES.medicines),
     loyalty: useFeature(POS_FEATURES.loyalty),
     whatsapp: useFeature(POS_FEATURES.whatsapp),
     creditBook: useFeature(POS_FEATURES.creditBook),

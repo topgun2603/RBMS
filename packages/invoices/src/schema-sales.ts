@@ -3,7 +3,7 @@
  * reads that file). Every table is tenant-scoped. None of them is a tax invoice: GST returns, sales reports and the books
  * only see the bills made from them. Only a delivery challan moves stock (out, and back in for returned goods).
  */
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { InvoiceTotals, LineTotals } from "./calc";

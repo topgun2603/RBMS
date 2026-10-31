@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2Icon, StoreIcon } from "lucide-react";
-import { Button, Input, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, toast } from "@srirealtime/ui";
+import { Button, Input, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, toast } from "@rbms/ui";
 import { FeatureMatrix, FeatureMatrixSkeleton } from "@/components/features/feature-matrix";
 import { QueryError } from "@/components/query-state";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

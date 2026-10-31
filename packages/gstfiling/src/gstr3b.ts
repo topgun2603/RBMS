@@ -1,4 +1,4 @@
-import { isValidGstin, normalizeGstin } from "@srirealtime/gst";
+import { isValidGstin, normalizeGstin } from "@rbms/gst";
 import { compositionOn, zeroClassOf, type GstConfig } from "./config";
 import type { ItcDecision, ItcDoc } from "./itc";
 import type { SalesDocSrc, SalesLineSrc } from "./ports";

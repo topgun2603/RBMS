@@ -3,14 +3,15 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon, BanknoteIcon, CheckCircle2Icon, Loader2Icon, MapPinIcon, ShoppingBagIcon, TruckIcon, ZapIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { ToggleGroup, ToggleGroupItem } from "@srirealtime/ui/components/toggle-group";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
-import { gstRateAtPrice } from "@srirealtime/gst";
+import { Button } from "@rbms/ui/components/button";
+import { toast } from "@rbms/ui/components/sonner";
+import { ToggleGroup, ToggleGroupItem } from "@rbms/ui/components/toggle-group";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatedNumber, AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
+import { gstRateAtPrice } from "@rbms/gst";
 import { etaRange, imageUrl, money, percentOff } from "../lib/format";
 import type { DeliveryQuote, PincodeInfo, Product } from "../types";
+import { AreaCalculator, coverageOf } from "./area-calculator";
 import { call, errorMessage } from "./api";
 import { flyToCart } from "./fly-to-cart";
 import { QtyStepper } from "./qty-stepper";
@@ -49,6 +50,8 @@ export function PurchasePanel({
   const reduced = useReducedMotionSafe();
   const inStock = React.useCallback((id: string) => availability[id]?.inStock ?? true, [availability]);
   const options = product.options.filter((o) => o.values.length > 0);
+  // Tiles and flooring: "how many boxes for my room" when the product states its box coverage.
+  const coverage = coverageOf(product.attributes);
   const initial = React.useMemo(() => {
     const v = product.variants.find((x) => x.isDefault && inStock(x.id)) ?? product.variants.find((x) => inStock(x.id)) ?? product.variants[0];
     return v ? { ...v.optionValues } : {};
@@ -197,6 +200,8 @@ export function PurchasePanel({
           </ToggleGroup>
         </fieldset>
       ))}
+
+      {!compact && coverage && <AreaCalculator coverage={coverage} onUse={setQty} />}
 
       <div className="flex flex-wrap items-center gap-4">
         <QtyStepper value={qty} max={99} onChange={setQty} disabled={!available} />

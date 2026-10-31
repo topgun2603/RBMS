@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { GripVerticalIcon } from "lucide-react";
-import { AnimatePresence, Card, cn, motion, Skeleton } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { AnimatePresence, Card, cn, motion, Skeleton } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { money } from "../lib/format";
 import { useOrderBoard } from "../lib/queries";
 import { canDrop, KANBAN_COLUMNS } from "../lib/status";

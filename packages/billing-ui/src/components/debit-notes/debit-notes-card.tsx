@@ -1,8 +1,8 @@
 "use client";
 
 import { FilePlus2Icon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@srirealtime/ui";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@rbms/ui";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import type { DebitNoteSummary } from "../../lib/types-debit-notes";
 import { DebitNoteStatusPill } from "./debit-note-ui";

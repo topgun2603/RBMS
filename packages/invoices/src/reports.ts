@@ -1,5 +1,5 @@
 /** Pure report shaping: GST return summaries, zero-filled trends and CSV (no database). */
-import { baseQtyOf, baseUnitOf, isValidGstin, type GstRate, type LineTotals, type TaxBreakupRow } from "@srirealtime/gst";
+import { baseQtyOf, baseUnitOf, isValidGstin, type GstRate, type LineTotals, type TaxBreakupRow } from "@rbms/gst";
 import { addDaysISO, daysBetween } from "./ledger";
 
 /** GSTR-1 B2CL threshold: inter-state invoices to unregistered buyers above ₹1,00,000. */

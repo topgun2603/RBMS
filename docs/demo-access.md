@@ -19,7 +19,7 @@ thumbnails are `apps/www/public/demos/<slug>.webp` (1280x800 home-page crop, res
 1. The page calls `POST /v1/auth/demo { shop }` through the site's `/api/v1` proxy. The API refuses (404
    `demo_not_available`) any shop not in `DEMO_SHOPS`, and limits sign-ins to 12 per IP per 10 minutes (429).
 2. It creates (once) a dedicated user `demo+<slug>@demo.invalid` with the platform role `demo`, a `staff` member of that
-   one shop with the built-in role `role:demo` (view permissions only, `@srirealtime/staff` templates). Never the owner.
+   one shop with the built-in role `role:demo` (view permissions only, `@rbms/staff` templates). Never the owner.
 3. It returns a 2-hour session token and a single-use handoff (`url` = the shop app's `/login?handoff=<code>`), bound to
    that shop. The page opens `url` in a new tab; the app redeems it like any handoff.
 

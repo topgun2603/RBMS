@@ -1,4 +1,4 @@
-import { AppError, emptyContext, type AuditEvent, type RequestContext } from "@srirealtime/core";
+import { AppError, emptyContext, type AuditEvent, type RequestContext } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { MockKycDriver } from "./drivers/mock";
 import { KycProviderError, type KycDriver } from "./drivers/types";
@@ -256,6 +256,12 @@ describe("assertAccess", () => {
     await expect(service.assertAccess(ctx(["member"], { id: ADMIN }), "vendor", VENDOR)).rejects.toMatchObject({ status: 403 });
     await expect(service.assertAccess(ctx(["owner"]), "shop", OTHER_TENANT)).rejects.toMatchObject({ status: 400 });
     await expect(service.assertAccess({ ...emptyContext(), tenant }, "shop", TENANT)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("user subjects need shop membership, even for your own KYC", async () => {
+    const { service } = setup({ vendors });
+    await expect(service.assertAccess(ctx([]), "user", USER)).rejects.toMatchObject({ status: 403 });
+    await expect(service.assertAccess(ctx(["staff"]), "user", USER)).resolves.toBe(TENANT);
   });
 
   it("unknown vendors are 404 when the port can tell", async () => {

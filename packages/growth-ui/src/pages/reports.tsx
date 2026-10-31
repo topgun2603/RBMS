@@ -30,8 +30,8 @@ import {
   Skeleton,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, usePermission } from "@rbms/web";
 import { SectionCard } from "../components/bits";
 import { DatasetPicker } from "../components/reports/dataset-picker";
 import { ScheduleDialog } from "../components/reports/schedule-dialog";

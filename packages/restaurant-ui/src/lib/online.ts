@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { retry4xx } from "./queries";
 import type { Platform } from "./types";
 
-/** Client side of @srirealtime/aggregators (`/v1/aggregators`). Money in paise. */
+/** Client side of @rbms/aggregators (`/v1/aggregators`). Money in paise. */
 
 const A = "/aggregators";
 

@@ -14,10 +14,10 @@ import {
   Label,
   Switch,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { cleanQty } from "./stock-meta";
 import { parseQty } from "../../lib/format";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, useI18n } from "@rbms/web";
 import { useUpdateStockSettings } from "../../lib/queries-v2";
 import type { StockRow } from "../../lib/types";
 

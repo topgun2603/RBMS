@@ -15,9 +15,9 @@ import {
   tooMany,
   type AuditPort,
   type ListPage,
-} from "@srirealtime/core";
+} from "@rbms/core";
 import { roleCondition, USER_SORT, userListConditions, userListQuerySchema, type UserListQuery } from "./list";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { matchStoreOrigin, matchStoreReturn, type StoreOriginsPort } from "./store-origin";
@@ -180,6 +180,8 @@ export interface SessionInfo {
   client: string | null;
   /** The POS terminal a PIN session is bound to; null for every other session. */
   terminalId: string | null;
+  /** When the session passed two-factor; null = one factor only. */
+  mfaAt: Date | null;
   createdAt: Date;
   lastSeenAt: Date;
   expiresAt: Date;
@@ -191,6 +193,9 @@ export interface SessionMeta {
   /** A srikit mobile app (`parseClient` of the `x-client` header). Makes the session a long, sliding mobile one. */
   client?: string | null;
 }
+
+/** Internal: the 2FA state a new session starts with (set by the second sign-in step or carried by a handoff). */
+type NewSessionMeta = SessionMeta & { mfaAt?: Date | null };
 
 const CLIENT_RE = /^srikit-[a-z]+\/\d+\.\d+\.\d+(?:[+-][0-9A-Za-z.]+)?(?: \((?:android|ios)\))?$/;
 
@@ -241,6 +246,7 @@ const toSessionInfo = (s: SessionRow): SessionInfo => ({
   userAgent: s.userAgent,
   client: s.client,
   terminalId: s.terminalId ?? null,
+  mfaAt: s.mfaAt ?? null,
   createdAt: s.createdAt,
   lastSeenAt: s.lastSeenAt,
   expiresAt: s.expiresAt,
@@ -722,11 +728,17 @@ export class AuthService {
    * A one-time code that signs the same user in on another origin (the landing site hands a new shop owner over to the
    * shop's app): single use, valid for `HANDOFF_TTL_SECONDS`, only its hash is stored.
    */
-  async createHandoff(userId: string, meta: SessionMeta = {}, tenantId: string | null = null): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number }> {
+  async createHandoff(
+    userId: string,
+    meta: SessionMeta & { fromSessionId?: string | null } = {},
+    tenantId: string | null = null,
+  ): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number }> {
     const now = new Date();
     const code = randomToken(24);
     const expiresAt = new Date(now.getTime() + HANDOFF_TTL_SECONDS * 1000);
-    await this.db.insert(authHandoffs).values({ codeHash: sha256(code), userId, tenantId, expiresAt, ip: meta.ip ?? null });
+    // The redeemed session gets the 2FA state of the session the code came from (never more).
+    const mfaAt = meta.fromSessionId ? await this.sessionMfaAt(meta.fromSessionId, userId) : null;
+    await this.db.insert(authHandoffs).values({ codeHash: sha256(code), userId, tenantId, expiresAt, mfaAt, ip: meta.ip ?? null });
     // Housekeeping: codes are worthless a minute later.
     await this.db.delete(authHandoffs).where(lt(authHandoffs.expiresAt, new Date(now.getTime() - 86_400_000)));
     return { code, expiresAt, expiresInSeconds: HANDOFF_TTL_SECONDS };
@@ -758,7 +770,7 @@ export class AuthService {
   async createStoreHandoff(
     userId: string,
     input: { shop: string; origin: string; returnUrl?: string | null },
-    meta: SessionMeta = {},
+    meta: SessionMeta & { fromSessionId?: string | null } = {},
   ): Promise<{ code: string; expiresAt: Date; expiresInSeconds: number; origin: string; returnUrl: string | null; tenantId: string }> {
     const port = this.deps.storeOrigins;
     if (!port) throw badRequest("Storefront sign-in is not configured");
@@ -785,7 +797,7 @@ export class AuthService {
       .update(authHandoffs)
       .set({ consumedAt: now })
       .where(and(eq(authHandoffs.codeHash, sha256(code)), isNull(authHandoffs.consumedAt), gt(authHandoffs.expiresAt, now)))
-      .returning({ userId: authHandoffs.userId, tenantId: authHandoffs.tenantId });
+      .returning({ userId: authHandoffs.userId, tenantId: authHandoffs.tenantId, mfaAt: authHandoffs.mfaAt });
     if (!row) throw invalid();
     // A storefront code is bound to its shop. Presented anywhere else it is refused like an unknown code, and it is
     // already burnt by the update above, so a leaked code can't be retried on the right shop either.
@@ -793,12 +805,22 @@ export class AuthService {
     const user = await this.getUser(row.userId);
     if (!user) throw invalid();
     this.assertCanSignIn(user);
-    return this.finishSignIn(user.id, false, meta);
+    return this.finishSignIn(user.id, false, { ...meta, mfaAt: row.mfaAt ?? null });
+  }
+
+  /** When the user's session passed two-factor (null = it did not, or it is not theirs). */
+  async sessionMfaAt(sessionId: string, userId: string): Promise<Date | null> {
+    const [row] = await this.db
+      .select({ mfaAt: authSessions.mfaAt })
+      .from(authSessions)
+      .where(and(eq(authSessions.id, sessionId), eq(authSessions.userId, userId)))
+      .limit(1);
+    return row?.mfaAt ?? null;
   }
 
   // ---------------------------------------------------------------- Sessions
 
-  async createSession(userId: string, meta: SessionMeta = {}): Promise<{ token: string; session: SessionInfo }> {
+  async createSession(userId: string, meta: NewSessionMeta = {}): Promise<{ token: string; session: SessionInfo }> {
     const token = randomToken();
     const now = new Date();
     const [row] = await this.db
@@ -811,13 +833,14 @@ export class AuthService {
         ip: meta.ip ?? null,
         userAgent: meta.userAgent ? meta.userAgent.slice(0, 512) : null,
         client: meta.client ?? null,
+        mfaAt: meta.mfaAt ?? null,
       })
       .returning();
     return { token, session: toSessionInfo(row!) };
   }
 
   /**
-   * A POS PIN session (`@srirealtime/pos`): bound to one paired terminal, `client = "srikit-pos"`, a fixed lifetime
+   * A POS PIN session (`@rbms/pos`): bound to one paired terminal, `client = "srikit-pos"`, a fixed lifetime
    * (default 12 h) that never slides. `authenticate` accepts it only with that terminal's id.
    */
   async createTerminalSession(
@@ -1127,29 +1150,36 @@ export class AuthService {
   private async completeSignIn(userId: string, isNewUser: boolean, meta: SignInInput): Promise<SignInResult | MfaPending> {
     const gate = await this.mfaGate(userId, isNewUser, meta);
     if (gate) return gate;
-    return this.finishSignIn(userId, isNewUser, meta);
+    // One factor only: whatever the caller passed, this session has not passed 2FA.
+    return this.finishSignIn(userId, isNewUser, { ...meta, mfaAt: null });
   }
 
   /**
-   * Does this sign-in need a second step? Yes when the user turned two-factor on (staff and business apps; shoppers on
-   * a storefront are never asked), or when the shop requires it for owners/admins/managers and the user has not set it up.
+   * Does this sign-in need a second step? Yes whenever the user turned two-factor on, whatever app or audience header
+   * the request claims (the audience comes from the client, so it can't waive 2FA). Also when the shop requires it for
+   * owners/admins/managers and the user has not set it up; shoppers are not members in those roles, so a storefront
+   * sign-in without 2FA is never asked.
    */
   private async mfaGate(userId: string, isNewUser: boolean, meta: SignInInput): Promise<MfaPending | null> {
     if (!this.mfa || !this.mfaSecret || meta.skipMfa) return null;
-    if (meta.policy?.audience === "customer") return null;
     let purpose: MfaChallenge["purpose"] | null = null;
     if (await this.mfa.isEnabled(userId)) purpose = "verify";
     else if (meta.policy) {
-      const required = (await this.getSignInOptions(meta.policy.tenantId)).staff.requireMfa === true;
-      if (required) {
-        const roles = await this.deps.memberships.rolesFor(meta.policy.tenantId, userId);
-        if (roles.some((r) => (MFA_POLICY_ROLES as readonly string[]).includes(r))) purpose = "enrol";
-      }
+      if (await this.shopRequiresMfaFor(meta.policy.tenantId, await this.deps.memberships.rolesFor(meta.policy.tenantId, userId))) purpose = "enrol";
     }
     if (!purpose) return null;
     const expiresAt = new Date(Date.now() + MFA_CHALLENGE_TTL_MS);
     const challengeToken = signMfaChallenge(this.mfaSecret, { userId, tenantId: meta.policy?.tenantId ?? null, purpose, isNewUser, expiresAt });
     return { mfaRequired: true, enrolRequired: purpose === "enrol", challengeToken, expiresAt };
+  }
+
+  /**
+   * Does the shop require two-factor for a member with these roles (`requireMfa` on and an owner/admin/manager role)?
+   * Always false when two-factor is not configured on this platform.
+   */
+  async shopRequiresMfaFor(tenantId: string, roles: readonly string[]): Promise<boolean> {
+    if (!this.mfa || !roles.some((r) => (MFA_POLICY_ROLES as readonly string[]).includes(r))) return false;
+    return (await this.getSignInOptions(tenantId)).staff.requireMfa === true;
   }
 
   /** Reads a challenge token from step 1 (400 `mfa_challenge_invalid` when expired or forged). */
@@ -1176,7 +1206,7 @@ export class AuthService {
     const user = await this.getUser(c.userId);
     if (!user) throw this.mfaGone();
     this.assertCanSignIn(user);
-    return { ...(await this.finishSignIn(c.userId, c.isNewUser, input)), ...r };
+    return { ...(await this.finishSignIn(c.userId, c.isNewUser, { ...input, mfaAt: new Date() })), ...r };
   }
 
   /** Enrolment during sign-in (the shop requires 2FA): starts with the challenge instead of a session. */
@@ -1190,7 +1220,7 @@ export class AuthService {
     const user = await this.getUser(c.userId);
     if (!user) throw this.mfaGone();
     this.assertCanSignIn(user);
-    return { recoveryCodes, signIn: await this.finishSignIn(c.userId, c.isNewUser, input), userId: c.userId, tenantId: c.tenantId };
+    return { recoveryCodes, signIn: await this.finishSignIn(c.userId, c.isNewUser, { ...input, mfaAt: new Date() }), userId: c.userId, tenantId: c.tenantId };
   }
 
   // ---- two-factor management for a signed-in user
@@ -1205,8 +1235,11 @@ export class AuthService {
     if (!user) throw notFound("User");
     return mfa.beginEnrol(userId, user.email ?? user.phone ?? user.name ?? "account");
   }
-  confirmMfaEnrol(userId: string, code: string) {
-    return this.requireMfa().confirmEnrol(userId, code);
+  /** Turns 2FA on for a signed-in user; the code also proves the second factor for `sessionId` (marked as 2FA-passed). */
+  async confirmMfaEnrol(userId: string, code: string, sessionId?: string | null) {
+    const r = await this.requireMfa().confirmEnrol(userId, code);
+    if (sessionId) await this.db.update(authSessions).set({ mfaAt: new Date() }).where(and(eq(authSessions.id, sessionId), eq(authSessions.userId, userId)));
+    return r;
   }
   /** Turning 2FA off needs a current code (authenticator or recovery): the re-authentication. */
   async disableMfa(userId: string, code: string) {
@@ -1220,7 +1253,7 @@ export class AuthService {
     return mfa.regenerateRecoveryCodes(userId);
   }
 
-  private async finishSignIn(userId: string, isNewUser: boolean, meta: SessionMeta): Promise<SignInResult> {
+  private async finishSignIn(userId: string, isNewUser: boolean, meta: NewSessionMeta): Promise<SignInResult> {
     const [row] = await this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId)).returning();
     if (!row) throw notFound("User");
     const { token, session } = await this.createSession(userId, meta);

@@ -3,7 +3,7 @@
  * depreciation, and the year-end close. Re-exported by schema.ts (drizzle-kit reads that file). Every table is
  * tenant-scoped; journal postings still go through acct_entries / acct_lines (immutable) and are only linked here.
  */
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 

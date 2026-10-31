@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BikeIcon, ChefHatIcon, GlobeIcon, QrCodeIcon, SettingsIcon, ShoppingBagIcon, UsersIcon } from "lucide-react";
-import { Button, ChipGroup, cn, EmptyState, Skeleton } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, usePermission, useSettingsHref } from "@srirealtime/web";
+import { Button, ChipGroup, cn, EmptyState, Skeleton } from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useModuleNavigate, usePermission, useSettingsHref } from "@rbms/web";
 import { InlineError } from "../components/bits";
 import { OpenDialog } from "../components/open-dialog";
 import { PlatformBadge } from "../components/platform";

@@ -23,6 +23,19 @@ export function sizeKindFor(...hints: (string | null | undefined)[]): SizeKind {
   return "top";
 }
 
+/**
+ * The chart for a pack's `sizeGuide` setting: a `shoes` pack always gets the shoe chart (men / women / kids by the
+ * words it finds, men's by default), a `clothing` pack follows the product words, so a sports shop's trainers still get
+ * the shoe chart; null = no guide.
+ */
+export function sizeKindForGuide(guide: "clothing" | "shoes" | null | undefined, ...hints: (string | null | undefined)[]): SizeKind | null {
+  if (!guide) return null;
+  const kind = sizeKindFor(...hints);
+  if (guide === "clothing" || kind.startsWith("shoe-")) return kind;
+  const s = hints.filter(Boolean).join(" ").toLowerCase();
+  return KIDS_RE.test(s) ? "shoe-kids" : WOMEN_RE.test(s) ? "shoe-women" : "shoe-men";
+}
+
 const CHARTS: Record<"top" | "bottom" | "saree", { cols: string[]; rows: (string | number)[][] }> = {
   top: {
     cols: ["size", "bust", "waist", "length"],

@@ -1,10 +1,10 @@
-/** Feature keys the serials UI uses (declared by @srirealtime/serials). */
+/** Feature keys the serials UI uses (declared by @rbms/serials). */
 export const SERIALS_FEATURES = {
   serials: "serials",
   warranty: "serials.warranty",
 } as const;
 
-/** Permissions of @srirealtime/serials. Owners and admins hold both. */
+/** Permissions of @rbms/serials. Owners and admins hold both. */
 export const SERIALS_PERMISSIONS = {
   manage: "serials.manage",
   view: "serials.view",

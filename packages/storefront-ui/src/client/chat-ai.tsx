@@ -3,10 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { Loader2Icon, MessageCircleIcon, SendHorizontalIcon, ShoppingBagIcon, SparklesIcon } from "lucide-react";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
-import { Button } from "@srirealtime/ui/components/button";
-import { Textarea } from "@srirealtime/ui/components/textarea";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { STORE_PATHS } from "@rbms/cms/seo";
+import { Button } from "@rbms/ui/components/button";
+import { Textarea } from "@rbms/ui/components/textarea";
+import { cn } from "@rbms/ui/lib/utils";
 import { StoreImage } from "../components/bits";
 import { imageUrl, money } from "../lib/format";
 import { ApiError, call } from "./api";

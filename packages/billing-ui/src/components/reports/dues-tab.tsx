@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { AlarmClockIcon, HourglassIcon, UsersIcon, WalletCardsIcon } from "lucide-react";
-import { EmptyState, InitialsAvatar } from "@srirealtime/ui";
+import { EmptyState, InitialsAvatar } from "@rbms/ui";
 import { AgeingChart, type AgeingBucket } from "../charts/ageing-chart";
 import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";

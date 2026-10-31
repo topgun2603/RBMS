@@ -18,6 +18,8 @@ export interface NoticeModules {
   delivery: boolean;
   /** Bookings, job cards and repairs (customer name, phone and device / appointment details). */
   services: boolean;
+  /** Website enquiry forms (name, phone, and for a school the student's name and class). */
+  enquiries?: boolean;
 }
 
 export interface NoticeContact {
@@ -130,6 +132,7 @@ const EN: Words = {
       m.loyalty && "Loyalty points and the purchases that earned them",
       m.memberships && "Membership details: plan, dates, visits and a photo for the card if you give one",
       m.services && "Booking, repair or job details: what you asked for, the item or vehicle, and appointment times",
+      m.enquiries && "Enquiries you send from our website: your name, phone, email and message, and the student's name and class or course if you give them",
       m.pharmacy && "Prescription details (patient name, age, doctor, medicines) and a photo of the prescription: this is health information and is used only to dispense your medicines",
       m.messaging && "Your messages with us on WhatsApp or SMS",
       "Messages you send to our help desk or chat",
@@ -153,6 +156,7 @@ const EN: Words = {
       "To answer your questions and handle returns or complaints",
       m.loyalty && "To add and use your loyalty points",
       m.memberships && "To run your membership and remind you before it ends",
+      m.enquiries && "To answer the enquiries you send from our website and call you back",
       m.pharmacy && "To dispense medicines safely and keep the prescription register the pharmacy rules require",
       m.messaging && "To send you updates about your order, bill or booking, and offers only if you have said yes to them",
       m.ai && "To help our staff write replies, descriptions or summaries faster. Details like phone numbers are masked first, and a person always checks the result",
@@ -195,6 +199,7 @@ const EN: Words = {
       !!d.whatsapp_chats && `WhatsApp conversations: ${durationText(d.whatsapp_chats, "en")}`,
       i.modules.pharmacy && !!d.prescriptions && `Prescription details and photos: ${durationText(d.prescriptions, "en")}`,
       i.modules.memberships && !!d.lapsed_members && `A membership that has ended: ${durationText(d.lapsed_members, "en")}`,
+      i.modules.enquiries && !!d.website_enquiries && `Website enquiries: ${durationText(d.website_enquiries, "en")}`,
       i.modules.payroll && !!d.staff_after_exit && `Staff personal details after they leave: ${durationText(d.staff_after_exit, "en")}`,
       !!d.kyc_documents && `Identity documents uploaded for verification: ${durationText(d.kyc_documents, "en")}`,
       !!d.otp_logs && `One-time passwords and sign-in records: ${durationText(d.otp_logs, "en")}`,
@@ -272,6 +277,7 @@ const TA: Words = {
       m.loyalty && "லாயல்டி புள்ளிகள் மற்றும் அவற்றைப் பெற்றுத்தந்த வாங்குதல்கள்",
       m.memberships && "உறுப்பினர் விவரங்கள்: திட்டம், தேதிகள், வருகைகள், நீங்கள் தந்தால் அட்டைக்கான புகைப்படம்",
       m.services && "முன்பதிவு, பழுது அல்லது வேலை விவரங்கள்: நீங்கள் கேட்டது, பொருள் அல்லது வாகனம், சந்திப்பு நேரங்கள்",
+      m.enquiries && "எங்கள் இணையதளத்திலிருந்து நீங்கள் அனுப்பும் விசாரணைகள்: உங்கள் பெயர், தொலைபேசி, மின்னஞ்சல், செய்தி, நீங்கள் தந்தால் மாணவரின் பெயர் மற்றும் வகுப்பு அல்லது படிப்பு",
       m.pharmacy && "மருந்துச் சீட்டு விவரங்கள் (நோயாளி பெயர், வயது, மருத்துவர், மருந்துகள்) மற்றும் மருந்துச் சீட்டின் புகைப்படம்: இது உடல்நலத் தகவல்; உங்கள் மருந்துகளை வழங்க மட்டுமே பயன்படுத்தப்படும்",
       m.messaging && "WhatsApp அல்லது SMS மூலம் எங்களுடன் நீங்கள் நடத்தும் உரையாடல்கள்",
       "உதவி மையம் அல்லது அரட்டையில் நீங்கள் அனுப்பும் செய்திகள்",
@@ -295,6 +301,7 @@ const TA: Words = {
       "உங்கள் கேள்விகளுக்குப் பதிலளிக்கவும், திரும்பப் பெறல் அல்லது புகார்களைக் கையாளவும்",
       m.loyalty && "உங்கள் லாயல்டி புள்ளிகளைச் சேர்க்கவும் பயன்படுத்தவும்",
       m.memberships && "உங்கள் உறுப்பினர் திட்டத்தை நடத்தவும், முடிவதற்கு முன் நினைவூட்டவும்",
+      m.enquiries && "எங்கள் இணையதளத்திலிருந்து நீங்கள் அனுப்பும் விசாரணைகளுக்குப் பதிலளிக்கவும், உங்களைத் திரும்ப அழைக்கவும்",
       m.pharmacy && "மருந்துகளைப் பாதுகாப்பாக வழங்கவும், மருந்தக விதிகள் கோரும் மருந்துச் சீட்டுப் பதிவேட்டை வைத்திருக்கவும்",
       m.messaging && "உங்கள் ஆர்டர், பில் அல்லது முன்பதிவு குறித்த தகவல்களை அனுப்ப; நீங்கள் ஒப்புக்கொண்டால் மட்டுமே விளம்பரச் சலுகைகளை அனுப்ப",
       m.ai && "பதில்கள், விளக்கங்கள், சுருக்கங்களை எங்கள் ஊழியர்கள் விரைவாக எழுத உதவ. தொலைபேசி எண் போன்றவை முதலில் மறைக்கப்படும்; முடிவை எப்போதும் ஒருவர் சரிபார்ப்பார்",
@@ -337,6 +344,7 @@ const TA: Words = {
       !!d.whatsapp_chats && `WhatsApp உரையாடல்கள்: ${durationText(d.whatsapp_chats, "ta")}`,
       i.modules.pharmacy && !!d.prescriptions && `மருந்துச் சீட்டு விவரங்கள் மற்றும் புகைப்படங்கள்: ${durationText(d.prescriptions, "ta")}`,
       i.modules.memberships && !!d.lapsed_members && `முடிந்த உறுப்பினர் திட்டம்: ${durationText(d.lapsed_members, "ta")}`,
+      i.modules.enquiries && !!d.website_enquiries && `இணையதள விசாரணைகள்: ${durationText(d.website_enquiries, "ta")}`,
       i.modules.payroll && !!d.staff_after_exit && `பணியாளர் விலகிய பின் அவர்களின் தனிப்பட்ட விவரங்கள்: ${durationText(d.staff_after_exit, "ta")}`,
       !!d.kyc_documents && `சரிபார்ப்புக்காகப் பதிவேற்றிய அடையாள ஆவணங்கள்: ${durationText(d.kyc_documents, "ta")}`,
       !!d.otp_logs && `ஒருமுறை கடவுச்சொற்கள் மற்றும் உள்நுழைவு பதிவுகள்: ${durationText(d.otp_logs, "ta")}`,

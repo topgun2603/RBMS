@@ -1,7 +1,7 @@
 "use client";
 
-import { describeError, ModuleLink, useI18n } from "@srirealtime/web";
-import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@srirealtime/ui";
+import { describeError, ModuleLink, useI18n } from "@rbms/web";
+import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@rbms/ui";
 import { TagsIcon } from "lucide-react";
 import { useHasPermission } from "../../lib/access";
 import { useCustomerGroups, useCustomerPricing, usePriceLists, usePriceListsOn, useSaveCustomerPricing } from "../../lib/queries-pricing";

@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { SUPPORT_FEATURES, SUPPORT_PERMISSIONS } from "./features";
 import { supportRoutes } from "./routes";
 import { faqArticles, faqCategories, supportMessages, supportTickets, supportTicketSeries } from "./schema";

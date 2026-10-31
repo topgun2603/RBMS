@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill, toast } from "@srirealtime/ui";
-import { describeError, useFeature, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill, toast } from "@rbms/ui";
+import { describeError, useFeature, useI18n } from "@rbms/web";
 import { money } from "../../lib/format";
 import { useExplain2b } from "../../lib/ai-money";
 

@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { CalendarDaysIcon } from "lucide-react";
-import { ChipGroup, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+import { ChipGroup, EmptyState, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { EntryDialog, useKindLabel } from "../components/accounting/entry-dialog";
-import { AccountingPage, Amt, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
+import { AccountingPage, Amt, BranchSelect, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useEntries, type Entry } from "../lib/accounting";
 import { addDays, money, todayIST } from "../lib/format";
 
@@ -19,7 +19,8 @@ export default function AccountingDayBookPage() {
   const [from, setFrom] = React.useState(addDays(todayIST(), -6));
   const [origin, setOrigin] = React.useState<Kind>("all");
   const [open, setOpen] = React.useState<Entry | null>(null);
-  const list = useEntries({ from, to, origin: origin === "all" ? undefined : origin, sort: "date", limit: 100, offset: 0 });
+  const [branchId, setBranchId] = React.useState("");
+  const list = useEntries({ from, to, origin: origin === "all" ? undefined : origin, branchId: branchId || undefined, sort: "date", limit: 100, offset: 0 });
   const items = list.data?.items ?? [];
 
   const byDate = React.useMemo(() => {
@@ -30,7 +31,8 @@ export default function AccountingDayBookPage() {
 
   return (
     <AccountingPage title={t("billing.accounting.nav.dayBook")} description={t("billing.accounting.dayBook.subtitle")} icon={CalendarDaysIcon}>
-      <ReportBar report="day-book" params={{ from, to, origin: origin === "all" ? undefined : origin }} from={from} to={to} onFrom={setFrom} onTo={setTo}>
+      <ReportBar report="day-book" params={{ from, to, origin: origin === "all" ? undefined : origin, branchId }} from={from} to={to} onFrom={setFrom} onTo={setTo}>
+        <BranchSelect value={branchId} onChange={setBranchId} />
         <ChipGroup
           size="sm"
           aria-label={t("billing.accounting.journal.show")}

@@ -1,6 +1,6 @@
 import type { RequestContext } from "./context";
 
-/** One entry of the audit trail (see @srirealtime/audit). Never put request bodies or secrets in it. */
+/** One entry of the audit trail (see @rbms/audit). Never put request bodies or secrets in it. */
 export interface AuditEvent {
   /** The shop it concerns; null for platform events (super-admin actions, sign-ins outside a shop). */
   tenantId: string | null;

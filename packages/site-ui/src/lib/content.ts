@@ -202,6 +202,7 @@ export const HOME_SECTION_TYPES = [
   "tiles",
   "size-finder",
   "swatches",
+  "enquiry-form",
 ] as const;
 export type HomeSectionType = (typeof HOME_SECTION_TYPES)[number];
 
@@ -1126,6 +1127,34 @@ export const swatchesSectionSchema = z.object({
     .default([]),
 });
 
+/** Fields of the enquiry form, shared by the home section and the page block. */
+const enquiryFormFields = {
+  id: clientId,
+  heading: requiredText(CMS_LIMITS.heading),
+  text: text(400).optional(),
+  /** Sent with every enquiry as its topic (e.g. "Admission 2027-28"). */
+  topic: text(60).optional(),
+  askStudent: z.boolean().default(false),
+  studentLabel: text(40).optional(),
+  optionLabel: text(40).optional(),
+  /** A choice list (e.g. classes); the select is hidden when empty. */
+  options: z.array(requiredText(60)).max(20).default([]),
+  askEmail: z.boolean().default(true),
+  askMessage: z.boolean().default(true),
+  submitLabel: text(40).optional(),
+  successText: text(300).optional(),
+  imageUrl: urlSchema.optional(),
+  imageAlt: text(CMS_LIMITS.alt).optional(),
+};
+
+/** A contact / admission enquiry form that posts to the shop's enquiries inbox. */
+export const enquiryFormSectionSchema = z.object({
+  type: z.literal("enquiry-form"),
+  hidden: sectionHidden,
+  style: sectionStyle,
+  ...enquiryFormFields,
+});
+
 export const homeSectionSchema = z.discriminatedUnion("type", [
   heroSectionSchema,
   categoriesSectionSchema,
@@ -1171,6 +1200,7 @@ export const homeSectionSchema = z.discriminatedUnion("type", [
   tilesSectionSchema,
   sizeFinderSectionSchema,
   swatchesSectionSchema,
+  enquiryFormSectionSchema,
 ]);
 export type HomeSection = z.output<typeof homeSectionSchema>;
 export type HomeSectionInput = z.input<typeof homeSectionSchema>;
@@ -1195,7 +1225,7 @@ const translationValue: z.ZodType<TranslationValue> = z.lazy(() =>
 
 /**
  * The home page's words in other languages (`{ ta: { "<section id>": { heading: "…", items: [{ q: "…" }] } } }`):
- * the storefront shows them to shoppers browsing in that language (`localizeSections`, @srirealtime/cms/localize).
+ * the storefront shows them to shoppers browsing in that language (`localizeSections`, @rbms/cms/localize).
  * Only words are taken from a translation; links, pictures and references always come from the section.
  */
 export const homeTranslationsSchema = z
@@ -1213,7 +1243,7 @@ export type HomeDocInput = z.input<typeof homeDocSchema>;
 
 // ------------------------------------------------------------------ page / post blocks
 
-export const BLOCK_TYPES = ["heading", "paragraph", "image", "gallery", "button", "faq", "video", "divider"] as const;
+export const BLOCK_TYPES = ["heading", "paragraph", "image", "gallery", "button", "faq", "video", "divider", "enquiry-form"] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
 const imageItem = z.object({ url: urlSchema, alt: text(CMS_LIMITS.alt).default(""), caption: text(300).optional() });
@@ -1244,6 +1274,7 @@ export const blockSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("video"), id: clientId, youtubeId: youtubeIdSchema, title: text(200).optional() }),
   z.object({ type: z.literal("divider"), id: clientId }),
+  z.object({ type: z.literal("enquiry-form"), ...enquiryFormFields }),
 ]);
 export type Block = z.output<typeof blockSchema>;
 export type BlockInput = z.input<typeof blockSchema>;

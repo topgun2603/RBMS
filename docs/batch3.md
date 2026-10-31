@@ -11,7 +11,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 
 ---
 
-## A1. `@srirealtime/marketplace` (`/v1/marketplace`) — multi-vendor store + payouts
+## A1. `@rbms/marketplace` (`/v1/marketplace`) — multi-vendor store + payouts
 
 - Tables: `vendors` (tenant, name, slug, status `pending|active|suspended`, kyc_status `none|pending|verified|failed`,
   commission_bps (default from settings), contact name/phone/email, gstin, address, payout_account_enc (bank/UPI or
@@ -60,7 +60,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
   `marketplace.vendor_order_packed|shipped`.
 - Public settings keys (sellers may read): `minPayoutPaise`, `returnWindowDays`, `autoApproveProducts`.
 
-## A2. `@srirealtime/chat` (`/v1/chat`) — real-time messages
+## A2. `@rbms/chat` (`/v1/chat`) — real-time messages
 
 - Tables: `chat_conversations` (tenant, type `direct|support|order|group`, subject_type/subject_id (e.g. order),
   title, last_message_at, created_by), `chat_participants` (conversation_id, user_id, kind `staff|shopper|vendor`,
@@ -77,7 +77,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 - Offline push via a `NotifierPort` (notify push/WhatsApp template `chat.message` when the recipient has no open
   stream for 60 s). Rate limit 20 messages/min per user. Features `chat`. Permission `chat.manage`.
 
-## A3. `@srirealtime/support` (`/v1/support`) — help desk + FAQ
+## A3. `@rbms/support` (`/v1/support`) — help desk + FAQ
 
 - Tables: `support_tickets` (tenant, number `TKT-0001` series, requester user_id or name/phone/email, subject, status
   `open|pending|resolved|closed`, priority `low|normal|high|urgent`, channel `web|email|whatsapp|chat|phone`,
@@ -89,15 +89,15 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 - Staff API (`support.manage`): tickets list with filters/counts, get, assign, status, priority, tags, reply/note, merge, CSV; FAQ CRUD + publish. Notifications to requester on reply (notify port) and to assignee on new/assigned.
 - Features `support`, `support.faq` (shopToggle). Permission `support.manage`.
 
-## A4. `@srirealtime/kyc` (`/v1/kyc`) — identity and business verification
+## A4. `@rbms/kyc` (`/v1/kyc`) — identity and business verification
 
 - Tables: `kyc_subjects` (tenant, subject_type `vendor|shop|user`, subject_id, status `none|pending|verified|failed|manual_review`, verified_name, badges text[], updated_at), `kyc_checks` (subject_id, type `pan|gstin|bank_account|upi|digilocker_aadhaar|selfie`, status, provider, input_masked jsonb, result jsonb (masked), name_match_score, error, created_at), `kyc_documents` (subject_id, kind, file_url, created_at).
 - Driver interface per check with `mock` (deterministic: e.g. PAN `ABCDE1234F` verifies as "TEST NAME", anything ending in `Z` fails) and a generic HTTP provider adapter (Surepass/IDfy-like, configurable base URL + token per platform, not per tenant). Never store full Aadhaar numbers or raw bank account numbers (mask to last 4).
-- Name matching helper (normalise, initials, token overlap → score 0–100) — pure + tested. GSTIN check also validates the checksum locally first (use @srirealtime/gst-like rules — copy the algorithm, don't import).
+- Name matching helper (normalise, initials, token overlap → score 0–100) — pure + tested. GSTIN check also validates the checksum locally first (use @rbms/gst-like rules — copy the algorithm, don't import).
 - API: subject-scoped `POST /checks` `{ subjectType, subjectId, type, input }` (owner/admin for shop/vendor subjects; the vendor owner for their own), `GET /subjects/:type/:id`, manual review queue for super-admin (`GET /review`, `POST /checks/:id/approve|reject`). `KycStatusPort`-style `status(subjectType, subjectId)` export for marketplace/payouts gating.
 - Features `kyc`. Permission `kyc.manage`.
 
-## A5. `@srirealtime/loyalty` (`/v1/loyalty`) — points across store and counter
+## A5. `@rbms/loyalty` (`/v1/loyalty`) — points across store and counter
 
 - Settings namespace `loyalty`: `{ earnPer100: 1, pointValuePaise: 100 /* ₹1 */, minRedeemPoints: 100, maxRedeemPercent: 50, expiryMonths: 12, tiers: [{ name: "Silver", minSpend: 0, multiplier: 1 }, { name: "Gold", minSpend: 2500000, multiplier: 1.5 }] }`.
 - Tables: `loyalty_members` (tenant, member_key (normalised +91 phone), name, points_balance, lifetime_spend, tier, joined_at), `loyalty_ledger` (tenant, member_id, type `earn|redeem|expire|adjust|reverse`, points (signed), amount_paise (basis), ref_type, ref_id, expires_at, created_at; unique (ref_type, ref_id, type)).
@@ -109,7 +109,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 
 ---
 
-## B1. `@srirealtime/whatsapp` (`/v1/whatsapp`) — inbox + campaigns
+## B1. `@rbms/whatsapp` (`/v1/whatsapp`) — inbox + campaigns
 
 - Per-shop WhatsApp Business account: `wa_accounts` (tenant pk, phone_number_id, waba_id, display_number, token_enc, app_secret_enc, verify_token, status). Webhook `GET/POST /webhooks/:tenantId` (Meta verification challenge; X-Hub-Signature-256 HMAC check) handling inbound messages and delivery statuses.
 - `wa_contacts` (tenant, phone, name, opted_in, opted_out_at, tags, last_inbound_at), `wa_messages` (tenant, contact_id, direction, type `text|template|image|document`, body, template ref, status `queued|sent|delivered|read|failed`, provider_id, error, created_at), `wa_templates` (synced from Meta + local mapping), `wa_campaigns` (name, template, variable mapping, audience jsonb, schedule_at, status, counts), `wa_campaign_recipients`.
@@ -117,7 +117,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 - Campaigns: audience builder via `AudiencePort` (all opted-in, tags, customers with dues (credit book), store customers who ordered in N days, loyalty tier), preview count, throttle (settings msgs/min), schedule (jobs), stats from status webhooks. Driver `meta` (Graph API v21.0) + `mock`.
 - Features `whatsapp` (inbox), `whatsapp.campaigns`. Permission `whatsapp.manage`.
 
-## B2. `@srirealtime/einvoice` (`/v1/einvoice`) — GST e-invoice (IRN) + e-way bill
+## B2. `@rbms/einvoice` (`/v1/einvoice`) — GST e-invoice (IRN) + e-way bill
 
 - Pure JSON builders (heavily tested): NIC e-invoice schema v1.1 from an invoice (`TranDtls`, `DocDtls`, `SellerDtls`, `BuyerDtls`, `ItemList` with HSN, `ValDtls`, round-off), validation (B2B only: buyer GSTIN valid; HSN present; state codes), e-way bill payload from IRN or standalone (`EwbDtls`: transporter id, mode, distance, vehicle no).
 - `einvoice_accounts` (tenant pk, provider, gstin, username, password_enc, client credentials enc, sandbox flag), `einvoice_records` (tenant, invoice_id, irn, ack_no, ack_date, signed_qr, signed_invoice, status `generated|cancelled|failed`, error, ewb_no, ewb_date, ewb_valid_till).
@@ -126,7 +126,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 - Exposes `irnFor(tenantId, invoiceId)` for documents (PDF shows IRN, Ack no and the signed QR — wired at integration).
 - Features `gst-einvoice`, `gst-ewaybill`. Permission `einvoice.manage`.
 
-## B3. `@srirealtime/branches` (`/v1/branches`) — multi-branch shops
+## B3. `@rbms/branches` (`/v1/branches`) — multi-branch shops
 
 - `branches` (tenant, name, code, address, phone, gstin (may differ per state), state_code, stock_location_id (inventory location), invoice_prefix, active, is_default), `branch_users` (branch_id, user_id).
 - Current branch per request: header `x-branch` (code or id), validated against the user's branches (owners/admins all branches); exposed on `req.ctx` via a context hook (`ctx.branch`), defaulting to the user's only/default branch.
@@ -134,7 +134,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 - API (`branches.manage`): CRUD, assign users, `GET /mine` (branches the user can use), `GET /summary?from&to` (per-branch sales, bills, stock value via ports).
 - Features `multi-branch` (dependsOn `inventory.locations`). Permission `branches.manage`.
 
-## B4. `@srirealtime/developer` (`/v1/developer`) — API keys + webhooks
+## B4. `@rbms/developer` (`/v1/developer`) — API keys + webhooks
 
 - `api_keys` (tenant, name, prefix (`sk_live_xxxx` first 12 chars), key_hash (sha256), scopes text[] (permission keys), last_used_at, expires_at, revoked_at, created_by). Auth: a context hook accepting `Authorization: Bearer sk_live_...` → `ctx.user` = an API principal (id = key id, platformRoles [], tenantRoles ["staff"], permissions = scopes) for that tenant; rate limit per key (in-memory, 600/min).
 - Events: an `EventsPort.emit(tenantId, type, data)` that modules call (wired in kit): `order.created`, `order.status_changed`, `invoice.issued`, `invoice.paid`, `invoice.cancelled`, `payment.received`, `customer.created`, `product.created`, `product.updated`, `stock.low`, `review.created`.
@@ -142,7 +142,7 @@ Round A: marketplace, chat, support, kyc, loyalty. Round B: whatsapp, einvoice, 
 - OpenAPI: `GET /openapi.json` generated from registered routes (method, path, feature, permission, tags = module) — summary-level, no schemas required.
 - Features `developer` (api keys + webhooks). Permission `developer.manage`.
 
-## B5. `@srirealtime/reports` (`/v1/reports`) — report builder + schedules
+## B5. `@rbms/reports` (`/v1/reports`) — report builder + schedules
 
 - Datasets declared through a `DatasetPort` per module (registered in kit): `id`, `label`, `columns` (key, label, type `text|number|money|date|enum`, filterable, groupable, aggregatable), and `query(tenantId, spec)` implemented by the owning module with whitelisted SQL (no user SQL ever). Initial datasets (implemented at integration through ports): sales lines, invoices, payments, orders, stock, expenses, customers.
 - Spec: `{ dataset, columns, filters: { column, op: eq|neq|in|gte|lte|between|contains, value }[], groupBy, measures: { column, fn: sum|count|avg|min|max }[], sort, limit, dateRange }` validated against the dataset definition (pure + tested).
@@ -206,7 +206,7 @@ an hour per IP (in-memory per instance).
 (mock without), `WHATSAPP_SECRET_KEY` (default derived from `APP_SECRET`), `EINVOICE_GSP_BASE_URL`,
 `EINVOICE_GSP_SANDBOX_URL`, `EINVOICE_GSP_CLIENT_ID`, `EINVOICE_GSP_CLIENT_SECRET` (mock only without).
 
-**End to end.** `pnpm --filter @srirealtime/api test:e2e:3` (`test/e2e/batch3.mjs`, sections in `test/e2e/b3/`,
+**End to end.** `pnpm --filter @rbms/api test:e2e:3` (`test/e2e/batch3.mjs`, sections in `test/e2e/b3/`,
 `node test/e2e/batch3.mjs <name>` runs one) on e2e-store (marketplace, chat, support, checkout loyalty) and e2e-bill
 (bill loyalty, WhatsApp, e-invoice, branches, developer, reports). It leaves e2e-store's marketplace settings on mock
 payouts with a 0-day return window and e2e-bill with a second branch (`E2EB2`) and a mock e-invoice account.

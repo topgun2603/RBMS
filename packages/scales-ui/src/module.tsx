@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BarcodeIcon, WeightIcon } from "lucide-react";
-import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { SCALES_FEATURES, SCALES_PERMISSIONS } from "./lib/access";
 import { scalesMessages } from "./lib/messages";
 

@@ -1,4 +1,4 @@
-import { listFilter, listQuerySchema } from "@srirealtime/core";
+import { listFilter, listQuerySchema } from "@rbms/core";
 import { z } from "zod";
 import { REVIEW_SOURCES, REVIEW_STATUSES, type ReviewPlatform, type ReviewRow, type ReviewSource, type ReviewStatus } from "./schema";
 

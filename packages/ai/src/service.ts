@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AppError, badRequest, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { AiRuntimeConfig } from "./config";

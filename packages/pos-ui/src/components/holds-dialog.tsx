@@ -18,8 +18,8 @@ import {
   Input,
   motion,
   Textarea,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { money, timeShort } from "../lib/format";
 import type { HeldBill } from "../lib/storage";
 

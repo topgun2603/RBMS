@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, MicIcon, MicOffIcon, PlusIcon, SearchIcon, SparklesIcon, Trash2Icon, XIcon } from "lucide-react";
-import { Button, cn, Input, toast } from "@srirealtime/ui";
-import { describeError, useAiAssistAllowed, useAiAssistStatus, useI18n, useVoice, VoiceLangChip } from "@srirealtime/web";
+import { Button, cn, Input, toast } from "@rbms/ui";
+import { describeError, useAiAssistAllowed, useAiAssistStatus, useI18n, useVoice, VoiceLangChip } from "@rbms/web";
 import { posApi } from "../lib/api";
 import type { CartProduct } from "../lib/cart";
 import { money } from "../lib/format";

@@ -1,4 +1,4 @@
-import { formatINR, IST_OFFSET_MINUTES, todayIST } from "@srirealtime/gst";
+import { formatINR, IST_OFFSET_MINUTES, todayIST } from "@rbms/gst";
 import type { Interval } from "./types";
 
 /*

@@ -45,7 +45,7 @@ import {
   Skeleton,
   Switch,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ConfirmDialog,
   describeError,
@@ -57,7 +57,7 @@ import {
   useI18n,
   useMyBranches,
   usePermission,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { QrImage } from "../components/qr-image";
 import { POS_FEATURES, POS_PERMISSIONS } from "../lib/access";
 import { displayPairingCode } from "../lib/pairing";

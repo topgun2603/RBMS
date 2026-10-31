@@ -5,7 +5,7 @@
  * it copies them into a throw-away schema and drops it afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addonProration } from "./addons";

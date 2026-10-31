@@ -1,4 +1,4 @@
-import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
+import type { InvoiceTotals, LineTotals } from "@rbms/gst";
 
 /**
  * Data shapes the built-in renderers need. They mirror (structurally) the invoices/inventory/orders services'

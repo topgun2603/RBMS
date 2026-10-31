@@ -4,11 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MenuIcon, MoonIcon, SunIcon, ArrowRightIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@srirealtime/ui/components/sheet";
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
-import type { Locale } from "@srirealtime/i18n/client";
+import { Button } from "@rbms/ui/components/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@rbms/ui/components/sheet";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
+import type { Locale } from "@rbms/i18n/client";
 import { useSite } from "./site-context";
 import { Logo } from "./logo";
 

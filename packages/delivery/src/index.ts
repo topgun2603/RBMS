@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { DELIVERY_FEATURES } from "./features";
 import { deliveryRoutes } from "./routes";
 import { deliveryAccounts, deliveryRates, deliveryZones, pincodeCache, shipments } from "./schema";

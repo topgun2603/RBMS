@@ -1,4 +1,4 @@
-import { HOME_SECTION_TYPES, homeSectionSchema, homeTranslationsSchema, type HomeDoc, CMS_LIMITS } from "@srirealtime/cms";
+import { HOME_SECTION_TYPES, homeSectionSchema, homeTranslationsSchema, type HomeDoc, CMS_LIMITS } from "@rbms/cms";
 import { z } from "zod";
 import { AREA, fail, type HomeArea } from "../areas";
 import type { Bi, StudioEnv, StudioState } from "../types";

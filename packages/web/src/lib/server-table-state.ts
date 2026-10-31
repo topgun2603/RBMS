@@ -9,7 +9,7 @@
  */
 
 import type { ComponentType } from "react";
-import type { DateRangePresetId } from "@srirealtime/ui";
+import type { DateRangePresetId } from "@rbms/ui";
 
 export interface OptionsFilterDef {
   kind: "options";

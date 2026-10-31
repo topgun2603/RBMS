@@ -36,8 +36,8 @@ import {
   Skeleton,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, usePermission, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, DetailRow, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, usePermission, useRouteParams } from "@rbms/web";
 import { ApprovalCard, ApprovalDialog } from "../components/approval";
 import { DueDate, InlineError, JobStatusPill, STATUS_ICON, TemplateIcon, UrgentBadge, ReasonDialog } from "../components/bits";
 import { EditJobDialog } from "../components/edit-dialog";

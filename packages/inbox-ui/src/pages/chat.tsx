@@ -41,8 +41,8 @@ import {
   Skeleton,
   StatusPill,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, QueryError, SearchField, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, QueryError, SearchField, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { Age, ConnectionPill, DaySeparator, Ticks, TypingDots, UnreadBadge, useAnnouncer } from "../components/bits";
 import { AutoTextarea, UploadTray, useUploads } from "../components/composer";
 import { TwoPane, useSentinel, useThreadScroll } from "../components/two-pane";

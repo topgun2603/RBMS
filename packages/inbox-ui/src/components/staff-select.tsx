@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type ControlSize } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { useMe } from "../lib/access";
 import { formatPhone } from "../lib/format";
 import { useStaff } from "../lib/queries";

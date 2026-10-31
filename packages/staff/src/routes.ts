@@ -1,4 +1,4 @@
-import { isSuperAdmin, requirePermission, requireTenant, type RequestContext } from "@srirealtime/core";
+import { isSuperAdmin, requirePermission, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { DISCOUNT_SCOPES, type DiscountLimitService } from "./discount";

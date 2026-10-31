@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FileSignatureIcon, Loader2Icon, LockIcon, SaveIcon } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldHint, FieldLabel, Input, Skeleton, Textarea, toast } from "@srirealtime/ui";
-import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe } from "@srirealtime/web";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldHint, FieldLabel, Input, Skeleton, Textarea, toast } from "@rbms/ui";
+import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe } from "@rbms/web";
 import { useQuotationSettings, useSaveQuotationSettings } from "../lib/queries-quotations";
 import type { QuotationSettings } from "../lib/types-quotations";
 

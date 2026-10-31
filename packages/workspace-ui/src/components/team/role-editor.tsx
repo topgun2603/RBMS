@@ -24,8 +24,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, QueryError, useI18n } from "@rbms/web";
 import { coveringPattern, isPattern, roleKeyFrom } from "../../lib/permissions";
 import { usePermissionGroups, useSaveRole } from "../../lib/queries";
 import type { PermissionGroup, Role } from "../../lib/types";

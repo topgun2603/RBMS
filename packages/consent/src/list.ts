@@ -1,4 +1,4 @@
-import { defineSort, listFilter, listQuerySchema, searchAny } from "@srirealtime/core";
+import { defineSort, listFilter, listQuerySchema, searchAny } from "@rbms/core";
 import { and, inArray, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { dataRequests } from "./schema";

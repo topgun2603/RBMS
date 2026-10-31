@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DEFAULT_STORE_THEME, type StoreTheme, type ThemePreset } from "@srirealtime/branding/theme";
-import { api } from "@srirealtime/web";
+import { DEFAULT_STORE_THEME, type StoreTheme, type ThemePreset } from "@rbms/branding/theme";
+import { api } from "@rbms/web";
 
 /** What the appearance editor edits: the brand tokens a store uses. */
 export interface AppearanceDraft {
@@ -107,10 +107,11 @@ export function useSaveAppearance() {
   });
 }
 
+/** Saves the shop's trade: the pack id, and the owner's own words for it ("" when they picked a listed trade). */
 export function useSaveBusinessType() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (businessType: string) => api.put("/settings/store/tenant", { businessType }),
+    mutationFn: (v: { businessType: string; businessLabel: string }) => api.put("/settings/store/tenant", v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ak.store }),
   });
 }

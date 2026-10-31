@@ -1,4 +1,4 @@
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { expensesCsv } from "./csv";
 import { gstFromInclusive, itcOf, profitReport, resolveGst, summarize, ZERO_GST } from "./logic";

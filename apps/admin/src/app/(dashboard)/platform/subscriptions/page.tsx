@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCardIcon, ReceiptIcon } from "lucide-react";
-import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";

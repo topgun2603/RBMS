@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Page, PageHeading, QueryError, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { Page, PageHeading, QueryError, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { BoxesIcon, FileCheck2Icon, FileSpreadsheetIcon, FileTextIcon, LayoutDashboardIcon, PercentIcon, ScaleIcon, SettingsIcon } from "lucide-react";
-import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
+import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
 import { CompositionTab } from "../components/gst/composition-tab";
 import { Gstr1Tab } from "../components/gst/gstr1-tab";
 import { Gstr2bTab } from "../components/gst/gstr2b-tab";

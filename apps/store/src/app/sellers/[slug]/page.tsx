@@ -1,4 +1,4 @@
-import { SellerPage, sellerMetadata } from "@srirealtime/storefront-ui";
+import { SellerPage, sellerMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 

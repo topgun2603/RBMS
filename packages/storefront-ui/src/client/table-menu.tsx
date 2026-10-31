@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, Loader2Icon, MinusIcon, PlusIcon, SearchIcon, ShoppingBasketIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { money } from "../lib/format";
 import { call, errorMessage } from "./api";
 import { useT } from "./store-context";

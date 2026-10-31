@@ -8,9 +8,9 @@ import { createKit } from "../kit";
  * Removes what earlier end-to-end runs left in the demo shops (raja, kumar, anbu), identified by the scripts' markers
  * (see e2e-cleanup.ts). The seeded demo data stays. Idempotent; prints what it changed.
  *
- *   pnpm --filter @srirealtime/api cleanup:e2e-data            (or -- --dry-run to only count)
- *   pnpm --filter @srirealtime/api cleanup:e2e-data -- raja    (only some shops)
- *   pnpm --filter @srirealtime/api cleanup:e2e-data -- --prefix=smoke-   (only the throwaway shops with that prefix)
+ *   pnpm --filter @rbms/api cleanup:e2e-data            (or -- --dry-run to only count)
+ *   pnpm --filter @rbms/api cleanup:e2e-data -- raja    (only some shops)
+ *   pnpm --filter @rbms/api cleanup:e2e-data -- --prefix=smoke-   (only the throwaway shops with that prefix)
  */
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");

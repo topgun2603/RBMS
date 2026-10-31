@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, BanIcon, CheckCircle2Icon, FilePenLineIcon, ReceiptIndianRupeeIcon, SendIcon, XCircleIcon } from "lucide-react";
-import { cn, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, StatusPill, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { QuotationDisplayStatus } from "../../lib/types-quotations";
 
 const STYLE: Record<QuotationDisplayStatus, { tone: StatusTone; icon: React.ComponentType<{ className?: string }> }> = {

@@ -1,8 +1,8 @@
-import { createAggregators, drizzleStore, fetchHttp, type KitchenPort, type MenuPort } from "@srirealtime/aggregators";
-import type { CatalogueService } from "@srirealtime/catalogue";
-import type { FeatureGatePort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import type { createDining } from "@srirealtime/dining";
+import { createAggregators, drizzleStore, fetchHttp, type KitchenPort, type MenuPort } from "@rbms/aggregators";
+import type { CatalogueService } from "@rbms/catalogue";
+import type { FeatureGatePort } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import type { createDining } from "@rbms/dining";
 import type { Logger } from "pino";
 
 /**

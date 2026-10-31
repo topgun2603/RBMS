@@ -1,4 +1,4 @@
-import { notFound, requirePermission, requireSuperAdmin, requireTenant, type RequestContext } from "@srirealtime/core";
+import { notFound, requirePermission, requireSuperAdmin, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { PlatformInvoiceListQuery, SubscriptionListQuery } from "./list";

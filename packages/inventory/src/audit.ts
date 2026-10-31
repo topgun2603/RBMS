@@ -8,9 +8,9 @@
  *
  * The adjustment is `counted - system quantity at the freeze`, not "set to counted", so sales made while counting stay.
  */
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { lineVariance, mergeCounts, type CountEntry } from "./batch-logic";

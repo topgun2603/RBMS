@@ -1,4 +1,4 @@
-import { CartSkeleton } from "@srirealtime/storefront-ui";
+import { CartSkeleton } from "@rbms/storefront-ui";
 
 export default function Loading() {
   return <CartSkeleton />;

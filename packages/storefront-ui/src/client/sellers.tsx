@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { StoreIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { featureOn, STORE_FEATURES } from "../lib/features";
 import type { SellerCard, SellerLookup } from "../types";
 import { call } from "./api";

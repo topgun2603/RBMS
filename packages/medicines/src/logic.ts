@@ -51,17 +51,44 @@ export interface Allocation {
  * First-expiry-first-out: takes `qty` from the unexpired batches with stock, soonest expiry first. Expired batches are
  * never sold. `short` is what the batches couldn't cover (the sale still goes through; stock is fixed later).
  */
-export function fefoAllocate(batches: BatchStock[], qty: number, today: string): { allocations: Allocation[]; short: number } {
+export function fefoAllocate(
+  batches: BatchStock[],
+  qty: number,
+  today: string,
+  /** Batches the pharmacist chose at the counter, taken first (up to the qty named for each), then the rest FEFO. */
+  preferred: readonly Allocation[] = [],
+): { allocations: Allocation[]; short: number } {
   let left = roundQty(qty);
-  const allocations: Allocation[] = [];
+  const taken = new Map<string, number>();
   const usable = batches.filter((b) => b.qty > 0 && b.expiry >= today).sort((a, b) => (a.expiry === b.expiry ? a.id.localeCompare(b.id) : a.expiry < b.expiry ? -1 : 1));
+  const room = new Map(usable.map((b) => [b.id, b.qty]));
+  const take = (id: string, want: number) => {
+    const n = roundQty(Math.min(room.get(id) ?? 0, want, left));
+    if (n <= 0) return;
+    taken.set(id, roundQty((taken.get(id) ?? 0) + n));
+    room.set(id, roundQty((room.get(id) ?? 0) - n));
+    left = roundQty(left - n);
+  };
+  for (const p of preferred) take(p.batchId, p.qty);
   for (const b of usable) {
     if (left <= 0) break;
-    const take = roundQty(Math.min(b.qty, left));
-    allocations.push({ batchId: b.id, qty: take });
-    left = roundQty(left - take);
+    take(b.id, left);
   }
-  return { allocations, short: Math.max(0, left) };
+  return { allocations: [...taken].map(([batchId, q]) => ({ batchId, qty: q })), short: Math.max(0, left) };
+}
+
+/** Quantity per (item, chosen batch) from the bill's lines; lines without a batch choice are left out. */
+export function chosenBatches(lines: { itemId?: string | null; qty: number; batchId?: string | null }[]): Map<string, Allocation[]> {
+  const out = new Map<string, Allocation[]>();
+  for (const l of lines) {
+    if (!l.itemId || !l.batchId || !(l.qty > 0)) continue;
+    const list = out.get(l.itemId) ?? [];
+    const same = list.find((a) => a.batchId === l.batchId);
+    if (same) same.qty = roundQty(same.qty + l.qty);
+    else list.push({ batchId: l.batchId, qty: roundQty(l.qty) });
+    out.set(l.itemId, list);
+  }
+  return out;
 }
 
 /** Sums sale quantities per item (a bill can list the same item on several lines). */

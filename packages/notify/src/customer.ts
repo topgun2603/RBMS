@@ -34,6 +34,8 @@ export const CUSTOMER_EVENTS = [
   { key: "job.approval", group: "jobcards", feature: "jobcards" },
   { key: "job.ready", group: "jobcards", feature: "jobcards" },
   { key: "job.delivered", group: "jobcards", feature: "jobcards" },
+  // Vehicle cards only: N months after delivery (the daily job), whichever the card asked for.
+  { key: "job.service_due", group: "jobcards", feature: "jobcards" },
   { key: "membership.welcome", group: "memberships", feature: "memberships" },
   { key: "membership.renewed", group: "memberships", feature: "memberships" },
   { key: "membership.renewal_due", group: "memberships", feature: "memberships" },
@@ -215,7 +217,7 @@ export function sampleVars(event: CustomerEventKey, locale: MessageLocale, shop:
   const common = { shop, customer: locale === "ta" ? "ராஜா" : "Raja", date: formatMessageDate(start, locale), time: formatMessageTime(start) };
   const group = customerEvent(event).group;
   if (group === "bookings") return { ...common, number: "12", service: locale === "ta" ? "முடி வெட்டுதல்" : "Haircut", staff: t.anyStaff, link: `${base}/booking/sample` };
-  if (group === "jobcards") return { ...common, number: "JC-0012", dueDate: formatMessageDate(day, locale), amount: moneyText(180000), link: `${base}/job/sample` };
+  if (group === "jobcards") return { ...common, number: "JC-0012", dueDate: formatMessageDate(day, locale), amount: moneyText(180000), vehicle: "TN09AB1234", dueKm: locale === "ta" ? " அல்லது 15450 கி.மீ" : " or 15450 km", link: `${base}/job/sample` };
   if (group === "memberships") {
     return { ...common, plan: locale === "ta" ? "மாதாந்திர திட்டம்" : "Monthly plan", code: "M-0042", startDate: formatMessageDate(new Date(), locale), endDate: formatMessageDate(day, locale), days: "3" };
   }

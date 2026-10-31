@@ -1,4 +1,4 @@
-import { badRequest, requirePermission, requireRole, requireSuperAdmin, requireTenant, requireUser } from "@srirealtime/core";
+import { badRequest, requirePermission, requireRole, requireSuperAdmin, requireTenant, requireUser } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { AI_FEATURE, AI_PERMISSION_KEYS } from "./features";

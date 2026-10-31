@@ -1,4 +1,4 @@
-import type { PermissionDef } from "@srirealtime/core";
+import type { PermissionDef } from "@rbms/core";
 
 /**
  * GST filing follows the shop's existing "GST reports" feature (`invoices.gst-reports`, the same gate as the GSTR-1

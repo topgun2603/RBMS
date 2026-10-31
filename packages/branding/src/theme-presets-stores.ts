@@ -23,6 +23,8 @@ import { MADDER_THREAD_PRESET } from "./theme-presets-thaiyal";
 import { LOTUS_MIST_PRESET } from "./theme-presets-spa";
 import { SALINE_BLUE_PRESET } from "./theme-presets-thunai";
 import { BANANA_LEAF_PRESET } from "./theme-presets-arusuvai";
+import { CAMPUS_NAVY_PRESET } from "./theme-presets-school";
+import { THAMARAI_LOTUS_PRESET } from "./theme-presets-thamarai";
 
 /**
  * Store looks: one finished look per demo store in the "20+ stores" series (docs/verticals.md, "How to add a new store
@@ -104,4 +106,6 @@ export const STORE_PRESETS: ThemePreset[] = [
   LOTUS_MIST_PRESET, // Store #21: Sukham Ayur Spa, R.S. Puram, Coimbatore (theme-presets-spa.ts).
   SALINE_BLUE_PRESET, // Store #22: Thunai Pharmacy & Wellness, Fairlands, Salem (theme-presets-thunai.ts).
   BANANA_LEAF_PRESET, // Arusuvai Unavagam, KK Nagar, Madurai (theme-presets-arusuvai.ts).
+  CAMPUS_NAVY_PRESET, // The `school` trade: a school website (theme-presets-school.ts).
+  THAMARAI_LOTUS_PRESET, // Thamarai Vidyalaya, the demo school (theme-presets-thamarai.ts).
 ];

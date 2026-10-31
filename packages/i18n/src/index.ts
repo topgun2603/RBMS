@@ -1,5 +1,5 @@
-import { defineModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { defineModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import type { Locale, Messages } from "./client";
 import { i18nRoutes } from "./routes";
 import { i18nOverrides } from "./schema";

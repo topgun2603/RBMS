@@ -1,8 +1,8 @@
-import { exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
+import { exclusiveOf, gstRateAtPrice, type GstRateRule } from "@rbms/gst";
 
 /**
  * Price resolution (docs/price-lists-units.md). Pure and browser-safe: the API resolves bill lines with it and the POS
- * resolves offline with the same code over its cached lists (`@srirealtime/pricelists/resolve`).
+ * resolves offline with the same code over its cached lists (`@rbms/pricelists/resolve`).
  *
  * For one item, unit and quantity on a date, the lists are tried in order (the bill's / customer's list first, then the
  * shop's default list) and the first that prices the line wins:

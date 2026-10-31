@@ -1,5 +1,5 @@
 /** Custom-domain verification helpers (pure): tokens, DNS instructions, the verifier port and the feature. */
-import { randomToken, type FeatureDef } from "@srirealtime/core";
+import { randomToken, type FeatureDef } from "@rbms/core";
 
 /** TXT record name prefix: `_srikit-verify.<domain>`. */
 export const VERIFY_RECORD_PREFIX = "_srikit-verify";

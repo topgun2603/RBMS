@@ -16,8 +16,8 @@ import {
   StaggerItem,
   ToggleGroup,
   ToggleGroupItem,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { ACCOUNT_RE, IFSC_RE, kycErrorKey, normalizeId, ROUTE_ACCOUNT_RE, VPA_RE } from "../lib/logic";
 import type { KycCheck, PayoutAccountInput } from "../lib/types";
 import { CheckPill } from "./bits";

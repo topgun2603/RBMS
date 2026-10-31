@@ -1,6 +1,6 @@
 "use client";
 
-import { animate } from "@srirealtime/ui/motion";
+import { animate } from "@rbms/ui/motion";
 
 /** Fired on window when something lands in the cart (the header badge bumps). */
 export const CART_BUMP_EVENT = "sr:cart-bump";

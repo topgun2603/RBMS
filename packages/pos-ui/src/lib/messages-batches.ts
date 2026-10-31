@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** pos.batch.* strings: the batch of a counter line (items with batches and expiry). Merged into posMessages. */
 export const batchEn: Messages = {

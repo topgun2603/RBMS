@@ -1,8 +1,8 @@
-import { AI_PERMISSION_KEYS, PLAN_FESTIVALS, lastYearOf, tradesA, type AiService } from "@srirealtime/ai";
-import { AppError, badRequest, hasPermission, requirePermission, requireRole, requireTenant, requireUser, type RequestContext, type SrModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
-import type { RecipeService, RecipeView } from "@srirealtime/dining";
+import { AI_PERMISSION_KEYS, PLAN_FESTIVALS, lastYearOf, tradesA, type AiService } from "@rbms/ai";
+import { AppError, badRequest, hasPermission, requirePermission, requireRole, requireTenant, requireUser, type RequestContext, type SrModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
+import type { RecipeService, RecipeView } from "@rbms/dining";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { loadBatches, loadSales, loadStock } from "./ai-trades-a/pharmacy";

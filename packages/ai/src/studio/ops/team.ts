@@ -1,4 +1,4 @@
-import { permissionMatches } from "@srirealtime/core";
+import { permissionMatches } from "@rbms/core";
 import { z } from "zod";
 import { AREA, fail, type DiscountsArea, type FeatureArea, type RolesArea, type SignInArea } from "../areas";
 import type { StudioEnv } from "../types";

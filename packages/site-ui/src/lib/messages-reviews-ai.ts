@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** site.reviews.ai.* strings: AI reply drafts and review themes (docs/ai.md Phase 2 part B). Keep en and ta identical. */
 export const reviewsAiEn: Messages = {

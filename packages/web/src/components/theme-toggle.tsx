@@ -9,7 +9,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { useI18n } from "../lib/i18n";
 
 export function ThemeToggle() {

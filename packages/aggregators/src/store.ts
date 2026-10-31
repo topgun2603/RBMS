@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import {
   aggregatorConnections,

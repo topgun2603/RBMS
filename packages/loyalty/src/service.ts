@@ -1,5 +1,5 @@
-import { AppError, badRequest, defineSort, facetCounts, listQuerySchema, newId, notFound, runList, splitList, type ListPage } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+import { AppError, badRequest, defineSort, facetCounts, listQuerySchema, newId, notFound, runList, splitList, type ListPage } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, count, desc, eq, gt, ilike, inArray, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { membersCsv } from "./csv";

@@ -1,8 +1,8 @@
 "use client";
 
-import { ToggleGroup, ToggleGroupItem } from "@srirealtime/ui/components/toggle-group";
-import { motion } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@rbms/ui/components/toggle-group";
+import { motion } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import type { Interval } from "@/lib/plans";
 import { useSite } from "./site-context";
 

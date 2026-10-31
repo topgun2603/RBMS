@@ -1,5 +1,5 @@
-import { isBalanced, payrollRunPostings, type PayrollRunSrc } from "@srirealtime/accounting";
-import { computePayLine, countDays, DEFAULT_PAYROLL_CONFIG, EMPTY_STRUCTURE, monthRange, runTotals, type DayMark, type PayrollConfig, type SalaryStructure } from "@srirealtime/payroll";
+import { isBalanced, payrollRunPostings, type PayrollRunSrc } from "@rbms/accounting";
+import { computePayLine, countDays, DEFAULT_PAYROLL_CONFIG, EMPTY_STRUCTURE, monthRange, runTotals, type DayMark, type PayrollConfig, type SalaryStructure } from "@rbms/payroll";
 import { describe, expect, it } from "vitest";
 
 /** Small deterministic generator, so a failure can be replayed. */

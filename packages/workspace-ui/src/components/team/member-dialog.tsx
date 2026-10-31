@@ -22,7 +22,7 @@ import {
   Label,
   Skeleton,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ApiError,
   describeError,
@@ -38,7 +38,7 @@ import {
   normalizeTarget,
   useI18n,
   useSession,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { DEFAULT_ROLE_KEY } from "../../lib/permissions";
 import { useInvite, useRoles, useUpdateMember } from "../../lib/queries";
 import type { AssignableLevel, Role, StaffMember } from "../../lib/types";

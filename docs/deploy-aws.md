@@ -10,7 +10,7 @@ and `validate`.
 | `docker/next.Dockerfile` | One recipe for all six Next apps (`--build-arg APP=store`), Next `output: "standalone"` |
 | `.dockerignore` | Keeps `node_modules`, `.next*`, `.env*`, `.git`, `infra/` and docs out of the build context |
 | `docker-compose.prod.yml` | Runs the built images locally against the dev Postgres/Redis (smoke test) |
-| `apps/api/build.mjs`, `apps/api/src/migrate.ts` | Production bundle (`pnpm --filter @srirealtime/api build`), and a migration runner that doesn't need drizzle-kit |
+| `apps/api/build.mjs`, `apps/api/src/migrate.ts` | Production bundle (`pnpm --filter @rbms/api build`), and a migration runner that doesn't need drizzle-kit |
 | `infra/terraform/bootstrap/` | Run once: S3 state bucket + DynamoDB lock table |
 | `infra/terraform/modules/` | `network`, `ecr`, `alb`, `ecs-service`, `database`, `cache`, `storage`, `monitoring`, `github-oidc` |
 | `infra/terraform/envs/staging/` | The staging root: variables, `terraform.tfvars.example`, `backend.tf` (commented template) |
@@ -106,7 +106,7 @@ BuildKit cache, run as the non-root `node` user, use tini as PID 1 and have a `H
 - **API** (`docker/api.Dockerfile`):
   - `build.mjs` bundles `src/` together with the TypeScript workspace packages into `dist/*.mjs` with esbuild.
     Third-party packages stay external.
-  - A separate stage runs `pnpm install --prod --frozen-lockfile --filter @srirealtime/api...` with hoisting, then
+  - A separate stage runs `pnpm install --prod --frozen-lockfile --filter @rbms/api...` with hoisting, then
     drops type packages, glibc builds of sharp and docs.
   - `pnpm deploy` isn't used: in pnpm 9 it re-resolves versions without the lockfile. `node-linker=hoisted` with
     `--filter` would install the whole workspace, Next included.
@@ -493,6 +493,7 @@ How values are provided:
 | `LOG_LEVEL`, `READY_TIMEOUT_MS` | `info`, `2000` (computed) | |
 | `GIT_SHA`, `BUILD_TIME` | image build arguments | shown by `/version` |
 | `SESSION_TTL_DAYS`, `OTP_TTL_MINUTES` | defaults (plain to change) | |
+| `TRUST_PROXY_HOPS` | default `1` (the ALB) | proxies in front of the API; the client IP (rate limits, audit, sign-in records) is the `X-Forwarded-For` entry this many hops from the right, so client-written entries are ignored. Raise it only if another proxy (CDN) is added in front of the ALB |
 | `SEED_SUPERADMIN`, `SEED_DEMO` | only as overrides of a seed run | |
 | `TEST_OTP_CODE`, `TEST_OTP_TARGETS` | never set | ignored in production anyway |
 | `CHROME_PATH` | `/usr/bin/chromium-browser` (image) | |
@@ -514,8 +515,16 @@ parameter). The rest are runtime environment variables.
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_CONTACT_*` | admin, www | `next_public` | `next_public` |
 | `PORT` | all (runtime) | 3000–3005, the dev ports | same |
 | `API_URL` | store, www (runtime, server-side) | `http://<alb>:4000` | `https://api.<d>` |
+| `TRUST_PROXY_HOPS` | store, www (runtime) | default `1` | default `1` |
 | `DEFAULT_TENANT` | store (runtime) | `store_default_tenant` | unset |
 | `GIT_SHA` | all (build) | the commit | the commit |
+
+**Client IPs through the store and www proxies.** Their `/api/v1/*` proxies forward one `X-Forwarded-For` entry: the
+visitor's address as the ALB saw it (`TRUST_PROXY_HOPS` hops from the right). The API then trusts one hop. While
+`API_URL` points back at the public ALB, the ALB appends the store task's own address, so the API sees the store task
+as the client for proxied shopper calls (they share one per-IP budget). Point `API_URL` at a direct route (ECS Service
+Connect or an internal ALB that the store reaches without the public one) to keep per-shopper limits; do not raise the
+API's `TRUST_PROXY_HOPS` to 2 for this, because direct browser calls would then trust a client-written entry.
 
 ## Decide before applying
 
@@ -555,6 +564,6 @@ parameter). The rest are runtime environment variables.
   `envs/staging/`. Both passed: "Success! The configuration is valid." This ran with the AWS environment variables
   cleared and no AWS calls. tflint and checkov aren't installed, so they weren't run.
 - `pnpm turbo run typecheck` (62 packages); unit tests of jobs, db and api; `turbo run build --filter=./apps/*` (the
-  CI build job, which now also bundles the API); `pnpm --filter @srirealtime/api test:e2e:all` against the running
+  CI build job, which now also bundles the API); `pnpm --filter @rbms/api test:e2e:all` against the running
   dev servers.
 - The local Docker smoke test above.

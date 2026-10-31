@@ -1,4 +1,4 @@
-import { requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { REVIEW_FEATURE_KEYS, REVIEW_PERMISSION_KEYS } from "./features";

@@ -1,4 +1,4 @@
-import { documented, requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { documented, requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { NotifyService } from "./service";

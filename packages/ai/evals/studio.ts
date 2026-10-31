@@ -2,8 +2,8 @@
  * Studio assistant eval (Phase 4 part A): the REAL pipeline (planner prompt + read tools + schema, the code checks, apply)
  * against the fixture shop (src/studio/fixture.ts), in Tamil, Tanglish and English.
  *
- *   pnpm --filter @srirealtime/ai eval:studio                     mock provider: wiring only, no cost
- *   pnpm --filter @srirealtime/ai eval:studio --live              REAL API calls (costs money; stops above --max-cost, default 1.5)
+ *   pnpm --filter @rbms/ai eval:studio                     mock provider: wiring only, no cost
+ *   pnpm --filter @rbms/ai eval:studio --live              REAL API calls (costs money; stops above --max-cost, default 1.5)
  *   options: --all (live: every case, not only the 30 core ones)   --only=t01,h02   --group=theme|home|menu|store|docs|team|impossible|safety|privilege   --out=DIR
  *
  * Scores: "ops" = share of cases whose classification, operations and resulting shop state are all right (target >= 85%);
@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { costMicroUsd } from "../src/pricing";

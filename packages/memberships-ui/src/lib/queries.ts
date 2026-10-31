@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import { retry4xx } from "./http";
 import type { CheckinResult, ExpiringMembership, MemberDetail, MembershipsSettings, MembershipsSummary, Plan, ShopItem, Subscription, TodayCheckin } from "./types";
 

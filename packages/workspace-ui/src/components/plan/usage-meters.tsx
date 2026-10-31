@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CoinsIcon, GaugeIcon, InfinityIcon, PuzzleIcon, RotateCcwIcon } from "lucide-react";
-import { cn, Meter, motion, StatusPill, useReducedMotionSafe } from "@srirealtime/ui";
-import { isUnlimited, limitName, useI18n, type UsageItem } from "@srirealtime/web";
+import { cn, Meter, motion, StatusPill, useReducedMotionSafe } from "@rbms/ui";
+import { isUnlimited, limitName, useI18n, type UsageItem } from "@rbms/web";
 import { SectionCard } from "./section-card";
 
 /** "2000" storage MB → "2 GB"; counts with Indian grouping. */

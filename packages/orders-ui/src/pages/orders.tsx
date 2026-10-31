@@ -29,7 +29,7 @@ import {
   EmptyState,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   describeError,
   ModuleLink,
@@ -41,7 +41,7 @@ import {
   useQueryParams,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { OrdersIllustration } from "../components/illustrations";
 import { KanbanBoard } from "../components/kanban";
 import { OrderStatusPill, PaymentPill } from "../components/pills";

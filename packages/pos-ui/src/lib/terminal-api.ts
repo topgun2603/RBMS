@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type QueryParams } from "@srirealtime/web";
+import { api, type QueryParams } from "@rbms/web";
 import { readJson, storageKey, writeJson } from "./storage";
 import type {
   CatalogPage,

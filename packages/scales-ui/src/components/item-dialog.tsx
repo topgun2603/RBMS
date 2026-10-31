@@ -24,8 +24,8 @@ import {
   Label,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { maxPlu } from "../lib/barcode";
 import { paiseToInput, rupeesToPaise } from "../lib/format";
 import { useSaveScaleItem, useScaleSettings } from "../lib/queries";

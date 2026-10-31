@@ -1,4 +1,4 @@
-import { randomDigits } from "@srirealtime/core";
+import { randomDigits } from "@rbms/core";
 import { STATUS_LABELS } from "./status";
 import { CarrierError, type CarrierDriver, type CreateShipmentInput, type CreatedShipment } from "./types";
 

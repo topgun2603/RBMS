@@ -1,6 +1,6 @@
-import { AppError, badRequest, forbidden } from "@srirealtime/core";
-import { PACKS } from "@srirealtime/verticals";
-import { themePreset } from "@srirealtime/branding/theme";
+import { AppError, badRequest, forbidden } from "@rbms/core";
+import { PACKS } from "@rbms/verticals";
+import { themePreset } from "@rbms/branding/theme";
 import { neutralise } from "../assist/safety";
 import { maskText } from "../masking";
 import type { ChangeView, StudioService } from "../studio/engine";

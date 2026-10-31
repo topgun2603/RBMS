@@ -2,18 +2,18 @@
 
 import * as React from "react";
 import { ArrowRightIcon, Loader2Icon, PencilIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Field, FieldControl, FieldError, FieldHint, FieldLabel } from "@srirealtime/ui/components/field";
-import { Input } from "@srirealtime/ui/components/input";
-import { OtpInput } from "@srirealtime/ui/components/otp-input";
-import { AnimatePresence, motion } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { Field, FieldControl, FieldError, FieldHint, FieldLabel } from "@rbms/ui/components/field";
+import { Input } from "@rbms/ui/components/input";
+import { OtpInput } from "@rbms/ui/components/otp-input";
+import { AnimatePresence, motion } from "@rbms/ui/motion";
 import {
   firebasePhoneMessage,
   isFirebaseError,
   resolvePhoneMethod,
   sendFirebasePhoneCode,
   type FirebasePhoneCode,
-} from "@srirealtime/web/firebase-phone";
+} from "@rbms/web/firebase-phone";
 import { api, ApiError, errorMessage, normalizeTarget, type SignInResult } from "@/lib/api";
 import { useSite } from "./site-context";
 

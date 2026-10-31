@@ -1,4 +1,4 @@
-@import "@srirealtime/ui/styles.css";
+@import "@rbms/ui/styles.css";
 
 /* Scan the app, the kit and the mounted UI modules for Tailwind classes (workspace packages are TS source). */
 @source "../";
@@ -11,6 +11,7 @@
 @source "../../../../packages/workspace-ui/src";
 @source "../../../../packages/orders-ui/src";
 @source "../../../../packages/site-ui/src";
+@source "../../../../packages/enquiries-ui/src";
 @source "../../../../packages/commerce-ui/src";
 
 /* Number inputs without spinners (qty / rate fields are typed, not clicked). */

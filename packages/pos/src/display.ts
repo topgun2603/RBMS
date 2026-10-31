@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { AppError, notFound, type AuditEvent } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, notFound, type AuditEvent } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AuditPort, LoggerPort, PosCatalogPort, PosTenantsPort } from "./ports";

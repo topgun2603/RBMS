@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /**
  * site.* strings for the shelf / proof / story home sections, the category, USP and newsletter layouts, and the

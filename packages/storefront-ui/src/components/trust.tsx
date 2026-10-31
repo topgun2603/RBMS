@@ -1,6 +1,6 @@
 import * as React from "react";
 import { BadgeCheckIcon, BanknoteIcon, ClockIcon, GiftIcon, HeartIcon, LeafIcon, MapPinnedIcon, PhoneIcon, ShieldCheckIcon, StarIcon, TagIcon, TruckIcon, Undo2Icon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { paymentMarks, trustItems, type TrustIcon } from "../lib/trust";
 import type { StoreConfig } from "../types";
 

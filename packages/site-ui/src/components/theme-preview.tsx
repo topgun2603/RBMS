@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { ChevronDownIcon, EyeIcon, HeartIcon, MenuIcon, SearchIcon, ShieldCheckIcon, ShoppingBagIcon, StarIcon, TruckIcon, UserRoundIcon, XIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
-import type { StoreTheme } from "@srirealtime/branding/theme";
-import type { Copy } from "@srirealtime/verticals";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
+import type { StoreTheme } from "@rbms/branding/theme";
+import type { Copy } from "@rbms/verticals";
 import { readableOn, type AppearanceDraft } from "../lib/appearance";
 
 const RATIO: Record<StoreTheme["imageRatio"], string> = { portrait: "4 / 5", square: "1 / 1", landscape: "4 / 3" };

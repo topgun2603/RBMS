@@ -1,8 +1,8 @@
 "use client";
 
-import { useOptionalSession } from "@srirealtime/web";
+import { useOptionalSession } from "@rbms/web";
 
-/** `*`, exact keys, `module.*` and `*.<action>` patterns (same rules as @srirealtime/core's permissionMatches). */
+/** `*`, exact keys, `module.*` and `*.<action>` patterns (same rules as @rbms/core's permissionMatches). */
 export function permissionMatches(granted: string, key: string): boolean {
   if (granted === "*" || granted === key) return true;
   if (!granted.includes("*")) return false;

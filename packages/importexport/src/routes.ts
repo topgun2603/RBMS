@@ -1,4 +1,4 @@
-import { badRequest, permissionDenied, permissionsAllow, requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { badRequest, permissionDenied, permissionsAllow, requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyContextConfig, FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { MultipartError, fileFromMultipart } from "./multipart";

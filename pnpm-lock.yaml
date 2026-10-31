@@ -31,13 +31,13 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
       '@tanstack/react-query':
@@ -89,184 +89,187 @@ importers:
       '@fastify/cors':
         specifier: ^11.0.0
         version: 11.3.1
-      '@srirealtime/accounting':
+      '@rbms/accounting':
         specifier: workspace:*
         version: link:../../packages/accounting
-      '@srirealtime/aggregators':
+      '@rbms/aggregators':
         specifier: workspace:*
         version: link:../../packages/aggregators
-      '@srirealtime/ai':
+      '@rbms/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@srirealtime/analytics':
+      '@rbms/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
-      '@srirealtime/audit':
+      '@rbms/audit':
         specifier: workspace:*
         version: link:../../packages/audit
-      '@srirealtime/auth':
+      '@rbms/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@srirealtime/bookings':
+      '@rbms/bookings':
         specifier: workspace:*
         version: link:../../packages/bookings
-      '@srirealtime/branches':
+      '@rbms/branches':
         specifier: workspace:*
         version: link:../../packages/branches
-      '@srirealtime/branding':
+      '@rbms/branding':
         specifier: workspace:*
         version: link:../../packages/branding
-      '@srirealtime/catalogue':
+      '@rbms/catalogue':
         specifier: workspace:*
         version: link:../../packages/catalogue
-      '@srirealtime/chat':
+      '@rbms/chat':
         specifier: workspace:*
         version: link:../../packages/chat
-      '@srirealtime/cms':
+      '@rbms/cms':
         specifier: workspace:*
         version: link:../../packages/cms
-      '@srirealtime/consent':
+      '@rbms/consent':
         specifier: workspace:*
         version: link:../../packages/consent
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@srirealtime/coupons':
+      '@rbms/coupons':
         specifier: workspace:*
         version: link:../../packages/coupons
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@srirealtime/delivery':
+      '@rbms/delivery':
         specifier: workspace:*
         version: link:../../packages/delivery
-      '@srirealtime/developer':
+      '@rbms/developer':
         specifier: workspace:*
         version: link:../../packages/developer
-      '@srirealtime/dining':
+      '@rbms/dining':
         specifier: workspace:*
         version: link:../../packages/dining
-      '@srirealtime/documents':
+      '@rbms/documents':
         specifier: workspace:*
         version: link:../../packages/documents
-      '@srirealtime/einvoice':
+      '@rbms/einvoice':
         specifier: workspace:*
         version: link:../../packages/einvoice
-      '@srirealtime/expenses':
+      '@rbms/enquiries':
+        specifier: workspace:*
+        version: link:../../packages/enquiries
+      '@rbms/expenses':
         specifier: workspace:*
         version: link:../../packages/expenses
-      '@srirealtime/features':
+      '@rbms/features':
         specifier: workspace:*
         version: link:../../packages/features
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../../packages/gst
-      '@srirealtime/gstfiling':
+      '@rbms/gstfiling':
         specifier: workspace:*
         version: link:../../packages/gstfiling
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/idempotency':
+      '@rbms/idempotency':
         specifier: workspace:*
         version: link:../../packages/idempotency
-      '@srirealtime/importexport':
+      '@rbms/importexport':
         specifier: workspace:*
         version: link:../../packages/importexport
-      '@srirealtime/inventory':
+      '@rbms/inventory':
         specifier: workspace:*
         version: link:../../packages/inventory
-      '@srirealtime/invoices':
+      '@rbms/invoices':
         specifier: workspace:*
         version: link:../../packages/invoices
-      '@srirealtime/jewellery':
+      '@rbms/jewellery':
         specifier: workspace:*
         version: link:../../packages/jewellery
-      '@srirealtime/jobcards':
+      '@rbms/jobcards':
         specifier: workspace:*
         version: link:../../packages/jobcards
-      '@srirealtime/jobs':
+      '@rbms/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
-      '@srirealtime/kyc':
+      '@rbms/kyc':
         specifier: workspace:*
         version: link:../../packages/kyc
-      '@srirealtime/loyalty':
+      '@rbms/loyalty':
         specifier: workspace:*
         version: link:../../packages/loyalty
-      '@srirealtime/marketplace':
+      '@rbms/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
-      '@srirealtime/medicines':
+      '@rbms/medicines':
         specifier: workspace:*
         version: link:../../packages/medicines
-      '@srirealtime/memberships':
+      '@rbms/memberships':
         specifier: workspace:*
         version: link:../../packages/memberships
-      '@srirealtime/monitoring':
+      '@rbms/monitoring':
         specifier: workspace:*
         version: link:../../packages/monitoring
-      '@srirealtime/notify':
+      '@rbms/notify':
         specifier: workspace:*
         version: link:../../packages/notify
-      '@srirealtime/onboarding':
+      '@rbms/onboarding':
         specifier: workspace:*
         version: link:../../packages/onboarding
-      '@srirealtime/orders':
+      '@rbms/orders':
         specifier: workspace:*
         version: link:../../packages/orders
-      '@srirealtime/payments':
+      '@rbms/payments':
         specifier: workspace:*
         version: link:../../packages/payments
-      '@srirealtime/payroll':
+      '@rbms/payroll':
         specifier: workspace:*
         version: link:../../packages/payroll
-      '@srirealtime/plans':
+      '@rbms/plans':
         specifier: workspace:*
         version: link:../../packages/plans
-      '@srirealtime/pos':
+      '@rbms/pos':
         specifier: workspace:*
         version: link:../../packages/pos
-      '@srirealtime/pricelists':
+      '@rbms/pricelists':
         specifier: workspace:*
         version: link:../../packages/pricelists
-      '@srirealtime/reports':
+      '@rbms/reports':
         specifier: workspace:*
         version: link:../../packages/reports
-      '@srirealtime/reviews':
+      '@rbms/reviews':
         specifier: workspace:*
         version: link:../../packages/reviews
-      '@srirealtime/scales':
+      '@rbms/scales':
         specifier: workspace:*
         version: link:../../packages/scales
-      '@srirealtime/serials':
+      '@rbms/serials':
         specifier: workspace:*
         version: link:../../packages/serials
-      '@srirealtime/settings':
+      '@rbms/settings':
         specifier: workspace:*
         version: link:../../packages/settings
-      '@srirealtime/staff':
+      '@rbms/staff':
         specifier: workspace:*
         version: link:../../packages/staff
-      '@srirealtime/storefront':
+      '@rbms/storefront':
         specifier: workspace:*
         version: link:../../packages/storefront
-      '@srirealtime/subscriptions':
+      '@rbms/subscriptions':
         specifier: workspace:*
         version: link:../../packages/subscriptions
-      '@srirealtime/support':
+      '@rbms/support':
         specifier: workspace:*
         version: link:../../packages/support
-      '@srirealtime/tenancy':
+      '@rbms/tenancy':
         specifier: workspace:*
         version: link:../../packages/tenancy
-      '@srirealtime/uploads':
+      '@rbms/uploads':
         specifier: workspace:*
         version: link:../../packages/uploads
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../../packages/verticals
-      '@srirealtime/whatsapp':
+      '@rbms/whatsapp':
         specifier: workspace:*
         version: link:../../packages/whatsapp
       drizzle-orm:
@@ -297,34 +300,34 @@ importers:
 
   apps/billing:
     dependencies:
-      '@srirealtime/billing-ui':
+      '@rbms/billing-ui':
         specifier: workspace:*
         version: link:../../packages/billing-ui
-      '@srirealtime/growth-ui':
+      '@rbms/growth-ui':
         specifier: workspace:*
         version: link:../../packages/growth-ui
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/inbox-ui':
+      '@rbms/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
-      '@srirealtime/payroll-ui':
+      '@rbms/payroll-ui':
         specifier: workspace:*
         version: link:../../packages/payroll-ui
-      '@srirealtime/pos-ui':
+      '@rbms/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
-      '@srirealtime/scales-ui':
+      '@rbms/scales-ui':
         specifier: workspace:*
         version: link:../../packages/scales-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@srirealtime/workspace-ui':
+      '@rbms/workspace-ui':
         specifier: workspace:*
         version: link:../../packages/workspace-ui
       '@tanstack/react-query':
@@ -361,43 +364,46 @@ importers:
 
   apps/pharmacy:
     dependencies:
-      '@srirealtime/billing-ui':
+      '@rbms/billing-ui':
         specifier: workspace:*
         version: link:../../packages/billing-ui
-      '@srirealtime/commerce-ui':
+      '@rbms/commerce-ui':
         specifier: workspace:*
         version: link:../../packages/commerce-ui
-      '@srirealtime/growth-ui':
+      '@rbms/enquiries-ui':
+        specifier: workspace:*
+        version: link:../../packages/enquiries-ui
+      '@rbms/growth-ui':
         specifier: workspace:*
         version: link:../../packages/growth-ui
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/inbox-ui':
+      '@rbms/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
-      '@srirealtime/orders-ui':
+      '@rbms/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
-      '@srirealtime/payroll-ui':
+      '@rbms/payroll-ui':
         specifier: workspace:*
         version: link:../../packages/payroll-ui
-      '@srirealtime/pharmacy-ui':
+      '@rbms/pharmacy-ui':
         specifier: workspace:*
         version: link:../../packages/pharmacy-ui
-      '@srirealtime/pos-ui':
+      '@rbms/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
-      '@srirealtime/site-ui':
+      '@rbms/site-ui':
         specifier: workspace:*
         version: link:../../packages/site-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@srirealtime/workspace-ui':
+      '@rbms/workspace-ui':
         specifier: workspace:*
         version: link:../../packages/workspace-ui
       '@tanstack/react-query':
@@ -434,43 +440,107 @@ importers:
 
   apps/restaurant:
     dependencies:
-      '@srirealtime/billing-ui':
+      '@rbms/billing-ui':
         specifier: workspace:*
         version: link:../../packages/billing-ui
-      '@srirealtime/commerce-ui':
+      '@rbms/commerce-ui':
         specifier: workspace:*
         version: link:../../packages/commerce-ui
-      '@srirealtime/growth-ui':
+      '@rbms/enquiries-ui':
+        specifier: workspace:*
+        version: link:../../packages/enquiries-ui
+      '@rbms/growth-ui':
         specifier: workspace:*
         version: link:../../packages/growth-ui
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/inbox-ui':
+      '@rbms/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
-      '@srirealtime/orders-ui':
+      '@rbms/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
-      '@srirealtime/payroll-ui':
+      '@rbms/payroll-ui':
         specifier: workspace:*
         version: link:../../packages/payroll-ui
-      '@srirealtime/pos-ui':
+      '@rbms/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
-      '@srirealtime/restaurant-ui':
+      '@rbms/restaurant-ui':
         specifier: workspace:*
         version: link:../../packages/restaurant-ui
-      '@srirealtime/site-ui':
+      '@rbms/site-ui':
         specifier: workspace:*
         version: link:../../packages/site-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@srirealtime/workspace-ui':
+      '@rbms/workspace-ui':
+        specifier: workspace:*
+        version: link:../../packages/workspace-ui
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.27(patch_hash=fc7j7larnydzjrgnsolqmdasea)(@opentelemetry/api@1.10.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.3
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.3
+
+  apps/school:
+    dependencies:
+      '@rbms/bookings-ui':
+        specifier: workspace:*
+        version: link:../../packages/bookings-ui
+      '@rbms/commerce-ui':
+        specifier: workspace:*
+        version: link:../../packages/commerce-ui
+      '@rbms/enquiries-ui':
+        specifier: workspace:*
+        version: link:../../packages/enquiries-ui
+      '@rbms/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@rbms/inbox-ui':
+        specifier: workspace:*
+        version: link:../../packages/inbox-ui
+      '@rbms/site-ui':
+        specifier: workspace:*
+        version: link:../../packages/site-ui
+      '@rbms/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@rbms/web':
+        specifier: workspace:*
+        version: link:../../packages/web
+      '@rbms/workspace-ui':
         specifier: workspace:*
         version: link:../../packages/workspace-ui
       '@tanstack/react-query':
@@ -507,16 +577,16 @@ importers:
 
   apps/seller:
     dependencies:
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/marketplace-ui':
+      '@rbms/marketplace-ui':
         specifier: workspace:*
         version: link:../../packages/marketplace-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
       '@tanstack/react-query':
@@ -553,52 +623,55 @@ importers:
 
   apps/services:
     dependencies:
-      '@srirealtime/billing-ui':
+      '@rbms/billing-ui':
         specifier: workspace:*
         version: link:../../packages/billing-ui
-      '@srirealtime/bookings-ui':
+      '@rbms/bookings-ui':
         specifier: workspace:*
         version: link:../../packages/bookings-ui
-      '@srirealtime/commerce-ui':
+      '@rbms/commerce-ui':
         specifier: workspace:*
         version: link:../../packages/commerce-ui
-      '@srirealtime/growth-ui':
+      '@rbms/enquiries-ui':
+        specifier: workspace:*
+        version: link:../../packages/enquiries-ui
+      '@rbms/growth-ui':
         specifier: workspace:*
         version: link:../../packages/growth-ui
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/inbox-ui':
+      '@rbms/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
-      '@srirealtime/jobcards-ui':
+      '@rbms/jobcards-ui':
         specifier: workspace:*
         version: link:../../packages/jobcards-ui
-      '@srirealtime/memberships-ui':
+      '@rbms/memberships-ui':
         specifier: workspace:*
         version: link:../../packages/memberships-ui
-      '@srirealtime/orders-ui':
+      '@rbms/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
-      '@srirealtime/payroll-ui':
+      '@rbms/payroll-ui':
         specifier: workspace:*
         version: link:../../packages/payroll-ui
-      '@srirealtime/pos-ui':
+      '@rbms/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
-      '@srirealtime/serials-ui':
+      '@rbms/serials-ui':
         specifier: workspace:*
         version: link:../../packages/serials-ui
-      '@srirealtime/site-ui':
+      '@rbms/site-ui':
         specifier: workspace:*
         version: link:../../packages/site-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@srirealtime/workspace-ui':
+      '@rbms/workspace-ui':
         specifier: workspace:*
         version: link:../../packages/workspace-ui
       '@tanstack/react-query':
@@ -635,52 +708,55 @@ importers:
 
   apps/shop:
     dependencies:
-      '@srirealtime/billing-ui':
+      '@rbms/billing-ui':
         specifier: workspace:*
         version: link:../../packages/billing-ui
-      '@srirealtime/commerce-ui':
+      '@rbms/commerce-ui':
         specifier: workspace:*
         version: link:../../packages/commerce-ui
-      '@srirealtime/growth-ui':
+      '@rbms/enquiries-ui':
+        specifier: workspace:*
+        version: link:../../packages/enquiries-ui
+      '@rbms/growth-ui':
         specifier: workspace:*
         version: link:../../packages/growth-ui
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/inbox-ui':
+      '@rbms/inbox-ui':
         specifier: workspace:*
         version: link:../../packages/inbox-ui
-      '@srirealtime/jewellery-ui':
+      '@rbms/jewellery-ui':
         specifier: workspace:*
         version: link:../../packages/jewellery-ui
-      '@srirealtime/marketplace-ui':
+      '@rbms/marketplace-ui':
         specifier: workspace:*
         version: link:../../packages/marketplace-ui
-      '@srirealtime/orders-ui':
+      '@rbms/orders-ui':
         specifier: workspace:*
         version: link:../../packages/orders-ui
-      '@srirealtime/payroll-ui':
+      '@rbms/payroll-ui':
         specifier: workspace:*
         version: link:../../packages/payroll-ui
-      '@srirealtime/pos-ui':
+      '@rbms/pos-ui':
         specifier: workspace:*
         version: link:../../packages/pos-ui
-      '@srirealtime/scales-ui':
+      '@rbms/scales-ui':
         specifier: workspace:*
         version: link:../../packages/scales-ui
-      '@srirealtime/serials-ui':
+      '@rbms/serials-ui':
         specifier: workspace:*
         version: link:../../packages/serials-ui
-      '@srirealtime/site-ui':
+      '@rbms/site-ui':
         specifier: workspace:*
         version: link:../../packages/site-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
-      '@srirealtime/workspace-ui':
+      '@rbms/workspace-ui':
         specifier: workspace:*
         version: link:../../packages/workspace-ui
       '@tanstack/react-query':
@@ -717,16 +793,16 @@ importers:
 
   apps/store:
     dependencies:
-      '@srirealtime/cms':
+      '@rbms/cms':
         specifier: workspace:*
         version: link:../../packages/cms
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/storefront-ui':
+      '@rbms/storefront-ui':
         specifier: workspace:*
         version: link:../../packages/storefront-ui
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tanstack/react-query':
@@ -763,19 +839,19 @@ importers:
 
   apps/www:
     dependencies:
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@srirealtime/tenancy':
+      '@rbms/tenancy':
         specifier: workspace:*
         version: link:../../packages/tenancy
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../../packages/verticals
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../../packages/web
       '@tanstack/react-query':
@@ -821,13 +897,13 @@ importers:
 
   packages/accounting:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -843,10 +919,10 @@ importers:
 
   packages/aggregators:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -865,25 +941,25 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^1.3.0
         version: 1.3.0(zod@3.25.76)
-      '@srirealtime/branding':
+      '@rbms/branding':
         specifier: workspace:*
         version: link:../branding
-      '@srirealtime/cms':
+      '@rbms/cms':
         specifier: workspace:*
         version: link:../cms
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/staff':
+      '@rbms/staff':
         specifier: workspace:*
         version: link:../staff
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../verticals
       drizzle-orm:
@@ -908,10 +984,10 @@ importers:
 
   packages/analytics:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -927,10 +1003,10 @@ importers:
 
   packages/audit:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -946,10 +1022,10 @@ importers:
 
   packages/auth:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -971,19 +1047,19 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/receipt-print':
+      '@rbms/receipt-print':
         specifier: workspace:*
         version: link:../receipt-print
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1023,13 +1099,13 @@ importers:
 
   packages/bookings:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1045,16 +1121,16 @@ importers:
 
   packages/bookings-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1079,10 +1155,10 @@ importers:
 
   packages/branches:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1098,10 +1174,10 @@ importers:
 
   packages/branding:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1117,13 +1193,13 @@ importers:
 
   packages/catalogue:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1139,10 +1215,10 @@ importers:
 
   packages/chat:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1158,13 +1234,13 @@ importers:
 
   packages/cms:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../verticals
       drizzle-orm:
@@ -1183,19 +1259,19 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../verticals
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1229,10 +1305,10 @@ importers:
 
   packages/consent:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1261,10 +1337,10 @@ importers:
 
   packages/coupons:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1289,10 +1365,10 @@ importers:
 
   packages/delivery:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1308,10 +1384,10 @@ importers:
 
   packages/developer:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1330,13 +1406,13 @@ importers:
 
   packages/dining:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1358,13 +1434,13 @@ importers:
       '@fontsource/noto-sans-tamil':
         specifier: ^5.2.0
         version: 5.3.0
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1389,10 +1465,10 @@ importers:
 
   packages/einvoice:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1406,15 +1482,68 @@ importers:
         specifier: ^5.3.0
         version: 5.12.7
 
-  packages/expenses:
+  packages/enquiries:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(@opentelemetry/api@1.10.0)(postgres@3.4.9)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.3.0
+        version: 5.12.7
+
+  packages/enquiries-ui:
+    dependencies:
+      '@rbms/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@rbms/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@rbms/verticals':
+        specifier: workspace:*
+        version: link:../verticals
+      '@rbms/web':
+        specifier: workspace:*
+        version: link:../web
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.104.2(react@19.3.0)
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
+
+  packages/expenses:
+    dependencies:
+      '@rbms/core':
+        specifier: workspace:*
+        version: link:../core
+      '@rbms/db':
+        specifier: workspace:*
+        version: link:../db
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1430,10 +1559,10 @@ importers:
 
   packages/features:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1452,16 +1581,16 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1497,13 +1626,13 @@ importers:
 
   packages/gstfiling:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1522,10 +1651,10 @@ importers:
 
   packages/i18n:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1541,10 +1670,10 @@ importers:
 
   packages/idempotency:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1557,10 +1686,10 @@ importers:
 
   packages/importexport:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1582,16 +1711,16 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1625,13 +1754,13 @@ importers:
 
   packages/inventory:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1647,13 +1776,13 @@ importers:
 
   packages/invoices:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1669,13 +1798,13 @@ importers:
 
   packages/jewellery:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1691,16 +1820,16 @@ importers:
 
   packages/jewellery-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1725,13 +1854,13 @@ importers:
 
   packages/jobcards:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1747,16 +1876,16 @@ importers:
 
   packages/jobcards-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1781,10 +1910,10 @@ importers:
 
   packages/jobs:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       bullmq:
@@ -1796,10 +1925,10 @@ importers:
 
   packages/kyc:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1815,10 +1944,10 @@ importers:
 
   packages/loyalty:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1834,10 +1963,10 @@ importers:
 
   packages/marketplace:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -1856,16 +1985,16 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1899,13 +2028,13 @@ importers:
 
   packages/medicines:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1921,13 +2050,13 @@ importers:
 
   packages/memberships:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -1943,16 +2072,16 @@ importers:
 
   packages/memberships-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -1977,16 +2106,16 @@ importers:
 
   packages/monitoring:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
 
   packages/notify:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2005,10 +2134,10 @@ importers:
 
   packages/onboarding:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2024,13 +2153,13 @@ importers:
 
   packages/orders:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -2049,16 +2178,16 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2092,10 +2221,10 @@ importers:
 
   packages/payments:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2111,13 +2240,13 @@ importers:
 
   packages/payroll:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -2133,16 +2262,16 @@ importers:
 
   packages/payroll-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2167,16 +2296,16 @@ importers:
 
   packages/pharmacy-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2201,10 +2330,10 @@ importers:
 
   packages/plans:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2220,10 +2349,10 @@ importers:
 
   packages/pos:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2242,22 +2371,22 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/pricelists':
+      '@rbms/pricelists':
         specifier: workspace:*
         version: link:../pricelists
-      '@srirealtime/receipt-print':
+      '@rbms/receipt-print':
         specifier: workspace:*
         version: link:../receipt-print
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2297,13 +2426,13 @@ importers:
 
   packages/pricelists:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -2321,10 +2450,10 @@ importers:
 
   packages/reports:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2343,16 +2472,16 @@ importers:
 
   packages/restaurant-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2377,10 +2506,10 @@ importers:
 
   packages/reviews:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2396,13 +2525,13 @@ importers:
 
   packages/scales:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -2418,16 +2547,16 @@ importers:
 
   packages/scales-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2452,13 +2581,13 @@ importers:
 
   packages/serials:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -2474,16 +2603,16 @@ importers:
 
   packages/serials-ui:
     dependencies:
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2508,10 +2637,10 @@ importers:
 
   packages/settings:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2530,22 +2659,22 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/branding':
+      '@rbms/branding':
         specifier: workspace:*
         version: link:../branding
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../verticals
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':
@@ -2579,10 +2708,10 @@ importers:
 
   packages/staff:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2598,16 +2727,16 @@ importers:
 
   packages/storefront:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../verticals
       drizzle-orm:
@@ -2629,22 +2758,22 @@ importers:
       '@mediapipe/tasks-vision':
         specifier: 1.1.1
         version: 1.1.1
-      '@srirealtime/branding':
+      '@rbms/branding':
         specifier: workspace:*
         version: link:../branding
-      '@srirealtime/cms':
+      '@rbms/cms':
         specifier: workspace:*
         version: link:../cms
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/verticals':
+      '@rbms/verticals':
         specifier: workspace:*
         version: link:../verticals
       '@tanstack/react-query':
@@ -2687,13 +2816,13 @@ importers:
 
   packages/subscriptions:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
       drizzle-orm:
@@ -2709,10 +2838,10 @@ importers:
 
   packages/support:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2728,10 +2857,10 @@ importers:
 
   packages/tenancy:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2799,10 +2928,10 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.840.0
         version: 3.1151.0
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2821,19 +2950,19 @@ importers:
 
   packages/verticals:
     dependencies:
-      '@srirealtime/branding':
+      '@rbms/branding':
         specifier: workspace:*
         version: link:../branding
 
   packages/web:
     dependencies:
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/tenancy':
+      '@rbms/tenancy':
         specifier: workspace:*
         version: link:../tenancy
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
       '@tanstack/react-query':
@@ -2876,10 +3005,10 @@ importers:
 
   packages/whatsapp:
     dependencies:
-      '@srirealtime/core':
+      '@rbms/core':
         specifier: workspace:*
         version: link:../core
-      '@srirealtime/db':
+      '@rbms/db':
         specifier: workspace:*
         version: link:../db
       drizzle-orm:
@@ -2898,16 +3027,16 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.0
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@3.25.76)
-      '@srirealtime/gst':
+      '@rbms/gst':
         specifier: workspace:*
         version: link:../gst
-      '@srirealtime/i18n':
+      '@rbms/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@srirealtime/ui':
+      '@rbms/ui':
         specifier: workspace:*
         version: link:../ui
-      '@srirealtime/web':
+      '@rbms/web':
         specifier: workspace:*
         version: link:../web
       '@tanstack/react-query':

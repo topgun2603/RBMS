@@ -1,5 +1,5 @@
-import { homeSectionSchema, homeTranslationsSchema, CMS_LIMITS, type HomeDoc } from "@srirealtime/cms";
-import { BUSINESS_TYPES, PACKS } from "@srirealtime/verticals";
+import { homeSectionSchema, homeTranslationsSchema, CMS_LIMITS, type HomeDoc } from "@rbms/cms";
+import { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
 import { z } from "zod";
 import { AREA, fail, patchSettings, settingsOf, type CategoriesArea, type HomeArea, type MenuArea } from "../areas";
 import { checkUrls, defineOp, failInvalid, urlsIn } from "./util";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ChevronLeftIcon, ChevronRightIcon, FileSpreadsheetIcon, HistoryIcon, LockIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, cn, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@srirealtime/ui";
-import { api, describeError, Page, PageHeading, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, cn, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, toast } from "@rbms/ui";
+import { api, describeError, Page, PageHeading, useI18n } from "@rbms/web";
 import { BranchFilter, InlineError } from "../components/bits";
 import { MarkDialog, type MarkTarget } from "../components/mark-dialog";
 import { addMonths, hours, istTime, monthName, todayIst, weekdayName } from "../lib/format";

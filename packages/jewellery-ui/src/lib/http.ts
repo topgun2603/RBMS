@@ -1,4 +1,4 @@
-import { ApiError } from "@srirealtime/web";
+import { ApiError } from "@rbms/web";
 
 /** True for an API error with one of these HTTP statuses. */
 export const isStatus = (err: unknown, ...statuses: number[]) => err instanceof ApiError && statuses.includes(err.status);

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Layout features: the flash sale, finder, stories, category shelf, sticky story and comparison home sections, and the

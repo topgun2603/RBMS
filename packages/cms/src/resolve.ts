@@ -1,4 +1,4 @@
-import { packOrDefault } from "@srirealtime/verticals";
+import { packOrDefault } from "@rbms/verticals";
 import {
   homeSectionSchema,
   type HeroSlide,

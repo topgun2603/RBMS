@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { isValidGstin } from "@srirealtime/gst";
-import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@srirealtime/web";
+import { isValidGstin } from "@rbms/gst";
+import { buildNavModel, featureChecker, normalizeBase, type FeatureState, type MountedModule } from "@rbms/web";
 import { permissionMatches } from "./lib/access";
 import { gstFromInclusive, itcFor } from "./lib/expenses";
 import { billingMessages } from "./lib/messages";

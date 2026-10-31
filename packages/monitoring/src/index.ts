@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { createErrorReporter, type LoggerPort, type ReporterConfig } from "./reporter";
 import { MetricsRegistry } from "./metrics";
 

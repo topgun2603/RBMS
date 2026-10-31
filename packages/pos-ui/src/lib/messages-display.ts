@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** pos.display.* strings: the counter's Customer display dialog (docs/counter-close-display-labels.md). The screen itself speaks the bill's language from lib/display.ts. Merged into posMessages. */
 export const displayEn: Messages = {

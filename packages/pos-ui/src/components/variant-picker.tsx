@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { fetchProduct } from "../lib/api";
 import type { CartProduct } from "../lib/cart";
 import { moneyShort } from "../lib/format";

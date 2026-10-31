@@ -18,8 +18,8 @@ import {
   Input,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { useSaveItem } from "../lib/queries";
 import type { SerialItem, ShopItem } from "../lib/types";
 import { InlineError } from "./bits";

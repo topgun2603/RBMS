@@ -1,17 +1,18 @@
-import { growthModule } from "@srirealtime/growth-ui";
-import { jewelleryModule } from "@srirealtime/jewellery-ui";
-import { marketplaceModule } from "@srirealtime/marketplace-ui";
-import { inboxModule } from "@srirealtime/inbox-ui";
-import { payrollModule } from "@srirealtime/payroll-ui";
-import { posModule } from "@srirealtime/pos-ui";
-import { billingModule } from "@srirealtime/billing-ui";
-import { commerceModule } from "@srirealtime/commerce-ui";
-import { ordersModule } from "@srirealtime/orders-ui";
-import { scalesModule } from "@srirealtime/scales-ui";
-import { serialsModule } from "@srirealtime/serials-ui";
-import { siteModule } from "@srirealtime/site-ui";
-import { createWebApp } from "@srirealtime/web";
-import { workspaceModule } from "@srirealtime/workspace-ui";
+import { enquiriesModule } from "@rbms/enquiries-ui";
+import { growthModule } from "@rbms/growth-ui";
+import { jewelleryModule } from "@rbms/jewellery-ui";
+import { marketplaceModule } from "@rbms/marketplace-ui";
+import { inboxModule } from "@rbms/inbox-ui";
+import { payrollModule } from "@rbms/payroll-ui";
+import { posModule } from "@rbms/pos-ui";
+import { billingModule } from "@rbms/billing-ui";
+import { commerceModule } from "@rbms/commerce-ui";
+import { ordersModule } from "@rbms/orders-ui";
+import { scalesModule } from "@rbms/scales-ui";
+import { serialsModule } from "@rbms/serials-ui";
+import { siteModule } from "@rbms/site-ui";
+import { createWebApp } from "@rbms/web";
+import { workspaceModule } from "@rbms/workspace-ui";
 import { storeModule } from "./store/module";
 
 /**
@@ -29,6 +30,7 @@ export const webApp = createWebApp({
     ordersModule(),
     commerceModule(),
     siteModule(),
+    enquiriesModule(),
     billingModule({ basePath: "/billing" }),
     posModule(),
     scalesModule(),

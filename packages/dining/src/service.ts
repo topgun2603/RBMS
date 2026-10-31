@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { AppError, badRequest, conflict, notFound, type TenantRef } from "@srirealtime/core";
-import type { Db, Tx } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { AppError, badRequest, conflict, notFound, type TenantRef } from "@rbms/core";
+import type { Db, Tx } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { canMoveKot, groupByStation, mergeLines, orderAmount, roundQty, splitLines } from "./logic";

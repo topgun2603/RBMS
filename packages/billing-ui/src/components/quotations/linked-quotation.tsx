@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, useFeature, useI18n } from "@srirealtime/web";
+import { ModuleLink, useFeature, useI18n } from "@rbms/web";
 import { FileSignatureIcon, IndianRupeeIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button } from "@srirealtime/ui";
+import { Alert, AlertDescription, AlertTitle, Button } from "@rbms/ui";
 import { useHasPermission } from "../../lib/access";
 import { money } from "../../lib/format";
 import { useLinkedQuotation } from "../../lib/queries-quotations";

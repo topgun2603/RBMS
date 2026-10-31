@@ -1,4 +1,4 @@
-// @srirealtime/receipt-print: direct thermal receipt printing and cash-drawer kick (docs/printing.md).
+// @rbms/receipt-print: direct thermal receipt printing and cash-drawer kick (docs/printing.md).
 export * from "./escpos";
 export * from "./text";
 export * from "./money";

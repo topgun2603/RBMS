@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Field, FieldControl, FieldError, FieldLabel, InputGroup, InputGroupAddon, InputGroupInput } from "@srirealtime/ui";
-import { describeError, useDebounced, useI18n } from "@srirealtime/web";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Field, FieldControl, FieldError, FieldLabel, InputGroup, InputGroupAddon, InputGroupInput } from "@rbms/ui";
+import { describeError, useDebounced, useI18n } from "@rbms/web";
 import { barcodeParts, money, parseKg, qty } from "../lib/format";
 import { useLabelPreview } from "../lib/queries";
 import type { ScaleItem } from "../lib/types";

@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import { AppError, badRequest, conflict, featureDisabled, notFound, type FeatureGatePort, type ListPage } from "@srirealtime/core";
+import { AppError, badRequest, conflict, featureDisabled, notFound, type FeatureGatePort, type ListPage } from "@rbms/core";
 import { rupees, type ExportColumn } from "./columns";
 import { tallyXmlTable } from "./tally";
 import { VENDORS, detectVendor, findHeaderRow, isFooterRow, vendorById, withVendor, type VendorId } from "./vendors";

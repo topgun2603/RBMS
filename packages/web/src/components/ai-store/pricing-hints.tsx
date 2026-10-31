@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowDownRightIcon, ArrowUpRightIcon, Loader2Icon, SparklesIcon, TrendingUpIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Skeleton, StatusPill, toast, type StatusTone } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, Skeleton, StatusPill, toast, type StatusTone } from "@rbms/ui";
 import { api } from "../../lib/api";
 import { formatPaise } from "../../lib/format";
 import { describeError, useI18n } from "../../lib/i18n";

@@ -1,4 +1,4 @@
-import { requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { forbidden, isSuperAdmin, requireRole, requireSuperAdmin, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { UploadsService } from "./service";
@@ -34,11 +34,29 @@ export const listQuery = z.object({
 });
 const signedQuery = z.object({ exp: z.string().optional(), sig: z.string().optional(), dl: z.string().optional() });
 
-/** Tenant files when a tenant is resolved; platform files (no tenant) are super-admin only. */
-function scope(ctx: RequestContext): string | null {
-  if (ctx.tenant) return ctx.tenant.id;
-  requireSuperAdmin(ctx);
-  return null;
+/**
+ * Who may upload to a shop without a role in it: a marketplace seller of that shop (the seller portal's product images
+ * and logo). The host wires it; without it only members (and super-admins) upload.
+ */
+export interface UploadAccessPort {
+  isUploader(tenantId: string, userId: string): Promise<boolean>;
+}
+
+/** A member of the request's shop (any role), or a super-admin. */
+const isShopMember = (ctx: RequestContext) => !!ctx.user && (ctx.user.tenantRoles.length > 0 || isSuperAdmin(ctx));
+
+/**
+ * Tenant files when a tenant is resolved, for the shop's members (or a seller of the shop via `access`); platform
+ * files (no tenant) are super-admin only. Anyone else is refused: a resolved shop alone is not access to it.
+ */
+async function scope(ctx: RequestContext, access?: UploadAccessPort): Promise<string | null> {
+  const user = requireUser(ctx);
+  if (!ctx.tenant) {
+    requireSuperAdmin(ctx);
+    return null;
+  }
+  if (isShopMember(ctx) || (access && (await access.isUploader(ctx.tenant.id, user.id)))) return ctx.tenant.id;
+  throw forbidden("Only the shop's team can upload files here");
 }
 
 /** One `bytes=` range of a `size`-byte body: null when absent / not a single range, "invalid" when unsatisfiable. */
@@ -68,18 +86,18 @@ const wildcardKey = (params: unknown) => {
   }
 };
 
-export function uploadsRoutes(service: UploadsService) {
+export function uploadsRoutes(service: UploadsService, access?: UploadAccessPort) {
   return async (app: FastifyInstance) => {
     app.post("/sign", async (req) => {
       const user = requireUser(req.ctx);
-      const tenantId = scope(req.ctx);
+      const tenantId = await scope(req.ctx, access);
       const body = signBody.parse(req.body);
       return service.sign({ ...body, tenantId, userId: user.id });
     });
 
     app.post("/:id/complete", async (req) => {
       const user = requireUser(req.ctx);
-      const tenantId = scope(req.ctx);
+      const tenantId = await scope(req.ctx, access);
       const { id } = idParams.parse(req.params);
       return service.complete(id, { tenantId, userId: user.id });
     });
@@ -98,13 +116,17 @@ export function uploadsRoutes(service: UploadsService) {
       const tenantId = req.ctx.tenant?.id ?? null;
       if (!tenantId) requireSuperAdmin(req.ctx);
       const file = await service.get(id, tenantId);
-      if (file.visibility === "private") requireUser(req.ctx);
+      // Private files: the shop's members, or whoever uploaded it (a seller). Everyone else reads public files only.
+      if (file.visibility === "private") {
+        const user = requireUser(req.ctx);
+        if (!isShopMember(req.ctx) && file.ownerUserId !== user.id) throw forbidden("This file is private to the shop");
+      }
       return file;
     });
 
     app.delete("/:id", async (req) => {
       const user = requireUser(req.ctx);
-      const tenantId = scope(req.ctx);
+      const tenantId = await scope(req.ctx, access);
       const { id } = idParams.parse(req.params);
       const file = await service.get(id, tenantId);
       if (file.ownerUserId !== user.id) {

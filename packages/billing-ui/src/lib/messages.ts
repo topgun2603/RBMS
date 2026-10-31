@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 import * as coreV2 from "./messages/core";
 import * as inventoryV2 from "./messages/inventory";
 import * as creditBookV2 from "./messages/credit-book";
@@ -14,6 +14,7 @@ import * as accountingV2 from "./messages/accounting";
 import * as quotationsV2 from "./messages/quotations";
 import * as gstV2 from "./messages/gst";
 import * as stockDepthV2 from "./messages/stock-depth";
+import * as lineSerialsV2 from "./messages/line-serials";
 import * as aiScanV2 from "./messages/ai-scan";
 import * as aiPricingV2 from "./messages/ai-pricing";
 import * as aiAskV2 from "./messages/ai-ask";
@@ -738,7 +739,7 @@ const ta: Messages = {
   "billing.errors.loadFailed": "ஏற்ற முடியவில்லை",
 };
 
-const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, expensesBV2, growthV2, creditNotesV2, listsV2, payablesV2, accountingV2, quotationsV2, gstV2, stockDepthV2, aiScanV2, aiInsightsV2, aiAskV2, aiPricingV2, aiMoneyV2, pricingV2, valuationV2, labelsV2, exportGstinV2, debitNotesV2];
+const areas = [coreV2, creditBookV2, inventoryV2, reportsV2, paymentsV2, expensesV2, expensesBV2, growthV2, creditNotesV2, listsV2, payablesV2, accountingV2, quotationsV2, gstV2, stockDepthV2, aiScanV2, aiInsightsV2, aiAskV2, aiPricingV2, aiMoneyV2, pricingV2, valuationV2, labelsV2, exportGstinV2, debitNotesV2, lineSerialsV2];
 
 export const billingMessages = {
   en: Object.assign({}, en, ...areas.map((a) => a.en)) as Messages,

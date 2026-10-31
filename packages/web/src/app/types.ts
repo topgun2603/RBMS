@@ -1,5 +1,5 @@
 import type * as React from "react";
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 import type { FeatureReq } from "../lib/features";
 import type { PermissionReq } from "../lib/permissions";
 import type { TenantStrategy } from "../lib/tenant";

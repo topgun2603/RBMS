@@ -1,8 +1,8 @@
 "use client";
 
 import { MinusIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, RollingNumber } from "@srirealtime/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, RollingNumber } from "@rbms/ui/motion";
 import { useStore } from "./store-context";
 
 export function QtyStepper({

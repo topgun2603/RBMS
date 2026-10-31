@@ -3,7 +3,7 @@ import type { OfflineFlag, VoidedSeq } from "./schema";
 
 /** Pure rules of offline billing (docs/offline-billing.md). */
 
-/** Indian financial year of a bill date, "26-27" for 2026-10-14 (the same text `financialYear` in @srirealtime/gst gives). */
+/** Indian financial year of a bill date, "26-27" for 2026-10-14 (the same text `financialYear` in @rbms/gst gives). */
 export function financialYearOf(date: string): string {
   const y = Number(date.slice(0, 4));
   const m = Number(date.slice(5, 7));

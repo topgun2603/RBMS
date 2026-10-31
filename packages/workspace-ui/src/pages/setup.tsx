@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ListChecksIcon, PartyPopperIcon } from "lucide-react";
-import { Card, Progress, Skeleton } from "@srirealtime/ui";
-import { Page, PageHeading, QueryError, SettingsNav, useI18n } from "@srirealtime/web";
+import { Card, Progress, Skeleton } from "@rbms/ui";
+import { Page, PageHeading, QueryError, SettingsNav, useI18n } from "@rbms/web";
 import { ProgressRing } from "../components/bits";
 import { StepRow } from "../components/onboarding/steps";
 import { useOnboarding } from "../lib/queries";

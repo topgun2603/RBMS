@@ -6,8 +6,8 @@ import {
   type AuditPort,
   type PermissionDef,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, desc, eq } from "drizzle-orm";
 import type { LoggerPort, MembershipPort, MembershipRecord, QuotaPort, UserDirectoryPort } from "./ports";
 import { tenantRoles, type TenantRole } from "./schema";

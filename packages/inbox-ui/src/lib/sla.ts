@@ -1,7 +1,7 @@
 import type { Ticket, TicketPriority, TicketStatus } from "./types";
 
 /**
- * SLA badge for a ticket's first-response deadline (mirrors @srirealtime/support sla.ts `isOverdue`):
+ * SLA badge for a ticket's first-response deadline (mirrors @rbms/support sla.ts `isOverdue`):
  * - "overdue": no first reply yet, still open/pending, past `slaDueAt` (red)
  * - "due_soon": same, but due within `soonMs` (amber; default 2 h, or a quarter of the window for short SLAs)
  * - "on_track": due later

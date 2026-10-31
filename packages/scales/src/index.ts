@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { SCALES_FEATURES, SCALES_PERMISSIONS } from "./ports";
 import { scalesRoutes } from "./routes";
 import { scaleItems } from "./schema";

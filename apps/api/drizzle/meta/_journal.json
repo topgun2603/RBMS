@@ -393,6 +393,27 @@
       "when": 1793110650697,
       "tag": "0055_expenses_debit_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793153267065,
+      "tag": "0056_enquiries",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793347598998,
+      "tag": "0057_auth_session_mfa",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793445108303,
+      "tag": "0058_branch_books",
+      "breakpoints": true
     }
   ]
 }

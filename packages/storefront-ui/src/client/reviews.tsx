@@ -3,10 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { Loader2Icon, MessageSquareReplyIcon, StarIcon, ThumbsUpIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, useInView, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { toast } from "@rbms/ui/components/sonner";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, useInView, useReducedMotionSafe } from "@rbms/ui/motion";
 import { formatDate } from "../lib/format";
 import type { Review, ReviewList } from "../types";
 import { Stars } from "../components/bits";

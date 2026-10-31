@@ -30,8 +30,8 @@ import {
   toast,
   useReducedMotionSafe,
   type StatusTone,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { maskedKey, relativeTime } from "../../lib/developer";
 import { useApiKeys, useRenameKey, useRevokeKey, useScopes } from "../../lib/queries/developer";
 import type { ApiKey } from "../../lib/types";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { StarIcon } from "lucide-react";
-import { ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { useCategories, useProductsByIds } from "../../lib/queries";
 import {
   emptyChapter,

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { AppError, badRequest, notFound } from "@srirealtime/core";
+import { AppError, badRequest, notFound } from "@rbms/core";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";
 import { ecoSummary, PLATFORM_LABELS, taxTreatment, type EcoSummaryRow } from "./gst";
@@ -25,7 +25,7 @@ import {
   type Rider,
 } from "./types";
 
-/** Feature key (declared by @srirealtime/dining, granted with `dining.*`). */
+/** Feature key (declared by @rbms/dining, granted with `dining.*`). */
 export const AGGREGATORS_FEATURE = "dining.aggregators";
 
 export interface AggregatorsConfig {

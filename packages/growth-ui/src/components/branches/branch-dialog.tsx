@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Loader2Icon, WandSparklesIcon } from "lucide-react";
-import { GST_STATES, stateFromGstin } from "@srirealtime/gst";
+import { GST_STATES, stateFromGstin } from "@rbms/gst";
 import {
   Button,
   Field,
@@ -26,8 +26,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { InlineError } from "../bits";
 import { BRANCH_CODE_RE, checkBranchGst, normalizeCode, PINCODE_RE, PREFIX_RE, sampleBillNumber, sanitizePrefix, suggestPrefix } from "../../lib/branches";
 import { todayIST } from "../../lib/format";

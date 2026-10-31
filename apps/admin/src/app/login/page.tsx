@@ -20,7 +20,7 @@ import {
   Separator,
   SlideIn,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BrandMark } from "@/components/brand-mark";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -36,7 +36,7 @@ import {
   sendFirebasePhoneCode,
   type AuthClientConfig,
   type FirebasePhoneCode,
-} from "@srirealtime/web/firebase-phone";
+} from "@rbms/web/firebase-phone";
 
 const OTP_LENGTH = 6;
 /** Step 1 passed but the account has two-factor on: no session yet, `POST /auth/mfa/verify` finishes the sign-in. */

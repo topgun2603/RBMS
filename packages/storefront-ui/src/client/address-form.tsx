@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { GST_STATES } from "@srirealtime/gst";
-import { Button } from "@srirealtime/ui/components/button";
-import { Field, FieldControl, FieldError, FieldLabel } from "@srirealtime/ui/components/field";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { GST_STATES } from "@rbms/gst";
+import { Button } from "@rbms/ui/components/button";
+import { Field, FieldControl, FieldError, FieldLabel } from "@rbms/ui/components/field";
+import { cn } from "@rbms/ui/lib/utils";
 import { normalizeMobile, prettyPhone } from "../lib/format";
 import type { Address, AddressInput, PincodeInfo } from "../types";
 import { ApiError, call, errorMessage } from "./api";

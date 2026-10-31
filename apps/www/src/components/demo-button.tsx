@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowUpRightIcon, Loader2Icon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
+import { Button } from "@rbms/ui/components/button";
 import { useSite } from "./site-context";
 
 /**

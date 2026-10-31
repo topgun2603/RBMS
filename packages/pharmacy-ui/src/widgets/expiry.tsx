@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarClockIcon } from "lucide-react";
-import { InsightCard, useI18n } from "@srirealtime/web";
+import { InsightCard, useI18n } from "@rbms/web";
 import { money, qty } from "../lib/format";
 import { isStatus } from "../lib/http";
 import { useExpirySummary } from "../lib/queries";

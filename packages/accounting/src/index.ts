@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { AssetService, YearEndService } from "./assets";
 import { BankService } from "./bank";

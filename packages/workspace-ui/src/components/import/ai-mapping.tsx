@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { Button, toast } from "@srirealtime/ui";
-import { api, describeError, sendAiFeedback, useAiAssistAllowed, useI18n } from "@srirealtime/web";
+import { Button, toast } from "@rbms/ui";
+import { api, describeError, sendAiFeedback, useAiAssistAllowed, useI18n } from "@rbms/web";
 import type { Importer, Mapping, PreviewResult } from "../../lib/types";
 
 interface MappingResponse {

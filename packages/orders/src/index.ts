@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { ORDER_FEATURES, ORDERS_PERMISSIONS } from "./features";
 import { ordersRoutes } from "./routes";
 import { orderEvents, orders, orderSeries } from "./schema";

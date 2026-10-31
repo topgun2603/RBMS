@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError, apiUrl, BRANCH_HEADER, currentTenantSlug, getStoredBranch, getToken, type QueryParams } from "@srirealtime/web";
+import { ApiError, apiUrl, BRANCH_HEADER, currentTenantSlug, getStoredBranch, getToken, type QueryParams } from "@rbms/web";
 
 /** True for an API error with one of these HTTP statuses. */
 export const isStatus = (err: unknown, ...statuses: number[]) => err instanceof ApiError && statuses.includes(err.status);

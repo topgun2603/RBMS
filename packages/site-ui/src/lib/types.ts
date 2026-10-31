@@ -256,7 +256,7 @@ export interface Overview {
   conversionRate: number;
   trend: { date: string; visitors: number; purchases: number; revenue: number }[];
   funnel: { step: FunnelStep; count: number }[];
-  topProducts: { productId: string; name: string; views: number; addToCart: number; purchases: number }[];
+  topProducts: { productId: string; name: string; views: number; addToCart: number; purchases: number; revenue?: number }[];
   topSearches: { query: string; count: number }[];
   sources: { source: string; sessions: number }[];
   devices: { device: string; sessions: number }[];
@@ -282,8 +282,10 @@ export interface StoreSettings {
   contactEmail: string;
   social: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string };
   policies: { shipping?: string; returns?: string; privacy?: string; terms?: string };
-  /** The shop's trade (@srirealtime/verticals pack id); "" = the app's default. Edited on Settings → Appearance. */
+  /** The shop's trade (@rbms/verticals pack id); "" = the app's default. Edited on Settings → Appearance. */
   businessType?: string;
+  /** The trade as the owner typed it ("Not listed: tell us"); private, counted in the platform's "Not covered" list. */
+  businessLabel?: string;
   /** Show shoppers the "Install <shop> app" banner (installable storefront; default on). */
   installBanner?: boolean;
   /** Trust badges / offers ribbon: "auto" = from the returns policy and the trade; own badges replace the automatic ones. */

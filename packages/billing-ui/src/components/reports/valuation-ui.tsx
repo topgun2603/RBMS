@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FileDownIcon, Loader2Icon, ScaleIcon } from "lucide-react";
-import { Button, Card, ChipGroup, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { describeError, useI18n, useOptionalSession, type QueryParams } from "@srirealtime/web";
+import { Button, Card, ChipGroup, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@rbms/ui";
+import { describeError, useI18n, useOptionalSession, type QueryParams } from "@rbms/web";
 import { usePdf } from "../../lib/pdf";
 import { useSetValuationMethod, useValuationSettings, type ValuationMethod } from "../../lib/valuation";
 import { DownloadCsvButton } from "./report-ui";

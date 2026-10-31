@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CrosshairIcon } from "lucide-react";
-import { cn, Label, Textarea } from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+import { cn, Label, Textarea } from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 import {
   emptyMember,
   emptyMilestone,

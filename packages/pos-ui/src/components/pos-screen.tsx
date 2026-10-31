@@ -16,9 +16,9 @@ import {
   SheetHeader,
   SheetTitle,
   toast,
-} from "@srirealtime/ui";
-import { upiLink } from "@srirealtime/gst";
-import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, useOptionalShop, usePermission, useSettingsHref } from "@srirealtime/web";
+} from "@rbms/ui";
+import { upiLink } from "@rbms/gst";
+import { ApiError, ApprovalCancelled, ConfirmDialog, describeError, useAppNavigate, useDebounced, useDiscountApproval, useI18n, useOptionalShop, usePermission, useSettingsHref } from "@rbms/web";
 import {
   addPayment,
   createBill,
@@ -229,7 +229,7 @@ function Counter() {
 
   // Items with batches: the oldest-expiry batch is put on the line; tap it to choose another.
   const [batchKey, setBatchKey] = React.useState<string | null>(null);
-  const batchTracked = useAutoBatches(lines, (fn) => setCart((c) => ({ ...c, lines: fn(c.lines) })), env.has.inventory && env.online.online);
+  const batchTracked = useAutoBatches(lines, (fn) => setCart((c) => ({ ...c, lines: fn(c.lines) })), (env.has.inventory || env.has.medicines) && env.online.online, env.has.medicines);
 
   // The till session of this register (server-side; the last one seen is cached for offline display).
   const branchReady = !env.has.branches || !!env.branch;

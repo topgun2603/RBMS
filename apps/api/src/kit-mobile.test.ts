@@ -1,4 +1,4 @@
-import { AppError, emptyContext } from "@srirealtime/core";
+import { AppError, emptyContext } from "@rbms/core";
 import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 import { clientInfo, compareVersions, createMobile, parseVersionList } from "./kit-mobile";

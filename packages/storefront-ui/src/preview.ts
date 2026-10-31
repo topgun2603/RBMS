@@ -1,5 +1,5 @@
 /**
- * Edge-safe live-preview entry (`@srirealtime/storefront-ui/preview`): constants, origin rules and the store
+ * Edge-safe live-preview entry (`@rbms/storefront-ui/preview`): constants, origin rules and the store
  * middleware helper. No React, no zod, no request-scoped server imports, so it loads in Next middleware.
  */
 export * from "./lib/preview-routing";

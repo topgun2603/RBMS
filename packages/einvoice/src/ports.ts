@@ -1,4 +1,4 @@
-export type { FeatureGatePort } from "@srirealtime/core";
+export type { FeatureGatePort } from "@rbms/core";
 
 /** Document types of the NIC schema: tax invoices (`INV`) and credit notes (`CRN`) come from the invoices module. */
 export const DOC_TYPES = ["INV", "CRN", "DBN"] as const;

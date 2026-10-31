@@ -24,8 +24,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, useCurrentBranch, useI18n, useMyBranches } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, useCurrentBranch, useI18n, useMyBranches } from "@rbms/web";
 import { GstRateSelect } from "../gst-rate-select";
 import { MoneyInput } from "../money-input";
 import { SupplierPicker, type SupplierParty } from "../inventory/supplier-picker";

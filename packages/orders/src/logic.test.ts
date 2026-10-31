@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { computeInvoice } from "@srirealtime/gst";
+import { computeInvoice } from "@rbms/gst";
 import {
   allocateLoyaltyDiscount,
   allowedTransitions,

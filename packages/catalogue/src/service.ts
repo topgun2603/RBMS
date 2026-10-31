@@ -10,8 +10,8 @@ import {
   notFound,
   type FeatureGatePort,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, asc, count, desc, eq, ilike, inArray, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -33,7 +33,7 @@ import {
 } from "./collections";
 import { CATALOGUE_FEATURE_KEYS } from "./features";
 import { CatalogueUnits } from "./units";
-import { effectiveGstRate, exclusiveOf, gstRateAtPrice, GST_RATES, isGstRateRule, type GstRateRule } from "@srirealtime/gst";
+import { effectiveGstRate, exclusiveOf, gstRateAtPrice, GST_RATES, isGstRateRule, type GstRateRule } from "@rbms/gst";
 import {
   buildTree,
   descendantIds,

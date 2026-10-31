@@ -1,4 +1,4 @@
-import { BUSINESS_TYPES, PACKS, starterHome } from "@srirealtime/verticals";
+import { BUSINESS_TYPES, PACKS, starterHome } from "@rbms/verticals";
 import { describe, expect, it } from "vitest";
 import { homeDocSchema, homeSectionSchema } from "./content";
 

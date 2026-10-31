@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ImageUpIcon, Loader2Icon } from "lucide-react";
-import { Button, Input, toast } from "@srirealtime/ui";
-import { AiDraftBanner, Page, PageHeading, describeError, useI18n } from "@srirealtime/web";
+import { Button, Input, toast } from "@rbms/ui";
+import { AiDraftBanner, Page, PageHeading, describeError, useI18n } from "@rbms/web";
 import { MAX_PAGES, MENU_SCAN_CREDITS, ScanFileError, createMenu, prepareScan, scanErrorKind, useScanMenu, type DraftDish, type MenuDraft } from "../lib/ai";
 
 interface Row {

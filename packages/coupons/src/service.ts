@@ -9,8 +9,8 @@ import {
   runList,
   searchAny,
   type ListPage,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, count, desc, eq, inArray, isNotNull, not, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {

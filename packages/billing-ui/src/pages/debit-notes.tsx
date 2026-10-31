@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { Undo2Icon } from "lucide-react";
-import { DataTable, DataTableToolbar, EmptyState, InitialsAvatar, StatusPill, type DataTableColumn } from "@srirealtime/ui";
+import { DataTable, DataTableToolbar, EmptyState, InitialsAvatar, StatusPill, type DataTableColumn } from "@rbms/ui";
 import { money } from "../lib/format";
 import type { DebitNote } from "../lib/types-payables";
 

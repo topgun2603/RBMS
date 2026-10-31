@@ -16,8 +16,8 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { Button, Checkbox, ChipGroup, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Skeleton, Switch, Textarea, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+import { Button, Checkbox, ChipGroup, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Skeleton, Switch, Textarea, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { Field, MoneyInput, ReadOnlyNote, Section, Thumb } from "../components/bits";
 import { CategoryChecklist, ProductMultiPicker } from "../components/target-pickers";
 import { VariantPicker } from "../components/variant-picker";

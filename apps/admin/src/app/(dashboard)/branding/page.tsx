@@ -38,7 +38,7 @@ import {
   TabsList,
   TabsTrigger,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ImageUpload } from "@/components/image-upload";
 import { Page } from "@/components/page";

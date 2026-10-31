@@ -29,8 +29,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { InlineError, RunPill, WarningPills } from "../components/bits";
 import { LineDialog } from "../components/line-dialog";
 import { PayDialog } from "../components/pay-dialog";

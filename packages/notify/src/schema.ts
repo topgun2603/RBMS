@@ -1,4 +1,4 @@
-import { pk, timestamps } from "@srirealtime/db";
+import { pk, timestamps } from "@rbms/db";
 import { index, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 /** Provider-specific template references, e.g. a DLT flow id or an approved WhatsApp template. */

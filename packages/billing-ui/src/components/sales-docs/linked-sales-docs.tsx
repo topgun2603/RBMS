@@ -1,8 +1,8 @@
 "use client";
 
-import { ModuleLink, useFeature, useI18n } from "@srirealtime/web";
+import { ModuleLink, useFeature, useI18n } from "@rbms/web";
 import { FileBadgeIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@srirealtime/ui";
+import { Alert, AlertDescription, AlertTitle } from "@rbms/ui";
 import { useHasPermission } from "../../lib/access";
 import { money } from "../../lib/format";
 import { useLinkedSalesDocs } from "../../lib/queries-sales-docs";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, HandCoinsIcon, PencilIcon, SparklesIcon } from "lucide-react";
-import { Button, Card, EmptyState, Input, Label, Skeleton, StatCard, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, EmptyState, Input, Label, Skeleton, StatCard, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { money, todayIST } from "../../lib/format";
 import { fyStartYear, useRcm, useRcmCategories, type ItcRow } from "../../lib/gst";
 import { ItcDialog, RcmPaidDialog, type ItcTarget } from "./itc-dialog";

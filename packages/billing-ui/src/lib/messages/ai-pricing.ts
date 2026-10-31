@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.pricing.* strings: the Pricing hints page under Items (AI Phase 4 part B; docs/ai.md). Keep the en and ta key sets identical. */
 export const en: Messages = {

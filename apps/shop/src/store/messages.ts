@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** store.* strings for the demo store module. Keep en and ta key sets identical. */
 const en: Messages = {

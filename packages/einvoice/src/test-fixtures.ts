@@ -11,7 +11,7 @@ export const BUYER_KA_GSTIN = gstin("29AAFCB9012M1Z"); // Karnataka
 
 const round = (n: number) => Math.sign(n) * Math.round(Math.abs(n));
 
-/** Same arithmetic as @srirealtime/gst computeLine (exclusive prices). */
+/** Same arithmetic as @rbms/gst computeLine (exclusive prices). */
 export function line(
   description: string,
   hsn: string,

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Review source labels and the extra review controls. Every review that the shop entered (not written here by a

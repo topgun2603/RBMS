@@ -13,7 +13,7 @@ import {
   useQueryParams,
   useRouteParams,
   useShop,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import {
   ArrowLeftIcon,
   BanIcon,
@@ -50,7 +50,7 @@ import {
   Skeleton,
   StatusPill,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { InvoiceDocument } from "../components/invoice-document";
 import { CancelQuotationDialog, ConvertQuotationDialog, SendQuotationDialog, useOrderHref } from "../components/quotations/quotation-dialogs";
 import { QuotationStatusPill, useDateTime, useValidityText } from "../components/quotations/quotation-ui";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import {
   cancelWindow,
   decodeSignedQr,

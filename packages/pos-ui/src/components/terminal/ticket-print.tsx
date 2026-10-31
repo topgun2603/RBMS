@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 import { code128Bars } from "../../lib/code128";
 import { money } from "../../lib/format";
 import type { WeighTicket } from "../../lib/terminal-types";

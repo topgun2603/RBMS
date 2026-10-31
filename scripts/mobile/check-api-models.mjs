@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks the hand-written Dart models in dart/srikit_api against the typed API document.
 //
-//   pnpm --filter @srirealtime/api openapi -- --typed openapi.typed.json   (writes apps/api/openapi.typed.json)
+//   pnpm --filter @rbms/api openapi -- --typed openapi.typed.json   (writes apps/api/openapi.typed.json)
 //   node scripts/mobile/check-api-models.mjs [path/to/openapi.typed.json]
 //
 // For every operation srikit_api calls (found in lib/src/srikit_api.dart) that the document types, each documented
@@ -190,7 +190,7 @@ const MODELS = {
 };
 
 if (!existsSync(docPath)) {
-  console.error(`check-api-models: ${docPath} not found. Run: pnpm --filter @srirealtime/api openapi -- --typed openapi.typed.json`);
+  console.error(`check-api-models: ${docPath} not found. Run: pnpm --filter @rbms/api openapi -- --typed openapi.typed.json`);
   process.exit(1);
 }
 const doc = JSON.parse(readFileSync(docPath, "utf8"));

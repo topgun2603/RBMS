@@ -1,8 +1,8 @@
 "use client";
 
 import { AlertTriangleIcon, CheckCircle2Icon, CircleSlashIcon } from "lucide-react";
-import { StatusPill } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { StatusPill } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { formatQty } from "../lib/format";
 import type { StockStatus } from "../lib/types";
 

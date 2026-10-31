@@ -10,7 +10,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BadgeCheckIcon, CalendarIcon, Loader2Icon, PackageIcon, SearchIcon, ShieldAlertIcon, ShieldCheckIcon, ShieldXIcon, ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { fill, type AftersalesText } from "../lib/messages-aftersales";
 import { ApiError, call } from "./api";
 

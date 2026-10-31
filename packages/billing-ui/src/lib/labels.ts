@@ -3,7 +3,7 @@
 import * as React from "react";
 import QRCode from "qrcode";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import {
   DEFAULT_DESIGN,
   designFromPreset,
@@ -11,13 +11,13 @@ import {
   type LabelDesign,
   type LabelItem,
   type QrMatrix,
-} from "@srirealtime/receipt-print";
+} from "@rbms/receipt-print";
 
 /**
  * Barcode label printing (docs/counter-close-display-labels.md): where the label data comes from (catalogue variants,
  * with their alternate units and barcodes; purchase lines), the design remembered on this computer and as the shop's
  * default, the label printer of this computer, and the print helpers. The layout, barcode encoding and printer commands
- * are in @srirealtime/receipt-print.
+ * are in @rbms/receipt-print.
  */
 
 // ---------------------------------------------------------------- label sources

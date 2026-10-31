@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { MicIcon, MicOffIcon } from "lucide-react";
-import { Button, cn } from "@srirealtime/ui";
+import { Button, cn } from "@rbms/ui";
 import { useI18n } from "../../lib/i18n";
 
 /**

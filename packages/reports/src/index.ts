@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { REPORTS_FEATURES, REPORTS_PERMISSIONS } from "./features";
 import { reportsRoutes } from "./routes";
 import { reportSchedules, savedReports } from "./schema";

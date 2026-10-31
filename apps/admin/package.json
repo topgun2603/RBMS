@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/admin",
+  "name": "@rbms/admin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.0",
-    "@srirealtime/i18n": "workspace:*",
-    "@srirealtime/ui": "workspace:*",
-    "@srirealtime/web": "workspace:*",
+    "@rbms/i18n": "workspace:*",
+    "@rbms/ui": "workspace:*",
+    "@rbms/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "lucide-react": "^0.525.0",
     "motion": "^12.23.0",

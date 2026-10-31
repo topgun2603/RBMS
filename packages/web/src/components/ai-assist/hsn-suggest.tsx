@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Loader2Icon, SparklesIcon, XIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, cn, toast } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, cn, toast } from "@rbms/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { sendAiFeedback } from "../ai-draft";

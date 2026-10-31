@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AlertTriangleIcon, ArrowRightIcon, SparklesIcon, XIcon } from "lucide-react";
-import { AnimatePresence, Button, cn, motion, useReducedMotionSafe } from "@srirealtime/ui";
+import { AnimatePresence, Button, cn, motion, useReducedMotionSafe } from "@rbms/ui";
 import { useOptionalWebApp, useSettingsHref } from "../app/navigation";
 import { allSettingsPages, useOptionalSession } from "../app/session";
 import { BUILT_IN_SETTINGS } from "../app/builtins";

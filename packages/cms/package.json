@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/cms",
+  "name": "@rbms/cms",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,9 +13,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@srirealtime/core": "workspace:*",
-    "@srirealtime/db": "workspace:*",
-    "@srirealtime/verticals": "workspace:*",
+    "@rbms/core": "workspace:*",
+    "@rbms/db": "workspace:*",
+    "@rbms/verticals": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "zod": "^3.25.0"
   },

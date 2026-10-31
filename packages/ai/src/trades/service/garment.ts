@@ -16,7 +16,7 @@ export const MEASURE_CREDITS_HINT = 20;
 export const DESIGN_CREDITS_HINT = 15;
 
 export type GarmentKind = "blouse" | "salwar" | "shirt" | "pant" | "other";
-/** The shop's garment template (mirrors @srirealtime/jobcards GARMENT_MEASUREMENTS). */
+/** The shop's garment template (mirrors @rbms/jobcards GARMENT_MEASUREMENTS). */
 export const TEMPLATE_KEYS: Record<GarmentKind, readonly string[]> = {
   blouse: ["length", "bust", "waist", "shoulder", "armhole", "sleeveLength", "sleeveRound", "frontNeck", "backNeck"],
   salwar: ["length", "bust", "waist", "hip", "shoulder", "armhole", "sleeveLength", "sleeveRound", "frontNeck", "backNeck", "bottomLength", "bottomWaist", "ankle"],

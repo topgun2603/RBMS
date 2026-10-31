@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import type { CoverNote, LoanPackFacts } from "./loanpack";
 import { aiMoneyPacks, type AiMoneyPackRow } from "./schema";
 

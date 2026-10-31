@@ -1,4 +1,4 @@
-import type { Confidence, ReceiptRaw } from "@srirealtime/ai";
+import type { Confidence, ReceiptRaw } from "@rbms/ai";
 import { Flags, dateField, gstRateField, gstinField, nameSimilarity, normName, paiseField, safeText, type Flag } from "./common";
 
 export interface CategoryLite {

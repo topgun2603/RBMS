@@ -36,7 +36,7 @@ import {
   Skeleton,
   type AppShellLinkComponent,
   type AppShellNavSection,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BrandMark } from "@/components/brand-mark";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { QueryError } from "@/components/query-state";

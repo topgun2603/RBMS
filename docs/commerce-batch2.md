@@ -10,7 +10,7 @@ The storefront is each shop's own branded site (D2C). UI comes in batch 2b; this
 
 ---
 
-## 1. `@srirealtime/storefront` (`/v1/store`)
+## 1. `@rbms/storefront` (`/v1/store`)
 
 Tables: `store_customers` (tenant, user_id (unique per tenant), name, phone, email, marketing_opt_in, orders_count, total_spent,
 last_order_at, timestamps), `store_addresses` (tenant, customer_id, label, name, phone, line1, line2, landmark, city, district,
@@ -42,7 +42,7 @@ Endpoints (feature `storefront`):
 - Settings namespace `store` (defined in apps/api): `{ open: true, closedMessage: "", codEnabled: true, codMaxAmount: 500000, minOrderValue: 0, contactPhone: "", contactEmail: "", social: { instagram, facebook, youtube, whatsapp }, policies: { shipping, returns, privacy, terms }, installBanner: true }` (`installBanner`: the storefront's "Install <shop> app" banner, see §6).
 Features: `storefront` (base, label "Online store"), `storefront.wishlist` (shopToggle). Permissions: none (shopper routes check the shopper).
 
-## 2. `@srirealtime/delivery` (`/v1/delivery`)
+## 2. `@rbms/delivery` (`/v1/delivery`)
 
 Tables: `delivery_zones` (tenant, name, states text[], pincode_prefixes text[], pincodes text[], active, sort), `delivery_rates` (tenant, zone_id, name, type `flat|weight|free_above`,
 amount, free_above null, weight_slabs jsonb `{ upToGrams, amount }[]`, eta_min_days, eta_max_days, cod_allowed, cod_fee, active, sort),
@@ -60,7 +60,7 @@ amount, free_above null, weight_slabs jsonb `{ upToGrams, amount }[]`, eta_min_d
 - Job `delivery.track` every 2 h for open shiprocket shipments.
 Features: `delivery` (zones, rates, quotes, manual shipments), `delivery.carriers` (Shiprocket + label printing; shopToggle). Default for a tenant with no zones: one implicit "All India" flat ₹0 rate (so checkout works out of the box) — document it.
 
-## 3. Catalogue search + collections (extend `@srirealtime/catalogue`) and `@srirealtime/reviews`
+## 3. Catalogue search + collections (extend `@rbms/catalogue`) and `@rbms/reviews`
 
 ### Search (catalogue)
 - Migration: `pg_trgm` extension; `catalog_products.search_text` (lowercased name + brand + tags + attribute values + category name, maintained by the service on write) with a GIN trigram index; plus `tsvector` (simple config) for multi-word queries.
@@ -74,7 +74,7 @@ Features: `delivery` (zones, rates, quotes, manual shipments), `delivery.carrier
 - `catalog_collections` (tenant, name, slug, description, image_url, type `manual|rule`, product_ids uuid[] (manual, ordered), rule jsonb `{ categoryId?, tag?, priceMax?, onSale? (mrp > price), sort }`, active, seo).
 - Staff CRUD (`catalogue.manage`); public `GET /public/collections` and `GET /public/collections/:slug?limit=&offset=` → collection + products. Feature `catalogue`.
 
-### `@srirealtime/reviews` (`/v1/reviews`)
+### `@rbms/reviews` (`/v1/reviews`)
 Tables: `product_reviews` (tenant, product_id, user_id, author_name, order_id null, rating 1–5, title, body, photos jsonb (urls), status `pending|approved|rejected`, verified, helpful_count, reply, replied_at, timestamps; unique (tenant, product_id, user_id)), `review_votes` (review_id, user_id; unique).
 - Public: `GET /public/products/:productId/reviews?sort=recent|helpful|rating-desc|rating-asc&rating=&limit=&offset=` (approved) → `{ items, total, summary: { average, count, distribution: { 1..5 } } }`; `GET /public/ratings?productIds=` → `{ productId, average, count }[]`.
 - Shopper: `POST /public/products/:productId/reviews` `{ rating, title?, body?, photos? }` (one per product; editing replaces; verified = `OrdersPort.hasDelivered(tenantId, userId, productId)`), `POST /public/reviews/:id/helpful`.
@@ -82,7 +82,7 @@ Tables: `product_reviews` (tenant, product_id, user_id, author_name, order_id nu
 - Settings namespace `reviews`: `{ autoApprove: "none" | "verified" | "all" }` (default "verified").
 - Feature `reviews` (shopToggle). Ratings port for catalogue search sort.
 
-## 4. `@srirealtime/cms` (`/v1/cms`) — content + SEO
+## 4. `@rbms/cms` (`/v1/cms`) — content + SEO
 
 Tables: `cms_home` (tenant pk, draft jsonb, published jsonb, published_at), `cms_pages` (tenant, slug, title, blocks jsonb, status `draft|published`, seo jsonb, published_at, timestamps),
 `cms_posts` (tenant, slug, title, excerpt, cover_url, blocks jsonb, tags text[], author_name, status, published_at, seo, timestamps), `cms_menus` (tenant, key `header|footer`, items jsonb).
@@ -96,26 +96,26 @@ Tables: `cms_home` (tenant pk, draft jsonb, published jsonb, published_at), `cms
 - Public: `GET /public/home` (published; sections resolved: categories → names/slugs/images, collection/products → product summaries via `CatalogPort`), `GET /public/pages/:slug`, `GET /public/posts?tag=&limit=&offset=`, `GET /public/posts/:slug`, `GET /public/menus`.
 - Default content: if a tenant has no home yet, `GET /public/home` returns a sensible default (hero with shop name + "Shop now", categories, newest products).
 - **SEO** (same package, feature `seo`, always on with storefront): `GET /public/seo/sitemap.xml` (products, categories, collections, pages, posts with lastmod; absolute URLs from the store base URL port `StoreUrlPort { baseUrl(tenantId) }`), `GET /public/seo/robots.txt` (allow all, sitemap link, disallow /account /checkout /cart),
-  pure exported helpers (also importable by the storefront app — put them in `src/seo/jsonld.ts` with no server imports and export `@srirealtime/cms/seo`): `productJsonLd`, `breadcrumbJsonLd`, `organizationJsonLd`, `websiteSearchJsonLd`, `defaultMeta(shop, entity)`.
+  pure exported helpers (also importable by the storefront app — put them in `src/seo/jsonld.ts` with no server imports and export `@rbms/cms/seo`): `productJsonLd`, `breadcrumbJsonLd`, `organizationJsonLd`, `websiteSearchJsonLd`, `defaultMeta(shop, entity)`.
 - Features: `cms` (home, pages, menus), `cms.blog` (posts; shopToggle), `seo`.
 
 ## 5. Business tools
 
-### `@srirealtime/onboarding` (`/v1/onboarding`)
+### `@rbms/onboarding` (`/v1/onboarding`)
 - Steps registry: `registerStep({ key, module, feature?, label, description, href /* UI route hint, relative to the app, e.g. "settings/business" */, order, check(tenantId): Promise<boolean> })` — registered in kit, e.g. business profile (legalName + stateCode), logo/colour set, first product, first bill or first order, payments connected, delivery zone set (EC), store published (home published) (EC).
 - `onboarding_state` (tenant pk, skipped text[], dismissed_at, completed_at). `GET /` → `{ steps: { key, label, description, href, done, skipped }[], completed, total, dismissed }` (only steps whose feature is on); `POST /:key/skip`, `POST /:key/unskip`, `POST /dismiss`. Owner/admin. Feature `onboarding` (always on).
 
-### `@srirealtime/analytics` (`/v1/analytics`)
-- Public ingest `POST /public/events` `{ anonymousId, sessionId, events: { type: "page_view"|"product_view"|"add_to_cart"|"remove_from_cart"|"begin_checkout"|"purchase"|"search", path?, productId?, variantId?, value?, query?, referrer?, utm?: { source, medium, campaign } , at? }[] }` (≤ 50 per call; ≤ 120 calls/min per IP — in-memory limiter; bot user agents ignored; IP stored only as sha256(ip + daily salt)).
+### `@rbms/analytics` (`/v1/analytics`)
+- Public ingest `POST /public/events` `{ anonymousId, sessionId, events: { type: "page_view"|"product_view"|"add_to_cart"|"remove_from_cart"|"begin_checkout"|"purchase"|"search", path?, productId?, variantId?, value?, items?: { productId, value }[] (purchase only: the order lines, stored as `purchase_item` rows for per-product orders and sales; not counted as orders), query?, referrer?, utm?: { source, medium, campaign } , at? }[] }` (≤ 50 per call; ≤ 120 calls/min per IP — in-memory limiter; bot user agents ignored; IP stored only as sha256(ip + daily salt)).
 - Tables `analytics_events` (tenant, at, type, session_id, anonymous_id, path, product_id, variant_id, value, query, referrer_host, utm_source, utm_medium, utm_campaign, device `mobile|desktop|tablet`, ip_hash), `analytics_daily` (tenant, date, metric, dimension, value; unique). Job `analytics.rollup` hourly (idempotent for today and yesterday); raw events purged after 90 days.
-- `GET /overview?from=&to=` (owner/admin or `reports.view`) → `{ visitors, sessions, pageViews, productViews, addToCart, checkouts, purchases, revenue, conversionRate, trend: { date, visitors, purchases, revenue }[], funnel: { step, count }[], topProducts: { productId, name, views, addToCart, purchases }[], topSearches: { query, count }[], sources: { source, sessions }[], devices: { device, sessions }[] }` (product names via CatalogPort). Feature `analytics`.
+- `GET /overview?from=&to=` (owner/admin or `reports.view`) → `{ visitors, sessions, pageViews, productViews, addToCart, checkouts, purchases, revenue, conversionRate, trend: { date, visitors, purchases, revenue }[], funnel: { step, count }[], topProducts: { productId, name, views, addToCart, purchases, revenue }[], topSearches: { query, count }[], sources: { source, sessions }[], devices: { device, sessions }[] }` (product names via CatalogPort). Feature `analytics`.
 
-### `@srirealtime/expenses` (`/v1/expenses`)
+### `@rbms/expenses` (`/v1/expenses`)
 - `expense_categories` (tenant, name, sort, builtin) seeded lazily: Rent, Salaries, Electricity, Transport, Packaging, Marketing, Repairs, Other; `expenses` (tenant, date, category_id, amount (paise, incl. GST), gst_rate, gst_amount (ITC claimable when vendor GSTIN given), vendor_name, vendor_gstin, payment_method, reference, note, receipt_url, status `recorded|cancelled`, created_by, timestamps).
 - API (permission `expenses.manage`, feature `expenses` shopToggle): CRUD, categories CRUD, `GET /summary?from=&to=` → by category + by month; `GET /reports/profit?from=&to=` →
   `{ sales: { taxable, tax }, purchases: { taxable, itc }, expenses: { total, itc }, grossProfit /* sales.taxable − purchases.taxable */, netProfit /* grossProfit − (expenses.total − expenses.itc) */, gst: { output, itc, payable } }` via `SalesReportPort` (invoices gst-summary totals) and `PurchasesReportPort` (inventory purchases report). CSV for the list.
 
-### Custom domain (extend `@srirealtime/tenancy`)
+### Custom domain (extend `@rbms/tenancy`)
 - `GET /v1/tenancy/domains/:id/instructions` → `{ domain, records: [{ type: "TXT", host: "_srikit-verify.<domain>", value: <token> }, { type: "CNAME", host: <domain or www>, value: <CNAME_TARGET> }], status }` (token stored on tenant_domains).
 - Verifier implemented in apps/api with `node:dns/promises` (`resolveTxt`, `resolveCname`); `POST /domains/:id/verify` uses it; job `tenancy.domains.verify` every 30 min for pending domains.
 - Env `CNAME_TARGET` (default `stores.srikit.in`). Feature `custom-domain` declared by tenancy (dependsOn nothing; plan pro). Verified custom domains already resolve tenants (tenancy.resolve).

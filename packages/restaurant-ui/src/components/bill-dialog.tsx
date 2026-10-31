@@ -16,8 +16,8 @@ import {
   FieldControl,
   FieldLabel,
   Input,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { restaurantConfig } from "../lib/config";
 import { money, qty } from "../lib/format";
 import { useOrderActions } from "../lib/queries";

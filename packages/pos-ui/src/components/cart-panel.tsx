@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ChevronDownIcon, MinusIcon, PauseIcon, PencilIcon, PlusIcon, ShoppingCartIcon, Trash2Icon, WalletIcon } from "lucide-react";
-import { AnimatedNumber, AnimatePresence, Badge, Button, cn, motion, RollingNumber, useReducedMotionSafe } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatedNumber, AnimatePresence, Badge, Button, cn, motion, RollingNumber, useReducedMotionSafe } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { lineGross, type CartLine, type CartTotals } from "../lib/cart";
 import { batchSpill } from "../lib/batches";
 import { fmtExpiry, formatQty, money } from "../lib/format";

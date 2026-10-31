@@ -1,4 +1,4 @@
-import { badRequest, BASE_ROLES, CUSTOM_ROLE_PREFIX, type BaseRole } from "@srirealtime/core";
+import { badRequest, BASE_ROLES, CUSTOM_ROLE_PREFIX, type BaseRole } from "@rbms/core";
 
 /** `role:<key>` entries for custom roles (keys are defined by the staff module). */
 export const CUSTOM_ROLE_RE = /^role:[a-z][a-z0-9-]{1,31}$/;

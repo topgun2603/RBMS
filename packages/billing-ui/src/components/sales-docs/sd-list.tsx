@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, usePermission, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ClipboardListIcon, FileBadgeIcon, PlusIcon, TruckIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@rbms/ui";
 import { compactINR, money } from "../../lib/format";
 import { useSalesDocsSummary } from "../../lib/queries-sales-docs";
 import {

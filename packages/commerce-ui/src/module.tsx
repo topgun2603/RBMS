@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { FolderTreeIcon, LayersIcon, PackageIcon, PlusIcon } from "lucide-react";
-import type { NavSection, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, RouteDef, WebModule, WidgetDef } from "@rbms/web";
 import { commerceMessages } from "./lib/messages";
 
-/** Feature keys the commerce UI uses (declared by @srirealtime/catalogue, inventory and importexport; docs/features.md). */
+/** Feature keys the commerce UI uses (declared by @rbms/catalogue, inventory and importexport; docs/features.md). */
 export const COMMERCE_FEATURES = {
   catalogue: "catalogue",
   variants: "catalogue.variants",

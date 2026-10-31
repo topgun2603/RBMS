@@ -16,8 +16,8 @@ import {
   InputGroupInput,
   motion,
   Skeleton,
-} from "@srirealtime/ui";
-import { useDebounced, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useDebounced, useI18n } from "@rbms/web";
 import type { CartProduct } from "../lib/cart";
 import { useBillingItems, useCategories, useCategoryProducts, useVariantSearch } from "../lib/api";
 import { moneyShort } from "../lib/format";

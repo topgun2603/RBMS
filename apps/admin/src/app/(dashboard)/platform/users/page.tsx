@@ -21,7 +21,7 @@ import {
   PageHeader,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { StatusBadge } from "@/components/badges";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Page } from "@/components/page";

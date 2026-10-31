@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BookOpenIcon, InboxIcon, LifeBuoyIcon, MegaphoneIcon, MessageCircleIcon, MessageSquareTextIcon } from "lucide-react";
-import { Card, EmptyState, Stagger, StaggerItem } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, useI18n, useVisible } from "@srirealtime/web";
+import { Card, EmptyState, Stagger, StaggerItem } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useVisible } from "@rbms/web";
 import { NAV_ITEMS } from "../lib/nav";
 import { TicketsWidget, UnreadWidget } from "../components/overview-cards";
 import { useInboxSources } from "../widgets/inbox";

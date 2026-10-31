@@ -1,5 +1,5 @@
-import { AppError, badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, conflict, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { createSecretBox, type SecretBox } from "./crypto";

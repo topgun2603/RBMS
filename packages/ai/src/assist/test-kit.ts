@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { vi } from "vitest";
 import { resolveAiConfig } from "../config";
 import { AI_SETTINGS_DEFAULTS, type AiSettings } from "../features";

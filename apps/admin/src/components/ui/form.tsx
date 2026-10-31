@@ -10,7 +10,7 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
-import { cn, FieldLabel, fieldStyles, Slot, type FieldLabelProps } from "@srirealtime/ui";
+import { cn, FieldLabel, fieldStyles, Slot, type FieldLabelProps } from "@rbms/ui";
 import { useI18n } from "@/lib/i18n";
 
 /** shadcn's react-hook-form helpers. Zod messages that look like i18n keys ("admin.…") are translated. */
@@ -52,7 +52,7 @@ const useFormField = () => {
 };
 
 /**
- * Same layout as @srirealtime/ui's Field: a `content-start` grid (label row → control → description/message) so
+ * Same layout as @rbms/ui's Field: a `content-start` grid (label row → control → description/message) so
  * fields side by side keep their controls aligned however much text sits under a neighbour.
  */
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {

@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { paymentsRoutes } from "./routes";
 import { paymentAccounts, paymentEvents, paymentOrders } from "./schema";
 import { PAYMENTS_FEATURE, PaymentsService, type PaymentsDeps } from "./service";

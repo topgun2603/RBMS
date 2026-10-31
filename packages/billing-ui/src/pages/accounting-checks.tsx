@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, SearchCheckIcon, TriangleAlertIcon } from "lucide-react";
-import { Button, Card, CardContent, Skeleton, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, Skeleton, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Panel } from "../components/accounting/parts";
 import { useReconcile, useReconcileParties, type PartyDifferences } from "../lib/accounting";
 import { money, rangeFor, todayIST } from "../lib/format";

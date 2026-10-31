@@ -1,4 +1,4 @@
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { matchRows, normalizeNumber, parseGstr2bJson, parseGstr2bSheets, type BookDoc, type Row2b } from "./reco2b";
 

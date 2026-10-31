@@ -4,7 +4,7 @@
  * throw-away schema and drops it afterwards.
  *   PowerShell: $env:LOYALTY_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5432/srikit"; pnpm test
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LOYALTY_SETTINGS_DEFAULTS, type LoyaltySettings } from "./logic";

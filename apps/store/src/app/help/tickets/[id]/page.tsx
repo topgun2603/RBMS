@@ -1,4 +1,4 @@
-import { TicketPage, helpPrivateMetadata } from "@srirealtime/storefront-ui";
+import { TicketPage, helpPrivateMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ id: string }> };
 

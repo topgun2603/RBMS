@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Translator } from "@srirealtime/i18n/client";
+import type { Translator } from "@rbms/i18n/client";
 import { Logo } from "./logo";
 import { CONTACT_EMAIL } from "@/lib/site";
 

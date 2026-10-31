@@ -3,7 +3,7 @@
  * drafts; nothing is saved until the pharmacist presses the normal buttons.
  */
 import { useMutation } from "@tanstack/react-query";
-import { ApiError, api } from "@srirealtime/web";
+import { ApiError, api } from "@rbms/web";
 import type { MedicineSchedule } from "./types";
 
 export const RX_SCAN_CREDITS = 40;

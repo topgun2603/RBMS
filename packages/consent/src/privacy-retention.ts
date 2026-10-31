@@ -1,5 +1,5 @@
-import { addDays, type AuditPort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { addDays, type AuditPort } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { PrivacyHostPort, RetentionCategory } from "./privacy-ports";
 import type { PrivacySettings } from "./privacy-settings";

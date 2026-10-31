@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PlusIcon, TicketPercentIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, Meter, Switch, toast, type DataTableColumn } from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, DataTable, DataTableToolbar, EmptyState, Meter, Switch, toast, type DataTableColumn } from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { CopyButton } from "../components/bits";
 import { CouponStatePill, CouponValue } from "../components/coupon-bits";
 import { CouponsIllustration } from "../components/illustrations";

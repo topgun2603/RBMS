@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** growth.developer.* strings (Settings → API & webhooks). */
 export const en: Messages = {

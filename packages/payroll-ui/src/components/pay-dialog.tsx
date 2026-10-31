@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, FieldControl, FieldHint, FieldLabel, Input, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, FieldControl, FieldHint, FieldLabel, Input, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { money, todayIst } from "../lib/format";
 import { useRunActions } from "../lib/queries";
 import type { PayMethod, RunLine } from "../lib/types";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CoinsIcon, TrendingUpIcon } from "lucide-react";
-import { AttentionItem, KpiTile, useI18n } from "@srirealtime/web";
+import { AttentionItem, KpiTile, useI18n } from "@rbms/web";
 import { money } from "../lib/format";
 import { isStatus } from "../lib/http";
 import { rateOf, type Purity } from "../lib/pricing";

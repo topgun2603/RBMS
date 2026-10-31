@@ -1,4 +1,4 @@
-import { CollectionView, collectionMetadata } from "@srirealtime/storefront-ui";
+import { CollectionView, collectionMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 

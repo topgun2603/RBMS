@@ -3,8 +3,8 @@
  * only with `PLATFORM_TEST_DATABASE_URL` (nothing is written).
  *   PowerShell: $env:PLATFORM_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; npx vitest run src/ai-platform/churn-data.test.ts
  */
-import { aiPlatform } from "@srirealtime/ai";
-import { createDb, type Db } from "@srirealtime/db";
+import { aiPlatform } from "@rbms/ai";
+import { createDb, type Db } from "@rbms/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { churnSignals, isDemoShop } from "./churn-data";
 

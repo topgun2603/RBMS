@@ -48,7 +48,7 @@ the books are untouched. `stock_batch_levels` says how much of that is in which 
   60, 5% within 90); shown in the Batches list, the invoice line and the counter picker. Nothing is applied automatically.
 * **Alerts**: dashboard tile "Expiring stock" (hidden when nothing is expiring), `GET /batches/alerts`, and a daily job
   `inventory.expiry-alerts` that emits a `stock.batch_expiring` webhook event per batch inside the alert window.
-* **Invoice lines** carry `batchId`, `batchNo`, `mfgDate`, `expiry` (optional, in `@srirealtime/gst` `LineInput`); the A4
+* **Invoice lines** carry `batchId`, `batchNo`, `mfgDate`, `expiry` (optional, in `@rbms/gst` `LineInput`); the A4
   bill, the thermal PDF and the on-screen bill print "Batch X · Exp ..." when present.
 
 ### Pharmacy (medicines) keeps working unchanged

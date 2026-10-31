@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle2Icon, Loader2Icon } from "lucide-react";
-import { isValidGstin, stateFromGstin } from "@srirealtime/gst";
+import { isValidGstin, stateFromGstin } from "@rbms/gst";
 import {
   Button,
   ChipGroup,
@@ -18,12 +18,12 @@ import {
   Input,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { MoneyInput } from "./money-input";
 import { StateSelect } from "./state-select";
 import { CountrySelect } from "./gstin/country-select";
 import { GstinAssist } from "./gstin/gstin-assist";
-import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFeature, useI18n } from "@srirealtime/web";
+import { describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFeature, useI18n } from "@rbms/web";
 import { paiseToInput, rupeesToPaise, stateLabel } from "../lib/format";
 import { useSaveCustomer } from "../lib/queries";
 import type { Customer, CustomerInput } from "../lib/types";

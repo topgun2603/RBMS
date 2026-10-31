@@ -1,6 +1,6 @@
 "use client";
 
-import { WebAppRouter } from "@srirealtime/web";
+import { WebAppRouter } from "@rbms/web";
 import { webApp } from "@/web-app";
 
 /**

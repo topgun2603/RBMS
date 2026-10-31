@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BookOpenIcon, ExternalLinkIcon, RepeatIcon, ShieldCheckIcon, TerminalIcon } from "lucide-react";
-import { Button, Stagger, StaggerItem } from "@srirealtime/ui";
-import { apiUrl, useI18n, useOptionalShop } from "@srirealtime/web";
+import { Button, Stagger, StaggerItem } from "@rbms/ui";
+import { apiUrl, useI18n, useOptionalShop } from "@rbms/web";
 import { AUTO_DISABLE_AFTER, curlSample, NODE_VERIFY_SAMPLE, RETRY_SCHEDULE, SIGNATURE_EXAMPLE, SIGNATURE_TOLERANCE_SEC } from "../../lib/developer";
 import { SectionCard } from "../bits";
 import { CodeBlock } from "./json-view";

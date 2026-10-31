@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { baseLevel, customRoleKeys, normalizeMemberRoles } from "./roles";
 

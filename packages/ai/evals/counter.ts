@@ -3,14 +3,14 @@
  * grocery) and staff coaching wording (the REAL writeCoaching). Reports parse accuracy split by who resolved the line (code only,
  * or the light tier helping) and 100% on safety (nothing invented, nothing free, instructions ignored, no judgement of people).
  *
- *   pnpm --filter @srirealtime/ai eval:counter                    MockProvider: the code-only part, no cost
- *   pnpm --filter @srirealtime/ai eval:counter -- --live          REAL API calls (light tier, a few cents)
+ *   pnpm --filter @rbms/ai eval:counter                    MockProvider: the code-only part, no cost
+ *   pnpm --filter @rbms/ai eval:counter -- --live          REAL API calls (light tier, a few cents)
  *   options: --group=voice|coaching  --max-cost=USD (default 1)  --only=ta01,c02  --out=DIR
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { COACH_CASES, VOICE_CASES, type Exp, type VoiceCase } from "./counter-cases";
 import { noJudgement, writeCoaching } from "../src/counter/coaching";

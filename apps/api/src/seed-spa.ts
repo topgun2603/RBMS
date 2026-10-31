@@ -1,4 +1,4 @@
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 import { pino } from "pino";
 import { env } from "./env";
 import { createKit } from "./kit";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 
 /*
  * A tiny, safe markdown renderer (copied from commerce-ui: UI modules never import each other): headings (#, ##, ###),

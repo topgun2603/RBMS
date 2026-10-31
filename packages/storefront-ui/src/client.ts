@@ -1,4 +1,4 @@
-/** Client-safe entry (`@srirealtime/storefront-ui/client`): no server imports, usable from "use client" files. */
+/** Client-safe entry (`@rbms/storefront-ui/client`): no server imports, usable from "use client" files. */
 export { StoreProvider, useStore, useT } from "./client/store-context";
 export { StoreErrorView } from "./client/error-view";
 export { SearchBox } from "./client/search-box";

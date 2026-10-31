@@ -1,4 +1,4 @@
-import type { FeatureGatePort } from "@srirealtime/core";
+import type { FeatureGatePort } from "@rbms/core";
 import type { SupportSettings } from "./sla";
 import type { Ticket } from "./logic";
 

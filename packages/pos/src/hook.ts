@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import type { PosTenantsPort } from "./ports";
 import type { PosService } from "./service";

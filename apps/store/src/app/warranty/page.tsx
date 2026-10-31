@@ -1,4 +1,4 @@
-import { WarrantyPage, warrantyMetadata } from "@srirealtime/storefront-ui";
+import { WarrantyPage, warrantyMetadata } from "@rbms/storefront-ui";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = warrantyMetadata;

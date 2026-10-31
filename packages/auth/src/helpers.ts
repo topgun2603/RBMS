@@ -1,4 +1,4 @@
-import { sha256 } from "@srirealtime/core";
+import { sha256 } from "@rbms/core";
 
 const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 

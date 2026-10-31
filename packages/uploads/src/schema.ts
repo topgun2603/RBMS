@@ -1,4 +1,4 @@
-import { pk, timestamps } from "@srirealtime/db";
+import { pk, timestamps } from "@rbms/db";
 import { index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 export type FileStatus = "pending" | "ready" | "deleted";

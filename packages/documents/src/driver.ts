@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import type { Browser, Page } from "puppeteer-core";
 import { noopLogger, type LoggerPort, type Paper } from "./types";
 

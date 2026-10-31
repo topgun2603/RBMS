@@ -1,4 +1,4 @@
-import { DEFAULT_STORE_THEME } from "@srirealtime/branding/theme";
+import { DEFAULT_STORE_THEME } from "@rbms/branding/theme";
 import { describe, expect, it } from "vitest";
 import type { EditorItem } from "../lib/hidden";
 import { appearanceTokens, brandTokens, itemKeyForSection, previewSections, previewViewOfPath } from "./live-preview-drafts";

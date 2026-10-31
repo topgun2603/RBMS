@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BanIcon, CheckCircle2Icon, InfoIcon, LinkIcon, Loader2Icon, LockIcon, SparklesIcon, ToggleRightIcon } from "lucide-react";
-import { Badge, Card, CardContent, CardHeader, CardTitle, cn, EmptyState, Skeleton, StatusPill, Switch, toast } from "@srirealtime/ui";
+import { Badge, Card, CardContent, CardHeader, CardTitle, cn, EmptyState, Skeleton, StatusPill, Switch, toast } from "@rbms/ui";
 import { Page, PageHeading } from "../components/page";
 import { QueryError } from "../components/query-state";
 import { SettingsNav } from "../components/settings-nav";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ClipboardListIcon, KanbanIcon, ListIcon, PlusIcon } from "lucide-react";
-import { Button, Card, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, Skeleton, type DataTableColumn } from "@srirealtime/ui";
+import { Button, Card, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, Skeleton, type DataTableColumn } from "@rbms/ui";
 import {
   describeError,
   ModuleLink,
@@ -16,7 +16,7 @@ import {
   useQueryParams,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { DueDate, InlineError, JobStatusPill, STATUS_TONE, TemplateIcon, UrgentBadge } from "../components/bits";
 import { NewJobDialog } from "../components/new-job-dialog";
 import { JOBCARDS_PERMISSIONS } from "../lib/access";

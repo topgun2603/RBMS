@@ -1,10 +1,10 @@
-/** Feature keys the job cards UI uses (declared by @srirealtime/jobcards). */
+/** Feature keys the job cards UI uses (declared by @rbms/jobcards). */
 export const JOBCARDS_FEATURES = {
   jobcards: "jobcards",
   tracking: "jobcards.tracking",
 } as const;
 
-/** Permissions of @srirealtime/jobcards. Owners and admins hold all of them. */
+/** Permissions of @rbms/jobcards. Owners and admins hold all of them. */
 export const JOBCARDS_PERMISSIONS = {
   view: "jobcards.view",
   manage: "jobcards.manage",

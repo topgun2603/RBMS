@@ -16,7 +16,7 @@ import {
   StatusPill,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { apiDownload } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";
 import { useSubsT } from "@/lib/subscriptions-messages";

@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { CheckIcon, ImagesIcon, Loader2Icon, PaletteIcon, SearchIcon, VideoIcon } from "lucide-react";
-import { STOCK_TRADES, type StockTrade } from "@srirealtime/branding/stock-art";
-import { PACKS } from "@srirealtime/verticals";
-import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+import { STOCK_TRADES, type StockTrade } from "@rbms/branding/stock-art";
+import { PACKS } from "@rbms/verticals";
+import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 import { mediaThumb, stockItems, useDebounced, useMediaLibrary, useShopStock, type MediaFile, type MediaKind, type StockItem } from "../lib/media-library";
 
 /** What the library hands back: the URL (or stock site path) to store, and a display name. */

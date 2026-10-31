@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { AppError, badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, runList, searchAny, type ListPage, type TenantRef } from "@srirealtime/core";
-import type { Db, Tx } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
-import { and, asc, count, eq, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { AppError, badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, runList, searchAny, type ListPage, type TenantRef } from "@rbms/core";
+import type { Db, Tx } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
+import { and, asc, count, eq, gte, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
   allowedMoves,
@@ -33,7 +33,7 @@ import {
   type JobMeta,
   type JobTotals,
 } from "./logic";
-import { NOTIFY_STATUSES, noopLogger, type BillingPort, type BillResult, type JobSummary, type LoggerPort, type NotifyPort, type SerialStockPort } from "./ports";
+import { NOTIFY_STATUSES, noopLogger, type BillingPort, type BillResult, type JobSummary, type LoggerPort, type NotifyPort, type SerialStockPort, type ServiceDue } from "./ports";
 import {
   CLOSED_STATUSES,
   JOB_PRIORITIES,
@@ -49,7 +49,7 @@ import {
   type JobEventType,
   type JobStatus,
 } from "./schema";
-import { fieldsSummary, JOB_TEMPLATES, TEMPLATE_FIELDS, type JobTemplate } from "./templates";
+import { fieldsSummary, JOB_TEMPLATES, nextServiceDue, TEMPLATE_FIELDS, type JobTemplate } from "./templates";
 
 export interface JobcardsDeps {
   db: Db;
@@ -308,6 +308,38 @@ export class JobcardsService {
   }
 
   /** Jobs, paged; `facets.status` counts each status under the other filters. */
+  /**
+   * Delivered vehicle cards whose "next service after N months" falls on `day` (YYYY-MM-DD, default today IST), over
+   * every shop, for the daily reminder job. The months count from the day the card was delivered. Cards that asked
+   * only for a km reminder are not here: nobody knows when the odometer gets there.
+   */
+  async serviceDueOn(day: string = this.today()): Promise<ServiceDue[]> {
+    // Longest reminder is 60 months, so nothing older than that (plus a month's slack) can be due.
+    const earliest = new Date(Date.parse(`${day}T00:00:00Z`) - 61 * 31 * 86_400_000);
+    const rows = await this.db
+      .select()
+      .from(jobcards)
+      .where(and(eq(jobcards.template, "vehicle"), eq(jobcards.status, "delivered"), gte(jobcards.closedAt, earliest), sql`${jobcards.fields} ? 'remindAfterMonths'`));
+    const out: ServiceDue[] = [];
+    for (const r of rows) {
+      if (!r.closedAt || typeof r.fields.remindAfterMonths !== "number") continue;
+      const due = nextServiceDue(r.fields, todayIST(r.closedAt));
+      if (due.date !== day) continue;
+      out.push({
+        tenantId: r.tenantId,
+        jobId: r.id,
+        label: formatJobNumber(r.number),
+        customerName: r.customerName,
+        customerPhone: r.customerPhone,
+        trackToken: r.trackToken,
+        regNo: typeof r.fields.regNo === "string" ? r.fields.regNo : "",
+        dueDate: due.date,
+        dueKm: due.km,
+      });
+    }
+    return out;
+  }
+
   async list(tenantId: string, query: JobListQuery = {}): Promise<ListPage<JobcardSummary>> {
     const p = jobListQuery.parse(query);
     const order = JOB_SORT.orderBy(p.sort);

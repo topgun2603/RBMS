@@ -12,7 +12,7 @@ import {
   type GstRate,
   type GstRateRule,
   type LineInput,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import type { CatalogItem, OrderSettings } from "./ports";
 import type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus, StockState } from "./schema";
 import type { OrderLine, OrderTotals } from "./types";
@@ -241,7 +241,7 @@ export const balanceOf = (o: { total: number; paid: number; refunded: number }) 
 
 // ------------------------------------------------------------------ pricing and GST
 
-/** Catalogue price → exclusive rate: the one helper from @srirealtime/gst, re-exported for existing importers. */
+/** Catalogue price → exclusive rate: the one helper from @rbms/gst, re-exported for existing importers. */
 export { exclusiveOf };
 
 /** A priced line before tax: catalogue details + qty + the price charged. */

@@ -1,5 +1,5 @@
 /** Response shapes of the srikit HTTP API (/v1) used by the billing app. Money is integer paise. */
-import type { GstRate, InvoiceTotals, LineInput, LineTotals } from "@srirealtime/gst";
+import type { GstRate, InvoiceTotals, LineInput, LineTotals } from "@rbms/gst";
 
 export type { GstRate, InvoiceTotals, LineInput, LineTotals };
 

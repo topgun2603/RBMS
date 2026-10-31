@@ -1,5 +1,5 @@
-import type { aiMoney } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import type { aiMoney } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 type RiskBill = aiMoney.RiskBill;
 type RiskSubject = aiMoney.RiskSubject;

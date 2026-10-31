@@ -22,8 +22,8 @@ import {
   StatusPill,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useDebounced, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useDebounced, useI18n } from "@rbms/web";
 import { InlineError } from "../components/bits";
 import { PlatformBadge } from "../components/platform";
 import { money } from "../lib/format";

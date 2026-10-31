@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BarChart3Icon, PackageIcon, ReceiptTextIcon, TableIcon, TrendingUpIcon } from "lucide-react";
-import { Button, Card, ChipGroup, cn, EmptyState, motion, Skeleton, StatCard, useReducedMotionSafe } from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, ChipGroup, cn, EmptyState, motion, Skeleton, StatCard, useReducedMotionSafe } from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { barPercent, presetRange, type RangePreset } from "../../lib/branches";
 import { money, num, todayIST } from "../../lib/format";
 import { useBranchSummary } from "../../lib/queries/branches";

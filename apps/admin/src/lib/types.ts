@@ -284,7 +284,7 @@ export interface Paged<T> {
 
 // ---------------------------------------------------------------- plan subscriptions (super-admin, docs/batch5.md)
 // Mirrors packages/subscriptions (service.ts adminList / adminStats / adminInvoices). The shop-side shapes live in
-// @srirealtime/web (lib/subscriptions.ts); the admin panel doesn't depend on the web kit, so these are its own.
+// @rbms/web (lib/subscriptions.ts); the admin panel doesn't depend on the web kit, so these are its own.
 
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled" | "expired";
 export type BillingInterval = "monthly" | "yearly";

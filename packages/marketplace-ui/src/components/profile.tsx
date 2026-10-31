@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ImagePlusIcon, Loader2Icon, Trash2Icon } from "lucide-react";
-import { Button, Field, FieldControl, FieldError, FieldHint, FieldLabel, FieldRow, Input, Progress, Textarea, toast } from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+import { Button, Field, FieldControl, FieldError, FieldHint, FieldLabel, FieldRow, Input, Progress, Textarea, toast } from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { GSTIN_RE, normalizeId, PHONE_RE } from "../lib/logic";
 import { uploadImage } from "../lib/queries";
 import type { Vendor } from "../lib/types";

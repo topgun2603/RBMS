@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, Loader2Icon } from "lucide-react";
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 import { useCheckBill, type CheckResult } from "../lib/ai";
 
 /**

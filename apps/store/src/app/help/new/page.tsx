@@ -1,4 +1,4 @@
-import { RaiseTicketPage, helpPrivateMetadata } from "@srirealtime/storefront-ui";
+import { RaiseTicketPage, helpPrivateMetadata } from "@rbms/storefront-ui";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 

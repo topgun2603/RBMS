@@ -1,6 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runMigrations } from "@srirealtime/db";
+import { runMigrations } from "@rbms/db";
 
 /**
  * Applies the SQL migrations in apps/api/drizzle without drizzle-kit (a dev dependency that isn't in the production
@@ -8,7 +8,7 @@ import { runMigrations } from "@srirealtime/db";
  * one-off task before rolling out a new API version, never on API boot (docs/deploy-aws.md):
  *
  *   node apps/api/dist/migrate.mjs            (production image; MIGRATIONS_DIR overrides the folder)
- *   pnpm --filter @srirealtime/api db:migrate (development: drizzle-kit)
+ *   pnpm --filter @rbms/api db:migrate (development: drizzle-kit)
  */
 const url = process.env.DATABASE_URL;
 if (!url) {

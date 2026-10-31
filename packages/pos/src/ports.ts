@@ -1,5 +1,5 @@
-import type { AuditPort, FeatureDef, PermissionDef, TenantRef } from "@srirealtime/core";
-import type { DbOrTx } from "@srirealtime/db";
+import type { AuditPort, FeatureDef, PermissionDef, TenantRef } from "@rbms/core";
+import type { DbOrTx } from "@rbms/db";
 import type { OfflineFlag } from "./schema";
 
 /** One sellable line of the POS catalogue (docs/pos-terminals.md `PosItem`). Money in paise. */

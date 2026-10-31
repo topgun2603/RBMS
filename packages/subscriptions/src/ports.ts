@@ -1,4 +1,4 @@
-import type { AuditPort } from "@srirealtime/core";
+import type { AuditPort } from "@rbms/core";
 import type { InvoiceLine } from "./logic";
 import type { BillingInterval, InvoiceParty, PlatformInvoiceRow } from "./schema";
 

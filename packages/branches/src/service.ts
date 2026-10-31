@@ -1,5 +1,5 @@
-import { AppError, badRequest, conflict, notFound, type FeatureGatePort } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+import { AppError, badRequest, conflict, notFound, type FeatureGatePort } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, asc, eq, inArray, ne, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { BRANCHES_FEATURE_KEYS } from "./features";

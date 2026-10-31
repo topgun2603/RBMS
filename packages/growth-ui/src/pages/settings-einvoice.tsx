@@ -27,8 +27,8 @@ import {
   Switch,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, QueryError, SettingsNav, useFeature, useI18n } from "@rbms/web";
 import { InlineError, NoAccess, SectionCard, useCan } from "../components/bits";
 import { isValidShopGstin, normalizeId } from "../lib/kyc";
 import { useDeleteEInvoiceAccount, useEInvoiceAccount, useSaveEInvoiceAccount } from "../lib/queries/einvoice";

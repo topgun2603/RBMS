@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, PlusIcon, SparklesIcon, Trash2Icon } from "lucide-react";
-import { Button, Input, toast } from "@srirealtime/ui";
-import { AiDraftBanner, Page, PageHeading, api, describeError, useI18n } from "@srirealtime/web";
+import { Button, Input, toast } from "@rbms/ui";
+import { AiDraftBanner, Page, PageHeading, api, describeError, useI18n } from "@rbms/web";
 import type { DishCostRow, RecipeDetail, RecipeDraft } from "../lib/ai";
 
 const rupees = (paise: number | null) => (paise === null ? "—" : `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`);

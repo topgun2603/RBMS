@@ -14,8 +14,8 @@ import {
   StatusPill,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, QueryError, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, QueryError, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { displayPhone, money, num } from "../../lib/format";
 import { downloadMembersCsv, lk, MEMBERS_DEFAULT_SORT, useLoyaltySettings, useLoyaltySummary } from "../../lib/queries/loyalty";
 import type { LoyaltyMember, LoyaltyTier } from "../../lib/types";

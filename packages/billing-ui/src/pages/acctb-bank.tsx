@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FileUpIcon, GitCompareArrowsIcon, LandmarkIcon, NotebookTabsIcon, ScrollTextIcon } from "lucide-react";
-import { Button, Card, CardContent, EmptyState, StatusPill } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, CardContent, EmptyState, StatusPill } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Balance, TableSkeleton } from "../components/accounting/parts";
 import { ACC_BANK, useBankAccounts } from "../lib/accounting-b";
 import { useHasPermission } from "../lib/access";

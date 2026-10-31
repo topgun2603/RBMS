@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { JEWELLERY_FEATURES, JEWELLERY_PERMISSIONS } from "./ports";
 import { jewelleryRoutes } from "./routes";
 import { jewelleryExchanges, jewelleryPieces, jewelleryRates } from "./schema";

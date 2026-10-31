@@ -1,4 +1,4 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
+import { pk, tenantId, timestamps } from "@rbms/db";
 import { boolean, date, index, integer, jsonb, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 /** How a shop's GST filing is set up. One row per shop; the defaults mean "regular taxpayer, monthly, no special rules". */

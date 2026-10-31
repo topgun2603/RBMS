@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, QueryError, useFeature, useI18n, useShop } from "@srirealtime/web";
+import { ModuleLink, Page, QueryError, useFeature, useI18n, useShop } from "@rbms/web";
 import { ArrowLeftIcon, FileDownIcon, Loader2Icon, MoreHorizontalIcon, PrinterIcon } from "lucide-react";
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, FadeIn, InitialsAvatar, Skeleton } from "@srirealtime/ui";
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, FadeIn, InitialsAvatar, Skeleton } from "@rbms/ui";
 import { InvoiceDocument } from "../invoice-document";
 import { money } from "../../lib/format";
 import { usePdf } from "../../lib/pdf";

@@ -17,11 +17,11 @@ import {
   Label,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { MoneyInput } from "../money-input";
 import { cleanQty, round3 } from "./stock-meta";
 import { formatQty, parseQty, rupeesToPaise } from "../../lib/format";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, useI18n } from "@rbms/web";
 import { useAdjustStock } from "../../lib/queries-v2";
 import type { StockAdjustInput, StockRow } from "../../lib/types";
 

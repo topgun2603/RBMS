@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2Icon, Loader2Icon, MessageSquareHeartIcon, SendIcon } from "lucide-react";
-import { Button, toast } from "@srirealtime/ui";
-import { api, describeError, useFeature, useI18n } from "@srirealtime/web";
+import { Button, toast } from "@rbms/ui";
+import { api, describeError, useFeature, useI18n } from "@rbms/web";
 import { usePermissions } from "../../lib/access";
 import type { Order } from "../../lib/types";
 import { Section } from "../bits";

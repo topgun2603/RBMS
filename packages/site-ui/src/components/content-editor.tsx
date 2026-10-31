@@ -14,8 +14,8 @@ import {
   Rows3Icon,
   Trash2Icon,
 } from "lucide-react";
-import { Button, cn, controlHeight, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label, Textarea, toast } from "@srirealtime/ui";
-import { ApiError, ConfirmDialog, describeError, Page, PageHeading, useI18n, useModuleHref } from "@srirealtime/web";
+import { Button, cn, controlHeight, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label, Textarea, toast } from "@rbms/ui";
+import { ApiError, ConfirmDialog, describeError, Page, PageHeading, useI18n, useModuleHref } from "@rbms/web";
 import { PERMS, useCan } from "../lib/access";
 import { checkBlocks, fromBlockForm, toBlockForm, type BlockForm } from "../lib/blocks";
 import { CMS_LIMITS } from "../lib/content";

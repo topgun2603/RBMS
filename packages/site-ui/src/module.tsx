@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { BadgeCheckIcon, BarChart3Icon, FileTextIcon, GlobeIcon, HomeIcon, MenuIcon, NewspaperIcon, PaletteIcon, StarIcon, StoreIcon } from "lucide-react";
-import { registerStudioPreview, type NavSection, type RouteDef, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
+import { registerStudioPreview, type NavSection, type RouteDef, type SettingsPage, type WebModule, type WidgetDef } from "@rbms/web";
 import { PERMS } from "./lib/access";
 import { siteMessages } from "./lib/messages";
 
-/** Feature keys the site UI uses (declared by @srirealtime/cms, reviews, analytics, storefront and tenancy). */
+/** Feature keys the site UI uses (declared by @rbms/cms, reviews, analytics, storefront and tenancy). */
 export const SITE_FEATURES = {
   cms: "cms",
   blog: "cms.blog",

@@ -30,8 +30,8 @@ import {
   StatusPill,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, formatPaise, limitName, QueryError, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, formatPaise, limitName, QueryError, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import {
   MOCK_PAY_PARAM,
   openAuthUrl,

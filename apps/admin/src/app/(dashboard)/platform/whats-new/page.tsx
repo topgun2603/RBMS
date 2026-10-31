@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArchiveIcon, ArrowLeftIcon, Loader2Icon, MegaphoneIcon, PlusIcon, SaveIcon, SendIcon, SparklesIcon, Trash2Icon, UploadIcon } from "lucide-react";
-import { Button, EmptyState, Input, PageHeader, Skeleton, StatusPill, Textarea, toast } from "@srirealtime/ui";
+import { Button, EmptyState, Input, PageHeader, Skeleton, StatusPill, Textarea, toast } from "@rbms/ui";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
 import { SuperAdminOnly } from "@/components/superadmin-only";
@@ -18,9 +18,10 @@ const APPS = [
   { id: "PH", label: "Pharmacy" },
   { id: "RS", label: "Restaurant" },
   { id: "SV", label: "Services" },
+  { id: "SC", label: "School" },
 ] as const;
 const TRADES = [
-  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa",
+  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa", "school", "general_shop", "general_counter", "general_services", "textiles_wholesale", "catering", "pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service", "print_shop", "tuition", "dance_music", "yoga", "driving_school", "paints", "electricals", "tiles_sanitary", "two_wheeler_service", "car_service", "agri_inputs", "auto_parts",
 ];
 
 interface Item {

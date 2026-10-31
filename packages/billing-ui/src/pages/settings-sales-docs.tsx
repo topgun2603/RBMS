@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FileBadgeIcon, Loader2Icon, LockIcon, SaveIcon } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldHint, FieldLabel, Input, Skeleton, Textarea, toast } from "@srirealtime/ui";
-import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useFeature, useI18n, useMe } from "@srirealtime/web";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, FieldHint, FieldLabel, Input, Skeleton, Textarea, toast } from "@rbms/ui";
+import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useFeature, useI18n, useMe } from "@rbms/web";
 import { useSalesDocSettings, useSaveSalesDocSettings } from "../lib/queries-sales-docs";
 import type { SalesDocSettings } from "../lib/types-sales-docs";
 

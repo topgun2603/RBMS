@@ -1,11 +1,11 @@
 import * as React from "react";
-import { renderMarkdown } from "@srirealtime/ui/components/markdown";
+import { renderMarkdown } from "@rbms/ui/components/markdown";
 
 /**
- * Storefront markdown: the shared, safe renderer from @srirealtime/ui (headings, lists, quotes, links, GFM tables …; no
+ * Storefront markdown: the shared, safe renderer from @rbms/ui (headings, lists, quotes, links, GFM tables …; no
  * raw HTML) inside the storefront's `.sf-prose` rhythm. The shop's editor previews (site-ui) use the same renderer.
  */
-export { renderMarkdown, safeHref } from "@srirealtime/ui/components/markdown";
+export { renderMarkdown, safeHref } from "@rbms/ui/components/markdown";
 
 /** Markdown in a prose wrapper. */
 export function Markdown({ source, className }: { source: string | null | undefined; className?: string }) {

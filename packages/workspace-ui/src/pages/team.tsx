@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { KeyRoundIcon, PercentIcon, UsersRoundIcon } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
-import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
+import { Page, PageHeading, SettingsNav, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import { NoPermission } from "../components/bits";
 import { DiscountLimitsTab } from "../components/team/discount-limits-tab";
 import { MembersTab } from "../components/team/members-tab";

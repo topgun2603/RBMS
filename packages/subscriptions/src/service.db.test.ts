@@ -5,7 +5,7 @@
  *   PowerShell: $env:SUBSCRIPTIONS_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5432/srikit"; pnpm test
  */
 import { randomUUID } from "node:crypto";
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addDays, chargeAmount, prorationCredit } from "./logic";

@@ -1,4 +1,4 @@
-import { rasterizeSvg } from "@srirealtime/uploads";
+import { rasterizeSvg } from "@rbms/uploads";
 import type { Logger } from "pino";
 import type { Kit } from "./kit";
 

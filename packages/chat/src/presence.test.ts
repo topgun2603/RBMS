@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { describe, expect, it, vi } from "vitest";
 import { StreamConnection } from "./hub";
 import { toMessage, type Viewer } from "./logic";

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** orders.offers.* strings: automatic offers and combos (selling tools). Merged into ordersMessages. */
 export const promosEn: Messages = {

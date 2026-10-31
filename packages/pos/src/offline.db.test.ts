@@ -6,8 +6,8 @@
  *   PowerShell: $env:POS_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; pnpm test
  */
 import { randomUUID } from "node:crypto";
-import { AppError, emptyContext, permissionsAllow, requirePermission, type TenantRef } from "@srirealtime/core";
-import { createDb, type Db } from "@srirealtime/db";
+import { AppError, emptyContext, permissionsAllow, requirePermission, type TenantRef } from "@rbms/core";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

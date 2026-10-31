@@ -1,7 +1,7 @@
 import type { ParamSource, TemplateMapping, TemplateSlot, WaTemplate, WaTemplateComponent } from "./types";
 
 /*
- * Client copies of @srirealtime/whatsapp template.ts (UI modules never import server packages): placeholders,
+ * Client copies of @rbms/whatsapp template.ts (UI modules never import server packages): placeholders,
  * slots, previews and the campaign variable mapping. Slots are `header.1`, `body.1`, `body.customer_name`,
  * `button.0.1` (URL button 0), `button.1.code` (copy-code button 1).
  */

@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * The background-removal models the image cleanup can run. Weights are NOT in git: `pnpm --filter @srirealtime/ai models:download`
+ * The background-removal models the image cleanup can run. Weights are NOT in git: `pnpm --filter @rbms/ai models:download`
  * fetches them into a git-ignored folder (`AI_MODELS_DIR`, default `<repo>/.models`) and checks the SHA-256 below.
  *
  * Licences (docs/ai.md "Phase 4 part C"): U2-Net is by Xuebin Qin et al. and published under Apache-2.0 (repo LICENSE); the ONNX

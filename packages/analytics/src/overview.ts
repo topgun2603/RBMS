@@ -26,7 +26,7 @@ export interface Overview {
   conversionRate: number;
   trend: { date: string; visitors: number; purchases: number; revenue: number }[];
   funnel: { step: FunnelStep; count: number }[];
-  topProducts: { productId: string; name: string; views: number; addToCart: number; purchases: number }[];
+  topProducts: { productId: string; name: string; views: number; addToCart: number; purchases: number; /** Paise. */ revenue: number }[];
   topSearches: { query: string; count: number }[];
   sources: { source: string; sessions: number }[];
   devices: { device: string; sessions: number }[];
@@ -83,6 +83,7 @@ export function assembleOverview(from: string, to: string, rows: readonly DatedM
     views: dim(METRICS.productViewsBy).get(productId) ?? 0,
     addToCart: dim(METRICS.productAddToCartBy).get(productId) ?? 0,
     purchases: dim(METRICS.productPurchasesBy).get(productId) ?? 0,
+    revenue: dim(METRICS.productRevenueBy).get(productId) ?? 0,
   }));
   products.sort(
     (a, b) => b.views - a.views || b.purchases - a.purchases || b.addToCart - a.addToCart || a.productId.localeCompare(b.productId),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, expiryStatus, fefoAllocate, normalizeExpiry, qtyByItem } from "./logic";
+import { addDays, chosenBatches, expiryStatus, fefoAllocate, normalizeExpiry, qtyByItem } from "./logic";
 
 describe("normalizeExpiry", () => {
   it("takes month expiries to the month's last day", () => {
@@ -53,6 +53,45 @@ describe("fefoAllocate", () => {
   it("handles loose (fractional) quantities without float drift", () => {
     const r = fefoAllocate([{ id: "a", expiry: "2027-01-31", qty: 0.3 }, { id: "b", expiry: "2027-02-28", qty: 1 }], 0.7, today);
     expect(r).toEqual({ allocations: [{ batchId: "a", qty: 0.3 }, { batchId: "b", qty: 0.4 }], short: 0 });
+  });
+});
+
+describe("fefoAllocate with a chosen batch", () => {
+  const today = "2026-10-20";
+  const batches = [
+    { id: "late", expiry: "2027-12-31", qty: 10 },
+    { id: "soon", expiry: "2026-12-31", qty: 3 },
+    { id: "gone", expiry: "2026-09-30", qty: 50 },
+  ];
+  it("takes the chosen batch first, then first-expiry-first-out for the rest", () => {
+    expect(fefoAllocate(batches, 4, today, [{ batchId: "late", qty: 4 }])).toEqual({ allocations: [{ batchId: "late", qty: 4 }], short: 0 });
+    expect(fefoAllocate(batches, 6, today, [{ batchId: "late", qty: 4 }])).toEqual({
+      allocations: [
+        { batchId: "late", qty: 4 },
+        { batchId: "soon", qty: 2 },
+      ],
+      short: 0,
+    });
+  });
+  it("never sells an expired chosen batch, and falls back when the chosen one has too little", () => {
+    expect(fefoAllocate(batches, 2, today, [{ batchId: "gone", qty: 2 }])).toEqual({ allocations: [{ batchId: "soon", qty: 2 }], short: 0 });
+    expect(fefoAllocate(batches, 5, today, [{ batchId: "soon", qty: 5 }])).toEqual({
+      allocations: [
+        { batchId: "soon", qty: 3 },
+        { batchId: "late", qty: 2 },
+      ],
+      short: 0,
+    });
+  });
+  it("chosenBatches sums per item and batch and skips lines without a choice", () => {
+    const m = chosenBatches([
+      { itemId: "i1", qty: 2, batchId: "b1" },
+      { itemId: "i1", qty: 1, batchId: "b1" },
+      { itemId: "i1", qty: 1, batchId: "b2" },
+      { itemId: "i2", qty: 4 },
+      { itemId: null, qty: 1, batchId: "b3" },
+    ]);
+    expect([...m]).toEqual([["i1", [{ batchId: "b1", qty: 3 }, { batchId: "b2", qty: 1 }]]]);
   });
 });
 

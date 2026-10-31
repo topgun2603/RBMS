@@ -1,6 +1,6 @@
-import { AppError, newId, notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { isValidDate, todayIST } from "@srirealtime/gst";
+import { AppError, newId, notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { isValidDate, todayIST } from "@rbms/gst";
 import { and, count, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { balanceOf } from "./logic";

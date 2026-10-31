@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { ScanFlag } from "../../lib/ai-scan";
 import { money } from "../../lib/format";
 

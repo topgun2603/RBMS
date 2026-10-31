@@ -1,4 +1,4 @@
-import type { GstPriceBandRule } from "@srirealtime/gst";
+import type { GstPriceBandRule } from "@rbms/gst";
 import { z } from "zod";
 import { suggestHsn, type AiRunner } from "../../assist/hsn";
 import { dataBlock } from "../../assist/safety";

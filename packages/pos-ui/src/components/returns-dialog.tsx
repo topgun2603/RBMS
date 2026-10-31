@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, InfoIcon, Loader2Icon, LockIcon, MinusIcon, PlusIcon, PrinterIcon, SearchIcon, Undo2Icon } from "lucide-react";
-import { computeCreditNote, CreditNoteError, type CreditNoteCalc, type LineTotals } from "@srirealtime/gst";
+import { computeCreditNote, CreditNoteError, type CreditNoteCalc, type LineTotals } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -33,8 +33,8 @@ import {
   Textarea,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { cancelBill, fetchPdf, findBills, getBill, isNetworkError } from "../lib/api";
 import { formatQty, money } from "../lib/format";
 import { reportNetwork } from "../lib/online";

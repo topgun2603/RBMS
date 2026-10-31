@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /**
  * site.* strings for the layout features: the flash sale, finder, stories, category shelf, sticky story and comparison

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { countryName, formatForeign, upiLink } from "@srirealtime/gst";
-import { cn } from "@srirealtime/ui";
-import { BrandMark, useI18n } from "@srirealtime/web";
+import { countryName, formatForeign, upiLink } from "@rbms/gst";
+import { cn } from "@rbms/ui";
+import { BrandMark, useI18n } from "@rbms/web";
 import { QrImage } from "./upi-qr";
 import { money, stateLabel } from "../lib/format";
 import type { Invoice } from "../lib/types";

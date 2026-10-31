@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ChevronLeftIcon, ChevronRightIcon, MinusIcon, PlusIcon, XIcon } from "lucide-react";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@srirealtime/ui/components/dialog";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@rbms/ui/components/dialog";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { useStore } from "./store-context";
 
 /**

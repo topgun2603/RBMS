@@ -1,5 +1,5 @@
-import { notFound, type FeatureGatePort } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { notFound, type FeatureGatePort } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { eq } from "drizzle-orm";
 import {
   addSkip,

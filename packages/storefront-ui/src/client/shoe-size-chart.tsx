@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { useStore } from "./store-context";
 
 export type ShoeFit = "men" | "women" | "kids";

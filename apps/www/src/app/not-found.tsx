@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Button } from "@srirealtime/ui/components/button";
-import { FadeIn } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { FadeIn } from "@rbms/ui/motion";
 import { getT } from "@/lib/i18n-server";
 import { Container } from "@/components/sections";
 

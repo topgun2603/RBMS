@@ -18,8 +18,8 @@ import {
   Label,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { todayIst } from "../lib/format";
 import { useRequestLeave } from "../lib/queries";
 import { EmployeeSelect, InlineError, LeaveTypeSelect } from "./bits";

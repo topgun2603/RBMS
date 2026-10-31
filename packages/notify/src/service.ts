@@ -1,5 +1,5 @@
-import { AppError, badRequest, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, badRequest, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import { composeMessage } from "./compose";
 import { isUnregisteredTokenError } from "./drivers/fcm";

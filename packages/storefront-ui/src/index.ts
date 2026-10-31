@@ -1,5 +1,5 @@
 /**
- * @srirealtime/storefront-ui — the shopper-facing store theme for Next.js (App Router).
+ * @rbms/storefront-ui — the shopper-facing store theme for Next.js (App Router).
  *
  * Server pages (async server components + `*Metadata()` helpers) fetch the public API for the shop on the request host;
  * client components (cart, checkout, account, search, reviews) talk to the API through the same-origin proxy
@@ -76,7 +76,7 @@ export { ProductCard, ProductGrid, ProductGridSkeleton } from "./components/prod
 export { ListingSkeleton, ProductPageSkeleton, CartSkeleton, CheckoutSkeleton, AccountSkeleton, TrackSkeleton, RailSkeleton, HelpSkeleton, SellerSkeleton, Bone } from "./components/skeletons";
 export { TrustBadges, PaymentIcons } from "./components/trust";
 export { EmptyBagArt, NoResultsArt, NoOrdersArt, EmptyWishlistArt, LostArt, OfflineArt } from "./components/illustrations";
-export { SizeChart, sizeKindFor } from "./components/size-guide";
+export { SizeChart, sizeKindFor, sizeKindForGuide } from "./components/size-guide";
 export { StoreImage, Price, Stars, JsonLd, Breadcrumbs, Container, Empty } from "./components/bits";
 
 // client components

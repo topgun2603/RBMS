@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckIcon, MinusIcon, RefreshCwIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui/components/table";
-import { FadeIn, Reveal } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui/components/table";
+import { FadeIn, Reveal } from "@rbms/ui/motion";
 import { getT } from "@/lib/i18n-server";
 import { pageMetadata } from "@/lib/seo";
 import { compareTable, parseInterval, planName, signupHref, visiblePlans, type Plan } from "@/lib/plans";
@@ -14,7 +14,7 @@ import { AppSwitcher, PricingCards } from "@/components/pricing-view";
 import { HeroBackdrop } from "@/components/hero";
 import { JsonLd } from "@/components/json-ld";
 import { Container, CtaBand, Eyebrow, FaqSection, SectionHeading, faqItems } from "@/components/sections";
-import type { Translator } from "@srirealtime/i18n/client";
+import type { Translator } from "@rbms/i18n/client";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, locale } = await getT();

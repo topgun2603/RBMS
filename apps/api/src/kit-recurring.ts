@@ -1,5 +1,5 @@
-import type { FeatureGatePort, TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import type { FeatureGatePort, TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import {
   createExportBilling,
   createGstinLookup,
@@ -8,7 +8,7 @@ import {
   type GstinLookupProvider,
   type InvoicesService,
   type LoggerPort,
-} from "@srirealtime/invoices";
+} from "@rbms/invoices";
 import type { Env } from "./env";
 
 /** The scheduled job that makes the day's recurring bills (and retries failed ones). */

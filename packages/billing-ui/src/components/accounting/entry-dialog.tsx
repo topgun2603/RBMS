@@ -21,8 +21,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, useI18n } from "@rbms/web";
 import { ACC_POST, useReverseEntry, type Entry } from "../../lib/accounting";
 import { useHasPermission } from "../../lib/access";
 import { money, todayIST } from "../../lib/format";

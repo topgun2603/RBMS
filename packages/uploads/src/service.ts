@@ -1,5 +1,5 @@
-import { badRequest, forbidden, newId, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, forbidden, newId, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, ilike, isNull, like, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { processImage } from "./images";
 import { DEFAULT_ALLOWED_TYPES, buildKey, isAllowedType, normalizeType, thumbKeyFor, withExtension } from "./keys";

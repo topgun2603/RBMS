@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { AlertCircleIcon, ArrowLeftIcon, CheckCheckIcon, CheckIcon, ClockIcon, Loader2Icon, PackageIcon, RefreshCwIcon, SendHorizontalIcon, SparklesIcon, WifiOffIcon, XIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Textarea } from "@srirealtime/ui/components/textarea";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { Button } from "@rbms/ui/components/button";
+import { Textarea } from "@rbms/ui/components/textarea";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { dayKey, isSeen, orderNumberOf, senderName } from "../lib/chat";
 import { formatDate, imageUrl, money } from "../lib/format";
 import type { ChatConversation, ChatMessage, ChatOrderContext } from "../types";

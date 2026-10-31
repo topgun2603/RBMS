@@ -5,7 +5,7 @@
  * throw-away schema which is dropped afterwards.
  *   PowerShell: $env:INVENTORY_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; npx vitest run src/costing.db.test.ts
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CatalogItem, ItemCatalogPort } from "./ports";
@@ -175,6 +175,9 @@ describe.skipIf(!URL_)("stock valuation against Postgres", () => {
     expect(v.method).toBe("fifo");
     expect(v.totals.value).toBe(v.totals.fifoValue);
     expect(await s.costing.bookValue(T, s.today(), async () => -1)).toBe(v.totals.fifoValue);
+    // Split by location (the books' per-branch stock), the parts add up to the same value.
+    const byLocation = await s.costing.bookValueByLocation(T, s.today(), async () => new Map());
+    expect([...byLocation.values()].reduce((a, b) => a + b, 0)).toBe(v.totals.fifoValue);
     // Back to average from the next year (the history keeps both).
     const back = await s.costing.setMethod(T, { method: "average", from: "2027-04-01" }, null, null);
     expect(back.history.map((h) => [h.method, h.from])).toEqual([

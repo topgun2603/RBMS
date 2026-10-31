@@ -1,4 +1,4 @@
-import { isValidGstin } from "@srirealtime/gst";
+import { isValidGstin } from "@rbms/gst";
 import { z } from "zod";
 import { AREA, fail, patchSettings, settingsOf } from "../areas";
 import { AI_FEATURE_REGISTRY } from "../../features";

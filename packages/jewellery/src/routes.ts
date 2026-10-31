@@ -1,4 +1,4 @@
-import { requireRole, requireTenant, type RequestContext } from "@srirealtime/core";
+import { requireRole, requireTenant, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { JEWELLERY_EXCHANGE, JEWELLERY_EXCHANGE_FEATURE, JEWELLERY_FEATURE, JEWELLERY_MANAGE, JEWELLERY_RATES } from "./ports";

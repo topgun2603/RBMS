@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PlusIcon, RotateCcwIcon, StarIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Label, Switch, Textarea } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Label, Switch, Textarea } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import {
   emptyDish,
   emptyStyle,

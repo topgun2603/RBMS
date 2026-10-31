@@ -28,8 +28,8 @@ import {
   Switch,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, useI18n, useMe } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n, useMe } from "@rbms/web";
 import { ChipsInput } from "./chips-input";
 import { InlineError } from "../bits";
 import { useSaveSchedule } from "../../lib/queries/reports";

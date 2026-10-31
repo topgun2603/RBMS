@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { MEDICINES_FEATURES, MEDICINES_PERMISSIONS } from "./ports";
 import { medicinesRoutes } from "./routes";
 import { medicineBatches, medicineBatchMovements, medicinePrescriptions, medicines } from "./schema";

@@ -1,6 +1,7 @@
+import { siteOnly } from "../lib/site";
 import * as React from "react";
 import type { Metadata, Viewport } from "next";
-import { localizeSections } from "@srirealtime/cms/localize";
+import { localizeSections } from "@rbms/cms/localize";
 import { apiGetSafe, getBranding, getConfig, getMenus, getRequestInfo, getShell, getStoreT, storeCss } from "../server/api";
 import { helpCentreOn } from "../lib/features";
 import { imageUrl } from "../lib/format";
@@ -141,7 +142,7 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
         <StoreFooter config={config} menu={menus.footer} t={t} locale={info.locale} help={helpCentreOn(shell.features)} variant={shell.theme.footer} logoUrl={shell.logoUrl} />
         <FloatingActions whatsapp={config.shop.social?.whatsapp ?? null} />
         {shell.theme.compare === "on" && <CompareTray />}
-        {shell.theme.mobileNav === "tabs" && <TabBar categories={categories} />}
+        {shell.theme.mobileNav === "tabs" && !siteOnly(shell.businessType) && <TabBar categories={categories} />}
         <PreviewMount />
         <PwaClient installBanner={(config as { installBanner?: boolean }).installBanner !== false} />
         </div>

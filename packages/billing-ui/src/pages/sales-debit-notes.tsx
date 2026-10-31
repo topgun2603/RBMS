@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { FileDownIcon, FilePlus2Icon, FileTextIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@srirealtime/ui";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, InitialsAvatar, type DataTableColumn } from "@rbms/ui";
 import { DebitNoteStatusPill } from "../components/debit-notes/debit-note-ui";
 import { FileButton } from "../components/gst/shared";
 import { compactINR, money } from "../lib/format";

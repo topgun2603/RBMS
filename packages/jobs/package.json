@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/jobs",
+  "name": "@rbms/jobs",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@srirealtime/core": "workspace:*",
-    "@srirealtime/db": "workspace:*",
+    "@rbms/core": "workspace:*",
+    "@rbms/db": "workspace:*",
     "bullmq": "^5.56.0",
     "ioredis": "^5.6.0"
   }

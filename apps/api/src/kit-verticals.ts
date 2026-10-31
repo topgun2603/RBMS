@@ -1,14 +1,14 @@
-import { themePreset } from "@srirealtime/branding";
-import { variantLookupSchema } from "@srirealtime/catalogue";
-import { weighTicketSchema } from "@srirealtime/pos";
-import { badRequest, defineModule, documented, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@srirealtime/core";
-import { grants } from "@srirealtime/features";
-import { and, eq, inArray, isNull, sql, type Db } from "@srirealtime/db";
-import { settingsValues } from "@srirealtime/settings";
-import { tenants } from "@srirealtime/tenancy";
+import { themePreset } from "@rbms/branding";
+import { variantLookupSchema } from "@rbms/catalogue";
+import { weighTicketSchema } from "@rbms/pos";
+import { badRequest, defineModule, documented, featureDefaultOn, notFound, requireRole, requireSuperAdmin, requireTenant, type FeatureDef, type SrModule } from "@rbms/core";
+import { grants } from "@rbms/features";
+import { and, eq, inArray, isNull, sql, type Db } from "@rbms/db";
+import { settingsValues } from "@rbms/settings";
+import { tenants } from "@rbms/tenancy";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { BUSINESS_TYPES, PACKS, packFor, packOrDefault, starterHome, type BusinessPack, type BusinessType } from "@srirealtime/verticals";
+import { BUSINESS_TYPES, isGeneralPack, PACKS, packFor, packOrDefault, resolvePack, starterHome, type BusinessPack, type BusinessType } from "@rbms/verticals";
 import type { Logger } from "pino";
 
 /**
@@ -26,6 +26,8 @@ export interface StarterDeps {
   /** The solution preset: which of the app's optional features the shop starts with on (written as shop switches). */
   presets?: SolutionPresets;
   features?: { applyToggles(tenantId: string, toggles: Readonly<Record<string, boolean>>): Promise<number> };
+  /** Batch and expiry on every item (inventory batch settings `trackAll`), for trades whose pack asks for it (`trackBatches`). */
+  stockBatches?: { trackAll(tenantId: string): Promise<unknown> };
   cms: {
     getHome(tenantId: string): Promise<{ published: unknown | null }>;
     saveHomeDraft(tenantId: string, input: unknown): Promise<unknown>;
@@ -40,6 +42,11 @@ export interface StarterOptions {
   /** Create starter categories and publish a starter home when the shop has none. Default true. */
   content?: boolean;
   locale?: "en" | "ta";
+  /**
+   * The trade in the owner's own words (sign-up "Not listed: tell us", Settings → Appearance). Kept in the `store`
+   * setting `businessLabel` even when it maps to a pack; when no pack was chosen it picks one through the aliases.
+   */
+  label?: string | null;
 }
 
 export function createStarter(deps: StarterDeps) {
@@ -48,13 +55,18 @@ export function createStarter(deps: StarterDeps) {
     businessType: string | null | undefined,
     opts: StarterOptions = {},
   ): Promise<BusinessPack> {
-    const pack = packOrDefault(businessType, tenant.appId);
-    await deps.storeSettings.setTenant(tenant.id, { businessType: pack.id });
+    const label = opts.label?.trim().replace(/\s+/g, " ").slice(0, 60) || null;
+    const pack = resolvePack(businessType, label, tenant.appId);
+    await deps.storeSettings.setTenant(tenant.id, { businessType: pack.id, ...(label ? { businessLabel: label } : {}) });
     if (deps.presets && deps.features) {
       const toggles = await deps.presets.toggles(pack.id, tenant.appId);
       await deps.features
         .applyToggles(tenant.id, toggles)
         .catch((err: unknown) => deps.log.warn({ err, tenantId: tenant.id }, "starter: could not apply the solution preset"));
+    }
+
+    if (pack.trackBatches && deps.stockBatches) {
+      await deps.stockBatches.trackAll(tenant.id).catch((err: unknown) => deps.log.warn({ err, tenantId: tenant.id }, "starter: could not switch batch tracking on"));
     }
 
     const preset = themePreset(pack.preset);
@@ -119,18 +131,18 @@ export function includedFor(registry: readonly FeatureDef[], appGrants: readonly
  * The preset a solution starts from: the switchable features that are on by default, plus the trade's own engines
  * (`pack.features`), minus what the trade doesn't use (`pack.off`: keys, or module ids for a whole module).
  */
-export function defaultPreset(pack: Pick<BusinessPack, "features" | "off">, switchable: readonly FeatureDef[]): string[] {
+export function defaultPreset(pack: Pick<BusinessPack, "features" | "off" | "appId">, switchable: readonly FeatureDef[]): string[] {
   const extra = new Set(pack.features ?? []);
   const off = new Set(pack.off ?? []);
   return switchable
-    .filter((d) => (d.defaultOn !== false || extra.has(d.key)) && !off.has(d.key) && !off.has(d.module))
+    .filter((d) => (featureDefaultOn(d, pack.appId) || extra.has(d.key)) && !off.has(d.key) && !off.has(d.module))
     .map((d) => d.key);
 }
 
 /** A stored preset narrowed to what the app can switch now (features may have been added or removed since). */
 export function effectivePreset(
   stored: readonly string[] | undefined,
-  pack: Pick<BusinessPack, "features" | "off">,
+  pack: Pick<BusinessPack, "features" | "off" | "appId">,
   switchable: readonly FeatureDef[],
 ): string[] {
   if (!stored) return defaultPreset(pack, switchable);
@@ -220,6 +232,57 @@ export type SolutionPresets = ReturnType<typeof createSolutionPresets>;
 // ---------------------------------------------------------------- platform: solutions (super-admin)
 
 
+/** One line of the "Not covered" list: a trade owners typed that has no pack yet. */
+export interface DemandItem {
+  /** Lower-cased, trimmed, single-spaced. */
+  label: string;
+  /** Shops that typed it. */
+  shops: number;
+  /** Their apps, most common first. */
+  appIds: string[];
+  /** The latest sign-up that typed it (ISO). */
+  lastAt: string | null;
+}
+
+export interface DemandRow {
+  appId: string | null;
+  /** The shop's saved `businessType` ("" when it never chose). */
+  type: string | null;
+  /** What the owner typed. */
+  label: string | null;
+  createdAt?: Date | string | null;
+}
+
+/** The normal form of a typed trade: lower-cased, trimmed, inner spaces collapsed. */
+export const normalizeTradeLabel = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * The typed trades of shops that run on a general pack (the owner's trade has no pack of its own), counted and grouped
+ * by the lower-cased, trimmed text, most asked for first. A shop whose typed trade maps to a real pack is not counted.
+ */
+export function demandOf(rows: readonly DemandRow[]): DemandItem[] {
+  const by = new Map<string, { shops: number; apps: Map<string, number>; last: number }>();
+  for (const r of rows) {
+    const label = normalizeTradeLabel(r.label);
+    if (!label || !isGeneralPack(packOrDefault(r.type, r.appId).id)) continue;
+    const e = by.get(label) ?? { shops: 0, apps: new Map<string, number>(), last: 0 };
+    e.shops++;
+    const app = r.appId ?? "";
+    if (app) e.apps.set(app, (e.apps.get(app) ?? 0) + 1);
+    const at = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+    if (at > e.last) e.last = at;
+    by.set(label, e);
+  }
+  return [...by]
+    .map(([label, e]) => ({
+      label,
+      shops: e.shops,
+      appIds: [...e.apps].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([a]) => a),
+      lastAt: e.last ? new Date(e.last).toISOString() : null,
+    }))
+    .sort((a, b) => b.shops - a.shops || a.label.localeCompare(b.label));
+}
+
 export interface SolutionsDeps {
   db: Db;
   starter: Starter;
@@ -244,7 +307,7 @@ const applyBody = z
   .strict();
 
 /**
- * `/v1/solutions` (super-admin): the 15 predefined solutions with how many shops run each, every shop's solution, and
+ * `/v1/solutions` (super-admin): the predefined solutions (business packs) with how many shops run each, every shop's solution, and
  * switching a shop to another solution (its look, starter content, optionally its app).
  */
 export function createSolutions(deps: SolutionsDeps): SrModule {
@@ -279,6 +342,7 @@ export function createSolutions(deps: SolutionsDeps): SrModule {
             nameTa: p.nameTa,
             tagline: p.tagline,
             appId: p.appId,
+            group: p.group,
             preset: preset ? { id: preset.id, name: preset.name, primary: preset.colors.primary, background: preset.colors.background ?? null, fontHeading: preset.fontHeading } : null,
             categories: p.categories,
             shops: counts.get(id) ?? 0,
@@ -286,6 +350,24 @@ export function createSolutions(deps: SolutionsDeps): SrModule {
           };
         }),
       };
+    });
+    /**
+     * `GET /v1/solutions/demand`: "Not covered". Trades owners typed (sign-up, Settings → Appearance) that landed on a
+     * general pack, counted by the lower-cased, trimmed text. This decides which pack we build next.
+     */
+    app.get("/demand", async () => {
+      const rows = await deps.db
+        .select({
+          appId: tenants.appId,
+          createdAt: tenants.createdAt,
+          type: sql<string | null>`${settingsValues.value}->>'businessType'`,
+          label: sql<string | null>`${settingsValues.value}->>'businessLabel'`,
+        })
+        .from(settingsValues)
+        .innerJoin(tenants, eq(tenants.id, settingsValues.tenantId))
+        .where(and(eq(settingsValues.namespace, "store"), isNull(settingsValues.userId), sql`btrim(coalesce(${settingsValues.value}->>'businessLabel', '')) <> ''`));
+      const items = demandOf(rows);
+      return { items, total: items.reduce((n, i) => n + i.shops, 0) };
     });
     const solutionParam = z.object({ id: z.enum(BUSINESS_TYPES) });
     app.get("/:id/preset", async (req) => deps.presets.view(solutionParam.parse(req.params).id));

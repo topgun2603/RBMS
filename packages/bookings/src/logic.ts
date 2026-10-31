@@ -1,4 +1,4 @@
-import { inclusiveOfRate } from "@srirealtime/gst";
+import { inclusiveOfRate } from "@rbms/gst";
 import type { AppointmentStatus, HoursBreak } from "./schema";
 
 /*

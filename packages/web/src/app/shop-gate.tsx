@@ -15,7 +15,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { LocaleSwitcher } from "../components/locale-switcher";
 import { Splash } from "../components/splash";
 import { ThemeToggle } from "../components/theme-toggle";

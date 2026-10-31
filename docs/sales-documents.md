@@ -1,6 +1,6 @@
 # Proforma invoices, sale orders and delivery challans
 
-Feature `invoices.sales-docs`; routes under `/v1/sales-docs`; UI in `@srirealtime/billing-ui` (Sell section: Proforma
+Feature `invoices.sales-docs`; routes under `/v1/sales-docs`; UI in `@rbms/billing-ui` (Sell section: Proforma
 invoices, Sale orders, Delivery challans; public page `/d/:token`; Settings > Proformas, orders & challans). Gap item #11
 together with quotations (`docs/quotations.md`).
 
@@ -115,7 +115,7 @@ date passed). Each answers `totals` and status facets.
 
 ## Demo data
 
-`pnpm --filter @srirealtime/api exec tsx src/scripts/seed-sales-docs.ts` (API on :4000, dev OTP) makes, through the API: in
+`pnpm --filter @rbms/api exec tsx src/scripts/seed-sales-docs.ts` (API on :4000, dev OTP) makes, through the API: in
 kumar a sale order partly delivered on a challan and billed with its advance, and a proforma with an advance; in techzone an
 approval challan with a return, billed; in thaiyal a job work challan. Nothing is sent to customers. Re-runnable.
 

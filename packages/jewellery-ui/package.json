@@ -1,9 +1,9 @@
 {
-  "name": "@srirealtime/jewellery-ui",
+  "name": "@rbms/jewellery-ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "UI module for @srirealtime/jewellery.",
+  "description": "UI module for @rbms/jewellery.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,10 +12,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@srirealtime/gst": "workspace:*",
-    "@srirealtime/i18n": "workspace:*",
-    "@srirealtime/ui": "workspace:*",
-    "@srirealtime/web": "workspace:*",
+    "@rbms/gst": "workspace:*",
+    "@rbms/i18n": "workspace:*",
+    "@rbms/ui": "workspace:*",
+    "@rbms/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "lucide-react": "^0.525.0"
   },

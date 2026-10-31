@@ -1,9 +1,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, StarIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@srirealtime/ui/components/breadcrumb";
-import { serializeJsonLd, type JsonLd as JsonLdData } from "@srirealtime/cms/seo";
+import { cn } from "@rbms/ui/lib/utils";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@rbms/ui/components/breadcrumb";
+import { serializeJsonLd, type JsonLd as JsonLdData } from "@rbms/cms/seo";
 import { hashHue, imageUrl, initialsOf, money, percentOff } from "../lib/format";
 
 type T = (key: string, vars?: Record<string, string | number | null | undefined>) => string;
@@ -93,6 +93,14 @@ export function Price({
 }) {
   const pct = percentOff(price, mrp);
   const range = priceMax !== undefined && priceMax > price;
+  // No price at all (a school programme, a quote-only service): say so instead of showing "₹0".
+  if (price <= 0 && !range) {
+    return (
+      <div className={cn("sf-price flex flex-wrap items-baseline gap-x-2 gap-y-0.5", className)}>
+        <span className={cn("font-semibold text-muted-foreground", size === "lg" ? "text-lg sm:text-xl" : size === "sm" ? "text-[13px]" : "text-sm")}>{t("product.priceOnRequest")}</span>
+      </div>
+    );
+  }
   return (
     <div className={cn("sf-price flex flex-wrap items-baseline gap-x-2 gap-y-0.5", className)}>
       <span className={cn("font-bold text-foreground", size === "lg" ? "text-2xl sm:text-3xl" : size === "sm" ? "text-[15px]" : "text-base")}>

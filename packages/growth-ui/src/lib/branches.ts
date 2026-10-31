@@ -1,5 +1,5 @@
-/** Pure branch helpers (rules mirrored from packages/branches/src/logic.ts and @srirealtime/gst). */
-import { financialYear, formatInvoiceNumber, isValidGstin, stateFromGstin } from "@srirealtime/gst";
+/** Pure branch helpers (rules mirrored from packages/branches/src/logic.ts and @rbms/gst). */
+import { financialYear, formatInvoiceNumber, isValidGstin, stateFromGstin } from "@rbms/gst";
 
 export const BRANCH_CODE_RE = /^[A-Z0-9][A-Z0-9_-]{0,15}$/;
 export const PREFIX_RE = /^[A-Z0-9](?:[A-Z0-9-]{0,4}[A-Z0-9])?$/;

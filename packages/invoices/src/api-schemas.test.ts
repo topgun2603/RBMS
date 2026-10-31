@@ -1,4 +1,4 @@
-import { createDb } from "@srirealtime/db";
+import { createDb } from "@rbms/db";
 import Fastify, { type RouteOptions } from "fastify";
 import { afterAll, describe, expect, it } from "vitest";
 import { billingItemListSchema, invoicesRoutes, tillReportSchema } from "./routes";

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CopyIcon, DownloadIcon, Loader2Icon, MegaphoneIcon, Share2Icon } from "lucide-react";
-import { Alert, AlertDescription, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Label, toast } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Label, toast } from "@rbms/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { useAiAssistAllowed, useAiAssistStatus } from "../ai-assist/use-assist";

@@ -1,6 +1,6 @@
 import type { FastifyInstance, RouteOptions } from "fastify";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import type { RouteSchema } from "@srirealtime/core";
+import type { RouteSchema } from "@rbms/core";
 import "./fastify";
 
 export interface CollectedRoute {

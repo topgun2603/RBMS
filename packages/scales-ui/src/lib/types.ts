@@ -1,4 +1,4 @@
-/** Mirrors of @srirealtime/scales responses (UI modules don't import server packages). */
+/** Mirrors of @rbms/scales responses (UI modules don't import server packages). */
 
 export const SOLD_BY = ["weight", "piece"] as const;
 export type SoldBy = (typeof SOLD_BY)[number];

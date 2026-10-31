@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
-import { api, ApiError, useFeature } from "@srirealtime/web";
+import { api, ApiError, useFeature } from "@rbms/web";
 import { FEATURES, PERMS, useMe } from "./access";
 import { mergeById } from "./grouping";
 import type {

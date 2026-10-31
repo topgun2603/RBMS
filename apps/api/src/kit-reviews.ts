@@ -1,8 +1,8 @@
-import { catalogProducts, catalogVariants } from "@srirealtime/catalogue";
-import { and, eq, inArray, isNull, sql, type Db } from "@srirealtime/db";
-import { orders } from "@srirealtime/orders";
-import type { LinkedOrder, ReviewRequestResult, ReviewRequestsPort } from "@srirealtime/reviews";
-import { CUSTOMER_TEXT, type CustomerMessages } from "@srirealtime/notify";
+import { catalogProducts, catalogVariants } from "@rbms/catalogue";
+import { and, eq, inArray, isNull, sql, type Db } from "@rbms/db";
+import { orders } from "@rbms/orders";
+import type { LinkedOrder, ReviewRequestResult, ReviewRequestsPort } from "@rbms/reviews";
+import { CUSTOMER_TEXT, type CustomerMessages } from "@rbms/notify";
 
 /**
  * Review ports that read other modules' tables (kept out of kit.ts): SKU / slug lookup for CSV imports, the order a

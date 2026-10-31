@@ -1,4 +1,4 @@
-import { createDb } from "@srirealtime/db";
+import { createDb } from "@rbms/db";
 import { afterAll, describe, expect, it } from "vitest";
 import { seedPlans } from "./seed";
 import { consumeStatement, planInputSchema, PlansService, reconcileStatement } from "./service";

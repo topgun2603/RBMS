@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { UtensilsIcon } from "lucide-react";
-import { InsightCard, useI18n } from "@srirealtime/web";
+import { InsightCard, useI18n } from "@rbms/web";
 import { money } from "../lib/format";
 import { isStatus, useFloor } from "../lib/queries";
 

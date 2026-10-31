@@ -1,6 +1,6 @@
 // Marketing-site browser test: pricing → sign-up wizard → shop created → handoff, then /login → Open, in headless Chrome.
 //
-//   pnpm --filter @srirealtime/www test:e2e
+//   pnpm --filter @rbms/www test:e2e
 //
 // Needs the dev servers running (api :4000 with the test OTP on — apps/api/.env TEST_OTP_CODE / TEST_OTP_TARGETS — and
 // this app on :3005). Signs up with a fresh +91 99990 xxxxx test phone and the fixed test OTP on an `e2e-` slug, so
@@ -42,7 +42,7 @@ function loadPuppeteer() {
       /* next */
     }
   }
-  throw new Error("puppeteer-core not found (it is installed with @srirealtime/documents: run pnpm install)");
+  throw new Error("puppeteer-core not found (it is installed with @rbms/documents: run pnpm install)");
 }
 
 async function up(url) {

@@ -1,4 +1,4 @@
-import { ApiError } from "@srirealtime/web";
+import { ApiError } from "@rbms/web";
 import { describe, expect, it } from "vitest";
 import { scanErrorKind } from "./lib/ai-scan";
 import { en, ta } from "./lib/messages/ai-scan";

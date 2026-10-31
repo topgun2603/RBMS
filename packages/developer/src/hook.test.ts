@@ -1,4 +1,4 @@
-import { AppError, emptyContext, requirePermission, type TenantRef } from "@srirealtime/core";
+import { AppError, emptyContext, requirePermission, type TenantRef } from "@rbms/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { apiKeyGuard, createApiKeyHook, type StoredApiKey } from "./hook";

@@ -4,7 +4,7 @@
  * client (client/pwa.tsx) and tests. No Next / DOM imports.
  */
 
-import { packFor, type BusinessType } from "@srirealtime/verticals";
+import { packFor, type BusinessType } from "@rbms/verticals";
 
 // ------------------------------------------------------------------ names and colours
 
@@ -123,6 +123,29 @@ export const PACK_CATEGORIES: Record<BusinessType, string[]> = {
   sports: ["shopping", "sports", "fitness"],
   tea_stall: ["food"],
   spa: ["lifestyle", "health"],
+  school: ["education"],
+  general_shop: ["shopping"],
+  general_counter: ["shopping"],
+  general_services: ["business", "utilities"],
+  textiles_wholesale: ["shopping", "business"],
+  catering: ["food", "business"],
+  pet_grooming: ["lifestyle"],
+  photo_studio: ["photo", "lifestyle"],
+  laundry: ["utilities", "lifestyle"],
+  event_decor: ["lifestyle", "business"],
+  ac_service: ["utilities"],
+  print_shop: ["business", "utilities"],
+  tuition: ["education"],
+  dance_music: ["education", "entertainment"],
+  yoga: ["fitness", "health", "education"],
+  driving_school: ["education", "utilities"],
+  paints: ["shopping", "utilities"],
+  electricals: ["shopping", "utilities"],
+  tiles_sanitary: ["shopping", "utilities"],
+  two_wheeler_service: ["utilities", "business"],
+  car_service: ["utilities", "business"],
+  agri_inputs: ["shopping", "business"],
+  auto_parts: ["shopping", "utilities"],
 };
 
 export function manifestCategories(businessType: string | null | undefined): string[] {

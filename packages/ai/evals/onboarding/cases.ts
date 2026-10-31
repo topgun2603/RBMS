@@ -1,4 +1,4 @@
-import type { BusinessType } from "@srirealtime/verticals";
+import type { BusinessType } from "@rbms/verticals";
 import type { Answers } from "../../src/onboarding/rules";
 
 /**

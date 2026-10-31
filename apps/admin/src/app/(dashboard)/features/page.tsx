@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AppWindowIcon, ArrowUpRightIcon, BoxIcon, CheckIcon, InfoIcon, LayersIcon, LinkIcon, LockIcon, PuzzleIcon } from "lucide-react";
-import { Badge, cn, EmptyState, PageHeader, Skeleton, Switch, toast } from "@srirealtime/ui";
+import { Badge, cn, EmptyState, PageHeader, Skeleton, Switch, toast } from "@rbms/ui";
 import { missingDeps } from "@/components/features/feature-status";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";

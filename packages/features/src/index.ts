@@ -1,4 +1,4 @@
-import { defineModule, type FeatureGatePort } from "@srirealtime/core";
+import { defineModule, type FeatureGatePort } from "@rbms/core";
 import type { FastifyRequest } from "fastify";
 import { featuresRoutes } from "./routes";
 import { appProfiles, tenantFeatureToggles } from "./schema";

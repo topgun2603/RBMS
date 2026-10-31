@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Batch 4 storefront strings: chat widget, help centre, seller pages, loyalty points. Merged into lib/messages. */
 export const b4En: Messages = {

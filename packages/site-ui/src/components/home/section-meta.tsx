@@ -40,6 +40,7 @@ import {
   LeafIcon,
   MailIcon,
   MessageSquareQuoteIcon,
+  MessageSquareTextIcon,
   PackageIcon,
   PhoneIcon,
   RotateCcwIcon,
@@ -85,6 +86,7 @@ export const SECTION_ICONS: Record<HomeSectionType, Icon> = {
   location: MapPinIcon,
   "menu-board": UtensilsCrossedIcon,
   appointment: CalendarCheckIcon,
+  "enquiry-form": MessageSquareTextIcon,
   "before-after": SquareSplitHorizontalIcon,
   "gold-rates": CoinsIcon,
   instagram: InstagramIcon,
@@ -348,6 +350,17 @@ export function SectionThumb({ type, className }: { type: HomeSectionType; class
               ))}
             </g>
           ))}
+        </svg>
+      );
+    case "enquiry-form":
+      return (
+        <svg {...common}>
+          <rect x="4" y="6" width="112" height="60" rx="6" fill={paper} stroke={line} />
+          {bar(12, 13, 38, 5, accent, 0.7)}
+          <rect x="12" y="24" width="48" height="9" rx="3" fill="none" stroke={line} />
+          <rect x="12" y="37" width="48" height="9" rx="3" fill="none" stroke={line} />
+          <rect x="12" y="50" width="30" height="9" rx="4.5" fill={accent} />
+          <rect x="68" y="14" width="42" height="44" rx="4" fill={accent} opacity="0.2" />
         </svg>
       );
     case "appointment":

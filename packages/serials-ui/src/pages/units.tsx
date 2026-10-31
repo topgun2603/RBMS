@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PackagePlusIcon, ShieldCheckIcon } from "lucide-react";
-import { Button, ChipGroup, DataTable, DataTableToolbar, type DataTableColumn } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, useFeature, useI18n, usePermission, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, DataTable, DataTableToolbar, type DataTableColumn } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, useFeature, useI18n, usePermission, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { StatusChip, WarrantyPill } from "../components/bits";
 import { ReceiveDialog } from "../components/receive-dialog";
 import { UnitSheet } from "../components/unit-sheet";

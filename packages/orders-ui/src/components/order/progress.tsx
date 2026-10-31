@@ -1,8 +1,8 @@
 "use client";
 
 import { CheckIcon } from "lucide-react";
-import { cn, motion } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, motion } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { flowIndex, ORDER_FLOW } from "../../lib/status";
 import type { Order } from "../../lib/types";
 import { ORDER_STATUS_META } from "../pills";

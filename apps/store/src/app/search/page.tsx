@@ -1,4 +1,4 @@
-import { SearchPage, searchMetadata } from "@srirealtime/storefront-ui";
+import { SearchPage, searchMetadata } from "@rbms/storefront-ui";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 

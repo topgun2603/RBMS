@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Loader2Icon, ShieldCheckIcon } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input } from "@srirealtime/ui";
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input } from "@rbms/ui";
 import { ApiError } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 

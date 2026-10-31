@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.* strings for e-invoice (IRN), e-way bill, GSTR-1 and loyalty redeem (batch 4). Keep the en and ta key sets identical. */
 export const en: Messages = {

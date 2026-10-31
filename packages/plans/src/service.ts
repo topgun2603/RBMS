@@ -1,5 +1,5 @@
-import { badRequest, notFound, paymentRequired, type TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { badRequest, notFound, paymentRequired, type TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import {

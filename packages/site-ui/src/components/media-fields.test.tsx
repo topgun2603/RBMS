@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { I18nProvider } from "@srirealtime/web";
+import { I18nProvider } from "@rbms/web";
 import { siteMessages } from "../lib/messages";
 import { GalleryField, ImageField } from "./image-field";
 import { VideoField } from "./media-video-field";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, Loader2Icon, RotateCwIcon } from "lucide-react";
-import { Button, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Skeleton, toast } from "@srirealtime/ui";
-import { describeError, DetailRow, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Skeleton, toast } from "@rbms/ui";
+import { describeError, DetailRow, QueryError, useI18n } from "@rbms/web";
 import { prettyMaybeJson, RESPONSE_BODY_LIMIT, shortUrl, truncateBytes } from "../../lib/developer";
 import { useDelivery, useRedeliver } from "../../lib/queries/developer";
 import { CopyButton } from "../bits";

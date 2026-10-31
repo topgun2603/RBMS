@@ -1,7 +1,7 @@
 import type { ThemePreset } from "./theme";
 
 /**
- * One finished look per trade (the 15 business packs in @srirealtime/verticals), so a new shop's store looks complete
+ * One finished look per trade (the 15 business packs in @rbms/verticals), so a new shop's store looks complete
  * and distinct on day one. Each sets every token and every theme option on purpose; the shop can change any part.
  * Kept apart from the 10 general presets in theme.ts (which are unchanged) and merged into THEME_PRESETS there.
  * Only a type import from theme.ts, so there is no runtime import cycle.

@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/monitoring",
+  "name": "@rbms/monitoring",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,6 +11,6 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@srirealtime/core": "workspace:*"
+    "@rbms/core": "workspace:*"
   }
 }

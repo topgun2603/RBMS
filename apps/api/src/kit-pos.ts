@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto";
-import type { AuthService } from "@srirealtime/auth";
-import { catalogCategories, catalogItemUnits, catalogProducts, catalogVariants, itemName } from "@srirealtime/catalogue";
-import { forbidden, type AuditPort } from "@srirealtime/core";
-import { gstRateAtPrice } from "@srirealtime/gst";
-import { and, eq, gt, inArray, sql, type Db, type SQL } from "@srirealtime/db";
-import { stockItems } from "@srirealtime/inventory";
-import { createPos, type DisplayHostPorts, type PosCatalogPort, type PosInvoicesPort, type PosItem, type PosQuotaPort } from "@srirealtime/pos";
-import { scaleItems } from "@srirealtime/scales";
-import type { TenancyService } from "@srirealtime/tenancy";
-import { toTenantRef } from "@srirealtime/tenancy";
+import type { AuthService } from "@rbms/auth";
+import { catalogCategories, catalogItemUnits, catalogProducts, catalogVariants, itemName } from "@rbms/catalogue";
+import { forbidden, type AuditPort } from "@rbms/core";
+import { gstRateAtPrice } from "@rbms/gst";
+import { and, eq, gt, inArray, sql, type Db, type SQL } from "@rbms/db";
+import { stockItems } from "@rbms/inventory";
+import { createPos, type DisplayHostPorts, type PosCatalogPort, type PosInvoicesPort, type PosItem, type PosQuotaPort } from "@rbms/pos";
+import { scaleItems } from "@rbms/scales";
+import type { TenancyService } from "@rbms/tenancy";
+import { toTenantRef } from "@rbms/tenancy";
 import type { Logger } from "pino";
 
 /** Units that make an item weighed at the counter (with or without a scales PLU). */
@@ -148,7 +148,7 @@ export interface PosWiringDeps {
   log: Logger;
 }
 
-/** `@srirealtime/pos` wired to auth (PIN sessions), tenancy / staff (members), plans, branches, invoices and the catalogue. */
+/** `@rbms/pos` wired to auth (PIN sessions), tenancy / staff (members), plans, branches, invoices and the catalogue. */
 export function createPosWiring(d: PosWiringDeps) {
   return createPos({
     db: d.db,

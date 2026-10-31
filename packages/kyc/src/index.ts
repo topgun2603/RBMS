@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { KYC_FEATURES, KYC_PERMISSIONS } from "./features";
 import type { KycStatusPort } from "./ports";
 import { kycRoutes } from "./routes";

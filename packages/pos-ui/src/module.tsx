@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { MonitorSmartphoneIcon, PrinterIcon, ScanBarcodeIcon, SlidersHorizontalIcon } from "lucide-react";
-import type { RouteDef, SettingsPage, WebModule } from "@srirealtime/web";
+import type { RouteDef, SettingsPage, WebModule } from "@rbms/web";
 import { POS_FEATURES, POS_PERMISSIONS } from "./lib/access";
 import { posMessages } from "./lib/messages";
 

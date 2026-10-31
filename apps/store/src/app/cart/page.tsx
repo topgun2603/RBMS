@@ -1,4 +1,4 @@
-import { CartPage, cartMetadata } from "@srirealtime/storefront-ui";
+import { CartPage, cartMetadata } from "@rbms/storefront-ui";
 
 export const generateMetadata = cartMetadata;
 

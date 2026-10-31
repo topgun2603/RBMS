@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArchiveIcon, CheckCircle2Icon, ImageIcon, PencilLineIcon } from "lucide-react";
-import { cn, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill } from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+import { cn, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusPill } from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 import { PRODUCT_GST_RATES, type ProductStatus } from "../lib/types";
 
 const STATUS_META: Record<ProductStatus, { tone: "success" | "warning" | "neutral"; icon: React.ComponentType<{ className?: string }> }> = {

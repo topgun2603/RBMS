@@ -27,8 +27,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useFeature, useI18n, useMyBranches } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useFeature, useI18n, useMyBranches } from "@rbms/web";
 import { PAYROLL_FEATURES } from "../lib/access";
 import { isHm, money, paiseToRupees, rupeesToPaise, todayIst, weekdayName } from "../lib/format";
 import { useMembers, useSaveEmployee, type EmployeeBody } from "../lib/queries";

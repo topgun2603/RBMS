@@ -1,4 +1,4 @@
-import { GST_RATES, isGstRate } from "@srirealtime/gst";
+import { GST_RATES, isGstRate } from "@rbms/gst";
 import type { CartProduct } from "./cart";
 import { rupeesToPaise } from "./format";
 import { fromVariant } from "./products";

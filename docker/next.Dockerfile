@@ -27,7 +27,7 @@ ARG APP
 RUN test -n "$APP" || (echo "Pass --build-arg APP=<admin|billing|shop|store|seller|www|pharmacy|restaurant|services>" && exit 1)
 COPY . .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile --offline --filter "@srirealtime/${APP}..."
+    pnpm install --frozen-lockfile --offline --filter "@rbms/${APP}..."
 
 # Build-time public configuration (unset = the app's localhost default).
 ARG NEXT_PUBLIC_API_URL
@@ -55,7 +55,7 @@ ENV NEXT_OUTPUT=standalone \
     NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID} \
     NEXT_PUBLIC_CONTACT_EMAIL=${NEXT_PUBLIC_CONTACT_EMAIL} \
     NEXT_PUBLIC_CONTACT_WHATSAPP=${NEXT_PUBLIC_CONTACT_WHATSAPP}
-RUN pnpm --filter "@srirealtime/${APP}" build \
+RUN pnpm --filter "@rbms/${APP}" build \
  && test -f "apps/${APP}/.next/standalone/apps/${APP}/server.js"
 
 FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS runtime

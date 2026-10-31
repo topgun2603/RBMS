@@ -37,7 +37,7 @@ export function parseSignatureHeader(header: string): { timestamp: number; signa
  * Verifies a Srikit webhook. Use the raw request body exactly as received (not re-serialised JSON).
  *
  * ```ts
- * import { verifySignature } from "@srirealtime/developer";
+ * import { verifySignature } from "@rbms/developer";
  * const ok = verifySignature(process.env.SRIKIT_WEBHOOK_SECRET, req.headers["x-srikit-signature"], rawBody);
  * ```
  *

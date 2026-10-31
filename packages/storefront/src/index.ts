@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { STOREFRONT_FEATURES } from "./features";
 import { storefrontRoutes } from "./routes";
 import { storeAddresses, storeCarts, storeCustomers, storeWishlist } from "./schema";

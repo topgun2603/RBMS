@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Page, PageHeading, useFeatures, useI18n, useModuleNavigate, useQueryParams } from "@srirealtime/web";
+import { Page, PageHeading, useFeatures, useI18n, useModuleNavigate, useQueryParams } from "@rbms/web";
 import {
   BarChart3Icon,
   Building2Icon,
@@ -17,7 +17,7 @@ import {
   WalletCardsIcon,
   WarehouseIcon,
 } from "lucide-react";
-import { Card, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@srirealtime/ui";
+import { Card, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@rbms/ui";
 import { DateRangePicker, initialRange, type DateRangeValue } from "../components/date-range-picker";
 import { DuesTab } from "../components/reports/dues-tab";
 import { GstTab } from "../components/reports/gst-tab";

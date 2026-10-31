@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Label, Textarea, toast } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Label, Textarea, toast } from "@rbms/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { AiDraftBanner, sendAiFeedback } from "../ai-draft";

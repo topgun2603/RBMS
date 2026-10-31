@@ -1,4 +1,4 @@
-import type { DbOrTx } from "@srirealtime/db";
+import type { DbOrTx } from "@rbms/db";
 import type { SQL } from "drizzle-orm";
 /** Saved item details; items are owned by the invoices module (apps/api wires the adapter). */
 export interface CatalogItem {

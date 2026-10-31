@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api } from "@srirealtime/web";
+import { ApiError, api } from "@rbms/web";
 import type { Appointment, AppointmentStatus, Availability, BillResult, BookingService, BookingsSummary, BookingStaff, DayRow, DayView, Hours, ShopItem, Timeoff } from "./types";
 
 const B = "/bookings";

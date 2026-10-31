@@ -5,7 +5,7 @@
  *   PowerShell: $env:POS_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5432/srikit"; pnpm test
  */
 import { randomUUID } from "node:crypto";
-import { createDb, sql, type Db } from "@srirealtime/db";
+import { createDb, sql, type Db } from "@rbms/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { posCatalogPort } from "./kit-pos";
 

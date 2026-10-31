@@ -7,7 +7,7 @@ export type SubscriptionState = (typeof SUBSCRIPTION_STATES)[number];
 export const CHECKIN_REFUSALS = ["no_active_plan", "frozen", "no_sessions_left", "already_checked_in"] as const;
 export type CheckinRefusal = (typeof CHECKIN_REFUSALS)[number];
 
-/** Error codes of @srirealtime/memberships (messages under `memberships.errors.<code>`). */
+/** Error codes of @rbms/memberships (messages under `memberships.errors.<code>`). */
 export const ERROR_CODES = [
   "phone_taken",
   "has_plan",

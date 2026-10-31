@@ -1,6 +1,6 @@
 /**
  * Pure chat helpers for the storefront widget (no React, no DOM): message ordering and merging, read ticks, unread
- * counts and the reconnect back-off. Mirrors @srirealtime/chat's cursor format (`<ms>_<uuid>`).
+ * counts and the reconnect back-off. Mirrors @rbms/chat's cursor format (`<ms>_<uuid>`).
  */
 import type { ChatConversation, ChatMessage, ChatParticipant } from "../types";
 

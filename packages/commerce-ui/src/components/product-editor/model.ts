@@ -1,4 +1,4 @@
-import { APPAREL_FOOTWEAR_GST_RULE } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE } from "@rbms/gst";
 import { z } from "zod";
 import { cartesian, comboKey, orNull, paiseToInput, rupeesToPaise, SLUG_RE, variantTitle } from "../../lib/format";
 import type { Channel, Product, ProductCreateInput, ProductFields, ProductStatus, Variant, VariantInput } from "../../lib/types";

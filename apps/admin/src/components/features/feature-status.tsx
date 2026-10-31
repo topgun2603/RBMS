@@ -1,7 +1,7 @@
 "use client";
 
 import { AppWindowIcon, CheckIcon, LayersIcon, LinkIcon, ToggleLeftIcon } from "lucide-react";
-import { Badge } from "@srirealtime/ui";
+import { Badge } from "@rbms/ui";
 import { featureLabel } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import type { FeatureReason, FeatureState } from "@/lib/types";

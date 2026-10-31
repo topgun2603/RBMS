@@ -1,4 +1,4 @@
-import { APPAREL_FOOTWEAR_GST_RULE as RULE, exclusiveOf } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE as RULE, exclusiveOf } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { buildBaseLines, computeOrderTotals } from "./logic";
 import type { CatalogItem } from "./ports";

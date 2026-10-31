@@ -1,7 +1,7 @@
 "use client";
 
 import { SparklesIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui";
+import { Button } from "@rbms/ui";
 import { ModuleLink, useSettingsHref } from "../../app/navigation";
 import { useI18n } from "../../lib/i18n";
 import { useAiAssistAllowed } from "../ai-assist/use-assist";

@@ -1,8 +1,8 @@
 "use client";
 
-import { COUNTRIES } from "@srirealtime/gst";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { COUNTRIES } from "@rbms/gst";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /** Country of a buyer outside India (ISO alpha-2); "" = India. */
 export function CountrySelect({ id, value, onChange, className }: { id?: string; value: string; onChange: (code: string) => void; className?: string }) {

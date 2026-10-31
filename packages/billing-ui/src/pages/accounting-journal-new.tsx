@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftRightIcon, FilePlus2Icon, HandCoinsIcon, NotebookPenIcon, PlusIcon, Trash2Icon, WalletIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Card, CardContent, ChipGroup, EmptyState, Input, Label, Textarea, toast } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n, useModuleNavigate } from "@srirealtime/web";
+import { Alert, AlertDescription, Button, Card, CardContent, ChipGroup, EmptyState, Input, Label, Textarea, toast } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n, useModuleNavigate } from "@rbms/web";
 import { AccountSelect, AccountingPage } from "../components/accounting/parts";
 import { MoneyInput } from "../components/money-input";
 import { ACC_POST, useAccounts, useCreateEntry, type EntryInput } from "../lib/accounting";

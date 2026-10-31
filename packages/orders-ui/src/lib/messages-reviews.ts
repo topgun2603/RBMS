@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** orders.reviewRequest.* strings ("Ask for a review" on a delivered order). Merged into ordersMessages. */
 export const reviewRequestEn: Messages = {

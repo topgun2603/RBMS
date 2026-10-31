@@ -35,8 +35,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@srirealtime/ui";
-import { LocaleSwitcher, ThemeToggle, useI18n, useModuleNavigate } from "@srirealtime/web";
+} from "@rbms/ui";
+import { LocaleSwitcher, ThemeToggle, useI18n, useModuleNavigate } from "@rbms/web";
 import { timeShort, todayIST } from "../lib/format";
 import type { DayRecord } from "../lib/storage";
 import { NoSaleButton, NoSaleMenuItem } from "./drawer-button";

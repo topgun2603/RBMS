@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ConfirmDialog, useAppNavigate, useI18n } from "@srirealtime/web";
+import { ConfirmDialog, useAppNavigate, useI18n } from "@rbms/web";
 
 /**
  * Unsaved-changes guard: while `when` is true, closing or reloading the tab asks the browser's own question, and

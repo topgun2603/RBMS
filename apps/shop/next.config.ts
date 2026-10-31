@@ -15,9 +15,9 @@ export default function config(phase: string): NextConfig {
       ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
       : {}),
     // Workspace packages ship TypeScript source; Next compiles them.
-    transpilePackages: ["@srirealtime/growth-ui", "@srirealtime/marketplace-ui", "@srirealtime/inbox-ui", "@srirealtime/pos-ui", "@srirealtime/payroll-ui", "@srirealtime/web", "@srirealtime/billing-ui", "@srirealtime/commerce-ui", "@srirealtime/orders-ui", "@srirealtime/site-ui", "@srirealtime/workspace-ui", "@srirealtime/ui", "@srirealtime/i18n", "@srirealtime/gst", "@srirealtime/pricelists", "@srirealtime/receipt-print",
-      // Only its browser-safe `@srirealtime/tenancy/slug` (shop address rules) is imported by the web kit.
-      "@srirealtime/tenancy", "@srirealtime/branding", "@srirealtime/verticals", "@srirealtime/serials-ui", "@srirealtime/scales-ui", "@srirealtime/jewellery-ui"],
+    transpilePackages: ["@rbms/growth-ui", "@rbms/marketplace-ui", "@rbms/inbox-ui", "@rbms/pos-ui", "@rbms/payroll-ui", "@rbms/web", "@rbms/billing-ui", "@rbms/commerce-ui", "@rbms/orders-ui", "@rbms/enquiries-ui", "@rbms/site-ui", "@rbms/workspace-ui", "@rbms/ui", "@rbms/i18n", "@rbms/gst", "@rbms/pricelists", "@rbms/receipt-print",
+      // Only its browser-safe `@rbms/tenancy/slug` (shop address rules) is imported by the web kit.
+      "@rbms/tenancy", "@rbms/branding", "@rbms/verticals", "@rbms/serials-ui", "@rbms/scales-ui", "@rbms/jewellery-ui"],
     poweredByHeader: false,
     // Conservative security headers (no framing rule: the storefront preview and the shop apps embed each other).
     async headers() {

@@ -28,8 +28,8 @@ import {
   TableRow,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Balance, Panel, TableSkeleton } from "../components/accounting/parts";
 import { MoneyInput } from "../components/money-input";
 import { ACCOUNT_GROUPS, ACCOUNT_TYPES, ACC_POST, useAccounts, useDeleteAccount, useSaveAccount, type Account, type AccountType } from "../lib/accounting";

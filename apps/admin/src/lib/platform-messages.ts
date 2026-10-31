@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { createTranslator, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
+import { createTranslator, type Locale, type Messages, type Translator } from "@rbms/i18n/client";
 import { useI18n } from "./i18n";
 
 /** admin.pt.* strings for the Phase 7 part B platform tools: Shops at risk, Support inbox, What's new. Keep en and ta key sets identical. */
@@ -135,7 +135,7 @@ const en: Messages = {
   "admin.pt.news.subtitle": "Release notes for shop owners in English and Tamil. Paste or load the list of changes, let AI draft plain notes, edit both languages and publish. Owners see only the lines for their app and trade.",
   "admin.pt.news.new": "New note",
   "admin.pt.news.paste": "Changes (one per line, or the output of git log)",
-  "admin.pt.news.pasteHint": "Merges and housekeeping (chore, test, docs, refactor, deps) are left out. Or run: pnpm --filter @srirealtime/api release-notes:draft -- --since <ref>",
+  "admin.pt.news.pasteHint": "Merges and housekeeping (chore, test, docs, refactor, deps) are left out. Or run: pnpm --filter @rbms/api release-notes:draft -- --since <ref>",
   "admin.pt.news.load": "Load a saved list",
   "admin.pt.news.loadFailed": "That file is not a saved list of changes.",
   "admin.pt.news.since": "Since (optional)",
@@ -296,7 +296,7 @@ const ta: Messages = {
   "admin.pt.news.subtitle": "கடை உரிமையாளர்களுக்கான வெளியீட்டுக் குறிப்புகள், ஆங்கிலத்திலும் தமிழிலும். மாற்றங்களின் பட்டியலை ஒட்டவும் அல்லது ஏற்றவும், AI எளிய குறிப்புகளை வரையட்டும், இரு மொழிகளையும் திருத்தி வெளியிடவும். உரிமையாளர்கள் தங்கள் செயலி, தொழிலுக்கான வரிகளை மட்டுமே பார்ப்பார்கள்.",
   "admin.pt.news.new": "புதிய குறிப்பு",
   "admin.pt.news.paste": "மாற்றங்கள் (ஒரு வரிக்கு ஒன்று, அல்லது git log வெளியீடு)",
-  "admin.pt.news.pasteHint": "merge, பராமரிப்பு மாற்றங்கள் (chore, test, docs, refactor, deps) விடப்படும். அல்லது இயக்கவும்: pnpm --filter @srirealtime/api release-notes:draft -- --since <ref>",
+  "admin.pt.news.pasteHint": "merge, பராமரிப்பு மாற்றங்கள் (chore, test, docs, refactor, deps) விடப்படும். அல்லது இயக்கவும்: pnpm --filter @rbms/api release-notes:draft -- --since <ref>",
   "admin.pt.news.load": "சேமித்த பட்டியலை ஏற்று",
   "admin.pt.news.loadFailed": "அந்தக் கோப்பு சேமித்த மாற்றப் பட்டியல் அல்ல.",
   "admin.pt.news.since": "இதிலிருந்து (விருப்பம்)",

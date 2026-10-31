@@ -3,8 +3,8 @@
  * quotation turns into, what happens when a bill made from them is issued or cancelled, the "made from" links on a
  * bill, the public share page and the data the PDFs print.
  */
-import { AppError, notFound, type TenantRef } from "@srirealtime/core";
-import { amountInWordsINR, type LineTotals } from "@srirealtime/gst";
+import { AppError, notFound, type TenantRef } from "@rbms/core";
+import { amountInWordsINR, type LineTotals } from "@rbms/gst";
 import { ChallansService, type ChallanSummary } from "./challans";
 import { ProformasService, type Proforma, type ProformaSummary } from "./proformas";
 import type { CustomerSnapshot, SellerProfile } from "./ports";
@@ -15,7 +15,7 @@ import type { ChallanReason, ChallanRow, ChallanTransport, ProformaRow, SaleOrde
 import type { Quotation } from "./quotations";
 import { toLineInput } from "./service";
 
-/** The data the PDF renderers print (structurally `SalesDocData` of @srirealtime/documents). */
+/** The data the PDF renderers print (structurally `SalesDocData` of @rbms/documents). */
 export interface SalesDocData {
   kind: SalesDocKind;
   id: string;

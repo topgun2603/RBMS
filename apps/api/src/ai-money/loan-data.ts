@@ -1,6 +1,6 @@
-import type { aiMoney } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
-import { AppError } from "@srirealtime/core";
+import type { aiMoney } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
+import { AppError } from "@rbms/core";
 import { openingBalance } from "./cashflow-data";
 
 /**

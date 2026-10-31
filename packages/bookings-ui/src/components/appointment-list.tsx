@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CalendarCheckIcon } from "lucide-react";
-import { ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
-import { useI18n, useModuleNavigate, useQueryParams, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { ChipGroup, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
+import { useI18n, useModuleNavigate, useQueryParams, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { istTime, money, time12, istMinute } from "../lib/format";
 import { bk } from "../lib/queries";
 import { APPOINTMENT_STATUSES, type AppointmentRow } from "../lib/types";

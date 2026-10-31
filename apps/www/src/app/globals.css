@@ -1,11 +1,11 @@
-@import "@srirealtime/ui/styles.css";
+@import "@rbms/ui/styles.css";
 
 /* Scan the app and the design system for Tailwind classes (workspace packages are TS source). */
 @source "../";
 @source "../../../../packages/ui/src";
 
 /*
- * Marketing-site tokens. The product primary (indigo) comes from @srirealtime/ui; the site adds a warm marigold
+ * Marketing-site tokens. The product primary (indigo) comes from @rbms/ui; the site adds a warm marigold
  * accent (kolam / festival colours familiar to Tamil Nadu shops) and a display face.
  */
 @layer base {

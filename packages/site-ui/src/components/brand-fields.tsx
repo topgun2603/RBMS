@@ -1,8 +1,8 @@
 "use client";
 
-import { ChipGroup, ColorInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui";
-import { STORE_FONTS } from "@srirealtime/branding/theme";
-import { useI18n } from "@srirealtime/web";
+import { ChipGroup, ColorInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui";
+import { STORE_FONTS } from "@rbms/branding/theme";
+import { useI18n } from "@rbms/web";
 
 /** Form fields shared by Settings → Branding and Settings → Appearance. */
 

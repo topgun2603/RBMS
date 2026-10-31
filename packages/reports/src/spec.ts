@@ -1,5 +1,5 @@
 /** Report spec: zod shape + semantic validation against a dataset definition → QueryPlan. Pure. */
-import { badRequest } from "@srirealtime/core";
+import { badRequest } from "@rbms/core";
 import { z } from "zod";
 import { daysBetween, isIsoDate, resolvePreset } from "./dates";
 import {

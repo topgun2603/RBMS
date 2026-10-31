@@ -1,6 +1,6 @@
-import { defineModule } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { uploadsRoutes } from "./routes";
+import { defineModule } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { uploadsRoutes, type UploadAccessPort } from "./routes";
 import { files } from "./schema";
 import { UploadsService, type LoggerPort, type UploadsConfig } from "./service";
 
@@ -8,6 +8,8 @@ export interface UploadsDeps {
   db: Db;
   config: UploadsConfig;
   log?: LoggerPort;
+  /** Non-members who may upload to a shop (its marketplace sellers). */
+  access?: UploadAccessPort;
 }
 
 /**
@@ -19,12 +21,13 @@ export function createUploads(deps: UploadsDeps) {
   const module = defineModule({
     id: "uploads",
     tables: { files },
-    routes: uploadsRoutes(service),
+    routes: uploadsRoutes(service, deps.access),
   });
   return { service, module };
 }
 
 export * from "./schema";
+export type { UploadAccessPort } from "./routes";
 export { UploadsService, DEFAULT_MAX_BYTES, DEFAULT_VIDEO_MAX_BYTES, THUMBNAIL_MAX_BYTES, decodeCursor, encodeCursor } from "./service";
 export type { FileDto, FilePage, ListInput, LoggerPort, SignInput, SignResult, UploadsConfig } from "./service";
 export type { StorageAdapter } from "./storage/types";

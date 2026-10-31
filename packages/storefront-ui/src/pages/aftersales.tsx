@@ -2,7 +2,7 @@ import * as React from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckIcon, SearchXIcon, ShieldCheckIcon, ThumbsDownIcon, WrenchIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { EstimateAnswer, RepairLookup, WarrantyLookup } from "../client/aftersales";
 import { Container, Empty } from "../components/bits";
 import { money } from "../lib/format";
@@ -80,7 +80,7 @@ export async function TrackRepairPage() {
 
 interface JobTrack {
   label: string;
-  template: "device" | "garment" | "eyewear" | "general";
+  template: "device" | "garment" | "eyewear" | "vehicle" | "laundry" | "appliance" | "general";
   status: string;
   dueDate: string | null;
   total: number;

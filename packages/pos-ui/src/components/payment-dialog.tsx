@@ -11,7 +11,7 @@ import {
   QrCodeIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { upiLink } from "@srirealtime/gst";
+import { upiLink } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -34,8 +34,8 @@ import {
   InputGroupAddon,
   InputGroupInput,
   motion,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { payableAfterLoyalty, type CartTotals } from "../lib/cart";
 import { money, moneyShort, paiseToInput, rupeesToPaise } from "../lib/format";
 import { quickNotes, settle, type Settlement, type TenderProblem, type Tenders } from "../lib/tender";

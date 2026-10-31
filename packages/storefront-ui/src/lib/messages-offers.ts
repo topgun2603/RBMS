@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Selling tools: automatic offers, bundles, nudges, free gifts, free-delivery bar. Merged into lib/messages. */
 export const offersEn: Messages = {

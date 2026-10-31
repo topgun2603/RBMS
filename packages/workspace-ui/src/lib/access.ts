@@ -1,6 +1,6 @@
 "use client";
 
-import { effectiveRoles, useOptionalSession } from "@srirealtime/web";
+import { effectiveRoles, useOptionalSession } from "@rbms/web";
 import { permissionsAllow } from "./permissions";
 
 export const PERMISSIONS = {

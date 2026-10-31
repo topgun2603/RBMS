@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ApprovalCancelled, describeError, isPlanLimit, ModuleLink, useDebounced, useDiscountApproval, useI18n, useModuleNavigate, useSettingsHref } from "@srirealtime/web";
+import { ApprovalCancelled, describeError, isPlanLimit, ModuleLink, useDebounced, useDiscountApproval, useI18n, useModuleNavigate, useSettingsHref } from "@rbms/web";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -12,7 +12,7 @@ import {
   StickyNoteIcon,
   Trash2Icon,
 } from "lucide-react";
-import { amountInWordsINR, computeInvoice, isValidGstin, lineGstRate, type GstRateRule, type LineInput } from "@srirealtime/gst";
+import { amountInWordsINR, computeInvoice, isValidGstin, lineGstRate, type GstRateRule, type LineInput } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -34,13 +34,15 @@ import {
   motion,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CustomerPicker, type Party } from "./customer-picker";
 import { PriceListPicker, UnitPicker, useLinePricing, type PriceListChoice } from "./pricing/line-pricing";
 import { RiskHint } from "./money/risk";
 import { GstRateSelect } from "./gst-rate-select";
 import { LoyaltyRedeemCard, LoyaltySummaryRows, useLoyaltyRedeem } from "./loyalty-redeem";
 import { LineBatchSelect } from "./inventory/line-batch-select";
+import { parseSerialText, serialsError } from "../lib/line-serials";
+import { useSerialTracked } from "../lib/queries-serials";
 import { UnitList } from "./item-dialog";
 import { MoneyInput } from "./money-input";
 import { StateSelect } from "./state-select";
@@ -68,6 +70,8 @@ export interface LineDraft {
   batchId?: string;
   batchNo?: string;
   batchExpiry?: string;
+  /** Serial numbers / IMEIs of the units on this line (items tracked in Serials): marked sold and printed on the bill. */
+  serials?: string[];
   /** The saved item's alternate units (box of 12 ...) and its base unit; the unit picker offers them. */
   units?: ItemUnit[];
   baseUnit?: string;
@@ -96,7 +100,7 @@ export const blankLine = (gstRate = "5"): LineDraft => ({
 
 export const isBlank = (l: LineDraft) => !l.description.trim() && !l.rate.trim();
 
-export type LineError = Partial<Record<"description" | "qty" | "rate" | "discount" | "hsn", string>>;
+export type LineError = Partial<Record<"description" | "qty" | "rate" | "discount" | "hsn" | "serials", string>>;
 
 /** Parsed line (null when it can't be priced yet) plus field errors. */
 export function parseLine(l: LineDraft): { input: LineInput | null; errors: LineError } {
@@ -109,6 +113,8 @@ export function parseLine(l: LineDraft): { input: LineInput | null; errors: Line
   if (rate === null) errors.rate = "billing.validation.amount";
   if (discount === null) errors.discount = "billing.validation.amount";
   if (l.hsn.trim() && !/^[0-9]{2,8}$/.test(l.hsn.trim())) errors.hsn = "billing.validation.hsn";
+  const serialProblem = serialsError(l.serials, qty);
+  if (serialProblem) errors.serials = serialProblem;
   if (qty !== null && qty > 0 && rate !== null && discount !== null && discount > Math.round(qty * rate)) {
     errors.discount = "billing.validation.discount";
   }
@@ -137,6 +143,7 @@ export function parseLine(l: LineDraft): { input: LineInput | null; errors: Line
     input.batchNo = l.batchNo;
     if (l.batchExpiry) input.expiry = l.batchExpiry;
   }
+  if (l.serials?.length) input.serials = [...l.serials];
   if (l.gstRule) {
     // The band of this line's value after its discount (the API re-bands the same way).
     input.gstRule = l.gstRule;
@@ -158,6 +165,7 @@ export function linesFromInvoice(inv: Pick<Invoice, "lines">): LineDraft[] {
     gstRate: String(l.gstRate),
     ...(l.gstRule ? { gstRule: l.gstRule } : {}),
     ...(l.batchId && l.batchNo ? { batchId: l.batchId, batchNo: l.batchNo, ...(l.expiry ? { batchExpiry: l.expiry } : {}) } : {}),
+    ...(l.serials?.length ? { serials: [...l.serials] } : {}),
     ...(l.unitFactor && l.unitFactor !== 1 ? { unitFactor: l.unitFactor, ...(l.baseUnit ? { baseUnit: l.baseUnit } : {}) } : {}),
     // A saved document keeps its prices: price lists only fill new lines.
     rateManual: true,
@@ -482,6 +490,7 @@ export function InvoiceForm({ invoice, initialCustomerId }: { invoice?: Invoice;
                       onChange={(patch) => updateLine(l.key, patch)}
                       onRemove={() => removeLine(l.key)}
                       onEnterLast={i === lines.length - 1 ? addLine : undefined}
+                      showSerials
                     />
                   </motion.div>
                 );
@@ -632,6 +641,7 @@ export function LineRow({
   onChange,
   onRemove,
   onEnterLast,
+  showSerials = false,
 }: {
   index: number;
   line: LineDraft;
@@ -642,9 +652,12 @@ export function LineRow({
   onChange: (patch: Partial<LineDraft>) => void;
   onRemove: () => void;
   onEnterLast?: () => void;
+  /** Offer the serial number / IMEI field for items tracked in Serials (bills only; quotes and orders don't take serials). */
+  showSerials?: boolean;
 }) {
   const { t } = useI18n();
   const id = `line-${line.key}`;
+  const serialTracked = useSerialTracked(showSerials ? line.itemId : undefined);
   const qtyRef = React.useRef<HTMLInputElement>(null);
   // Price-band GST (apparel / footwear): the rate follows the line's value after its discount.
   const bandRate = line.gstRule ? (parseLine(line).input?.gstRate.toString() ?? null) : null;
@@ -667,6 +680,7 @@ export function LineRow({
       batchId: undefined,
       batchNo: undefined,
       batchExpiry: undefined,
+      serials: undefined,
     });
     window.setTimeout(() => {
       qtyRef.current?.focus();
@@ -693,7 +707,7 @@ export function LineRow({
             value={line.description}
             invalid={!!errors.description}
             autoFocus={autoFocus}
-            onChange={(description) => onChange({ description, itemId: undefined, units: undefined, baseUnit: undefined, unitFactor: undefined, priceNote: undefined, batchId: undefined, batchNo: undefined, batchExpiry: undefined })}
+            onChange={(description) => onChange({ description, itemId: undefined, units: undefined, baseUnit: undefined, unitFactor: undefined, priceNote: undefined, batchId: undefined, batchNo: undefined, batchExpiry: undefined, serials: undefined })}
             onPick={pickItem}
           />
           <FieldError id={`${id}-desc-err`} msg={errors.description} />
@@ -813,6 +827,9 @@ export function LineRow({
           onChange={(b) => onChange(b ? { batchId: b.batchId, batchNo: b.batchNo, batchExpiry: b.expiry ?? undefined } : { batchId: undefined, batchNo: undefined, batchExpiry: undefined })}
         />
       )}
+      {serialTracked && (
+        <SerialsField id={`${id}-serials`} line={line} error={errors.serials} onChange={(serials) => onChange({ serials })} />
+      )}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground sm:pl-8">
         {line.itemId && (
           <span className="mr-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[0.6875rem] font-medium text-primary">
@@ -828,6 +845,44 @@ export function LineRow({
           <span>—</span>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Serial numbers / IMEIs of the units on a line: one per line (scanner friendly), at most one per unit. */
+function SerialsField({ id, line, error, onChange }: { id: string; line: LineDraft; error?: string; onChange: (serials: string[] | undefined) => void }) {
+  const { t } = useI18n();
+  // Typed text is kept as typed (a trailing newline or comma must survive); the parsed list goes on the line.
+  const [text, setText] = React.useState(() => (line.serials ?? []).join("\n"));
+  const units = Math.ceil(parseQty(line.qty) ?? 0);
+  const count = line.serials?.length ?? 0;
+  return (
+    <div className="grid gap-1 sm:pl-8">
+      <Label htmlFor={id} className="text-xs">
+        {t("billing.form.serials.label")}
+      </Label>
+      <Textarea
+        id={id}
+        rows={Math.min(Math.max(count, 2), 5)}
+        className="font-mono text-xs"
+        autoComplete="off"
+        spellCheck={false}
+        value={text}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-err` : `${id}-hint`}
+        onChange={(e) => {
+          setText(e.target.value);
+          const serials = parseSerialText(e.target.value);
+          onChange(serials.length ? serials : undefined);
+        }}
+      />
+      <FieldError id={`${id}-err`} msg={error} />
+      {!error && (
+        <p id={`${id}-hint`} className="text-[0.6875rem] text-muted-foreground">
+          {count > 0 ? `${t("billing.form.serials.count", { n: count, units })} · ` : ""}
+          {t("billing.form.serials.hint")}
+        </p>
+      )}
     </div>
   );
 }

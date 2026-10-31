@@ -1,4 +1,4 @@
-import { computeInvoice, normalizeStateCode, taxableOfInclusive } from "@srirealtime/gst";
+import { computeInvoice, normalizeStateCode, taxableOfInclusive } from "@rbms/gst";
 import type { AddonInvoiceLine, BillingInterval, SubscriptionRow } from "./schema";
 
 /** Pure subscription rules (no database). Money is integer paise; dates are Date objects (UTC instants). */
@@ -104,7 +104,7 @@ export interface GstSplit {
 
 /**
  * GST split of an amount the provider charged (GST included): CGST + SGST when the shop's state is the platform's,
- * else IGST. The total equals `chargedPaise` exactly (the GST is taken out of it, `@srirealtime/gst` inclusive maths).
+ * else IGST. The total equals `chargedPaise` exactly (the GST is taken out of it, `@rbms/gst` inclusive maths).
  * A shop without a state is treated as intra-state (place of supply = the platform's state).
  */
 export function gstSplit(chargedPaise: number, sellerState: string, buyerState: string | null | undefined, gstRate = PLATFORM_GST_RATE): GstSplit {

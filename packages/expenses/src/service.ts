@@ -1,6 +1,6 @@
-import { badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny, splitList } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { GST_RATES, isValidDate, normalizeGstin, todayIST } from "@srirealtime/gst";
+import { badRequest, conflict, defineSort, facetCounts, listFilter, listQuerySchema, notFound, rangeOrder, searchAny, splitList } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { GST_RATES, isValidDate, normalizeGstin, todayIST } from "@rbms/gst";
 import { and, asc, count, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { itcOf, profitReport, resolveGst, summarize, ZERO_GST, type ExpenseSummary, type ProfitReport } from "./logic";

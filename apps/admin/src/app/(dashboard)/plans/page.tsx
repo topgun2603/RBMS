@@ -19,7 +19,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { Page } from "@/components/page";
 import { QueryError } from "@/components/query-state";
 import { UsageBar } from "@/components/usage";

@@ -19,7 +19,7 @@ export interface Segmenter {
 export class ModelNotInstalledError extends Error {
   readonly code = "image_model_missing";
   constructor(readonly model: string) {
-    super(`The image cleanup model "${model}" is not installed. Run: pnpm --filter @srirealtime/ai models:download`);
+    super(`The image cleanup model "${model}" is not installed. Run: pnpm --filter @rbms/ai models:download`);
   }
 }
 

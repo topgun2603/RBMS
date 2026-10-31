@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import type { FastifyRequest } from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { APPROVAL_MAX_FAILURES, discountLimitGuard } from "./discount-guard";

@@ -1,8 +1,8 @@
 "use client";
 
-import { ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+import { ModuleLink, Page, PageHeading, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { LockIcon, PencilLineIcon } from "lucide-react";
-import { Button, EmptyState, Skeleton } from "@srirealtime/ui";
+import { Button, EmptyState, Skeleton } from "@rbms/ui";
 import { SalesDocForm } from "../components/sales-docs/sd-form";
 import { useSaleOrder } from "../lib/queries-sales-docs";
 

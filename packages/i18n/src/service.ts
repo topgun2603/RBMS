@@ -1,4 +1,4 @@
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { and, asc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { en } from "./bundles/en";

@@ -1,6 +1,6 @@
 /**
  * Client-side permission checks for the shell (Gated.permission) and pages. Pure, unit-tested in permissions.test.ts.
- * The API is the authority (`requirePermission` in @srirealtime/core); this only hides what would be refused anyway.
+ * The API is the authority (`requirePermission` in @rbms/core); this only hides what would be refused anyway.
  */
 
 /** `roles` undefined or empty = everyone; else the user needs at least one of them. */
@@ -11,7 +11,7 @@ export const roleAllows = (userRoles: readonly string[], roles?: readonly string
 export type PermissionReq = string | readonly string[];
 
 /**
- * Does the granted pattern cover `key`? Mirrors @srirealtime/core's `permissionMatches` exactly (the kit can't depend
+ * Does the granted pattern cover `key`? Mirrors @rbms/core's `permissionMatches` exactly (the kit can't depend
  * on core): `*` matches everything; a `*` segment matches exactly one segment (`*.view` → `reports.view`), except as the
  * last segment where it matches one or more (`orders.*` → `orders.ship`, `orders.returns.approve`); `module.*` also
  * matches the bare `module` key.

@@ -19,8 +19,8 @@ import {
   TableRow,
   toast,
   type StatusTone,
-} from "@srirealtime/ui";
-import { apiDownload, ConfirmDialog, describeError, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { apiDownload, ConfirmDialog, describeError, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { ConnectionPill, Section } from "../components/bits";
 import { CampaignStatusPill, CountBars } from "../components/pills";
 import { useSentinel } from "../components/two-pane";

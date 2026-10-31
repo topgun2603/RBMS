@@ -1,4 +1,4 @@
-import { seedPlans, type AddonInput, type PlanTier } from "@srirealtime/plans";
+import { seedPlans, type AddonInput, type PlanTier } from "@rbms/plans";
 import type { Logger } from "pino";
 import type { Kit } from "./kit";
 
@@ -87,6 +87,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "storefront.*",
       "delivery.*",
       "cms.*",
+      "enquiries",
       "seo",
       "reviews",
       "analytics",
@@ -143,6 +144,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "storefront.*",
       "delivery.*",
       "cms.*",
+      "enquiries",
       "seo",
       "reviews",
       "analytics",
@@ -171,6 +173,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "storefront.*",
       "delivery.*",
       "cms.*",
+      "enquiries",
       "seo",
       "reviews",
       "analytics",
@@ -220,6 +223,7 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "storefront.*",
       "delivery.*",
       "cms.*",
+      "enquiries",
       "seo",
       "reviews",
       "analytics",
@@ -241,12 +245,35 @@ export const APP_PROFILES: { appId: string; name: string; features: string[] }[]
       "subscriptions",
     ],
   },
+  {
+    appId: "SC",
+    name: "School",
+    // A school's website (docs/school.md): pages, news, admission enquiries, campus-visit booking, programmes, website
+    // chat and the help FAQ. No billing, stock, orders, POS, payments or the shop engines.
+    features: [
+      "storefront",
+      "cms.*",
+      "seo",
+      "custom-domain",
+      "enquiries",
+      "bookings.*",
+      "catalogue",
+      "analytics",
+      "onboarding",
+      "staff",
+      "audit",
+      "chat",
+      "support.*",
+      "ai",
+      "subscriptions",
+    ],
+  },
 ];
 
 /** Batch-1 and batch-2 features per plan, added to the plans package's defaults (free → starter → pro/enterprise). */
-const STORE_FREE = ["onboarding", "storefront", "delivery", "cms", "seo"];
+const STORE_FREE = ["onboarding", "storefront", "delivery", "cms", "seo", "enquiries"];
 const STORE_STARTER = [...STORE_FREE, "reviews", "analytics", "expenses", "storefront.wishlist", "cms.blog"];
-const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo", "reviews.*", "analytics.*", "expenses.*", "custom-domain"];
+const STORE_PRO = ["onboarding.*", "storefront.*", "delivery.*", "cms.*", "seo", "enquiries", "reviews.*", "analytics.*", "expenses.*", "custom-domain"];
 // `subscriptions` (Plan & billing) is also a core module of the plans package, so plans made later grant it too.
 // Verticals (pharmacy, restaurant): the app profile decides who sees them; plans only size them. Batches and expiry
 // are the core of a pharmacy, so every plan has them; prescriptions and the H1 register from starter up. Restaurants:
@@ -299,7 +326,7 @@ const withAdditions = (plan: (typeof seedPlans)[number]) => ({
   limits: { ...(plan.limits ?? {}), ...(PLAN_LIMIT_ADDITIONS[plan.id] ?? {}) },
 });
 
-type AppId = "BL" | "EC" | "PH" | "RS" | "SV";
+type AppId = "BL" | "EC" | "PH" | "RS" | "SV" | "SC";
 type PaidTier = "starter" | "pro";
 
 /**
@@ -313,6 +340,7 @@ const APP_PLAN_PRICES: Record<AppId, Record<PaidTier, number>> = {
   PH: { starter: 99_900, pro: 249_900 },
   RS: { starter: 99_900, pro: 249_900 },
   SV: { starter: 69_900, pro: 179_900 },
+  SC: { starter: 59_900, pro: 149_900 },
 };
 const APP_PLAN_COPY: Record<AppId, Record<"free" | PaidTier, string>> = {
   BL: {
@@ -339,6 +367,11 @@ const APP_PLAN_COPY: Record<AppId, Record<"free" | PaidTier, string>> = {
     free: "Appointments and job cards for one person.",
     starter: "Memberships, online booking, job tracking and a small team.",
     pro: "Campaigns, loyalty, your own domain and a bigger team.",
+  },
+  SC: {
+    free: "Your school website with admission enquiries and campus-visit booking.",
+    starter: "News and events, website chat, visitor analytics and a small team.",
+    pro: "Your own domain, the help centre FAQ and a bigger team.",
   },
 };
 
@@ -425,7 +458,7 @@ const ADDON_TEMPLATES: (Omit<AddonInput, "id" | "appId"> & { apps?: AppId[] })[]
     priceYearlyPaise: 149_000,
     // Pro already includes it.
     tiers: ["starter"],
-    apps: ["EC", "RS", "SV"],
+    apps: ["EC", "RS", "SV", "SC"],
     sort: 50,
   },
   {
@@ -492,8 +525,8 @@ async function seedAddons(kit: Kit, log: Logger) {
 
 export interface ShopSpec {
   slug: string;
-  appId: "BL" | "EC" | "PH" | "RS" | "SV";
-  /** The shop's trade (@srirealtime/verticals pack); applied with its look and starter content when the shop is created. */
+  appId: "BL" | "EC" | "PH" | "RS" | "SV" | "SC";
+  /** The shop's trade (@rbms/verticals pack); applied with its look and starter content when the shop is created. */
   businessType?: string;
   /** Tier ("pro") — the shop gets its app's plan of that tier ("sv-pro") — or a full plan id. */
   planId: string;

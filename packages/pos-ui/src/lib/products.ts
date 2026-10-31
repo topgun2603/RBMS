@@ -1,4 +1,4 @@
-import { gstRateAtPrice } from "@srirealtime/gst";
+import { gstRateAtPrice } from "@rbms/gst";
 import type { CartProduct } from "./cart";
 import { inUnit } from "./units";
 import type { BillingItem, CatalogVariant, Product, VariantLookup } from "./types";

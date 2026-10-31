@@ -2,7 +2,7 @@
 
 /** React Query hooks for batches and expiry, stock audits and stock transfers (/v1/inventory/...). */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 import type {
   AuditCountEntry,
   AuditCountResult,

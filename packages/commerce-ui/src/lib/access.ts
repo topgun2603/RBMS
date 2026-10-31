@@ -1,8 +1,8 @@
 "use client";
 
-import { useOptionalSession } from "@srirealtime/web";
+import { useOptionalSession } from "@rbms/web";
 
-/** Permission that covers prices, costs and every catalogue write (declared by @srirealtime/catalogue). */
+/** Permission that covers prices, costs and every catalogue write (declared by @rbms/catalogue). */
 export const MANAGE_PERMISSION = "catalogue.manage";
 
 /**

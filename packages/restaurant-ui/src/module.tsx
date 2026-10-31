@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BikeIcon, CalculatorIcon, ChefHatIcon, ClipboardListIcon, ImageUpIcon, LayoutGridIcon, PlugIcon, UtensilsIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { FLOOR_ACCESS, KITCHEN_ACCESS, ONLINE_ACCESS, RESTAURANT_FEATURES, RESTAURANT_PERMISSIONS } from "./lib/access";
 import { setRestaurantConfig } from "./lib/config";
 import { restaurantMessages } from "./lib/messages";

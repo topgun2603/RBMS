@@ -15,8 +15,8 @@ import {
   type FeatureGatePort,
   type ListPage,
   type TenantRef,
-} from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+} from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import {
   amountInWordsINR,
   computeInvoice,
@@ -45,7 +45,7 @@ import {
   type InvoiceTotals,
   type LineInput,
   type LineTotals,
-} from "@srirealtime/gst";
+} from "@rbms/gst";
 import {
   and,
   asc,
@@ -180,7 +180,7 @@ export const QUOTA_KEY = "invoices_per_month";
 export const MAX_PAISE = 2_000_000_000;
 export const WALK_IN_NAME = "Walk-in Customer";
 
-/** Notify template keys used by this module (built-ins ship with @srirealtime/notify). */
+/** Notify template keys used by this module (built-ins ship with @rbms/notify). */
 export const TEMPLATES = {
   issued: "invoice.issued",
   reminder: "invoice.reminder",
@@ -572,7 +572,7 @@ const gstRate = z
   .number()
   .refine(isGstRate, `GST rate must be one of ${GST_RATES.join(", ")}`)
   .transform((v) => v as GstRate);
-/** A price-band GST rule (apparel / footwear, `@srirealtime/gst` rate-rule.ts). */
+/** A price-band GST rule (apparel / footwear, `@rbms/gst` rate-rule.ts). */
 const gstRule = z
   .object({ kind: z.literal("price-band"), threshold: z.number().int().positive().max(MAX_PAISE), below: gstRate, above: gstRate })
   .refine((r) => isGstRateRule(r), "A GST price band needs a lower rate below and a higher rate above the threshold")

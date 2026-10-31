@@ -16,8 +16,8 @@ import {
   ReceiptTextIcon,
   WalletIcon,
 } from "lucide-react";
-import { Button, cn, DataTable, DataTableToolbar, EmptyState, StatusPill, Tabs, TabsContent, TabsList, TabsTrigger, type DataTableColumn } from "@srirealtime/ui";
-import { absoluteUrl, api, Page, PageHeading, useI18n, useMyBranches, useServerTable, type ListResponse, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, cn, DataTable, DataTableToolbar, EmptyState, StatusPill, Tabs, TabsContent, TabsList, TabsTrigger, type DataTableColumn } from "@rbms/ui";
+import { absoluteUrl, api, Page, PageHeading, useI18n, useMyBranches, useServerTable, type ListResponse, type ServerFilterDefs } from "@rbms/web";
 import { ExpenseReportPanel } from "../components/expenses/expense-report";
 import { RecurringExpensesPanel } from "../components/expenses/recurring-expenses";
 import { useSuppliers } from "../lib/queries-v2";

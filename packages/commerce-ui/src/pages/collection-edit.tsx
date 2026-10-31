@@ -1,8 +1,8 @@
 "use client";
 
 import { LayersIcon } from "lucide-react";
-import { Button, Card, EmptyState, Skeleton } from "@srirealtime/ui";
-import { ApiError, ModuleLink, Page, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+import { Button, Card, EmptyState, Skeleton } from "@rbms/ui";
+import { ApiError, ModuleLink, Page, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { CollectionEditor } from "../components/collection-editor";
 import { useCollection } from "../lib/queries";
 

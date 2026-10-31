@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
-import { cn, StatusPill } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn, StatusPill } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { deliveryTone, httpTone } from "../../lib/developer";
 import type { DeliveryStatus } from "../../lib/types";
 

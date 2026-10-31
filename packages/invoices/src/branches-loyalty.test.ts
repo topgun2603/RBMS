@@ -1,5 +1,5 @@
-import { emptyContext, type RequestContext } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { emptyContext, type RequestContext } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";

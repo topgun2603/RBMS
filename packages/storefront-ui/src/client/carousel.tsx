@@ -3,8 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, PauseIcon, PlayIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe, useScroll, useTransform, type Variants } from "@srirealtime/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, SuccessCheck, useReducedMotionSafe, useScroll, useTransform, type Variants } from "@rbms/ui/motion";
 import { imageUrl } from "../lib/format";
 import { useStore } from "./store-context";
 

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** web.aiAssist.* strings: the Phase 1 AI text helpers (HSN suggestion, descriptions, bulk Tamil, import mapping, help). Keep en and ta key sets identical. */
 export const enAiAssist: Messages = {

@@ -1,4 +1,4 @@
-import { forbidden, tooMany, AppError, type UserRef } from "@srirealtime/core";
+import { forbidden, tooMany, AppError, type UserRef } from "@rbms/core";
 import type { FastifyInstance, FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
 import "./fastify";
 import { hashApiKey, isApiKeyToken, looksLikeApiKey } from "./keys";

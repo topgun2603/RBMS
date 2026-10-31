@@ -1,6 +1,6 @@
 "use client";
 
-import { KpiTile, useI18n } from "@srirealtime/web";
+import { KpiTile, useI18n } from "@rbms/web";
 import { FileSignatureIcon } from "lucide-react";
 import { compactINR, money } from "../lib/format";
 import { useQuotationSummary } from "../lib/queries-quotations";

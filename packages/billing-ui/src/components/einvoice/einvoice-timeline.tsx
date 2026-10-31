@@ -1,8 +1,8 @@
 "use client";
 
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 import { BanIcon, CircleAlertIcon, FileCheck2Icon, TruckIcon } from "lucide-react";
-import { AnimatePresence, cn, motion, useReducedMotionSafe } from "@srirealtime/ui";
+import { AnimatePresence, cn, motion, useReducedMotionSafe } from "@rbms/ui";
 import { IRN_CANCEL_REASONS, type TimelineEvent, type TimelineKind } from "../../lib/einvoice";
 
 const ICONS: Record<TimelineKind, { icon: typeof BanIcon; tone: string }> = {

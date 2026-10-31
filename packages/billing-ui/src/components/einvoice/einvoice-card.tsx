@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ApiError, useFeature, useI18n } from "@srirealtime/web";
+import { ApiError, useFeature, useI18n } from "@rbms/web";
 import { AlertTriangleIcon, BanIcon, CircleAlertIcon, FileCheck2Icon, FlaskConicalIcon, RotateCwIcon, TimerIcon, TruckIcon } from "lucide-react";
 import {
   Alert,
@@ -19,7 +19,7 @@ import {
   StatusPill,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CopyButton } from "../copy-button";
 import { QrImage } from "../upi-qr";
 import { useHasPermission } from "../../lib/access";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PlusIcon } from "lucide-react";
-import { Button, DataTable, DataTableToolbar, type DataTableColumn } from "@srirealtime/ui";
-import { Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, DataTable, DataTableToolbar, type DataTableColumn } from "@rbms/ui";
+import { Page, PageHeading, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { PrescriptionDialog } from "../components/prescription-dialog";
 import { pk } from "../lib/queries";
 import type { Prescription } from "../lib/types";

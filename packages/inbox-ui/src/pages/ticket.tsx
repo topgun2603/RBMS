@@ -53,8 +53,8 @@ import {
   toast,
   ToggleGroup,
   ToggleGroupItem,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useFeature, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { DaySeparator, Section, TagEditor } from "../components/bits";
 import { AutoTextarea } from "../components/composer";
 import { Markdown } from "../components/markdown";

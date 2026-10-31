@@ -1,4 +1,4 @@
-import { BookingPage, bookingMetadata } from "@srirealtime/storefront-ui";
+import { BookingPage, bookingMetadata } from "@rbms/storefront-ui";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = bookingMetadata;

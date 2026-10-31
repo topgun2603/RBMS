@@ -1,5 +1,5 @@
-import { aiEnvShape } from "@srirealtime/ai";
-import { loadEnv, optionalString } from "@srirealtime/core";
+import { aiEnvShape } from "@rbms/ai";
+import { loadEnv, optionalString } from "@rbms/core";
 import { z } from "zod";
 
 export const envSchema = z.object({
@@ -19,7 +19,7 @@ export const envSchema = z.object({
   CORS_ORIGINS: z
     .string()
     .default(
-      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004,http://localhost:3005,http://localhost:3006,http://*.localhost:3006,http://localhost:3007,http://*.localhost:3007,http://localhost:3008,http://*.localhost:3008",
+      "http://localhost:3000,http://localhost:3001,http://*.localhost:3001,http://localhost:3002,http://*.localhost:3002,http://localhost:3003,http://*.localhost:3003,http://localhost:3004,http://*.localhost:3004,http://localhost:3005,http://localhost:3006,http://*.localhost:3006,http://localhost:3007,http://*.localhost:3007,http://localhost:3008,http://*.localhost:3008,http://localhost:3009,http://*.localhost:3009",
     ),
   /** Billing app URL for invoice share links; {slug} is replaced with the shop's subdomain. */
   BILLING_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002/billing,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007/billing,SV=http://{slug}.localhost:3008"),
@@ -111,7 +111,7 @@ export const envSchema = z.object({
   /** The public landing site (sign-up, pricing). */
   WWW_PUBLIC_URL: z.string().url().default("http://localhost:3005"),
   /** Where each app opens a shop ({slug} = shop subdomain): sign-up's `appUrl` and handoff links. APP=template pairs. */
-  APP_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008"),
+  APP_PUBLIC_URL: z.string().default("BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002,PH=http://{slug}.localhost:3006,RS=http://{slug}.localhost:3007,SV=http://{slug}.localhost:3008,SC=http://{slug}.localhost:3009"),
   // ---- Batch 6: operational safety net (docs/ops.md)
   /** Sentry-compatible DSN; set = 5xx errors and final job failures are sent there (otherwise only logged). */
   SENTRY_DSN: optionalString(),
@@ -132,6 +132,13 @@ export const envSchema = z.object({
   /** Log level (pino). Default debug in development, info otherwise. */
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   // ---- HTTP hardening (apps/api/src/http-guard.ts)
+  /**
+   * Reverse proxies in front of the API (the load balancer = 1). The client IP used for rate limits, audit and sign-in
+   * records is the X-Forwarded-For entry this many hops from the right; entries further left are written by the client
+   * and ignored. 0 = the API is reached directly (socket address). Default 1. Too high lets clients spoof their IP;
+   * too low makes every request look like it came from the proxy.
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
   /** Global HTTP rate limit (fixed windows; Redis-shared when REDIS_URL is set). Default on. */
   RATE_LIMIT_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),

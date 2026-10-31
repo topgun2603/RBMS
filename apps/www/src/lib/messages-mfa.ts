@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Two-factor second step of sign-in on the landing site. Merged into `en` / `ta` in messages.ts. Keep the key sets identical. */
 export const enMfa: Messages = {

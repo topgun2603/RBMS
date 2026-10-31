@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
-import { Toaster } from "@srirealtime/ui/components/sonner";
+import { Toaster } from "@rbms/ui/components/sonner";
 import { getT } from "@/lib/i18n-server";
 import { SITE_URL } from "@/lib/site";
 import { organizationJsonLd } from "@/lib/seo";

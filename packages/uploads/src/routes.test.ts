@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { emptyContext } from "@srirealtime/core";
+import { emptyContext } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { uploadsRoutes } from "./routes";
 import type { UploadsService } from "./service";
@@ -80,5 +80,62 @@ describe("local driver routes", () => {
     const app = await build(service);
     const res = await app.inject({ method: "PUT", url: "/v1/uploads/local/t%2Fa.png", payload: "x", headers: { "content-type": "text/plain" } });
     expect(res.statusCode).toBe(404);
+  });
+});
+
+describe("shop membership", () => {
+  const tenant = { id: "11111111-1111-4111-8111-111111111111", slug: "anbu", planId: null, appId: null };
+  const fileId = "22222222-2222-4222-8222-222222222222";
+  type Who = { roles?: string[]; platformRoles?: string[]; userId?: string } | null;
+
+  async function buildAs(who: Who, file: { visibility: "public" | "private"; ownerUserId: string }, isUploader = false) {
+    const service = {
+      storage: { driver: "s3" },
+      maxBytes: 16,
+      sign: vi.fn(async () => ({ fileId })),
+      complete: vi.fn(async () => ({ id: fileId })),
+      get: vi.fn(async () => ({ id: fileId, ...file })),
+      remove: vi.fn(async () => undefined),
+    } as unknown as UploadsService & { sign: ReturnType<typeof vi.fn> };
+    const app = Fastify();
+    app.decorateRequest("ctx", null as never);
+    app.setErrorHandler((err: { status?: number }, _req, reply) => reply.code(err.status ?? 500).send({ error: String(err) }));
+    app.addHook("onRequest", async (req) => {
+      req.ctx = emptyContext();
+      req.ctx.tenant = tenant;
+      if (who) req.ctx.user = { id: who.userId ?? "u-1", sessionId: "s1", platformRoles: who.platformRoles ?? [], tenantRoles: who.roles ?? [] };
+    });
+    const access = { isUploader: vi.fn(async () => isUploader) };
+    await app.register(async (scoped) => uploadsRoutes(service, access)(scoped), { prefix: "/v1/uploads" });
+    return { app, service };
+  }
+  const sign = (app: Awaited<ReturnType<typeof buildAs>>["app"]) =>
+    app.inject({ method: "POST", url: "/v1/uploads/sign", payload: { filename: "a.png", contentType: "image/png", size: 10 } });
+  const complete = (app: Awaited<ReturnType<typeof buildAs>>["app"]) => app.inject({ method: "POST", url: `/v1/uploads/${fileId}/complete` });
+  const read = (app: Awaited<ReturnType<typeof buildAs>>["app"]) => app.inject({ method: "GET", url: `/v1/uploads/${fileId}` });
+  const priv = { visibility: "private" as const, ownerUserId: "owner-9" };
+  const pub = { visibility: "public" as const, ownerUserId: "owner-9" };
+
+  it("a signed-in non-member can't sign or complete uploads for the shop", async () => {
+    const { app, service } = await buildAs({ roles: [] }, priv);
+    expect((await sign(app)).statusCode).toBe(403);
+    expect((await complete(app)).statusCode).toBe(403);
+    expect(service.sign).not.toHaveBeenCalled();
+  });
+
+  it("members, the shop's sellers and super-admins can", async () => {
+    expect((await sign((await buildAs({ roles: ["staff"] }, priv)).app)).statusCode).toBe(200);
+    expect((await complete((await buildAs({ roles: ["staff"] }, priv)).app)).statusCode).toBe(200);
+    expect((await sign((await buildAs({ roles: [] }, priv, true)).app)).statusCode).toBe(200);
+    expect((await sign((await buildAs({ platformRoles: ["superadmin"] }, priv)).app)).statusCode).toBe(200);
+  });
+
+  it("non-members read public files only; private ones need membership (or being the uploader)", async () => {
+    expect((await read((await buildAs({ roles: [] }, priv)).app)).statusCode).toBe(403);
+    expect((await read((await buildAs(null, priv)).app)).statusCode).toBe(401);
+    expect((await read((await buildAs({ roles: [] }, pub)).app)).statusCode).toBe(200);
+    expect((await read((await buildAs(null, pub)).app)).statusCode).toBe(200);
+    expect((await read((await buildAs({ roles: ["cashier"] }, priv)).app)).statusCode).toBe(200);
+    expect((await read((await buildAs({ roles: [], userId: "owner-9" }, priv)).app)).statusCode).toBe(200);
   });
 });

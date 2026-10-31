@@ -1,4 +1,4 @@
-export type { FeatureGatePort } from "@srirealtime/core";
+export type { FeatureGatePort } from "@rbms/core";
 
 /** Shipping address as stored on the order (orders' `Address`). */
 export interface FulfillmentAddress {

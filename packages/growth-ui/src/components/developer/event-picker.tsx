@@ -15,8 +15,8 @@ import {
   DialogTitle,
   EmptyState,
   Skeleton,
-} from "@srirealtime/ui";
-import { SearchField, useI18n, useOptionalShop } from "@srirealtime/web";
+} from "@rbms/ui";
+import { SearchField, useI18n, useOptionalShop } from "@rbms/web";
 import { groupEvents, groupState, samplePayload, toggleGroup, toggleKey } from "../../lib/developer";
 import type { WebhookEventDef } from "../../lib/types";
 import { JsonView } from "./json-view";

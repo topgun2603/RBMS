@@ -1,4 +1,4 @@
-import type { GstRateRule } from "@srirealtime/gst";
+import type { GstRateRule } from "@rbms/gst";
 /** API shapes of `/v1/pos` (docs/pos-terminals.md). Money in paise. */
 
 export type TerminalRole = "pos" | "weighing";

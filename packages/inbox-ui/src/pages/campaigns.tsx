@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { MegaphoneIcon, PlusIcon } from "lucide-react";
-import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { Button, ChipGroup, cn, DataTable, DataTableToolbar, EmptyState, type DataTableColumn } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, useI18n, useModuleNavigate, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { ConnectionPill } from "../components/bits";
 import { CampaignStatusPill, CountBars } from "../components/pills";
 import { pollWhenNotLive } from "../lib/live";

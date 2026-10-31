@@ -1,10 +1,10 @@
 "use client";
 
-import { absoluteUrl, api, ApiError, BrandingStyle, BrandMark, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useI18n, useRouteParams, useWebFonts } from "@srirealtime/web";
+import { absoluteUrl, api, ApiError, BrandingStyle, BrandMark, fontsInCss, LocaleSwitcher, QueryError, ThemeToggle, useDocumentBranding, useI18n, useRouteParams, useWebFonts } from "@rbms/web";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClockIcon, FileXIcon, NotebookTabsIcon, PrinterIcon, SmartphoneIcon } from "lucide-react";
-import { upiLink } from "@srirealtime/gst";
-import { AnimatedNumber, Button, Card, cn, EmptyState, FadeIn, Skeleton } from "@srirealtime/ui";
+import { upiLink } from "@rbms/gst";
+import { AnimatedNumber, Button, Card, cn, EmptyState, FadeIn, Skeleton } from "@rbms/ui";
 import { BalancePill, balanceInk } from "../components/credit-book/credit-book-ui";
 import { LedgerSkeleton, LedgerTable, LedgerTimeline, normalizeLedger } from "../components/credit-book/ledger-view";
 import { QrImage } from "../components/upi-qr";

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { FlaskConicalIcon, Loader2Icon, SmartphoneIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui/components/dialog";
+import { Button } from "@rbms/ui/components/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui/components/dialog";
 import { money } from "../lib/format";
 import type { PaymentCheckout } from "../types";
 import { ApiError, call } from "./api";

@@ -1,4 +1,4 @@
-import { itemName } from "@srirealtime/catalogue";
+import { itemName } from "@rbms/catalogue";
 import { BAKERY_HSN, DISHES, GST_RATE, SERVICE_HSN } from "../demo-stores/theneer-menu";
 import type { CatalogueEntry, Profile, Supplier } from "./profiles";
 

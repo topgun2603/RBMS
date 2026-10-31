@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { defineModule, requireRole, requireTenant, type SrModule } from "@srirealtime/core";
-import { and, eq, gt, isNotNull, isNull, like, lt, or, sql, type Db } from "@srirealtime/db";
-import type { BookingNotice, NotifyPort as BookingsNotifyPort, createBookings } from "@srirealtime/bookings";
-import type { JobSummary, NotifyPort as JobcardsNotifyPort } from "@srirealtime/jobcards";
-import type { ExpiringMembership, MembershipNotifyPort, ReminderPort, SoldMembership, createMemberships } from "@srirealtime/memberships";
+import { defineModule, requireRole, requireTenant, type SrModule } from "@rbms/core";
+import { and, eq, gt, isNotNull, isNull, like, lt, or, sql, type Db } from "@rbms/db";
+import type { BookingNotice, NotifyPort as BookingsNotifyPort, createBookings } from "@rbms/bookings";
+import type { JobSummary, NotifyPort as JobcardsNotifyPort, ServiceDue, createJobcards } from "@rbms/jobcards";
+import type { ExpiringMembership, MembershipNotifyPort, ReminderPort, SoldMembership, createMemberships } from "@rbms/memberships";
 import {
   CUSTOMER_EVENTS,
   CUSTOMER_EVENT_KEYS,
@@ -25,11 +25,11 @@ import {
   type MessagesSettings,
   type OptOutPort,
   type createNotify,
-} from "@srirealtime/notify";
-import type { SettingsService } from "@srirealtime/settings";
-import { settingsValues } from "@srirealtime/settings";
-import { storeCarts, storeCustomers } from "@srirealtime/storefront";
-import { waContacts } from "@srirealtime/whatsapp";
+} from "@rbms/notify";
+import type { SettingsService } from "@rbms/settings";
+import { settingsValues } from "@rbms/settings";
+import { storeCarts, storeCustomers } from "@rbms/storefront";
+import { waContacts } from "@rbms/whatsapp";
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "pino";
 import { z } from "zod";
@@ -43,10 +43,12 @@ import { z } from "zod";
 type Notify = ReturnType<typeof createNotify>["service"];
 type Bookings = ReturnType<typeof createBookings>["service"];
 type Memberships = ReturnType<typeof createMemberships>["service"];
+type Jobcards = ReturnType<typeof createJobcards>["service"];
 
 export const MESSAGES_JOBS = {
   bookingReminders: "messages.booking-reminders",
   memberships: "messages.memberships",
+  serviceDue: "messages.service-due",
   abandonedCarts: "messages.abandoned-carts",
   purge: "messages.purge",
 } as const;
@@ -96,6 +98,18 @@ export function jobVars(job: JobSummary, locale: MessageLocale, link: string): R
     number: job.label,
     dueDate: job.dueDate ? formatMessageDate(job.dueDate, locale) : t.soon,
     amount: moneyText(job.status === "awaiting_approval" ? job.total : job.balance),
+    link,
+  };
+}
+
+/** Vars of job.service_due: the vehicle, the date and, if the card asked for it, the km. */
+export function serviceDueVars(due: ServiceDue, locale: MessageLocale, link: string): Record<string, string> {
+  return {
+    customer: due.customerName || CUSTOMER_TEXT[locale].customer,
+    number: due.label,
+    vehicle: due.regNo,
+    dueDate: formatMessageDate(due.dueDate, locale),
+    dueKm: due.dueKm ? (locale === "ta" ? ` அல்லது ${due.dueKm} கி.மீ` : ` or at ${due.dueKm} km`) : "",
     link,
   };
 }
@@ -222,7 +236,7 @@ export interface MessagesDeps {
   defineJob: (name: string, handler: () => Promise<void>) => void;
   schedule: (name: string, cron: string) => Promise<void>;
   /** The engines the jobs read (created after this module in kit.ts, so read lazily). */
-  engines: () => { bookings: Bookings; memberships: Memberships };
+  engines: () => { bookings: Bookings; memberships: Memberships; jobcards: Jobcards };
   /** Overrides of the Postgres "send once" store and the WhatsApp opt-out lookup (tests). */
   dedupe?: DedupePort & { purge?(): Promise<number> };
   optOut?: OptOutPort;
@@ -395,6 +409,22 @@ export function createMessages(d: MessagesDeps) {
   };
 
   /**
+   * Vehicle service reminders, daily: delivered vehicle cards whose "next service after N months" is today. Each card is
+   * told once (the ref carries the due date); a shop with job cards or the event off sends none.
+   */
+  const runServiceDue = async (jobcardsService: Jobcards) => {
+    const due = await jobcardsService.serviceDueOn(istDate(now()));
+    let sent = 0;
+    for (const x of due) {
+      if (!(await on(x.tenantId, "jobcards"))) continue;
+      const link = await pageLink(x.tenantId, "jobcards.tracking", `/job/${x.trackToken}`);
+      const r = await messages.send({ tenantId: x.tenantId, event: "job.service_due", ref: `${x.jobId}:${x.dueDate}`, to: { phone: x.customerPhone }, vars: ({ locale }) => serviceDueVars(x, locale, link) });
+      if (r.some((y) => y.status === "sent" || y.status === "queued")) sent++;
+    }
+    return { due: due.length, sent };
+  };
+
+  /**
    * Abandoned carts, every 30 minutes: a signed-in shopper's server cart with items, untouched for the shop's delay
    * (and less than 3 days), no order since, who agreed to offers (`marketing_opt_in`). Anonymous carts have no contact.
    */
@@ -449,6 +479,9 @@ export function createMessages(d: MessagesDeps) {
   });
   d.defineJob(MESSAGES_JOBS.memberships, async () => {
     log.info(await runMemberships(d.engines().memberships), "messages: membership reminders run");
+  });
+  d.defineJob(MESSAGES_JOBS.serviceDue, async () => {
+    log.info(await runServiceDue(d.engines().jobcards), "messages: vehicle service reminders run");
   });
   d.defineJob(MESSAGES_JOBS.abandonedCarts, async () => {
     log.info(await runAbandonedCarts(), "messages: abandoned carts run");
@@ -530,11 +563,11 @@ export function createMessages(d: MessagesDeps) {
   return {
     messages,
     module,
-    /** NotifyPort for @srirealtime/bookings. */
+    /** NotifyPort for @rbms/bookings. */
     bookings,
-    /** NotifyPort for @srirealtime/jobcards. */
+    /** NotifyPort for @rbms/jobcards. */
     jobcards,
-    /** ReminderPort + MembershipNotifyPort for @srirealtime/memberships. */
+    /** ReminderPort + MembershipNotifyPort for @rbms/memberships. */
     memberships: { reminders: membershipReminders, notify: membershipNotify },
     /** Wraps the orders module's notifier. */
     orderNotifier,
@@ -546,6 +579,7 @@ export function createMessages(d: MessagesDeps) {
     async schedule() {
       await d.schedule(MESSAGES_JOBS.bookingReminders, "*/10 * * * *");
       await d.schedule(MESSAGES_JOBS.memberships, "0 9 * * *");
+      await d.schedule(MESSAGES_JOBS.serviceDue, "30 9 * * *");
       await d.schedule(MESSAGES_JOBS.abandonedCarts, "*/30 * * * *");
       await d.schedule(MESSAGES_JOBS.purge, "50 3 * * *");
     },

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BarChart3Icon, FileStackIcon, RotateCcwIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
-import { Card, ChipGroup, cn } from "@srirealtime/ui";
-import { useFeature, useI18n } from "@srirealtime/web";
+import { Card, ChipGroup, cn } from "@rbms/ui";
+import { useFeature, useI18n } from "@rbms/web";
 import { StatTile } from "../charts/stat-tile";
 import { money } from "../../lib/format";
 import { BRANCHES_FEATURE, salesPdfPath, SALES_VIEWS, useSalesAnalysis, VAL, type SalesReport, type SalesRow, type SalesView } from "../../lib/valuation";

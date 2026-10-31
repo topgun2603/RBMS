@@ -1,5 +1,5 @@
-import { DEFAULT_STORE_THEME, layoutDataAttributes, themeDataAttributes } from "@srirealtime/branding/theme";
-import { brandTokensSchema, toCssText, type BrandTokens } from "@srirealtime/branding/tokens";
+import { DEFAULT_STORE_THEME, layoutDataAttributes, themeDataAttributes } from "@rbms/branding/theme";
+import { brandTokensSchema, toCssText, type BrandTokens } from "@rbms/branding/tokens";
 
 /*
  * Brand tokens → what the store layout derives from them, in pure TS so the preview bridge can restyle the page in the

@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Switch, Textarea } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, cn, Field as UiField, FieldControl, FieldLabel, Input, Label, Switch, Textarea } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { emptySlide, SECTION_LIST_LIMITS, USP_ICON_KEYS, uspIconKey, type FieldErrors, type FormOf, type SectionForm, type SlideForm } from "../../lib/sections";
 import { FieldError, Optional, TextField } from "../bits";
 import { ImageField } from "../image-field";
@@ -26,6 +26,7 @@ import {
   OfferFields,
   TestimonialsFields,
 } from "./section-forms-extra";
+import { EnquiryFieldsEditor } from "./enquiry-fields";
 import { USP_ICON_MAP } from "./section-meta";
 import {
   BestsellersFields,
@@ -98,6 +99,10 @@ export function SectionFields(props: { form: SectionForm; onChange: (f: SectionF
       return <MenuBoardFields {...(p as Props<"menu-board">)} />;
     case "appointment":
       return <AppointmentFields {...(p as Props<"appointment">)} />;
+    case "enquiry-form": {
+      const q = p as Props<"enquiry-form">;
+      return <EnquiryFieldsEditor value={q.form} onChange={(v) => q.onChange({ ...q.form, ...v })} errors={q.errors} disabled={q.disabled} idp={q.idp} />;
+    }
     case "before-after":
       return <BeforeAfterFields {...(p as Props<"before-after">)} />;
     case "gold-rates":
@@ -445,6 +450,7 @@ export function sectionSummary(f: SectionForm, t: (k: string, v?: Record<string,
     case "hero-video":
     case "offer":
     case "appointment":
+    case "enquiry-form":
       return f.heading;
     case "gallery":
       return f.title || t("site.home.imagesCount", { count: f.images.length });

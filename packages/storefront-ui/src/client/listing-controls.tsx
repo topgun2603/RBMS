@@ -4,13 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpDownIcon, ChevronDownIcon, Loader2Icon, SlidersHorizontalIcon, XIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@srirealtime/ui/components/popover";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@srirealtime/ui/components/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@srirealtime/ui/components/select";
-import { Slider } from "@srirealtime/ui/components/slider";
-import { Button } from "@srirealtime/ui/components/button";
-import { AnimatePresence, LayoutGroup, motion, RollingNumber } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@rbms/ui/components/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@rbms/ui/components/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@rbms/ui/components/select";
+import { Slider } from "@rbms/ui/components/slider";
+import { Button } from "@rbms/ui/components/button";
+import { AnimatePresence, LayoutGroup, motion, RollingNumber } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import { money } from "../lib/format";
 import { listClass, gridClass, type GridColumns, type GridLayout } from "../lib/grid";
 import type { ProductSummary, Rating, SearchResult } from "../types";
@@ -192,7 +192,7 @@ export function FilterDropdown({ label, active = 0, children, wide }: { label: s
           <ChevronDownIcon className={cn("size-4 opacity-60 transition-transform", open && "rotate-180")} aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className={cn("max-h-[60vh] overflow-y-auto rounded-2xl p-3", wide ? "w-80" : "w-64")} onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
+      <PopoverContent align="start" className={cn("max-h-[60vh] overflow-x-hidden overflow-y-auto rounded-2xl p-3", wide ? "w-80" : "w-64")} onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
         {children}
       </PopoverContent>
     </Popover>

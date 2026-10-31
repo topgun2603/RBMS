@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { packOrDefault, type BusinessPack } from "@srirealtime/verticals";
-import { api, useOptionalShop } from "@srirealtime/web";
+import { packOrDefault, type BusinessPack } from "@rbms/verticals";
+import { api, useOptionalShop } from "@rbms/web";
 
 /**
  * The shop's business pack (its trade, from Settings → Appearance), for trade-specific hints in the product editor:

@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError, apiUrl, currentTenantSlug, getToken, LOCALE_KEY, readStored } from "@srirealtime/web";
+import { ApiError, apiUrl, currentTenantSlug, getToken, LOCALE_KEY, readStored } from "@rbms/web";
 
 /** PDF paths under /v1/documents (docs/commerce-batch1.md §6). */
 export const docPath = {

@@ -3,7 +3,7 @@
  * background and kept for a few days behind a signed link. Datasets come from a port the API kit implements over the
  * services/tables; this module only zips and stores them.
  */
-import { badRequest, notFound, type AuditEvent } from "@srirealtime/core";
+import { badRequest, notFound, type AuditEvent } from "@rbms/core";
 import type { ExportColumn } from "./columns";
 import { csvLine } from "./csv";
 import type { LoggerPort, QueuePort } from "./service";

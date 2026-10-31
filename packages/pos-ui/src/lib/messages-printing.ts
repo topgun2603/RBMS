@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** pos.printing.* / pos.drawer.* strings: Settings → Printing (direct thermal printer, cash drawer). Merged into posMessages. */
 export const printingEn: Messages = {

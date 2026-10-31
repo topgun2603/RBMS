@@ -1,5 +1,5 @@
 /*
- * Storefront theme extras (import after @srirealtime/ui/styles.css). Tailwind scans this package via @source in the app.
+ * Storefront theme extras (import after @rbms/ui/styles.css). Tailwind scans this package via @source in the app.
  */
 
 /* ------------------------------------------------------------------ storefront tokens
@@ -338,7 +338,7 @@ html {
 }
 
 /* ------------------------------------------------------------------ theme variants
- * The shop's theme (@srirealtime/branding `tokens.theme`) arrives as data-sf-* attributes on .sf-root (pages/layout)
+ * The shop's theme (@rbms/branding `tokens.theme`) arrives as data-sf-* attributes on .sf-root (pages/layout)
  * plus --sf-image-ratio / --sf-button-radius / --sf-density in the branding CSS. Components read the structural
  * variants (header, hero, card) from the shell; everything below is pure CSS.
  */

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** site.reviews.* strings for staff-entered reviews (add, CSV import, sources). Merged into lib/messages (same keys in en and ta). */
 export const reviewsEn: Messages = {

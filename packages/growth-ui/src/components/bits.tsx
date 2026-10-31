@@ -24,8 +24,8 @@ import {
   StatusPill,
   toast,
   type StatusTone,
-} from "@srirealtime/ui";
-import { useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n, usePermission } from "@rbms/web";
 
 /** `can(permission)` for the signed-in member (owners/admins always). */
 export const useCan = (permission: string) => usePermission(permission);

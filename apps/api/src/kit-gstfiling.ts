@@ -1,11 +1,11 @@
-import type { AccountingService } from "@srirealtime/accounting";
-import type { Db } from "@srirealtime/db";
-import { and, eq, gte, inArray, lte } from "@srirealtime/db";
-import { expenseCategories, expenses } from "@srirealtime/expenses";
-import type { ExpenseSrc, GstSourcesPort, LedgerPort, PurchaseReturnSrc, PurchaseSrc, SalesDocSrc, VoidedNumberSrc } from "@srirealtime/gstfiling";
-import { formatInvoiceNumber, todayIST } from "@srirealtime/gst";
-import { debitNotes, purchases, suppliers } from "@srirealtime/inventory";
-import { posNumberBlocks } from "@srirealtime/pos";
+import type { AccountingService } from "@rbms/accounting";
+import type { Db } from "@rbms/db";
+import { and, eq, gte, inArray, lte } from "@rbms/db";
+import { expenseCategories, expenses } from "@rbms/expenses";
+import type { ExpenseSrc, GstSourcesPort, LedgerPort, PurchaseReturnSrc, PurchaseSrc, SalesDocSrc, VoidedNumberSrc } from "@rbms/gstfiling";
+import { formatInvoiceNumber, todayIST } from "@rbms/gst";
+import { debitNotes, purchases, suppliers } from "@rbms/inventory";
+import { posNumberBlocks } from "@rbms/pos";
 
 /** Ports of GST filing over the bills, purchases, expenses and offline-billing blocks. Read-only: nothing here writes. */
 export interface GstFilingAdapterDeps {

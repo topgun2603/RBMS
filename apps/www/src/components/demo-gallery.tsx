@@ -1,9 +1,9 @@
 import { CheckIcon, ExternalLinkIcon } from "lucide-react";
-import type { Translator } from "@srirealtime/i18n/client";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { RevealGroup, RevealItem } from "@srirealtime/ui/motion";
+import type { Translator } from "@rbms/i18n/client";
+import { Badge } from "@rbms/ui/components/badge";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { RevealGroup, RevealItem } from "@rbms/ui/motion";
 import { DEMO_APPS, DEMO_STORES } from "@/lib/demos";
 import { listOf } from "@/lib/messages";
 import { demoStoreUrl } from "@/lib/site";

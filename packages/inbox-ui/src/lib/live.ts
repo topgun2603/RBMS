@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { api, apiUrl } from "@srirealtime/web";
+import { api, apiUrl } from "@rbms/web";
 import { LiveStream, SharedStream, type EventSourceLike, type LiveEvent, type LiveStatus, type ReadyInfo } from "./sse";
 
 /** The two live streams of the inbox. */

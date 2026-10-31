@@ -7,7 +7,7 @@ Conventions as in docs/CONVENTIONS.md, docs/features.md (every route declares `c
 
 ---
 
-## 1. `@srirealtime/catalogue` (`/v1/catalog`) — the one product list for store, billing and POS
+## 1. `@rbms/catalogue` (`/v1/catalog`) — the one product list for store, billing and POS
 
 Tables (tenant-scoped, `pk()`, timestamps):
 - `catalog_categories` (parent_id null, name, slug (unique per tenant), description, image_url, sort, active, seo jsonb)
@@ -23,12 +23,12 @@ Rules:
 - Every product has ≥ 1 variant; a "simple" product has exactly one default variant (title "").
 - **A variant is the sellable unit.** Its id is what invoices (`itemId`), inventory (`itemId`) and orders (`variantId`) store.
 - `tax_inclusive`: price includes GST (typical for MRP retail). `exclusiveRate(price, gstRate, taxInclusive)` =
-  `taxInclusive ? round(price * 100 / (100 + gstRate)) : price` — export it from `@srirealtime/gst` as `exclusiveOf()`
+  `taxInclusive ? round(price * 100 / (100 + gstRate)) : price` — export it from `@rbms/gst` as `exclusiveOf()`
   and use it wherever a catalogue price becomes an invoice/order line rate.
 - Slugs auto-generated from name (Tamil names → transliteration not required; fall back to `p-<shortid>`), unique per tenant.
 
 **Migration of billing items:** a one-off, idempotent `catalogue.service.importLegacyItems(tenantId, rows)` + an apps/api
-migration script `pnpm --filter @srirealtime/api migrate:items` that copies every `billing_items` row into a product with
+migration script `pnpm --filter @rbms/api migrate:items` that copies every `billing_items` row into a product with
 one default variant **whose id equals the old item id** (so bills, stock and purchases keep pointing at the same id).
 Afterwards invoices' items API is a facade over the catalogue (see 1.1); `billing_items` stays in the schema, unused.
 
@@ -58,7 +58,7 @@ free `catalogue`; starter/pro via `catalogue.*`. Add to app profiles: BL `catalo
 - kit: implement the port with catalogue (create = simple product with one default variant, channels `{billing, store}`).
 - The inventory `ItemCatalogPort` is implemented from the catalogue too (variants).
 
-## 2. Inventory: locations and reservations (extend `@srirealtime/inventory`, backward compatible)
+## 2. Inventory: locations and reservations (extend `@rbms/inventory`, backward compatible)
 
 - `stock_locations` (tenant, name, code, type `store|warehouse`, address, is_default, active). Every tenant gets a default
   location lazily ("Main") on first stock operation; existing rows migrate to it (migration sets `location_id` = default).
@@ -74,7 +74,7 @@ free `catalogue`; starter/pro via `catalogue.*`. Add to app profiles: BL `catalo
 - `GET /availability?itemIds=` → `{ itemId, available, tracked }[]` (public variant for the storefront: `GET /public/availability?itemIds=`, booleans/ranges only: `{ itemId, inStock, lowStock }`).
 - Feature `inventory.locations` (dependsOn inventory, shopToggle false) for the locations/transfers routes.
 
-## 3. `@srirealtime/orders` (`/v1/orders`)
+## 3. `@rbms/orders` (`/v1/orders`)
 
 Tables: `orders` (tenant, number (series per FY: `ORD/26-27/0001`, prefix from settings), channel `store|manual|pos|marketplace`,
 customer jsonb `{ name, phone, email, customerId?, accountId? }`, shipping_address jsonb, billing_address jsonb,
@@ -84,7 +84,7 @@ coupon_code, invoice_id null, location_id null, notes, customer_note, cancel_rea
 `order_events` (order_id, type `status|payment|note|fulfillment|refund`, from_status, to_status, message, actor_user_id, data jsonb, created_at),
 `order_series` (like invoice_series).
 
-`OrderLine = { variantId, productId, name, sku, image, qty, unit, price /*as charged, incl. tax if taxInclusive*/, rate /*exclusive*/, gstRate, hsn, discount, taxable, cgst, sgst, igst, total }` — totals via `computeInvoice` from `@srirealtime/gst` with seller state + place of supply (shipping address state).
+`OrderLine = { variantId, productId, name, sku, image, qty, unit, price /*as charged, incl. tax if taxInclusive*/, rate /*exclusive*/, gstRate, hsn, discount, taxable, cgst, sgst, igst, total }` — totals via `computeInvoice` from `@rbms/gst` with seller state + place of supply (shipping address state).
 
 Status flow (configurable later; v1 fixed): `placed → confirmed → packed → shipped → delivered`; `cancelled` from placed/confirmed/packed;
 `returned` from delivered (feature `orders.returns`). Side effects via ports:
@@ -106,7 +106,7 @@ API (staff routes, feature `orders`):
 Features: `orders`, `orders.returns` (shopToggle). Settings namespace `orders` (defined in apps/api): `{ prefix: "ORD", invoiceOn: "delivered", allowBackorder: false, autoConfirm: false }`.
 Notify templates (en + ta, sms + whatsapp + email): `order.placed`, `order.confirmed`, `order.shipped`, `order.delivered`, `order.cancelled`.
 
-## 4. `@srirealtime/coupons` (`/v1/coupons`)
+## 4. `@rbms/coupons` (`/v1/coupons`)
 
 Tables: `coupons` (tenant, code (unique per tenant, uppercase), description, type `percent|flat|free_shipping`, value (percent 1–100 or paise),
 max_discount null, min_order (paise) default 0, starts_at null, ends_at null, usage_limit null, per_customer_limit null,
@@ -119,7 +119,7 @@ Service: `evaluate(tenantId, code, ctx: { channel, subtotal, shipping, lines: { 
 `release(tenantId, refType, refId)`.
 API (staff, feature `coupons`): CRUD, `GET /:id/redemptions`; public `POST /public/validate` `{ code, subtotal, lines, customerKey? }` (store checkout preview).
 
-## 5. `@srirealtime/staff` — custom roles and permissions + `@srirealtime/audit`
+## 5. `@rbms/staff` — custom roles and permissions + `@rbms/audit`
 
 ### Permissions
 - core: `PermissionDef { key: "invoices.cancel"; module; label; description }`, `SrModule.permissions?: PermissionDef[]`,
@@ -151,7 +151,7 @@ API (staff, feature `coupons`): CRUD, `GET /:id/redemptions`; public `POST /publ
 - API (`/v1/audit`, owner/admin, feature `audit`, permission `audit.view`): `GET /?entityType=&entityId=&actorUserId=&action=&from=&to=&limit=&offset=` (csv);
   super-admin `GET /platform?...` across tenants. Retention job: delete older than 400 days.
 
-## 6. `@srirealtime/documents` (`/v1/documents`) — PDFs
+## 6. `@rbms/documents` (`/v1/documents`) — PDFs
 
 - HTML → PDF with headless Chromium via `puppeteer-core`; executable from config `chromePath` or auto-detect (Windows Edge/Chrome,
   Linux `/usr/bin/chromium`, `CHROME_PATH`). One browser instance, page pool (max 2), 30 s timeout. Driver interface so a Lambda/
@@ -165,7 +165,7 @@ API (staff, feature `coupons`): CRUD, `GET /:id/redemptions`; public `POST /publ
   `type:id:updatedAt:locale` (optional; skip if complex).
 - Feature `documents` (always on; no shopToggle).
 
-## 7. `@srirealtime/importexport` (`/v1/import`, `/v1/export`)
+## 7. `@rbms/importexport` (`/v1/import`, `/v1/export`)
 
 - Engine with a registry: `registerImporter({ key: "catalog.products", label, feature, permission, columns: { key, label, required, example, parse(value) }[], validate(row), commit(tenantId, rows, opts) })` and `registerExporter({ key, label, feature, columns, rows(tenantId, query) })`.
 - Files: CSV (UTF-8 with/without BOM) and XLSX via `exceljs`. Upload as multipart or raw body (`content-type` text/csv or xlsx), ≤ 10 MB / 20 000 rows.

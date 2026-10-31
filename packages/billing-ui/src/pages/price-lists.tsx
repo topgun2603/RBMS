@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, Page, PageHeading, useDebounced, useI18n } from "@srirealtime/web";
+import { describeError, Page, PageHeading, useDebounced, useI18n } from "@rbms/web";
 import {
   Badge,
   Button,
@@ -24,7 +24,7 @@ import {
   TabsTrigger,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { Loader2Icon, PackageIcon, PlusIcon, SaveIcon, TagsIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import { MoneyInput } from "../components/money-input";
 import { useHasPermission } from "../lib/access";

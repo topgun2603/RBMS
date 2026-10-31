@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { WalletIcon } from "lucide-react";
-import { motion, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, cn, type DataTableColumn } from "@srirealtime/ui";
-import { ModuleLink, useI18n } from "@srirealtime/web";
+import { motion, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, cn, type DataTableColumn } from "@rbms/ui";
+import { ModuleLink, useI18n } from "@rbms/web";
 import { bpsToPercent, money, signedMoney } from "../lib/logic";
 import type { LedgerEntry, Payout, VendorOrder } from "../lib/types";
 import { Amount, LedgerTypeTag, OrderStatusPill, PayoutPill, SettlementPill, Thumb } from "./bits";

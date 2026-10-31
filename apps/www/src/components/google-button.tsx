@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
-import { firebaseWebConfig, loadAuthConfig } from "@srirealtime/web/firebase-phone";
+import { Button } from "@rbms/ui/components/button";
+import { firebaseWebConfig, loadAuthConfig } from "@rbms/web/firebase-phone";
 import { api } from "@/lib/api";
 import { useSite } from "./site-context";
 

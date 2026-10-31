@@ -1,6 +1,6 @@
 import * as React from "react";
 import { GiftIcon, SparklesIcon, TagIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { formatDate } from "../lib/format";
 import { offerText } from "../lib/offers";
 import type { OfferBadge } from "../types";

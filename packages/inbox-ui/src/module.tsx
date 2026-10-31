@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { LifeBuoyIcon, MegaphoneIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, WebModule, WidgetDef } from "@rbms/web";
 import { FEATURES, PERMS } from "./lib/access";
 import { setInboxLinks, type InboxLinks } from "./lib/config";
 import { inboxMessages } from "./lib/messages";

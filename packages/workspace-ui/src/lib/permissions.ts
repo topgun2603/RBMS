@@ -1,5 +1,5 @@
 /**
- * Pure permission helpers (mirrors @srirealtime/core's matcher, which UI modules can't import).
+ * Pure permission helpers (mirrors @rbms/core's matcher, which UI modules can't import).
  * Patterns: "*" (everything), "orders.*" (the module and all its keys), "*.view" (any module's view key).
  */
 

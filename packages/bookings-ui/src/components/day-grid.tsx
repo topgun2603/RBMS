@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { gridRange, hhmm, istMinute, layoutLanes, time12, todayIST } from "../lib/format";
 import { CLOSED_STATUSES, type Appointment, type AppointmentStatus, type DayView, type Interval } from "../lib/types";
 import { SourceMark } from "./bits";

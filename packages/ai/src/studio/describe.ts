@@ -1,4 +1,4 @@
-import { homeSectionSchema } from "@srirealtime/cms";
+import { homeSectionSchema } from "@rbms/cms";
 
 /* A compact description of a zod schema, for the planner ("what fields does a section of this type take?"). */
 

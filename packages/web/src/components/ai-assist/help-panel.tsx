@@ -4,7 +4,7 @@ import * as React from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRightIcon, CircleHelpIcon, LifeBuoyIcon, Loader2Icon, SendIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Textarea } from "@srirealtime/ui";
+import { Alert, AlertDescription, Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, Textarea } from "@rbms/ui";
 import { api } from "../../lib/api";
 import { describeError, useI18n } from "../../lib/i18n";
 import { useAiAssistAllowed } from "./use-assist";

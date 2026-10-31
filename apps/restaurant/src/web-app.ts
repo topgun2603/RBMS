@@ -1,14 +1,15 @@
-import { billingModule } from "@srirealtime/billing-ui";
-import { commerceModule } from "@srirealtime/commerce-ui";
-import { growthModule } from "@srirealtime/growth-ui";
-import { inboxModule } from "@srirealtime/inbox-ui";
-import { ordersModule } from "@srirealtime/orders-ui";
-import { payrollModule } from "@srirealtime/payroll-ui";
-import { posModule } from "@srirealtime/pos-ui";
-import { restaurantModule } from "@srirealtime/restaurant-ui";
-import { siteModule } from "@srirealtime/site-ui";
-import { createWebApp } from "@srirealtime/web";
-import { workspaceModule } from "@srirealtime/workspace-ui";
+import { billingModule } from "@rbms/billing-ui";
+import { commerceModule } from "@rbms/commerce-ui";
+import { enquiriesModule } from "@rbms/enquiries-ui";
+import { growthModule } from "@rbms/growth-ui";
+import { inboxModule } from "@rbms/inbox-ui";
+import { ordersModule } from "@rbms/orders-ui";
+import { payrollModule } from "@rbms/payroll-ui";
+import { posModule } from "@rbms/pos-ui";
+import { restaurantModule } from "@rbms/restaurant-ui";
+import { siteModule } from "@rbms/site-ui";
+import { createWebApp } from "@rbms/web";
+import { workspaceModule } from "@rbms/workspace-ui";
 
 /**
  * The restaurant app (app profile "RS"): tables, running orders, KOTs and the kitchen display at "/dine", online orders,
@@ -24,6 +25,7 @@ export const webApp = createWebApp({
     ordersModule(),
     commerceModule(),
     siteModule(),
+    enquiriesModule(),
     posModule(),
     billingModule({ basePath: "/billing" }),
     inboxModule({ basePath: "/inbox", links: { invoice: (id) => `/billing/invoices/${id}` } }),

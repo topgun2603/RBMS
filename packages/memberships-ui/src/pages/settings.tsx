@@ -22,8 +22,8 @@ import {
   StatusPill,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, useI18n } from "@rbms/web";
 import { InlineError } from "../components/bits";
 import { PlanDialog } from "../components/plan-dialog";
 import { usePlanLabel } from "../components/pickers";

@@ -1,5 +1,5 @@
-import { formatINR } from "@srirealtime/gst";
-import { requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { formatINR } from "@rbms/gst";
+import { requireRole, requireTenant, requireUser } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {

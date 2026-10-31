@@ -1,4 +1,4 @@
-import { PACKS, starterHome, type BusinessType } from "@srirealtime/verticals";
+import { PACKS, starterHome, type BusinessType } from "@rbms/verticals";
 import { filterClaims } from "../assist/safety";
 import type { SetupProposal } from "./proposal";
 

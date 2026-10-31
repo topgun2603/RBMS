@@ -1,5 +1,5 @@
-import { tradesC, indianPhone } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import { tradesC, indianPhone } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 /**
  * SQL behind Phase 3 part C (docs/ai.md): warranty lookups from the shop's own serial units and the people-with-history list

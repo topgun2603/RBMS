@@ -1,8 +1,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, ClockIcon, ZapIcon } from "lucide-react";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { STORE_PATHS } from "@rbms/cms/seo";
+import { cn } from "@rbms/ui/lib/utils";
 import { Carousel } from "../client/carousel";
 import { Countdown } from "../client/home-sections";
 import { DealAdd } from "../client/home-shelves";

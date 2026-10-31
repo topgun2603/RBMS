@@ -21,7 +21,7 @@ import type { DemoProduct, DemoStore } from "./types";
  *   whistles (9208): 18% (not among the goods moved to 5%).
  * - Apparel (jerseys 6109, track pants and shorts 6103, white sports trousers 6203, socks 6115) and sports footwear
  *   (6402, 6404) by price from 22 Sept 2025: 5% up to Rs 2,500 per piece / pair before GST, 18% above (`withPriceBandGst`,
- *   @srirealtime/gst rate-rule.ts; CGST notification 9/2025 Schedule I S.No. 388-392 and Schedule II S.No. 197-199).
+ *   @rbms/gst rate-rule.ts; CGST notification 9/2025 Schedule I S.No. 388-392 and Schedule II S.No. 197-199).
  *   The cushioned long-run shoe and the moulded-stud football boots are the 18% pairs.
  * - Racket stringing and bat knocking-in at the counter (repair of other goods, SAC 998729): 18%.
  * Sources: CBIC notification 9/2025-CT(Rate) Schedules I and II as summarised by the West Bengal Commercial Taxes

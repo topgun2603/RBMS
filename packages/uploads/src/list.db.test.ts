@@ -5,7 +5,7 @@
  * throw-away schema and drops it afterwards.
  *   PowerShell: $env:UPLOADS_TEST_DATABASE_URL="postgres://srikit:srikit@localhost:5433/srikit"; pnpm test
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { files } from "./schema";

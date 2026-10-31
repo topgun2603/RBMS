@@ -4,10 +4,10 @@ import { usePack } from "../../lib/pack";
 
 import * as React from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { APPAREL_FOOTWEAR_GST_RULE, deadBandOf, exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
+import { APPAREL_FOOTWEAR_GST_RULE, deadBandOf, exclusiveOf, gstRateAtPrice, type GstRateRule } from "@rbms/gst";
 import { BadgePercentIcon, EyeIcon, FileTextIcon, ImagesIcon, PencilIcon, PlusIcon, SearchIcon, TagsIcon, Trash2Icon } from "lucide-react";
-import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@srirealtime/ui";
-import { CleanPhotosButton, DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, ProductSearchWords, ProductTamilText, SocialPostButton, TryonSetup, useHsnSuggest, useI18n } from "@srirealtime/web";
+import { Badge, Button, cn, Input, InputGroup, InputGroupAddon, InputGroupInput, Label, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@rbms/ui";
+import { CleanPhotosButton, DescribeButton, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, HsnSuggestPanel, ProductSearchWords, ProductTamilText, SocialPostButton, TryonSetup, useHsnSuggest, useI18n } from "@rbms/web";
 import { CategorySelect } from "../category-select";
 import { GstRateSelect, MoneyInput, Optional, Section } from "../bits";
 import { ImageManager } from "../image-manager";

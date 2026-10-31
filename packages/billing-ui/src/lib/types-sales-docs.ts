@@ -1,7 +1,7 @@
 import type { Invoice, InvoiceInput, InvoiceParty, ISODate, LineTotals, Paged, PaymentMethod } from "./types";
 
 /**
- * Proforma invoices, sale orders and delivery challans: mirror @srirealtime/invoices proformas.ts, sale-orders.ts and
+ * Proforma invoices, sale orders and delivery challans: mirror @rbms/invoices proformas.ts, sale-orders.ts and
  * challans.ts (docs/sales-documents.md). Money is in paise.
  */
 

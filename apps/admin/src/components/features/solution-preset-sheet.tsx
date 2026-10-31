@@ -17,7 +17,7 @@ import {
   Skeleton,
   Switch,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { QueryError } from "@/components/query-state";
 import { buildGraph, featureLabel, groupByModule, moduleLabel, switchOff, switchOn } from "@/lib/features";
 import { describeError, useI18n } from "@/lib/i18n";

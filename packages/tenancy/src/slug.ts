@@ -1,6 +1,6 @@
 /**
- * Shop address (subdomain) rules, shared by the API (`@srirealtime/tenancy`) and the web apps
- * (`@srirealtime/tenancy/slug`, browser-safe: this file imports nothing).
+ * Shop address (subdomain) rules, shared by the API (`@rbms/tenancy`) and the web apps
+ * (`@rbms/tenancy/slug`, browser-safe: this file imports nothing).
  */
 
 /** Subdomains that can never be shop slugs: platform hosts, app names and sign-up/marketing paths. */

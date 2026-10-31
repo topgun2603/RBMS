@@ -1,4 +1,4 @@
-import type { FeatureDef, FeatureGatePort, PermissionDef } from "@srirealtime/core";
+import type { FeatureDef, FeatureGatePort, PermissionDef } from "@rbms/core";
 
 export type { FeatureGatePort };
 
@@ -17,7 +17,8 @@ export interface SoldBill {
   number: string | null;
   date: string;
   customer: { name: string; phone: string | null };
-  lines: { itemId?: string | null; qty: number; description: string }[];
+  /** `batchId` is the batch the pharmacist chose at the counter (a medicine batch), if any. */
+  lines: { itemId?: string | null; qty: number; description: string; batchId?: string | null }[];
 }
 
 export interface LoggerPort {

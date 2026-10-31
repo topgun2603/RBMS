@@ -22,8 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
-import { describeError, HuidPhotoButton, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, HuidPhotoButton, useI18n } from "@rbms/web";
 import { decimalInput, paiseToInput, parseDecimal, rupeesToPaise } from "../lib/format";
 import { isPurityOf, isValidHuid, MAKING_TYPES, METALS, normalizeHuid, PURITIES, priceBreakdown, rateOf, type MakingType, type Metal, type Purity } from "../lib/pricing";
 import { useJewellerySettings, useRates, useSavePiece } from "../lib/queries";

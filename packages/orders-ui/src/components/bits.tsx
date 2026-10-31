@@ -13,8 +13,8 @@ import {
   Input,
   motion,
   toast,
-} from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 
 /** Card section with a tinted icon chip, title and hint (same look as the catalogue screens). */
 export function Section({
@@ -184,7 +184,7 @@ export function TotalRow({
 
 /**
  * Field wrapper for plain (non-react-hook-form) inputs: label row, control, then hint or error below it.
- * Built on @srirealtime/ui's Field, so fields side by side keep their controls aligned. `htmlFor` is the control's id
+ * Built on @rbms/ui's Field, so fields side by side keep their controls aligned. `htmlFor` is the control's id
  * (give the input the same `id`); `aside` goes on the right of the label row (counter, small link, badge).
  */
 export function Field({

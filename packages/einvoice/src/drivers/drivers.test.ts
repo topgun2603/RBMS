@@ -1,4 +1,4 @@
-import { sha256 } from "@srirealtime/core";
+import { sha256 } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
 import { buildCancelIrn, buildEwbByIrn } from "../ewb";
 import { buildEInvoice } from "../nic";

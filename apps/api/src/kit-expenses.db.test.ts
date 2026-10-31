@@ -6,17 +6,18 @@
  * the tables into a throw-away schema and drops it afterwards.
  */
 import { randomUUID } from "node:crypto";
-import { expensePostings, isBalanced, SYS, supplierPaymentPostings, type Posting } from "@srirealtime/accounting";
-import { createDb, sql, type Db } from "@srirealtime/db";
-import { ExpensesService } from "@srirealtime/expenses";
-import { InventoryService, purchases } from "@srirealtime/inventory";
+import { expensePostings, isBalanced, SYS, supplierPaymentPostings, type Posting } from "@rbms/accounting";
+import { createDb, sql, type Db } from "@rbms/db";
+import { ExpensesService } from "@rbms/expenses";
+import { InventoryService, purchases } from "@rbms/inventory";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { accountingSources } from "./kit-accounting";
 import { expenseBillsPort, expenseSuppliersPort } from "./kit-expenses";
 
 const URL_ = process.env.EXPENSES_TEST_DATABASE_URL;
 const SCHEMA = `exp_payables_${Math.random().toString(36).slice(2, 10)}`;
-const TABLES = ["expense_categories", "expenses", "suppliers", "purchases", "purchase_payments", "debit_notes"];
+// The books also read branches and where a purchase's goods went (branch books, kit-accounting.ts).
+const TABLES = ["expense_categories", "expenses", "suppliers", "purchases", "purchase_payments", "debit_notes", "branches", "goods_receipts", "purchase_orders", "stock_movements"];
 const T = randomUUID();
 
 describe.skipIf(!URL_)("credit expenses in Payables and the books (Postgres)", () => {

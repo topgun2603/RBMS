@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CircleHelpIcon, Loader2Icon, ShieldAlertIcon, ShieldCheckIcon, ShieldIcon, SparklesIcon } from "lucide-react";
-import { Alert, AlertDescription, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, StatusPill, type StatusTone } from "@srirealtime/ui";
-import { describeError, useFeature, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, StatusPill, type StatusTone } from "@rbms/ui";
+import { describeError, useFeature, useI18n } from "@rbms/web";
 import { useHasPermission } from "../../lib/access";
 import { money } from "../../lib/format";
 import { useRiskDetail, useRiskExplain, type RiskBand, type RiskDetail } from "../../lib/ai-money";

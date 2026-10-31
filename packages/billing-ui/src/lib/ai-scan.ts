@@ -3,7 +3,7 @@
  * the photo preparation done in the browser. The API only drafts: nothing is saved until the person saves the form.
  */
 import { useMutation } from "@tanstack/react-query";
-import { ApiError, api } from "@srirealtime/web";
+import { ApiError, api } from "@rbms/web";
 
 export const SCAN_BILL_CREDITS = 40;
 export const SCAN_RECEIPT_CREDITS = 15;

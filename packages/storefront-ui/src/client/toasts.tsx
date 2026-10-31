@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, XIcon } from "lucide-react";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { motion } from "@srirealtime/ui/motion";
+import { toast } from "@rbms/ui/components/sonner";
+import { motion } from "@rbms/ui/motion";
 import { StoreImage } from "../components/bits";
 
 /** "Added to cart" toast with the product thumbnail and a View cart action. */

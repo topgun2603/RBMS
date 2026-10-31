@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ExternalLinkIcon, FileTextIcon, ImageIcon, ReplyIcon, VideoIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { TemplatePreview } from "../lib/templates";
 
 /** What the customer will see: a WhatsApp-style bubble with header, body, footer and buttons. Unfilled slots are highlighted. */

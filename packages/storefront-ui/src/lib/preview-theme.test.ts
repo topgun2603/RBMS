@@ -1,4 +1,4 @@
-import { DEFAULT_STORE_THEME, themeDataAttributes } from "@srirealtime/branding/theme";
+import { DEFAULT_STORE_THEME, themeDataAttributes } from "@rbms/branding/theme";
 import { describe, expect, it } from "vitest";
 import { applyPreviewTheme, findSection, resetPreviewTheme, sectionBox, sectionIdOf } from "../client/preview-dom";
 import { storeCss, themeView } from "../server/api";

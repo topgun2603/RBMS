@@ -1,9 +1,10 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 import { mediaEn, mediaTa } from "./media-messages";
 import { moreEn, moreTa } from "./messages-more";
 import { reviewsEn, reviewsTa } from "./messages-reviews";
 import { reviewsAiEn, reviewsAiTa } from "./messages-reviews-ai";
 import { layoutsEn, layoutsTa } from "./messages-layouts";
+import { enquiryEn, enquiryTa } from "./messages-enquiry";
 import { trustEn, trustTa } from "./messages-trust";
 
 /** site.* strings. Keep the en and ta key sets identical (module.test.ts checks it). */
@@ -13,6 +14,7 @@ const en: Messages = {
   ...reviewsEn,
   ...reviewsAiEn,
   ...layoutsEn,
+  ...enquiryEn,
   ...trustEn,
   // nav
   "site.nav.section": "Online store",
@@ -48,6 +50,12 @@ const en: Messages = {
   "site.appearance.saved": "Appearance saved. Your store shows it now.",
   "site.appearance.businessTitle": "Your business",
   "site.appearance.businessBody": "Sets the store's wording (search box, home page, section names) and which shopper features make sense.",
+  "site.appearance.tradeSearch": "Search your trade…",
+  "site.appearance.tradeEmpty": "No trade matches. Choose “Not listed” below and tell us.",
+  "site.appearance.tradeNotListed": "Not listed: tell us",
+  "site.appearance.tradeNotListedHint": "RBMS gives you a general setup now, and uses what you tell us to decide which trade to add next.",
+  "site.appearance.tradeLabelField": "Your trade",
+  "site.appearance.tradeLabelPlaceholder": "e.g. lodge, boat rentals",
   "site.appearance.useRecommended": "Use the {name} look made for this trade",
   "site.appearance.presetsTitle": "Start from a look",
   "site.appearance.presetsBody": "Each look changes the layout, not just the colours. Pick one, then fine-tune anything below.",
@@ -859,6 +867,7 @@ const en: Messages = {
   "site.analytics.revenue": "Sales",
   "site.analytics.conversion": "Conversion rate",
   "site.analytics.conversionShort": "Conversion",
+  "site.analytics.productSales": "Sales",
   "site.analytics.conversionHint": "orders per 100 visits",
   "site.analytics.visitorsPerDay": "Visitors per day",
   "site.analytics.ordersPerDay": "Orders per day",
@@ -1050,6 +1059,7 @@ const ta: Messages = {
   ...reviewsTa,
   ...reviewsAiTa,
   ...layoutsTa,
+  ...enquiryTa,
   ...trustTa,
   // nav
   "site.nav.section": "இணையக் கடை",
@@ -1085,6 +1095,12 @@ const ta: Messages = {
   "site.appearance.saved": "தோற்றம் சேமிக்கப்பட்டது. கடையில் இப்போதே தெரியும்.",
   "site.appearance.businessTitle": "உங்கள் தொழில்",
   "site.appearance.businessBody": "கடையின் சொற்களை (தேடல், முகப்பு, பிரிவுப் பெயர்கள்) மற்றும் பொருத்தமான வசதிகளை அமைக்கும்.",
+  "site.appearance.tradeSearch": "உங்கள் தொழிலைத் தேடுங்கள்…",
+  "site.appearance.tradeEmpty": "பொருத்தமான தொழில் இல்லை. கீழே “பட்டியலில் இல்லை” என்பதைத் தேர்ந்தெடுத்துச் சொல்லுங்கள்.",
+  "site.appearance.tradeNotListed": "பட்டியலில் இல்லை: எங்களுக்குச் சொல்லுங்கள்",
+  "site.appearance.tradeNotListedHint": "இப்போது RBMS பொது அமைப்பைத் தரும்; அடுத்து எந்தத் தொழிலைச் சேர்ப்பது என்று முடிவு செய்ய நீங்கள் சொல்வதைப் பயன்படுத்தும்.",
+  "site.appearance.tradeLabelField": "உங்கள் தொழில்",
+  "site.appearance.tradeLabelPlaceholder": "எ.கா. லாட்ஜ், படகு வாடகை",
   "site.appearance.useRecommended": "இந்தத் தொழிலுக்கான {name} தோற்றத்தைப் பயன்படுத்து",
   "site.appearance.presetsTitle": "ஒரு தோற்றத்திலிருந்து தொடங்குங்கள்",
   "site.appearance.presetsBody": "ஒவ்வொரு தோற்றமும் நிறம் மட்டுமல்ல, அமைப்பையே மாற்றும். ஒன்றைத் தேர்ந்து கீழே எதையும் மாற்றலாம்.",
@@ -1896,6 +1912,7 @@ const ta: Messages = {
   "site.analytics.revenue": "விற்பனை",
   "site.analytics.conversion": "மாற்று விகிதம்",
   "site.analytics.conversionShort": "மாற்றம்",
+  "site.analytics.productSales": "விற்பனை",
   "site.analytics.conversionHint": "100 வருகைகளுக்கு ஆர்டர்கள்",
   "site.analytics.visitorsPerDay": "நாள்தோறும் பார்வையாளர்கள்",
   "site.analytics.ordersPerDay": "நாள்தோறும் ஆர்டர்கள்",

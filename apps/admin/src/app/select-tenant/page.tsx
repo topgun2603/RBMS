@@ -22,7 +22,7 @@ import {
   Stagger,
   StaggerItem,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { RoleBadges, StatusBadge } from "@/components/badges";
 import { BrandMark } from "@/components/brand-mark";
 import { LocaleSwitcher } from "@/components/locale-switcher";

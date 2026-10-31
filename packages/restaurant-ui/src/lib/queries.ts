@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api } from "@srirealtime/web";
+import { ApiError, api } from "@rbms/web";
 import type { Area, BillResult, DiningTable, Floor, KitchenTicket, Kot, KotStatus, MenuSetting, Order, OrderType, ShopItem } from "./types";
 
 const D = "/dining";

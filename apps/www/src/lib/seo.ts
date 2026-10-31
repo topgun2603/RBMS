@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { Locale } from "@srirealtime/i18n/client";
+import type { Locale } from "@rbms/i18n/client";
 import { SITE_URL } from "./site";
 
 /** Page metadata with canonical URL, OpenGraph and Twitter card. */

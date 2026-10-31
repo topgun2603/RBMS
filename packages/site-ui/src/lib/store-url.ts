@@ -1,6 +1,6 @@
 "use client";
 
-import { useTenantSlug } from "@srirealtime/web";
+import { useTenantSlug } from "@rbms/web";
 
 /** Default storefront URL template; `{slug}` is the shop's subdomain. Override with NEXT_PUBLIC_STORE_URL. */
 export const DEFAULT_STORE_URL = "http://{slug}.localhost:3003";

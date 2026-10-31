@@ -1,8 +1,8 @@
 "use client";
 
-import { printDirectIfConfigured, receiptFromInvoice, type ReceiptLocale } from "@srirealtime/receipt-print";
-import { upiLink } from "@srirealtime/gst";
-import { api } from "@srirealtime/web";
+import { printDirectIfConfigured, receiptFromInvoice, type ReceiptLocale } from "@rbms/receipt-print";
+import { upiLink } from "@rbms/gst";
+import { api } from "@rbms/web";
 import type { Invoice } from "./types";
 
 /**

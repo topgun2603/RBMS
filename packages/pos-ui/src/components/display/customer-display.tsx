@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 import { DISPLAY_TEXT, type DisplaySlide, type DisplayState } from "../../lib/display";
 import { money } from "../../lib/format";
 import { QrImage } from "../qr-image";

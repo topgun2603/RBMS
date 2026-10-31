@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate } from "@srirealtime/web";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, useModuleNavigate } from "@rbms/web";
 import { ArrowLeftIcon, ArrowLeftRightIcon, Loader2Icon, PlusIcon, SendIcon, Trash2Icon } from "lucide-react";
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, toast } from "@srirealtime/ui";
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, toast } from "@rbms/ui";
 import { ItemCombobox } from "../components/inventory/batch-bits";
 import { LineBatchSelect } from "../components/inventory/line-batch-select";
 import { cleanQty } from "../components/inventory/stock-meta";

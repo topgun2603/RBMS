@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { LOYALTY_FEATURES, LOYALTY_PERMISSIONS } from "./features";
 import { createLoyaltyHooks } from "./hooks";
 import { loyaltyRoutes } from "./routes";

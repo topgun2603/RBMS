@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { describeError, useI18n } from "@srirealtime/web";
-import { Button, Input, Label, toast } from "@srirealtime/ui";
+import { describeError, useI18n } from "@rbms/web";
+import { Button, Input, Label, toast } from "@rbms/ui";
 import { BoxIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
 import { MoneyInput } from "../money-input";
 import { paiseToInput, rupeesToPaise } from "../../lib/format";

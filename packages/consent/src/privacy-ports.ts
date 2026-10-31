@@ -16,7 +16,10 @@ export interface PrivacyHostPort {
   facts(tenantId: string | null): Promise<NoticeFacts>;
   /** Every active shop, for the scheduled retention run. */
   tenantIds(): Promise<string[]>;
-  /** A signed-in shopper's name / phone / email for this shop (to fill a rights request). */
+  /**
+   * A signed-in shopper's contact for a rights request: phone and email must be the account's VERIFIED ones (what they
+   * sign in with), never profile fields the shopper can edit; the name may come from the shop's customer record.
+   */
   contactOf?(tenantId: string, userId: string): Promise<{ name: string | null; phone: string | null; email: string | null } | null>;
 }
 

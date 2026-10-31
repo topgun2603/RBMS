@@ -19,7 +19,7 @@ import {
   StatusPill,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   describeError,
   formatPaise,
@@ -35,7 +35,7 @@ import {
   type PlanInfo,
   type SubscriptionCurrent,
   type Translator,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { CARD_LIMITS, currentPlanOf, periodEndOf, planMode, type PlanMode } from "../../lib/plan-actions";
 import { openAuthUrl, useChangePlan, useChangePreview, useCheckout } from "../../lib/subscriptions";
 import { SectionCard } from "./section-card";

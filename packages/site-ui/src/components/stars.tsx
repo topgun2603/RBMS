@@ -1,8 +1,8 @@
 "use client";
 
 import { StarIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 
 /** Read-only 1–5 star rating (the number is also given as text for screen readers). */
 export function Stars({ rating, className, size = "size-4" }: { rating: number; className?: string; size?: string }) {

@@ -3,11 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, SparklesIcon } from "lucide-react";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { AnimatePresence, AnimatedNumber, motion, RevealGroup, RevealItem } from "@srirealtime/ui/motion";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { Badge } from "@rbms/ui/components/badge";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { AnimatePresence, AnimatedNumber, motion, RevealGroup, RevealItem } from "@rbms/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
 import { POPULAR_TIER, isFreePlan, maxSavingPct, planDescription, planHighlights, planName, planTier, pricePaise, rupees, signupHref, yearlySavingPaise, yearlySavingPct, type Interval, type Plan } from "@/lib/plans";
 import { APP_IDS, appParam, type AppId } from "@/lib/site";
 import { useSite } from "./site-context";

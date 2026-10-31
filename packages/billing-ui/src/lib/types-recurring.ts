@@ -1,4 +1,4 @@
-import type { LineInput } from "@srirealtime/gst";
+import type { LineInput } from "@rbms/gst";
 
 /** Recurring bills (docs/recurring-export-gstin.md): the shapes of /v1/recurring (packages/invoices/src/recurring.ts). */
 export const RECURRING_FREQUENCIES = ["weekly", "monthly", "quarterly", "yearly"] as const;

@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { BanknoteIcon, Loader2Icon, SearchIcon, UserPlusIcon, UserRoundIcon, XIcon } from "lucide-react";
-import { isValidGstin, stateFromGstin } from "@srirealtime/gst";
-import { AnimatePresence, Badge, Button, cn, InitialsAvatar, Input, Label, motion } from "@srirealtime/ui";
+import { isValidGstin, stateFromGstin } from "@rbms/gst";
+import { AnimatePresence, Badge, Button, cn, InitialsAvatar, Input, Label, motion } from "@rbms/ui";
 import { CustomerDialog } from "./customer-dialog";
 import { money, stateLabel } from "../lib/format";
-import { useDebounced, useI18n } from "@srirealtime/web";
+import { useDebounced, useI18n } from "@rbms/web";
 import { useCustomers } from "../lib/queries";
 import type { Customer } from "../lib/types";
 

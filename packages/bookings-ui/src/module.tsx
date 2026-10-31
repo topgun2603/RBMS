@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarClockIcon, CalendarDaysIcon, CalendarPlusIcon, TrendingDownIcon } from "lucide-react";
-import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@srirealtime/web";
+import type { NavSection, QuickAction, RouteDef, SettingsPage, WebModule, WidgetDef } from "@rbms/web";
 import { BOOKINGS_FEATURES, BOOKINGS_PERMISSIONS, CALENDAR_ACCESS } from "./lib/access";
 import { setBookingsConfig } from "./lib/config";
 import { bookingsMessages } from "./lib/messages";

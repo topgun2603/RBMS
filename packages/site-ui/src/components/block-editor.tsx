@@ -9,6 +9,7 @@ import {
   HeadingIcon,
   HelpCircleIcon,
   ImageIcon,
+  MessageSquareTextIcon,
   ImagesIcon,
   MinusIcon,
   MousePointerClickIcon,
@@ -18,12 +19,13 @@ import {
   XIcon,
   YoutubeIcon,
 } from "lucide-react";
-import { AnimatePresence, Button, ChipGroup, cn, Label, motion } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, ChipGroup, cn, Label, motion } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { extractYoutubeId } from "../lib/content";
 import { BLOCK_LIMITS, BLOCK_TYPES, duplicateBlockForm, newBlockForm, youtubeThumb, type BlockForm, type BlockType } from "../lib/blocks";
 import type { FieldErrors } from "../lib/sections";
 import { FieldError, TextField } from "./bits";
+import { EnquiryFieldsEditor } from "./home/enquiry-fields";
 import { GalleryField, ImageField } from "./image-field";
 import { MarkdownField } from "./markdown-field";
 import { useDragSort } from "./sortable";
@@ -37,6 +39,7 @@ export const BLOCK_ICONS: Record<BlockType, React.ComponentType<{ className?: st
   faq: HelpCircleIcon,
   video: YoutubeIcon,
   divider: MinusIcon,
+  "enquiry-form": MessageSquareTextIcon,
 };
 
 /** Page/post content as a list of blocks: add, edit, drag (or arrows) to reorder, duplicate, delete. */
@@ -287,6 +290,8 @@ function BlockFields({
         </div>
       );
     }
+    case "enquiry-form":
+      return <EnquiryFieldsEditor value={b} onChange={(v) => onChange({ ...b, ...v })} errors={errors} disabled={disabled} idp={idp} />;
     case "divider":
       return (
         <div className="flex items-center gap-3 py-1 text-xs text-muted-foreground">

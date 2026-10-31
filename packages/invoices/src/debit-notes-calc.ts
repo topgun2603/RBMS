@@ -4,7 +4,7 @@
  * (freight, packing ...). GST is charged line by line at the line's rate, with the bill's tax split (CGST+SGST or IGST),
  * like a bill (docs/expenses-debit-notes.md).
  */
-import { computeInvoice, DEFAULT_INVOICE_PREFIX, isGstRate, sanitizePrefix, type GstRate, type LineInput, type LineTotals } from "@srirealtime/gst";
+import { computeInvoice, DEFAULT_INVOICE_PREFIX, isGstRate, sanitizePrefix, type GstRate, type LineInput, type LineTotals } from "@rbms/gst";
 import type { SalesDebitNoteLine, SalesDebitNoteTotals } from "./schema-debit-notes";
 
 /** A problem the API turns into a 400 with this code. */

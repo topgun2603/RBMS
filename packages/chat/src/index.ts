@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { CHAT_FEATURES, CHAT_PERMISSIONS } from "./features";
 import { chatRoutes, type ChatRouteOptions } from "./routes";
 import { chatConversations, chatMessages, chatParticipants } from "./schema";

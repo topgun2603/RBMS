@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { Locale, Translator } from "@srirealtime/i18n/client";
+import type { Locale, Translator } from "@rbms/i18n/client";
 import { LOCALE_COOKIE, translatorFor } from "@/lib/messages";
 
 interface SiteCtx {

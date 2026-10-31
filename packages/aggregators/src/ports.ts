@@ -1,9 +1,9 @@
-import type { FeatureGatePort } from "@srirealtime/core";
+import type { FeatureGatePort } from "@rbms/core";
 import type { HttpRequest } from "./types";
 
 export type { FeatureGatePort };
 
-/** A delivery-platform order for the kitchen (the host wires it to @srirealtime/dining). */
+/** A delivery-platform order for the kitchen (the host wires it to @rbms/dining). */
 export interface KitchenOrderInput {
   /** Idempotency key on the kitchen side: `agg:<aggregator order id>`. */
   ref: string;

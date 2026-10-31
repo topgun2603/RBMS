@@ -140,7 +140,7 @@ designer in `packages/billing-ui`.
 | Piece | Where |
 |---|---|
 | Till maths, Z report content | `packages/invoices/src/till-calc.ts`, `till.ts`, routes in `routes.ts` |
-| Manager PIN for differences | `apps/api/src/till-approval.ts` (wired in `kit.ts`), UI `useDiscountApproval` in `@srirealtime/web` |
+| Manager PIN for differences | `apps/api/src/till-approval.ts` (wired in `kit.ts`), UI `useDiscountApproval` in `@rbms/web` |
 | Z / X PDF (58, 80, A4; en, ta) | `packages/documents/src/renderers/till.ts`, registered in `builtins.ts` |
 | Day dialog (X, cash in / out, handover, close) | `packages/pos-ui/src/components/day-dialog.tsx`, `lib/close-check.ts`, `lib/till.ts` |
 | Counter rules page | `packages/pos-ui/src/pages/counter-rules.tsx` (Settings, Counter rules) |

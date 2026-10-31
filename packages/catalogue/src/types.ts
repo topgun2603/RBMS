@@ -1,4 +1,4 @@
-import type { GstRateRule } from "@srirealtime/gst";
+import type { GstRateRule } from "@rbms/gst";
 import type { Channel, ProductImage, ProductOption, ProductStatus, Seo } from "./schema";
 
 export interface ListResult<T> {

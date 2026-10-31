@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
-import { Checkbox, cn, Skeleton } from "@srirealtime/ui";
-import { SearchField, useDebounced, useI18n } from "@srirealtime/web";
+import { Checkbox, cn, Skeleton } from "@rbms/ui";
+import { SearchField, useDebounced, useI18n } from "@rbms/web";
 import { money } from "../lib/format";
 import { useCategories, useProductPick, useProductsByIds } from "../lib/queries";
 import type { CategoryLite } from "../lib/types";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AddFromPhotosButton, api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@srirealtime/web";
+import { AddFromPhotosButton, api, ConfirmDialog, describeError, ModuleLink, Page, PageHeading, useFeature, useI18n, useServerTable, type ServerFilterDefs } from "@rbms/web";
 import { BoxesIcon, MoreVerticalIcon, PackageIcon, PencilIcon, PlusIcon, TagsIcon, Trash2Icon } from "lucide-react";
 import {
   Badge,
@@ -18,7 +18,7 @@ import {
   StatusPill,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { BoxIllustration } from "../components/illustrations";
 import { StockStatusPill } from "../components/inventory/stock-meta";
 import { ItemDialog } from "../components/item-dialog";

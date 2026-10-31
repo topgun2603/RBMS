@@ -1,4 +1,4 @@
-import { defineModule, type SrModule } from "@srirealtime/core";
+import { defineModule, type SrModule } from "@rbms/core";
 import { AI_FEATURES, AI_PERMISSIONS } from "./features";
 import { aiAdminRoutes, aiRoutes } from "./routes";
 import { aiRuns } from "./schema";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ModuleLink, QueryError, tOr, useI18n } from "@srirealtime/web";
+import { ModuleLink, QueryError, tOr, useI18n } from "@rbms/web";
 import { ExternalLinkIcon, HistoryIcon } from "lucide-react";
 import {
   cn,
@@ -14,7 +14,7 @@ import {
   Skeleton,
   Stagger,
   StaggerItem,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { REASON_META, StockStatusPill, useIsPhone } from "./stock-meta";
 import { formatQty } from "../../lib/format";
 import { useMovements } from "../../lib/queries-v2";

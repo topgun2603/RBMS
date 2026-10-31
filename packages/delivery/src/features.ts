@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 export const DELIVERY_FEATURE = "delivery";
 export const CARRIERS_FEATURE = "delivery.carriers";

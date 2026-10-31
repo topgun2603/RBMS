@@ -98,7 +98,7 @@ journal lines have no branch dimension (out of scope).
 
 ## Reconciliation (dev DB, 2026-10-27, FY 2026-27 to date)
 
-`pnpm --filter @srirealtime/api exec tsx --env-file-if-exists=.env src/scripts/valuation-check.ts <slug> [from] [to]`
+`pnpm --filter @rbms/api exec tsx --env-file-if-exists=.env src/scripts/valuation-check.ts <slug> [from] [to]`
 builds the layers if needed and compares with the books (posting them for the check and removing them again when the
 shop had none).
 

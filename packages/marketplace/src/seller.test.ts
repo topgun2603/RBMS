@@ -1,5 +1,5 @@
-import { AppError, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { describe, expect, it, vi } from "vitest";
 import { canDecideReview, orderAdvanceTarget, planFulfilment, reviewAfterEvent } from "./logic";
 import type { NotifierPort, OrderActionsPort, SourceOrder, StockPort, VendorVariant } from "./ports";

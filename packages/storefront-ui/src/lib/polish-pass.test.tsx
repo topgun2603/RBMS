@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { BUSINESS_TYPES } from "@srirealtime/verticals";
-import { contrastRatio } from "@srirealtime/branding/color";
+import { BUSINESS_TYPES } from "@rbms/verticals";
+import { contrastRatio } from "@rbms/branding/color";
 import { HeroSlider } from "../client/carousel";
 import { footerColumns, minimalLinks, StoreFooter } from "../components/footer";
 import type { MenuItem, StoreConfig } from "../types";

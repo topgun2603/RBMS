@@ -4,7 +4,7 @@
  * (a development Postgres with migration 0032 applied); it copies the five tables into a throw-away schema and drops it.
  *   PowerShell: $env:ACCOUNTING_TEST_DATABASE_URL="postgres://srikit:srikit@127.0.0.1:5432/srikit"; npx vitest run --maxWorkers=2
  */
-import { createDb, type Db } from "@srirealtime/db";
+import { createDb, type Db } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ExpenseSrc, InvoicePaymentSrc, InvoiceSrc, PurchaseSrc, SourcesPort } from "./ports";

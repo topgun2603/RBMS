@@ -1,5 +1,5 @@
-import type { PurchaseBillRaw } from "@srirealtime/ai";
-import { gstinCheckChar } from "@srirealtime/gst";
+import type { PurchaseBillRaw } from "@rbms/ai";
+import { gstinCheckChar } from "@rbms/gst";
 import { describe, expect, it } from "vitest";
 import { processBill, type BillContext, type ItemLite, type SupplierLite } from "./bill";
 import { expiryField, looksLikeInjection, nameSimilarity } from "./common";

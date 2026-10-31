@@ -74,7 +74,7 @@ in `invoice_series (tenant, branch, FY)`, locked per issue; `invoices` has a uni
   processing/synced/failed/voided, attempts, claimed_at, payload (the bill as sent), billed_at, block_id + seq (unique
   where set), provisional_number, invoice_id, number, flags jsonb, error jsonb, reviewed_at/by/note, synced_at.
 
-Cross-package: `@srirealtime/pos` owns the tables and the logic; it reaches invoices through a small port
+Cross-package: `@rbms/pos` owns the tables and the logic; it reaches invoices through a small port
 (`PosInvoicesPort`: reserveBlock, issue, pay, get, findBySeq) implemented in `apps/api/src/kit-pos-offline.ts` on
 `InvoicesService`. Only two additions to the invoices service: `reserveSeqBlock` and `CreateOptions.presetNumber`.
 

@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import { BadgePercentIcon, LandmarkIcon, PiggyBankIcon, ReceiptIndianRupeeIcon, ScrollTextIcon } from "lucide-react";
-import { Card, cn, Skeleton } from "@srirealtime/ui";
+import { Card, cn, Skeleton } from "@rbms/ui";
 import { BarList } from "../charts/bar-list";
 import { ChartCard } from "../charts/chart-card";
 import { StatTile } from "../charts/stat-tile";
 import { Gstr1Card } from "./gstr1-card";
 import { compactINR, formatQty, money, stateLabel } from "../../lib/format";
-import { useI18n } from "@srirealtime/web";
+import { useI18n } from "@rbms/web";
 import { REPORT_PATHS, useGstSummary, usePurchasesReport } from "../../lib/queries-v2";
 import type { GstSummaryResponse } from "../../lib/types";
 import {

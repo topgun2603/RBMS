@@ -18,7 +18,13 @@ larger UI module) that any app mounts. Nothing app-specific.
 | 5 | sign-up + onboarding, plan subscriptions (Razorpay Subscriptions / UPI Autopay), landing + pricing — contract docs/batch5.md | done (e2e `batch5.mjs`, `apps/www/test/e2e.cjs`) |
 | 6 | safety net: e2e tests in repo + CI, backups + restore drill, monitoring — docs/ops.md | done (GitHub Actions CI green on main) |
 | 7 | AWS: RDS, ElastiCache, S3, ECS/App Runner, wildcard domain + SSL, CI/CD | prepared, not applied: Dockerfiles, Terraform (staging), deploy workflow — docs/deploy-aws.md |
-| 8–14, M0–M4 | Every trade (general packs, 30+ new packs, engines, new verticals) and the Flutter apps (srikit Business, srikit Shops) — plan docs/market-plan.md | planned (drafted 2026-10-20) |
+| 8 | general packs, typed trade (`businessLabel`), grouped searchable picker, aliases, "Not covered" demand list — docs/market-plan.md | built 2026-10-30 (branch `feat/packs-batch8-9`; unit tests only, not browser-tested) |
+| 9 | 15 more packs on top of the 30 already in `packs.ts`, 48 in all with the general ones — docs/market-plan.md | data and tests built 2026-10-30; demo shops and storefront render checks to do |
+| 10 | Engines for more trades: vehicle / laundry / appliance job-card templates, area units (sq ft / sq m with box coverage), `sizeGuide` clothing / shoes, vehicle service-due reminder, 4 packs (52 in all) — docs/market-plan.md | built 2026-10-30 (branch `feat/engines-batch10`; unit tests and `batch10.mjs` e2e; no dealer licence on bills, no demo shops yet) |
+| 11–14, M0–M4 | New verticals and the Flutter apps (RBMS Business, RBMS Shops) — plan docs/market-plan.md | planned (drafted 2026-10-20) |
+
+Competitor gap work is tracked row by row in docs/gap-analysis.md (latest: per-branch books in accounting, 2026-10-30,
+docs/accounting.md "Branch books").
 
 ## Batch 2a + 2b status (2026-10-15)
 
@@ -38,5 +44,6 @@ and custom domains, covered by `apps/api/test/e2e/batch2.mjs` on the dedicated e
   carry `inclusiveTotal` and balance), analytics source attribution, demo content (branded hero, generated product
   images), test data kept out of the demo shops (`cleanup:e2e-data`, browser test on e2e-store).
 
-Open after 2b: per-product purchase analytics (the purchase beacon sends only the order value), a CLI for the analytics
-backfill window, CI for the e2e scripts (batch 6).
+Open after 2b: CI for the e2e scripts (batch 6). Done since: per-product purchase analytics (the purchase beacon sends
+the order lines; the analytics page shows orders and sales per product) and `pnpm --filter @rbms/api analytics:backfill
+[--days N] [--tenant <id>]` for the rollup backfill window.

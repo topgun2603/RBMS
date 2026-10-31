@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Home page sections added with the section styles (offer, gallery, FAQ, location, menu board …). Merged into lib/messages. */
 export const sectionsEn: Messages = {

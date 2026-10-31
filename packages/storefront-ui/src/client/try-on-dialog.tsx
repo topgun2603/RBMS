@@ -3,7 +3,7 @@
 import * as React from "react";
 import type { FaceLandmarker } from "@mediapipe/tasks-vision";
 import { CameraIcon, DownloadIcon, ImageUpIcon, Loader2Icon, RotateCcwIcon, Share2Icon, SquareIcon } from "lucide-react";
-import { Button } from "@srirealtime/ui/components/button";
+import { Button } from "@rbms/ui/components/button";
 import { createLandmarker, drawOverlays, firstFace, loadProductBitmap } from "../lib/tryon/engine";
 import { fillText, tryonText } from "../lib/tryon/messages";
 import { computeOverlays, smoothOverlay, type Overlay, type TryonAnchors, type TryonKind } from "../lib/tryon/transform";

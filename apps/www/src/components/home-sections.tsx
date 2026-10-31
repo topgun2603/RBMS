@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, DownloadIcon, LanguagesIcon, LayoutTemplateIcon, LogInIcon, MapPinIcon, PlayCircleIcon, SmartphoneIcon, WalletIcon } from "lucide-react";
-import type { Translator } from "@srirealtime/i18n/client";
-import { Badge } from "@srirealtime/ui/components/badge";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { Reveal } from "@srirealtime/ui/motion";
+import type { Translator } from "@rbms/i18n/client";
+import { Badge } from "@rbms/ui/components/badge";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { Reveal } from "@rbms/ui/motion";
 import { listOf } from "@/lib/messages";
 import { CONTACT_EMAIL } from "@/lib/site";
 import { ALL_TRADES, HOME_TRADES, tradeName } from "@/lib/trades";

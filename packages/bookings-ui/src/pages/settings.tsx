@@ -23,8 +23,8 @@ import {
   Skeleton,
   Switch,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useDebounced, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useDebounced, useI18n } from "@rbms/web";
 import { StaffDot } from "../components/bits";
 import { duration, istIso, istMinute, istDate, money, parseHHMM, time12 } from "../lib/format";
 import { useHours, useServices, useSetupActions, useShopItems, useStaff, useTimeoff } from "../lib/queries";

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** growth.nav.*, growth.common.*, growth.errors.* and dashboard widgets. */
 export const en: Messages = {

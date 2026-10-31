@@ -1,4 +1,4 @@
-import { badRequest, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { badRequest, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { RCM_CATEGORIES } from "./rcm-categories";

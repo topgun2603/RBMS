@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Online booking (`/book`, `/booking/<code>`) and job tracking (`/job/<code>`). Merged into lib/messages. */
 export const servicesEn: Messages = {
@@ -21,6 +21,10 @@ export const servicesEn: Messages = {
   "service.enquire1": "Message us on WhatsApp with what you need.",
   "service.enquire2": "We reply with a time and the price.",
   "service.enquire3": "Pay after the service, with a GST bill.",
+  "service.quoteTitle": "How to enquire",
+  "service.quote1": "Message us on WhatsApp, or send the enquiry form.",
+  "service.quote2": "We call back with the details and the fee.",
+  "service.quote3": "Visit us, ask your questions, then decide.",
   "list.countServices": "{count, plural, one {# service} other {# services}}",
   "list.countItems": "{count, plural, one {# item} other {# items}}",
   "sections.servicesCount": "{count, plural, one {# service} other {# services}}",
@@ -107,6 +111,10 @@ export const servicesTa: Messages = {
   "service.enquire1": "உங்கள் தேவையை வாட்ஸ்அப்பில் எழுதுங்கள்.",
   "service.enquire2": "நேரத்தையும் விலையையும் சொல்வோம்.",
   "service.enquire3": "சேவைக்குப் பின் GST பில்லுடன் பணம் செலுத்துங்கள்.",
+  "service.quoteTitle": "எப்படி விசாரிப்பது",
+  "service.quote1": "வாட்ஸ்அப்பில் செய்தி அனுப்புங்கள் அல்லது விசாரணைப் படிவத்தை அனுப்புங்கள்.",
+  "service.quote2": "விவரங்களையும் கட்டணத்தையும் தொலைபேசியில் தெரிவிப்போம்.",
+  "service.quote3": "நேரில் வந்து கேள்விகளைக் கேளுங்கள், பிறகு முடிவு செய்யுங்கள்.",
   "list.countServices": "{count, plural, one {# சேவை} other {# சேவைகள்}}",
   "list.countItems": "{count, plural, other {# பொருட்கள்/சேவைகள்}}",
   "sections.servicesCount": "{count, plural, one {# சேவை} other {# சேவைகள்}}",

@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Data privacy (DPDP): notice line, the account's Privacy tab and the generated notice page. Merged into lib/messages. */
 export const privacyEn: Messages = {

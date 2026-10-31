@@ -15,13 +15,13 @@ import {
   Undo2Icon,
   BanknoteIcon,
 } from "lucide-react";
-import { StatusPill, toast, type StatusTone } from "@srirealtime/ui";
-import { describeError, useI18n, useOptionalShop } from "@srirealtime/web";
+import { StatusPill, toast, type StatusTone } from "@rbms/ui";
+import { describeError, useI18n, useOptionalShop } from "@rbms/web";
 import { money, whatsappNumber } from "../../lib/format";
 import { usePublicUrl } from "../../lib/links";
 import { useRemindCustomer, useShareStatement } from "../../lib/queries-v2";
 import type { Customer, LedgerEntryType } from "../../lib/types";
-import type { Translator } from "@srirealtime/i18n/client";
+import type { Translator } from "@rbms/i18n/client";
 
 type Icon = React.ComponentType<{ className?: string }>;
 

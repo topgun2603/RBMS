@@ -1,4 +1,4 @@
-import { formatINR } from "@srirealtime/gst";
+import { formatINR } from "@rbms/gst";
 import type { Money, PayMethod } from "./logic";
 import type { PayrollRunLine } from "./schema";
 

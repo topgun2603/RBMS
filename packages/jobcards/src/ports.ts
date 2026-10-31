@@ -1,4 +1,4 @@
-import type { FeatureDef, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { FeatureDef, PermissionDef, TenantRef } from "@rbms/core";
 import type { JobApproval } from "./logic";
 import type { JobStatus } from "./schema";
 import type { JobTemplate } from "./templates";
@@ -78,6 +78,22 @@ export interface NotifyPort {
   statusChanged(tenantId: string, job: JobSummary): void | Promise<void>;
   /** The customer approved or declined the estimate on the tracking page: tell the shop (owners / admins). */
   approvalDecided?(tenantId: string, job: JobSummary, approval: JobApproval): void | Promise<void>;
+}
+
+/** A delivered vehicle whose next service falls due on a day (the daily reminder job). */
+export interface ServiceDue {
+  tenantId: string;
+  jobId: string;
+  /** "JC-0012" */
+  label: string;
+  customerName: string;
+  customerPhone: string | null;
+  trackToken: string;
+  regNo: string;
+  /** YYYY-MM-DD the service is due by months. */
+  dueDate: string;
+  /** Odometer reading the service is due at (km after the card's reading), if the card asked for one. */
+  dueKm: number | null;
 }
 
 /** Statuses the notify port hears about. */

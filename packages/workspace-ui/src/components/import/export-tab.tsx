@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArchiveIcon, DownloadIcon, FileCodeIcon, FileSpreadsheetIcon, FileTextIcon, Loader2Icon } from "lucide-react";
-import { Button, Card, EmptyState, Skeleton, Stagger, StaggerItem, toast } from "@srirealtime/ui";
-import { describeError, QueryError, useFeatures, useI18n } from "@srirealtime/web";
+import { Button, Card, EmptyState, Skeleton, Stagger, StaggerItem, toast } from "@rbms/ui";
+import { describeError, QueryError, useFeatures, useI18n } from "@rbms/web";
 import { useIsOwner } from "../../lib/access";
 import { downloadExport, downloadExportAll, downloadTallyVouchers, useExportAll, useExporters, useStartExportAll } from "../../lib/queries";
 import type { Exporter } from "../../lib/types";

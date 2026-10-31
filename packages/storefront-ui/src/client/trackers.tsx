@@ -14,7 +14,7 @@ export function ProductViewTracker({ productId, value }: { productId: string; va
 }
 
 /** Fires `purchase` once per order (per browser). */
-export function PurchaseTracker({ orderNumber, value }: { orderNumber: string; value: number }) {
+export function PurchaseTracker({ orderNumber, value, items }: { orderNumber: string; value: number; items?: { productId: string; value: number }[] }) {
   React.useEffect(() => {
     try {
       const key = `sr_purchase_${orderNumber}`;
@@ -23,7 +23,8 @@ export function PurchaseTracker({ orderNumber, value }: { orderNumber: string; v
     } catch {
       /* ignore */
     }
-    track({ type: "purchase", value });
+    track({ type: "purchase", value, items: items?.length ? items : undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per order; items come from the same render
   }, [orderNumber, value]);
   return null;
 }

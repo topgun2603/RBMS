@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * billing.* strings for stock valuation, landed costs, item-wise profit, packaged sales reports and the branch view

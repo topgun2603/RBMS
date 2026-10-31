@@ -1,5 +1,5 @@
 /**
- * GST state / UT codes (copied from @srirealtime/gst so this package stays independent) plus the name variants
+ * GST state / UT codes (copied from @rbms/gst so this package stays independent) plus the name variants
  * api.postalpincode.in and couriers use ("Andaman & Nicobar Islands", "Pondicherry", "Orissa", "Chattisgarh" …).
  */
 export const STATE_NAMES: Readonly<Record<string, string>> = {

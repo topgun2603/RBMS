@@ -1,6 +1,6 @@
-import { AI_SETTINGS_DEFAULTS, AiService, MockProvider, resolveAiConfig, type AiSettings, type CreditBalance, type CreditsPort } from "@srirealtime/ai";
-import { AppError, emptyContext, type RequestContext } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AI_SETTINGS_DEFAULTS, AiService, MockProvider, resolveAiConfig, type AiSettings, type CreditBalance, type CreditsPort } from "@rbms/ai";
+import { AppError, emptyContext, type RequestContext } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";

@@ -50,7 +50,7 @@ import {
   toast,
   type DataTableColumn,
   type StatusTone,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { Page } from "@/components/page";
 import { SuperAdminOnly } from "@/components/superadmin-only";
 import { api } from "@/lib/api";

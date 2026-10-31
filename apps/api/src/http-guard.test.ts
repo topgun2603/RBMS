@@ -1,6 +1,6 @@
-import { defineModule } from "@srirealtime/core";
-import { describe, expect, it } from "vitest";
-import { DEFAULT_RATE_LIMIT, isAuthSensitive, isRateLimitExempt, MemoryWindowCounter, type RateLimitConfig } from "./http-guard";
+import { defineModule } from "@rbms/core";
+import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_RATE_LIMIT, isAuthSensitive, isRateLimitExempt, MemoryWindowCounter, sharedWindowCounter, type RateLimitConfig } from "./http-guard";
 import { buildServer } from "./server";
 
 async function app(rate: Partial<RateLimitConfig> = {}, hsts = false) {
@@ -110,5 +110,17 @@ describe("body limit", () => {
     });
     const r = await a.inject({ method: "POST", url: "/v1/x/p", payload: { s: "a".repeat(3000) } });
     expect(r.statusCode).toBe(413);
+  });
+});
+
+describe("sharedWindowCounter", () => {
+  it("uses the shared counter, and this process's memory while it fails", async () => {
+    const shared = { hit: vi.fn(async () => ({ count: 7, resetMs: 500 })) };
+    expect(await sharedWindowCounter(shared).hit("k", 1000)).toEqual({ count: 7, resetMs: 500 });
+    shared.hit.mockRejectedValue(new Error("redis down"));
+    const c = sharedWindowCounter(shared);
+    expect((await c.hit("k", 1000)).count).toBe(1);
+    expect((await c.hit("k", 1000)).count).toBe(2);
+    expect((await sharedWindowCounter(null).hit("k", 1000)).count).toBe(1);
   });
 });

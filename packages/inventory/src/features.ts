@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 /** Feature keys declared by this module (docs/features.md). */
 export const INVENTORY_FEATURE_KEYS = {

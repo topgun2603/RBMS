@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { BookTextIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, SearchIcon } from "lucide-react";
-import { Button, ChipGroup, EmptyState, Input, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
+import { Button, ChipGroup, EmptyState, Input, StatusPill, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
 import { EntryDialog, useKindLabel } from "../components/accounting/entry-dialog";
 import { AccountingPage, Panel, TableSkeleton } from "../components/accounting/parts";
 import { DateRangePicker, initialRange, type DateRangeValue } from "../components/date-range-picker";

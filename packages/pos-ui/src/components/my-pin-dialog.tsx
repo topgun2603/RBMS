@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { KeyRoundIcon } from "lucide-react";
-import { Alert, AlertTitle, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, FieldError, FieldHint, FieldLabel, Input, toast } from "@srirealtime/ui";
-import { ApiError, describeError, useI18n } from "@srirealtime/web";
+import { Alert, AlertTitle, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, FieldError, FieldHint, FieldLabel, Input, toast } from "@rbms/ui";
+import { ApiError, describeError, useI18n } from "@rbms/web";
 import { pinProblem } from "../lib/pin";
 import { useSetMyPin } from "../lib/terminal-api";
 

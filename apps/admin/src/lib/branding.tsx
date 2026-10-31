@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { adminBrandingCss } from "@srirealtime/web";
+import { adminBrandingCss } from "@rbms/web";
 import { api } from "./api";
 import type { Branding } from "./types";
 
@@ -17,7 +17,7 @@ export const brandingQueryKey = ["branding", "platform"] as const;
 
 /**
  * Loads the platform's branding (GET /v1/branding without a tenant) and injects its `css` (overrides of --primary,
- * --radius, fonts... on :root) as an unlayered <style>, which beats the layered defaults from @srirealtime/ui. Also
+ * --radius, fonts... on :root) as an unlayered <style>, which beats the layered defaults from @rbms/ui. Also
  * updates the favicon and document title. The admin is the platform's console, so it keeps the platform look whichever
  * shop is selected; a shop's own branding is shown only in the Branding page's preview.
  */

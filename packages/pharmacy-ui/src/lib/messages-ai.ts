@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** Strings of the pharmacy AI helpers (docs/ai.md "Phase 3 part A"): prescription desk, interaction warnings, near-expiry plan. */
 export const aiEn: Messages = {

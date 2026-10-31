@@ -15,7 +15,7 @@ import {
   StatusPill,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   describeError,
   formatPaise,
@@ -26,7 +26,7 @@ import {
   useQueryParams,
   type PlanInfo,
   type SubscriptionCurrent,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { useMockAuthorize } from "../../lib/subscriptions";
 
 /**

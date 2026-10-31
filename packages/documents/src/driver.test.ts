@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { PuppeteerPdfDriver, chromeCandidates, findChromeExecutable, loadPuppeteer } from "./driver";
 

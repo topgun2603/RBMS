@@ -1,4 +1,4 @@
-import { notFound, requireRole, requireTenant, requireUser, tooMany, type RequestContext } from "@srirealtime/core";
+import { notFound, requireRole, requireTenant, requireUser, tooMany, type RequestContext } from "@rbms/core";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { SERIALS_FEATURE, SERIALS_MANAGE, SERIALS_VIEW, SERIALS_WARRANTY_FEATURE } from "./ports";

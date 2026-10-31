@@ -1,5 +1,5 @@
 /** Pure help-centre helpers: FAQPage JSON-LD, instant FAQ filtering, ticket status tones. */
-import { plainText, truncate, type JsonLd } from "@srirealtime/cms/seo";
+import { plainText, truncate, type JsonLd } from "@rbms/cms/seo";
 import type { FaqGroup, TicketStatus } from "../types";
 
 export interface FaqEntry {

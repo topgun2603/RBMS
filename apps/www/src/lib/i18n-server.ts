@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
-import { normalizeLocale, type Locale } from "@srirealtime/i18n/client";
+import { normalizeLocale, type Locale } from "@rbms/i18n/client";
 import { LOCALE_COOKIE, translatorFor } from "./messages";
 
 /** Header the middleware sets when the URL carries `?lang=` (wins over the cookie for that request). */

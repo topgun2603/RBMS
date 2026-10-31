@@ -1,4 +1,4 @@
-import type { FeatureDef } from "@srirealtime/core";
+import type { FeatureDef } from "@rbms/core";
 
 export const STOREFRONT_FEATURES_KEYS = {
   base: "storefront",

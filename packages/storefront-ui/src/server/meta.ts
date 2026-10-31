@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { defaultMeta, type MetaEntity, type PageMeta } from "@srirealtime/cms/seo";
+import { defaultMeta, type MetaEntity, type PageMeta } from "@rbms/cms/seo";
 import { getConfig, getRequestInfo } from "./api";
 
 /** cms `PageMeta` → Next `Metadata`. */

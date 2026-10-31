@@ -41,7 +41,7 @@ What uses the factor:
 
 | Where | Effect |
 |---|---|
-| Stock (`StockPort.applySale`, credit-note restock, challan out / return, sale-order holds) | moves `qty × unitFactor` base units (`baseQtyOf` in `@srirealtime/gst`) |
+| Stock (`StockPort.applySale`, credit-note restock, challan out / return, sale-order holds) | moves `qty × unitFactor` base units (`baseQtyOf` in `@rbms/gst`) |
 | Purchases, goods receipts, debit notes (`packages/inventory`) | stock in / out `qty × unitFactor`; the unit cost is the line's taxable value over the base quantity (`baseMilliOf`) |
 | Price-band GST (apparel / footwear) | banded on one piece: a box of 6 at ₹7,200 is ₹1,200 a piece |
 | GSTR-1 HSN summary (`packages/einvoice` `gstr1.ts`) and the HSN report (`packages/invoices` `reports.ts`) | counted in the base unit (24 pcs → UQC NOS), so one HSN keeps one UQC however the goods were packed |
@@ -64,7 +64,7 @@ item + unit (null = base unit) + `minQty` (slab: from this quantity up, 0 = any)
 
 ### Resolution (one pure function)
 
-`resolvePrice` in `packages/pricelists/src/resolve.ts` (also exported as `@srirealtime/pricelists/resolve` for the
+`resolvePrice` in `packages/pricelists/src/resolve.ts` (also exported as `@rbms/pricelists/resolve` for the
 browser). For an item, unit, quantity and date, the lists are tried in order — the list picked on the document (or else
 the customer's own list, else their group's), then the shop's default list — and the first that prices the line wins:
 
@@ -114,3 +114,13 @@ and the item's own price.
 - The Flutter business app does not offer units or lists yet (its lines bill in the base unit, as before).
 - Item-wise sales reports group lines by item and unit (boxes and pieces are separate rows); valuation / profit code
   should use `baseQtyOf(line)` for quantities.
+
+## Area units (batch 10)
+
+Tiles, flooring and panels are priced by area and packed in boxes. No new tables: the item's base unit is `sqft` (or `sqm`)
+and `box` is an alternate unit whose `factor` is the coverage (1 box = 15.5 sq ft), so stock, bills and purchases move
+`boxes x coverage` of area like any other unit. A `sqm` alternate on a sq ft item must carry the exact factor
+(10.76391); anything else is refused. `POST /v1/catalog/variants/:id/area-quote` `{ area, areaUnit?, wastagePct?, boxUnit? }`
+returns the whole boxes that cover the area (with wastage), what they cover and the price; the POS line editor and the
+storefront product page (attribute `Coverage per box (sq ft)`) use the same maths (`packages/gst/src/area.ts`).
+

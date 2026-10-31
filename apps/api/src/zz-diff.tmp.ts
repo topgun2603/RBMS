@@ -1,4 +1,4 @@
-import { THEME_PRESETS, THEME_OPTIONS } from "@srirealtime/branding";
+import { THEME_PRESETS, THEME_OPTIONS } from "@rbms/branding";
 const c: Record<string,string> = JSON.parse(process.argv[2]!);
 const keys = Object.keys(THEME_OPTIONS);
 const missing = keys.filter((k) => !(k in c)); if (missing.length) console.log("missing", missing);

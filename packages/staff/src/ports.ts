@@ -1,4 +1,4 @@
-import type { TenantRef } from "@srirealtime/core";
+import type { TenantRef } from "@rbms/core";
 
 /** A tenant membership as the tenancy module stores it. */
 export interface MembershipRecord {

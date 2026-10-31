@@ -1,22 +1,22 @@
 import { createHash } from "node:crypto";
-import { createAnalytics, ANALYTICS_JOBS } from "@srirealtime/analytics";
-import { authSessions, createAuth, SlidingWindow, storeOriginsFor } from "@srirealtime/auth";
+import { createAnalytics, ANALYTICS_JOBS } from "@rbms/analytics";
+import { authSessions, createAuth, SlidingWindow, storeOriginsFor } from "@rbms/auth";
 import { discountLimitGuard } from "./discount-guard";
 import { tillApprovals } from "./till-approval";
 import { DEMO_DEFAULT_LIMITS, demoAuthModule, demoGuard, parseDemoShops } from "./demo-auth";
-import { createBranding } from "@srirealtime/branding";
-import { createAudit } from "@srirealtime/audit";
-import { CATALOGUE_VENDOR_ROUTE_KEYS, createCatalogue, isPublicRef } from "@srirealtime/catalogue";
-import { createCms } from "@srirealtime/cms";
-import { createConsent } from "@srirealtime/consent";
-import { createCoupons } from "@srirealtime/coupons";
-import { createDelivery, DELIVERY_TRACK_JOB } from "@srirealtime/delivery";
-import { createDocuments, page, type DocSeller } from "@srirealtime/documents";
-import { createExpenses, RECURRING_EXPENSES_CRON, RECURRING_EXPENSES_JOB } from "@srirealtime/expenses";
-import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "@srirealtime/accounting";
-import { accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
+import { createBranding } from "@rbms/branding";
+import { createAudit } from "@rbms/audit";
+import { CATALOGUE_VENDOR_ROUTE_KEYS, createCatalogue, isPublicRef } from "@rbms/catalogue";
+import { createCms } from "@rbms/cms";
+import { createConsent } from "@rbms/consent";
+import { createCoupons } from "@rbms/coupons";
+import { createDelivery, DELIVERY_TRACK_JOB } from "@rbms/delivery";
+import { createDocuments, page, type DocSeller } from "@rbms/documents";
+import { createExpenses, RECURRING_EXPENSES_CRON, RECURRING_EXPENSES_JOB } from "@rbms/expenses";
+import { createAccounting, REPORT_CSS, reportBodyHtml, type ReportTable } from "@rbms/accounting";
+import { accountingBranches, accountingReconcile, accountingSources, accountingStock } from "./kit-accounting";
 import { createPrivacyHost, wirePrivacy } from "./kit-privacy";
-import { createGstFiling } from "@srirealtime/gstfiling";
+import { createGstFiling } from "@rbms/gstfiling";
 import { gstFilingLedger, gstFilingSources } from "./kit-gstfiling";
 import { createAiKit } from "./kit-ai";
 import { createAiAssistKit } from "./kit-ai-assist";
@@ -33,40 +33,42 @@ import { createAiImagingKit } from "./kit-ai-imaging";
 import { createAiCounterKit } from "./kit-ai-counter";
 import { createAiTradesC } from "./kit-ai-trades-c";
 import { createAiPlatformKit } from "./kit-ai-platform";
-import { createDining, type BillingPort as LinesBillingPort } from "@srirealtime/dining";
-import { createBookings } from "@srirealtime/bookings";
-import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@srirealtime/jobcards";
-import { createMemberships } from "@srirealtime/memberships";
-import { createMedicines, type StockPort as InventoryStockPort } from "@srirealtime/medicines";
-import { createJewellery } from "@srirealtime/jewellery";
-import { createScales } from "@srirealtime/scales";
-import { createSerials } from "@srirealtime/serials";
-import { createImportExport } from "@srirealtime/importexport";
-import { todayIST } from "@srirealtime/gst";
-import { createOrders, orderPurchaseStats, type Order } from "@srirealtime/orders";
-import { createOnboarding } from "@srirealtime/onboarding";
-import { createReviews } from "@srirealtime/reviews";
-import { createStaff } from "@srirealtime/staff";
-import { createStorefront } from "@srirealtime/storefront";
-import { isSuperAdmin, randomToken, sha256, type SrModule } from "@srirealtime/core";
-import { createDb } from "@srirealtime/db";
-import { createFeatures } from "@srirealtime/features";
-import { createI18n } from "@srirealtime/i18n";
-import { createIdempotency } from "@srirealtime/idempotency";
-import { createInventory } from "@srirealtime/inventory";
-import { createInvoices } from "@srirealtime/invoices";
+import { createDining, type BillingPort as LinesBillingPort } from "@rbms/dining";
+import { createBookings } from "@rbms/bookings";
+import { createJobcards, formatJobNumber, type BillingPort as JobcardsBillingPort, type JobApproval, type JobSummary } from "@rbms/jobcards";
+import { createMemberships } from "@rbms/memberships";
+import { createMedicines, type StockPort as InventoryStockPort } from "@rbms/medicines";
+import { createJewellery } from "@rbms/jewellery";
+import { createScales } from "@rbms/scales";
+import { createSerials } from "@rbms/serials";
+import { createImportExport } from "@rbms/importexport";
+import { todayIST } from "@rbms/gst";
+import { createOrders, orderPurchaseStats, type Order } from "@rbms/orders";
+import { createOnboarding } from "@rbms/onboarding";
+import { createReviews } from "@rbms/reviews";
+import { createStaff } from "@rbms/staff";
+import { createStorefront } from "@rbms/storefront";
+import { isSuperAdmin, randomToken, sha256, type SrModule } from "@rbms/core";
+import { createDb } from "@rbms/db";
+import { createFeatures } from "@rbms/features";
+import { createI18n } from "@rbms/i18n";
+import { createIdempotency } from "@rbms/idempotency";
+import { createInventory } from "@rbms/inventory";
+import { createInvoices } from "@rbms/invoices";
 import { wireQuotations } from "./kit-quotations";
 import { wireSalesDocs } from "./kit-sales-docs";
 import { RECURRING_CRON, RECURRING_JOB, wireRecurringExport } from "./kit-recurring";
 import { expenseBillsPort, expenseBranchesPort, expenseSuppliersPort } from "./kit-expenses";
 import { wirePayroll } from "./kit-payroll";
-import { createJobs } from "@srirealtime/jobs";
-import { createNotify, type NotifyConfig } from "@srirealtime/notify";
-import { createPayments } from "@srirealtime/payments";
-import { createPlans } from "@srirealtime/plans";
-import { createSettings } from "@srirealtime/settings";
-import { createTenancy, TENANCY_JOBS } from "@srirealtime/tenancy";
-import { createUploads, LocalStorage, S3Storage, type StorageAdapter } from "@srirealtime/uploads";
+import { createJobs, createRedisWindowCounter } from "@rbms/jobs";
+import { sharedWindowCounter } from "./http-guard";
+import { ENQUIRY_DIGEST_JOB, type EnquiryDigestJob } from "@rbms/enquiries";
+import { createNotify, type NotifyConfig } from "@rbms/notify";
+import { createPayments } from "@rbms/payments";
+import { createPlans } from "@rbms/plans";
+import { createSettings } from "@rbms/settings";
+import { createTenancy, TENANCY_JOBS } from "@rbms/tenancy";
+import { createUploads, LocalStorage, S3Storage, type StorageAdapter } from "@rbms/uploads";
 import type { FastifyRequest } from "fastify";
 import type { Logger } from "pino";
 import type { Env } from "./env";
@@ -101,17 +103,18 @@ import {
 } from "./permissions";
 import { createBatch3, type Batch3 } from "./kit-batch3";
 import { createBatch5, type Batch5 } from "./kit-batch5";
+import { createEnquiriesKit } from "./kit-enquiries";
 import { createCounter, createSolutionPresets, createSolutions, createStarter } from "./kit-verticals";
 import { createMobile, parseVersionList } from "./kit-mobile";
 import { createKitOps } from "./kit-ops";
 import { createMessages } from "./kit-messages";
 import { findOrderForReview, resolveReviewProducts, reviewRequestsPort } from "./kit-reviews";
 import { createAggregatorsWiring } from "./kit-aggregators";
-import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@srirealtime/marketplace";
-import { DEVELOPER_JOBS } from "@srirealtime/developer";
-import { orders as ordersTable } from "@srirealtime/orders";
-import type { CreditNote, Invoice } from "@srirealtime/invoices";
-import { and, eq } from "@srirealtime/db";
+import { MARKETPLACE_PAYOUT_REFRESH_JOB, MARKETPLACE_SETTLE_JOB } from "@rbms/marketplace";
+import { DEVELOPER_JOBS } from "@rbms/developer";
+import { orders as ordersTable } from "@rbms/orders";
+import type { CreditNote, Invoice } from "@rbms/invoices";
+import { and, eq } from "@rbms/db";
 import { createStoreLocalizer } from "./kit-store-localize";
 import { createStoreRevalidator, storeRevalidateConfig } from "./kit-store-revalidate";
 import { createPosWiring } from "./kit-pos";
@@ -140,8 +143,11 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   // Error reporter, metrics and readiness probes (docs/ops.md); the job observer reports final job failures.
   const kitOps = createKitOps(env, log, db);
   const jobs = createJobs({ redisUrl: env.REDIS_URL, log, observer: kitOps.observer, workers: env.JOBS_WORKERS });
+  // Rate-limit counters shared by every API instance through Redis (the HTTP guard and the enquiry form); in-memory
+  // when REDIS_URL=memory.
+  const rateCounter = env.REDIS_URL === "memory" ? null : createRedisWindowCounter(env.REDIS_URL);
   const PLANS_RECONCILE_JOB = "plans.reconcile-usage";
-  /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @srirealtime/api job <name>`). */
+  /** Handlers of the jobs defined here, so scripts can run one right away (`pnpm --filter @rbms/api job <name>`). */
   const jobHandlers = new Map<string, () => Promise<void>>();
   const defineJob = (name: string, handler: () => Promise<void>) => {
     jobHandlers.set(name, handler);
@@ -274,7 +280,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     defineJob,
     schedule: (name, cron) => jobs.service.schedule(name, cron),
-    engines: () => ({ bookings: bookings.service, memberships: memberships.service }),
+    engines: () => ({ bookings: bookings.service, memberships: memberships.service, jobcards: jobcards.service }),
   });
 
   // Fixed OTP for test identities (e2e scripts); never in production (testOtpConfig drops it there).
@@ -325,6 +331,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     db,
     config: { storage: storageFor(env), publicBaseUrl: env.PUBLIC_UPLOAD_BASE_URL },
     log,
+    // Marketplace sellers upload product images and their logo to the shop without being its members.
+    access: { isUploader: async (tenantId, userId) => ((await b3?.marketplace.service.memberships(tenantId, userId)) ?? []).length > 0 },
   });
 
   const consent = createConsent({
@@ -1065,6 +1073,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     sources: accountingSources(accountingDeps),
     stock: accountingStock(accountingDeps),
     reconcile: accountingReconcile(accountingDeps),
+    branches: accountingBranches(db),
     features: features.gate,
     shopName: async (tenantId) => {
       const p = await billingProfile.get({ tenantId });
@@ -1298,6 +1307,20 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     now: clock,
     log,
   });
+  // Website enquiries (admission / call-back forms on the store): owners get a push or WhatsApp per new enquiry.
+  const enquiries = createEnquiriesKit({
+    db,
+    appPublicUrl: env.APP_PUBLIC_URL,
+    shopName: (tenantId) => shopName(tenantId),
+    tenant: (tenantId) => tenancy.service.getById(tenantId),
+    members: (tenantId) => tenancy.service.listMembers(tenantId),
+    sendToUser: (input) => notify.service.sendToUser(input),
+    counter: sharedWindowCounter(rateCounter),
+    queue: jobs.service,
+    now: clock,
+    log,
+  });
+  jobs.service.define<EnquiryDigestJob>(ENQUIRY_DIGEST_JOB, (data) => enquiries.service.sendDigest(data));
 
   // Setup checklist: each step's check reads the module that owns it.
   const onboarding = createOnboarding({ db, featureGate: features.gate, log });
@@ -1305,6 +1328,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   onboarding.registerStep({
     key: "business-profile",
     module: "settings",
+    // Legal name and GST state are for bills: a shop without billing (the School app) has no such step.
+    feature: "invoices",
     label: "Add your business details",
     description: "Legal name and state for GST bills and orders.",
     href: "settings/business",
@@ -1339,6 +1364,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   onboarding.registerStep({
     key: "first-sale",
     module: "invoices",
+    feature: "invoices",
     label: "Make your first bill or order",
     description: "Create a GST bill or take an order.",
     href: "invoices/new",
@@ -1649,14 +1675,14 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
 
   // Business packs (kit-verticals.ts): a new shop gets its trade, the trade's theme preset, starter categories and a
   // starter home page. Runs after batch 5's "defaults" hook, so the preset replaces the sign-up colour.
-  // Solution presets: which optional features a shop of each of the 15 solutions starts with (Platform → Apps & features).
+  // Solution presets: which optional features a shop of each solution starts with (Platform → Apps & features).
   const solutionSettings = settings.service.handle("solutions");
   const presets = createSolutionPresets({
     registry: () => features.service.registry(),
     profile: (appId) => features.service.getProfile(appId),
     settings: { get: () => solutionSettings.get(), setApp: (patch) => solutionSettings.setApp(patch) },
   });
-  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, log });
+  const starter = createStarter({ storeSettings, branding: branding.service, catalogue: catalogue.service, cms: cms.service, presets, features: features.service, stockBatches: { trackAll: (tenantId) => inventory.service.batches.saveSettings(tenantId, { trackAll: true }) }, log });
   const solutions = createSolutions({ db, starter, presets, features: features.service, tenancy: tenancy.service });
   // Mobile apps (docs/market-plan.md, M0): forced updates and retry-safe writes.
   const mobile = createMobile({ min: parseVersionList(env.MOBILE_MIN_VERSIONS), latest: parseVersionList(env.MOBILE_LATEST_VERSIONS) });
@@ -1826,8 +1852,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
   tenancy.service.onTenantCreated({
     name: "starter",
     run: async ({ tenant, details }) => {
-      const signup = (details.signup ?? null) as { businessType?: string | null } | null;
-      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null);
+      const signup = (details.signup ?? null) as { businessType?: string | null; businessLabel?: string | null } | null;
+      await starter.apply({ id: tenant.id, name: tenant.name, appId: tenant.appId ?? null, slug: tenant.slug, planId: tenant.planId ?? null }, signup?.businessType ?? null, { label: signup?.businessLabel ?? null });
     },
   });
 
@@ -1943,6 +1969,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     offByDefault(scales.module),
     offByDefault(jewellery.module),
     ownerCanSwitch(memberships.module),
+    enquiries.module,
     pos.module,
     solutions,
     idempotency.module,
@@ -2002,6 +2029,8 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     jobcards,
     bookings,
     memberships,
+    enquiries,
+    rateCounter,
     starter,
     ...batch3Parts(batch3),
     subscriptions: batch5.subscriptions,

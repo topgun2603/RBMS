@@ -1,5 +1,5 @@
-import { DEFAULT_COVER_DAYS, DEFAULT_LEAD_DAYS, festivalsAhead, lastYearOf, planAddDays, planDaysBetween, type FestivalSignal, type ReorderData, type ReorderInput } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import { DEFAULT_COVER_DAYS, DEFAULT_LEAD_DAYS, festivalsAhead, lastYearOf, planAddDays, planDaysBetween, type FestivalSignal, type ReorderData, type ReorderInput } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 /**
  * Reads what the reorder maths needs from the shop's own tables: sales per item per day (from the stock ledger), stock,

@@ -10,7 +10,7 @@ import { INTERNAL_WORDS } from "./triage";
 
 /**
  * "What's new" notes for shop owners (Phase 7 part B, light tier, platform account). Input: the list of commits (production
- * has no git, so the list is pasted on the admin page or posted by `pnpm --filter @srirealtime/api release-notes:draft`).
+ * has no git, so the list is pasted on the admin page or posted by `pnpm --filter @rbms/api release-notes:draft`).
  * The model writes plain, benefit-first lines in English and Tamil, grouped by app and trade; code then drops any line that
  * names internals (product code names, files, packages, vendors, "agent", "model"), makes a promise the commits do not state,
  * carries a number not in the commits, or whose Tamil is not Tamil. The team edits both languages and publishes; owners see
@@ -18,11 +18,11 @@ import { INTERNAL_WORDS } from "./triage";
  */
 
 /** App ids (same list as packages/verticals APP_IDS) with owner-facing names. */
-export const NOTE_APPS = { BL: "Billing", EC: "Online shop", PH: "Pharmacy", RS: "Restaurant", SV: "Services" } as const;
+export const NOTE_APPS = { BL: "Billing", EC: "Online shop", PH: "Pharmacy", RS: "Restaurant", SV: "Services", SC: "School" } as const;
 export type NoteApp = keyof typeof NOTE_APPS;
 /** Trades (packages/verticals BUSINESS_TYPES). Kept here so the AI package does not need the verticals data. */
 export const NOTE_TRADES = [
-  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa",
+  "fashion", "pharmacy", "restaurant", "cloud_kitchen", "grocery", "bakery", "fresh", "electronics", "repair", "salon", "gym", "jewellery", "hardware", "optical", "tailoring", "organic", "footwear", "stationery", "toys", "cosmetics", "crackers", "florist_pooja", "mobile_accessories", "furniture", "home_decor", "pet_shop", "sports", "tea_stall", "spa", "school", "general_shop", "general_counter", "general_services", "textiles_wholesale", "catering", "pet_grooming", "photo_studio", "laundry", "event_decor", "ac_service", "print_shop", "tuition", "dance_music", "yoga", "driving_school", "paints", "electricals", "tiles_sanitary", "two_wheeler_service", "car_service", "agri_inputs", "auto_parts",
 ] as const;
 
 // ------------------------------------------------------------------ commits

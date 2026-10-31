@@ -1,6 +1,6 @@
-import { badRequest, conflict, notFound } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { exclusiveOf, gstRateAtPrice, type GstRateRule } from "@srirealtime/gst";
+import { badRequest, conflict, notFound } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { areaUnitFactor, boxesForArea, convertArea, exclusiveOf, gstRateAtPrice, normaliseAreaUnit, type AreaUnit, type GstRateRule } from "@rbms/gst";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { catalogItemUnits, catalogProducts, catalogVariants, type ItemUnitRow } from "./schema";
@@ -54,6 +54,12 @@ export function unitProblems(units: readonly { unit: string; factor: number; bar
     else if (seen.has(k)) out.push(`"${u.unit}" is listed twice`);
     seen.add(k);
     if (u.factor === 1) out.push(`1 ${u.unit} = 1 ${baseUnit}: use the item's own unit instead`);
+    // Area items: "sqm" on a "sqft" item has one right factor; anything else would move the wrong stock.
+    const baseArea = normaliseAreaUnit(baseUnit);
+    const altArea = normaliseAreaUnit(u.unit);
+    if (baseArea && altArea && altArea !== baseArea && Math.abs(u.factor - areaUnitFactor(baseArea, altArea)) > 1e-4) {
+      out.push(`1 ${u.unit} = ${areaUnitFactor(baseArea, altArea)} ${baseUnit}`);
+    }
     if (u.barcode) {
       if (codes.has(u.barcode)) out.push(`Barcode ${u.barcode} is used twice`);
       codes.add(u.barcode);
@@ -91,6 +97,88 @@ export function findUnit<T extends { unit: string }>(units: readonly T[] | undef
   if (!unit || !units?.length) return null;
   const k = key(unit);
   return units.find((u) => key(u.unit) === k) ?? null;
+}
+
+export interface AreaQuoteInput {
+  /** Area to cover, in `areaUnit`. */
+  area: number;
+  areaUnit?: AreaUnit;
+  /** Cutting / breakage allowance, percent. */
+  wastagePct?: number;
+  /** Which alternate unit is the box (default: the first one that isn't an area unit). */
+  boxUnit?: string | null;
+}
+
+export const areaQuoteInputSchema = z.object({
+  area: z.number().positive("Enter the area").max(1_000_000),
+  areaUnit: z.enum(["sqft", "sqm"]).optional(),
+  wastagePct: z.number().min(0).max(100).optional(),
+  boxUnit: z.string().trim().max(16).nullish(),
+});
+
+export interface AreaQuote {
+  /** How the line is sold: whole `box`es, or by `area` when the item has no box unit. */
+  mode: "box" | "area";
+  /** The bill line to add: the unit and quantity. */
+  line: { unit: string; qty: number };
+  /** Boxes to sell (null by area). */
+  boxes: number | null;
+  /** Area of one box in the item's base area unit (null by area). */
+  coverage: number | null;
+  baseUnit: string;
+  /** Needed with wastage, covered by the line, and left over, in `areaUnit`. */
+  needed: number;
+  covered: number;
+  spare: number;
+  areaUnit: AreaUnit;
+  /** Paise for one line unit and for the whole line (item price basis: incl. GST when tax-inclusive). */
+  unitPrice: number;
+  total: number;
+}
+
+/**
+ * What it takes to cover an area, for the counter and the storefront ("120 sq ft, 10 % wastage → 9 boxes"). The item's
+ * base unit must be an area unit; a box is an alternate unit whose factor is the coverage in that unit. Without a box
+ * unit the line is sold by area itself.
+ */
+export function quoteByArea(item: { baseUnit: string; price: number; units: readonly ItemUnit[] }, input: AreaQuoteInput): AreaQuote {
+  const base = normaliseAreaUnit(item.baseUnit);
+  if (!base) throw badRequest(`This item is sold by ${item.baseUnit}, not by area`);
+  const areaUnit = input.areaUnit ?? base;
+  const box = input.boxUnit ? findUnit(item.units, input.boxUnit) : (item.units.find((u) => !normaliseAreaUnit(u.unit)) ?? null);
+  if (input.boxUnit && !box) throw badRequest(`No "${input.boxUnit}" unit on this item`);
+  const wastagePct = input.wastagePct ?? 0;
+  if (!box) {
+    const needed = Math.round(convertArea(input.area * (1 + wastagePct / 100), areaUnit, base) * 1000) / 1000;
+    const qty = Math.ceil(needed * 1000 - 1e-6) / 1000;
+    return {
+      mode: "area",
+      line: { unit: item.baseUnit, qty },
+      boxes: null,
+      coverage: null,
+      baseUnit: item.baseUnit,
+      needed: Math.round(input.area * (1 + wastagePct / 100) * 1000) / 1000,
+      covered: Math.round(convertArea(qty, base, areaUnit) * 1000) / 1000,
+      spare: Math.round((convertArea(qty, base, areaUnit) - input.area * (1 + wastagePct / 100)) * 1000) / 1000,
+      areaUnit,
+      unitPrice: item.price,
+      total: Math.round(qty * item.price),
+    };
+  }
+  const r = boxesForArea({ area: input.area, areaUnit, coverage: box.factor, coverageUnit: base, wastagePct });
+  return {
+    mode: "box",
+    line: { unit: box.unit, qty: r.boxes },
+    boxes: r.boxes,
+    coverage: box.factor,
+    baseUnit: item.baseUnit,
+    needed: r.needed,
+    covered: r.covered,
+    spare: r.spare,
+    areaUnit,
+    unitPrice: box.price,
+    total: r.boxes * box.price,
+  };
 }
 
 export class CatalogueUnits {
@@ -168,6 +256,15 @@ export class CatalogueUnits {
         .where(and(eq(catalogVariants.tenantId, tenantId), eq(catalogVariants.id, variantId)));
     });
     return this.list(tenantId, variantId);
+  }
+
+  /** Boxes (or area) that cover `input.area` of a variant sold by area, priced from the catalogue. */
+  async areaQuote(tenantId: string, variantId: string, input: unknown): Promise<AreaQuote> {
+    const parsed = areaQuoteInputSchema.parse(input);
+    const found = await this.variant(tenantId, variantId);
+    const rows = (await this.rows(tenantId, [variantId])).get(variantId) ?? [];
+    const units = rows.map((r) => toItemUnit(r, found.v, found.p));
+    return quoteByArea({ baseUnit: found.p.unit, price: found.v.price, units }, parsed);
   }
 
   /** The variant and unit a unit barcode belongs to (live variants only), or null. */

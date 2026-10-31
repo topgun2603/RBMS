@@ -37,9 +37,9 @@ import {
   Skeleton,
   StatusPill,
   toast,
-} from "@srirealtime/ui";
-import { packOrDefault, starterHome } from "@srirealtime/verticals";
-import { describeError, Page, PageHeading, QueryError, useI18n, useOptionalShop, useTenantSlug, type Translator } from "@srirealtime/web";
+} from "@rbms/ui";
+import { packOrDefault, starterHome } from "@rbms/verticals";
+import { describeError, Page, PageHeading, QueryError, useI18n, useOptionalShop, useTenantSlug, type Translator } from "@rbms/web";
 import { SaveBar, ReadOnlyNote } from "../components/bits";
 import { LivePreview } from "../components/live-preview";
 import type { PreviewDevice } from "../components/live-preview-protocol";
@@ -124,6 +124,8 @@ const samplesFrom = (t: Translator, shop: string): SectionSamples => ({
   menuDish: t("site.samples.menuDish"),
   appointmentHeading: t("site.samples.appointmentHeading"),
   appointmentText: t("site.samples.appointmentText"),
+  enquiryHeading: t("site.samples.enquiryHeading"),
+  enquiryText: t("site.samples.enquiryText"),
   serviceName: t("site.samples.serviceName"),
   book: t("site.samples.book"),
   beforeAfterTitle: t("site.samples.beforeAfterTitle"),

@@ -1,5 +1,5 @@
-import { AppError } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
+import { AppError } from "@rbms/core";
+import type { Db } from "@rbms/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { AiService } from "../service";
 import { addDays } from "../insights/calendar";

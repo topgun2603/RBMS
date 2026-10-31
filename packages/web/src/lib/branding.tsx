@@ -22,7 +22,7 @@ export const brandingQueryKey = (slug: string) => ["branding", slug] as const;
 /**
  * Loads the shop's branding (GET /v1/branding with x-tenant) and injects its `css` (overrides of
  * --primary, --radius, fonts... on :root) as an unlayered <style>, which beats the layered defaults
- * from @srirealtime/ui. Also sets the favicon and document title. Refetches on focus so a change
+ * from @rbms/ui. Also sets the favicon and document title. Refetches on focus so a change
  * made in the admin shows up here on the next visit/refresh.
  */
 export function ShopProvider({ tenant, appName, children }: { tenant: Tenant; appName?: string; children: React.ReactNode }) {

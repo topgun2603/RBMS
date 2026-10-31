@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { api } from "../../lib/api";
 import { useI18n } from "../../lib/i18n";
 import { getB, fromPaise, PhotoPicker, postB, toPaise, useBError, useBHelper, type Photo } from "./shared";

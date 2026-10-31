@@ -1,4 +1,4 @@
-import { defineModule } from "@srirealtime/core";
+import { defineModule } from "@rbms/core";
 import { BullJobsDriver } from "./bullmq-driver";
 import { MemoryJobsDriver } from "./memory-driver";
 import { JobsService } from "./service";

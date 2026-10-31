@@ -17,8 +17,8 @@ import {
   TableHeader,
   TableRow,
   toast,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, useI18n, usePermission } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, useI18n, usePermission } from "@rbms/web";
 import { BranchFilter, DayPill, InlineError, LeaveTypeSelect, dash } from "../components/bits";
 import { MarkDialog, type MarkTarget } from "../components/mark-dialog";
 import { DESK_ACCESS, PAYROLL_PERMISSIONS } from "../lib/access";

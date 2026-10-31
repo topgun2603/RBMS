@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, ScanLineIcon, ShieldAlertIcon } from "lucide-react";
-import { Button, Input, toast } from "@srirealtime/ui";
-import { AiDraftBanner, Page, PageHeading, api, describeError, useI18n } from "@srirealtime/web";
+import { Button, Input, toast } from "@rbms/ui";
+import { AiDraftBanner, Page, PageHeading, api, describeError, useI18n } from "@rbms/web";
 import { SchedulePill } from "../components/bits";
 import { InteractionPanel } from "../components/interaction-panel";
 import { MAX_PAGES, RX_SCAN_CREDITS, ScanFileError, lookupMeds, prepareScan, scanErrorKind, useScanRx, type MatchRef, type RxDraft, type RxLine } from "../lib/ai";

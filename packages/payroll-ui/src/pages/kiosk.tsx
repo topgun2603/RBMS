@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, CheckCircle2Icon, DeleteIcon, KeyRoundIcon, Loader2Icon, XCircleIcon } from "lucide-react";
-import { Button, cn } from "@srirealtime/ui";
-import { describeError, ModuleLink, useI18n } from "@srirealtime/web";
+import { Button, cn } from "@rbms/ui";
+import { describeError, ModuleLink, useI18n } from "@rbms/web";
 import { istTime, minutesLabel } from "../lib/format";
 import { useKioskCheck } from "../lib/queries";
 import type { CheckResult } from "../lib/types";

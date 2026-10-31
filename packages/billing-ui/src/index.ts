@@ -1,4 +1,4 @@
-// @srirealtime/billing-ui: the billing UI module (docs/web-modules.md).
+// @rbms/billing-ui: the billing UI module (docs/web-modules.md).
 import { partBMessages, withAccountingPartB } from "./accounting-b";
 import { billingModule as baseBillingModule, type BillingModuleOptions } from "./module";
 import { billingMessages as baseBillingMessages } from "./lib/messages";

@@ -3,11 +3,11 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon, BriefcaseIcon, RotateCcwIcon, CheckIcon, ExternalLinkIcon, LayoutDashboardIcon, LayoutGridIcon, LayoutListIcon, LayoutTemplateIcon, PaletteIcon, PanelTopIcon, ShirtIcon, SlidersHorizontalIcon, SparklesIcon } from "lucide-react";
-import { Button, ChipGroup, cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { LAYOUT_OPTIONS, THEME_OPTIONS, THEME_PRESETS, themePreset, type LayoutOptionKey, type LayoutTheme, type StoreTheme, type ThemeOptionKey } from "@srirealtime/branding/theme";
+import { Button, ChipGroup, cn, Label, Skeleton, toast, TRADE_NOT_LISTED, TradePicker } from "@rbms/ui";
+import { LAYOUT_OPTIONS, THEME_OPTIONS, THEME_PRESETS, themePreset, type LayoutOptionKey, type LayoutTheme, type StoreTheme, type ThemeOptionKey } from "@rbms/branding/theme";
 import { MobileNavSketch, PageLayoutPicker } from "../components/page-layout-thumbs";
-import { BUSINESS_TYPES, copyFor, PACKS, packOrDefault } from "@srirealtime/verticals";
-import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, StudioLink, useI18n, useSettingsHref, useShop, useWebFonts } from "@srirealtime/web";
+import { isGeneralPack, packPickerGroups, resolvePack } from "@rbms/verticals";
+import { api, describeError, ModuleLink, Page, PageHeading, QueryError, SettingsNav, StudioLink, useI18n, useSettingsHref, useShop, useWebFonts } from "@rbms/web";
 import { ReadOnlyNote, SaveBar, Section } from "../components/bits";
 import { Choice } from "../components/brand-fields";
 import type { PreviewView } from "../components/theme-preview";
@@ -62,23 +62,33 @@ export default function AppearancePage() {
           <Skeleton className="h-96 rounded-2xl" />
         </div>
       ) : (
-        <Editor initial={draftFrom(branding.data)} businessType={store.data.businessType ?? ""} canEdit={canEdit} />
+        <Editor initial={draftFrom(branding.data)} businessType={store.data.businessType ?? ""} businessLabel={store.data.businessLabel ?? ""} canEdit={canEdit} />
       )}
     </Page>
   );
 }
 
-function Editor({ initial, businessType: savedType, canEdit }: { initial: AppearanceDraft; businessType: string; canEdit: boolean }) {
+/** What the trade picker shows for a saved trade: a listed trade, or "Not listed" with what the owner typed. */
+function tradeChoice(type: string, label: string): { pick: string; label: string } {
+  if (type && !isGeneralPack(type)) return { pick: type, label };
+  return { pick: type || label ? TRADE_NOT_LISTED : "", label };
+}
+
+function Editor({ initial, businessType: savedType, businessLabel: savedLabel, canEdit }: { initial: AppearanceDraft; businessType: string; businessLabel: string; canEdit: boolean }) {
   const { t, locale } = useI18n();
   const shop = useShop();
   const storeUrl = useStoreUrl();
   const save = useSaveAppearance();
   const saveType = useSaveBusinessType();
+  const appId = shop.tenant.appId ?? null;
   const [draft, setDraft] = React.useState(initial);
-  const [type, setType] = React.useState(savedType);
-  const [base, setBase] = React.useState({ draft: initial, type: savedType });
-  const pack = packOrDefault(type, shop.tenant.appId ?? null);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(base.draft) || type !== base.type;
+  const [trade, setTrade] = React.useState(() => tradeChoice(savedType, savedLabel));
+  const [base, setBase] = React.useState({ draft: initial, trade });
+  /** The pack the shop gets for this choice: a listed trade as is, otherwise whatever the typed words resolve to, else the app's general pack. */
+  const chosenPack = (c: { pick: string; label: string }) => resolvePack(c.pick === TRADE_NOT_LISTED || !c.pick ? null : c.pick, c.pick === TRADE_NOT_LISTED ? c.label : null, appId);
+  const pack = chosenPack(trade);
+  const groups = React.useMemo(() => packPickerGroups(locale, appId), [locale, appId]);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(base.draft) || trade.pick !== base.trade.pick || trade.label.trim() !== base.trade.label.trim();
   useUnsavedGuard(dirty);
   useWebFonts([draft.fontSans, draft.fontHeading]);
 
@@ -126,11 +136,15 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (type !== base.type) await saveType.mutateAsync(type);
+      if (trade.pick !== base.trade.pick || trade.label.trim() !== base.trade.label.trim()) {
+        // A listed trade clears what was typed; "Not listed" keeps the owner's words, even when they map to a pack.
+        const typed = trade.pick === TRADE_NOT_LISTED;
+        await saveType.mutateAsync({ businessType: pack.id, businessLabel: typed ? trade.label.trim().replace(/\s+/g, " ") : "" });
+      }
       const b = await save.mutateAsync(draft);
       const saved = draftFrom(b);
       setDraft(saved);
-      setBase({ draft: saved, type });
+      setBase({ draft: saved, trade });
       toast.success(t("site.appearance.saved"));
     } catch (err) {
       toast.error(describeError(err, t));
@@ -146,18 +160,24 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
       <div className="grid items-start gap-section xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         <div className="grid min-w-0 gap-section">
           <Section icon={BriefcaseIcon} title={t("site.appearance.businessTitle")} description={t("site.appearance.businessBody")}>
-            <Select value={type || pack.id} onValueChange={setType} disabled={!canEdit}>
-              <SelectTrigger className="w-full sm:w-96" aria-label={t("site.appearance.businessTitle")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BUSINESS_TYPES.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {locale === "ta" ? PACKS[b].nameTa : PACKS[b].name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TradePicker
+              groups={groups}
+              value={trade.pick}
+              onChange={(pick) => setTrade((c) => ({ ...c, pick }))}
+              label={trade.label}
+              onLabelChange={(label) => setTrade((c) => ({ ...c, label }))}
+              disabled={!canEdit}
+              className="w-full sm:w-96"
+              data-testid="trade-picker"
+              text={{
+                search: t("site.appearance.tradeSearch"),
+                empty: t("site.appearance.tradeEmpty"),
+                notListed: t("site.appearance.tradeNotListed"),
+                notListedHint: t("site.appearance.tradeNotListedHint"),
+                labelField: t("site.appearance.tradeLabelField"),
+                labelPlaceholder: t("site.appearance.tradeLabelPlaceholder"),
+              }}
+            />
             <p className="text-meta text-muted-foreground">{pack.tagline}</p>
             {recommended && draft.preset !== recommended.id && canEdit && (
               <div>
@@ -317,7 +337,7 @@ function Editor({ initial, businessType: savedType, canEdit }: { initial: Appear
           saving={save.isPending || saveType.isPending}
           onDiscard={() => {
             setDraft(base.draft);
-            setType(base.type);
+            setTrade(base.trade);
           }}
         />
       )}

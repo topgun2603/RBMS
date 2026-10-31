@@ -21,8 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { ChipsInput } from "./chips-input";
 import { useReportLabels } from "./shared";
 import {

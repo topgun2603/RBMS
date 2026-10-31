@@ -1,4 +1,4 @@
-import { defineSort, listFilter, listQuerySchema, searchAny, type ResolvedSort } from "@srirealtime/core";
+import { defineSort, listFilter, listQuerySchema, searchAny, type ResolvedSort } from "@rbms/core";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 import { CHECK_STATUSES, CHECK_TYPES, kycChecks, kycSubjects, type CheckStatus, type CheckType } from "./schema";

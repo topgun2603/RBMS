@@ -18,10 +18,10 @@ import {
   SuccessCheck,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { MoneyInput } from "../money-input";
 import { money, paiseToInput, rupeesToPaise, todayIST } from "../../lib/format";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, useI18n } from "@rbms/web";
 import { useReceivePayment } from "../../lib/queries-v2";
 import { PAYMENT_METHODS, type Customer, type PaymentMethod, type ReceiptResult } from "../../lib/types";
 

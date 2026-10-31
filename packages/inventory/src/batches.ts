@@ -9,9 +9,9 @@
  *   "receive batch"); a return goes back to the batch the bill took it from.
  * - Nothing here changes `stock_items`; the callers (InventoryService.change and the flows) do that.
  */
-import { badRequest, conflict, defineSort, listFilter, listQuerySchema, notFound, runList, searchAny, type ListPage } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
-import { todayIST } from "@srirealtime/gst";
+import { badRequest, conflict, defineSort, listFilter, listQuerySchema, notFound, runList, searchAny, type ListPage } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
+import { todayIST } from "@rbms/gst";
 import { and, asc, eq, inArray, isNotNull, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import { addDays, daysLeft, DEFAULT_LADDER, expiryStatus, fefoAllocate, normalizeExpiry, suggestDiscount, type BatchAllocation, type ExpiryStatus } from "./batch-logic";

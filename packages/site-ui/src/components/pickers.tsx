@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, EyeOffIcon, GripVerticalIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
-import { Button, Checkbox, cn, Input, Label, motion, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton } from "@srirealtime/ui";
-import { useDebounced, useFeature, useI18n } from "@srirealtime/web";
+import { Button, Checkbox, cn, Input, Label, motion, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton } from "@rbms/ui";
+import { useDebounced, useFeature, useI18n } from "@rbms/web";
 import { priceRange } from "../lib/format";
 import { useCategories, useCollections, usePages, usePosts, useProductsByIds, useProductSearch } from "../lib/queries";
 import type { MenuItemType, ProductSummary } from "../lib/types";

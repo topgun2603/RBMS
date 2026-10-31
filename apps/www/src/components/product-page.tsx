@@ -1,10 +1,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
-import type { Translator } from "@srirealtime/i18n/client";
-import { Button } from "@srirealtime/ui/components/button";
-import { Card } from "@srirealtime/ui/components/card";
-import { FadeIn, Reveal } from "@srirealtime/ui/motion";
+import type { Translator } from "@rbms/i18n/client";
+import { Button } from "@rbms/ui/components/button";
+import { Card } from "@rbms/ui/components/card";
+import { FadeIn, Reveal } from "@rbms/ui/motion";
 import { SITE_URL } from "@/lib/site";
 import { HeroBackdrop, HeroVisual } from "./hero";
 import { Lift } from "./motion-bits";

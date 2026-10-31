@@ -4,10 +4,13 @@ import {
   chooseProvider,
   isHandledEvent,
   KEY_ID_PATTERN,
+  MAX_AMOUNT,
+  MIN_AMOUNT,
   mapMethod,
   modeFromKeyId,
   parseWebhook,
   REF_PATTERN,
+  REUSE_WINDOW_MS,
   webhookUrlFor,
 } from "./logic";
 
@@ -110,5 +113,28 @@ describe("parseWebhook", () => {
     expect(parseWebhook(null)).toEqual({ type: "", payment: null });
     expect(parseWebhook({ event: "payment.captured", payload: { payment: { entity: { id: "pay_1" } } } }).payment).toBeNull();
     expect(isHandledEvent("payment.failed")).toBe(false);
+  });
+});
+
+describe("parseWebhook amounts", () => {
+  it("drops a payment whose amount is not a number (no string or float coercion)", () => {
+    const p = (amount: unknown) => parseWebhook({ event: "payment.captured", payload: { payment: { entity: { id: "pay_1", order_id: "order_1", amount } } } }).payment;
+    expect(p("50000")).toBeNull();
+    expect(p(null)).toBeNull();
+    expect(p(50_000)?.amount).toBe(50_000);
+  });
+});
+
+describe("canReuseOrder at the edge of the window", () => {
+  const now = new Date("2026-10-15T10:00:00Z");
+  const o = (ageMs: number) => ({ amount: 50_000, provider: "mock", status: "created", createdAt: new Date(now.getTime() - ageMs), notes: null });
+  it("re-uses up to just under 30 minutes, never at 30", () => {
+    expect(canReuseOrder(o(REUSE_WINDOW_MS - 1), { amount: 50_000, provider: "mock", keyId: null, now })).toBe(true);
+    expect(canReuseOrder(o(REUSE_WINDOW_MS), { amount: 50_000, provider: "mock", keyId: null, now })).toBe(false);
+  });
+  it("never re-uses a paid order or one for a different amount by a paisa", () => {
+    expect(canReuseOrder({ ...o(0), status: "paid" }, { amount: 50_000, provider: "mock", keyId: null, now })).toBe(false);
+    expect(canReuseOrder(o(0), { amount: 50_001, provider: "mock", keyId: null, now })).toBe(false);
+    expect([MIN_AMOUNT, MAX_AMOUNT]).toEqual([100, 2_000_000_000]);
   });
 });

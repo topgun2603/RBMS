@@ -1,4 +1,4 @@
-import { defineModule, type AuditPort, type PermissionDef } from "@srirealtime/core";
+import { defineModule, type AuditPort, type PermissionDef } from "@rbms/core";
 import { consentRoutes } from "./routes";
 import { BreachService } from "./privacy-breach";
 import { NoticeService } from "./privacy-notice-service";

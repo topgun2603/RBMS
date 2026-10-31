@@ -103,6 +103,7 @@ describe("blocks", () => {
     faq: { type: "faq", items: [{ q: "COD?", a: "Yes" }] },
     video: { type: "video", youtubeId: "dQw4w9WgXcQ" },
     divider: { type: "divider" },
+    "enquiry-form": { type: "enquiry-form", heading: "Admission enquiry", askStudent: true, options: ["LKG"] },
   };
   const invalid: Record<string, unknown> = {
     heading: { type: "heading", level: 1, text: "Title" },
@@ -113,6 +114,7 @@ describe("blocks", () => {
     faq: { type: "faq", items: [{ q: "", a: "Yes" }] },
     video: { type: "video", youtubeId: "short" },
     divider: { type: "line" },
+    "enquiry-form": { type: "enquiry-form", heading: "", options: [] },
   };
   for (const type of Object.keys(valid)) {
     it(`${type}: valid and invalid`, () => {

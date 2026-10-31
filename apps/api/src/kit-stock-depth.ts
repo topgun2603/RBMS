@@ -6,12 +6,12 @@
  *  - the transfer note PDF,
  *  - the daily expiry alert job.
  */
-import { AppError } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { renderTransferNote, safeFilename, type DocSeller, type DocumentRegistry, type TransferNoteDocData } from "@srirealtime/documents";
-import { addDays, type InventoryService, type LegacyBatchPort } from "@srirealtime/inventory";
-import { medicineBatches, medicines, type MedicinesService } from "@srirealtime/medicines";
-import { and, eq, sql } from "@srirealtime/db";
+import { AppError } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { renderTransferNote, safeFilename, type DocSeller, type DocumentRegistry, type TransferNoteDocData } from "@rbms/documents";
+import { addDays, type InventoryService, type LegacyBatchPort } from "@rbms/inventory";
+import { medicineBatches, medicines, type MedicinesService } from "@rbms/medicines";
+import { and, eq, sql } from "@rbms/db";
 import type { FastifyRequest } from "fastify";
 
 /** The pharmacy batches for the generic batch service: which items have them, and their expiry totals. */

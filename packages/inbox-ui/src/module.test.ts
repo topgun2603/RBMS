@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { matchRoute, normalizeBase, type MountedModule } from "@srirealtime/web";
+import { matchRoute, normalizeBase, type MountedModule } from "@rbms/web";
 import { inboxLinks } from "./lib/config";
 import { inboxMessages } from "./lib/messages";
 import {

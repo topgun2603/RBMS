@@ -1,4 +1,4 @@
-import type { GstRate, LineTotals, TaxBreakupRow } from "@srirealtime/gst";
+import type { GstRate, LineTotals, TaxBreakupRow } from "@rbms/gst";
 
 /** Buyer snapshot frozen on the order. */
 export interface OrderCustomer {

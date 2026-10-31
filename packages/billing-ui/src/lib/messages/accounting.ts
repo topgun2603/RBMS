@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.accounting.* strings for the shop's books. Keep the en and ta key sets identical. */
 export const en: Messages = {
@@ -270,6 +270,17 @@ export const en: Messages = {
   "billing.accounting.pnl.emptyTitle": "Nothing to show yet",
   "billing.accounting.pnl.emptyBody": "There are no sales or expenses in these dates.",
   "billing.accounting.pnl.basis": "Sales and purchases count on the bill date, not when the money moves. Closing stock is valued at the moving-average cost from Stock.",
+  "billing.accounting.pnl.view": "Show",
+  "billing.accounting.pnl.viewSingle": "One report",
+  "billing.accounting.pnl.viewBranches": "Branch by branch",
+  "billing.accounting.pnl.wholeShop": "Whole shop",
+  "billing.accounting.pnl.branchesAddUp": "The branches add up to the whole shop.",
+  "billing.accounting.pnl.branchesDiffer": "The branches differ from the whole shop by {amount}. Run the self-check.",
+  // branch books
+  "billing.accounting.branch.label": "Branch",
+  "billing.accounting.branch.all": "All branches (whole shop)",
+  "billing.accounting.branch.unassigned": "Head office / unassigned",
+  "billing.accounting.branch.note": "Each bill, purchase, payment, expense and stock change is booked to its branch. Head office / unassigned holds manual entries, customer receipts, payroll, opening balances and everything posted before branch books.",
 
   // balance sheet
   "billing.accounting.bs.subtitle": "What the shop owns and owes today, and what is left for the owner.",
@@ -666,6 +677,17 @@ export const ta: Messages = {
   "billing.accounting.pnl.emptyTitle": "காட்ட இன்னும் எதுவும் இல்லை",
   "billing.accounting.pnl.emptyBody": "இந்தத் தேதிகளில் விற்பனையோ செலவோ இல்லை.",
   "billing.accounting.pnl.basis": "விற்பனையும் கொள்முதலும் பணம் நகர்ந்த நாளில் அல்ல, பில் தேதியில் கணக்கிடப்படுகின்றன. இறுதிச் சரக்கு, சரக்குப் பகுதியின் சராசரி விலையில் மதிப்பிடப்படுகிறது.",
+  "billing.accounting.pnl.view": "காட்டு",
+  "billing.accounting.pnl.viewSingle": "ஒரே அறிக்கை",
+  "billing.accounting.pnl.viewBranches": "கிளை வாரியாக",
+  "billing.accounting.pnl.wholeShop": "முழுக் கடை",
+  "billing.accounting.pnl.branchesAddUp": "கிளைகளின் கூட்டுத்தொகை முழுக் கடைக்குச் சமமாக உள்ளது.",
+  "billing.accounting.pnl.branchesDiffer": "கிளைகளின் கூட்டுத்தொகை முழுக் கடையிலிருந்து {amount} வேறுபடுகிறது. சுய சரிபார்ப்பை இயக்கவும்.",
+  // branch books
+  "billing.accounting.branch.label": "கிளை",
+  "billing.accounting.branch.all": "அனைத்துக் கிளைகளும் (முழுக் கடை)",
+  "billing.accounting.branch.unassigned": "தலைமை அலுவலகம் / ஒதுக்கப்படாதவை",
+  "billing.accounting.branch.note": "ஒவ்வொரு பில், கொள்முதல், பணம், செலவு, சரக்கு மாற்றமும் அதன் கிளையில் பதிவாகிறது. கையால் இட்ட பதிவுகள், வாடிக்கையாளர் வரவுகள், சம்பளம், தொடக்க இருப்புகள், கிளைக் கணக்குகளுக்கு முன் பதிவானவை அனைத்தும் தலைமை அலுவலகம் / ஒதுக்கப்படாதவை என்பதில் இருக்கும்.",
 
   "billing.accounting.bs.subtitle": "இன்று கடைக்குச் சொந்தமானவை, கடன், உரிமையாளருக்கு மிஞ்சுவது.",
   "billing.accounting.bs.assets": "உங்களுக்குச் சொந்தமானவை",

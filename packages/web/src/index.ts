@@ -1,4 +1,4 @@
-// @srirealtime/web: the shared client kit and the UI module system (docs/web-modules.md).
+// @rbms/web: the shared client kit and the UI module system (docs/web-modules.md).
 
 // API client, session, tenancy
 export {

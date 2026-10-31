@@ -1,4 +1,4 @@
-@import "@srirealtime/ui/styles.css";
+@import "@rbms/ui/styles.css";
 
 /* Scan the admin app's own source for Tailwind classes. */
 @source "../";

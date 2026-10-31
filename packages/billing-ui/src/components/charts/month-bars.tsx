@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from "recharts";
-import { useReducedMotionSafe } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { useReducedMotionSafe } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { ChartTooltipBox } from "./chart-card";
 import { money, tickINR } from "../../lib/format";
 

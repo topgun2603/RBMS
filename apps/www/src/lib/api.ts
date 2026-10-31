@@ -5,7 +5,7 @@
  * login handoff code.
  */
 import type { Interval, Plan } from "./plans";
-import type { AuthClientConfig } from "@srirealtime/web/firebase-phone";
+import type { AuthClientConfig } from "@rbms/web/firebase-phone";
 import type { AppId } from "./site";
 
 const BASE = "/api/v1";
@@ -140,6 +140,8 @@ export interface SignupInput {
   planId: string;
   interval: Interval;
   businessType?: string;
+  /** The trade in the owner's words ("Not listed: tell us"); the server picks the nearest pack. */
+  businessLabel?: string;
   /** GST state code, e.g. "33" for Tamil Nadu. */
   state: string;
   gstin?: string;

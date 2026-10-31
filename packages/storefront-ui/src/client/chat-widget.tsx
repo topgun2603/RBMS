@@ -3,8 +3,8 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { MessageCircleIcon, XIcon } from "lucide-react";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { AnimatePresence, motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { toast } from "@rbms/ui/components/sonner";
+import { AnimatePresence, motion, useReducedMotionSafe } from "@rbms/ui/motion";
 import { featureOn, STORE_FEATURES } from "../lib/features";
 import type { ChatOrderContext } from "../types";
 import { CHAT_OPEN_EVENT, type ChatOpenDetail } from "./chat-bus";

@@ -1,4 +1,4 @@
-import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@srirealtime/gst";
+import { isValidGstin, isValidStateCode, normalizeGstin, normalizeStateCode, stateFromGstin } from "@rbms/gst";
 import { classifyLine } from "./gstr3b";
 import { compositionOn, type GstConfig } from "./config";
 import type { SalesDocSrc, VoidedNumberSrc } from "./ports";

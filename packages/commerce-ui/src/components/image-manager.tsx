@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { ArrowLeftIcon, ArrowRightIcon, GripVerticalIcon, ImagePlusIcon, Link2Icon, Loader2Icon, StarIcon, Trash2Icon, UploadCloudIcon } from "lucide-react";
-import { AnimatePresence, Button, cn, Input, motion, Progress, toast } from "@srirealtime/ui";
-import { absoluteUrl, describeError, useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, cn, Input, motion, Progress, toast } from "@rbms/ui";
+import { absoluteUrl, describeError, useI18n } from "@rbms/web";
 import { uploadImage } from "../lib/queries";
 import type { ProductImage } from "../lib/types";
 import { useDragSort } from "./sortable";

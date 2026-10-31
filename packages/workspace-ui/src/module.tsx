@@ -2,22 +2,22 @@
 
 import * as React from "react";
 import { ActivityIcon, FileUpIcon, HistoryIcon, ListChecksIcon, MessageSquareTextIcon, ShieldCheckIcon, SparklesIcon, StoreIcon, UsersRoundIcon, WalletIcon, WandSparklesIcon } from "lucide-react";
-import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@srirealtime/web";
+import { PLAN_SETTINGS_PATH, SUBSCRIPTIONS_PERMISSION, type SettingsPage, type WebModule, type WidgetDef } from "@rbms/web";
 import { workspaceMessages } from "./lib/messages";
 
-/** Feature keys the workspace UI uses (declared by @srirealtime/staff, audit, importexport and onboarding). */
+/** Feature keys the workspace UI uses (declared by @rbms/staff, audit, importexport and onboarding). */
 export const WORKSPACE_FEATURES = {
   staff: "staff",
   audit: "audit",
   importexport: "importexport",
   onboarding: "onboarding",
-  /** AI assistance (@srirealtime/ai). */
+  /** AI assistance (@rbms/ai). */
   ai: "ai",
 } as const;
 
 const F = WORKSPACE_FEATURES;
 
-/** Permission each settings page needs (declared by @srirealtime/staff, audit and importexport). Owners/admins hold all. */
+/** Permission each settings page needs (declared by @rbms/staff, audit and importexport). Owners/admins hold all. */
 export const WORKSPACE_PERMISSIONS = {
   staff: "staff.manage",
   audit: "audit.view",
@@ -26,7 +26,7 @@ export const WORKSPACE_PERMISSIONS = {
   ai: "ai.manage",
   /** Counter insights (AI Phase 5 part A): the Manager template holds it; owners and admins hold everything. */
   counter: "reports.manage",
-  /** Customers' data requests, retention and the breach register (@srirealtime/consent). */
+  /** Customers' data requests, retention and the breach register (@rbms/consent). */
   privacy: "privacy.manage",
 } as const;
 

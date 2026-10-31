@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { api } from "@srirealtime/web";
+import { api } from "@rbms/web";
 
 /**
  * Online state for the counter: the browser's own flag plus "the API answered". A failed call reports

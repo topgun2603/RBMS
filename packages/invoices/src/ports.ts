@@ -1,4 +1,4 @@
-import type { TenantRef } from "@srirealtime/core";
+import type { TenantRef } from "@rbms/core";
 import type { InvoiceStatus } from "./schema";
 import type { Customer, Invoice } from "./service";
 import type { CreditNote } from "./credit-notes";
@@ -127,7 +127,7 @@ export interface ItemSourceRecord {
   rate: number;
   gstRate: number;
   /** Catalogue: the product's price-band GST rule, if any (`gstRate` is then the band at this item's price). */
-  gstRule?: import("@srirealtime/gst").GstRateRule | null;
+  gstRule?: import("@rbms/gst").GstRateRule | null;
   createdAt: Date;
   /** Optional extras a source may fill (catalogue: category, product active, stock with inventory). */
   categoryId?: string | null;

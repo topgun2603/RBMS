@@ -14,8 +14,8 @@ import {
   FieldControl,
   FieldLabel,
   Input,
-} from "@srirealtime/ui";
-import { describeError, useI18n, useModuleNavigate } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n, useModuleNavigate } from "@rbms/web";
 import { useOpenOrder } from "../lib/queries";
 import type { DiningTable, OrderType } from "../lib/types";
 import { InlineError } from "./bits";

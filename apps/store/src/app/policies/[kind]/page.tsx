@@ -1,4 +1,4 @@
-import { PolicyPage, policyMetadata } from "@srirealtime/storefront-ui";
+import { PolicyPage, policyMetadata } from "@rbms/storefront-ui";
 
 type Props = { params: Promise<{ kind: string }> };
 

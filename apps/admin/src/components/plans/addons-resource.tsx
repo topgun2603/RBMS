@@ -3,7 +3,7 @@
 import * as React from "react";
 import { z } from "zod";
 import { CoinsIcon, EyeOffIcon, PuzzleIcon, SparklesIcon } from "lucide-react";
-import { Badge } from "@srirealtime/ui";
+import { Badge } from "@rbms/ui";
 import { jsonText, parseJsonObject, ResourcePage, type ResourceConfig } from "@/components/crud/resource-page";
 import { PlanModulesPicker } from "@/components/features/plan-modules-picker";
 import { paiseToRupees } from "@/lib/format";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ImageIcon, Loader2Icon, UploadIcon, XIcon } from "lucide-react";
-import { Button, cn, Progress, toast } from "@srirealtime/ui";
+import { Button, cn, Progress, toast } from "@rbms/ui";
 import { absoluteUrl } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";
 import { uploadFile } from "@/lib/upload";

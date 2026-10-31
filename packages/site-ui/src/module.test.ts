@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { matchRoute, normalizeBase, type MountedModule } from "@srirealtime/web";
+import { matchRoute, normalizeBase, type MountedModule } from "@rbms/web";
 import { BLOCK_TYPES, HOME_SECTION_TYPES, MENU_ITEM_TYPES, USP_ICONS } from "./lib/content";
 import { DEVICE_KEYS, RANGE_PRESETS } from "./lib/analytics";
 import { siteMessages } from "./lib/messages";
@@ -58,7 +58,7 @@ describe("siteModule", () => {
     for (const file of sources(__dirname)) {
       const src = readFileSync(file, "utf8");
       expect(src, file).not.toMatch(/from ["']next\//);
-      expect(src, file).not.toMatch(/from ["']@srirealtime\/(billing-ui|commerce-ui|orders-ui|storefront-ui|workspace-ui|cms|reviews|analytics|tenancy)["']/);
+      expect(src, file).not.toMatch(/from ["']@rbms\/(billing-ui|commerce-ui|orders-ui|storefront-ui|workspace-ui|cms|reviews|analytics|tenancy)["']/);
     }
   });
 });

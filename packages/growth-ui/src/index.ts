@@ -1,4 +1,4 @@
-// @srirealtime/growth-ui: loyalty, report builder, KYC, e-invoice settings, branches and developer tools (docs/batch4.md).
+// @rbms/growth-ui: loyalty, report builder, KYC, e-invoice settings, branches and developer tools (docs/batch4.md).
 export {
   growthModule,
   GROWTH_FEATURES,

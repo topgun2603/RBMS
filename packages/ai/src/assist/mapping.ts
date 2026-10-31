@@ -1,4 +1,4 @@
-import { badRequest } from "@srirealtime/core";
+import { badRequest } from "@rbms/core";
 import { z } from "zod";
 import { maskText } from "../masking";
 import type { AiRunner } from "./hsn";

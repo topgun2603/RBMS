@@ -26,7 +26,7 @@ import {
   Textarea,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ConfirmDialog,
   describeError,
@@ -39,7 +39,7 @@ import {
   useQueryParams,
   useServerTable,
   type ServerFilterDefs,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { qk, useFaqArticleMutations, useFaqCategories, useFaqCategoryMutations } from "../lib/queries";
 import type { FaqArticleListItem, FaqCategory } from "../lib/types";
 

@@ -1,5 +1,5 @@
-import type { HomeDoc, MenuItem } from "@srirealtime/cms";
-import type { BrandTokensPatch } from "@srirealtime/branding/tokens";
+import type { HomeDoc, MenuItem } from "@rbms/cms";
+import type { BrandTokensPatch } from "@rbms/branding/tokens";
 import { OpError, type AreaId, type StudioState } from "./types";
 
 /**

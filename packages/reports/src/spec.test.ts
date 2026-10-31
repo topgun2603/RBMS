@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { describe, expect, it } from "vitest";
 import { NOW, salesDef } from "./fixtures.test-helpers";
 import { definitionProblems, planReport, validateSpec } from "./spec";

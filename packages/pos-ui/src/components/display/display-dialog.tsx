@@ -18,8 +18,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   toast,
-} from "@srirealtime/ui";
-import { api, ConfirmDialog, describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { api, ConfirmDialog, describeError, useI18n } from "@rbms/web";
 import { displayPath } from "../../lib/display";
 import { useDisplayActions, useDisplays, type DisplayPairing, type DisplayView } from "../../lib/display-client";
 import { timeShort } from "../../lib/format";

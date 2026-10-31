@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, CloudUploadIcon, Loader2Icon, RefreshCwIcon, WifiOffIcon } from "lucide-react";
-import { AnimatePresence, Button, motion } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, motion } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { useCatalog } from "../catalog-provider";
 import { usePos } from "../pos-context";
 import { useOffline } from "./offline-provider";

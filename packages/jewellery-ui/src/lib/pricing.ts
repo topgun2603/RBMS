@@ -1,5 +1,5 @@
 /**
- * Client copy of @srirealtime/jewellery's pure pricing (UI modules don't import back-end packages). Used for the live
+ * Client copy of @rbms/jewellery's pure pricing (UI modules don't import back-end packages). Used for the live
  * previews only; the server's numbers are the ones written to the catalogue. Keep in step with
  * packages/jewellery/src/logic.ts (module.test.ts checks the same worked examples).
  */

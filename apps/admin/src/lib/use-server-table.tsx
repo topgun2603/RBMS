@@ -12,7 +12,7 @@ import {
   type DataTableInstance,
   type DataTableLabels,
   type DateRangePresetId,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   activeFilterCount,
   clearTableFilters,
@@ -28,14 +28,14 @@ import {
   type TablePatch,
   type TableSort,
   type TableUrlOptions,
-} from "@srirealtime/web/server-table-state";
+} from "@rbms/web/server-table-state";
 import { api, type QueryParams } from "./api";
 import { useI18n } from "./i18n";
 
-export type { ServerFilterDefs, ServerTableState, TableSort } from "@srirealtime/web/server-table-state";
+export type { ServerFilterDefs, ServerTableState, TableSort } from "@rbms/web/server-table-state";
 
 /*
- * The admin panel's useServerTable: the same URL ⇄ state contract as @srirealtime/web's hook (docs/web-modules.md →
+ * The admin panel's useServerTable: the same URL ⇄ state contract as @rbms/web's hook (docs/web-modules.md →
  * "Lists and tables"), built on its pure helpers, but on the admin's own API client (platform routes, `tenant: null`
  * by default), router and i18n — the web kit's hook needs its app context and I18nProvider, which the panel doesn't use.
  */

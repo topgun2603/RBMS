@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /**
  * Installable storefront (PWA): the install banner, the iOS "Add to Home Screen" sheet, the offline page and the

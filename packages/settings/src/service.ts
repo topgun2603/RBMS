@@ -1,5 +1,5 @@
-import { notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+import { notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, eq, isNull, or, type SQL } from "drizzle-orm";
 import type { z } from "zod";
 import { TtlCache } from "./cache";

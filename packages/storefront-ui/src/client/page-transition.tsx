@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { motion, useReducedMotionSafe } from "@srirealtime/ui/motion";
+import { motion, useReducedMotionSafe } from "@rbms/ui/motion";
 
 let hydrated = false;
 

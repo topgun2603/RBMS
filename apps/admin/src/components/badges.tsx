@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@srirealtime/ui";
+import { Badge } from "@rbms/ui";
 import { tOr, useI18n } from "@/lib/i18n";
 
 export function RoleBadges({ roles }: { roles: string[] }) {

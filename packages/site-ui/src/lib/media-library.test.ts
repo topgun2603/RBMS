@@ -2,8 +2,8 @@ import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const get = vi.fn();
-vi.mock("@srirealtime/web", async (orig) => {
-  const real = await orig<typeof import("@srirealtime/web")>();
+vi.mock("@rbms/web", async (orig) => {
+  const real = await orig<typeof import("@rbms/web")>();
   const api = Object.assign(vi.fn(), real.api, { get: (...args: unknown[]) => get(...args) });
   return { ...real, api };
 });

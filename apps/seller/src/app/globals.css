@@ -1,4 +1,4 @@
-@import "@srirealtime/ui/styles.css";
+@import "@rbms/ui/styles.css";
 
 /* Scan the app, the kit and the mounted UI module for Tailwind classes (workspace packages are TS source). */
 @source "../";

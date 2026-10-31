@@ -1,5 +1,5 @@
-import { AppError, conflict, notFound } from "@srirealtime/core";
-import type { Db, DbOrTx } from "@srirealtime/db";
+import { AppError, conflict, notFound } from "@rbms/core";
+import type { Db, DbOrTx } from "@rbms/db";
 import { and, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { CODE_RE, istDayEnd, istDayStart, normalizeCode, type CouponRule, type CouponUsage } from "./logic";

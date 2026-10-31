@@ -1,5 +1,5 @@
-import { pk, tenantId, timestamps } from "@srirealtime/db";
-import type { InvoiceTotals, LineTotals } from "@srirealtime/gst";
+import { pk, tenantId, timestamps } from "@rbms/db";
+import type { InvoiceTotals, LineTotals } from "@rbms/gst";
 import { sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, numeric, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { PurchaseCharge } from "./schema-costing";

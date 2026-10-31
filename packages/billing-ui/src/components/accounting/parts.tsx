@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { BookOpenCheckIcon, LockIcon, PlayIcon, SearchCheckIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, EmptyState, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@srirealtime/ui";
-import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@srirealtime/web";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardContent, EmptyState, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@rbms/ui";
+import { ConfirmDialog, describeError, ModuleLink, Page, PageHeading, QueryError, useI18n } from "@rbms/web";
 import { DownloadCsvButton } from "../reports/report-ui";
-import { ACC, ACC_POST, ACC_VIEW, accountingPdfPath, sideAmount, useAccountingOverview, useBackfill, type Account } from "../../lib/accounting";
+import { ACC, ACC_POST, ACC_VIEW, accountingPdfPath, sideAmount, useAccountingBranches, useAccountingOverview, useBackfill, type Account } from "../../lib/accounting";
 import { useHasPermission } from "../../lib/access";
 import { money } from "../../lib/format";
 import { usePdf } from "../../lib/pdf";
@@ -187,6 +187,41 @@ export function ReportBar({
 }
 
 /** Pick an account (grouped by type) with the account code in front. */
+/**
+ * Branch filter of the reports: "" = the whole shop, "none" = head office / unassigned, else a branch id. Shown only
+ * when the shop has branches.
+ */
+export function BranchSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n();
+  const branches = useAccountingBranches();
+  const list = branches.data ?? [];
+  if (!list.some((b) => b.id !== null)) return null;
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor="accounting-branch">{t("billing.accounting.branch.label")}</Label>
+      <Select value={value || "all"} onValueChange={(v) => onChange(v === "all" ? "" : v)}>
+        <SelectTrigger id="accounting-branch" className="w-56">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t("billing.accounting.branch.all")}</SelectItem>
+          {list.map((b) => (
+            <SelectItem key={b.id ?? "none"} value={b.id ?? "none"}>
+              {b.id === null ? t("billing.accounting.branch.unassigned") : b.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** Whether the shop has branches (the branch filter and the branch-by-branch profit and loss are shown). */
+export function useHasBranches() {
+  const branches = useAccountingBranches();
+  return (branches.data ?? []).some((b) => b.id !== null);
+}
+
 export function AccountSelect({
   value,
   onChange,

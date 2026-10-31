@@ -20,8 +20,8 @@ import {
   toast,
   ToggleGroup,
   ToggleGroupItem,
-} from "@srirealtime/ui";
-import { describeError, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, ModuleLink, Page, PageHeading, QueryError, useFeature, useI18n } from "@rbms/web";
 import { AccountFields, accountErrors, emptyAccount, SubmitButton, toAccountInput, type AccountDraft } from "../components/account";
 import { AccountPill, CheckPill, StepIcon } from "../components/bits";
 import { accountText, ACCOUNT_RE, IFSC_RE, kycErrorKey, latestCheck, normalizeId, onboardingSteps, PAN_RE, VPA_RE, type StepState } from "../lib/logic";

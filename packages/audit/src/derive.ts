@@ -1,4 +1,4 @@
-import { isSuperAdmin, type AuditEvent, type RequestContext, type RouteAuditConfig } from "@srirealtime/core";
+import { isSuperAdmin, type AuditEvent, type RequestContext, type RouteAuditConfig } from "@rbms/core";
 
 export const MUTATING_METHODS: readonly string[] = ["POST", "PUT", "PATCH", "DELETE"];
 export const MAX_SUMMARY = 500;

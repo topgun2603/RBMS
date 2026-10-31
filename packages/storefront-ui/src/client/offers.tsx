@@ -3,10 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { CheckCircle2Icon, GiftIcon, Loader2Icon, PackagePlusIcon, PlusIcon, SparklesIcon, TagIcon } from "lucide-react";
-import { toast } from "@srirealtime/ui/components/sonner";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { AnimatePresence, motion, Reveal } from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { toast } from "@rbms/ui/components/sonner";
+import { cn } from "@rbms/ui/lib/utils";
+import { AnimatePresence, motion, Reveal } from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { imageUrl, money } from "../lib/format";
 import { appliedOfferText, nudgeText, sortNudges } from "../lib/offers";
 import type { BundleView, CartNudge, CartProductRef, PricedCart } from "../types";

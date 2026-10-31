@@ -18,7 +18,7 @@ export const MAX_VARIANTS = 100;
 
 const round = (n: number) => Math.sign(n) * Math.round(Math.abs(n));
 
-// GST slabs and `exclusiveOf(price, gstRate, taxInclusive)` come from @srirealtime/gst.
+// GST slabs and `exclusiveOf(price, gstRate, taxInclusive)` come from @rbms/gst.
 
 /** The inverse of gst's `exclusiveOf`, for a billing rate written onto a tax-inclusive product: `round(rate × (100 + gstRate) / 100)`. */
 export function inclusiveOf(rate: number, gstRate: number, taxInclusive: boolean): number {

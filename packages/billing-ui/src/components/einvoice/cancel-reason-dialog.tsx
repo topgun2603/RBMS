@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { describeError, useI18n } from "@srirealtime/web";
+import { describeError, useI18n } from "@rbms/web";
 import { AlertTriangleIcon, Loader2Icon } from "lucide-react";
 import {
   Alert,
@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { CANCEL_REASON_CODES, MAX_CANCEL_REMARK, type CancelReasonCode } from "../../lib/einvoice";
 
 /** Reason (NIC code 1–4) + remark, for cancelling an IRN or an e-way bill. */

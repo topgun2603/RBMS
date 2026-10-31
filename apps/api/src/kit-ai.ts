@@ -1,9 +1,9 @@
-import { AI_CREDITS_KEY, createAi, resolveAiConfig, type AiEnvInput, type AiSettings, type CreditBalance, type CreditsPort } from "@srirealtime/ai";
-import { AppError, type TenantRef } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { inArray } from "@srirealtime/db";
-import type { PlansService } from "@srirealtime/plans";
-import { tenants } from "@srirealtime/tenancy";
+import { AI_CREDITS_KEY, createAi, resolveAiConfig, type AiEnvInput, type AiSettings, type CreditBalance, type CreditsPort } from "@rbms/ai";
+import { AppError, type TenantRef } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { inArray } from "@rbms/db";
+import type { PlansService } from "@rbms/plans";
+import { tenants } from "@rbms/tenancy";
 
 /** The slice of the plans module AI credits use (a PlansService fits; tests pass a fake). */
 export type PlansCredits = Pick<PlansService, "limit" | "usage" | "credits" | "consume">;

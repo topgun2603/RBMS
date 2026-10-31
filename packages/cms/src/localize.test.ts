@@ -45,3 +45,11 @@ describe("home translations", () => {
     expect(homeDocSchema.parse({ sections: [hero] }).translations).toBeUndefined();
   });
 });
+
+describe("enquiry-form words", () => {
+  it("translates the heading, labels, choices and thank-you but not the picture", () => {
+    const s = { type: "enquiry-form" as const, id: "e", heading: "Admission enquiry", topic: "Admission", options: ["LKG", "Class 1"], submitLabel: "Send", successText: "Thanks", imageUrl: "/a.jpg", imageAlt: "School", askStudent: true, askEmail: true, askMessage: true };
+    const [out] = localizeSections([s], { ta: { e: { heading: "சேர்க்கை விசாரணை", options: ["எல்கேஜி", "வகுப்பு 1"], successText: "நன்றி", imageUrl: "/evil.jpg", askStudent: false } } }, "ta");
+    expect(out).toMatchObject({ heading: "சேர்க்கை விசாரணை", options: ["எல்கேஜி", "வகுப்பு 1"], successText: "நன்றி", imageUrl: "/a.jpg", askStudent: true });
+  });
+});

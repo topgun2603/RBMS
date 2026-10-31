@@ -4,17 +4,20 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@srirealtime/ui/components/dialog";
-import { motion } from "@srirealtime/ui/motion";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@rbms/ui/components/dialog";
+import { motion } from "@rbms/ui/motion";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { percentOff } from "../lib/format";
 import type { Availability, List, Product } from "../types";
 import { Bone } from "../components/skeletons";
-import { SizeChart, sizeKindFor } from "../components/size-guide";
+import { SizeChart, sizeKindForGuide } from "../components/size-guide";
 import { call } from "./api";
 import { ProductGallery } from "./product-gallery";
 import { PurchasePanel, type AvailabilityMap } from "./purchase-panel";
-import { packFor } from "@srirealtime/verticals";
+import { packFor } from "@rbms/verticals";
+
+/** The size chart for a product of this trade (null when the trade has no size guide). */
+const guideKind = (businessType: string, category: string | null | undefined, name: string) => sizeKindForGuide(packFor(businessType)?.sizeGuide, businessType, category, name);
 import { useStore } from "./store-context";
 
 /** Quick view from product cards: gallery, variant picker, add to cart — without leaving the listing. */
@@ -68,7 +71,7 @@ export function QuickView({ slug, onClose }: { slug: string | null; onClose: () 
                 {(p.brand || p.categoryName) && <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">{p.brand ?? p.categoryName}</p>}
                 <h2 className="mt-1 font-display text-h3 leading-tight font-semibold sm:text-2xl">{p.name}</h2>
               </div>
-              <PurchasePanel product={p} availability={availability} compact onAdded={onClose} sizeGuide={packFor(shell.businessType)?.sizeGuide ? <SizeChart kind={sizeKindFor(shell.businessType, p.categoryName, p.name)} t={t} /> : undefined} />
+              <PurchasePanel product={p} availability={availability} compact onAdded={onClose} sizeGuide={guideKind(shell.businessType, p.categoryName, p.name) ? <SizeChart kind={guideKind(shell.businessType, p.categoryName, p.name)!} t={t} /> : undefined} />
               <Link href={STORE_PATHS.product(p.slug)} onClick={onClose} className="group inline-flex items-center gap-1.5 text-sm font-semibold text-primary focus-ring">
                 {t("product.fullDetails")}
                 <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />

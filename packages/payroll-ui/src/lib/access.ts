@@ -1,4 +1,4 @@
-/** Feature keys the payroll UI uses (declared by @srirealtime/payroll). */
+/** Feature keys the payroll UI uses (declared by @rbms/payroll). */
 export const PAYROLL_FEATURES = {
   payroll: "payroll",
   salary: "payroll.salary",
@@ -6,7 +6,7 @@ export const PAYROLL_FEATURES = {
   branches: "multi-branch",
 } as const;
 
-/** Permissions of @srirealtime/payroll. Owners and admins hold all of them. There is no payroll "view" on purpose. */
+/** Permissions of @rbms/payroll. Owners and admins hold all of them. There is no payroll "view" on purpose. */
 export const PAYROLL_PERMISSIONS = {
   manage: "payroll.manage",
   attendance: "payroll.attendance",

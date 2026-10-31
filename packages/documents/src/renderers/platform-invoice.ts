@@ -1,4 +1,4 @@
-import type { GstRate } from "@srirealtime/gst";
+import type { GstRate } from "@rbms/gst";
 import { renderInvoice } from "./invoice";
 import type { InvoiceDocData, RenderContext } from "../types";
 

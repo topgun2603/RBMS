@@ -1,7 +1,7 @@
-import { AppError } from "@srirealtime/core";
-import { and, eq, isNull, type Db } from "@srirealtime/db";
-import { invoices as invoiceTable, type InvoiceInput, type InvoicesService, type PaymentInput } from "@srirealtime/invoices";
-import type { OfflineFlag, PosBillInfo, PosInvoicesPort } from "@srirealtime/pos";
+import { AppError } from "@rbms/core";
+import { and, eq, isNull, type Db } from "@rbms/db";
+import { invoices as invoiceTable, type InvoiceInput, type InvoicesService, type PaymentInput } from "@rbms/invoices";
+import type { OfflineFlag, PosBillInfo, PosInvoicesPort } from "@rbms/pos";
 
 /**
  * The invoices module as the POS offline sync sees it (docs/offline-billing.md): reserved number blocks, issuing a bill

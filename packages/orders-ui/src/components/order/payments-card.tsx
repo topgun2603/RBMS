@@ -15,8 +15,8 @@ import {
   Meter,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import { PERMS, usePermissions } from "../../lib/access";
 import { money, orNull, paiseToInput, rupeesToPaise, todayIST } from "../../lib/format";
 import { useOrderAction } from "../../lib/queries";

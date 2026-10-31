@@ -42,8 +42,8 @@ import {
   Label,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { describeError, QueryError, useFeatures, useI18n, type Translator } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, QueryError, useFeatures, useI18n, type Translator } from "@rbms/web";
 import { CountTile, Dropzone } from "../bits";
 import { downloadTemplate, useCommitImport, useImporters, useImportJob, useImportSources, usePreviewImport } from "../../lib/queries";
 import type { ImportJob, ImportSource, Importer, Mapping, PreviewResult } from "../../lib/types";

@@ -1,4 +1,4 @@
-import { newId } from "@srirealtime/core";
+import { newId } from "@rbms/core";
 import {
   backoffDelay,
   notifyObserver,

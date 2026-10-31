@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/web";
+import type { Messages } from "@rbms/web";
 
 /** inbox.ai.* strings: the campaign writer (docs/ai.md Phase 2 part B). Keep the en and ta key sets identical. */
 export const aiEn: Messages = {

@@ -17,8 +17,8 @@ import {
   StaggerItem,
   StatusPill,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, QueryError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, QueryError, useI18n } from "@rbms/web";
 import { DEFAULT_ROLE_KEY } from "../../lib/permissions";
 import { useDeleteRole, useMembers, useRoles } from "../../lib/queries";
 import type { Role } from "../../lib/types";

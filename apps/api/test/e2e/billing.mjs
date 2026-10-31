@@ -1,6 +1,6 @@
 // Billing v2 end-to-end: inventory, credit book, WhatsApp, online payment (mock), reports.
-//   node test/e2e/billing.mjs      (pnpm --filter @srirealtime/api test:e2e:billing; test:e2e:all seeds and runs every script)
-// Shop: e2e-bill (BL, pro) from `pnpm --filter @srirealtime/api seed:e2e`. The owner e2e-owner@example.com signs in with
+//   node test/e2e/billing.mjs      (pnpm --filter @rbms/api test:e2e:billing; test:e2e:all seeds and runs every script)
+// Shop: e2e-bill (BL, pro) from `pnpm --filter @rbms/api seed:e2e`. The owner e2e-owner@example.com signs in with
 // the dev test OTP (API env TEST_OTP_CODE / TEST_OTP_TARGETS); customers and the supplier use test numbers (+91 9999 00xxxx).
 // Each run adds its own customer, bills and purchase, so it is safe to re-run.
 

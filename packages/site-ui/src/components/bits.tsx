@@ -13,8 +13,8 @@ import {
   Input,
   StatusPill,
   type ControlSize,
-} from "@srirealtime/ui";
-import { absoluteUrl, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { absoluteUrl, useI18n } from "@rbms/web";
 import type { ContentStatus } from "../lib/types";
 
 /** Card section with a tinted icon chip, title and hint (same look as commerce-ui). */

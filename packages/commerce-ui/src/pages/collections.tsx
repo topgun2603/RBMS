@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { EyeOffIcon, HandIcon, LayersIcon, PlusIcon, SparklesIcon } from "lucide-react";
-import { Button, Card, cn, EmptyState, Skeleton, Stagger, StaggerItem, StatusPill } from "@srirealtime/ui";
-import { ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useI18n } from "@srirealtime/web";
+import { Button, Card, cn, EmptyState, Skeleton, Stagger, StaggerItem, StatusPill } from "@rbms/ui";
+import { ModuleLink, Page, PageHeading, QueryError, SearchField, useDebounced, useI18n } from "@rbms/web";
 import { ProductThumb } from "../components/bits";
 import { CollectionsIllustration } from "../components/illustrations";
 import { useCanManageCatalogue } from "../lib/access";

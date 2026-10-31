@@ -18,7 +18,7 @@ import {
   ShoppingBagIcon,
   LockIcon,
 } from "lucide-react";
-import { GST_STATES } from "@srirealtime/gst";
+import { GST_STATES } from "@rbms/gst";
 import {
   AnimatePresence,
   Button,
@@ -36,8 +36,8 @@ import {
   Switch,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { describeError, Page, PageHeading, useFeature, useI18n, useModuleNavigate } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, Page, PageHeading, useFeature, useI18n, useModuleNavigate } from "@rbms/web";
 import { Field, MoneyInput, ReadOnlyNote, Section, Thumb, TotalRow } from "../components/bits";
 import { VariantPicker } from "../components/variant-picker";
 import { PERMS, usePermissions } from "../lib/access";

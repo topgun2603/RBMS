@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PercentIcon } from "lucide-react";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { QueryError, useI18n } from "@srirealtime/web";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { QueryError, useI18n } from "@rbms/web";
 import { AccountingPage, Amt, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useGstLedger } from "../lib/accounting";
 import { money, rangeFor, todayIST } from "../lib/format";

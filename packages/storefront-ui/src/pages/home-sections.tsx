@@ -1,11 +1,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRightIcon, ChevronDownIcon, ClockIcon, InstagramIcon, MapPinIcon, MessageCircleIcon, NavigationIcon, PhoneIcon, QuoteIcon, StarIcon } from "lucide-react";
-import { STORE_PATHS } from "@srirealtime/cms/seo";
+import { STORE_PATHS } from "@rbms/cms/seo";
 import { osmEmbedUrl } from "../lib/map";
-import { cn } from "@srirealtime/ui/lib/utils";
-import { Reveal } from "@srirealtime/ui/motion";
+import { cn } from "@rbms/ui/lib/utils";
+import { Reveal } from "@rbms/ui/motion";
 import { Carousel } from "../client/carousel";
+import { EnquiryForm } from "../client/enquiry-form";
 import { BeforeAfter, CopyCode, Countdown, HeroVideo, QuoteRotator } from "../client/home-sections";
 import { Container, SectionTitle, StoreImage } from "../components/bits";
 import { CategoryBento } from "./home-categories";
@@ -680,6 +681,16 @@ export function AppointmentSection({ s, t }: { s: HomeSectionOf<"appointment">; 
     </div>
   );
   return band ? <Container>{inner}</Container> : <Container><div className="rounded-[var(--sf-radius-card)] bg-tint-1 p-6 ring-1 ring-primary/10 sm:p-10 lg:p-12">{inner}</div></Container>;
+}
+
+// ------------------------------------------------------------------ enquiry form
+
+export function EnquiryFormSection({ s }: { s: HomeSectionOf<"enquiry-form"> }) {
+  return (
+    <Container className="max-w-6xl">
+      <EnquiryForm cfg={s} />
+    </Container>
+  );
 }
 
 // ------------------------------------------------------------------ before / after

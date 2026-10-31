@@ -1,4 +1,4 @@
-import type { Messages } from "@srirealtime/i18n/client";
+import type { Messages } from "@rbms/i18n/client";
 
 /** billing.aiins.* strings: reorder suggestions and the dashboard daily-summary card (docs/ai.md Phase 2 part B). Keep en and ta identical. */
 export const en: Messages = {

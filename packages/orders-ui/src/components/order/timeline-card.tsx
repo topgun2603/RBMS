@@ -14,8 +14,8 @@ import {
   TruckIcon,
   type LucideIcon,
 } from "lucide-react";
-import { AnimatePresence, Button, cn, motion, Textarea, toast } from "@srirealtime/ui";
-import { describeError, tOr, useI18n } from "@srirealtime/web";
+import { AnimatePresence, Button, cn, motion, Textarea, toast } from "@rbms/ui";
+import { describeError, tOr, useI18n } from "@rbms/web";
 import { PERMS, usePermissions } from "../../lib/access";
 import { money } from "../../lib/format";
 import { useOrderAction } from "../../lib/queries";

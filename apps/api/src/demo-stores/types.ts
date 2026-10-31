@@ -1,4 +1,4 @@
-import type { HomeDocInput, MenuItemInput, BlockInput } from "@srirealtime/cms";
+import type { HomeDocInput, MenuItemInput, BlockInput } from "@rbms/cms";
 import type { ShopSpec } from "../seed-fixtures";
 import type { Logger } from "pino";
 import type { Kit } from "../kit";
@@ -45,7 +45,7 @@ export interface DemoProduct {
   hsn: string;
   gstRate: number;
   /** Price-band GST (apparel / footwear: `withPriceBandGst`); `gstRate` is then only the fallback. */
-  gstRule?: import("@srirealtime/gst").GstRateRule | null;
+  gstRule?: import("@rbms/gst").GstRateRule | null;
   /** pcs, bag, kg, ft, m, litre, set, coil … */
   unit: string;
   description: string;
@@ -83,10 +83,21 @@ export interface DemoPage {
   blocks: (ctx: HomeContext) => BlockInput[];
 }
 
+/** A blog post (news / events), published by the seed; matched by slug. `cover` is a Pexels id of the store's `photos`. */
+export interface DemoPost {
+  slug: string;
+  title: string;
+  excerpt: string;
+  cover: number;
+  tags: string[];
+  authorName: string;
+  blocks: (ctx: HomeContext) => BlockInput[];
+}
+
 export interface DemoStore {
   /** Shop, app, plan, trade, business profile and billing items (seed-fixtures `ensureShop`). */
   shop: ShopSpec;
-  /** Theme preset id (`@srirealtime/branding` THEME_PRESETS): applied when the shop is created or still on its trade's look. */
+  /** Theme preset id (`@rbms/branding` THEME_PRESETS): applied when the shop is created or still on its trade's look. */
   preset: string;
   /** `store` settings (contact, COD, policies, social). */
   store: Record<string, unknown>;
@@ -99,6 +110,8 @@ export interface DemoStore {
   /** The home page (section ids must be stable: a re-run finds the seeded home by them) with its Tamil words. */
   home(ctx: HomeContext): HomeDocInput;
   pages: DemoPage[];
+  /** News / events posts (the home's `blog-posts` section shows them); optional. */
+  posts?: DemoPost[];
   menus: { header: MenuItemInput[]; footer: MenuItemInput[] };
   /** Every photo the store uses, by Pexels id. */
   photos: Record<number, DemoPhoto>;

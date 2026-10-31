@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDownIcon, SettingsIcon } from "lucide-react";
-import { cn, motion } from "@srirealtime/ui";
+import { cn, motion } from "@rbms/ui";
 import { BUILT_IN_SETTINGS } from "../app/builtins";
 import { useVisibleSettings, type MountedSettingsPage } from "../app/session";
 import { useI18n } from "../lib/i18n";

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { BuildingIcon, CheckCircle2Icon, LandmarkIcon, Loader2Icon, LockIcon, ReceiptTextIcon, SaveIcon } from "lucide-react";
-import { financialYear, formatInvoiceNumber, isValidGstin, stateFromGstin } from "@srirealtime/gst";
+import { financialYear, formatInvoiceNumber, isValidGstin, stateFromGstin } from "@rbms/gst";
 import {
   Alert,
   AlertDescription,
@@ -19,8 +19,8 @@ import {
   Skeleton,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { canManageShop, describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe } from "@srirealtime/web";
+} from "@rbms/ui";
+import { canManageShop, describeError, Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe } from "@rbms/web";
 import { fullProfile } from "../components/payments/seller-defaults";
 import { StateSelect } from "../components/state-select";
 import { stateLabel, todayIST } from "../lib/format";

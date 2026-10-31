@@ -6,7 +6,7 @@
  * calendar year of the quarter's last month, so Jan-Mar 2027 is "2027-Q4").
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type QueryParams } from "@srirealtime/web";
+import { api, type QueryParams } from "@rbms/web";
 
 export const G = "/gstfiling";
 /** Same gate as the GSTR-1 download in Reports: feature `invoices.gst-reports`. */

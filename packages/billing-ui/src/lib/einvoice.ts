@@ -1,7 +1,7 @@
 // E-invoice (IRN) + e-way bill helpers for the bill screen. Pure: no React, no fetch.
 // Mirrors packages/einvoice (ewb.ts, gst.ts, drivers/mock.ts) — UI modules never import server packages.
 
-import { gstinCheckChar } from "@srirealtime/gst";
+import { gstinCheckChar } from "@rbms/gst";
 
 // ------------------------------------------------------------------ API shapes (GET /v1/einvoice/...)
 

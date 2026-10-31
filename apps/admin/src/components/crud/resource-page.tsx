@@ -33,7 +33,7 @@ import {
   Textarea,
   toast,
   type DataTableColumn,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import { api, type QueryParams } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/confirm-dialog";

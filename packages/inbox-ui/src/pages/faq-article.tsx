@@ -29,8 +29,8 @@ import {
   TabsTrigger,
   Textarea,
   toast,
-} from "@srirealtime/ui";
-import { ConfirmDialog, describeError, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ConfirmDialog, describeError, Page, PageHeading, QueryError, useI18n, useModuleNavigate, useRouteParams } from "@rbms/web";
 import { Section } from "../components/bits";
 import { Markdown } from "../components/markdown";
 import { useFaqArticle, useFaqArticleMutations, useFaqCategories } from "../lib/queries";

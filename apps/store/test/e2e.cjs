@@ -1,9 +1,9 @@
 // Storefront browser test: a full purchase on the e2e shop in headless Chrome, with screenshots.
 //
-//   pnpm --filter @srirealtime/store test:e2e
+//   pnpm --filter @rbms/store test:e2e
 //
 // Needs the dev servers running (api :4000 with the test OTP on — apps/api/.env TEST_OTP_CODE / TEST_OTP_TARGETS —
-// and this app on :3003) and the e2e shops seeded (pnpm --filter @srirealtime/api seed:e2e). It shops on e2e-store
+// and this app on :3003) and the e2e shops seeded (pnpm --filter @rbms/api seed:e2e). It shops on e2e-store
 // only (never the demo shops), signs in with a +91 99990 xxxxx test phone and the fixed test OTP, and its analytics
 // anonymous id ends in "-e2e", so everything it leaves is recognisable as test data (apps/api cleanup:e2e-data).
 //
@@ -47,7 +47,7 @@ function loadPuppeteer() {
       /* next */
     }
   }
-  throw new Error("puppeteer-core not found (it is installed with @srirealtime/documents: run pnpm install)");
+  throw new Error("puppeteer-core not found (it is installed with @rbms/documents: run pnpm install)");
 }
 
 // Generous timeout: the first request to a dev server compiles the page.

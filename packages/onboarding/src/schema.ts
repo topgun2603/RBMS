@@ -1,4 +1,4 @@
-import { timestamps } from "@srirealtime/db";
+import { timestamps } from "@rbms/db";
 import { sql } from "drizzle-orm";
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 

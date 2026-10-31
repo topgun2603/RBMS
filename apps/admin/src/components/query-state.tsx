@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangleIcon, LockIcon, RefreshCwIcon } from "lucide-react";
-import { Button, EmptyState } from "@srirealtime/ui";
+import { Button, EmptyState } from "@rbms/ui";
 import { ApiError } from "@/lib/api";
 import { describeError, useI18n } from "@/lib/i18n";
 

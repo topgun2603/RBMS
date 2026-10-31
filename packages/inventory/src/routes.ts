@@ -1,4 +1,4 @@
-import { documented, requireRole, requireTenant, requireUser, type RequestContext } from "@srirealtime/core";
+import { documented, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { type AuditApproveInput, type AuditCountInput, type AuditCreateInput, type AuditLinePatch, type AuditLinesQuery, type AuditListQuery } from "./audit";

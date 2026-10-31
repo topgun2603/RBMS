@@ -60,6 +60,8 @@ const samples = Object.fromEntries(
     "menuDish",
     "appointmentHeading",
     "appointmentText",
+    "enquiryHeading",
+    "enquiryText",
     "serviceName",
     "book",
     "beforeAfterTitle",
@@ -443,5 +445,16 @@ describe("shelf, story and layout forms", () => {
     expect(look).toMatchObject({ hotspots: [{ x: 10, y: 20, product: { id: IDS.P1 } }] });
     expect((look as { hotspots: unknown[] }).hotspots).toHaveLength(1);
     expect(referencedIds([{ type: "deal", title: "", text: "", productId: IDS.P2, endsAt: "" }]).products).toEqual([IDS.P2]);
+  });
+});
+
+describe("enquiry-form section form", () => {
+  it("choices are one per line; blanks are dropped and the labels follow their fields", () => {
+    const f = newSectionForm("enquiry-form", samples, "e") as Extract<SectionForm, { type: "enquiry-form" }>;
+    const out = fromSectionForm({ ...f, options: "LKG\n\n Class 1 \n", optionLabel: "Class", askStudent: false, studentLabel: "ignored" }) as Record<string, unknown>;
+    expect(out).toMatchObject({ type: "enquiry-form", options: ["LKG", "Class 1"], optionLabel: "Class", askEmail: true, askMessage: true });
+    expect(out).not.toHaveProperty("studentLabel");
+    const back = toSectionForm(homeSectionSchema.parse(out)) as Extract<SectionForm, { type: "enquiry-form" }>;
+    expect(back.options).toBe("LKG\nClass 1");
   });
 });

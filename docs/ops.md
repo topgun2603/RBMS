@@ -50,7 +50,7 @@ Each app serves `GET /api/health` → `{"ok":true,"app":"<name>","sha":…}`. It
 
 ## Metrics
 
-Served by `@srirealtime/monitoring`, a small built-in registry with no prom-client dependency:
+Served by `@rbms/monitoring`, a small built-in registry with no prom-client dependency:
 
 | Metric | Labels | Notes |
 |---|---|---|
@@ -78,7 +78,7 @@ Scrape config:
 
 ## Errors and logs
 
-**Error reporter** (`@srirealtime/monitoring`, created in `apps/api/src/kit-ops.ts`):
+**Error reporter** (`@rbms/monitoring`, created in `apps/api/src/kit-ops.ts`):
 
 - **When it fires:**
   - 5xx responses (unknown errors and `AppError`s with status ≥ 500), never 4xx;
@@ -239,7 +239,7 @@ Summaries and before/after snapshots never contain secrets, OTPs or tokens.
 
 **Jobs pile up:**
 
-- `srikit_job_queue_depth` growing, or `srikit_job_attempts_total{outcome="failed"}` rising: find the job name, look up its final-failure error report (tag `job`), fix the cause, then re-run it (`pnpm --filter @srirealtime/api job <name>` for scheduled jobs).
+- `srikit_job_queue_depth` growing, or `srikit_job_attempts_total{outcome="failed"}` rising: find the job name, look up its final-failure error report (tag `job`), fix the cause, then re-run it (`pnpm --filter @rbms/api job <name>` for scheduled jobs).
 
 **Before risky changes** (migrations, data fixes):
 
@@ -259,9 +259,9 @@ Summaries and before/after snapshots never contain secrets, OTPs or tokens.
 
 ## Tests
 
-- `pnpm --filter @srirealtime/monitoring test`: scrubbing, the Sentry envelope, readiness and metrics.
-- `pnpm --filter @srirealtime/jobs test`: the job observer and queue counts.
-- `pnpm --filter @srirealtime/api test`: the server's 5xx-only reporting, `/health` while the pipeline fails, `/ready` 503, `/metrics` auth, and log redaction.
+- `pnpm --filter @rbms/monitoring test`: scrubbing, the Sentry envelope, readiness and metrics.
+- `pnpm --filter @rbms/jobs test`: the job observer and queue counts.
+- `pnpm --filter @rbms/api test`: the server's 5xx-only reporting, `/health` while the pipeline fails, `/ready` 503, `/metrics` auth, and log redaction.
 - `pnpm test:ops`: backup names and the retention policy.
 
 ## CI
@@ -273,7 +273,7 @@ jobs run in parallel on `ubuntu-latest`, each with the pnpm store and the Turbor
 |---|---|
 | **check** | `pnpm install --frozen-lockfile`, then `turbo run typecheck test --concurrency=2` across the repo (vitest unit tests, no database). |
 | **build** | `turbo run build --filter="./apps/*"`: `next build` for admin, billing, shop, store, seller and www, and the API's production bundle (`apps/api/build.mjs`, esbuild). |
-| **e2e** | Postgres 17 + Redis 7 service containers (same images as `docker-compose.yml`). `db:migrate`, `seed`, `seed:e2e`, then the API (`pnpm --filter @srirealtime/api start`), store (`next start` :3003) and www (`next start` :3005) in the background; waits for `/health` and both sites, runs `test:e2e:all` (batch1, batch2, billing, batch3, batch5 + the storefront browser test) and the www browser test. On failure it uploads `e2e-artifacts` (server logs, test output, screenshots). |
+| **e2e** | Postgres 17 + Redis 7 service containers (same images as `docker-compose.yml`). `db:migrate`, `seed`, `seed:e2e`, then the API (`pnpm --filter @rbms/api start`), store (`next start` :3003) and www (`next start` :3005) in the background; waits for `/health` and both sites, runs `test:e2e:all` (batch1, batch2, billing, batch3, batch5 + the storefront browser test) and the www browser test. On failure it uploads `e2e-artifacts` (server logs, test output, screenshots). |
 
 Parallelism is capped (`--concurrency=2`, `NODE_OPTIONS=--max-old-space-size=3072`): the full parallel run runs out of
 memory. In CI `E2E_REQUIRE_BROWSER=1` makes `run-all.mjs` fail instead of skip when the store browser test can't run.
@@ -300,18 +300,18 @@ pnpm turbo run build --filter="./apps/*" --concurrency=2  # build (writes .next;
 
 # e2e: infra up, a clean database, then the same sequence as the job
 pnpm infra:up
-pnpm --filter @srirealtime/api db:migrate
+pnpm --filter @rbms/api db:migrate
 # optional: the PIN codes the tests look up, if api.postalpincode.in isn't reachable (CI always loads this)
 docker compose exec -T postgres psql -U srikit -d srikit -f - < apps/api/test/e2e/fixtures/pincode-cache.sql
-pnpm --filter @srirealtime/api seed
-pnpm --filter @srirealtime/api seed:e2e
-pnpm --filter @srirealtime/api start      # terminal 1 (or `pnpm dev`)
-pnpm --filter @srirealtime/store start    # terminal 2, after building store
-pnpm --filter @srirealtime/www start      # terminal 3, after building www
+pnpm --filter @rbms/api seed
+pnpm --filter @rbms/api seed:e2e
+pnpm --filter @rbms/api start      # terminal 1 (or `pnpm dev`)
+pnpm --filter @rbms/store start    # terminal 2, after building store
+pnpm --filter @rbms/www start      # terminal 3, after building www
 $env:E2E_REQUIRE_BROWSER = "1"
-pnpm --filter @srirealtime/api test:e2e:all
-pnpm --filter @srirealtime/www test:e2e
-pnpm --filter @srirealtime/api cleanup:e2e-data   # optional: remove test data from a shared dev database
+pnpm --filter @rbms/api test:e2e:all
+pnpm --filter @rbms/www test:e2e
+pnpm --filter @rbms/api cleanup:e2e-data   # optional: remove test data from a shared dev database
 ```
 
 The API needs `TEST_OTP_CODE` / `TEST_OTP_TARGETS` (as in `apps/api/.env`). The browser tests find Chrome at the usual

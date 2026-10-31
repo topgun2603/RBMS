@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
-import { Button, Card, Input, Label, Skeleton, toast } from "@srirealtime/ui";
-import { describeError, QueryError, useI18n } from "@srirealtime/web";
+import { Button, Card, Input, Label, Skeleton, toast } from "@rbms/ui";
+import { describeError, QueryError, useI18n } from "@rbms/web";
 import { rupeesToPaise, useDeleteDiscountLimit, useDiscountLimits, useSaveDiscountLimit, type DiscountLimit } from "../../lib/discount-limits";
 import { useMembers, useRoles } from "../../lib/queries";
 import { roleName } from "./labels";

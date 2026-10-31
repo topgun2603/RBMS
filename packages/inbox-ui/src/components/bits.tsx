@@ -13,8 +13,8 @@ import {
   WifiOffIcon,
   XIcon,
 } from "lucide-react";
-import { AnimatePresence, cn, motion, StatusPill, useReducedMotionSafe, type StatusTone } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { AnimatePresence, cn, motion, StatusPill, useReducedMotionSafe, type StatusTone } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import type { LiveStatus } from "../lib/sse";
 import { shortAge, type DayRelation } from "../lib/time";
 

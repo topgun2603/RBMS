@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@srirealtime/ui";
+import { cn } from "@rbms/ui";
 import { fitScale, PREVIEW_DEVICES, type PreviewDevice } from "./live-preview-protocol";
 
 /**

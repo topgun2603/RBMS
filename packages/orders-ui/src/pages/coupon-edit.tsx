@@ -40,7 +40,7 @@ import {
   TableRow,
   Textarea,
   toast,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import {
   ConfirmDialog,
   describeError,
@@ -58,7 +58,7 @@ import {
   useI18n,
   useModuleNavigate,
   useRouteParams,
-} from "@srirealtime/web";
+} from "@rbms/web";
 import { CopyButton, MoneyInput, Optional, ReadOnlyNote, Section } from "../components/bits";
 import { CouponStatePill } from "../components/coupon-bits";
 import { CategoryChecklist, ProductMultiPicker } from "../components/target-pickers";

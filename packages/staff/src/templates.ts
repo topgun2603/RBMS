@@ -1,4 +1,4 @@
-import { CUSTOM_ROLE_PREFIX, FULL_ACCESS_ROLES, sha256, type PermissionDef } from "@srirealtime/core";
+import { CUSTOM_ROLE_PREFIX, FULL_ACCESS_ROLES, sha256, type PermissionDef } from "@rbms/core";
 
 export interface RoleTemplate {
   key: string;

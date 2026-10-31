@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { cn } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { minutesUntil } from "../lib/online";
 import type { Platform } from "../lib/types";
 

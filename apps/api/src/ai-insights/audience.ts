@@ -1,5 +1,5 @@
-import { indianPhone, planAddDays, stem, type ReviewForReply, type SegCustomer, type SegmentSpec, type ThemeReview } from "@srirealtime/ai";
-import { sql, type Db } from "@srirealtime/db";
+import { indianPhone, planAddDays, stem, type ReviewForReply, type SegCustomer, type SegmentSpec, type ThemeReview } from "@rbms/ai";
+import { sql, type Db } from "@rbms/db";
 
 /**
  * Customer segments for the campaign writer, the shop's busiest billing hour, and store reviews: SQL over the shop's own

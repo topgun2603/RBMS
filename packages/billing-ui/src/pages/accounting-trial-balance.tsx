@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ScaleIcon, ShieldAlertIcon, ShieldCheckIcon } from "lucide-react";
-import { EmptyState, StatusPill, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@srirealtime/ui";
-import { ModuleLink, QueryError, useI18n } from "@srirealtime/web";
-import { AccountingPage, Amt, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
+import { EmptyState, StatusPill, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@rbms/ui";
+import { ModuleLink, QueryError, useI18n } from "@rbms/web";
+import { AccountingPage, Amt, BranchSelect, Panel, ReportBar, TableSkeleton } from "../components/accounting/parts";
 import { useTrialBalance } from "../lib/accounting";
 import { rangeFor, todayIST } from "../lib/format";
 
@@ -14,11 +14,13 @@ export default function AccountingTrialBalancePage() {
   const fy = React.useMemo(() => rangeFor("thisFY"), []);
   const [from, setFrom] = React.useState(fy.from);
   const [to, setTo] = React.useState(todayIST());
-  const tb = useTrialBalance({ from, to });
+  const [branchId, setBranchId] = React.useState("");
+  const tb = useTrialBalance({ from, to, branchId: branchId || undefined });
 
   return (
     <AccountingPage title={t("billing.accounting.nav.trialBalance")} description={t("billing.accounting.tb.subtitle")} icon={ScaleIcon}>
-      <ReportBar report="trial-balance" params={{ from, to }} from={from} to={to} onFrom={setFrom} onTo={setTo}>
+      <ReportBar report="trial-balance" params={{ from, to, branchId }} from={from} to={to} onFrom={setFrom} onTo={setTo}>
+        <BranchSelect value={branchId} onChange={setBranchId} />
         {tb.data && (
           <StatusPill tone={tb.data.balanced ? "success" : "danger"} icon={tb.data.balanced ? ShieldCheckIcon : ShieldAlertIcon} size="md">
             {t(tb.data.balanced ? "billing.accounting.tb.balanced" : "billing.accounting.tb.notBalanced")}

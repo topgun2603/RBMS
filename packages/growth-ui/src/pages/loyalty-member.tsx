@@ -30,8 +30,8 @@ import {
   StatusPill,
   useReducedMotionSafe,
   type StatusTone,
-} from "@srirealtime/ui";
-import { ModuleLink, Page, QueryError, useI18n, useRouteParams } from "@srirealtime/web";
+} from "@rbms/ui";
+import { ModuleLink, Page, QueryError, useI18n, useRouteParams } from "@rbms/web";
 import { AdjustDialog } from "../components/loyalty/adjust-dialog";
 import { displayPhone, money, num } from "../lib/format";
 import { signedPoints } from "../lib/loyalty";

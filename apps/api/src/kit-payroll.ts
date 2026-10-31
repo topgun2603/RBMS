@@ -1,7 +1,7 @@
-import type { AuditEvent } from "@srirealtime/core";
-import type { Db } from "@srirealtime/db";
-import { page, type DocumentRegistry } from "@srirealtime/documents";
-import { createPayroll, payslipBodyHtml, payslipFilename, PAYSLIP_CSS, type PayslipDoc } from "@srirealtime/payroll";
+import type { AuditEvent } from "@rbms/core";
+import type { Db } from "@rbms/db";
+import { page, type DocumentRegistry } from "@rbms/documents";
+import { createPayroll, payslipBodyHtml, payslipFilename, PAYSLIP_CSS, type PayslipDoc } from "@rbms/payroll";
 
 /** What the payroll wiring needs from the host's services (structural, so kit.ts passes its own objects). */
 export interface PayrollWiring {

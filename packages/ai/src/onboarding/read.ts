@@ -1,6 +1,6 @@
-import { THEME_PRESETS } from "@srirealtime/branding/theme";
-import { AppError } from "@srirealtime/core";
-import { BUSINESS_TYPES, PACKS } from "@srirealtime/verticals";
+import { THEME_PRESETS } from "@rbms/branding/theme";
+import { AppError } from "@rbms/core";
+import { BUSINESS_TYPES, PACKS } from "@rbms/verticals";
 import { z } from "zod";
 import { DATA_RULES, dataBlock, neutralise } from "../assist/safety";
 import { sampleFor } from "../mock-provider";

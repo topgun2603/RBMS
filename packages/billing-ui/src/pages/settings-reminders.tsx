@@ -20,8 +20,8 @@ import {
   Switch,
   toast,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
-import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe, useShop } from "@srirealtime/web";
+} from "@rbms/ui";
+import { canManageShop, describeError, Page, PageHeading, QueryError, SettingsNav, useI18n, useMe, useShop } from "@rbms/web";
 import { fullProfile, MAX_REMINDER_DAYS, SELLER_DEFAULTS } from "../components/payments/seller-defaults";
 import { addDays, money, todayIST } from "../lib/format";
 import { useSaveSellerProfile, useSellerProfile } from "../lib/queries";

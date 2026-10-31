@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { Loader2Icon, PlusIcon, SearchIcon, StoreIcon, XIcon } from "lucide-react";
-import { isValidGstin, stateFromGstin } from "@srirealtime/gst";
-import { AnimatePresence, Button, cn, InitialsAvatar, Input, Label, motion } from "@srirealtime/ui";
+import { isValidGstin, stateFromGstin } from "@rbms/gst";
+import { AnimatePresence, Button, cn, InitialsAvatar, Input, Label, motion } from "@rbms/ui";
 import { SupplierDialog } from "./supplier-dialog";
 import { StateSelect } from "../state-select";
 import { money, stateLabel } from "../../lib/format";
-import { useDebounced, useI18n } from "@srirealtime/web";
+import { useDebounced, useI18n } from "@rbms/web";
 import { useSuppliers } from "../../lib/queries-v2";
 import type { Supplier } from "../../lib/types";
 

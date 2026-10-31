@@ -1,6 +1,6 @@
 # Demo trading history
 
-`pnpm --filter @srirealtime/api seed:history <slug> [--days 90] [--profile <name>] [--dry-run]`
+`pnpm --filter @rbms/api seed:history <slug> [--days 90] [--profile <name>] [--dry-run]`
 
 Makes a demo shop look as if it has traded for N days: bills, payments, receipts, credit notes, till sessions, purchases,
 expenses and customers, all created through the **real kit services** (`apps/api/src/kit.ts`), so GST reports, stock, the

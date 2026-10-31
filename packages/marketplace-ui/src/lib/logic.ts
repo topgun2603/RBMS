@@ -2,7 +2,7 @@
  * Pure display math for the marketplace screens (unit tested in logic.test.ts). Money is integer paise throughout;
  * commission rates are basis points (1000 bps = 10 %).
  */
-import { formatINR } from "@srirealtime/gst";
+import { formatINR } from "@rbms/gst";
 import type {
   KycCheck,
   KycCheckType,

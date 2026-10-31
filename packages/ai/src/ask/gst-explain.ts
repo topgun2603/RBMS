@@ -1,4 +1,4 @@
-import { AppError } from "@srirealtime/core";
+import { AppError } from "@rbms/core";
 import { z } from "zod";
 import { dataBlock, neutralise, sentences } from "../assist/safety";
 import { maskText } from "../masking";

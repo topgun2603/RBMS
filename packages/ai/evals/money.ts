@@ -4,14 +4,14 @@
  * and GSTR-2B explanations (numbers, no verdicts). They run the REAL code paths (explainRisk, writeCashflow, writeCover,
  * explain2b), so the final text the owner sees is what is scored. Raw model behaviour (before our checks) is counted too.
  *
- *   pnpm --filter @srirealtime/ai eval:money                    mock provider: pipeline only, no cost
- *   pnpm --filter @srirealtime/ai eval:money --live             REAL API calls (costs money)
+ *   pnpm --filter @rbms/ai eval:money                    mock provider: pipeline only, no cost
+ *   pnpm --filter @rbms/ai eval:money --live             REAL API calls (costs money)
  *   options: --group=risk|cashflow|loan|gst2b   --max-cost=USD (default 0.5)   --out=DIR
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Db } from "@srirealtime/db";
+import type { Db } from "@rbms/db";
 import { resolveAiConfig } from "../src/config";
 import { AI_SETTINGS_DEFAULTS } from "../src/features";
 import { allowedNumbers, checkNumbers } from "../src/insights/numbers";

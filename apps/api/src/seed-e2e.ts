@@ -2,7 +2,7 @@ import { pino } from "pino";
 import { E2eCleanup } from "./e2e-cleanup";
 import { env } from "./env";
 import { createKit } from "./kit";
-import { ensureShop, seedPlansAndProfiles, seedStoreCatalogue, seedStoreContent, type ShopSpec } from "./seed-fixtures";
+import { appPlanId, ensureShop, seedPlansAndProfiles, seedStoreCatalogue, seedStoreContent, type ShopSpec } from "./seed-fixtures";
 
 /**
  * Dedicated shops for the end-to-end scripts (apps/api/test/e2e), so test runs never touch the demo shops:
@@ -17,7 +17,7 @@ import { ensureShop, seedPlansAndProfiles, seedStoreCatalogue, seedStoreContent,
  * Only ever run it against development databases.
  *
  * Idempotent: creates what is missing, resets app/plan, and archives "E2E …" products of earlier runs so lists the
- * scripts read stay short.   pnpm --filter @srirealtime/api seed:e2e
+ * scripts read stay short.   pnpm --filter @rbms/api seed:e2e
  */
 export const E2E_OWNER = "e2e-owner@example.com";
 
@@ -124,10 +124,12 @@ try {
     }
     // Batch 5: whatever plan & billing tests did to the shop, it is back on its plan as an active, open-ended,
     // no-charge (manual) subscription, so the scripts' feature and plan checks hold.
+    // Plans are per app: the shop's app plan ("bl-pro"), not the shared tier template ("pro").
+    const planId = appPlanId(shop.appId, shop.planId);
     const s = await kit.subscriptions.service.get(tenant.id);
-    if (!s || s.status !== "active" || s.provider !== "manual" || s.planId !== shop.planId || s.cancelAtPeriodEnd || s.pendingPlanId || s.currentPeriodEnd) {
-      await kit.subscriptions.service.comp(tenant.id, { planId: shop.planId, until: null }, { userId: null });
-      log.info({ slug: shop.slug, plan: shop.planId, was: s ? `${s.status} ${s.planId} ${s.provider}` : "none" }, "e2e shop subscription reset");
+    if (!s || s.status !== "active" || s.provider !== "manual" || s.planId !== planId || s.cancelAtPeriodEnd || s.pendingPlanId || s.currentPeriodEnd) {
+      await kit.subscriptions.service.comp(tenant.id, { planId, until: null }, { userId: null });
+      log.info({ slug: shop.slug, plan: planId, was: s ? `${s.status} ${s.planId} ${s.provider}` : "none" }, "e2e shop subscription reset");
     }
     const pruned = await new E2eCleanup(kit, tenant.id, log).productsOnly();
     log.info({ slug: shop.slug, plan: tenant.planId, app: tenant.appId, created, pruned }, "e2e shop ready");

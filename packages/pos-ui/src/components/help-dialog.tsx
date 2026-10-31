@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@srirealtime/ui";
-import { useI18n } from "@srirealtime/web";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@rbms/ui";
+import { useI18n } from "@rbms/web";
 import { SHORTCUTS } from "../lib/shortcuts";
 
 export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => void }) {

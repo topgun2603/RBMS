@@ -6,10 +6,12 @@ import {
   BadgeCheckIcon,
   BanIcon,
   CalendarIcon,
+  CarIcon,
   CheckCheckIcon,
   GlassesIcon,
   HourglassIcon,
   InboxIcon,
+  PlugZapIcon,
   Loader2Icon,
   PackageCheckIcon,
   RulerIcon,
@@ -37,8 +39,8 @@ import {
   Input,
   StatusPill,
   type StatusTone,
-} from "@srirealtime/ui";
-import { describeError, useI18n } from "@srirealtime/web";
+} from "@rbms/ui";
+import { describeError, useI18n } from "@rbms/web";
 import type { JobStatus, JobTemplate } from "../lib/types";
 
 export function InlineError({ title }: { title: React.ReactNode }) {
@@ -87,6 +89,9 @@ export const TEMPLATE_ICON: Record<JobTemplate, React.ComponentType<{ className?
   device: SmartphoneIcon,
   garment: ShirtIcon,
   eyewear: GlassesIcon,
+  vehicle: CarIcon,
+  laundry: ShirtIcon,
+  appliance: PlugZapIcon,
   general: WrenchIcon,
 };
 

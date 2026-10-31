@@ -1,4 +1,4 @@
-import { packFor } from "@srirealtime/verticals";
+import { packFor } from "@rbms/verticals";
 import { b4En, b4Ta } from "./messages-b4";
 import { aiChatEn, aiChatTa } from "./messages-aichat";
 import { signInEn, signInTa } from "./messages-signin";
@@ -13,7 +13,8 @@ import { reviewsEn, reviewsTa } from "./messages-reviews";
 import { pwaEn, pwaTa } from "./messages-pwa";
 import { layoutsEn, layoutsTa } from "./messages-layouts";
 import { trustEn, trustTa } from "./messages-trust";
-import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@srirealtime/i18n/client";
+import { enquiryEn, enquiryTa } from "./messages-enquiry";
+import { createTranslator, normalizeLocale, type Locale, type Messages, type Translator } from "@rbms/i18n/client";
 
 /** Storefront UI strings. Shop content (product names, CMS text) stays as the shop entered it. */
 export const en: Messages = {
@@ -31,6 +32,7 @@ export const en: Messages = {
   ...pwaEn,
   ...layoutsEn,
   ...trustEn,
+  ...enquiryEn,
   "nav.home": "Home",
   "nav.shopAll": "Shop all",
   "nav.menu": "Menu",
@@ -81,6 +83,7 @@ export const en: Messages = {
   "product.off": "{pct}% off",
   "product.mrp": "MRP",
   "product.from": "from {price}",
+  "product.priceOnRequest": "Price on request",
   "product.inclTax": "Inclusive of all taxes",
   "product.plusGst": "+ GST",
   "product.inclGstRate": "Inclusive of {rate}% GST",
@@ -448,6 +451,15 @@ export const en: Messages = {
   "trust.payWith": "We accept",
   "trust.cards": "Cards",
   "trust.netbanking": "Net banking",
+  "area.title": "How many boxes do I need?",
+  "area.coverage": "One box covers {sqft} sq ft ({sqm} sq m).",
+  "area.room": "Room area",
+  "area.unit": "Unit",
+  "area.sqft": "sq ft",
+  "area.sqm": "sq m",
+  "area.wastage": "Wastage %",
+  "area.result": "{boxes} boxes cover {covered} {unit}",
+  "area.use": "Use {boxes} boxes",
   "size.title": "Size guide",
   "size.subtitle": "Find your size before you order.",
   "size.note": "Body measurements in inches. Measure over light clothing and compare with the chart. Garment fit can vary slightly by style.",
@@ -492,6 +504,7 @@ export const ta: Messages = {
   ...pwaTa,
   ...layoutsTa,
   ...trustTa,
+  ...enquiryTa,
   "nav.home": "முகப்பு",
   "nav.shopAll": "அனைத்தும்",
   "nav.menu": "பட்டியல்",
@@ -542,6 +555,7 @@ export const ta: Messages = {
   "product.off": "{pct}% தள்ளுபடி",
   "product.mrp": "அதிகபட்ச விலை",
   "product.from": "{price} முதல்",
+  "product.priceOnRequest": "விலை கேட்டு அறியவும்",
   "product.inclTax": "அனைத்து வரிகளும் உட்பட",
   "product.plusGst": "+ ஜிஎஸ்டி",
   "product.inclGstRate": "{rate}% ஜிஎஸ்டி உட்பட",
@@ -909,6 +923,15 @@ export const ta: Messages = {
   "trust.payWith": "ஏற்கும் முறைகள்",
   "trust.cards": "கார்டுகள்",
   "trust.netbanking": "நெட் பேங்கிங்",
+  "area.title": "எத்தனை பெட்டி தேவை?",
+  "area.coverage": "ஒரு பெட்டி {sqft} சதுர அடி ({sqm} ச.மீ) மூடும்.",
+  "area.room": "அறையின் பரப்பு",
+  "area.unit": "அலகு",
+  "area.sqft": "சதுர அடி",
+  "area.sqm": "ச.மீ",
+  "area.wastage": "வீணாகும் %",
+  "area.result": "{boxes} பெட்டிகள் {covered} {unit} மூடும்",
+  "area.use": "{boxes} பெட்டிகளைச் சேர்",
   "size.title": "அளவு வழிகாட்டி",
   "size.subtitle": "ஆர்டர் செய்வதற்கு முன் உங்கள் அளவைக் கண்டறியுங்கள்.",
   "size.note": "உடல் அளவுகள் அங்குலங்களில். மெல்லிய உடையின் மேல் அளந்து அட்டவணையுடன் ஒப்பிடுங்கள். வடிவமைப்பைப் பொறுத்து பொருத்தம் சிறிது மாறலாம்.",
@@ -949,7 +972,13 @@ export function packMessages(businessType: string | null | undefined, locale: Lo
   const pack = packFor(businessType);
   if (!pack) return {};
   const c = pack.copy[locale === "ta" ? "ta" : "en"];
-  return { "search.placeholder": c.search, "nav.newArrivals": c.newItems, "footer.newsletterText": c.newsletter };
+  // A website-only trade (school) quotes fees, not prices, and lists programmes, not services.
+  const fee: Messages = pack.site
+    ? locale === "ta"
+      ? { "product.priceOnRequest": "கட்டணம்: விசாரித்து அறிக", "list.countServices": "{count, plural, one {# பாடத்திட்டம்} other {# பாடத்திட்டங்கள்}}", "pwa.install.body": "செய்திகள், நிகழ்வுகள், சேர்க்கை விவரங்கள் முகப்புத் திரையிலேயே. இடம் எடுக்காது, மெதுவான இணையத்திலும் இயங்கும்." }
+      : { "product.priceOnRequest": "Fee on enquiry", "list.countServices": "{count, plural, one {# programme} other {# programmes}}", "pwa.install.body": "News, events and admissions on your home screen. It takes no space and works on slow networks." }
+    : {};
+  return { "search.placeholder": c.search, "nav.newArrivals": c.newItems, "footer.newsletterText": c.newsletter, ...fee };
 }
 
 /** Store strings for a locale, with the shop's pack wording on top when `businessType` is given. */

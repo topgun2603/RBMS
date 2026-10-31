@@ -37,6 +37,7 @@ export * from "./components/tooltip";
 
 // Kit components
 export * from "./components/chip-group";
+export * from "./components/trade-picker";
 export * from "./components/color-input";
 export * from "./components/field";
 export * from "./components/initials-avatar";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useDebounced, useFeature, useI18n } from "@srirealtime/web";
+import { useDebounced, useFeature, useI18n } from "@rbms/web";
 import { AlertTriangleIcon, GiftIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import {
   AnimatePresence,
@@ -21,7 +21,7 @@ import {
   Skeleton,
   Switch,
   useReducedMotionSafe,
-} from "@srirealtime/ui";
+} from "@rbms/ui";
 import type { Party } from "./customer-picker";
 import { useHasPermission } from "../lib/access";
 import { money } from "../lib/format";

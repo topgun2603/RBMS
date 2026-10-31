@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Metadata } from "next";
 import { CalendarClockIcon, CheckIcon, SearchXIcon, WrenchIcon } from "lucide-react";
-import { cn } from "@srirealtime/ui/lib/utils";
+import { cn } from "@rbms/ui/lib/utils";
 import { BookingWizard, CancelBookingButton, type BookableService, type BookableStaff } from "../client/booking-wizard";
 import { Container, Empty } from "../components/bits";
 import { money } from "../lib/format";
@@ -108,7 +108,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 interface JobTrack {
   label: string;
-  template: "device" | "garment" | "eyewear" | "general";
+  template: "device" | "garment" | "eyewear" | "vehicle" | "laundry" | "appliance" | "general";
   status: string;
   dueDate: string | null;
   total: number;

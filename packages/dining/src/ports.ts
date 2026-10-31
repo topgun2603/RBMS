@@ -1,4 +1,4 @@
-import type { FeatureDef, FeatureGatePort, PermissionDef, TenantRef } from "@srirealtime/core";
+import type { FeatureDef, FeatureGatePort, PermissionDef, TenantRef } from "@rbms/core";
 
 export type { FeatureGatePort };
 
@@ -60,7 +60,7 @@ export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
 export const DINING_FEATURE = "dining";
 export const DINING_KDS_FEATURE = "dining.kitchen-display";
 export const DINING_QR_FEATURE = "dining.qr-ordering";
-/** Zomato / Swiggy / ONDC orders through an aggregator (routes in @srirealtime/aggregators). */
+/** Zomato / Swiggy / ONDC orders through an aggregator (routes in @rbms/aggregators). */
 export const DINING_PLATFORMS_FEATURE = "dining.aggregators";
 
 export const DINING_SERVE = "dining.serve";

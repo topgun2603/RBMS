@@ -1,5 +1,5 @@
 {
-  "name": "@srirealtime/seller",
+  "name": "@rbms/seller",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,10 +10,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@srirealtime/i18n": "workspace:*",
-    "@srirealtime/marketplace-ui": "workspace:*",
-    "@srirealtime/ui": "workspace:*",
-    "@srirealtime/web": "workspace:*",
+    "@rbms/i18n": "workspace:*",
+    "@rbms/marketplace-ui": "workspace:*",
+    "@rbms/ui": "workspace:*",
+    "@rbms/web": "workspace:*",
     "@tanstack/react-query": "^5.83.0",
     "lucide-react": "^0.525.0",
     "next": "^15.5.0",

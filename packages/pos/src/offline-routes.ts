@@ -1,4 +1,4 @@
-import { documented, hasPermission, requireRole, requireTenant, requireUser } from "@srirealtime/core";
+import { documented, hasPermission, requireRole, requireTenant, requireUser } from "@rbms/core";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { idParams } from "./api-schemas";

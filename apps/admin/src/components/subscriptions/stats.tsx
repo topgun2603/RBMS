@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangleIcon, BadgeIndianRupeeIcon, CalendarRangeIcon, HourglassIcon, PercentIcon, TrendingDownIcon, UsersIcon } from "lucide-react";
-import { cn, motion, StatCard, useReducedMotionSafe } from "@srirealtime/ui";
+import { cn, motion, StatCard, useReducedMotionSafe } from "@rbms/ui";
 import { useI18n } from "@/lib/i18n";
 import { useSubsT } from "@/lib/subscriptions-messages";
 import type { SubscriptionStats, SubscriptionStatus } from "@/lib/types";

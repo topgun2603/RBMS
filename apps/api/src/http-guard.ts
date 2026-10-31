@@ -1,4 +1,4 @@
-import { tooMany } from "@srirealtime/core";
+import { tooMany } from "@rbms/core";
 import type { FastifyReply, FastifyRequest, onRequestAsyncHookHandler, onSendAsyncHookHandler } from "fastify";
 import { OPS_PATHS } from "./ops";
 
@@ -64,19 +64,29 @@ const AUTH_SENSITIVE = /^\/v1\/auth\/(otp\/|guest\/|google$|firebase$|mfa\/|demo
 /** The sign-in routes that get the strict per-IP budget. */
 export const isAuthSensitive = (req: { method: string; url: string }): boolean => req.method === "POST" && AUTH_SENSITIVE.test(req.url.split("?")[0] ?? "");
 
-export function createRateLimiter(cfg: RateLimitConfig) {
+/**
+ * The shared counter with this process's memory as the fallback (Redis down or unset). Also handed to modules that
+ * keep their own limits (the enquiry form), so every API instance counts them together.
+ */
+export function sharedWindowCounter(counter?: WindowCounter | null): WindowCounter {
   const memory = new MemoryWindowCounter();
-  const counter = cfg.counter;
-  const hit = async (key: string) => {
-    if (counter) {
-      try {
-        return await counter.hit(key, cfg.windowMs);
-      } catch {
-        /* Redis down: fall back to this process's counter */
+  return {
+    async hit(key, windowMs) {
+      if (counter) {
+        try {
+          return await counter.hit(key, windowMs);
+        } catch {
+          /* Redis down: fall back to this process's counter */
+        }
       }
-    }
-    return memory.hit(key, cfg.windowMs);
+      return memory.hit(key, windowMs);
+    },
   };
+}
+
+export function createRateLimiter(cfg: RateLimitConfig) {
+  const counter = sharedWindowCounter(cfg.counter);
+  const hit = (key: string) => counter.hit(key, cfg.windowMs);
   const check = async (reply: FastifyReply, key: string, max: number, what: string) => {
     const r = await hit(key);
     const seconds = Math.max(1, Math.ceil(r.resetMs / 1000));
