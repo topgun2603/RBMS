@@ -75,6 +75,11 @@ export class RazorpayClient {
     return this.request<RazorpayPayment>("GET", `/payments/${encodeURIComponent(paymentId)}`);
   }
 
+  /** `POST /v1/payments/:id/capture`: takes the authorized money (the full amount, in the payment's currency). */
+  capturePayment(paymentId: string, amount: number, currency: string): Promise<RazorpayPayment> {
+    return this.request<RazorpayPayment>("POST", `/payments/${encodeURIComponent(paymentId)}/capture`, { amount, currency });
+  }
+
   /** `GET /v1/payments?count=1`: true when accepted, false on 401/403; other failures throw. */
   async validateCredentials(): Promise<boolean> {
     try {
