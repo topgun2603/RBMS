@@ -12,7 +12,7 @@ export const RECEIPT_SYSTEM = `You read a photo or PDF of a shop expense receipt
 Fields:
 - vendor: the business that issued the receipt ("" if not printed). vendorGstin: its GSTIN if printed (15 characters), else "".
 - date: the receipt date as YYYY-MM-DD ("" if unreadable).
-- amount: the final amount paid / grand total in rupees, including GST. gstAmount: total GST printed (CGST+SGST+IGST) in rupees, or null if not printed. gstRate: the combined GST percent if clear (5, 12, 18, 28), else null.
+- amount: the final amount paid / grand total in rupees, including GST. gstAmount: total GST printed (CGST+SGST+IGST) in rupees, or null if not printed. gstRate: the combined GST percent if clear (5, 18, 40; older bills may show 12 or 28), else null.
 - category: choose exactly ONE name from the list of the shop's expense categories given in the user message, the closest fit; "" if none fits. Never invent a category.
 - paymentMode: one of cash, upi, card, bank, cheque, other, if the receipt shows how it was paid (e.g. "PAID BY UPI", card slip); null when not shown.
 - note: a short plain description of what the payment was for (max 120 characters), from the receipt text.

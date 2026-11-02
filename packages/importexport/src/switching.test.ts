@@ -88,6 +88,12 @@ describe("buildBill", () => {
     expect(bill!.igst).toBe(36000);
     expect(bill!.lines[0]!.gstRate).toBe(18);
     expect(bill!.total).toBe(236000);
+    // 40% (from 22.09.2025) read back from the tax amounts.
+    const { bill: cola } = buildBill(
+      [row(2, { invoice_no: "B-2", date: "2026-02-15", party: "Kerala Co", party_gstin: "32AAACR5055K1Z8", item: "Cola", qty: 10, rate: 2857, taxable: 28570, igst: 11428, invoice_total: 39998 })],
+      { kind: "sale", sellerState: "33" },
+    );
+    expect(cola!.lines[0]!.gstRate).toBe(40);
   });
   it("summary-only bills become one line; round-off within 1 rupee; bigger gaps are errors", () => {
     const ok = buildBill([row(2, { invoice_no: "C-1", date: "2026-01-02", party: "Walk-in", invoice_total: 99950, taxable: 95200, cgst: 2375, sgst: 2375 })], { kind: "sale" });

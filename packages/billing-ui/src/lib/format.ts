@@ -94,7 +94,7 @@ export function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return out;
 }
 
-export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
+export { GST_RATES } from "@rbms/gst";
 export const UNITS = ["pcs", "nos", "kg", "g", "m", "cm", "l", "ml", "box", "set", "pair", "dozen", "pack", "hr", "day"] as const;
 
 // ---------------------------------------------------------------- v2 helpers

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInvoice, computeLine, exclusiveOf, inclusiveOfRate, isGstRate, isInterState, lineAmount, taxableOfInclusive, type LineInput } from "./gst";
+import { COMMON_GST_RATES, computeInvoice, computeLine, exclusiveOf, inclusiveOfRate, isGstRate, isInterState, lineAmount, taxableOfInclusive, type LineInput } from "./gst";
 
 const TN = "33";
 const KA = "29";
@@ -45,6 +45,13 @@ describe("computeLine", () => {
     expect(computeLine({ description: "x", qty: 1, rate: 100000, gstRate: 0.25 }, true).igst).toBe(250);
   });
 
+  it("charges 40% (20% + 20%, or 40% IGST) and 1.5%", () => {
+    expect(computeLine({ description: "Car", qty: 1, rate: 100000, gstRate: 40 }, false)).toMatchObject({ taxable: 100000, cgst: 20000, sgst: 20000, total: 140000 });
+    expect(computeLine({ description: "Car", qty: 1, rate: 100000, gstRate: 40 }, true)).toMatchObject({ igst: 40000, total: 140000 });
+    expect(computeLine({ description: "Cut diamond", qty: 1, rate: 100000, gstRate: 1.5 }, false)).toMatchObject({ cgst: 750, sgst: 750 });
+    expect(computeLine({ description: "Export supply", qty: 1, rate: 100000, gstRate: 0.1 }, true).igst).toBe(100);
+  });
+
   it("keeps the input fields", () => {
     const l = computeLine({ ...line, hsn: "5007", unit: "m" }, false);
     expect(l).toMatchObject({ description: "Silk saree", hsn: "5007", unit: "m", qty: 2.5, rate: 12050, gstRate: 5 });
@@ -75,6 +82,12 @@ describe("computeLine", () => {
       expect(l.total).toBe(3 * 99900 - 4990);
       expect(l.amount - (l.discount ?? 0)).toBe(l.taxable);
       expect(l.taxable + l.cgst + l.sgst).toBe(l.total);
+    });
+
+    it("40% (soft drink at its MRP): exact total, CGST takes the odd paisa", () => {
+      const cola = { description: "Cola 250 ml", qty: 1, rate: exclusiveOf(4000, 40, true), gstRate: 40 as const, inclusiveTotal: 4000 };
+      expect(computeLine(cola, false)).toMatchObject({ taxable: 2857, cgst: 572, sgst: 571, igst: 0, total: 4000 });
+      expect(computeLine(cola, true)).toMatchObject({ taxable: 2857, igst: 1143, total: 4000 });
     });
 
     it("0% and 0.25% rates", () => {
@@ -179,9 +192,13 @@ describe("computeInvoice", () => {
 });
 
 describe("isGstRate", () => {
-  it("accepts only GST slabs", () => {
-    for (const r of [0, 0.25, 3, 5, 12, 18, 28]) expect(isGstRate(r)).toBe(true);
-    for (const r of [1, 7.5, 40, -5, "5"]) expect(isGstRate(r)).toBe(false);
+  it("accepts only GST slabs (40% and 1.5% from 22.09.2025; 12% and 28% kept for older bills)", () => {
+    for (const r of [0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28, 40]) expect(isGstRate(r)).toBe(true);
+    for (const r of [1, 7.5, 20, -5, "5", "40"]) expect(isGstRate(r)).toBe(false);
+  });
+  it("the common picker list is a subset of the accepted rates", () => {
+    expect([...COMMON_GST_RATES]).toEqual([0, 5, 18, 40]);
+    for (const r of COMMON_GST_RATES) expect(isGstRate(r)).toBe(true);
   });
 });
 
@@ -207,7 +224,7 @@ describe("exclusiveOf", () => {
 describe("inclusiveOfRate", () => {
   it("recovers the entered GST-inclusive price from the rounded exclusive rate", () => {
     for (const price of [650000, 10000, 59900, 99900, 49900, 100, 1]) {
-      for (const gst of [5, 12, 18, 28]) {
+      for (const gst of [1.5, 5, 12, 18, 28, 40]) {
         expect(inclusiveOfRate(exclusiveOf(price, gst, true), gst)).toBe(price);
       }
     }

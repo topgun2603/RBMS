@@ -8,7 +8,7 @@ import { GST_RATES, isValidDate, isValidGstin, normalizeGstin } from "@rbms/gst"
 /** Most paise a single amount may hold (same cap as the purchase and expense schemas). */
 export const MAX_PAISE = 2_000_000_000;
 export const MAX_QTY = 1_000_000;
-/** The slabs GST can have in law (2026). The app's own pickers support GST_RATES; others are reported as unsupported. */
+/** The slabs GST can have in law (2026). Equal to GST_RATES today; one dropped from the app would be reported as unsupported. */
 export const ALLOWED_GST_RATES = [0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28, 40] as const;
 
 export type FlagSeverity = "error" | "warn" | "info";

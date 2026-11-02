@@ -289,7 +289,9 @@ export interface Gstr1Issue {
   detail?: string;
 }
 
-const SLABS = new Set([0, 0.25, 1.5, 3, 5, 6, 7.5, 12, 18, 28]);
+// Every rate the app bills at (GST_RATES of @rbms/gst, 40% from 22.09.2025 included) plus 6 and 7.5, which the portal
+// also accepts (NIC_GST_RATES in packages/einvoice).
+const SLABS = new Set([0, 0.1, 0.25, 1.5, 3, 5, 6, 7.5, 12, 18, 28, 40]);
 
 export interface ValidateOptions {
   gstin: string | null;

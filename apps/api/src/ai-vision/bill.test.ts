@@ -150,10 +150,11 @@ describe("bill post-processing: lines and items", () => {
     expect(codes(d)).toEqual(expect.arrayContaining(["line_qty_invalid", "amount_invalid", "hsn_invalid", "gst_rate_invalid", "lines_incomplete"]));
   });
 
-  it("knows the 40% slab (law) but reports it as unsupported by the app, and accepts 4-8 digit HSN only", async () => {
-    const d = await processBill(bill({ lines: [line({ gstRate: 40, hsn: "87038010" }), line({ gstRate: 18, hsn: "123456789" })] }), ctx());
-    expect(codes(d)).toContain("gst_rate_unsupported");
-    expect(d.lines[0]!.hsn).toBe("87038010");
+  it("takes the 40% and 1.5% slabs, and accepts 4-8 digit HSN only", async () => {
+    const d = await processBill(bill({ lines: [line({ gstRate: 40, hsn: "87038010" }), line({ gstRate: 18, hsn: "123456789" }), line({ gstRate: 1.5, hsn: "7102" })] }), ctx());
+    expect(codes(d)).not.toContain("gst_rate_unsupported");
+    expect(d.lines[0]).toMatchObject({ gstRate: 40, hsn: "87038010" });
+    expect(d.lines[2]!.gstRate).toBe(1.5);
     expect(d.lines[1]!.hsn).toBeNull();
   });
 

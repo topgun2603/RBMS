@@ -81,7 +81,7 @@ export function GstRateSelect({
   "aria-label"?: string;
 }) {
   const rates: number[] = [...PRODUCT_GST_RATES];
-  // Keep a legacy rate (e.g. 3% gold) selectable when a product already has it.
+  // Keep another rate (e.g. 3% gold, an old 12%) selectable when a product already has it.
   if (value && !rates.includes(Number(value))) rates.push(Number(value));
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>

@@ -1692,6 +1692,9 @@ importers:
       '@rbms/db':
         specifier: workspace:*
         version: link:../db
+      '@rbms/gst':
+        specifier: workspace:*
+        version: link:../gst
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(@opentelemetry/api@1.10.0)(postgres@3.4.9)

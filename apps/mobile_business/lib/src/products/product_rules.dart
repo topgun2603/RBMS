@@ -11,8 +11,15 @@ abstract final class CatalogKeys {
   static const adjust = 'inventory.adjust';
 }
 
-/// GST rates the web picker offers (the server also accepts 0.25 and 3; a product that has one keeps it).
-const gstRates = <double>[0, 5, 12, 18, 28];
+/// GST rates the web picker offers (COMMON_GST_RATES of packages/gst/src/rates.ts: 5 / 18 / 40 from 22 Sep 2025).
+/// The server accepts every rate in GST_RATES; a product that already has another one keeps it.
+const gstRates = <double>[0, 5, 18, 40];
+
+/// The picker's options: [gstRates] plus [current] when the product already has a rate outside them.
+List<double> gstRateOptions(double current) => gstRates.contains(current) ? gstRates : ([...gstRates, current]..sort());
+
+/// "5%", "0.25%", "1.5%".
+String gstRateLabel(double r) => r == r.roundToDouble() ? '${r.toInt()}%' : '$r%';
 
 /// Unit suggestions from the web product form.
 const unitSuggestions = ['pcs', 'nos', 'pair', 'set', 'box', 'pack', 'kg', 'g', 'm', 'l', 'ml', 'dozen'];

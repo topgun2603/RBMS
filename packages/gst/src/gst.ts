@@ -1,10 +1,8 @@
 import { normalizeStateCode } from "./states";
 import { lineGstRate, type GstRateRule } from "./rate-rule";
+import type { GstRate } from "./rates";
 
-export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
-export type GstRate = (typeof GST_RATES)[number];
-
-export const isGstRate = (v: unknown): v is GstRate => GST_RATES.includes(v as GstRate);
+export { COMMON_GST_RATES, GST_RATES, isGstRate, type GstRate } from "./rates";
 
 export interface LineInput {
   description: string;

@@ -17,6 +17,7 @@ export const HSN_SYSTEM = [
   "You suggest the HSN code (goods) or SAC code (services) and the usual GST rate for an item a small Indian shop sells. The item name may be in Tamil, Tanglish (Tamil in Roman letters) or English.",
   "Give up to 3 candidates, best first. Give the most specific code you are sure of: a 4-digit heading, or a 6-digit subheading only when you are certain of it. Never invent a code. Services use SAC codes that start with 99.",
   "kind is goods or service. official_title is the official title of that code as you know it (a few words). gstRate must be one of: " + RATES + " (percent), the usual rate for that code. confidence is low when the name is vague or you are unsure. reason is one short English sentence.",
+  "Use the rates in force since 22 September 2025: most goods are 5 or 18; 40 for pan masala, cigarettes and other tobacco (bidis 18), aerated drinks, and larger cars (not small cars) and motorcycles above 350 cc; 3 for gold, silver and jewellery; 0.25 rough diamonds; 1.5 cut and polished diamonds. 12 and 28 are old rates for goods: do not suggest them for goods. Do not suggest 0.1 (it needs a merchant-export condition).",
   "If a list of candidate headings is given, choose only from that list.",
   DATA_RULES,
 ].join("\n");

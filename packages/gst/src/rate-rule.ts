@@ -43,7 +43,7 @@
  * (`taxable × 1000 ≤ threshold × qty-in-thousandths`), so a 3-piece line of ₹7,500.00 taxable is exactly at the
  * threshold.
  */
-import type { GstRate } from "./gst";
+import { GST_RATES, type GstRate } from "./rates";
 
 /** A GST rate that depends on the taxable value per unit (piece / pair): `below` up to and including `threshold`, `above` beyond. */
 export interface GstPriceBandRule {
@@ -64,7 +64,7 @@ export type GstRateRule = GstPriceBandRule;
 export const APPAREL_FOOTWEAR_GST_RULE: GstPriceBandRule = Object.freeze({ kind: "price-band", threshold: 250_000, below: 5, above: 18 });
 
 /** True for a well-formed rule (used by API validators; rates must be GST slabs, `below` < `above`). */
-export function isGstRateRule(v: unknown, slabs: readonly number[] = [0, 0.25, 3, 5, 12, 18, 28]): v is GstRateRule {
+export function isGstRateRule(v: unknown, slabs: readonly number[] = GST_RATES): v is GstRateRule {
   if (!v || typeof v !== "object") return false;
   const r = v as Record<string, unknown>;
   return (

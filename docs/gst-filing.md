@@ -150,6 +150,34 @@ CMP-08 the 18th; GSTR-4 30 April. Holiday shifts and extension notifications are
 - Offline-billing numbers: voided numbers of closed blocks and bills cancelled at the counter are counted in Table 13 on
   the day they were released (`pos_number_blocks.voided`), not the day they were reserved.
 - Large months are slow (tens of seconds for ~8,000 bills, same as the existing GSTR-1 download).
-- Cess is not tracked on bills (always 0). ISD, TDS/TCS on the 3B side, GSTR-9/9C, ITC-04 are not built.
+- Cess is not charged on bills (always 0). Since 1 February 2026 compensation cess is nil on every item that still had it
+  (03/2025-Compensation Cess (Rate)), so no current sale needs it; see "GST rates" below. ISD, TDS/TCS on the 3B side,
+  GSTR-9/9C, ITC-04 are not built.
+
+## GST rates (checked 2026-11-02)
+
+One list, `GST_RATES` in `packages/gst/src/rates.ts`: `0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28, 40`. Every validator,
+picker and importer uses it (the Flutter app and `packages/web` keep a short copy, commented). `COMMON_GST_RATES`
+(`0, 5, 18, 40`) is the short picker list for new items; a picker keeps an item's existing other rate selectable.
+
+| Rate | Why it is there | Source |
+|---|---|---|
+| 5, 18, 40 | the slabs from 22.09.2025 (CGST 2.5 / 9 / 20) | 9/2025-Central Tax (Rate), 17.09.2025, schedules I-III |
+| 3, 0.25, 1.5 | gold, silver and jewellery; rough diamonds; cut and polished diamonds | 9/2025-CT(R) schedules IV-VI |
+| 28 | pan masala and tobacco until 31.01.2026 (schedule VII), and older bills | 9/2025-CT(R); omitted by 19/2025-CT(R) from 01.02.2026 |
+| 12 | bills before 22.09.2025 and credit / debit notes against them | 1/2017-CT(R) (superseded) |
+| 0.1 | supplies to merchant exporters | 40/2017-CT(R) |
+
+From 1 February 2026 pan masala, cigarettes and other tobacco are 40% (biris 18%) and their compensation cess is nil
+(19/2025-CT(R) and 03/2025-Compensation Cess (Rate), both 31.12.2025). The central excise duty on tobacco and the
+Health Security se National Security Cess on pan masala are outside GST and not on a shop's GST bill.
+
+The AI HSN helper is told the 2025 rates and not to suggest 12 or 28 for goods.
+
+Not built and to confirm with a CA before anyone relies on it: **RSP-based valuation** (CGST rule 31D, from
+01.02.2026) for pan masala and tobacco. GST on those goods is computed on the declared retail sale price
+(tax = RSP × rate / (100 + rate)), not the price charged. Selling at the MRP with tax-inclusive pricing gives the same
+figure; selling below the MRP does not. Commentary differs on whether a retailer must value this way when the
+manufacturer has already paid on the RSP basis (rule 86B relief), so this was not built.
 - The Tally/Busy/Marg comparison: they also fetch 2A/2B from the portal, file directly, and compute rules 42/43; this
   module is file based and keeps the owner's decisions explicit.

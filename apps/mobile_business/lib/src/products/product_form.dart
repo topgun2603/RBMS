@@ -157,7 +157,7 @@ class _NewProductScreenState extends State<NewProductScreen> {
               child: DropdownButtonFormField<double>(
                 initialValue: _gstRate,
                 decoration: InputDecoration(labelText: l.gstRateLabel),
-                items: [for (final r in gstRates) DropdownMenuItem(value: r, child: Text('${r.toInt()}%'))],
+                items: [for (final r in gstRateOptions(_gstRate)) DropdownMenuItem(value: r, child: Text(gstRateLabel(r)))],
                 onChanged: (v) => setState(() => _gstRate = v ?? 5),
               ),
             ),

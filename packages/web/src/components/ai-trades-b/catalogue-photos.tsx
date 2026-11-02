@@ -85,7 +85,8 @@ interface Row {
 }
 
 const UNITS = ["pcs", "kg", "g", "l", "ml", "m", "box", "pack"];
-const GST_CHOICES = [0, 5, 12, 18, 28];
+// COMMON_GST_RATES of @rbms/gst (this package does not depend on it); a row's other rate stays selectable.
+const GST_CHOICES = [0, 5, 18, 40];
 const NO_CAT = "none";
 const PROBLEM_CODES = ["ignored_instructions", "ai_unreadable_image", "ai_failed", "ai_off", "ai_feature_off", "ai_credits_exhausted", "ai_disabled", "ai_unavailable", "ai_not_available"];
 

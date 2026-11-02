@@ -403,6 +403,15 @@ describe("GSTR-1 extra tables", () => {
     expect(codes).toContain("tax_mismatch");
     expect(validateGstr1([], { gstin: SELLER, range, config: cfg() }).map((i) => i.code)).toEqual(["no_documents"]);
   });
+  it("takes 40% and 1.5% as normal rates (GST 2.0), and still warns on a rate that is not a slab", () => {
+    const docs = [
+      sale("a", "INV/1", "2026-10-02", [line(100000, 40)]),
+      sale("b", "INV/2", "2026-10-02", [line(100000, 1.5)]),
+      sale("c", "INV/3", "2026-10-02", [line(100000, 20)]),
+    ];
+    const unusual = validateGstr1(docs, { gstin: SELLER, range, config: cfg() }).filter((i) => i.code === "rate_unusual");
+    expect(unusual.map((i) => i.detail)).toEqual(["20%"]);
+  });
 });
 
 describe("composition", () => {

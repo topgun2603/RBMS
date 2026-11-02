@@ -19,8 +19,8 @@ export type Channel = (typeof CHANNELS)[number];
 /** The channels the editor offers as checkboxes (others are kept as they are). */
 export const EDITABLE_CHANNELS = ["store", "billing"] as const satisfies readonly Channel[];
 
-/** GST slabs offered for products. */
-export const PRODUCT_GST_RATES = [0, 5, 12, 18, 28] as const;
+/** GST slabs offered for products (a product's other existing rate stays selectable). */
+export { COMMON_GST_RATES as PRODUCT_GST_RATES } from "@rbms/gst";
 
 export interface Seo {
   title?: string;

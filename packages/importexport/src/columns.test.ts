@@ -48,10 +48,16 @@ describe("parseGstRate", () => {
     expect(parseGstRate("0.18")).toBe(18);
     expect(parseGstRate("0.05")).toBe(5);
     expect(parseGstRate("0.28")).toBe(28);
+    // 40% and 1.5% (from 22.09.2025), 0.1% (merchant exporters); a 40% Excel cell is 0.4.
+    expect(parseGstRate("40%")).toBe(40);
+    expect(parseGstRate("0.4")).toBe(40);
+    expect(parseGstRate("1.5")).toBe(1.5);
+    expect(parseGstRate("0.015")).toBe(1.5);
+    expect(parseGstRate("0.1")).toBe(0.1);
   });
 
   it("rejects non-slab rates", () => {
-    expect(err(() => parseGstRate("15"))).toBe("15% is not a GST rate (use 0, 0.25, 3, 5, 12, 18 or 28)");
+    expect(err(() => parseGstRate("15"))).toBe("15% is not a GST rate (use 0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28 or 40)");
     expect(err(() => parseGstRate("high"))).toMatch(/not a GST rate/);
   });
 });

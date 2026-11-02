@@ -28,11 +28,12 @@ import {
 } from "@rbms/ui";
 import { ConfirmDialog, describeError, useI18n } from "@rbms/web";
 import { MoneyInput } from "../money-input";
-import { money, rupeesToPaise, todayIST } from "../../lib/format";
+import { GST_RATES, money, rupeesToPaise, todayIST } from "../../lib/format";
 import { useHasPermission } from "../../lib/access";
 import { CHARGE_KINDS, PURCHASES_PERMISSION, useItemWeights, useLandedVoucherAction, useLandedVouchers, type ChargeBasis, type ChargeInput, type ChargeKind, type PurchaseCharge } from "../../lib/valuation";
 
-const GST_CHOICES = ["0", "5", "12", "18", "28"];
+// A supplier's freight / handling bill can carry any rate, old or new.
+const GST_CHOICES = GST_RATES.map(String);
 
 export interface ChargeDraft {
   key: string;

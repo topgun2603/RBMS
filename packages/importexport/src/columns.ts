@@ -3,6 +3,7 @@
  * (₹ amounts → paise, GST rates, yes/no, mobile numbers, state names/codes, GSTIN).
  * All pure; a parser throws `ParseError` with a user-facing message.
  */
+import { GST_RATES, isGstRate, type GstRate } from "@rbms/gst";
 
 export class ParseError extends Error {
   constructor(message: string) {
@@ -83,18 +84,19 @@ export function parseDecimal(value: string, opts: { decimals?: number; min?: num
   return Number(n.toFixed(decimals));
 }
 
-export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
-export type GstRate = (typeof GST_RATES)[number];
+export { GST_RATES, type GstRate } from "@rbms/gst";
+
+const RATE_HELP = `${GST_RATES.slice(0, -1).join(", ")} or ${GST_RATES[GST_RATES.length - 1]}`;
 
 /** "18", "18%", "GST 18", "0.25", "nil", "exempt", and fractions written by Excel percent cells ("0.18") → 18. */
 export function parseGstRate(value: string): GstRate {
   const s = value.trim().toLowerCase().replace(/^(gst|igst)\s*[@:-]?\s*/, "").replace(/\s*%$/, "").trim();
   if (["nil", "exempt", "exempted", "none", "zero", "-"].includes(s)) return 0;
-  if (!/^\d+(\.\d+)?$/.test(s)) fail(`"${value}" is not a GST rate (use 0, 0.25, 3, 5, 12, 18 or 28)`);
+  if (!/^\d+(\.\d+)?$/.test(s)) fail(`"${value}" is not a GST rate (use ${RATE_HELP})`);
   let n = Number(s);
-  // A percent-formatted Excel cell arrives as a fraction: 0.18 → 18 (but 0.25 is a real rate).
-  if (n > 0 && n < 1 && n !== 0.25) n = Math.round(n * 10_000) / 100;
-  if (!GST_RATES.includes(n as GstRate)) fail(`${n}% is not a GST rate (use 0, 0.25, 3, 5, 12, 18 or 28)`);
+  // A percent-formatted Excel cell arrives as a fraction: 0.18 → 18, 0.4 → 40 (but 0.1 and 0.25 are real rates).
+  if (n > 0 && n < 1 && !isGstRate(n)) n = Math.round(n * 10_000) / 100;
+  if (!isGstRate(n)) fail(`${n}% is not a GST rate (use ${RATE_HELP})`);
   return n as GstRate;
 }
 
@@ -296,7 +298,7 @@ export const col = {
     return def(key, label, (v) => parseDecimal(v, { decimals: 0, min, max }), rest);
   },
   bool: (key: string, label: string, opts: Opts<boolean> = {}) => def(key, label, parseBool, { help: "yes or no", ...opts }),
-  gstRate: (key: string, label: string, opts: Opts<GstRate> = {}) => def(key, label, parseGstRate, { help: "0, 0.25, 3, 5, 12, 18 or 28", ...opts }),
+  gstRate: (key: string, label: string, opts: Opts<GstRate> = {}) => def(key, label, parseGstRate, { help: RATE_HELP, ...opts }),
   phone: (key: string, label: string, opts: Opts<string> = {}) => def(key, label, parsePhone, { help: "10-digit mobile number", ...opts }),
   email: (key: string, label: string, opts: Opts<string> = {}) => def(key, label, parseEmail, opts),
   state: (key: string, label: string, opts: Opts<string> = {}) => def(key, label, parseState, { help: "State name or GST code, e.g. Tamil Nadu or 33", ...opts }),

@@ -13,6 +13,7 @@
   "dependencies": {
     "@rbms/core": "workspace:*",
     "@rbms/db": "workspace:*",
+    "@rbms/gst": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "exceljs": "^4.4.0",
     "zod": "^3.25.0"

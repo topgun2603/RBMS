@@ -4,6 +4,7 @@
  * implements. Historical bills are stored as `imported` documents: no stock change, no messages, no e-invoice,
  * numbered with their original number outside the shop's own series.
  */
+import { GST_RATES } from "@rbms/gst";
 import { col, parseDecimal, parseMoney, stateName, type GstRate, type ImportColumn } from "./columns";
 import type { RowValidator } from "./engine";
 import type { CommitOptions, CommitResult, CommitRow, ImporterDef, ImportRecordRef } from "./registry";
@@ -252,11 +253,9 @@ export interface HistoricalBill {
   warnings: string[];
 }
 
-const GST_RATE_LIST = [0, 0.25, 3, 5, 12, 18, 28];
-
 function snapRate(pct: number): number {
-  let best = GST_RATE_LIST[0]!;
-  for (const r of GST_RATE_LIST) if (Math.abs(r - pct) < Math.abs(best - pct)) best = r;
+  let best: number = GST_RATES[0];
+  for (const r of GST_RATES) if (Math.abs(r - pct) < Math.abs(best - pct)) best = r;
   return Math.abs(best - pct) <= 0.6 ? best : Math.round(pct * 100) / 100;
 }
 

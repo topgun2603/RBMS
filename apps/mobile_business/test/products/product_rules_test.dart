@@ -2,6 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:srikit_business/src/products/product_rules.dart';
 
 void main() {
+  group('GST rate picker (COMMON_GST_RATES, packages/gst/src/rates.ts)', () {
+    test('offers 0 / 5 / 18 / 40 and keeps another existing rate', () {
+      expect(gstRateOptions(5), [0, 5, 18, 40]);
+      expect(gstRateOptions(3), [0, 3, 5, 18, 40]);
+    });
+
+    test('labels fractional rates', () {
+      expect(gstRateLabel(40), '40%');
+      expect(gstRateLabel(0.25), '0.25%');
+      expect(gstRateLabel(1.5), '1.5%');
+    });
+  });
+
   group('stock adjust validation (inventory service.ts adjustSchema)', () {
     test('quantities: up to 3 decimals for any unit, never negative', () {
       expect(validateAdjust(AdjustMode.add, '2.5'), isNull);

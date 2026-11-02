@@ -104,7 +104,7 @@ describe("import flow", () => {
     expect(p.rows[0].data).toMatchObject({ name: "Silk Saree", price: 250000, gst: 5, tax_inclusive: true, opening_stock: 3 });
     expect(p.rows[2].row).toBe(4);
     expect(p.rows[2].errors).toEqual([
-      "GST %: 15% is not a GST rate (use 0, 0.25, 3, 5, 12, 18 or 28)",
+      "GST %: 15% is not a GST rate (use 0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28 or 40)",
       'Price: "abc" is not an amount',
       'Tax inclusive: "maybe" should be yes or no',
     ]);

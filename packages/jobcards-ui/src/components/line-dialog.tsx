@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@rbms/ui";
+import { COMMON_GST_RATES } from "@rbms/gst";
 import { describeError, useFeature, useI18n, usePermission } from "@rbms/web";
 import { money, paiseToInput, rupeesToPaise } from "../lib/format";
 import type { LineBody } from "../lib/queries";
@@ -35,7 +36,7 @@ import { InlineError } from "./bits";
 import { ItemPicker } from "./pickers";
 import { SerialPicker } from "./serial-picker";
 
-const GST_RATES = [0, 5, 12, 18, 28] as const;
+const GST_RATES = COMMON_GST_RATES;
 
 /**
  * Adds or edits a part / labour line. Parts can come from stock (the item's name, rate, GST and HSN fill in) or be

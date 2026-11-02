@@ -71,7 +71,7 @@ describe("row parsing and validation messages", () => {
     expect(rows[0]!.errors).toEqual([
       "Name is required",
       "HSN: HSN/SAC must be 4, 6 or 8 digits",
-      "GST %: 15% is not a GST rate (use 0, 0.25, 3, 5, 12, 18 or 28)",
+      "GST %: 15% is not a GST rate (use 0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28 or 40)",
       'Price: "abc" is not an amount',
       'Tax inclusive: "maybe" should be yes or no',
       'Opening stock: "1.23456" has more than 3 decimal places',

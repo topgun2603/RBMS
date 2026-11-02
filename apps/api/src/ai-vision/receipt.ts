@@ -79,7 +79,7 @@ export function processReceipt(raw: ReceiptRaw, ctx: ReceiptContext): ReceiptDra
   // A printed GST amount with no usable rate: work out the nearest slab if it is unambiguous.
   if (gstRate === null && gstAmount !== null && amount !== null && amount > gstAmount) {
     const implied = (gstAmount / (amount - gstAmount)) * 100;
-    const slab = ([0.25, 3, 5, 12, 18, 28] as const).find((r) => Math.abs(r - implied) < 0.35);
+    const slab = ([0.25, 1.5, 3, 5, 12, 18, 28, 40] as const).find((r) => Math.abs(r - implied) < 0.35);
     if (slab !== undefined) {
       gstRate = slab;
       flags.add("gst_rate_inferred", "info", { field: "gstRate", params: { value: slab } });

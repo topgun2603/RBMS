@@ -9,6 +9,7 @@
  * Prime and ERP 9 differ we accept both (LEDGERENTRIES.LIST / INVENTORYENTRIES.LIST). Not verified against a live
  * Tally in this repo: see docs/importing.md.
  */
+import { GST_RATES } from "@rbms/gst";
 import { stateName } from "./columns";
 import { HISTORY_PURCHASES_KEY, HISTORY_SALES_KEY, MIGRATE_PARTIES_KEY, type BillKind } from "./history";
 import { childText, decodeXmlBytes, deepText, escapeXml, findAll, kids, parseXml, type XmlNode } from "./xml";
@@ -125,8 +126,7 @@ const BILL_HEADERS = [
   "Notes",
 ];
 
-const GST_SLABS = [0, 0.25, 3, 5, 12, 18, 28];
-const snap = (p: number) => GST_SLABS.reduce((b, r) => (Math.abs(r - p) < Math.abs(b - p) ? r : b), 0);
+const snap = (p: number) => GST_RATES.reduce<number>((b, r) => (Math.abs(r - p) < Math.abs(b - p) ? r : b), 0);
 
 export function tallyVouchersTable(root: XmlNode, kind: BillKind): Table {
   const data: string[][] = [];
