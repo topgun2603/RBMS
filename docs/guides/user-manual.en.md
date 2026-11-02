@@ -566,7 +566,14 @@ The first tab can also show the whole shop's day, across all counters.
 
 ## If the internet goes down
 
-The counter keeps the items it has saved on the device, so you can still search them. But a bill is saved on the server, so **a sale cannot be completed while you are offline**. The cart is kept on the device. When the connection returns, tap **Pay** again. The top bar shows **Online** or **Offline**.
+**Keep billing.** A red bar says you are offline and shows how old the prices are. Scanning and search work from the items saved on the device.
+
+- **Pay** with cash, UPI (confirm "received" by hand) or card (type the reference). The credit book and loyalty points are hidden until the connection returns, and a cart with a weigh ticket can't be billed offline.
+- The slip prints from the device. While online, each counter keeps a block of real bill numbers ready, so an offline slip normally carries the final bill number. If the block runs out, the slip shows a temporary number such as `OFF-A1B2-0007`, and the real number is given when the bill is sent. Reprint the slip from **Pending bills** in that case.
+- **When the connection returns**, waiting bills are sent by themselves, oldest first. You can also tap **Sync now**.
+- **Pending bills** (in the bar, with a count) lists bills waiting to be sent or needing a look. From there you can retry, cancel a bill that hasn't been sent, or reprint its slip.
+- Returns against a bill already on the server need the connection.
+- Don't close the tab or lock the counter while bills are waiting; RBMS asks before you do.
 
 ## POS terminals: a counter on its own device
 
@@ -1361,7 +1368,7 @@ To go back to normal sign-in, tap **Sign in as owner or staff instead**.
 | Barcode scans but the item is not found | Add the barcode to the item, or use the on-the-spot **Add to catalogue** window. |
 | The camera does not scan | Allow camera access for the site in the browser settings, or use a scanner. |
 | Receipt does not print | Check the printer in the browser's print window. Terminals have a printer width and **Print automatically** setting. |
-| Sale cannot be completed offline | Billing is saved on the server. Keep the cart and complete the sale when online. |
+| A bill made offline has not reached the server | Open **Pending bills** and tap **Retry**, or **Sync now** once the connection is back. Keep the tab open until the count is zero. |
 | Weighing scale will not connect | Use Chrome or Edge on a computer, check the cable and the speed, or type the weight by hand. |
 
 ## Stock and reports
@@ -1384,7 +1391,7 @@ Yes. Each counter has its own till, and each cashier signs in with their own PIN
 Yes, at any time, with the **EN** button. Tamil is available across the apps and your store.
 
 **Does it work without internet?**
-Searching your saved items works offline at the counter, but saving a sale needs the connection.
+Yes, at the web counter. Bills made offline are kept on the device and sent when the connection returns. The Business mobile app still needs the connection to complete a sale.
 
 **Can I use my own web address for the store?**
 Yes. See Domain in chapter 9.

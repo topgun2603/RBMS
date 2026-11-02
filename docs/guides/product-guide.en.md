@@ -167,7 +167,7 @@ Every terminal has its own **till session**. Open the day with your cash, take c
 The counter keeps a copy of your item list on the device, so searching and scanning stay quick. When prices or items change, only the changes are fetched.
 
 ::: callout
-**Good to know:** the item list is kept on the device, but billing itself needs an internet connection. Offline billing is not yet part of RBMS.
+**Good to know:** if the internet drops, the counter keeps billing. Bills are saved on the device with a proper bill number and sent to the server by themselves when the connection returns. Cash, UPI and card work offline; the credit book and loyalty points wait for the connection.
 :::
 
 # Weighing station
