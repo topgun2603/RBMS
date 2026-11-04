@@ -30,3 +30,5 @@ tools/print-bridge/config.json
 
 # "Try it on" browser assets (copied / downloaded by apps/store/scripts/tryon-assets.mjs)
 apps/store/public/tryon/
+
+tools/qa/out/
