@@ -149,7 +149,7 @@ has it; no `config.feature`, so the page works on every plan and app):
   end and returns its `authUrl`.
 - `GET /invoices` → `{ items: PlatformInvoice[] }`.
 - `GET /invoices/:id.pdf` → the PDF (A4 tax invoice; "Bill of supply" while `PLATFORM_GSTIN` is unset).
-- `PlatformInvoice`: `{ id, number ("SR/2026-27/00001"), fy, seq, tenantId, subscriptionId, planId, interval,
+- `PlatformInvoice`: `{ id, number ("RB/2026-27/00001"), fy, seq, tenantId, subscriptionId, planId, interval,
   periodStart, periodEnd, date (IST YYYY-MM-DD), placeOfSupply, gstRate, subtotalPaise, cgstPaise, sgstPaise,
   igstPaise, totalPaise, status ("paid" | "void"), provider, providerPaymentId, buyer { legalName, gstin, stateCode,
   address }, seller {…}, creditPaise, creditLabel, refundDuePaise, lines: [{ kind: "plan" | "credit", description,
@@ -233,7 +233,7 @@ Env (apps/api):
   With none, development uses the mock and production answers 503 on checkout.
 - `PLATFORM_LEGAL_NAME` (default "RBMS"), `PLATFORM_GSTIN`, `PLATFORM_STATE_CODE` (default 33) and
   `PLATFORM_ADDRESS`.
-- `PLATFORM_INVOICE_PREFIX` (default SR).
+- `PLATFORM_INVOICE_PREFIX` (default RB).
 - `WWW_PUBLIC_URL` (default http://localhost:3005).
 - `APP_PUBLIC_URL` (default `BL=http://{slug}.localhost:3001,EC=http://{slug}.localhost:3002`).
 

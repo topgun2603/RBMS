@@ -125,7 +125,7 @@ export const platformInvoices = pgTable(
   "platform_invoices",
   {
     id: pk(),
-    /** "SR/2026-27/00001": one series per financial year. */
+    /** "RB/2026-27/00001": one series per financial year. */
     number: text("number").notNull(),
     fy: text("fy").notNull(),
     seq: integer("seq").notNull(),

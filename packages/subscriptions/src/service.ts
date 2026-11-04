@@ -365,7 +365,7 @@ export class SubscriptionsService {
     this.freePlanId = deps.config.freePlanId ?? "free";
     this.trialDays = deps.config.trialDays ?? TRIAL_DAYS;
     this.graceDays = deps.config.graceDays ?? GRACE_DAYS;
-    this.prefix = deps.config.invoicePrefix ?? "SR";
+    this.prefix = deps.config.invoicePrefix ?? "RB";
   }
 
   get allowMock() {
@@ -1005,7 +1005,7 @@ export class SubscriptionsService {
     return this.deps.documents.platformInvoicePdf({ invoice, planName, sac: PLATFORM_SAC, lines: this.invoiceView(invoice, planName).lines });
   }
 
-  /** Next "SR/2026-27/00001" number (atomic per financial year). */
+  /** Next "RB/2026-27/00001" number (atomic per financial year). */
   private async nextNumber(tx: Pick<Db, "insert">, date: string) {
     const fy = financialYearLong(date);
     const [row] = await tx

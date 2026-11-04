@@ -63,8 +63,8 @@ describe("invoice numbering", () => {
     expect(financialYearLong("2027-03-31")).toBe("2026-27");
     expect(financialYearLong("2027-04-01")).toBe("2027-28");
     expect(financialYearLong("2099-05-01")).toBe("2099-00");
-    const n = platformInvoiceNumber("SR", "2026-27", 1);
-    expect(n).toBe("SR/2026-27/00001");
+    const n = platformInvoiceNumber("RB", "2026-27", 1);
+    expect(n).toBe("RB/2026-27/00001");
     expect(n.length).toBeLessThanOrEqual(16);
   });
   it("dates invoices in IST", () => {

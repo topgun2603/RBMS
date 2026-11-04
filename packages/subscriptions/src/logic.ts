@@ -87,7 +87,7 @@ export function financialYearLong(date: string): string {
   return `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
 }
 
-/** "SR", "2026-27", 1 → "SR/2026-27/00001" (16 characters, within the GST limit). */
+/** "RB", "2026-27", 1 → "RB/2026-27/00001" (16 characters, within the GST limit). */
 export const platformInvoiceNumber = (prefix: string, fy: string, seq: number) => `${prefix}/${fy}/${String(seq).padStart(5, "0")}`;
 
 /** "YYYY-MM-DD" in IST. */

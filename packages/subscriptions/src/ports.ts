@@ -134,7 +134,7 @@ export const noopLogger: LoggerPort = { info() {}, warn() {}, error() {} };
 export interface SubscriptionsConfig {
   /** The platform as the seller on its invoices. */
   seller: InvoiceParty & { stateCode: string };
-  /** Invoice number prefix, default "SR" (SR/2026-27/00001). */
+  /** Invoice number prefix, default "RB" (RB/2026-27/00001). */
   invoicePrefix?: string;
   /** Trial length, default 14 days. */
   trialDays?: number;

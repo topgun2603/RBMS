@@ -106,11 +106,11 @@ describe("platform invoice list query", () => {
   });
 
   it("filters dates, status and shop; searches number, buyer and shops", () => {
-    const q = invWhere({ status: "void", tenantId: SHOP, from: "2026-10-01", to: "2026-10-31", q: "SR/2026" }, [SHOP]);
+    const q = invWhere({ status: "void", tenantId: SHOP, from: "2026-10-01", to: "2026-10-31", q: "RB/2026" }, [SHOP]);
     expect(q.sql).toContain('"platform_invoices"."date" >= $');
     expect(q.sql).toContain('"platform_invoices"."date" <= $');
     expect(q.sql).toContain(`"platform_invoices"."buyer"->>'legalName' ilike`);
-    expect(q.params).toEqual(expect.arrayContaining(["void", SHOP, "2026-10-01", "2026-10-31", "%SR/2026%"]));
+    expect(q.params).toEqual(expect.arrayContaining(["void", SHOP, "2026-10-01", "2026-10-31", "%RB/2026%"]));
     expect(invWhere({ status: "paid", q: "x" }, [], "status").params).not.toContain("paid");
   });
 

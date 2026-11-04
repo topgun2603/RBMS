@@ -11,7 +11,8 @@
 import { gstinCheckChar, todayIST } from "@rbms/gst";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:4000";
-const OWNER_EMAIL = process.env.OWNER_EMAIL ?? "gowtham_kumar@srirealtime.com";
+const OWNER_EMAIL = process.env.OWNER_EMAIL;
+if (!OWNER_EMAIL) throw new Error("Set OWNER_EMAIL to the shop owner's sign-in email");
 const OTP = process.env.OTP ?? "123456";
 
 let token = "";

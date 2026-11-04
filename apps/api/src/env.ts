@@ -107,7 +107,7 @@ export const envSchema = z.object({
   PLATFORM_STATE_CODE: z.string().regex(/^\d{2}$/, "2-digit GST state code").default("33"),
   PLATFORM_ADDRESS: optionalString(),
   /** Platform invoice number prefix: SR/2026-27/00001. */
-  PLATFORM_INVOICE_PREFIX: z.string().regex(/^[A-Z]{1,4}$/, "1–4 capital letters").default("SR"),
+  PLATFORM_INVOICE_PREFIX: z.string().regex(/^[A-Z]{1,4}$/, "1–4 capital letters").default("RB"),
   /** The public landing site (sign-up, pricing). */
   WWW_PUBLIC_URL: z.string().url().default("http://localhost:3005"),
   /** Where each app opens a shop ({slug} = shop subdomain): sign-up's `appUrl` and handoff links. APP=template pairs. */

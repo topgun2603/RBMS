@@ -169,7 +169,7 @@ await step("checkout during the trial → mock mandate URL → authorise → act
 await step("mock charge → paid platform invoice, intra-state GST (CGST + SGST), PDF", async () => {
   const r = ok(await call("POST", sub("/mock/charge"), { subscriptionId: ctx.sub1 }, { as: null, tenant: null }), "charge");
   const inv = r.invoice;
-  expect(/^SR\/\d{4}-\d{2}\/\d{5}$/.test(inv.number), `number ${inv.number}`);
+  expect(/^RB\/\d{4}-\d{2}\/\d{5}$/.test(inv.number), `number ${inv.number}`);
   eq(inv.status, "paid", "status");
   eq(inv.totalPaise, charge(PRO_MONTHLY), "total");
   eq(inv.subtotalPaise, PRO_MONTHLY, "subtotal");

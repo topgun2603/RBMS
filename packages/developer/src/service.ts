@@ -633,7 +633,7 @@ export class DeveloperService implements ApiKeyStore {
     const ep = await this.endpointRow(tenantId, endpointId);
     const tenant = await this.deps.tenants.byId(tenantId);
     const now = this.now();
-    const payload = buildPayload(newId(), PING_EVENT, tenant?.slug ?? "", { message: "Test webhook from Srikit", endpointId: ep.id }, now);
+    const payload = buildPayload(newId(), PING_EVENT, tenant?.slug ?? "", { message: "Test webhook from RBMS", endpointId: ep.id }, now);
     const [d] = await this.db
       .insert(webhookDeliveries)
       .values({ tenantId, endpointId: ep.id, eventId: payload.id, type: PING_EVENT, payload, nextAttemptAt: now })

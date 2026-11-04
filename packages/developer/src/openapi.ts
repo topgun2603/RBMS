@@ -137,7 +137,7 @@ export function buildOpenApi(routes: readonly CollectedRoute[], opts: OpenApiOpt
   return {
     openapi: "3.1.0",
     info: {
-      title: opts.title ?? "Srikit API",
+      title: opts.title ?? "RBMS API",
       version: opts.version ?? "1.0.0",
       description:
         opts.description ??

@@ -3,7 +3,7 @@ import { platformInvoiceDoc, renderPlatformInvoice, type PlatformInvoiceDocData 
 import { DEFAULT_BRANDING } from "./service";
 
 const base: PlatformInvoiceDocData = {
-  number: "SR/2026-27/00001",
+  number: "RB/2026-27/00001",
   date: "2026-10-16",
   status: "paid",
   seller: { legalName: "RBMS", gstin: "33AABFR1234K1ZI", stateCode: "33", address: "Coimbatore" },
@@ -40,7 +40,7 @@ describe("platform invoice", () => {
   });
   it("renders a tax invoice with both parties", () => {
     const html = renderPlatformInvoice(base, { locale: "en", branding: { ...DEFAULT_BRANDING, appName: "RBMS" } });
-    expect(html).toContain("SR/2026-27/00001");
+    expect(html).toContain("RB/2026-27/00001");
     expect(html).toContain("Anbu Stores");
     expect(html).toContain("33AABFR1234K1ZI");
     expect(html).toContain("998314");
