@@ -49,7 +49,7 @@ export function HeroBackdrop() {
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
       <div className="bg-grid absolute inset-0 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_30%,black,transparent)]" />
       <motion.div
-        className="absolute -top-40 -left-32 size-[34rem] rounded-full bg-primary/20 blur-3xl"
+        className="absolute -top-40 -left-32 size-[34rem] rounded-full bg-marigold/20 blur-3xl"
         animate={reduced ? undefined : { x: [0, 60, 0], y: [0, 40, 0] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -59,7 +59,7 @@ export function HeroBackdrop() {
         transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-0 left-1/3 size-[22rem] rounded-full bg-[oklch(0.65_0.18_340/0.14)] blur-3xl"
+        className="absolute bottom-0 left-1/3 size-[22rem] rounded-full bg-primary/10 blur-3xl"
         animate={reduced ? undefined : { x: [0, 40, -20, 0] }}
         transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
       />

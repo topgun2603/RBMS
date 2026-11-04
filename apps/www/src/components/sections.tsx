@@ -17,10 +17,7 @@ export function Container({ className, ...props }: React.ComponentProps<"div">) 
 
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={cn("inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1 text-xs font-semibold text-primary backdrop-blur", className)}>
-      <span className="size-1.5 rounded-full bg-marigold" aria-hidden="true" />
-      {children}
-    </p>
+    <p className={cn("font-mono text-xs font-semibold tracking-wide text-primary", className)}>{children}</p>
   );
 }
 
@@ -155,7 +152,7 @@ export function FaqSection({ t, items, title }: { t: Translator; items: FaqItem[
 export function CtaBand({ t, href = "/signup" }: { t: Translator; href?: string }) {
   return (
     <section className="px-4 pb-[var(--www-section)] sm:px-6">
-      <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-[linear-gradient(120deg,oklch(0.42_0.2_272),oklch(0.5_0.2_300)_55%,oklch(0.68_0.17_45))] px-6 py-14 text-center text-white shadow-www sm:px-12 sm:py-20">
+      <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-kungumam px-6 py-14 text-center text-white shadow-www sm:px-12 sm:py-20">
         <div className="bg-grid pointer-events-none absolute inset-0 opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" aria-hidden="true" />
         <div className="relative mx-auto max-w-2xl space-y-5">
           <h2 className="text-h2 text-balance">{t("cta.title")}</h2>

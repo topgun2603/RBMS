@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
+import { Big_Shoulders, Catamaran, JetBrains_Mono, Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@rbms/ui/components/sonner";
 import { getT } from "@/lib/i18n-server";
 import { SITE_URL } from "@/lib/site";
@@ -11,9 +11,14 @@ import { MfaDialog } from "@/components/mfa-dialog";
 import { JsonLd } from "@/components/json-ld";
 import "./globals.css";
 
-/* Body: Plus Jakarta Sans; Tamil falls through to Noto Sans Tamil in the same stack; display: Bricolage Grotesque. */
+/*
+ * Body: Plus Jakarta Sans; Tamil falls through to Noto Sans Tamil in the same stack. Posters (signboard type): Big Shoulders,
+ * with Catamaran for its heavy Tamil. Bills and figures: JetBrains Mono.
+ */
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
-const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display-face", display: "swap" });
+const poster = Big_Shoulders({ subsets: ["latin"], variable: "--font-poster-face", display: "swap", weight: ["700", "800", "900"], adjustFontFallback: false });
+const posterTamil = Catamaran({ subsets: ["tamil"], variable: "--font-poster-tamil", display: "swap", weight: ["700", "800", "900"] });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono-face", display: "swap", weight: ["400", "500", "700"] });
 const notoTamil = Noto_Sans_Tamil({ subsets: ["tamil"], variable: "--font-noto-tamil", display: "swap", weight: ["400", "500", "600", "700"] });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -32,7 +37,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fdfcfa" },
+    { media: "(prefers-color-scheme: light)", color: "#fdfbf5" },
     { media: "(prefers-color-scheme: dark)", color: "#16130f" },
   ],
 };
@@ -41,7 +46,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const { locale, t } = await getT();
   return (
     // suppressHydrationWarning: the theme script may add `dark` to <html> before React hydrates.
-    <html lang={locale} className={`${jakarta.variable} ${notoTamil.variable} ${display.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${jakarta.variable} ${notoTamil.variable} ${poster.variable} ${posterTamil.variable} ${mono.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh overflow-x-clip bg-background text-foreground antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <JsonLd data={organizationJsonLd()} />

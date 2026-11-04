@@ -1,7 +1,7 @@
 import * as React from "react";
 import {
   ArmchairIcon, CakeIcon, CoffeeIcon, CookingPotIcon, DumbbellIcon, FishIcon, FlameIcon, FlowerIcon, FootprintsIcon, GemIcon, GiftIcon, GlassesIcon,
-  HammerIcon, HeadphonesIcon, LeafIcon, PawPrintIcon, PillIcon, PuzzleIcon, ScissorsIcon, ShirtIcon, ShoppingBasketIcon, SmartphoneIcon, SparklesIcon,
+  HammerIcon, HeadphonesIcon, LeafIcon, PawPrintIcon, PillIcon, PuzzleIcon, ScissorsIcon, ShirtIcon, ShoppingBasketIcon, SparklesIcon,
   TrophyIcon, UtensilsCrossedIcon, WrenchIcon, BookOpenIcon, CpuIcon, FlaskConicalIcon, GraduationCapIcon,
   BoneIcon, CameraIcon, CarIcon, ChefHatIcon, LayersIcon, MusicIcon, PaintRollerIcon, PartyPopperIcon, PrinterIcon, ReceiptIcon, SnowflakeIcon, StoreIcon, WashingMachineIcon, ZapIcon, LayoutGridIcon, BriefcaseIcon, BikeIcon, SproutIcon, CogIcon,
 } from "lucide-react";
@@ -13,11 +13,11 @@ import { demoStoreUrl } from "@/lib/site";
 import { DEMO_SLUG, tradeName, type BusinessType } from "@/lib/trades";
 import { Lift } from "./motion-bits";
 
-const ICONS: Record<BusinessType, React.ComponentType<{ className?: string }>> = {
+export const TRADE_ICONS: Record<BusinessType, React.ComponentType<{ className?: string }>> = {
   grocery: ShoppingBasketIcon, bakery: CakeIcon, fresh: FishIcon, organic: LeafIcon, restaurant: UtensilsCrossedIcon, cloud_kitchen: CookingPotIcon, tea_stall: CoffeeIcon,
   fashion: ShirtIcon, footwear: FootprintsIcon, jewellery: GemIcon, cosmetics: SparklesIcon, home_decor: GiftIcon, furniture: ArmchairIcon, florist_pooja: FlowerIcon, crackers: FlameIcon,
   pharmacy: PillIcon, optical: GlassesIcon, salon: ScissorsIcon, spa: FlaskConicalIcon, gym: DumbbellIcon,
-  hardware: HammerIcon, electronics: CpuIcon, mobile_accessories: HeadphonesIcon, repair: WrenchIcon, stationery: BookOpenIcon, toys: PuzzleIcon, sports: TrophyIcon, pet_shop: PawPrintIcon, tailoring: SmartphoneIcon, school: GraduationCapIcon,
+  hardware: HammerIcon, electronics: CpuIcon, mobile_accessories: HeadphonesIcon, repair: WrenchIcon, stationery: BookOpenIcon, toys: PuzzleIcon, sports: TrophyIcon, pet_shop: PawPrintIcon, tailoring: ScissorsIcon, school: GraduationCapIcon,
   general_shop: StoreIcon, general_counter: ReceiptIcon, general_services: BriefcaseIcon,
   textiles_wholesale: LayersIcon, catering: ChefHatIcon, pet_grooming: BoneIcon, photo_studio: CameraIcon, laundry: WashingMachineIcon, event_decor: PartyPopperIcon, ac_service: SnowflakeIcon,
   print_shop: PrinterIcon, tuition: BookOpenIcon, dance_music: MusicIcon, yoga: LeafIcon, driving_school: CarIcon, paints: PaintRollerIcon, electricals: ZapIcon, tiles_sanitary: LayoutGridIcon,
@@ -30,7 +30,7 @@ export function TradeCards({ ids, t, locale, cols = 4 }: { ids: readonly Busines
   return (
     <RevealGroup className={cn("grid gap-4 sm:grid-cols-2", cols === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
       {ids.map((id, i) => {
-        const Icon = ICONS[id];
+        const Icon = TRADE_ICONS[id];
         const slug = DEMO_SLUG[id];
         const demo = slug ? demoStoreUrl(slug) : null;
         return (

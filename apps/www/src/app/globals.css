@@ -5,27 +5,66 @@
 @source "../../../../packages/ui/src";
 
 /*
- * Marketing-site tokens. The product primary (indigo) comes from @rbms/ui; the site adds a warm marigold
- * accent (kolam / festival colours familiar to Tamil Nadu shops) and a display face.
+ * Marketing-site tokens: the street, not the software catalogue. Thermal-bill paper and ink, kungumam red, turmeric and
+ * peacock from hand-painted Tamil Nadu shop signs. These replace the product's indigo on this site only (the shop apps
+ * keep their own colours and each tenant's branding).
  */
 @layer base {
   :root {
-    --www-font-display: var(--font-display-face), var(--font-noto-tamil, "Noto Sans Tamil"), var(--font-sans);
-    --www-marigold: oklch(0.78 0.16 70);
-    --www-marigold-ink: oklch(0.5 0.13 55);
-    --www-leaf: oklch(0.62 0.14 155);
-    --www-tint: color-mix(in oklch, var(--primary) 6%, var(--background));
-    --www-tint-2: color-mix(in oklch, var(--primary) 12%, var(--background));
-    --www-gradient: linear-gradient(120deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 55%, var(--www-marigold)) 60%, var(--www-marigold) 100%);
-    --www-shadow: 0 1px 2px oklch(0.25 0.02 60 / 0.06), 0 18px 48px -18px oklch(0.3 0.08 272 / 0.35);
-    --www-text-display: clamp(2.2rem, 1.5rem + 3.4vw, 4.25rem);
-    --www-text-h2: clamp(1.6rem, 1.3rem + 1.3vw, 2.5rem);
+    --www-paper: oklch(0.99 0.008 95);
+    --www-ink: oklch(0.2 0.018 55);
+    --www-kungumam: oklch(0.56 0.235 29);
+    --www-turmeric: oklch(0.86 0.18 88);
+    --www-peacock: oklch(0.45 0.115 205);
+
+    --background: var(--www-paper);
+    --foreground: var(--www-ink);
+    --card: oklch(1 0 0);
+    --card-foreground: var(--www-ink);
+    --popover: oklch(1 0 0);
+    --popover-foreground: var(--www-ink);
+    --primary: var(--www-kungumam);
+    --primary-foreground: oklch(0.99 0.005 90);
+    --secondary: oklch(0.95 0.04 92);
+    --secondary-foreground: var(--www-ink);
+    --muted: oklch(0.955 0.03 92);
+    --muted-foreground: oklch(0.42 0.025 60);
+    --accent: oklch(0.93 0.07 92);
+    --accent-foreground: var(--www-ink);
+    --border: oklch(0.88 0.03 90);
+    --input: oklch(0.82 0.03 85);
+
+    --www-font-poster: var(--font-poster-face), var(--font-poster-tamil, "Catamaran"), var(--font-noto-tamil, "Noto Sans Tamil"), Impact, sans-serif;
+    --www-font-display: var(--font-sans);
+    --www-font-mono: var(--font-mono-face), var(--font-noto-tamil, "Noto Sans Tamil"), ui-monospace, monospace;
+    --www-marigold: var(--www-turmeric);
+    --www-marigold-ink: oklch(0.47 0.11 65);
+    --www-leaf: oklch(0.5 0.13 155);
+    --www-tint: oklch(0.965 0.05 95);
+    --www-tint-2: oklch(0.93 0.09 93);
+    --www-gradient: linear-gradient(110deg, var(--www-kungumam), oklch(0.62 0.19 45));
+    --www-shadow: 0 1px 2px oklch(0.25 0.02 60 / 0.08), 0 18px 48px -18px oklch(0.3 0.08 40 / 0.35);
+    --www-text-display: clamp(2.75rem, 1.7rem + 4.6vw, 5.5rem);
+    --www-text-h2: clamp(2.1rem, 1.6rem + 2.2vw, 3.5rem);
     --www-section: clamp(3.5rem, 2.5rem + 4vw, 7rem);
   }
   .dark {
-    --www-marigold: oklch(0.8 0.14 72);
-    --www-marigold-ink: oklch(0.82 0.12 72);
+    --www-marigold: var(--www-turmeric);
+    --www-marigold-ink: var(--www-turmeric);
+    --www-leaf: oklch(0.72 0.14 155);
     --www-shadow: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 18px 48px -18px oklch(0 0 0 / 0.8);
+    --www-tint: oklch(0.205 0.012 55);
+    --www-tint-2: oklch(0.24 0.014 55);
+
+    --background: oklch(0.165 0.012 55);
+    --foreground: oklch(0.95 0.018 88);
+    --card: oklch(0.215 0.013 55);
+    --card-foreground: oklch(0.95 0.018 88);
+    --popover: oklch(0.235 0.013 55);
+    --popover-foreground: oklch(0.95 0.018 88);
+    --primary: oklch(0.72 0.17 45);
+    --primary-foreground: oklch(0.17 0.015 55);
+    --muted-foreground: oklch(0.76 0.02 80);
   }
   html {
     scroll-behavior: smooth;
@@ -33,41 +72,64 @@
   body {
     background: var(--background);
   }
-  /* Tamil runs longer and needs taller lines; keep headings readable without overflowing on phones. */
-  :lang(ta) .text-display,
-  :lang(ta) .text-h2 {
-    line-height: 1.3;
-    letter-spacing: 0;
-    overflow-wrap: anywhere;
-  }
-  :lang(ta) .text-display {
-    font-size: clamp(1.8rem, 1.3rem + 2.6vw, 3.4rem);
-  }
 }
 
 @theme inline {
   --font-display: var(--www-font-display);
+  --font-poster: var(--www-font-poster);
+  --font-mono: var(--www-font-mono);
   --color-marigold: var(--www-marigold);
   --color-marigold-ink: var(--www-marigold-ink);
   --color-leaf: var(--www-leaf);
   --color-tint: var(--www-tint);
   --color-tint-2: var(--www-tint-2);
+  --color-paper: var(--www-paper);
+  --color-ink: var(--www-ink);
+  --color-kungumam: var(--www-kungumam);
+  --color-turmeric: var(--www-turmeric);
+  --color-peacock: var(--www-peacock);
   --shadow-www: var(--www-shadow);
 }
 
 @utility text-display {
-  font-family: var(--www-font-display);
+  font-family: var(--www-font-poster);
   font-size: var(--www-text-display);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.005em;
+  font-weight: 800;
 }
 @utility text-h2 {
-  font-family: var(--www-font-display);
+  font-family: var(--www-font-poster);
   font-size: var(--www-text-h2);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  font-weight: 700;
+  line-height: 1.02;
+  font-weight: 800;
+}
+/* The signboard: the hero and the last word on the page. */
+@utility text-poster {
+  font-family: var(--www-font-poster);
+  /* Sized so the longest hero line, ONLINE STORE., stays on one line: full width on phones, its column from lg up. */
+  font-size: min(15.8vw, 8rem);
+  line-height: 0.86;
+  letter-spacing: -0.012em;
+  font-weight: 900;
+  text-transform: uppercase;
+  @media (min-width: 64rem) {
+    font-size: min(7.5vw, 6.75rem);
+  }
+}
+@utility text-poster-md {
+  font-family: var(--www-font-poster);
+  font-size: clamp(2.75rem, 1.8rem + 4vw, 5.25rem);
+  line-height: 0.94;
+  letter-spacing: -0.005em;
+  font-weight: 900;
+  text-wrap: balance;
+}
+@utility text-h3-poster {
+  font-family: var(--www-font-poster);
+  font-size: clamp(1.9rem, 1.6rem + 1.2vw, 2.75rem);
+  line-height: 1;
+  font-weight: 800;
 }
 @utility text-gradient {
   background: var(--www-gradient);
@@ -89,4 +151,116 @@
   &:focus-visible {
     box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
   }
+}
+/* The torn bottom edge of a thermal slip. */
+@utility receipt-edge {
+  --tooth: 14px;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--tooth) 100%;
+}
+
+@keyframes receipt-print {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.receipt-print {
+  animation: receipt-print 1.5s cubic-bezier(0.3, 0.7, 0.3, 1) 0.2s backwards;
+}
+
+@keyframes tape {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.tape-track {
+  animation: tape 50s linear infinite;
+}
+.tape-track.tape-reverse {
+  animation-direction: reverse;
+}
+.tape:hover .tape-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-print,
+  .tape-track {
+    animation: none;
+  }
+  .tape {
+    overflow-x: auto;
+  }
+  .tape-copy {
+    display: none;
+  }
+}
+
+/*
+ * Shop-sign colour bands: a section sets its own tokens, so everything inside (buttons, muted text, cards) follows. Turmeric
+ * goes deep in dark mode, so it does not glare; peacock and paper hold in both themes.
+ */
+:root:not(.dark) .band-turmeric {
+  --foreground: var(--www-ink);
+  --muted-foreground: oklch(0.29 0.03 60);
+  --primary: oklch(0.5 0.22 29);
+  --ring: var(--www-ink);
+  background: var(--www-turmeric);
+  color: var(--www-ink);
+}
+.dark .band-turmeric {
+  --foreground: oklch(0.99 0.008 95);
+  --muted-foreground: oklch(0.93 0.02 90);
+  --primary: var(--www-turmeric);
+  --primary-foreground: var(--www-ink);
+  background: oklch(0.31 0.12 27);
+  color: oklch(0.99 0.008 95);
+}
+.band-peacock {
+  --foreground: oklch(0.99 0.008 95);
+  --muted-foreground: oklch(0.95 0.015 95);
+  --primary: oklch(0.9 0.15 92);
+  background: var(--www-peacock);
+  color: oklch(0.99 0.008 95);
+}
+.band-paper {
+  --foreground: var(--www-ink);
+  --muted-foreground: oklch(0.42 0.025 60);
+  --card: oklch(1 0 0);
+  color: var(--www-ink);
+}
+
+/* Unlayered on purpose: these must beat the text-* utilities above, and anything in @layer base loses to utilities. */
+/* Tamil runs longer and needs taller lines; keep headings readable without overflowing on phones. */
+:lang(ta) .text-display,
+:lang(ta) .text-h2,
+:lang(ta) .text-poster,
+:lang(ta) .text-poster-md,
+:lang(ta) .text-h3-poster {
+  line-height: 1.22;
+  letter-spacing: 0;
+  overflow-wrap: break-word;
+  text-transform: none;
+}
+:lang(ta) .text-display {
+  font-size: clamp(1.9rem, 1.3rem + 2.6vw, 3.5rem);
+}
+:lang(ta) .text-h2 {
+  font-size: clamp(1.6rem, 1.3rem + 1.3vw, 2.5rem);
+}
+/* Tamil glyphs are far wider than the condensed Latin: sized so a line may wrap between words but never inside one. */
+:lang(ta) .text-poster {
+  font-size: min(8.6vw, 5.25rem);
+  line-height: 1.08;
+  @media (min-width: 64rem) {
+    font-size: min(4.2vw, 3.9rem);
+  }
+}
+:lang(ta) .text-poster-md {
+  font-size: clamp(1.75rem, 1.25rem + 2vw, 3rem);
+}
+:lang(ta) .text-h3-poster {
+  font-size: clamp(1.4rem, 1.2rem + 0.9vw, 2rem);
 }

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
+import { LOGO_R, LOGO_SLIP } from "@/components/logo";
 
-export const alt = "RBMS: billing and online store for your shop";
+export const alt = "RBMS: GST billing and your own online store, all in one, for Tamil Nadu shops";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -16,20 +17,26 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 72,
-          background: "linear-gradient(120deg, #312e81 0%, #6d28d9 55%, #f59e0b 100%)",
-          color: "white",
+          background: "#ffc61a",
+          color: "#1c1712",
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 40, fontWeight: 700 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>S</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 48, fontWeight: 800 }}>
+          <svg width="76" height="76" viewBox="0 0 40 40">
+            <path d={LOGO_SLIP} fill="#d6231a" />
+            <path d={LOGO_R} fill="white" fillRule="evenodd" />
+          </svg>
           RBMS
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>Billing and online store for your shop</div>
-          <div style={{ fontSize: 32, opacity: 0.9 }}>GST bills · Credit book · WhatsApp · Online store — made for Tamil Nadu</div>
+        <div style={{ display: "flex", flexDirection: "column", fontSize: 120, fontWeight: 900, lineHeight: 0.98, letterSpacing: -4 }}>
+          <div>GST billing.</div>
+          <div style={{ color: "#b81a12" }}>Online store.</div>
         </div>
-        <div style={{ fontSize: 28, opacity: 0.85 }}>14-day free trial · No card needed</div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 28, fontWeight: 600 }}>
+          <div>All in one, for every kind of shop in Tamil Nadu</div>
+          <div>14-day free trial</div>
+        </div>
       </div>
     ),
     size,
