@@ -1137,7 +1137,7 @@ export function createKit(env: Env, log: Logger, opts: KitOptions = {}) {
     },
     remove: async (tenantId, itemId, qty, note, userId) => {
       if (!(await isEnabled(tenantId, "inventory"))) return;
-      await inventory.service.adjust(tenantId, itemId, { mode: "remove", qty, note }, userId);
+      await inventory.service.adjust(tenantId, itemId, { mode: "remove", qty, note }, userId, { allowBelowZero: true });
     },
   };
 

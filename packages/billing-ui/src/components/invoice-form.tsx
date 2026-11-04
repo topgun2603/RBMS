@@ -112,7 +112,7 @@ export function parseLine(l: LineDraft): { input: LineInput | null; errors: Line
   if (qty === null || qty <= 0) errors.qty = "billing.validation.qty";
   if (rate === null) errors.rate = "billing.validation.amount";
   if (discount === null) errors.discount = "billing.validation.amount";
-  if (l.hsn.trim() && !/^[0-9]{2,8}$/.test(l.hsn.trim())) errors.hsn = "billing.validation.hsn";
+  if (l.hsn.trim() && !/^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/.test(l.hsn.trim())) errors.hsn = "billing.validation.hsn";
   const serialProblem = serialsError(l.serials, qty);
   if (serialProblem) errors.serials = serialProblem;
   if (qty !== null && qty > 0 && rate !== null && discount !== null && discount > Math.round(qty * rate)) {

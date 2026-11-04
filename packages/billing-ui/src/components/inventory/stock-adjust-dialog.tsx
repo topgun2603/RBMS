@@ -69,7 +69,7 @@ export function StockAdjustDialog({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (!row || qtyError || costError || n === null) return;
+    if (!row || qtyError || costError || n === null || (mode === "remove" && next < 0)) return;
     const body: StockAdjustInput = { mode, qty: n };
     if (note.trim()) body.note = note.trim();
     if (mode === "add" && costPaise !== null) body.unitCost = costPaise;
@@ -175,7 +175,7 @@ export function StockAdjustDialog({
             <Button type="button" variant="outline" size="lg" onClick={() => onOpenChange(false)} disabled={adjust.isPending}>
               {t("billing.common.cancel")}
             </Button>
-            <Button type="submit" size="lg" disabled={adjust.isPending || !row}>
+            <Button type="submit" size="lg" disabled={adjust.isPending || !row || (mode === "remove" && next < 0)}>
               {adjust.isPending && <Loader2Icon className="animate-spin" />}
               {t("billing.adjust.submit")}
             </Button>

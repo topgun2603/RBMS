@@ -107,6 +107,19 @@ describe.skipIf(!URL_)("price-band GST on bills (Postgres)", () => {
     expect(cn.json().creditNote.lines[0]).toMatchObject({ gstRate: 18, taxable: 296_525 });
   });
 
+  it("issues a bill of only free items as paid, and cancels it", async () => {
+    const free = { description: "Free sample", hsn: "3401", qty: 2, unit: "pcs", rate: 0, gstRate: 5 };
+    const fullDiscount = { description: "Festival gift", hsn: "1905", qty: 1, unit: "pcs", rate: 10_000, discount: 10_000, gstRate: 5 };
+    const res = await app.inject({ method: "POST", url: "/v1/invoices", payload: { customer: { name: "Walk-in" }, date: today, lines: [free, fullDiscount], issue: true } });
+    expect(res.statusCode, res.body).toBe(200);
+    const bill = invoiceSchema.parse(res.json());
+    expect(bill).toMatchObject({ status: "paid", total: 0, paid: 0, balance: 0 });
+    expect(bill.number).toBeTruthy();
+    const cancelled = await app.inject({ method: "POST", url: `/v1/invoices/${bill.id}/cancel`, payload: { reason: "Given by mistake" } });
+    expect(cancelled.statusCode, cancelled.body).toBe(200);
+    expect(cancelled.json()).toMatchObject({ status: "cancelled" });
+  });
+
   it("rejects a malformed rule", async () => {
     const res = await app.inject({
       method: "POST",

@@ -54,7 +54,7 @@ export const productFormSchema = z
     hsn: z
       .string()
       .trim()
-      .regex(/^$|^[0-9]{2,8}$/, "commerce.validation.hsn"),
+      .regex(/^$|^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/, "commerce.validation.hsn"),
     unit: z.string().trim().min(1, "commerce.validation.required").max(16, "commerce.validation.tooLong"),
     taxInclusive: z.boolean(),
     options: z.array(optionRowSchema).max(3, "commerce.validation.maxOptions"),

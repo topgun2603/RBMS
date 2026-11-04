@@ -42,9 +42,9 @@ const freshBill = async (o) => must(await bill([line(o)]), "fresh bill");
 const LINE_BAD = [
   ["quantity zero", { qty: 0 }, "reject"], ["quantity negative", { qty: -1 }, "reject"], ["quantity small negative", { qty: -0.5 }, "reject"], ["quantity letters", { qty: "abc" }, "reject"], ["quantity '12abc'", { qty: "12abc" }, "reject"], ["quantity empty", { qty: "" }, "reject"], ["quantity null", { qty: null }, "reject"],
   ["quantity 1e21", { qty: 1e21 }, "reject"], ["quantity 1e308", { qty: 1e308 }, "reject"], ["quantity 4 decimals", { qty: 0.0001 }, "reject"], ["quantity 1 crore", { qty: 10_000_000 }, "judge"], ["quantity 3 decimals", { qty: 1.125 }, "allow"],
-  ["price negative", { rate: -100 }, "reject"], ["price letters", { rate: "abc" }, "reject"], ["price fraction of a paisa", { rate: 10.5 }, "reject"], ["price 1e21", { rate: 1e21 }, "reject"], ["price zero", { rate: 0 }, "judge"], ["price with rupee sign", { rate: "₹100" }, "reject"], ["price with comma", { rate: "1,000" }, "reject"],
+  ["price negative", { rate: -100 }, "reject"], ["price letters", { rate: "abc" }, "reject"], ["price fraction of a paisa", { rate: 10.5 }, "reject"], ["price 1e21", { rate: 1e21 }, "reject"], ["price zero", { rate: 0 }, "accept"], ["price with rupee sign", { rate: "₹100" }, "reject"], ["price with comma", { rate: "1,000" }, "reject"],
   ["GST 7%", { gstRate: 7 }, "reject"], ["GST negative", { gstRate: -18 }, "reject"], ["GST text", { gstRate: "18" }, "reject"], ["GST 100%", { gstRate: 100 }, "reject"], ["GST 40%", { gstRate: 40 }, "allow"],
-  ["discount negative (raises the price)", { discount: -5000 }, "reject"], ["discount above the amount", { discount: 20_000 }, "reject"], ["discount letters", { discount: "abc" }, "reject"], ["discount equals the amount", { discount: 10_000 }, "judge"],
+  ["discount negative (raises the price)", { discount: -5000 }, "reject"], ["discount above the amount", { discount: 20_000 }, "reject"], ["discount letters", { discount: "abc" }, "reject"], ["discount equals the amount", { discount: 10_000 }, "accept"],
   ["description empty", { description: "" }, "reject"], ["description spaces", { description: "   " }, "reject"], ["description 100k", { description: "x".repeat(100_000) }, "reject"], ["description null byte", { description: "a\u0000b" }, "reject"], ["description script", { description: "<script>alert(1)</script>" }, "judge"],
   ["HSN letters", { hsn: "ABCD" }, "reject"], ["HSN 2 digits", { hsn: "12" }, "reject"], ["inclusive total negative", { inclusiveTotal: -1 }, "reject"], ["inclusive total letters", { inclusiveTotal: "abc" }, "reject"],
 ];
@@ -136,7 +136,7 @@ for (const [name, o, expect] of CUST_BAD) record("Customer", name, expect, await
   const id = rowsList[0]?.itemId ?? rowsList[0]?.id;
   if (id) {
     const adj = (o) => call("POST", `/v1/inventory/stock/${id}/adjust`, { mode: "add", qty: 1, note: "qa", ...o });
-    for (const [name, o, expect] of [["add negative", { qty: -5 }, "reject"], ["add zero", { qty: 0 }, "reject"], ["add letters", { qty: "abc" }, "reject"], ["add 1e21", { qty: 1e21 }, "reject"], ["unknown mode", { mode: "steal" }, "reject"], ["unit cost negative", { unitCost: -1 }, "reject"], ["unit cost letters", { unitCost: "abc" }, "reject"], ["set to negative", { mode: "set", qty: -5 }, "reject"], ["remove far more than held", { mode: "remove", qty: 1_000_000 }, "judge"]]) {
+    for (const [name, o, expect] of [["add negative", { qty: -5 }, "reject"], ["add zero", { qty: 0 }, "reject"], ["add letters", { qty: "abc" }, "reject"], ["add 1e21", { qty: 1e21 }, "reject"], ["unknown mode", { mode: "steal" }, "reject"], ["unit cost negative", { unitCost: -1 }, "reject"], ["unit cost letters", { unitCost: "abc" }, "reject"], ["set to negative", { mode: "set", qty: -5 }, "reject"], ["remove far more than held", { mode: "remove", qty: 1_000_000 }, "reject"]]) {
       const r = await adj(o);
       record("Stock", name, expect, r, r.status < 300 ? `saved: ${JSON.stringify(r.json).slice(0, 120)}` : undefined);
     }

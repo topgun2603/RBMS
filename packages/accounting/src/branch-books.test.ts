@@ -188,6 +188,20 @@ const stockAdjustment = (over: Partial<StockAdjustmentSrc> = {}): StockAdjustmen
   ...over,
 });
 
+describe("a ₹0 bill", () => {
+  const free = { subtotal: 0, discount: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, roundOff: 0, total: 0 };
+  it("posts nothing when the items carry no price", () => {
+    expect(invoicePostings(invoice(free), opts)).toEqual([]);
+    expect(invoicePostings(invoice({ ...free, status: "cancelled", cancelledOn: "2026-10-09" }), opts)).toEqual([]);
+  });
+  it("still records the discount when a priced item is discounted in full", () => {
+    const [p] = invoicePostings(invoice({ ...free, subtotal: 10_000, discount: 10_000 }), opts);
+    const debit = p!.lines.reduce((t, l) => t + l.debit, 0);
+    expect(debit).toBe(10_000);
+    expect(p!.lines.reduce((t, l) => t + l.credit, 0)).toBe(debit);
+  });
+});
+
 /** Every source type that carries a branch, as (name, postings of the document with the given branch). */
 const SOURCES: [string, (branchId?: string | null) => Posting[]][] = [
   ["invoice", (b) => invoicePostings(invoice({ branchId: b }), opts)],

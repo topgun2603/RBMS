@@ -139,7 +139,7 @@ type Errors = Partial<Record<"name" | "hsn" | "options", string>> & { rows?: Rec
 function validate(d: Draft): Errors {
   const e: Errors = {};
   if (d.name.trim().length < 2) e.name = "marketplace.validation.name";
-  if (d.hsn.trim() && !/^[0-9]{2,8}$/.test(d.hsn.trim())) e.hsn = "marketplace.validation.hsn";
+  if (d.hsn.trim() && !/^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/.test(d.hsn.trim())) e.hsn = "marketplace.validation.hsn";
   if (d.hasVariants && cartesian(d.options).length === 0) e.options = "marketplace.validation.options";
   const rows: NonNullable<Errors["rows"]> = {};
   for (const r of d.rows) {

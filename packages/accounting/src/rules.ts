@@ -124,6 +124,8 @@ export function invoicePostings(inv: InvoiceSrc, o: RuleOptions): Posting[] {
   if (!inScope(inv.imported, o.importedBills)) return [];
   const who = party("customer", inv.customerId);
   const lines = billLines(SYS.sales, inv, who);
+  // A ₹0 bill at no price moves no money: there is nothing to post.
+  if (lines.length === 0) return [];
   const label = `Invoice ${inv.number ?? ""}`.trim();
   const branchId = inv.branchId ?? null;
   const out: Posting[] = [{ sourceType: "invoice", sourceId: inv.id, date: inv.date, narration: `${label} - ${inv.customerName}`, reference: inv.number, lines, branchId }];

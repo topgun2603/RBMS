@@ -552,7 +552,7 @@ const en: Messages = {
   "marketplace.validation.price": "Enter a price",
   "marketplace.validation.mrp": "MRP can't be less than the price",
   "marketplace.validation.sku": "No spaces in the SKU",
-  "marketplace.validation.hsn": "HSN is 2 to 8 digits",
+  "marketplace.validation.hsn": "HSN is 4, 6 or 8 digits",
   "marketplace.validation.options": "Add at least one value to each option",
 
   // errors from the API (by code)
@@ -1278,7 +1278,7 @@ const ta: Messages = {
   "marketplace.validation.price": "விலையை உள்ளிடுங்கள்",
   "marketplace.validation.mrp": "MRP விலையைவிடக் குறைவாக இருக்கக்கூடாது",
   "marketplace.validation.sku": "SKU வில் இடைவெளி கூடாது",
-  "marketplace.validation.hsn": "HSN 2 முதல் 8 இலக்கங்கள்",
+  "marketplace.validation.hsn": "HSN 4, 6 அல்லது 8 இலக்கங்கள்",
   "marketplace.validation.options": "ஒவ்வொரு தேர்விலும் குறைந்தது ஒரு மதிப்பைச் சேருங்கள்",
 
   // errors from the API (by code)

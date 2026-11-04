@@ -189,6 +189,14 @@ describe.skipIf(!URL_)("stock depth against Postgres", () => {
     await s.adjust(T, PLAIN, { mode: "add", qty: 3 });
     await s.adjust(T, PLAIN, { mode: "remove", qty: 1 });
     expect(await qtyAt(PLAIN, main)).toBe(2);
+    // removing more than is held is refused and moves nothing; a vertical's write-off may still take it below zero
+    await expect(s.adjust(T, PLAIN, { mode: "remove", qty: 3 })).rejects.toMatchObject({ status: 409, code: "insufficient_stock" });
+    expect(await qtyAt(PLAIN, main)).toBe(2);
+    await s.adjust(T, PLAIN, { mode: "remove", qty: 2 });
+    expect(await qtyAt(PLAIN, main)).toBe(0);
+    await s.adjust(T, PLAIN, { mode: "remove", qty: 1 }, null, { allowBelowZero: true });
+    expect(await qtyAt(PLAIN, main)).toBe(-1);
+    await s.adjust(T, PLAIN, { mode: "set", qty: 2 });
   });
 
   it("tracking switch, settings and the expired-stock rule", async () => {

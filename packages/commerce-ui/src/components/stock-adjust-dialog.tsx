@@ -70,6 +70,10 @@ export function StockAdjustDialog({
       setError(t("commerce.validation.qty"));
       return;
     }
+    if (mode === "remove" && after !== null && after < 0) {
+      setError(t("commerce.stock.removeTooMany"));
+      return;
+    }
     try {
       await adjust.mutateAsync({ itemId, body: { mode, qty: n, ...(note.trim() ? { note: note.trim() } : {}) } });
       toast.success(t("commerce.stock.adjusted", { name }));

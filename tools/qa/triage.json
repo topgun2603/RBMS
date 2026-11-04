@@ -51,19 +51,19 @@
     "severity": "Low",
     "problem": "A 2-digit HSN is accepted on a bill. The GSTR-1 check warns about it at filing time, so it is caught late rather than never",
     "where": "packages/invoices/src/service.ts (hsn)",
-    "status": "OPEN: decide whether to refuse it at billing"
+    "status": "FIXED 2026-11-05, owner's decision: bills and items accept only 4, 6 or 8 digits or blank. Imported old bills and supplier purchase lines keep their codes. Shops over 5 crore still get the filing warning for a 4-digit code."
   },
   {
     "severity": "Your call",
     "problem": "A bill of only free items, or one line at 100% discount alone, is refused: 'Invoice total must be more than zero'. A free item beside a paid item works",
     "where": "packages/invoices",
-    "status": "Works as built. Is that what you want?"
+    "status": "FIXED 2026-11-05, owner's decision: a ₹0 bill now issues as paid and takes the stock. Free goods are not a supply, and their purchase credit is blocked (Circular 92/11/2019); the app does not reverse that credit, so tell your CA."
   },
   {
     "severity": "Your call",
     "problem": "Stock can be reduced far below what is held (a remove of 10 lakh units was accepted)",
     "where": "POST /v1/inventory/stock/:id/adjust",
-    "status": "The screen warns; the server allows it. Is that what you want?"
+    "status": "FIXED 2026-11-05, owner's decision: refused by the server and blocked on the billing and store stock screens. Write-offs from pharmacy and serial-unit stock keep their own rules."
   },
   {
     "severity": "Decided",

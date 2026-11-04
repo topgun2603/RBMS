@@ -63,6 +63,12 @@ describe("validation", () => {
 
 describe("v2 validation", () => {
   const itemId = "4b0c2a4e-8f0e-4c1a-9d5e-0f6a1b2c3d4e";
+  it("takes an HSN of 4, 6 or 8 digits, or none", () => {
+    const line = { description: "Soap", qty: 1, rate: 100, gstRate: 5 };
+    for (const hsn of ["3401", "340111", "34011190", "", undefined]) expect(lineInputSchema.safeParse({ ...line, hsn }).success, String(hsn)).toBe(true);
+    for (const hsn of ["34", "340", "34011", "3401119", "340111901", "ABCD"]) expect(lineInputSchema.safeParse({ ...line, hsn }).success, hsn).toBe(false);
+  });
+
   it("keeps a line's saved item id and rejects non-uuids", () => {
     expect(lineInputSchema.parse({ description: "Saree", qty: 1, rate: 100, gstRate: 5, itemId }).itemId).toBe(itemId);
     expect("itemId" in lineInputSchema.parse({ description: "Saree", qty: 1, rate: 100, gstRate: 5, itemId: "" })).toBe(false);

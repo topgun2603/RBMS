@@ -116,7 +116,7 @@ export function rowProblems(r: Row): string[] {
   if (r.name.trim().length < 2) out.push("name");
   if (toPaise(r.price) === null) out.push("price");
   if (r.gst === "" || !Number.isFinite(Number(r.gst))) out.push("gst");
-  if (r.hsn && !/^[0-9]{2,8}$/.test(r.hsn)) out.push("hsn");
+  if (r.hsn && !/^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/.test(r.hsn)) out.push("hsn");
   return out;
 }
 

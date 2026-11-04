@@ -262,7 +262,7 @@ const opt = <T extends z.ZodTypeAny>(s: T) =>
   z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), s.nullable().optional());
 
 const money = z.number().int("Amounts are whole paise").min(0).max(MAX_PAISE);
-const hsn = z.string().trim().regex(/^[0-9]{2,8}$/, "HSN/SAC must be 2–8 digits");
+const hsn = z.string().trim().regex(/^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/, "HSN/SAC must be 4, 6 or 8 digits");
 const gstRate = z.number().refine((v) => (GST_RATES as readonly number[]).includes(v), `GST rate must be one of ${GST_RATES.join(", ")}`);
 /** Price-band GST (apparel / footwear: `{ kind: "price-band", threshold: 250000, below: 5, above: 18 }`). */
 const gstRule = z

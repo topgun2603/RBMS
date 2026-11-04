@@ -1732,8 +1732,12 @@ export class InventoryService {
     return this.levelRow(item, await this.itemRows(this.db, tenantId, itemId), loc.id);
   }
 
-  /** Manual stock change at a location. The first movement there is recorded as `opening`, later ones as `adjustment`. */
-  async adjust(tenantId: string, itemId: string, input: AdjustInput, userId: string | null = null): Promise<StockLevelRow> {
+  /**
+   * Manual stock change at a location. The first movement there is recorded as `opening`, later ones as `adjustment`.
+   * 409 `insufficient_stock` when removing more than is held, unless `allowBelowZero` (write-offs from a vertical's own
+   * batches, whose count may be ahead of the inventory total).
+   */
+  async adjust(tenantId: string, itemId: string, input: AdjustInput, userId: string | null = null, opts: { allowBelowZero?: boolean } = {}): Promise<StockLevelRow> {
     const b = adjustInputSchema.parse(input);
     const item = await this.catalogItem(tenantId, itemId);
     const loc = await this.resolveLocation(tenantId, b.locationId, { active: true });
@@ -1746,6 +1750,9 @@ export class InventoryService {
       // "set" on a named batch means that batch's quantity, not the item total.
       const base = b.batchId ? await this.batches.levelMilli(tx, tenantId, b.batchId, loc.id) : toMilli(current?.qty ?? 0);
       const delta = adjustmentDelta(b.mode, qtyMilli, base);
+      if (delta < 0 && base + delta < 0 && !opts.allowBelowZero) {
+        throw insufficientStock([{ itemId, available: fromMilli(base), requested: b.qty }]);
+      }
       if (delta === 0) {
         // Nothing moves; "set" with a cost just records the cost.
         if (unitCost !== null && current) {

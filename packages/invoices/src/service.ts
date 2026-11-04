@@ -568,7 +568,7 @@ const country = z.string().transform((v, ctx) => {
 });
 const phone = z.string().trim().regex(/^\+?[0-9][0-9 -]{5,19}$/, "Invalid phone number");
 const email = z.string().trim().toLowerCase().email().max(254);
-const hsn = z.string().trim().regex(/^[0-9]{2,8}$/, "HSN/SAC must be 2–8 digits");
+const hsn = z.string().trim().regex(/^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/, "HSN/SAC must be 4, 6 or 8 digits");
 const gstRate = z
   .number()
   .refine(isGstRate, `GST rate must be one of ${GST_RATES.join(", ")}`)
@@ -2719,7 +2719,8 @@ export class InvoicesService {
   private assertIssuable(lines: LineInput[], placeOfSupply: string, seller: SellerProfile, supplyType: SupplyType = "domestic") {
     if (lines.length === 0) throw badRequest("Add at least one line before issuing");
     const totals = computeInvoice(lines, { sellerState: taxSellerState(seller.stateCode!, supplyType), placeOfSupply });
-    if (totals.total <= 0) throw badRequest("Invoice total must be more than zero to issue");
+    // A bill of only free items (₹0) is allowed; it issues as paid, with nothing to collect.
+    if (totals.total < 0) throw badRequest("Invoice total can't be below zero");
     return totals;
   }
 

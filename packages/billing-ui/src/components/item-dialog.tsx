@@ -32,7 +32,7 @@ const schema = z.object({
   hsn: z
     .string()
     .trim()
-    .regex(/^$|^[0-9]{2,8}$/, "billing.validation.hsn"),
+    .regex(/^$|^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$/, "billing.validation.hsn"),
   unit: z.string().trim().min(1, "billing.validation.required").max(16),
   rate: z.string().refine((v) => rupeesToPaise(v) !== null, "billing.validation.amount"),
   gstRate: z.string(),
