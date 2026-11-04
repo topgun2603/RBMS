@@ -1,14 +1,86 @@
 [
-  { "severity": "High", "problem": "A bill dated 2099 or 1900 was accepted and given a real tax invoice number in the wrong financial year", "where": "packages/invoices/src/service.ts issueWith", "status": "FIXED 2026-11-04: refused unless between the start of the previous financial year and tomorrow. Window to be confirmed by your CA." },
-  { "severity": "High", "problem": "A null byte or broken character crashed the server, including on public routes with no sign-in (store catalogue, OTP request); same for absurd paging numbers", "where": "apps/api/src/http-guard.ts unsafeInputGuard", "status": "FIXED 2026-11-04: one central check answers 400. Crashes fell from 172 to 62." },
-  { "severity": "Medium", "problem": "GST filing lists crash with a server error on a bad date filter, such as ?from=abc", "where": "packages/gstfiling/src/routes.ts (itc, itc.csv, rcm, payments)", "status": "OPEN: 56 of the remaining 62 crashes. Signed-in staff only. Small fix." },
-  { "severity": "Medium", "problem": "Two Cancel Plan requests at the same instant: the second crashes after the plan is correctly cancelled", "where": "packages/subscriptions/src/service.ts:929", "status": "OPEN: 4 crashes. The data stays right; the person sees an error." },
-  { "severity": "Low", "problem": "Report builder crashes when the whole request body is a number or text instead of an object", "where": "POST /v1/reports/run", "status": "OPEN: 2 crashes. Screens never send this." },
-  { "severity": "Low", "problem": "Job cards accept a phone number made of letters, and 30 February as a visit date", "where": "POST /v1/jobcards (fields)", "status": "OPEN" },
-  { "severity": "Low", "problem": "A 2-digit HSN is accepted on a bill. The GSTR-1 check warns about it at filing time, so it is caught late rather than never", "where": "packages/invoices/src/service.ts (hsn)", "status": "OPEN: decide whether to refuse it at billing" },
-  { "severity": "Your call", "problem": "A bill of only free items, or one line at 100% discount alone, is refused: 'Invoice total must be more than zero'. A free item beside a paid item works", "where": "packages/invoices", "status": "Works as built. Is that what you want?" },
-  { "severity": "Your call", "problem": "Stock can be reduced far below what is held (a remove of 10 lakh units was accepted)", "where": "POST /v1/inventory/stock/:id/adjust", "status": "The screen warns; the server allows it. Is that what you want?" },
-  { "severity": "Your call", "problem": "A plan lists the store as included for Billing shops, but a Billing shop gets 'Online store is not available in this app'", "where": "apps/api/src/seed-fixtures.ts plan modules against the app rules", "status": "Marketing now says Billing, or Online Store with billing included. Confirm that is the offer." },
-  { "severity": "Check", "problem": "3 flow test steps fail: home page hero name, analytics beacon, till close without a reason. These look like out-of-date tests or a missing store server, not product bugs, but that is not yet proven", "where": "apps/api/test/e2e batch2, credit-notes", "status": "OPEN: not yet investigated" },
-  { "severity": "Check", "problem": "7 unit tests fail out of 7,085: POS catalogue SQL (4), AI usage dates (2), store preview probe (1)", "where": "apps/api, packages/ai, packages/site-ui", "status": "OPEN: not yet investigated. All 7 were already failing in the coverage run made before today's fixes." }
+  {
+    "severity": "High",
+    "problem": "A bill dated 2099 or 1900 was accepted and given a real tax invoice number in the wrong financial year",
+    "where": "packages/invoices/src/service.ts issueWith",
+    "status": "FIXED 2026-11-04: refused unless between the start of the previous financial year and tomorrow. Window to be confirmed by your CA."
+  },
+  {
+    "severity": "High",
+    "problem": "A null byte or broken character crashed the server, including on public routes with no sign-in (store catalogue, OTP request); same for absurd paging numbers",
+    "where": "apps/api/src/http-guard.ts unsafeInputGuard",
+    "status": "FIXED 2026-11-04: one central check answers 400. Crashes fell from 172 to 62."
+  },
+  {
+    "severity": "High",
+    "problem": "Every Proforma, Sale Order and Delivery Challan screen showed raw labels such as billing.nav.proformas, in English and Tamil: the module built its messages and never returned them",
+    "where": "packages/billing-ui/src/sales-docs.tsx",
+    "status": "FIXED 2026-11-04, with a test that every billing menu label has real words. Found while filming, not by the bad-data robot."
+  },
+  {
+    "severity": "High",
+    "problem": "The flagship demo shop still has pre-2025 GST rates: toothpaste, soap and shampoo at 18%, 8 items at 12%, cool drink at 28%. Visitors opening the demo see wrong tax",
+    "where": "apps/api/src/seed.ts, apps/api/src/demo-history/profiles.ts and others",
+    "status": "OPEN: needs a rate check per item against the current notification, then a re-seed of the demo shops."
+  },
+  {
+    "severity": "Medium",
+    "problem": "GST filing lists crash with a server error on a bad date filter, such as ?from=abc",
+    "where": "packages/gstfiling/src/routes.ts (itc, itc.csv, rcm, payments)",
+    "status": "FIXED 2026-11-04: a bad from or to now answers 400. Expect 6 crashes left in the next sweep, not measured yet."
+  },
+  {
+    "severity": "Medium",
+    "problem": "Two Cancel Plan requests at the same instant: the second crashes after the plan is correctly cancelled",
+    "where": "packages/subscriptions/src/service.ts:929",
+    "status": "OPEN: 4 crashes. The data stays right; the person sees an error."
+  },
+  {
+    "severity": "Low",
+    "problem": "Report builder crashes when the whole request body is a number or text instead of an object",
+    "where": "POST /v1/reports/run",
+    "status": "OPEN: 2 crashes. Screens never send this."
+  },
+  {
+    "severity": "Low",
+    "problem": "Job cards accept a phone number made of letters, and 30 February as a visit date",
+    "where": "POST /v1/jobcards (fields)",
+    "status": "OPEN"
+  },
+  {
+    "severity": "Low",
+    "problem": "A 2-digit HSN is accepted on a bill. The GSTR-1 check warns about it at filing time, so it is caught late rather than never",
+    "where": "packages/invoices/src/service.ts (hsn)",
+    "status": "OPEN: decide whether to refuse it at billing"
+  },
+  {
+    "severity": "Your call",
+    "problem": "A bill of only free items, or one line at 100% discount alone, is refused: 'Invoice total must be more than zero'. A free item beside a paid item works",
+    "where": "packages/invoices",
+    "status": "Works as built. Is that what you want?"
+  },
+  {
+    "severity": "Your call",
+    "problem": "Stock can be reduced far below what is held (a remove of 10 lakh units was accepted)",
+    "where": "POST /v1/inventory/stock/:id/adjust",
+    "status": "The screen warns; the server allows it. Is that what you want?"
+  },
+  {
+    "severity": "Decided",
+    "problem": "A plan lists the store as included for Billing shops, but a Billing shop gets 'Online store is not available in this app'",
+    "where": "apps/api/src/seed-fixtures.ts plan modules against the app rules",
+    "status": "Owner confirmed 2026-11-04: Billing from 499, or Online Store with billing included from 799. The plan data still lists the store for Billing shops; tidy it when convenient."
+  },
+  {
+    "severity": "Check",
+    "problem": "3 flow test steps fail: home page hero name, analytics beacon, till close without a reason. These look like out-of-date tests or a missing store server, not product bugs, but that is not yet proven",
+    "where": "apps/api/test/e2e batch2, credit-notes",
+    "status": "OPEN: not yet investigated"
+  },
+  {
+    "severity": "Check",
+    "problem": "7 unit tests fail out of 7,085: POS catalogue SQL (4), AI usage dates (2), store preview probe (1)",
+    "where": "apps/api, packages/ai, packages/site-ui",
+    "status": "OPEN: not yet investigated. All 7 were already failing in the coverage run made before today's fixes."
+  }
 ]

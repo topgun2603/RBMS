@@ -9,6 +9,7 @@ const triage = existsSync(triagePath) ? JSON.parse(readFileSync(triagePath, "utf
 const read = (f) => (existsSync(join(OUT, f)) ? JSON.parse(readFileSync(join(OUT, f), "utf8")) : null);
 const money = read("money.json") ?? [];
 const coverage = read("coverage.json");
+const screens = read("screens.json");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 const KINDS = [
@@ -47,6 +48,7 @@ const triageHtml = triage.length
   : "";
 
 const moneyHtml = money.length ? `<h2>Money attack: ${money.filter((m) => m.verdict === "PASS").length} of ${money.length} as expected</h2><p>Hand-written expected answers. JUDGE means either answer is defensible, so you decide.</p><table><tr><th>Result</th><th>Area</th><th>Attack</th><th>Answer</th></tr>${[...money].sort((a, b) => (a.verdict === "PASS") - (b.verdict === "PASS")).map((m) => `<tr><td><b>${esc(m.verdict)}</b></td><td>${esc(m.area)}</td><td>${esc(m.name)}</td><td class="m">${esc(m.status)} ${esc(String(m.evidence).slice(0, 90))}</td></tr>`).join("")}</table>` : "";
+const screensHtml = screens ? `<h2>Bad data typed into the screens: ${screens.pages.length} pages, ${screens.findings.length} flags</h2><p>A robot typed letters, negatives, huge numbers, scripts, SQL, spaces and emoji into every box, then tried to save. It looked for page crashes, scripts that ran, server errors behind a form, letters kept in a number box and junk that got saved. Billing pages signed in as the owner; the store as a visitor, so checkout's address form was not reached.</p>${screens.findings.length ? `<table><tr><th>Kind</th><th>Page</th><th>Where</th><th>Detail</th></tr>${screens.findings.map((f) => `<tr><td><b>${esc(f.kind)}</b></td><td><code>${esc(f.page)}</code></td><td>${esc(f.where.slice(0, 70))}</td><td class="m">${esc(f.detail.slice(0, 140))}</td></tr>`).join("")}</table>` : ""}<details><summary>Pages covered</summary><pre>${esc(screens.pages.join(String.fromCharCode(10)))}</pre></details>` : "";
 const covRows = coverage?.results ?? [];
 const sum = (k) => covRows.reduce((s, r) => s + (r[k] ?? 0), 0);
 const coverageHtml = covRows.length ? `<h2>Test coverage: ${((sum("linesCovered") / sum("linesTotal")) * 100).toFixed(1)}% of lines</h2><p>${sum("passed").toLocaleString("en-IN")} tests passed, ${sum("failed")} failed, ${sum("skipped")} skipped, database tests included. No tests at all: ${esc(coverage.untested.join(", "))}. Coverage only says code ran, not that it is right.</p><details open><summary>By package, lowest first (packages over 200 lines)</summary><table><tr><th>Package</th><th>Lines</th><th>Branches</th><th>Passed</th><th>Failed</th></tr>${covRows.filter((r) => (r.linesTotal ?? 0) > 200).sort((a, b) => a.lines - b.lines).map((r) => `<tr><td><code>${esc(r.name)}</code></td><td>${r.lines}%</td><td>${r.branches}%</td><td>${r.passed}</td><td>${r.failed}</td></tr>`).join("")}</table></details>` : "";
@@ -59,13 +61,13 @@ tr.Critical td:first-child{color:#b81a12}tr.High td:first-child{color:#c2410c}</
 <h1>RBMS bad-data report</h1><p>${esc(data.when)}, ${Math.round(data.seconds / 60)} minutes, on a throwaway copy.</p>
 <div class="c"><div><b>${data.stats.requests.toLocaleString("en-IN")}</b>bad requests sent</div><div><b>${data.routes}</b>routes in the API map</div><div><b>${data.stats.crashes}</b>crashes</div><div><b>${data.stats.apiDowns}</b>API went down</div><div><b>${data.stats.hangs}</b>hangs</div><div><b>${data.stats.leaks}</b>leaks</div></div>
 ${triageHtml}
-${moneyHtml}${coverageHtml}<h2>How far it reached</h2>
+${moneyHtml}${screensHtml}${coverageHtml}<h2>How far it reached</h2>
 <ul><li><b>${deep.length}</b> routes had real request bodies to corrupt field by field; on <b>${reached.length}</b> (${pct(reached.length, deep.length)}) the untouched request still worked, so a refusal really was about the bad value.</li><li><b>${shallow.length}</b> routes got shallow attacks only (junk ids, junk whole bodies), because no flow test exercises them with a valid body. Bad data in their fields is <b>untested</b>.</li></ul>
 <details><summary>Corrupted requests that never got past sign-in or lookups (${notReached.length})</summary><pre>${esc(notReached.join("\n"))}</pre></details>
 <details><summary>Routes with shallow attacks only (${shallow.length})</summary><pre>${esc(shallow.join("\n"))}</pre></details>
 <details open><summary>Changing routes that answered 2xx with no sign-in (${openWithoutSignIn.length}): check each is meant to be public</summary><pre>${esc(openWithoutSignIn.join("\n"))}</pre></details>
 <h2>Raw findings</h2>${KINDS.map(([k, t]) => section(k, t)).join("")}
-<h2>Not tested here</h2><ul><li>Real payments, WhatsApp, SMS, GST portal and e-invoice providers, printers and scales.</li><li>Bad data typed into screens in the browser (the server is the last line of defence, so it comes first).</li><li>The phone app.</li></ul>
+<h2>Not tested here</h2><ul><li>Real payments, WhatsApp, SMS, GST portal and e-invoice providers, printers and scales.</li><li>Bad data typed into the POS counter, restaurant, pharmacy, service, admin and seller screens; Tamil screens; the store while signed in.</li><li>The phone app.</li></ul>
 </body></html>`;
 writeFileSync(join(OUT, "report.html"), html);
 console.log(`report: ${join(OUT, "report.html")}`);
