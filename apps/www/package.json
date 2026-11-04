@@ -9,9 +9,11 @@
     "build": "next build",
     "start": "next start -p 3005",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:e2e": "node test/e2e.cjs"
+    "test:e2e": "node test/e2e.cjs",
+    "test:home": "node test/home.cjs"
   },
   "dependencies": {
+    "@rbms/gst": "workspace:*",
     "@rbms/i18n": "workspace:*",
     "@rbms/tenancy": "workspace:*",
     "@rbms/ui": "workspace:*",
