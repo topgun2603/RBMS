@@ -32,3 +32,4 @@ tools/print-bridge/config.json
 apps/store/public/tryon/
 
 tools/qa/out/
+tools/ad/out/

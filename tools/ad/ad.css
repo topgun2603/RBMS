@@ -1,0 +1,17 @@
+:root{--paper:#fdfbf5;--ink:#1c1712;--red:#d6231a;--deep:#b81a12;--yellow:#ffc61a;--teal:#00657a}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+#stage{position:absolute;inset:0;overflow:hidden;font-family:"Plus Jakarta Sans","Noto Sans Tamil",sans-serif;color:var(--ink)}
+.scene{position:absolute;inset:0;display:none;overflow:hidden}
+.ta{font-family:"Catamaran","Noto Sans Tamil",sans-serif;font-weight:900;line-height:1.08}
+.en{font-family:"Big Shoulders",sans-serif;font-weight:800;letter-spacing:.01em;text-transform:uppercase;line-height:1}
+.mono{font-family:"JetBrains Mono","Noto Sans Tamil",monospace}
+.abs{position:absolute}
+.center{left:0;right:0;text-align:center}
+.frame{position:absolute;overflow:hidden;background:#fff;box-shadow:0 calc(var(--u)*2) calc(var(--u)*6) rgba(0,0,0,.45)}
+.frame img{position:absolute;display:block}
+#wipe{position:absolute;inset:-5% 0;display:none;background:var(--ink);z-index:50}
+#wipe2{position:absolute;inset:-5% 0;display:none;background:var(--red);z-index:49}
+.receipt{background:#fbf7ec;color:#1c1712;font-family:"JetBrains Mono","Noto Sans Tamil",monospace;--t:calc(var(--u)*1.2);-webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/calc(var(--u)*1.8) 100%;mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/calc(var(--u)*1.8) 100%}
+.stamp{border:calc(var(--u)*.45) solid var(--red);color:var(--red);font-weight:700;border-radius:calc(var(--u)*.6);white-space:nowrap}
+.bubble{background:#d9fdd3;color:#111b21;border-radius:calc(var(--u)*1.8);box-shadow:0 calc(var(--u)*.6) calc(var(--u)*2) rgba(0,0,0,.35)}

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ta">
+<head>
+<meta charset="utf-8">
+<title>RBMS ad</title>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@800;900&family=Catamaran:wght@700;800;900&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Tamil:wght@500;700&family=Plus+Jakarta+Sans:wght@500;700;800&display=block" rel="stylesheet">
+<link href="ad.css" rel="stylesheet">
+</head>
+<body>
+<div id="stage"></div>
+<script src="ad-lib.js"></script>
+<script>
+/** A two-language caption block: Tamil large, English under it. */
+function caption(parent, ta, en, css, color, enColor, size = 1) {
+  const b = el(parent, "div", "position:absolute;" + css);
+  const a = el(b, "div", `font-size:${px(6.4 * size)};color:${color}`, ta); a.className = "ta";
+  const c = el(b, "div", `font-size:${px(3.6 * size)};margin-top:${px(0.6)};color:${enColor || color}`, en); c.className = "en";
+  return { b, a, c };
+}
+
+// A sample-data note, kept on every scene that shows shop figures.
+const note = (root, color) => el(root, "div", `position:absolute;z-index:5;right:${px(1.6)};bottom:${px(1.4)};font-size:${px(1.5)};color:#fff;background:rgba(0,0,0,.6);padding:${px(.3)} ${px(.9)};border-radius:${px(.6)}`, "மாதிரித் தரவு · Sample data");
+
+// ---------------------------------------------------------------- 1. two ways to sell
+scene(0, 3.4, "var(--yellow)", (root) => {
+  const k = kolam(root, 11, 7, portrait ? `width:${px(170)};left:${px(-35)};bottom:${px(-20)}` : `width:${px(130)};right:${px(-22)};bottom:${px(-30)}`, "#1c1712", .14);
+  const s = portrait ? 1.02 : 1.3;
+  const a = caption(root, "கவுண்டரிலும் விற்கலாம்.", "Sell at the counter.", `left:${px(5)};right:${px(5)};top:${portrait ? "28%" : "16%"};text-align:center`, "#1c1712", "#1c1712", s);
+  const b = caption(root, "ஆன்லைனிலும் விற்கலாம்.", "Sell online.", `left:${px(5)};right:${px(5)};top:${portrait ? "52%" : "55%"};text-align:center`, "#b81a12", "#1c1712", s);
+  return (t) => { k(outExpo(prog(t, 0, 3.2)) * .8); slam(a.b, t, .18); slam(b.b, t, 1.55); };
+});
+
+// ---------------------------------------------------------------- 2. billing
+// The bill on screen is Sunflower oil at ₹165 + 5% and loose rice at ₹56, the app's own figures: the slip below must match it.
+scene(3.4, 11.6, "#1c1712", (root) => {
+  // Shows the working part of the screen: the sidebar is cropped off the 1440 wide footage.
+  const SIDEBAR = 256, SHOWN = 1440 - SIDEBAR;
+  const fw = portrait ? W * .92 : W * .6, fh = fw * 900 / SHOWN;
+  const fx = portrait ? W * .04 : W * .025, fy = portrait ? H * .135 : H * .17;
+  const f = el(root, "div", `left:${fx}px;top:${fy}px;width:${fw}px;height:${Math.min(fh, H * .8)}px;border-radius:${px(1.6)}`); f.className = "frame";
+  const scale = fw / SHOWN;
+  const img = el(f, "img", `width:${1440 * scale}px;height:${900 * scale}px;left:${-SIDEBAR * scale}px;top:0;max-width:none;transform-origin:50% 40%`);
+  const c = caption(root, "GST பில்லிங்", "Tax worked out for you", portrait ? `left:${px(5)};right:${px(5)};top:${px(7)};text-align:center` : `left:${px(4)};top:${px(2)}`, "#ffc61a", "#fdfbf5", portrait ? 1.15 : .9);
+  const r = portrait ? 1.55 : 1.02;
+  const rp = (n) => px(n * r);
+  const rw = portrait ? 74 : 40;
+  const rec = el(root, "div", `left:${portrait ? (W - rw * u) / 2 : W * .645}px;width:${px(rw)};padding:${rp(2)} ${rp(2.4)}`); rec.className = "receipt abs";
+  const row = (a, b, size, extra = "") => `<div style="display:flex;justify-content:space-between;gap:${rp(1)};font-size:${rp(size)};${extra}"><span>${a}</span><span>${b}</span></div>`;
+  const rule = `<div style="border-top:${px(.2)} dashed #1c171255;margin:${rp(.8)} 0"></div>`;
+  rec.innerHTML = `<div style="font-size:${rp(2.4)};font-weight:700">குமார் ஸ்டோர்ஸ்</div><div style="font-size:${rp(1.35)};opacity:.7">வரி விலைப்பட்டியல் · Tax invoice</div>${rule}
+    ${row("சூரியகாந்தி எண்ணெய்", "₹165.00", 1.75)}<div style="font-size:${rp(1.3)};opacity:.65;margin-bottom:${rp(.6)}">Sunflower oil 1 L · GST 5%</div>
+    ${row("பொன்னி அரிசி", "₹56.00", 1.75)}<div style="font-size:${rp(1.3)};opacity:.65">Ponni rice, loose · GST 0%</div>${rule}
+    ${row("CGST 2.5%", "₹4.13", 1.4)}${row("SGST 2.5%", "₹4.13", 1.4)}${row("Round off", "−₹0.26", 1.4)}${rule}
+    ${row("மொத்தம்", "₹229.00", 3, "font-weight:700")}<div style="height:${rp(7.5)}"></div>`;
+  const stamp = el(root, "div", `position:absolute;font-size:${rp(2.7)};padding:${rp(.35)} ${rp(1.2)};transform-origin:center`, "பணம் பெற்றது"); stamp.className = "stamp";
+  const wa = el(root, "div", `position:absolute;font-size:${rp(2.05)};padding:${rp(1.2)} ${rp(1.7)};width:${px(rw)}`, `<div style="font-weight:700;color:#128c7e;font-size:${rp(1.6)}">குமார் ஸ்டோர்ஸ் · WhatsApp</div>நன்றி செல்வி. ₹229.00 பில் செலுத்தப்பட்டது. <span style="color:#53bdeb">✓✓</span>`); wa.className = "bubble";
+  wa.style.left = rec.style.left;
+  note(root, "#fdfbf5");
+  const STAMP = 7.0;
+  return (t) => {
+    // A little faster than life, so the total lands just before the stamp.
+    show(img, frameAt("bill", Math.min(t * 1.4, clips.bill.seconds - .05)));
+    img.style.transform = `scale(${1 + .03 * inOut(prog(t, .2, 6))})`;
+    f.style.transform = `translateY(${(1 - outExpo(prog(t, 0, .5))) * 8 * u}px)`;
+    slam(c.b, t, .15, 1.35);
+    // The slip prints downward out of the top edge (phone: up from under the picture).
+    const rh = rec.offsetHeight;
+    const pr = inOut(prog(t, STAMP - 2.4, STAMP - .4));
+    const restTop = portrait ? fy + Math.min(fh, H * .8) * .62 : H * .17;
+    const startTop = portrait ? H + 2 * u : -rh - 2 * u;
+    const top = startTop + (restTop - startTop) * pr;
+    rec.style.top = `${top}px`;
+    const sk = prog(t, STAMP - .2, STAMP + .02);
+    stamp.style.opacity = sk > 0 ? 1 : 0;
+    stamp.style.left = `${rec.offsetLeft + rec.offsetWidth / 2 - stamp.offsetWidth / 2}px`;
+    stamp.style.top = `${top + rh - 7.2 * r * u}px`;
+    stamp.style.transform = `scale(${2.4 - 1.4 * outExpo(sk)}) rotate(-7deg)`;
+    const shake = sk > 0 && t < STAMP + .3 ? Math.sin(t * 90) * (STAMP + .3 - t) * 1.6 * u : 0;
+    root.style.transform = `translate(${shake}px,${-shake * .6}px)`;
+    wa.style.top = `${top + rh + 1.4 * u}px`;
+    const wk = outBack(prog(t, STAMP + .45, STAMP + .8));
+    wa.style.opacity = t > STAMP + .45 ? 1 : 0;
+    wa.style.transform = `scale(${wk})`;
+  };
+});
+
+// ---------------------------------------------------------------- 3. credit book
+scene(11.6, 14.2, "#1c1712", (root) => {
+  const SHOWN = 1184, fw = portrait ? W * .94 : W * .72, scale = fw / SHOWN, fh = Math.min(900 * scale, H * .76);
+  const f = el(root, "div", `left:${(W - fw) / 2}px;top:${portrait ? H * .26 : H * .19}px;width:${fw}px;height:${fh}px;border-radius:${px(1.6)}`); f.className = "frame";
+  const img = el(f, "img", `width:${1440 * scale}px;height:${900 * scale}px;left:${-256 * scale}px;top:0;max-width:none;transform-origin:50% 30%`);
+  const c = caption(root, "கடன் கணக்கு", "Credit book, reminders on WhatsApp", `left:${px(4)};right:${px(4)};top:${portrait ? px(12) : px(2)};text-align:center`, "#ffc61a", "#fdfbf5", portrait ? 1.1 : .8);
+  note(root, "#fdfbf5");
+  return (t) => { show(img, frameAt("credit", Math.min(t, clips.credit.seconds - .05))); img.style.transform = `scale(${1 + .03 * prog(t, 0, 2.6)})`; slam(c.b, t, .1, 1.35); };
+});
+
+// ---------------------------------------------------------------- 4. online store: three real stores on a phone
+scene(14.2, 21.4, "var(--red)", (root) => {
+  const k = kolam(root, 11, 7, `width:${px(portrait ? 190 : 150)};left:${px(portrait ? -45 : -24)};top:${px(portrait ? 60 : -18)}`, "#ffffff", .16);
+  const ph = portrait ? H * .62 : H * .92, pw = ph * 390 / 844;
+  const pad = ph * .022;
+  const phone = el(root, "div", `position:absolute;background:#111;border-radius:${ph * .06}px;padding:${pad}px;width:${pw + pad * 2}px;height:${ph + pad * 2}px;box-shadow:0 ${px(3)} ${px(8)} rgba(0,0,0,.5)`);
+  phone.style.left = portrait ? `${(W - pw - pad * 2) / 2}px` : `${W * .64 - pw / 2}px`;
+  phone.style.top = portrait ? `${H * .31}px` : `${(H - ph - pad * 2) / 2}px`;
+  const screen = el(phone, "div", `position:relative;width:100%;height:100%;overflow:hidden;border-radius:${ph * .045}px;background:#fff`);
+  const img = el(screen, "img", "position:absolute;inset:0;width:100%;height:100%;object-fit:cover");
+  const a = caption(root, "உங்கள் சொந்த<br>ஆன்லைன் ஸ்டோர்", "Your own online store", portrait ? `left:${px(5)};right:${px(5)};top:${px(9)};text-align:center` : `left:${px(7)};top:${px(13)};width:${px(95)}`, "#ffffff", "#ffc61a", portrait ? 1.02 : 1.04);
+  const list = ["உங்கள் பெயர், உங்கள் நிறங்கள்|Your name, your colours", "UPI, கார்டு, டெலிவரியில் பணம்|UPI, card, cash on delivery", "ஆர்டர்கள் நேராக உங்களுக்கு|Orders straight to you"];
+  const items = list.map((s, i) => {
+    const [ta, en] = s.split("|");
+    return el(root, "div", portrait ? `position:absolute;display:none` : `position:absolute;left:${px(7)};top:${px(49 + i * 13.5)};width:${px(95)};color:#fff`, `<div class="ta" style="font-size:${px(3.6)}">${ta}</div><div class="en" style="font-size:${px(2.3)};color:#ffc61a;margin-top:${px(.2)}">${en}</div>`);
+  });
+  const order = el(root, "div", `position:absolute;background:#1c1712;color:#fdfbf5;border-radius:${px(1.6)};padding:${px(1.2)} ${px(1.8)};width:${px(46)};font-size:${px(2)};white-space:nowrap;box-shadow:0 ${px(1)} ${px(3)} rgba(0,0,0,.5)`, `<div class="ta" style="font-size:${px(2.7)};color:#ffc61a">🔔 புதிய ஆன்லைன் ஆர்டர்</div><div style="font-size:${px(1.8)};margin-top:${px(.3)}">New online order · ₹1,850</div>`);
+  order.style.left = portrait ? `${(W - 46 * u) / 2}px` : `${W * .64 - 23 * u}px`;
+  order.style.top = portrait ? `${H * .8}px` : `${H * .74}px`;
+  note(root, "#fff");
+  const cuts = [["store-thari", 0, 2.3], ["store-cauvery", 2.3, 4.6], ["store-padham", 4.6, 7.2]];
+  return (t) => {
+    k(prog(t, 0, 7) * .7);
+    const cut = cuts.find((c) => t >= c[1] && t < c[2]) || cuts[2];
+    show(img, frameAt(cut[0], Math.min(clips[cut[0]].seconds - .05, .4 + (t - cut[1]) * 1.3)));
+    const pk = outBack(prog(t, .05, .5));
+    phone.style.transform = `translateY(${(1 - pk) * 30 * u}px) rotate(${(portrait ? 0 : 2.5) + Math.sin(t * .8) * .35}deg)`;
+    const flash = t - cut[1] < .12 && cut[1] > 0 ? 1 - (t - cut[1]) / .12 : 0;
+    screen.style.filter = flash ? `brightness(${1 + flash * .9})` : "";
+    slam(a.b, t, .2, 1.3);
+    items.forEach((e, i) => rise(e, t, 1.4 + i * 1.3));
+    const ok = prog(t, 5.5, 5.85);
+    order.style.opacity = ok > 0 ? 1 : 0;
+    order.style.transform = `scale(${outBack(ok)})`;
+  };
+});
+
+// ---------------------------------------------------------------- 5. one stock
+scene(21.4, 24.6, "var(--teal)", (root) => {
+  const c = caption(root, "ஒரே இருப்பு", "One stock for both", `left:${px(4)};right:${px(4)};top:${portrait ? "20%" : px(6)};text-align:center`, "#ffffff", "#ffc61a", 1.2);
+  const num = el(root, "div", `position:absolute;left:0;right:0;top:${portrait ? "36%" : "27%"};text-align:center;font-family:'Big Shoulders';font-weight:900;color:#ffc61a;font-size:${px(portrait ? 40 : 38)};line-height:1`, "10");
+  const left = el(root, "div", `position:absolute;left:${px(portrait ? 5 : 16)};top:${portrait ? "68%" : "42%"};color:#fff;text-align:center;width:${px(portrait ? 40 : 48)}`, `<div class="ta" style="font-size:${px(3.8)}">கவுண்டர் பில்</div><div class="en" style="font-size:${px(2.4)};color:#ffc61a">Counter bill −1</div>`);
+  const right = el(root, "div", `position:absolute;right:${px(portrait ? 5 : 16)};top:${portrait ? "68%" : "42%"};color:#fff;text-align:center;width:${px(portrait ? 40 : 48)}`, `<div class="ta" style="font-size:${px(3.8)}">ஆன்லைன் ஆர்டர்</div><div class="en" style="font-size:${px(2.4)};color:#ffc61a">Online order −1</div>`);
+  const sub = el(root, "div", `position:absolute;left:${px(4)};right:${px(4)};bottom:${portrait ? "12%" : px(7)};text-align:center;color:#fff;font-size:${px(2.6)}`, "ஒரே பொருள் பட்டியல், ஒரே கணக்கு<br>One product list, one account");
+  sub.style.fontWeight = 700;
+  return (t) => {
+    slam(c.b, t, .1, 1.3);
+    num.textContent = t < 1.0 ? "10" : t < 2.0 ? "9" : "8";
+    const hit = t < 1 ? 1 : t < 2 ? 1.28 - .28 * outExpo(prog(t, 1, 1.25)) : 1.28 - .28 * outExpo(prog(t, 2, 2.25));
+    num.style.transform = `scale(${hit})`;
+    rise(left, t, .85); rise(right, t, 1.85); rise(sub, t, 2.3);
+  };
+});
+
+// ---------------------------------------------------------------- 6. Tamil
+scene(24.6, 27, "#1c1712", (root) => {
+  const SHOWN = 1625, fw = portrait ? W * .94 : W * .72, scale = fw / SHOWN, fh = Math.min(1132 * scale, H * .68);
+  const f = el(root, "div", `left:${(W - fw) / 2}px;top:${portrait ? H * .3 : H * .25}px;width:${fw}px;height:${fh}px;border-radius:${px(1.6)}`); f.className = "frame";
+  const img = el(f, "img", `width:${2000 * scale}px;height:${1132 * scale}px;left:${-375 * scale}px;top:0;max-width:none;transform-origin:50% 30%`); img.src = "../../docs/guides/assets/product-guide/billing-dashboard-ta.jpg";
+  const c = caption(root, "தமிழிலும் ஆங்கிலத்திலும்", "In Tamil and English", `left:${px(4)};right:${px(4)};top:${portrait ? px(16) : px(3)};text-align:center`, "#ffc61a", "#fdfbf5", portrait ? .92 : 1.05);
+  note(root, "#fdfbf5");
+  return (t) => { img.style.transform = `scale(${1 + .03 * prog(t, 0, 2.4)})`; slam(c.b, t, .1, 1.3); };
+});
+
+// ---------------------------------------------------------------- 7. end card (no web address, on purpose)
+scene(27, 30.01, "var(--yellow)", (root) => {
+  const k = kolam(root, 11, 7, portrait ? `width:${px(170)};left:${px(-35)};top:${px(60)}` : `width:${px(130)};left:${px(-22)};top:${px(-25)}`, "#1c1712", .13);
+  const logo = el(root, "div", `position:absolute;left:0;right:0;top:${portrait ? "21%" : "7%"};display:flex;align-items:center;justify-content:center;gap:${px(1.6)}`,
+    `<svg viewBox="0 0 40 40" width="${16 * u}" height="${16 * u}"><path d="${LOGO_SLIP}" fill="#d6231a"/><path d="${LOGO_R}" fill="#fff" fill-rule="evenodd"/></svg><span style="font-family:'Big Shoulders';font-weight:900;font-size:${px(15)};letter-spacing:.02em;line-height:1">RBMS</span>`);
+  const lines = [["GST பில்லிங்.", "#1c1712"], ["ஆன்லைன் ஸ்டோர்.", "#b81a12"], ["எல்லாம் ஒன்றில்.", "#1c1712"]].map(([s, col], i) => el(root, "div", `position:absolute;left:0;right:0;text-align:center;top:${portrait ? 37 + i * 7.2 : 32 + i * 14}%;font-size:${px(portrait ? 8.2 : 9)};color:${col}`, s));
+  lines.forEach((e) => (e.className = "ta"));
+  const en = el(root, "div", `position:absolute;left:0;right:0;text-align:center;top:${portrait ? "60.5%" : "75%"};font-size:${px(3.4)}`, "GST billing. Online store. All in one."); en.className = "en";
+  const cta = el(root, "div", `position:absolute;left:50%;top:${portrait ? "68%" : "84%"};background:#d6231a;color:#fff;border-radius:${px(5)};padding:${px(1.2)} ${px(4)};white-space:nowrap;font-size:${px(3)};font-weight:800`, "14 நாள் இலவச சோதனை · 14-day free trial");
+  cta.dataset.base = "translateX(-50%)";
+  return (t) => {
+    k(outExpo(prog(t, 0, 2.6)));
+    slam(logo, t, .1, 1.9);
+    lines.forEach((e, i) => slam(e, t, .55 + i * .32, 1.5));
+    rise(en, t, 1.55);
+    const ck = outBack(prog(t, 1.85, 2.2));
+    cta.style.opacity = t > 1.85 ? 1 : 0;
+    cta.style.transform = `translateX(-50%) scale(${ck})`;
+  };
+});
+
+startAd({
+  dir: "out/clips",
+  names: ["bill", "credit", "store-thari", "store-cauvery", "store-padham"],
+  cuts: [[3.4, "#1c1712", "#d6231a"], [11.6, "#ffc61a", "#1c1712"], [14.2, "#d6231a", "#ffc61a"], [21.4, "#00657a", "#ffc61a"], [24.6, "#1c1712", "#00657a"], [27, "#ffc61a", "#d6231a"]],
+});
+</script>
+</body>
+</html>
