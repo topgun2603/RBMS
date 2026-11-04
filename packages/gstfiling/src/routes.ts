@@ -1,4 +1,5 @@
 import { badRequest, requirePermission, requireRole, requireTenant, requireUser, type RequestContext } from "@rbms/core";
+import { isValidDate } from "@rbms/gst";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { RCM_CATEGORIES } from "./rcm-categories";
@@ -17,7 +18,12 @@ async function periodQueryIssues(service: GstFilingService, tenantId: string, pe
   if (!period) throw badRequest("Say which month or quarter: period=YYYY-MM or period=YYYY-Qn");
   return service.periodIssues(tenantId, period);
 }
-const q = (req: { query: unknown }) => (req.query ?? {}) as Record<string, string | undefined>;
+/** The query, with its date filters checked: a bad one would otherwise reach the SQL and come back as a 500. */
+const q = (req: { query: unknown }) => {
+  const v = (req.query ?? {}) as Record<string, string | undefined>;
+  for (const k of ["from", "to"]) if (v[k] && !isValidDate(v[k])) throw badRequest(`Use a valid YYYY-MM-DD date for ${k}`);
+  return v;
+};
 
 function file(reply: FastifyReply, name: string, type: string, body: string) {
   return reply.header("content-type", `${type}; charset=utf-8`).header("content-disposition", `attachment; filename="${name.replace(/[^A-Za-z0-9._-]/g, "_")}"`).send(body);
