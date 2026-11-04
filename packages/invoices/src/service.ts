@@ -99,6 +99,7 @@ import {
   OPEN_STATUSES,
   paymentProblem,
   withoutTax,
+  billDateProblem,
 } from "./logic";
 import {
   noopLogger,
@@ -2489,7 +2490,7 @@ export class InvoicesService {
     const loyalty = b.loyaltyPoints ? this.loyaltyFor(b.loyaltyPoints, values.customer) : null;
     // The id exists before the insert so a points redemption can reference the bill.
     const id = newId();
-    const check = { lines: values.lines.map(toLineInput), placeOfSupply: values.placeOfSupply, supplyType: values.supplyType };
+    const check = { date: values.date, lines: values.lines.map(toLineInput), placeOfSupply: values.placeOfSupply, supplyType: values.supplyType };
     const issued = await this.issueWith(
       tenant,
       id,
@@ -2613,7 +2614,7 @@ export class InvoicesService {
       });
       loyalty = this.loyaltyFor(o.loyaltyPoints, customer);
     }
-    const check = { lines: row.lines.map(toLineInput), placeOfSupply: row.placeOfSupply, supplyType: row.supplyType ?? "domestic" };
+    const check = { date: row.date, lines: row.lines.map(toLineInput), placeOfSupply: row.placeOfSupply, supplyType: row.supplyType ?? "domestic" };
     const issued = await this.issueWith(tenant, id, seller, branch, check, loyalty, (tx) => this.row(tx, tenant.id, id, true));
     return this.afterIssue(issued, branch);
   }
@@ -2665,7 +2666,7 @@ export class InvoicesService {
     invoiceId: string,
     seller: SellerProfile,
     branch: IssueBranch,
-    check: { lines: LineInput[]; placeOfSupply: string; supplyType?: SupplyType },
+    check: { date: string; lines: LineInput[]; placeOfSupply: string; supplyType?: SupplyType },
     loyalty: IssueLoyalty | null,
     load: (tx: DbOrTx) => Promise<InvoiceRow>,
     preset?: PresetNumber,
@@ -2673,6 +2674,9 @@ export class InvoicesService {
     if (!seller.stateCode) {
       throw badRequest("Complete the business profile (state, GSTIN, address) in billing settings before issuing invoices");
     }
+    const dateProblem = billDateProblem(check.date, this.today());
+    if (dateProblem === "future") throw new AppError(400, "invoice_date_future", "Check the bill date: it is in the future");
+    if (dateProblem === "too_old") throw new AppError(400, "invoice_date_too_old", "Check the bill date: it is before the previous financial year");
     // Fail fast before touching the quota; applyIssue re-checks inside the transaction.
     const expected = this.assertIssuable(check.lines, check.placeOfSupply, seller, check.supplyType);
 

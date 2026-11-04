@@ -1,6 +1,6 @@
 import { defineModule } from "@rbms/core";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_RATE_LIMIT, isAuthSensitive, isRateLimitExempt, MemoryWindowCounter, sharedWindowCounter, type RateLimitConfig } from "./http-guard";
+import { DEFAULT_RATE_LIMIT, hasUnsafeText, isAuthSensitive, isRateLimitExempt, MemoryWindowCounter, sharedWindowCounter, type RateLimitConfig } from "./http-guard";
 import { buildServer } from "./server";
 
 async function app(rate: Partial<RateLimitConfig> = {}, hsts = false) {
@@ -122,5 +122,56 @@ describe("sharedWindowCounter", () => {
     expect((await c.hit("k", 1000)).count).toBe(1);
     expect((await c.hit("k", 1000)).count).toBe(2);
     expect((await sharedWindowCounter(null).hit("k", 1000)).count).toBe(1);
+  });
+});
+
+describe("unsafe input", () => {
+  const server = () =>
+    buildServer({
+      corsOrigins: [],
+      contextHooks: [],
+      modules: [
+        defineModule({
+          id: "x",
+          routes: (r) => {
+            r.post("/p", async () => ({ ok: true }));
+            r.get("/g/:slug", async () => ({ ok: true }));
+          },
+        }),
+      ],
+    });
+
+  it("refuses a null byte or half an emoji pair anywhere, with a 400", async () => {
+    const a = await server();
+    const bad = [
+      { method: "POST" as const, url: "/v1/x/p", payload: { name: "a\u0000b" } },
+      { method: "POST" as const, url: "/v1/x/p", payload: { lines: [{ fields: { brand: "a\ud800b" } }] } },
+      { method: "POST" as const, url: "/v1/x/p", payload: { "a\u0000": 1 } },
+      { method: "GET" as const, url: "/v1/x/g/ok?q=a%00b" },
+      { method: "GET" as const, url: "/v1/x/g/a%00b" },
+    ];
+    for (const req of bad) {
+      const r = await a.inject(req);
+      expect(r.statusCode, req.url).toBe(400);
+      expect(r.json().error.code).toBe("invalid_input");
+    }
+  });
+
+  it("refuses paging numbers past the database range", async () => {
+    const a = await server();
+    expect((await a.inject({ url: "/v1/x/g/ok?offset=99999999999999999999" })).statusCode).toBe(400);
+    expect((await a.inject({ url: "/v1/x/g/ok?limit=2147483648" })).statusCode).toBe(400);
+  });
+
+  it("leaves ordinary input alone: Tamil, emoji, whole pairs, normal paging", async () => {
+    const a = await server();
+    expect((await a.inject({ method: "POST", url: "/v1/x/p", payload: { name: "செல்வி 🧾", n: 5, ok: true, none: null } })).statusCode).toBe(200);
+    expect((await a.inject({ url: `/v1/x/g/${encodeURIComponent("கடை")}?offset=100&limit=25` })).statusCode).toBe(200);
+  });
+
+  it("survives very deep nesting", () => {
+    let v: unknown = "x";
+    for (let i = 0; i < 200_000; i++) v = [v];
+    expect(hasUnsafeText(v)).toBe(false);
   });
 });

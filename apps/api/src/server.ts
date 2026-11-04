@@ -12,7 +12,7 @@ import Fastify, {
   type preHandlerAsyncHookHandler,
 } from "fastify";
 import { ZodError } from "zod";
-import { createRateLimiter, securityHeaders, type RateLimitConfig } from "./http-guard";
+import { createRateLimiter, securityHeaders, unsafeInputGuard, type RateLimitConfig } from "./http-guard";
 import { httpMetrics, OPS_PATHS, registerOpsRoutes, type OpsOptions } from "./ops";
 
 export interface ServerOptions {
@@ -148,6 +148,8 @@ export async function buildServer(opts: ServerOptions) {
     else req.log.error(err);
     return reply.status(500).send({ error: { code: "internal", message: "Something went wrong", requestId: req.id } });
   });
+
+  app.addHook("preValidation", unsafeInputGuard);
 
   if (opts.ops) registerOpsRoutes(app, opts.ops);
   else app.get("/health", async () => ({ ok: true }));

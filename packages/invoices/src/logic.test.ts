@@ -4,6 +4,7 @@ import {
   allocateProportional,
   applyBillDiscount,
   balanceOf,
+  billDateProblem,
   deriveStatus,
   isOverdue,
   monthRange,
@@ -217,5 +218,26 @@ describe("applyBillDiscount", () => {
     expect(() => applyBillDiscount(before.lines, 1.5)).toThrow(RangeError);
     const capped = computeInvoice(applyBillDiscount(before.lines, 5_000, { strict: false }), intra);
     expect(capped.lines[0]!.total).toBe(0);
+  });
+});
+
+describe("billDateProblem", () => {
+  it("takes today, yesterday and tomorrow (a counter clock a little fast)", () => {
+    for (const d of ["2026-11-04", "2026-11-03", "2026-11-05"]) expect(billDateProblem(d, "2026-11-04")).toBeNull();
+    expect(billDateProblem("2027-01-01", "2026-12-31")).toBeNull();
+  });
+  it("refuses later than tomorrow: the 2099-for-2026 typo", () => {
+    expect(billDateProblem("2026-11-06", "2026-11-04")).toBe("future");
+    expect(billDateProblem("2099-01-01", "2026-11-04")).toBe("future");
+  });
+  it("goes back to the start of the previous financial year, no further", () => {
+    expect(billDateProblem("2025-04-01", "2026-11-04")).toBeNull();
+    expect(billDateProblem("2025-03-31", "2026-11-04")).toBe("too_old");
+    expect(billDateProblem("1900-01-01", "2026-11-04")).toBe("too_old");
+    // January to March still belong to the financial year that began the April before.
+    expect(billDateProblem("2024-04-01", "2026-03-31")).toBeNull();
+    expect(billDateProblem("2024-03-31", "2026-03-31")).toBe("too_old");
+    expect(billDateProblem("2025-04-01", "2026-04-01")).toBeNull();
+    expect(billDateProblem("2025-03-31", "2026-04-01")).toBe("too_old");
   });
 });

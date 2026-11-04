@@ -1,5 +1,5 @@
 import { tooMany } from "@rbms/core";
-import type { FastifyReply, FastifyRequest, onRequestAsyncHookHandler, onSendAsyncHookHandler } from "fastify";
+import type { FastifyReply, FastifyRequest, onRequestAsyncHookHandler, onSendAsyncHookHandler, preValidationAsyncHookHandler } from "fastify";
 import { OPS_PATHS } from "./ops";
 
 /**
@@ -141,3 +141,38 @@ export function securityHeaders(opts: { hsts: boolean }): onSendAsyncHookHandler
     return payload;
   };
 }
+
+/** A null byte, or half of an emoji pair: Postgres can't store either, so without this they surface as a 500 from the query. */
+const UNSAFE_TEXT = /\u0000|\p{Cs}/u;
+/** Paging numbers past Postgres's int range, which the routes that read them by hand would otherwise pass straight to the query. */
+const PAGING = new Set(["offset", "limit", "page"]);
+const MAX_PAGING = 2_147_483_647;
+
+/** True when a query, URL parameter or JSON body holds text the database can't take. Iterative, so deep nesting can't overflow the stack. */
+export function hasUnsafeText(root: unknown): boolean {
+  const stack: unknown[] = [root];
+  while (stack.length) {
+    const v = stack.pop();
+    if (typeof v === "string") {
+      if (UNSAFE_TEXT.test(v)) return true;
+    } else if (Array.isArray(v)) {
+      for (const item of v) stack.push(item);
+    } else if (v && typeof v === "object" && !Buffer.isBuffer(v)) {
+      for (const [k, item] of Object.entries(v)) {
+        if (UNSAFE_TEXT.test(k)) return true;
+        stack.push(item);
+      }
+    }
+  }
+  return false;
+}
+
+const invalidInput = (reply: FastifyReply, message: string) => reply.status(400).send({ error: { code: "invalid_input", message } });
+
+/** Refuses what no route can use, once and for all routes, with a clean 400 rather than a crash per route. */
+export const unsafeInputGuard: preValidationAsyncHookHandler = async (req, reply) => {
+  if (hasUnsafeText(req.params) || hasUnsafeText(req.query) || hasUnsafeText(req.body)) return invalidInput(reply, "The request holds characters that can't be saved");
+  for (const [k, v] of Object.entries((req.query ?? {}) as Record<string, unknown>)) {
+    if (PAGING.has(k) && typeof v === "string" && /^\d+$/.test(v) && Number(v) > MAX_PAGING) return invalidInput(reply, `${k} is too large`);
+  }
+};

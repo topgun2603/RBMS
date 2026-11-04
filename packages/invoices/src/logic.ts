@@ -111,6 +111,21 @@ export function withoutTax<T extends { gstRate: number; gstRule?: unknown }>(lin
   return lines.map((l) => ({ ...l, gstRate: 0, gstRule: null }));
 }
 
+/**
+ * Why a bill can't be issued on this date, or null. A guard against typed-in mistakes (2099 for 2026), not a legal window:
+ * the GST rules set deadlines for issuing an invoice (section 31, rule 47), not a range for its date. Tomorrow is allowed so
+ * a counter whose clock runs a little fast can still sync a bill made around midnight; anything before the previous financial
+ * year would land in a year whose returns are closed. Dates and `today` are IST "YYYY-MM-DD".
+ */
+export function billDateProblem(date: string, today: string): "future" | "too_old" | null {
+  const t = new Date(`${today}T00:00:00Z`);
+  t.setUTCDate(t.getUTCDate() + 1);
+  if (date > t.toISOString().slice(0, 10)) return "future";
+  const year = Number(today.slice(0, 4));
+  const fyStart = Number(today.slice(5, 7)) >= 4 ? year : year - 1;
+  return date < `${fyStart - 1}-04-01` ? "too_old" : null;
+}
+
 /** First day of the IST month of `today` and of the next month, as "YYYY-MM-DD". */
 export function monthRange(today: string): { from: string; to: string } {
   const y = Number(today.slice(0, 4));
