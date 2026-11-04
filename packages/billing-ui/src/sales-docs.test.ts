@@ -191,3 +191,18 @@ describe("sales document messages", () => {
     expect(en["billing.sd.public.footer"]).toContain("RBMS");
   });
 });
+
+describe("every billing menu label has real words", () => {
+  it("in English and Tamil: a missing merge shows billing.nav.x on screen", () => {
+    const m = billingModule();
+    const labels = [
+      ...(m.nav ?? []).flatMap((s) => [s.title, ...s.items.map((i) => i.label)]),
+      ...(m.actions ?? []).map((a) => a.label),
+      ...(m.settings ?? []).map((s) => s.label),
+    ].filter((k): k is string => typeof k === "string");
+    expect(labels.length).toBeGreaterThan(20);
+    const missing = (bundle: Record<string, string> | undefined) => labels.filter((k) => !bundle?.[k]);
+    expect(missing(m.messages?.en as Record<string, string>)).toEqual([]);
+    expect(missing(m.messages?.ta as Record<string, string>)).toEqual([]);
+  });
+});

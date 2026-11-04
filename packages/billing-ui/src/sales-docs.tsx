@@ -54,6 +54,7 @@ export function withSalesDocs(m: WebModule): WebModule {
   return {
     ...m,
     nav,
+    messages,
     routes: [...(m.routes ?? []), ...SALES_DOCS_ROUTES],
     publicRoutes: [...(m.publicRoutes ?? []), { path: "d/:token", component: page(() => import("./pages/public-sales-doc")), feature: F }],
     actions: [
