@@ -21,7 +21,7 @@
     "severity": "High",
     "problem": "The flagship demo shop still has pre-2025 GST rates: toothpaste, soap and shampoo at 18%, 8 items at 12%, cool drink at 28%. Visitors opening the demo see wrong tax",
     "where": "apps/api/src/seed.ts, apps/api/src/demo-history/profiles.ts and others",
-    "status": "OPEN: needs a rate check per item against the current notification, then a re-seed of the demo shops."
+    "status": "PARTLY FIXED 2026-11-05: Kumar Stores' items corrected against Notification 9/2025 in the seed data and the local database; camphor removed. Its 6,557 old bills keep their old rates (owner's choice, not regenerated). Other demo shops not yet checked. Jaggery and the 0% items wait on Notification 10/2025."
   },
   {
     "severity": "Medium",

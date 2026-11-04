@@ -114,7 +114,7 @@ describe("profiles", () => {
       const names = p.catalogue.map((c) => c.name);
       expect(new Set(names).size).toBe(names.length);
       for (const c of p.catalogue) {
-        expect([0, 0.25, 3, 5, 12, 18, 28]).toContain(c.gstRate);
+        expect([0, 0.25, 3, 5, 12, 18, 28, 40]).toContain(c.gstRate);
         expect(c.rate).toBeGreaterThan(0);
         if (c.supplier) expect(p.suppliers.map((s) => s.name)).toContain(c.supplier);
       }
