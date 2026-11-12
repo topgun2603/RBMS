@@ -73,7 +73,8 @@ describe.skipIf(!URL_)("AiService on a database", () => {
     const u = await svc.usage(A, 30);
     expect(u.byFeature.map((f) => f.feature).sort()).toEqual(["hsn-suggest", "product-description"]);
     expect(u.byDay).toHaveLength(1);
-    expect(u.byDay[0]!.day).toBe("2026-10-24");
+    // created_at is the database's own clock, not the test's: the row is dated today.
+    expect(u.byDay[0]!.day).toBe(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }));
     expect(u.byDay[0]!.runs).toBe(2);
     expect(u.savedWithoutEdits).toBeCloseTo(0.5);
     expect((await svc.usage(B, 30)).byFeature).toHaveLength(1);
@@ -91,7 +92,7 @@ describe.skipIf(!URL_)("AiService on a database", () => {
   it("clears stored debug prompts after 7 days", async () => {
     const before = await svc.purgeDebug();
     expect(before).toBe(0);
-    clock = new Date("2026-11-05T06:00:00Z");
+    clock = new Date(Date.now() + 8 * 86_400_000);
     expect(await svc.purgeDebug()).toBe(3);
     expect(await svc.purgeDebug()).toBe(0);
   });

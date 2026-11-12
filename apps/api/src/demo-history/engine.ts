@@ -401,7 +401,7 @@ class Engine {
       }
     }
     const off = rng.chance(0.78) ? 0 : rng.pick([-1, 1, -1]) * rng.int(1, 12) * 1000;
-    await this.inv.till.close(this.tenantId, session.id, { countedCash: Math.max(expected + off, 0), note: off === 0 ? null : off < 0 ? "Short; checked and noted" : "Excess; noted" }, { id: null, name: session.cashier });
+    await this.inv.till.close(this.tenantId, session.id, { countedCash: Math.max(expected + off, 0), reason: off === 0 ? null : off < 0 ? "Short; checked and noted" : "Excess; noted" }, { id: null, name: session.cashier });
   }
 
   // -------------------------------------------------------------- bills

@@ -16,12 +16,14 @@ const DDL = `
 create table ${S}.catalog_categories (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, parent_id uuid,
   name text not null, sort integer not null default 0, active boolean not null default true);
 create table ${S}.catalog_products (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, name text not null,
-  category_id uuid, hsn text, gst_rate real not null default 0, unit text not null default 'pcs', tax_inclusive boolean not null default false,
+  category_id uuid, hsn text, gst_rate real not null default 0, gst_rule jsonb, unit text not null default 'pcs', tax_inclusive boolean not null default false,
   status text not null default 'active', channels text[] not null default '{store,billing}', images jsonb not null default '[]',
   deleted_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
 create table ${S}.catalog_variants (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, product_id uuid not null,
   sku text, barcode text, title text not null default '', price integer not null, mrp integer, deleted_at timestamptz,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table ${S}.catalog_item_units (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, variant_id uuid not null,
+  unit text not null, factor numeric(14,6) not null, barcode text, price integer, mrp integer, position integer not null default 0);
 create table ${S}.stock_items (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, location_id uuid, item_id uuid not null,
   qty numeric not null default 0, reorder_level numeric not null default 0, track boolean not null default true,
   updated_at timestamptz not null default now());

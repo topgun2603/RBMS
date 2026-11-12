@@ -348,7 +348,7 @@ await step("till: close with a count → difference stored; Z report PDF; closed
   const counted = x.cash.expected - 1_000; // ₹10 short, counted as notes below
   const rupees = Math.floor(counted / 100);
   const count = { 500: Math.floor(rupees / 500), 1: rupees % 500 };
-  const res = ok(await call("POST", `/v1/invoices/till/${till.id}/close`, { count, note: `E2E ${RUN}`, actorName: "E2E cashier" }), "close");
+  const res = ok(await call("POST", `/v1/invoices/till/${till.id}/close`, { count, reason: `E2E ${RUN}`, actorName: "E2E cashier" }), "close");
   eq(res.session.status, "closed", "status");
   eq(res.session.expectedCash, x.cash.expected, "expected");
   eq(res.session.countedCash, rupees * 100, "counted");

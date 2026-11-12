@@ -111,5 +111,6 @@ describe("store probe", () => {
     expect(seen).toEqual([`${STORE}/favicon.svg`]);
     expect(await probeStore(STORE, (async () => Promise.reject(new TypeError("Failed to fetch"))) as unknown as typeof fetch)).toBe(false);
     expect(await probeStore(STORE, (async () => Promise.reject(new DOMException("aborted", "AbortError"))) as unknown as typeof fetch)).toBe(true);
-  });
+    // The import alone can take over 5 s on a busy machine.
+  }, 30_000);
 });
