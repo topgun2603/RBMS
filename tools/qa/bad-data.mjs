@@ -12,6 +12,8 @@ const TIMEOUT_MS = 30_000;
 const SAMPLES_PER_ROUTE = 2;
 const MAX_FIELDS = 40;
 const INFINITY = "__QA_INFINITY__";
+/** The API keeps idempotency keys between runs and wants 8 or more characters: a key from an earlier run is refused before the logic is reached. */
+const RUN = Date.now().toString(36);
 
 const long = (n) => "x".repeat(n);
 const NUMBER_BAD = [
@@ -181,21 +183,22 @@ async function replayPass() {
     coverage.set(route, { deep: true, fields: 0, reached: 0, attempts: 0 });
     const samples = list.sort((a, b) => b.size - a.size).slice(0, SAMPLES_PER_ROUTE);
     for (const s of samples) {
-      const headers = { "content-type": "application/json", ...(s.tenant ? { "x-tenant": s.tenant } : {}), ...(s.authorization ? { authorization: s.authorization } : {}), ...(s.host ? { "x-forwarded-host": s.host } : {}) };
+      const headers = { "content-type": "application/json", ...(s.tenant ? { "x-tenant": s.tenant } : {}), ...(s.authorization ? { authorization: s.authorization } : {}), ...(s.host ? { "x-forwarded-host": s.host } : {}), ...s.extra };
       // Baseline: the untouched request must still work, or a refusal says nothing about the bad value.
       tasks.push(async () => {
         let hdrs = { ...headers };
-        let r = await fetch(`${API}${s.url}`, { method: s.method, headers: { ...hdrs, "idempotency-key": `qa-b-${uniq++}` }, body: JSON.stringify(freshen(s.parsed)) }).catch(() => ({ status: 0 }));
+        let r = await fetch(`${API}${s.url}`, { method: s.method, headers: { ...hdrs, "idempotency-key": `qa-b-${RUN}-${uniq++}` }, body: JSON.stringify(freshen(s.parsed)) }).catch(() => ({ status: 0 }));
         if (r.status === 401 && s.authorization) {
           s.useOwner = true;
           hdrs = { ...hdrs, authorization: `Bearer ${token}` };
-          r = await fetch(`${API}${s.url}`, { method: s.method, headers: { ...hdrs, "idempotency-key": `qa-b-${uniq++}` }, body: JSON.stringify(freshen(s.parsed)) }).catch(() => ({ status: 0 }));
+          r = await fetch(`${API}${s.url}`, { method: s.method, headers: { ...hdrs, "idempotency-key": `qa-b-${RUN}-${uniq++}` }, body: JSON.stringify(freshen(s.parsed)) }).catch(() => ({ status: 0 }));
         }
         const ok = r.status >= 200 && r.status < 300;
         ok ? stats.baselineOk++ : stats.baselineFailed++;
         const c = coverage.get(route);
         c.baseline = Math.max(c.baseline ?? 0, r.status);
         c.baselineOk = c.baselineOk || ok;
+        if (!ok && r.text) c.baselineWhy = (await r.text()).slice(0, 200);
       });
       const fields = fieldsOf(s.parsed).slice(0, MAX_FIELDS);
       coverage.get(route).fields = Math.max(coverage.get(route).fields, fields.length);
@@ -207,7 +210,7 @@ async function replayPass() {
             const fresh = freshen(s.parsed);
             const mutated = p.length ? setAt(fresh, p, bad) : bad;
             const rawBody = JSON.stringify(mutated).replace(`"${INFINITY}"`, "1e400");
-            const r = await send({ method: s.method, path: s.url, headers: { ...headers, ...(s.useOwner ? { authorization: `Bearer ${token}` } : {}), "idempotency-key": `qa-${stats.requests}` }, rawBody, route, field: fieldName, label, expectReject: MUST_REJECT.has(label) && typeof current !== "object", odd: ODD.has(label), sample: rawBody });
+            const r = await send({ method: s.method, path: s.url, headers: { ...headers, ...(s.useOwner ? { authorization: `Bearer ${token}` } : {}), "idempotency-key": `qa-${RUN}-${stats.requests}` }, rawBody, route, field: fieldName, label, expectReject: MUST_REJECT.has(label) && typeof current !== "object", odd: ODD.has(label), sample: rawBody });
             const c = coverage.get(route);
             c.attempts++;
             if (r.status && ![401, 402, 403, 404].includes(r.status) && c.baselineOk) c.reached++;

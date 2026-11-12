@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "no
 import { join } from "node:path";
 import { OUT, QA_DB, ROOT, qaEnv } from "./lib.mjs";
 
-const DB_VARS = ["ACCOUNTING", "AI", "API", "AUTH", "BRANCHES", "CATALOGUE", "EXPENSES", "GSTFILING", "IDEMPOTENCY", "INVENTORY", "INVOICES", "JOBCARDS", "LOYALTY", "ORDERS", "PAYROLL", "PLANS", "PLATFORM", "POS", "PRICELISTS", "SUBSCRIPTIONS", "UPLOADS"];
+const DB_VARS = ["ACCOUNTING", "AI", "API", "AUTH", "BOOKINGS", "BRANCHES", "CATALOGUE", "DINING", "EXPENSES", "GSTFILING", "IDEMPOTENCY", "INVENTORY", "INVOICES", "JOBCARDS", "LOYALTY", "MEDICINES", "MEMBERSHIPS", "ORDERS", "PAYROLL", "PLANS", "PLATFORM", "POS", "PRICELISTS", "SETTINGS", "SUBSCRIPTIONS", "TENANCY", "UPLOADS"];
 const dbUrl = `postgres://srikit:srikit@127.0.0.1:5432/${QA_DB}`;
 const env = { ...qaEnv(), ...Object.fromEntries(DB_VARS.map((v) => [`${v}_TEST_DATABASE_URL`, dbUrl])) };
 

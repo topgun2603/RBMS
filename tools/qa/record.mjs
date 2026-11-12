@@ -20,7 +20,9 @@ const proxy = createServer((req, res) => {
       r.pipe(res);
       if (r.statusCode < 400 && !req.url.startsWith("/health") && (req.headers["content-type"] ?? "").includes("json")) {
         const { authorization, "x-tenant": tenant, host } = req.headers;
-        out.write(JSON.stringify({ method: req.method, url: req.url, status: r.statusCode, authorization, tenant, host, body: body.toString("utf8") }) + "\n");
+        // Every other x- header too: x-vendor and the like decide whether the replay gets past the outer checks.
+        const extra = Object.fromEntries(Object.entries(req.headers).filter(([k]) => k.startsWith("x-") && k !== "x-tenant"));
+        out.write(JSON.stringify({ method: req.method, url: req.url, status: r.statusCode, authorization, tenant, host, extra, body: body.toString("utf8") }) + "\n");
         kept++;
       }
     });
@@ -31,7 +33,8 @@ const proxy = createServer((req, res) => {
 await new Promise((r) => proxy.listen(PROXY_PORT, r));
 
 await startApi();
-const env = { ...qaEnv(), API_URL: `http://127.0.0.1:${PROXY_PORT}` };
+// A dead STORE_URL skips the store browser test: a dev store on :3003 talks to the real API on :4000, not this copy.
+const env = { ...qaEnv(), API_URL: `http://127.0.0.1:${PROXY_PORT}`, STORE_URL: "http://127.0.0.1:1" };
 const child = spawn(process.execPath, [join(ROOT, "apps/api/test/e2e/run-all.mjs")], { cwd: join(ROOT, "apps/api"), env, stdio: ["ignore", openSync(join(OUT, "e2e.log"), "w"), openSync(join(OUT, "e2e.err.log"), "w")] });
 const code = await new Promise((r) => child.on("close", r));
 console.log(`flow tests finished (exit ${code}); recorded ${kept} requests with a JSON body`);

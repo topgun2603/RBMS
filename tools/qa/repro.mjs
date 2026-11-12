@@ -42,6 +42,27 @@ console.log("free item beside a paid item                ", pick(await bill({ li
 console.log("only a free item                            ", pick(await bill({ lines: [{ ...line, rate: 0 }] })));
 console.log("100% discount on one of two lines           ", pick(await bill({ lines: [line, { ...line, discount: 10000 }] })));
 console.log("2-digit HSN                                 ", pick(await bill({ lines: [{ ...line, hsn: "12" }] })));
+console.log("bill with a null line                       ", pick(await bill({ lines: [null] })));
+console.log("bill with a null beside a real line         ", pick(await bill({ lines: [line, null] })));
+console.log("--- bad values the sweep saw accepted");
+const anon = { "x-tenant": "e2e-store" };
+// The billing test shop's plan refuses these features, and a refusal for that reason proves nothing.
+const store = { ...h, "x-tenant": "e2e-store" };
+await show("delivery quote pincode letters (no sign-in)", "POST", "/v1/delivery/public/quote", JSON.stringify({ pincode: "abcdef", weightGrams: 500, subtotal: 99900 }), anon);
+await show("delivery quote pincode 100k (no sign-in)", "POST", "/v1/delivery/public/quote", JSON.stringify({ pincode: "x".repeat(100_000), weightGrams: 500, subtotal: 99900 }), anon);
+await show("coupon starting 30 February", "POST", "/v1/coupons", JSON.stringify({ code: `QAFEB${Date.now()}`, type: "percent", value: 10, startsAt: "2026-02-30" }), store);
+const categories = JSON.parse(await (await fetch(`${API}/v1/expenses/categories`, { headers: store })).text());
+const categoryId = (categories.items ?? categories)[0]?.id;
+const expense = (o) => JSON.stringify({ date: "2026-11-05", categoryId, amount: 118000, gstRate: 18, vendorName: "QA", paymentMethod: "upi", ...o });
+await show("expense with GSTIN abcdef", "POST", "/v1/expenses", expense({ vendorGstin: "abcdef" }), store);
+await show("expense dated 1900", "POST", "/v1/expenses", expense({ date: "1900-01-01" }), store);
+await show("expense dated 9999", "POST", "/v1/expenses", expense({ date: "9999-12-31" }), store);
+const stock = JSON.parse(await (await fetch(`${API}/v1/inventory/stock?limit=1`, { headers: store })).text());
+const itemId = (stock.items ?? stock)[0]?.itemId;
+await show("stock add with qty [2]", "POST", `/v1/inventory/stock/${itemId}/adjust`, JSON.stringify({ mode: "add", qty: [2], unitCost: 1000, note: "QA" }), store);
+await show("stock add with qty []", "POST", `/v1/inventory/stock/${itemId}/adjust`, JSON.stringify({ mode: "add", qty: [], unitCost: 1000, note: "QA" }), store);
+const till = await (await fetch(`${API}/v1/invoices/till/open`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({ register: `QA ${Date.now()}`, openingCash: 0 }) })).json();
+await show("till cash actorName 100k characters", "POST", `/v1/invoices/till/${till.id}/cash`, JSON.stringify({ amount: -100, reason: "QA", actorName: "x".repeat(100_000) }));
 
 const sweep = JSON.parse(readFileSync(join(OUT, "findings-sweep.json"), "utf8"));
 const open = Object.entries(sweep.coverage).filter(([r, c]) => c.anonymous >= 200 && c.anonymous < 300 && !r.startsWith("GET")).map(([r, c]) => `${r} ${c.anonymous}`);

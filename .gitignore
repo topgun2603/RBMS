@@ -33,3 +33,6 @@ apps/store/public/tryon/
 
 tools/qa/out/
 tools/ad/out/
+
+# Agent worktrees (full repo copies)
+.claude/worktrees/

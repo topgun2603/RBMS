@@ -24,7 +24,7 @@ export const qaEnv = () => {
     NODE_ENV: "development",
     DATABASE_URL: DB_URL,
     REDIS_URL: "memory",
-    CORS_ORIGINS: "http://*.localhost:3101,http://*.localhost:3103",
+    CORS_ORIGINS: Array.from({ length: 10 }, (_, i) => `http://*.localhost:${3100 + i},http://localhost:${3100 + i}`).join(","),
     PORT: String(API_PORT),
     LOG_LEVEL: "warn",
     RATE_LIMIT_ENABLED: "false",

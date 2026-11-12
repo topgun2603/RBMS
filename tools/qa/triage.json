@@ -27,7 +27,19 @@
     "severity": "Medium",
     "problem": "GST filing lists crash with a server error on a bad date filter, such as ?from=abc",
     "where": "packages/gstfiling/src/routes.ts (itc, itc.csv, rcm, payments)",
-    "status": "FIXED 2026-11-04: a bad from or to now answers 400. Expect 6 crashes left in the next sweep, not measured yet."
+    "status": "FIXED 2026-11-04: a bad from or to now answers 400. Confirmed by the 2026-11-05 sweep: no crashes left on these routes."
+  },
+  {
+    "severity": "Medium",
+    "problem": "A bill with a null in its lines crashes with a server error instead of being refused. Found 2026-11-05 once the sweep's idempotency keys were fixed; reproduced by hand",
+    "where": "POST /v1/invoices; packages/invoices/src/service.ts:657 reads l.discount of a null line",
+    "status": "OPEN: 4 crashes. Screens never send this; nothing is saved."
+  },
+  {
+    "severity": "Medium",
+    "problem": "An expense dated 1900 or 9999 is accepted, as is a vendor GSTIN of abcdef. Reproduced by hand. Whether these reach input tax credit or filing has not been checked",
+    "where": "POST /v1/expenses (date, vendorGstin)",
+    "status": "OPEN. The sweep also saw 1900 and 9999 accepted on purchase dates, and 1900 on a customer receipt; those were not reproduced by hand."
   },
   {
     "severity": "Medium",
@@ -46,6 +58,18 @@
     "problem": "Job cards accept a phone number made of letters, and 30 February as a visit date",
     "where": "POST /v1/jobcards (fields)",
     "status": "OPEN"
+  },
+  {
+    "severity": "Low",
+    "problem": "Other loose checks, reproduced by hand: a coupon starting 30 February is saved; a quantity of [2] counts as 2 on a stock add; a till cash entry takes a 100,000-character name; the public delivery quote answers 'not serviceable' to any pincode text instead of refusing it",
+    "where": "POST /v1/coupons, /v1/inventory/stock/:id/adjust, /v1/invoices/till/:id/cash, /v1/delivery/public/quote",
+    "status": "OPEN. The sweep saw the same list-as-number on transfers and purchases, and letters as phone numbers on WhatsApp campaigns; those were not reproduced by hand."
+  },
+  {
+    "severity": "Check",
+    "problem": "The sweep cannot judge 35 of its 120 in-depth routes: the valid request fails on replay, mostly because the action only works once (already paid, already cancelled). Includes bill payment, cancel and issue, store checkout, order status and 5 marketplace seller routes",
+    "where": "tools/qa/bad-data.mjs replayPass; causes are in coverage.baselineWhy of out/findings.json",
+    "status": "OPEN: needs fresh data for each try, not yet built. Pass 2's junk on these routes still ran."
   },
   {
     "severity": "Low",
@@ -73,8 +97,8 @@
   },
   {
     "severity": "Check",
-    "problem": "3 flow test steps fail: home page hero name, analytics beacon, till close without a reason. These look like out-of-date tests or a missing store server, not product bugs, but that is not yet proven",
-    "where": "apps/api/test/e2e batch2, credit-notes",
+    "problem": "4 flow test steps fail: home page hero name, analytics beacon, till close without a reason, and (new on 2026-11-05) the chat stream with CORS. The first three look like out-of-date tests or a missing store server, not product bugs, but that is not yet proven",
+    "where": "apps/api/test/e2e batch2, credit-notes, batch3",
     "status": "OPEN: not yet investigated"
   },
   {
